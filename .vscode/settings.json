@@ -8,5 +8,5 @@
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "cSpell.words": ["pycache"]
+  "cSpell.words": ["Caddyfile", "Gitea", "healthcheck", "pycache", "uvicorn"]
 }
