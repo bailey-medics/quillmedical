@@ -2,8 +2,6 @@ version: "3.9"
 
 services:
   frontend:
-    # Run Next.js in dev mode with hot reload
-    command: sh -c "npm ci && npm run dev"
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: "/api"
@@ -16,7 +14,5 @@ services:
       - /app/.next
 
   backend:
-    # Auto-reload on code changes
-    command: poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend/app:/app/app

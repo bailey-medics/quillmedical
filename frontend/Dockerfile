@@ -10,7 +10,7 @@ COPY .yarn/releases/* ./.yarn/releases/
 # Install dependencies using Yarn Berry
 RUN yarn install
 
-# Copy app sources
+# Copy the rest of the application
 COPY . .
 
 EXPOSE 3000

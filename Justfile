@@ -47,6 +47,9 @@ alias sd := start-dev
 start-dev build="":
     #!/usr/bin/env bash
     {{initialise}} "start-dev"
+
+    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.yml -f compose.dev.yml up --build; \
     else \

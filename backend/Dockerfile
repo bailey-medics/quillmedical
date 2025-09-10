@@ -19,6 +19,5 @@ COPY app ./app
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
-# CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# TODO: need to change --reload to something else for production
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
