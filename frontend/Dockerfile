@@ -2,13 +2,17 @@ FROM node:24-alpine3.21
 
 WORKDIR /app
 
-# Install dependencies (use package-lock if present for reproducible installs)
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copy dependency files and Yarn Berry config
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN mkdir -p .yarn/releases
+COPY .yarn/releases/* ./.yarn/releases/
+
+# Install dependencies using Yarn Berry
+RUN yarn install --immutable
 
 # Copy app sources
 COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["yarn", "dev", "-H", "0.0.0.0"]

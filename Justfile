@@ -1,18 +1,65 @@
-# Justfile for common Docker Compose workflows
+set shell := ["bash", "-c"]
 
-set shell := ["/bin/sh", "-cu"]
+default:
+    just --list
 
-# Run dev stack (base + dev overrides)
-# Usage: just up
-alias up := up-dev
+initialise:= 'set -euxo pipefail
+    initialise() {
+        # Clear the terminal window title on exit
+        echo -ne "\033]0; \007"
+    }
+    trap initialise EXIT
+    just _terminal-description'
 
-up-dev:
-	docker compose -f compose.yml -f compose.dev.yml up
+    
+_terminal-description message=" ":
+    echo -ne "\033]0;{{message}}\007"
 
-# Rebuild images and start dev stack
-reup:
-	docker compose -f compose.yml -f compose.dev.yml up --build
+alias aj := abbreviate-just
+# Set up the description for terminal windows
+abbreviate-just:
+    #!/usr/bin/env bash
+    {{initialise}} abbreviate-just
+    alias_definition="alias j='just'"
 
-# Stop and remove containers
-Down:
-	docker compose down
+    if grep -Fxq "$alias_definition" ~/.zshrc
+    then
+        echo "Alias already exists in ~/.zshrc"
+    else
+        echo "$alias_definition" >> ~/.zshrc
+        echo "Alias added to ~/.zshrc"
+    fi
+    
+    echo "Please run the following command to apply the changes to this terminal:"
+    echo "source ~/.zshrc"
+
+
+alias ef := enter-frontend
+# Enter the frontend container shell
+enter-frontend:
+    #!/usr/bin/env bash
+    {{initialise}} "enter-frontend"
+    docker exec -it quill_frontend /bin/sh
+
+
+alias sd := start-dev
+# Start the dev app (build: 'b' will also build the images)
+start-dev build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-dev"
+    if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.yml -f compose.dev.yml up --build; \
+    else \
+        docker compose -f compose.yml -f compose.dev.yml up; \
+    fi
+
+alias sp := start-prod
+# Start the dev app (build: 'b' will also build the images)
+start-prod build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-prod"
+    if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.yml -f compose.prod.yml up --build; \
+    else \
+        docker compose -f compose.yml -f compose.prod.yml up; \
+    fi
