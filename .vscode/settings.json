@@ -21,5 +21,12 @@
   "terminal.integrated.tabs.enableAnimation": true,
   "terminal.integrated.tabs.description": "${sequence}",
   "terminal.integrated.tabs.title": "${process}",
-  "cSpell.words": ["Caddyfile", "Gitea", "healthcheck", "pycache", "uvicorn"]
+  "cSpell.words": [
+    "Caddyfile",
+    "Cotswoldsmaker",
+    "Gitea",
+    "healthcheck",
+    "pycache",
+    "uvicorn"
+  ]
 }

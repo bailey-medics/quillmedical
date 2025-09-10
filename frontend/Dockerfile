@@ -8,7 +8,7 @@ RUN mkdir -p .yarn/releases
 COPY .yarn/releases/* ./.yarn/releases/
 
 # Install dependencies using Yarn Berry
-RUN yarn install --immutable
+RUN yarn install
 
 # Copy app sources
 COPY . .
