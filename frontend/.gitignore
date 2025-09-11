@@ -1,32 +1,24 @@
-# Node dependencies
-node_modules/
-
-# Build outputs
-dist/
-build/
-out/
-
-# TypeScript cache
-*.tsbuildinfo
-
 # Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-*.log
+lerna-debug.log*
 
-# Environment files
-.env
-.env.local
-.env.*.local
+node_modules
+dist
+dist-ssr
+*.local
 
-# IDE / Editor cruft
-.vscode/
-.idea/
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-
-# Optional: lock files if you want to enforce one tool
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
