@@ -12,12 +12,9 @@ communication between patients and clinics and also letter generation and storag
 Quill Medical is delivered as a modular, containerised system using **Docker Compose**:
 
 - **Caddy** – reverse proxy with TLS termination and security headers.
-- **Frontend** – [Next.js](https://nextjs.org/) with TypeScript React for a modern web interface.
-- **Backend** – [FastAPI](https://fastapi.tiangolo.com/) (Python) exposing secure and well-documented APIs.
-- **Database** – [PostgreSQL](https://www.postgresql.org/) with persistent storage.
-- **Gitea** – self-hosted Git service for source control and DevOps integration.
-
-All services are connected through a dedicated Docker network.
+- **Frontend** – Vite, React, TypeScript, and Mantine UI, to create a single page application (SPA) and progressive web app (PWA).
+- **Backend** – FastAPI + Python 3.12
+- **Database** – Alembic + PostgreSQL
 
 ---
 

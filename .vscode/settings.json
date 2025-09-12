@@ -24,10 +24,12 @@
   "cSpell.words": [
     "Caddyfile",
     "Cotswoldsmaker",
+    "getifaddr",
     "Gitea",
     "healthcheck",
     "isready",
     "pycache",
+    "tabler",
     "uvicorn"
   ]
 }

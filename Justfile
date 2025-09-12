@@ -51,9 +51,9 @@ start-dev build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.dev.yml up --build; \
+        docker compose -f compose.dev.yml up --build; \
     else \
-        docker compose -f compose.yml -f compose.dev.yml up; \
+        docker compose -f compose.dev.yml up; \
     fi
 
 alias sp := start-prod
@@ -66,3 +66,21 @@ start-prod build="":
     else \
         docker compose -f compose.yml -f compose.prod.yml up; \
     fi
+
+alias ss := stop
+# Stop the app
+stop:
+    #!/usr/bin/env bash
+    {{initialise}} "stop"
+    docker compose -f compose.yml -f compose.dev.yml down
+    docker compose -f compose.yml -f compose.prod.yml down
+
+
+alias yi := yarn-install
+# Run yarn install in the frontend container
+yarn-install:
+    #!/usr/bin/env bash
+    {{initialise}} "yarn-install"
+    cd frontend
+    yarn install
+    
