@@ -4,7 +4,6 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
     container_name: quill_backend
     env_file: .env
     environment:
@@ -18,30 +17,29 @@ services:
       - public
       - private
     volumes:
-      - ./patient_data:/patient_data
+      - ./patient_data:/patient_data    
+      - ./backend/app:/app/app
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+    container_name: quill_frontend
+    environment:
+      - NODE_ENV=development=value
     expose:
       - "5173"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
     depends_on:
-      database:
-        condition: service_healthy
+      - backend
     networks:
       - public
 
   database:
     image: postgres:16-alpine
     container_name: quill_database
-    environment:
-      POSTGRES_USER: quill
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: quill
+    env_file: .env
     volumes:
       - database_data:/var/lib/postgresql/data
     healthcheck:

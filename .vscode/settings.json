@@ -26,6 +26,7 @@
     "Cotswoldsmaker",
     "Gitea",
     "healthcheck",
+    "isready",
     "pycache",
     "uvicorn"
   ]
