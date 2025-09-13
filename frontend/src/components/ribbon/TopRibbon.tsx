@@ -16,9 +16,10 @@ type Props = {
   onBurgerClick: () => void;
   patient: Patient | null;
   isLoading: boolean;
-  showBurger: boolean;
   /** Turn off sticky/fixed for Storybook so wrapper width can drive queries */
   sticky?: boolean;
+  /** Whether the nav drawer/rail is currently open (for a11y) */
+  navOpen?: boolean;
 };
 
 function RibbonSkeleton() {
@@ -47,6 +48,7 @@ export default function TopRibbon({
   patient,
   isLoading,
   sticky = true,
+  navOpen = false,
 }: Props) {
   return (
     <div className={sticky ? classes.wrapper : undefined}>
@@ -57,15 +59,22 @@ export default function TopRibbon({
           <ActionIcon
             variant="subtle"
             onClick={onBurgerClick}
-            aria-label="Open navigation"
+            aria-controls="app-navbar"
+            aria-label={navOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={navOpen}
+            style={{ color: "#290661" }}
           >
             <IconMenu2 />
           </ActionIcon>
         </div>
 
         {(isLoading || !patient) && (
-          <div>
-            <Text fw={700}>Quill</Text>
+          <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
+            <img
+              src="/quill-name.png"
+              alt="Quill"
+              style={{ height: "24px", marginRight: "8px" }}
+            />
           </div>
         )}
         {/* middle: patient info */}

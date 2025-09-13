@@ -21,20 +21,22 @@ export type LayoutCtx = {
   setPatient: React.Dispatch<React.SetStateAction<Patient | null>>;
 };
 
-function RootLayout() {
-  const [opened, { toggle }] = useDisclosure(false);
+export default function RootLayout() {
+  const [opened, { toggle, close }] = useDisclosure(false);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [patient, setPatient] = useState<Patient | null>(null);
 
   return (
     <MantineProvider defaultColorScheme="light">
       <Notifications />
+
+      {/* ⬇️  changes start here */}
       <AppShell
-        header={{ height: 88 }} // 56 top row + ~32 demographics ribbon
+        header={{ height: 88 }}
         navbar={{
           width: 260,
           breakpoint: "sm",
-          collapsed: { mobile: !opened }, // sidebar auto-collapses on small screens
+          collapsed: { mobile: !opened },
         }}
         padding="md"
         withBorder={false}
@@ -42,22 +44,24 @@ function RootLayout() {
         <AppShell.Header>
           <TopRibbon
             onBurgerClick={toggle}
-            isMobile={isMobile}
+            isLoading={false}
             patient={patient}
-            showBurger={isMobile} // hide burger on desktop where sidebar is present
+            navOpen={opened}                 {/* new */}
           />
         </AppShell.Header>
 
-        <AppShell.Navbar>
-          {/* On mobile, search lives in the sidebar; on desktop it’s in the header */}
-          <SideNav showSearch={isMobile} />
+        <AppShell.Navbar id="app-navbar">   {/* give it an id */}
+          <SideNav
+            showSearch={isMobile}
+            onNavigate={isMobile ? close : undefined}
+          />
         </AppShell.Navbar>
 
         <AppShell.Main>
-          {/* Share patient + setter to child routes without Context */}
           <Outlet context={{ patient, setPatient } satisfies LayoutCtx} />
         </AppShell.Main>
       </AppShell>
+      {/* ⬆️  changes end here */}
     </MantineProvider>
   );
 }

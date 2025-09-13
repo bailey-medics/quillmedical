@@ -32,13 +32,8 @@ export default function SearchField() {
       aria-label="Open search"
       onClick={() => setOpen(true)}
       variant="transparent"
-      style={{
-        paddingTop: "0px",
-        height: "0px", // expand container height
-        width: "0px", // keep it square if you like
-      }}
     >
-      <IconSearch size={30} stroke={2.5} color="#888" />
+      <IconSearch size={30} stroke={2.5} color="#290661" />
     </ActionIcon>
   );
 }
