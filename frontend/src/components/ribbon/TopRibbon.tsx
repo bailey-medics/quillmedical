@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import { IconMenu2, IconUserOff } from "@tabler/icons-react";
 import SearchField from "../search/SearchField";
-import classes from "./TopRibbon.module.css";
+import classes from "./TopRibbon.module.scss";
 
 export type Patient = {
   id: string;

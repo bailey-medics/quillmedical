@@ -37,8 +37,8 @@ export function PhoneFrame({
   showWifi = false,
 
   showUrlBar = true,
-  url = "https://quill.example/patient/123",
-  urlBarHeight = 44,
+  url = "quill-medical.com",
+  urlBarHeight = 70,
 
   children,
 }: PhoneFrameProps) {
@@ -188,7 +188,7 @@ export function PhoneFrame({
               gap: 8,
               padding: "0 10px",
               borderBottom: "1px solid #e5e7eb",
-              background: "#f8f9fb",
+              background: "#ffffff",
               zIndex: 20,
             }}
           >
@@ -243,11 +243,13 @@ export function PhoneFrame({
               </svg>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: 18,
                   color: "#111827",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  textAlign: "center",
+                  flex: 1,
                 }}
                 title={url}
               >

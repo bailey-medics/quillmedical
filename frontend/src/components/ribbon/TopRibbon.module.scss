@@ -1,3 +1,5 @@
+@use "../../styles/cq" as cq;
+
 /* Make an element that *is* the query container */
 .cq {
   /* This is the magic: children can query this element's inline size */
