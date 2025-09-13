@@ -1,11 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Skeleton,
-  Text,
-  ThemeIcon,
-} from "@mantine/core";
+import { ActionIcon, Group, Skeleton, Text, ThemeIcon } from "@mantine/core";
 import { IconMenu2, IconUserOff } from "@tabler/icons-react";
 import SearchField from "../search/SearchField";
 import classes from "./TopRibbon.module.scss";
@@ -53,7 +46,6 @@ export default function TopRibbon({
   onBurgerClick,
   patient,
   isLoading,
-  showBurger,
   sticky = true,
 }: Props) {
   return (
@@ -62,25 +54,20 @@ export default function TopRibbon({
       <div className={classes.cq}>
         {/* left */}
         <div className={classes.left}>
-          {showBurger && (
-            <ActionIcon
-              variant="subtle"
-              onClick={onBurgerClick}
-              aria-label="Open navigation"
-            >
-              <IconMenu2 />
-            </ActionIcon>
-          )}
-          <Box>
-            {!patient && !isLoading && <Text fw={700}>Quill</Text>}
-            {isLoading && (
-              <Group gap="xs">
-                <Text fw={700}>Quill</Text>
-              </Group>
-            )}
-          </Box>
+          <ActionIcon
+            variant="subtle"
+            onClick={onBurgerClick}
+            aria-label="Open navigation"
+          >
+            <IconMenu2 />
+          </ActionIcon>
         </div>
 
+        {(isLoading || !patient) && (
+          <div>
+            <Text fw={700}>Quill</Text>
+          </div>
+        )}
         {/* middle: patient info */}
         <div className={classes.middle}>
           {isLoading ? (
@@ -103,7 +90,6 @@ export default function TopRibbon({
             <RibbonPlaceholder />
           )}
         </div>
-
         {/* right: search — hidden by @container when narrow */}
         <div className={classes.right}>
           <SearchField />

@@ -34,8 +34,8 @@ export default function SearchField() {
       variant="transparent"
       style={{
         paddingTop: "0px",
-        height: "56px", // expand container height
-        width: "56px", // keep it square if you like
+        height: "0px", // expand container height
+        width: "0px", // keep it square if you like
       }}
     >
       <IconSearch size={30} stroke={2.5} color="#888" />
