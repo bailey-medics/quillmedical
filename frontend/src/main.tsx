@@ -10,8 +10,8 @@ import { Notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 
-import SideNav from "./components/SideNav";
-import TopRibbon, { type Patient } from "./components/TopRibbon";
+import SideNav from "./components/navigation/SideNav";
+import TopRibbon, { type Patient } from "./components/ribbon/TopRibbon";
 import About from "./pages/About";
 import Home from "./pages/Home";
 

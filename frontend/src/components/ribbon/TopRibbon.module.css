@@ -1,0 +1,32 @@
+/* Make an element that *is* the query container */
+.cq {
+  /* This is the magic: children can query this element's inline size */
+  container-type: inline-size;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm);
+  background: #e6f7ff;
+}
+
+/* Optional outer wrapper for stickiness so we don't tie queries to viewport */
+.wrapper {
+  position: sticky; /* or fixed in app — see note below */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* Sections */
+.left { display: flex; align-items: center; gap: var(--mantine-spacing-sm); }
+.middle { display: flex; align-items: center; gap: var(--mantine-spacing-lg); flex: 1; justify-content: center; flex-wrap: wrap; }
+.right { display: block; }
+
+/* Container query: react to the container's width, not the window */
+@container (max-width: 768px) {
+  .right { display: none; }                 /* hide Search on narrow containers */
+  .middle { gap: var(--mantine-spacing-xs); } /* tighten spacing */
+}

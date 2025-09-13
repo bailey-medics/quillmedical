@@ -28,8 +28,10 @@
     "Gitea",
     "healthcheck",
     "isready",
+    "mantine",
     "pycache",
     "tabler",
-    "uvicorn"
+    "uvicorn",
+    "Wifi"
   ]
 }

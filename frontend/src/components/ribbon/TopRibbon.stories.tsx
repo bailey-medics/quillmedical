@@ -1,12 +1,12 @@
 // src/components/TopRibbon.stories.tsx
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PhoneFrame } from "../../../.storybook/utils/PhoneFrame";
 import TopRibbon from "./TopRibbon";
 
 const meta: Meta<typeof TopRibbon> = {
-  title: "Layout/TopRibbon",
+  title: "ribbon/TopRibbon",
   component: TopRibbon,
   args: {
-    isMobile: false,
     showBurger: true,
     onBurgerClick: () => {},
     patient: {
@@ -22,6 +22,15 @@ const meta: Meta<typeof TopRibbon> = {
 export default meta;
 
 type Story = StoryObj<typeof TopRibbon>;
-export const Desktop: Story = {};
-export const Mobile: Story = { args: { isMobile: true } };
+
+export const Desktop: Story = { args: { showBurger: false } };
+export const Mobile: Story = {
+  render: (args) => (
+    <PhoneFrame width={430} height={932}>
+      <TopRibbon {...args} sticky={false} />
+    </PhoneFrame>
+  ),
+  args: { showBurger: false },
+};
 export const NoPatient: Story = { args: { patient: null } };
+export const Loading: Story = { args: { isLoading: true } };

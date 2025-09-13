@@ -1,15 +1,15 @@
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import type { Preview } from "@storybook/react";
 import { MemoryRouter } from "react-router-dom";
-import type { Preview } from "storybook";
 
 const preview: Preview = {
   decorators: [
     (Story) => (
       <MantineProvider defaultColorScheme="light">
         <MemoryRouter>
-          <div style={{ padding: 16 }}>
+          <div style={{ padding: 0 }}>
             <Story />
           </div>
         </MemoryRouter>
