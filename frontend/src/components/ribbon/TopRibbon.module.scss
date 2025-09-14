@@ -1,4 +1,4 @@
-@use "../../styles/cq" as cq;
+@use "../../styles/breakpoints" as *;
 
 /* Make an element that *is* the query container */
 .cq {
@@ -29,7 +29,7 @@
 .right { display: block; margin-top: 5px; margin-bottom: -5px;}
 
 /* Container query: react to the container's width, not the window */
-@container (max-width: 768px) {
+@container (max-width: #{$cq-narrow}) {
   .left { display: flex; align-items: center; gap: var(--mantine-spacing-sm); }
   .right { display: none; }                 /* hide Search on narrow containers */
   .middle { gap: var(--mantine-spacing-xs); } /* tighten spacing */
