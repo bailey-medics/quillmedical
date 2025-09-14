@@ -1,17 +1,74 @@
-// components/navigation/SideNavContent.tsx
-import { NavLink, Stack } from "@mantine/core";
+import { NavLink, ThemeIcon } from "@mantine/core";
+import {
+  IconFileText,
+  IconHome2,
+  IconSettings,
+  IconUsers,
+} from "@tabler/icons-react";
+
+type Props = {
+  onNavigate?: () => void;
+  showIcons?: boolean;
+};
+
+function LeftIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeIcon variant="light" color="gray" radius="xl" size="sm">
+      {children}
+    </ThemeIcon>
+  );
+}
 
 export default function SideNavContent({
   onNavigate,
-}: {
-  onNavigate?: () => void;
-}) {
+  showIcons = false,
+}: Props) {
   return (
-    <Stack gap="xs" role="navigation" aria-label="Primary">
-      <NavLink label="Home" onClick={onNavigate} />
-      <NavLink label="Patients" onClick={onNavigate} />
-      <NavLink label="Letters" onClick={onNavigate} />
-      <NavLink label="Settings" onClick={onNavigate} />
-    </Stack>
+    <>
+      <NavLink
+        label="Home"
+        onClick={onNavigate}
+        leftSection={
+          showIcons ? (
+            <LeftIcon>
+              <IconHome2 size={16} />
+            </LeftIcon>
+          ) : undefined
+        }
+      />
+      <NavLink
+        label="Patients"
+        onClick={onNavigate}
+        leftSection={
+          showIcons ? (
+            <LeftIcon>
+              <IconUsers size={16} />
+            </LeftIcon>
+          ) : undefined
+        }
+      />
+      <NavLink
+        label="Letters"
+        onClick={onNavigate}
+        leftSection={
+          showIcons ? (
+            <LeftIcon>
+              <IconFileText size={16} />
+            </LeftIcon>
+          ) : undefined
+        }
+      />
+      <NavLink
+        label="Settings"
+        onClick={onNavigate}
+        leftSection={
+          showIcons ? (
+            <LeftIcon>
+              <IconSettings size={16} />
+            </LeftIcon>
+          ) : undefined
+        }
+      />
+    </>
   );
 }

@@ -1,6 +1,7 @@
+import type { Patient } from "@/domains/patient";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
-import TopRibbon, { type Patient } from "@components/ribbon/TopRibbon";
+import TopRibbon from "@components/ribbon/TopRibbon";
 import { AppShell, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
@@ -8,19 +9,17 @@ import type { ReactNode } from "react";
 type Props = {
   patient: Patient | null;
   isLoading?: boolean;
-  sticky?: boolean;
-  children?: ReactNode; // <- allow page content
+  children?: ReactNode;
 };
 
 export default function MainLayout({
   patient,
   isLoading = false,
-  sticky = false,
   children,
 }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   const HEADER_H = 88;
   const DRAWER_W = 260;
@@ -33,7 +32,7 @@ export default function MainLayout({
           isLoading={isLoading}
           patient={patient}
           navOpen={opened}
-          sticky={sticky}
+          isNarrow={isSm}
         />
       </AppShell.Header>
 
@@ -51,15 +50,15 @@ export default function MainLayout({
           width={DRAWER_W}
         >
           <div style={{ width: DRAWER_W }}>
-            <SideNav showSearch={isMobile} onNavigate={close} />
+            <SideNav showSearch={isSm} onNavigate={close} />
           </div>
         </NavigationDrawer>
 
         <AppShell.Main>
           <div style={{ display: "flex", height: "100%" }}>
-            {!isMobile && (
+            {!isSm && (
               <div style={{ borderRight: "1px solid #e0e0e0" }}>
-                <SideNav showSearch={false} />
+                <SideNav showSearch={false} showIcons={true} />
               </div>
             )}
             {children}

@@ -1,41 +1,27 @@
+// SideNav.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import SideNav from "./SideNav";
-import "./SideNav.modules.scss";
 
-const meta: Meta<typeof SideNav> = {
+const meta = {
   title: "Navigation/SideNav",
   component: SideNav,
-};
+} satisfies Meta<typeof SideNav>;
 export default meta;
 
-type Story = StoryObj<typeof SideNav>;
+type Story = StoryObj<typeof meta>;
 
-/** Default sidebar with search visible */
 export const WithSearch: Story = {
-  render: (args) => (
-    <div className="story-layout">
-      <div className="story-sidenav">
-        <SideNav {...args} />
-      </div>
-      <div className="story-content">
-        Desktop content area. Resize the preview to see the nav hide.
-      </div>
-    </div>
-  ),
   args: { showSearch: true },
 };
 
-/** Sidebar without search */
 export const WithoutSearch: Story = {
-  render: (args) => (
-    <div className="story-layout">
-      <div className="story-sidenav">
-        <SideNav {...args} />
-      </div>
-      <div className="story-content">
-        Desktop content area. Resize the preview to see the nav hide.
-      </div>
-    </div>
-  ),
   args: { showSearch: false },
+};
+
+export const WithSearchIcons: Story = {
+  args: { showSearch: true, showIcons: true },
+};
+
+export const WithoutSearchIcons: Story = {
+  args: { showSearch: false, showIcons: true },
 };

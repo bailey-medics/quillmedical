@@ -60,7 +60,7 @@ start-dev build="":
 
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.dev.yml down
-        docker volume rm quillmedical_frontend_node_modules
+        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         docker compose -f compose.dev.yml up --build; \
     else \
         docker compose -f compose.dev.yml up; \

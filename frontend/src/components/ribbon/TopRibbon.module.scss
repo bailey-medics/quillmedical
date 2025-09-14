@@ -24,13 +24,13 @@
 }
 
 /* Sections */
-.left { display: none; }  
+.left { display: block; margin-top: 5px; margin-bottom: -5px;}
 .middle { display: flex; align-items: center; gap: var(--mantine-spacing-lg); flex: 1; justify-content: center; flex-wrap: wrap; }
 .right { display: block; margin-top: 5px; margin-bottom: -5px;}
 
-/* Container query: react to the container's width, not the window */
-@container (max-width: #{$cq-narrow}) {
-  .left { display: flex; align-items: center; gap: var(--mantine-spacing-sm); }
-  .right { display: none; }                 /* hide Search on narrow containers */
-  .middle { gap: var(--mantine-spacing-xs); } /* tighten spacing */
-}
+// /* Container query: react to the container's width, not the window */
+// @container (max-width: #{$cq-narrow}) {
+//   .left { display: flex; align-items: center; gap: var(--mantine-spacing-sm); }
+//   .right { display: none; }                 /* hide Search on narrow containers */
+//   .middle { gap: var(--mantine-spacing-xs); } /* tighten spacing */
+// }

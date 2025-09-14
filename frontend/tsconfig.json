@@ -4,7 +4,9 @@
     "paths": {
       "@/*": ["src/*"],
       "@components/*": ["src/components/*"],
-      "@utils/*": [".storybook/utils/*"]
+      "@utils/*": [".storybook/utils/*"],
+      "@design/*": ["src/design/*"],
+      "@domains/*": ["src/domains/*"]
     }
   },
   "files": [],

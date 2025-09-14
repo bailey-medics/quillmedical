@@ -1,25 +1,16 @@
+import type { Patient } from "@/domains/patient";
 import SearchField from "@components//search/SearchField";
-import { ActionIcon, Group, Skeleton, Text, ThemeIcon } from "@mantine/core";
-import { IconMenu2, IconUserOff } from "@tabler/icons-react";
+import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
+import { IconMenu2 } from "@tabler/icons-react";
 import classes from "./TopRibbon.module.scss";
-
-export type Patient = {
-  id: string;
-  name: string;
-  dob?: string;
-  age?: number;
-  sex?: string;
-  nhsNumber?: string;
-};
 
 type Props = {
   onBurgerClick: () => void;
   patient: Patient | null;
   isLoading: boolean;
-  /** Turn off sticky/fixed for Storybook so wrapper width can drive queries */
-  sticky?: boolean;
   /** Whether the nav drawer/rail is currently open (for a11y) */
   navOpen?: boolean;
+  isNarrow?: boolean;
 };
 
 function RibbonSkeleton() {
@@ -30,16 +21,38 @@ function RibbonSkeleton() {
   );
 }
 
-function RibbonPlaceholder() {
+function patientDetailsLong(patient: Patient) {
   return (
-    <Group gap="xs">
-      <ThemeIcon size="md" radius="xl" color="gray">
-        <IconUserOff size={16} />
-      </ThemeIcon>
-      <Text c="dimmed" size="sm">
-        No patient selected
+    <>
+      <Text fw={700} size="sm">
+        {patient.name}
       </Text>
-    </Group>
+      {patient.dob && <Text size="sm">DOB: {patient.dob}</Text>}
+      {typeof patient.age === "number" && (
+        <Text size="sm">Age: {patient.age}</Text>
+      )}
+      {patient.sex && <Text size="sm">Sex: {patient.sex}</Text>}
+      {patient.nhsNumber && <Text size="sm">NHS: {patient.nhsNumber}</Text>}
+    </>
+  );
+}
+
+function patientDetailsShort(patient: Patient) {
+  return (
+    <>
+      <Text fw={700} size="sm">
+        {patient.name}
+      </Text>
+      {patient.dob && <Text size="sm">{patient.dob}</Text>}
+      {typeof patient.age === "number" && (
+        <Text size="sm">
+          {" "}
+          {patient.age}
+          {patient.sex}
+        </Text>
+      )}
+      {patient.nhsNumber && <Text size="sm">{patient.nhsNumber}</Text>}
+    </>
   );
 }
 
@@ -47,28 +60,31 @@ export default function TopRibbon({
   onBurgerClick,
   patient,
   isLoading,
-  sticky = true,
   navOpen = false,
+  isNarrow = false,
 }: Props) {
+  const showBrand = isLoading || !patient || (patient && !isNarrow);
   return (
-    <div className={sticky ? classes.wrapper : undefined}>
+    <>
       {/* This inner div is the query container */}
       <div className={classes.cq}>
         {/* left */}
         <div className={classes.left}>
-          <ActionIcon
-            variant="subtle"
-            onClick={onBurgerClick}
-            aria-controls="app-navbar"
-            aria-label={navOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={navOpen}
-            style={{ color: "#290661" }}
-          >
-            <IconMenu2 />
-          </ActionIcon>
+          {isNarrow && (
+            <ActionIcon
+              variant="subtle"
+              onClick={onBurgerClick}
+              aria-controls="app-navbar"
+              aria-label={navOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={navOpen}
+              style={{ color: "#290661" }}
+            >
+              <IconMenu2 />
+            </ActionIcon>
+          )}
         </div>
 
-        {(isLoading || !patient) && (
+        {showBrand && (
           <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
             <img
               src="/quill-name.png"
@@ -83,27 +99,15 @@ export default function TopRibbon({
             <RibbonSkeleton />
           ) : patient ? (
             <>
-              <Text fw={700} size="sm">
-                {patient.name}
-              </Text>
-              {patient.dob && <Text size="sm">DOB: {patient.dob}</Text>}
-              {typeof patient.age === "number" && (
-                <Text size="sm">Age: {patient.age}</Text>
-              )}
-              {patient.sex && <Text size="sm">Sex: {patient.sex}</Text>}
-              {patient.nhsNumber && (
-                <Text size="sm">NHS: {patient.nhsNumber}</Text>
-              )}
+              {isNarrow
+                ? patientDetailsShort(patient)
+                : patientDetailsLong(patient)}
             </>
-          ) : (
-            <RibbonPlaceholder />
-          )}
+          ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}
-        <div className={classes.right}>
-          <SearchField />
-        </div>
+        <div className={classes.right}>{!isNarrow && <SearchField />}</div>
       </div>
-    </div>
+    </>
   );
 }

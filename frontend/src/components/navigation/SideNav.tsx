@@ -1,26 +1,20 @@
-import {
-  Divider,
-  NavLink as MantineNavLink,
-  Stack,
-  TextInput,
-} from "@mantine/core";
+import { Divider, Stack, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
-import { Link, useLocation } from "react-router-dom";
+import SideNavContent from "./SideNavContent";
 
 type Props = {
   showSearch: boolean;
   /** Called after a nav item is chosen (use to close mobile overlay) */
   onNavigate?: () => void;
+  showIcons?: boolean;
 };
 
-export default function SideNav({ showSearch, onNavigate }: Props) {
-  const location = useLocation();
-
+export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
   return (
     <nav
       role="navigation"
       aria-label="Primary"
-      style={{ minWidth: 200, height: "100%" }}
+      style={{ minWidth: 100, height: "100%", paddingRight: 14 }}
     >
       <Stack p="sm" gap="xs">
         {showSearch && (
@@ -30,25 +24,12 @@ export default function SideNav({ showSearch, onNavigate }: Props) {
               placeholder="Search…"
               rightSectionPointerEvents="none"
               rightSection={<IconSearch size={16} />}
+              style={{ paddingRight: 15 }}
             />
             <Divider my="xs" />
           </>
         )}
-
-        <MantineNavLink
-          component={Link}
-          to="/"
-          label="Home"
-          active={location.pathname === "/"}
-          onClick={onNavigate}
-        />
-        <MantineNavLink
-          component={Link}
-          to="/about"
-          label="About"
-          active={location.pathname === "/about"}
-          onClick={onNavigate}
-        />
+        <SideNavContent onNavigate={onNavigate} showIcons={showIcons} />
       </Stack>
     </nav>
   );
