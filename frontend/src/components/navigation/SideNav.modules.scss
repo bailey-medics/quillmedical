@@ -1,0 +1,39 @@
+/* src/components/navigation/SideNav.modules.scss */
+@use "../../styles/breakpoints" as *;
+
+/* Grid layout for the demo: left rail + content */
+.story-layout {
+  container-type: inline-size;      /* enable container queries */
+  display: grid;
+  grid-template-columns: 260px 1fr; /* rail width + content */
+  gap: 16px;
+  min-height: 60vh;
+}
+
+/* The left rail wrapper */
+.story-sidenav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100%;
+  border-right: 1px solid #e9ecef;
+  padding-right: 8px;
+  /* Optional: give the rail a white background so it’s obvious */
+  background: #fff;
+}
+
+/* Content area just for demo */
+.story-content {
+  padding: 16px;
+  color: #667085;
+}
+
+/* When the container gets narrow, hide the rail and go single-column */
+@container (max-width: #{$cq-narrow}) {
+  .story-layout {
+    grid-template-columns: 1fr;
+  }
+  .story-sidenav {
+    display: none;
+  }
+}

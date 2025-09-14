@@ -9,8 +9,10 @@ WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY .yarn/ .yarn/
 
+
+
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --immutable
+    yarn install --immutable --check-cache
 
 COPY . .
 

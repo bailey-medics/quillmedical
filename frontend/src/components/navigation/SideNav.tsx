@@ -1,4 +1,3 @@
-// src/components/SideNav.tsx
 import {
   Divider,
   NavLink as MantineNavLink,
@@ -18,7 +17,11 @@ export default function SideNav({ showSearch, onNavigate }: Props) {
   const location = useLocation();
 
   return (
-    <nav role="navigation" aria-label="Primary">
+    <nav
+      role="navigation"
+      aria-label="Primary"
+      style={{ minWidth: 200, height: "100%" }}
+    >
       <Stack p="sm" gap="xs">
         {showSearch && (
           <>

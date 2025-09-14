@@ -59,6 +59,8 @@ start-dev build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
     if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.dev.yml down
+        docker volume rm quillmedical_frontend_node_modules
         docker compose -f compose.dev.yml up --build; \
     else \
         docker compose -f compose.dev.yml up; \
