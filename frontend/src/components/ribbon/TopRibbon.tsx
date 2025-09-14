@@ -1,6 +1,6 @@
+import SearchField from "@components//search/SearchField";
 import { ActionIcon, Group, Skeleton, Text, ThemeIcon } from "@mantine/core";
 import { IconMenu2, IconUserOff } from "@tabler/icons-react";
-import SearchField from "../search/SearchField";
 import classes from "./TopRibbon.module.scss";
 
 export type Patient = {

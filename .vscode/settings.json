@@ -5,6 +5,7 @@
   "black-formatter.args": ["--line-length", "79"],
   "python.analysis.extraPaths": ["./app", "./"],
   "editor.codeActionsOnSave": {
+    "source.addMissingImports": "always",
     "source.organizeImports": "always"
   },
   "editor.formatOnSave": true,

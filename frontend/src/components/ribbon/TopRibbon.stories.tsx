@@ -1,11 +1,11 @@
 // src/components/TopRibbon.stories.tsx
+import NavigationDrawer from "@components/drawers/NavigationDrawer";
+import SideNav from "@components/navigation/SideNav";
 import { AppShell, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PhoneFrame } from "@utils/PhoneFrame";
 import { useEffect, useRef } from "react";
-import { PhoneFrame } from "../../../.storybook/utils/PhoneFrame";
-import NavigationDrawer from "../drawers/NavigationDrawer";
-import SideNav from "../navigation/SideNav";
 import TopRibbon, { type Patient } from "./TopRibbon";
 
 /* ---------------- DESKTOP SHELL (AppShell + InlineDrawer — no Navbar) ---------------- */
