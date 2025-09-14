@@ -41,6 +41,14 @@ enter-frontend:
     {{initialise}} "enter-frontend"
     docker exec -it quill_frontend /bin/sh
 
+alias sb := storybook
+# Run yarn install in the frontend container
+storybook:
+    #!/usr/bin/env bash
+    {{initialise}} "storybook"
+    cd frontend
+    yarn storybook
+    
 
 alias sd := start-dev
 # Start the dev app (build: 'b' will also build the images)
@@ -67,8 +75,8 @@ start-prod build="":
         docker compose -f compose.yml -f compose.prod.yml up; \
     fi
 
-alias ss := stop
-# Stop the app
+alias sc := stop
+# Stop the containers
 stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"

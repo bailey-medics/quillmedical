@@ -1,21 +1,14 @@
 // src/components/TopRibbon.stories.tsx
-import {
-  AppShell,
-  FocusTrap,
-  NavLink,
-  Overlay,
-  Paper,
-  Stack,
-  useMantineTheme,
-} from "@mantine/core";
+import { AppShell, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef } from "react";
 import { PhoneFrame } from "../../../.storybook/utils/PhoneFrame";
-import SideNav from "../navigation/SideNav"; // adjust path if needed
+import NavigationDrawer from "../drawers/NavigationDrawer";
+import SideNav from "../navigation/SideNav";
 import TopRibbon, { type Patient } from "./TopRibbon";
 
-/* ---------------- DESKTOP SHELL (real AppShell) ---------------- */
+/* ---------------- DESKTOP SHELL (AppShell + InlineDrawer — no Navbar) ---------------- */
 
 function DesktopShell(props: {
   patient: Patient | null;
@@ -27,17 +20,11 @@ function DesktopShell(props: {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
+  const HEADER_H = 88;
+  const DRAWER_W = 260;
+
   return (
-    <AppShell
-      header={{ height: 88 }}
-      navbar={{
-        width: 260,
-        breakpoint: "sm",
-        collapsed: { mobile: !opened },
-      }}
-      padding="md"
-      withBorder={false}
-    >
+    <AppShell header={{ height: HEADER_H }} padding="md" withBorder={false}>
       <AppShell.Header>
         <TopRibbon
           onBurgerClick={toggle}
@@ -48,92 +35,44 @@ function DesktopShell(props: {
         />
       </AppShell.Header>
 
-      <AppShell.Navbar id="app-navbar">
-        <SideNav
-          showSearch={isMobile}
-          onNavigate={isMobile ? close : undefined}
-        />
-      </AppShell.Navbar>
+      {/* Inline drawer below the header (works for desktop and narrow widths alike) */}
+      <div
+        style={{
+          position: "relative",
+          minHeight: `calc(100vh - ${HEADER_H}px)`,
+        }}
+      >
+        <NavigationDrawer
+          opened={opened}
+          onClose={close}
+          topOffset={HEADER_H}
+          width={DRAWER_W}
+        >
+          <div style={{ width: DRAWER_W }}>
+            <SideNav showSearch={isMobile} onNavigate={close} />
+          </div>
+        </NavigationDrawer>
 
-      <AppShell.Main>
-        <div style={{ padding: 16, color: "#667085" }}>
-          Desktop content area. Resize below “sm” to see overlay behaviour.
-        </div>
-      </AppShell.Main>
+        <AppShell.Main>
+          <div style={{ display: "flex", height: "100%" }}>
+            {!isMobile && <SideNav showSearch={false} />}
+            <div style={{ flex: 1, padding: 16, color: "#667085" }}>
+              Desktop content area. Click the hamburger to open the drawer.
+            </div>
+          </div>
+        </AppShell.Main>
+      </div>
     </AppShell>
   );
 }
 
-/* ---------------- MOBILE SHELL (inline "drawer" inside PhoneFrame) ----------------
-   We render an absolutely-positioned panel + overlay INSIDE the PhoneFrame,
-   so it cannot escape to the real page. This keeps the hamburger + nav working. */
-
-function InlineDrawer({
-  opened,
-  onClose,
-  children,
-  labelledBy,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  labelledBy?: string;
-}) {
-  // Container fills the PhoneFrame content pane
-  return (
-    <>
-      {/* Backdrop inside the PhoneFrame */}
-      {opened && (
-        <Overlay
-          onClick={onClose}
-          opacity={0.4}
-          blur={2}
-          radius={0}
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 15, // above content (PhoneFrame content uses zIndex ~10)
-          }}
-        />
-      )}
-
-      {/* Sliding panel */}
-      <FocusTrap active={opened}>
-        <Paper
-          id="app-navbar" // matches TopRibbon aria-controls
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={labelledBy}
-          shadow="md"
-          p="xs"
-          withBorder
-          style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 260,
-            zIndex: 16, // above overlay click area if you want the panel to receive clicks first
-            transform: opened ? "translateX(0)" : "translateX(-100%)",
-            transition: "transform 150ms ease",
-            background: "white",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {children}
-        </Paper>
-      </FocusTrap>
-    </>
-  );
-}
+/* ---------------- MOBILE SHELL (kept inside PhoneFrame) ---------------- */
 
 function MobileShell(props: { patient: Patient | null; isLoading?: boolean }) {
   const { patient, isLoading = false } = props;
   const [opened, { toggle, close }] = useDisclosure(false);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
 
-  // Close on Escape for better a11y in stories
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -142,13 +81,15 @@ function MobileShell(props: { patient: Patient | null; isLoading?: boolean }) {
     return () => window.removeEventListener("keydown", handler);
   }, [close]);
 
+  const DRAWER_W = 260;
+
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
         background: "white",
-        position: "relative", // containing block for overlay/panel
+        position: "relative",
         overflow: "hidden",
       }}
     >
@@ -157,7 +98,7 @@ function MobileShell(props: { patient: Patient | null; isLoading?: boolean }) {
         isLoading={isLoading}
         patient={patient}
         navOpen={opened}
-        sticky={false} // important: keep header inside PhoneFrame
+        sticky={false}
       />
 
       <div style={{ padding: 16, color: "#667085" }}>
@@ -170,19 +111,12 @@ function MobileShell(props: { patient: Patient | null; isLoading?: boolean }) {
         </p>
       </div>
 
-      <InlineDrawer
-        opened={opened}
-        onClose={close}
-        labelledBy={titleRef.current?.id}
-      >
-        {/* minimal nav for the story (use your SideNav if you prefer) */}
-        <Stack gap="xs" role="navigation" aria-label="Primary">
-          <NavLink label="Home" onClick={close} />
-          <NavLink label="Patients" onClick={close} />
-          <NavLink label="Letters" onClick={close} />
-          <NavLink label="Settings" onClick={close} />
-        </Stack>
-      </InlineDrawer>
+      <NavigationDrawer opened={opened} onClose={close} width={DRAWER_W}>
+        {/* You can also use your real SideNav here; inline links shown for brevity */}
+        <div style={{ width: DRAWER_W }}>
+          <SideNav showSearch={true} onNavigate={close} />
+        </div>
+      </NavigationDrawer>
     </div>
   );
 }
