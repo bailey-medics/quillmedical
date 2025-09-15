@@ -2,6 +2,11 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.db import get_session
 from app.models import User
@@ -13,10 +18,6 @@ from app.security import (
     verify_csrf,
     verify_password,  # hashing helpers are available if you add a register route later
 )
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 app = FastAPI(title="Quill API")
 
@@ -49,8 +50,13 @@ def set_auth_cookies(resp: Response, access: str, refresh: str, xsrf: str):
 
 
 def clear_auth_cookies(resp: Response):
-    for name in ("access_token", "refresh_token", "XSRF-TOKEN"):
-        resp.delete_cookie(name, path="/", domain=settings.COOKIE_DOMAIN)
+    resp.delete_cookie("access_token", path="/", domain=settings.COOKIE_DOMAIN)
+    resp.delete_cookie(
+        "refresh_token",
+        path="/api/auth/refresh",
+        domain=settings.COOKIE_DOMAIN,
+    )
+    resp.delete_cookie("XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN)
 
 
 # ---------- Auth dependencies ----------
