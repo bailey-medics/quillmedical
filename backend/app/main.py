@@ -1,11 +1,171 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
+
+from app.config import settings
+from app.db import get_session
+from app.models import User
+from app.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    make_csrf,
+    verify_csrf,
+    verify_password,  # hashing helpers are available if you add a register route later
+)
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 app = FastAPI(title="Quill API")
 
+# ---------- Cookie helpers ----------
+
+COOKIE_KW = dict(
+    httponly=True,
+    samesite="lax",
+    secure=settings.SECURE_COOKIES,
+    domain=settings.COOKIE_DOMAIN,
+)
+
+
+def set_auth_cookies(resp: Response, access: str, refresh: str, xsrf: str):
+    resp.set_cookie("access_token", access, path="/", **COOKIE_KW)
+    # scope refresh to its endpoint path (optional hardening)
+    resp.set_cookie(
+        "refresh_token", refresh, path="/api/auth/refresh", **COOKIE_KW
+    )
+    # CSRF cookie is readable by JS so SPA can echo back in header
+    resp.set_cookie(
+        "XSRF-TOKEN",
+        xsrf,
+        path="/",
+        httponly=False,
+        samesite="lax",
+        secure=settings.SECURE_COOKIES,
+        domain=settings.COOKIE_DOMAIN,
+    )
+
+
+def clear_auth_cookies(resp: Response):
+    for name in ("access_token", "refresh_token", "XSRF-TOKEN"):
+        resp.delete_cookie(name, path="/", domain=settings.COOKIE_DOMAIN)
+
+
+# ---------- Auth dependencies ----------
+
+
+def current_user(request: Request, db: Session = Depends(get_session)) -> User:
+    tok = request.cookies.get("access_token")
+    if not tok:
+        raise HTTPException(401, "Not authenticated")
+    try:
+        payload = decode_token(tok)
+    except Exception:
+        raise HTTPException(401, "Invalid token")
+    sub = payload.get("sub")
+    user = db.scalar(select(User).where(User.username == sub))
+    if not user or not user.is_active:
+        raise HTTPException(401, "Inactive user")
+    # stash roles on request for role checks
+    request.state.roles = [r.name for r in user.roles]
+    return user
+
+
+def require_roles(*need: str):
+    def dep(request: Request, _u: User = Depends(current_user)):
+        have = set(getattr(request.state, "roles", []))
+        if not set(need).issubset(have):
+            raise HTTPException(403, "Forbidden")
+        return _u
+
+    return dep
+
+
+def require_csrf(request: Request, u: User = Depends(current_user)):
+    header = request.headers.get("x-csrf-token")
+    cookie = request.cookies.get("XSRF-TOKEN")
+    if (
+        not header
+        or not cookie
+        or header != cookie
+        or not verify_csrf(cookie, u.username)
+    ):
+        raise HTTPException(403, "CSRF failed")
+    return u
+
+
+# ---------- Auth routes (new) ----------
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/login")
+def login(
+    data: LoginIn, response: Response, db: Session = Depends(get_session)
+):
+    user = db.scalar(
+        select(User).where(User.username == data.username.strip())
+    )
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(400, "Invalid credentials")
+    roles = [r.name for r in user.roles]
+    access = create_access_token(user.username, roles)
+    refresh = create_refresh_token(user.username)
+    xsrf = make_csrf(user.username)
+    set_auth_cookies(response, access, refresh, xsrf)
+    return {
+        "detail": "ok",
+        "user": {"username": user.username, "roles": roles},
+    }
+
+
+@app.post("/api/auth/logout")
+def logout(response: Response, _u: User = Depends(current_user)):
+    clear_auth_cookies(response)
+    return {"detail": "ok"}
+
+
+@app.get("/api/auth/me")
+def me(u: User = Depends(current_user)):
+    return {
+        "id": u.id,
+        "username": u.username,
+        "email": u.email,
+        "roles": [r.name for r in u.roles],
+    }
+
+
+@app.post("/api/auth/refresh")
+def refresh(
+    response: Response, request: Request, db: Session = Depends(get_session)
+):
+    tok = request.cookies.get("refresh_token")
+    if not tok:
+        raise HTTPException(401, "No refresh token")
+    try:
+        payload = decode_token(tok)
+        if payload.get("type") != "refresh":
+            raise ValueError("not refresh")
+    except Exception:
+        raise HTTPException(401, "Bad refresh token")
+    sub = payload.get("sub")
+    user = db.scalar(select(User).where(User.username == sub))
+    if not user or not user.is_active:
+        raise HTTPException(401, "Inactive user")
+    roles = [r.name for r in user.roles]
+    new_access = create_access_token(user.username, roles)
+    new_refresh = create_refresh_token(user.username)  # rotate
+    xsrf = make_csrf(user.username)
+    set_auth_cookies(response, new_access, new_refresh, xsrf)
+    return {"detail": "refreshed"}
+
+
+# ---------- Your existing file-based patient API ----------
 
 # where compose mounts ./patient_data -> /patient_data
 PATIENT_DATA_ROOT = Path("/patient_data")
@@ -13,7 +173,9 @@ PATIENT_DATA_ROOT = Path("/patient_data")
 
 def patient_repo_name(patient_id: str) -> str:
     """Return a safe repo folder name for a patient id."""
-    safe = "".join(ch if (ch.isalnum() or ch in "-_") else "-" for ch in patient_id)
+    safe = "".join(
+        ch if (ch.isalnum() or ch in "-_") else "-" for ch in patient_id
+    )
     return f"patient-{safe}"
 
 
@@ -50,7 +212,11 @@ class PatientCreate(BaseModel):
     patient_id: str = Field(description="Non-PII ID (e.g. UUID v4)")
 
 
-@app.post("/api/patients")
+# WRITE: protected (role + CSRF)
+@app.post(
+    "/api/patients",
+    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+)
 def create_patient_repo(payload: PatientCreate):
     repo = patient_repo_name(payload.patient_id)
     try:
@@ -74,6 +240,7 @@ def create_patient_repo(payload: PatientCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# READ: open (make this protected if you want)
 @app.get("/api/patients")
 def list_patients():
     """Return all patient repos and any demographics if present."""
@@ -82,7 +249,9 @@ def list_patients():
         if PATIENT_DATA_ROOT.exists():
             for entry in sorted(PATIENT_DATA_ROOT.iterdir()):
                 if entry.is_dir() and entry.name.startswith("patient-"):
-                    demo_content = read_file(entry.name, "demographics/profile.json")
+                    demo_content = read_file(
+                        entry.name, "demographics/profile.json"
+                    )
                     demo = None
                     if demo_content:
                         try:
@@ -96,44 +265,45 @@ def list_patients():
 
 
 class Demographics(BaseModel):
-    # keep it minimal; expand schema later
     given_name: str | None = None
     family_name: str | None = None
     date_of_birth: str | None = None  # ISO date
     sex: str | None = None
     address: dict | None = None
     contact: dict | None = None
-    # NEVER include NHS number or direct identifiers in repo name.
-    # Store such PII elsewhere (DB).
     meta: dict | None = None
 
 
-@app.put("/api/patients/{patient_id}/demographics")
+# WRITE: protected (role + CSRF)
+@app.put(
+    "/api/patients/{patient_id}/demographics",
+    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+)
 def upsert_demographics(patient_id: str, demographics: Demographics):
     repo = patient_repo_name(patient_id)
     try:
         ensure_repo_exists(repo)
         ts = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
         path = "demographics/profile.json"
-        import json
-
         content = json.dumps(
             {"updated_at_utc": ts, **demographics.model_dump()}, indent=2
         )
-        # write_file returns a path info dict; we don't need to use it here
         write_file(repo, path, content, "feat: upsert demographics")
         return {"repo": repo, "path": path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# READ: open (protect if needed)
 @app.get("/api/patients/{patient_id}/demographics")
 def get_demographics(patient_id: str):
     repo = patient_repo_name(patient_id)
     try:
         content = read_file(repo, "demographics/profile.json")
         if content is None:
-            raise HTTPException(status_code=404, detail="No demographics found")
+            raise HTTPException(
+                status_code=404, detail="No demographics found"
+            )
         return {"repo": repo, "content": content}
     except HTTPException:
         raise
@@ -151,12 +321,17 @@ class LetterIn(BaseModel):
     author_email: str | None = None
 
 
-@app.post("/api/patients/{patient_id}/letters")
+# WRITE: protected (role + CSRF)
+@app.post(
+    "/api/patients/{patient_id}/letters",
+    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+)
 def write_letter(patient_id: str, letter: LetterIn):
     repo = patient_repo_name(patient_id)
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
     slug = "".join(
-        ch if (ch.isalnum() or ch in "-_") else "-" for ch in letter.title.lower()
+        ch if (ch.isalnum() or ch in "-_") else "-"
+        for ch in letter.title.lower()
     ).strip("-")
     filename = f"letters/{ts}-{slug or 'letter'}.md"
     md = f"# {letter.title}\n\n{letter.body}\n\n*Written at {ts} UTC*"
@@ -170,18 +345,18 @@ def write_letter(patient_id: str, letter: LetterIn):
             letter.author_name,
             letter.author_email,
         )
-        return {
-            "repo": repo,
-            "path": filename,
-        }
+        return {"repo": repo, "path": filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# READ: open (protect if needed)
 @app.get("/api/patients/{patient_id}/letters/{name}")
 def read_letter(patient_id: str, name: str):
     repo = patient_repo_name(patient_id)
-    path = f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"
+    path = (
+        f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"
+    )
     try:
         content = read_file(repo, path)
         if content is None:

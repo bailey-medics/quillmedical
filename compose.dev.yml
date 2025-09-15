@@ -4,6 +4,7 @@ services:
   backend:
     build:
       context: ./backend
+      target: dev
     container_name: quill_backend
     env_file: .env
     environment:
@@ -17,8 +18,8 @@ services:
       - public
       - private
     volumes:
-      - ./patient_data:/patient_data    
-      - ./backend/app:/app/app
+      - ./backend:/app
+      - ./patient_data:/patient_data
 
   frontend:
     build:

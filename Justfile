@@ -34,12 +34,49 @@ abbreviate-just:
     echo "source ~/.zshrc"
 
 
-alias ef := enter-frontend
+
+alias eb := enter-backend
+# Enter the backend container shell
+enter-backend:
+    #!/usr/bin/env bash
+    {{initialise}} "enter-backend"
+    docker exec -it quill_backend /bin/sh
+
+alias ef := enter-backend
 # Enter the frontend container shell
 enter-frontend:
     #!/usr/bin/env bash
     {{initialise}} "enter-frontend"
     docker exec -it quill_frontend /bin/sh
+
+
+alias h32 := hex-32
+# Generate a random 32 character hex string
+hex-32:
+    #!/usr/bin/env bash
+    {{initialise}} "hex-32"
+    openssl rand -hex 32
+
+
+alias m := migrate
+# Run the database migrations
+migrate message:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate - {{message}}"
+    just eb
+    alembic revision -m "{{message}}" --autogenerate
+    alembic upgrade head
+
+
+alias pp := poetry-path
+# Show the poetry path
+poetry-path:
+    #!/usr/bin/env bash
+    {{initialise}} "poetry-path"
+    cd backend
+    poetry env info -p
+    echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) and select 'Python: Select Interpreter'. Then paste the path above."
+
 
 alias sb := storybook
 # Run yarn install in the frontend container
