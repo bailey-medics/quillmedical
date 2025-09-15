@@ -85,7 +85,13 @@ storybook:
     {{initialise}} "storybook"
     cd frontend
     yarn storybook
-    
+
+alias sdc := show-dev-containers
+# Show the running dev containers
+show-dev-containers:
+    #!/usr/bin/env bash
+    {{initialise}} "show-dev-containers"
+    docker compose -f compose.dev.yml ps
 
 alias sd := start-dev
 # Start the dev app (build: 'b' will also build the images)
