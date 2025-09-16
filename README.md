@@ -9,12 +9,33 @@ communication between patients and clinics and also letter generation and storag
 
 ## Architecture
 
-Quill Medical is delivered as a modular, containerised system using **Docker Compose**:
+Quill Medical is delivered as a modular, containerised system using :
 
+- **Docker Compose**
 - **Caddy** – reverse proxy with TLS termination and security headers.
 - **Frontend** – Vite, React, TypeScript, and Mantine UI, single page application (SPA), progressive web app (PWA) + Yarn Berry
 - **Backend** – FastAPI + Python 3.12 + poetry
 - **Database** – Alembic + PostgreSQL
+
+---
+
+## Security & Authentication
+
+- **Authentication**: FastAPI with **JWT (JSON Web Tokens)**
+
+  - **Access tokens**: short-lived (≈15 minutes), stored in secure `HttpOnly` cookies.
+  - **Refresh tokens**: long-lived (≈7 days), also in cookies for automatic renewal.
+
+- **CSRF protection**: Each session issues an `XSRF-TOKEN` cookie. Clients must send it back as an `X-CSRF-Token` header for all state-changing requests.
+
+- **Cookie settings**:
+
+  - `HttpOnly`, `Secure`, and `SameSite` flags applied (depending on environment).
+  - Optional `COOKIE_DOMAIN` ensures cookies are scoped correctly in prod.
+
+- **Password storage**: Strong hashing using **argon2** via `passlib`.
+
+- **Database migrations**: Managed with **Alembic**, autogenerating schema changes from `app.models`.
 
 ---
 

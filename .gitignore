@@ -1,3 +1,4 @@
 .env
 patient_data/
 cookies.txt
+dist/

@@ -1,7 +1,10 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "workspaces": [
+    "public_pages"
+  ],
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,6 +31,7 @@
     "@storybook/addon-links": "9.1.5",
     "@storybook/react-vite": "9.1.5",
     "@types/js-cookie": "^3.0.6",
+    "@types/node": "^24.5.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react-swc": "^4.0.0",

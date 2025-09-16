@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "types": ["node"],
+    "baseUrl": ".", // base is the public_pages folder
+    "paths": {
+      "@/*": ["../src/*"], // map @/* -> frontend/src/*
+      "@components/*": ["../src/components/*"],
+      "@utils/*": ["../.storybook/utils/*"],
+      "@design/*": ["../src/design/*"],
+      "@domains/*": ["../src/domains/*"]
+    }
+  },
+  "include": ["src", "../src"], // ensure TS indexes the app src
+  "exclude": ["../src/**/*.stories.*"]
+}
