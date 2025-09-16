@@ -9,15 +9,35 @@ import tsconfigPaths from "vite-tsconfig-paths";
 const devHtmlRewrite: Plugin = {
   name: "dev-html-rewrite",
   configureServer(server: ViteDevServer) {
+    const SKIP_PREFIXES = [
+      "/@vite/", // Vite client + HMR
+      "/@react-refresh", // React refresh runtime
+      "/@id/", // Vite module ids
+      "/@fs/", // Vite file system imports
+      "/node_modules/", // dev-served deps
+      "/src/", // your TS/TSX modules
+      "/assets/", // built assets (if any)
+      "/favicon", // favicons
+      "/__vite_ping", // Vite health check
+    ];
+
     server.middlewares.use(
       (
         req: IncomingMessage,
         _res: ServerResponse,
         next: (err?: unknown) => void
       ) => {
-        const url = (req.url ?? "").split("?")[0];
-        if (url === "/") req.url = "/index.html";
-        else if (/^\/[^.]+$/.test(url)) req.url = `${url}.html`; // no dot → add .html
+        let url = (req.url ?? "").split("?")[0];
+
+        // don't rewrite vite internals or anything that already looks like a file (has a dot)
+        if (
+          url === "/" ||
+          (!url.includes(".") && !SKIP_PREFIXES.some((p) => url.startsWith(p)))
+        ) {
+          // "/" -> "/index.html", "/features" -> "/features.html", "/docs/faq" -> "/docs/faq.html"
+          req.url = url === "/" ? "/index.html" : `${url}.html`;
+        }
+
         next();
       }
     );
