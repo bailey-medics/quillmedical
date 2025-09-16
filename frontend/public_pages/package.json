@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "pages:gen": "node scripts/generate-pages.cjs",
-  "dev": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --open /index.html\"",
+    "dev": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --open /index.html\"",
     "build": "yarn pages:gen && vite build",
     "preview": "vite preview"
   },
