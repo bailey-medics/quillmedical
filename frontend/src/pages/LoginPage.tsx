@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <>
       <img
-        src="/quill-logo.png"
+        src="/app/quill-logo.png"
         alt="Quill Medical Logo"
         style={{
           width: "128px",

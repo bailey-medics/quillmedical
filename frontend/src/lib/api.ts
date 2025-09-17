@@ -28,8 +28,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    if (window.location.pathname !== "/login") {
-      window.location.assign("/login");
+    // Redirect to the login page relative to the configured base URL so
+    // the SPA remains under `/app/` when served behind a reverse proxy.
+    const base = (import.meta.env.BASE_URL as string) || "/";
+    const loginPath = `${base.replace(/\/$/, "")}/login`;
+    if (window.location.pathname !== loginPath) {
+      window.location.assign(loginPath);
     }
   }
 

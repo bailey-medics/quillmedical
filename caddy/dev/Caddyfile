@@ -1,0 +1,22 @@
+:80 {
+  encode zstd gzip
+
+  # 1) API requests → backend
+  @api path /api/*
+  handle @api {
+    reverse_proxy backend:8000
+  }
+
+  # 2) SPA served under /app/* → forward requests including the /app prefix
+  #    Use `handle` (not `handle_path`) so the /app/ prefix is preserved when
+  #    proxying to the frontend dev server. Vite's dev server expects the
+  #    browser request path to match the configured `base` (set to /app/).
+  handle /app/* {
+    reverse_proxy frontend:5173
+  }
+
+  # 3) Everything else → public pages dev server
+  handle {
+    reverse_proxy frontend:5174
+  }
+}

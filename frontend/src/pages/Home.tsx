@@ -1,3 +1,4 @@
+import getAssetPath from "@/lib/getAssetPath";
 import { Button, Group, Stack, Text, Title } from "@mantine/core";
 
 export default function Home() {
@@ -8,7 +9,7 @@ export default function Home() {
       style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
     >
       <img
-        src="/quill-logo.png"
+        src={getAssetPath("quill-logo.png")}
         alt="Quill Medical Logo"
         style={{ width: "128px", height: "128px" }}
       />

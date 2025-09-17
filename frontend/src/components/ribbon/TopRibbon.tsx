@@ -87,7 +87,7 @@ export default function TopRibbon({
         {showBrand && (
           <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
             <img
-              src="/quill-name.png"
+              src="/app/quill-name.png"
               alt="Quill"
               style={{ height: "24px", marginRight: "8px" }}
             />

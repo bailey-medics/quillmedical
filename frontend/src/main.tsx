@@ -20,33 +20,43 @@ import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import LoginPage from "./pages/LoginPage";
 
-const router = createBrowserRouter([
-  // Public login route
-  {
-    path: "/login",
-    element: (
-      <GuestOnly>
-        <LoginPage />
-      </GuestOnly>
-    ),
-  },
+// Use Vite's BASE_URL so the client router knows it's served under `/app/`.
+// `import.meta.env.BASE_URL` typically ends with a trailing slash (e.g. '/app/'),
+// so normalize it to a form acceptable as a basename (no trailing slash, or
+// undefined for root).
+const rawBase = (import.meta.env.BASE_URL as string) || "/";
+const basename = rawBase === "/" ? undefined : rawBase.replace(/\/$/, "");
 
-  // Everything below here requires auth
-  {
-    element: (
-      <RequireAuth>
-        <RootLayout />
-      </RequireAuth>
-    ),
-    children: [
-      { path: "/", element: <Home /> },
-      { path: "/about", element: <About /> },
-    ],
-  },
+const router = createBrowserRouter(
+  [
+    // Public login route
+    {
+      path: "/login",
+      element: (
+        <GuestOnly>
+          <LoginPage />
+        </GuestOnly>
+      ),
+    },
 
-  // Fallback
-  { path: "*", element: <Navigate to="/" replace /> },
-]);
+    // Everything below here requires auth
+    {
+      element: (
+        <RequireAuth>
+          <RootLayout />
+        </RequireAuth>
+      ),
+      children: [
+        { path: "/", element: <Home /> },
+        { path: "/about", element: <About /> },
+      ],
+    },
+
+    // Fallback
+    { path: "*", element: <Navigate to="/" replace /> },
+  ],
+  { basename }
+);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <MantineProvider defaultColorScheme="light">

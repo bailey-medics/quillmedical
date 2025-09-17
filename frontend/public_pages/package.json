@@ -6,6 +6,7 @@
   "scripts": {
     "pages:gen": "node scripts/generate-pages.cjs",
     "dev": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --open /index.html\"",
+    "dev:docker": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --host 0.0.0.0 --open /index.html\"",
     "build": "yarn pages:gen && vite build",
     "preview": "vite preview"
   },

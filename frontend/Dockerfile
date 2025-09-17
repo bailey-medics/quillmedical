@@ -7,8 +7,8 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json yarn.lock .yarnrc.yml ./
+COPY public_pages/package.json ./public_pages/package.json
 COPY .yarn/ .yarn/
-
 
 
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
@@ -17,5 +17,6 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
 COPY . .
 
 EXPOSE 5173
+EXPOSE 5174
 
-CMD ["yarn", "dev", "--host", "0.0.0.0"]
+CMD ["/bin/sh", "-c", "/app/dev-start.sh"]

@@ -2,12 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+    <!-- Use Vite's %BASE_URL% so the asset paths respect `base` from vite.config.ts -->
+    <link rel="icon" type="image/x-icon" href="%BASE_URL%favicon.ico?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite + React + TS</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="%BASE_URL%src/main.tsx"></script>
   </body>
 </html>
