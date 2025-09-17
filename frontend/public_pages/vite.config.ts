@@ -1,81 +1,72 @@
 import react from "@vitejs/plugin-react-swc";
 import fs from "node:fs";
-import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { URL } from "node:url";
+import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-// Dev: map "/" -> "/index.html", "/features" -> "/features.html", "/docs/faq" -> "/docs/faq.html"
-const devHtmlRewrite: Plugin = {
-  name: "dev-html-rewrite",
-  configureServer(server: ViteDevServer) {
-    const SKIP_PREFIXES = [
-      "/@vite/", // Vite client + HMR
-      "/@react-refresh", // React refresh runtime
-      "/@id/", // Vite module ids
-      "/@fs/", // Vite file system imports
-      "/node_modules/", // dev-served deps
-      "/src/", // your TS/TSX modules
-      "/assets/", // built assets (if any)
-      "/favicon", // favicons
-      "/__vite_ping", // Vite health check
-    ];
-
-    server.middlewares.use(
-      (
-        req: IncomingMessage,
-        _res: ServerResponse,
-        next: (err?: unknown) => void
-      ) => {
-        let url = (req.url ?? "").split("?")[0];
-
-        // don't rewrite vite internals or anything that already looks like a file (has a dot)
-        if (
-          url === "/" ||
-          (!url.includes(".") && !SKIP_PREFIXES.some((p) => url.startsWith(p)))
-        ) {
-          // "/" -> "/index.html", "/features" -> "/features.html", "/docs/faq" -> "/docs/faq.html"
-          req.url = url === "/" ? "/index.html" : `${url}.html`;
-        }
-
-        next();
-      }
-    );
-  },
-};
-
-// Build: collect every .html under this workspace (root + subfolders)
-function collectHtmlInputs(): string[] | undefined {
-  const rootDir = __dirname;
-  const ignore = new Set([
-    "node_modules",
-    "dist",
-    "src",
-    "templates",
-    "scripts",
-    ".git",
-    ".yarn",
-  ]);
-  const inputs: string[] = [];
-
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".")) continue;
-      const full = path.resolve(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!ignore.has(entry.name)) walk(full);
-      } else if (entry.isFile() && entry.name.endsWith(".html")) {
-        inputs.push(full);
-      }
-    }
-  };
-
-  walk(rootDir);
-  return inputs.length ? inputs : undefined;
-}
-
+// Minimal Vite config for the public_pages workspace
 export default defineConfig({
   plugins: [
+    // dev-only plugin: respond with 404.html for unknown HTML requests
+    {
+      name: "vite:dev-404",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          try {
+            if (!req || req.method !== "GET") return next();
+            const reqUrl = req.url || "/";
+            // ignore vite internals and websockets
+            if (
+              reqUrl.startsWith("/@") ||
+              reqUrl.startsWith("/__") ||
+              reqUrl.startsWith("/sockjs")
+            )
+              return next();
+            const parsed = new URL(reqUrl, "http://localhost");
+            const pathname = decodeURIComponent(parsed.pathname);
+            // allow root and index.html to continue
+            if (pathname === "/" || pathname === "/index.html") return next();
+
+            // check if the file exists on disk relative to server root
+            const filePath = path.join(server.config.root, pathname);
+            const exists = await fs.promises
+              .stat(filePath)
+              .then(() => true)
+              .catch(() => false);
+            if (exists) return next();
+
+            // For HTML requests, serve 404.html with 404 status instead of index.html
+            const accept = (req.headers &&
+              (req.headers.accept || "")) as string;
+            // treat as HTML if Accept explicitly wants HTML, accepts anything, or the path has no file extension
+            const hasExt = path.extname(pathname) !== "";
+            const isHtmlRequest =
+              accept.includes("text/html") || accept.includes("*/*") || !hasExt;
+            if (isHtmlRequest) {
+              const fallback = path.join(server.config.root, "404.html");
+              const has404 = await fs.promises
+                .stat(fallback)
+                .then(() => true)
+                .catch(() => false);
+              if (has404) {
+                res.statusCode = 404;
+                res.setHeader("Content-Type", "text/html; charset=utf-8");
+                const body = await fs.promises.readFile(fallback, "utf-8");
+                res.end(body);
+                return;
+              }
+              res.statusCode = 404;
+              res.end("404 Not Found");
+              return;
+            }
+          } catch (err) {
+            // noop - fall through to default handling
+          }
+          return next();
+        });
+      },
+    },
     react(),
     tsconfigPaths({
       projects: [
@@ -83,23 +74,15 @@ export default defineConfig({
         path.resolve(__dirname, "tsconfig.json"),
       ],
     }),
-    devHtmlRewrite,
   ],
   base: "/",
+  build: {
+    outDir: "../dist/public_pages",
+    emptyOutDir: true,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "../src"),
-      "@components": path.resolve(__dirname, "../src/components"),
-      "@utils": path.resolve(__dirname, "../.storybook/utils"),
-      "@design": path.resolve(__dirname, "../src/design"),
-      "@domains": path.resolve(__dirname, "../src/domains"),
-    },
-  },
-  build: {
-    outDir: "../../dist/public_pages",
-    emptyOutDir: true,
-    rollupOptions: {
-      input: collectHtmlInputs(), // preserves subfolders in dist/
     },
   },
 });
