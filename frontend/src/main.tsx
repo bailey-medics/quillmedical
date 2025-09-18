@@ -4,10 +4,7 @@ import "@mantine/notifications/styles.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
@@ -52,8 +49,8 @@ const router = createBrowserRouter(
       ],
     },
 
-  // Fallback -> show 404 page instead of redirecting to home
-  { path: "*", element: <NotFound /> },
+    // Fallback -> show 404 page instead of redirecting to home
+    { path: "*", element: <NotFound /> },
   ],
   { basename }
 );

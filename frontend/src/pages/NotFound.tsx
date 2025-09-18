@@ -1,4 +1,4 @@
-import { Button, Container, Title, Text } from "@mantine/core";
+import { Button, Container, Text, Title } from "@mantine/core";
 
 export default function NotFound() {
   // Vite provides BASE_URL (may or may not include a trailing slash).
