@@ -19,7 +19,12 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: Location } };
-  const redirectTo = location.state?.from?.pathname || "/app";
+  // Use Vite BASE_URL as the absolute SPA base (may or may not include a
+  // trailing slash). Normalize to ensure trailing slash and use it for
+  // full browser navigation when appropriate.
+  const rawBase = (import.meta.env.BASE_URL as string) || "/";
+  const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
+  const redirectFrom = location.state?.from?.pathname;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,9 +32,29 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email.trim(), password);
-      navigate(redirectTo, { replace: true });
-    } catch (err: any) {
-      setError(err?.message ?? "Login failed");
+      // If the user was trying to reach the app home (router path "/") or
+      // there is no 'from' path, perform a full navigation to Vite's
+      // BASE_URL (which usually includes a trailing slash, e.g. '/app/').
+      // This prevents the router basename from producing URLs like '/app'
+      // without the trailing slash. For other paths (e.g. '/about') we
+      // navigate internally so the user returns to the exact protected page.
+      if (!redirectFrom || redirectFrom === "/") {
+        window.location.assign(base);
+      } else {
+        navigate(redirectFrom, { replace: true });
+      }
+    } catch (err: unknown) {
+      function extractMessage(e: unknown): string | null {
+        if (typeof e === "string") return e;
+        if (typeof e === "object" && e !== null) {
+          const maybe = (e as Record<string, unknown>)["message"];
+          if (typeof maybe === "string") return maybe;
+        }
+        return null;
+      }
+
+      const message = extractMessage(err) ?? "Login failed";
+      setError(message);
     } finally {
       setSubmitting(false);
     }

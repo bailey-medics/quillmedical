@@ -6,13 +6,13 @@ import ReactDOM from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
 import {
   createBrowserRouter,
-  Navigate,
   RouterProvider,
 } from "react-router-dom";
 
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import Home from "./pages/Home";
+import NotFound from "./pages/NotFound";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
@@ -52,8 +52,8 @@ const router = createBrowserRouter(
       ],
     },
 
-    // Fallback
-    { path: "*", element: <Navigate to="/" replace /> },
+  // Fallback -> show 404 page instead of redirecting to home
+  { path: "*", element: <NotFound /> },
   ],
   { basename }
 );
