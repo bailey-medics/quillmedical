@@ -1,19 +1,10 @@
 // src/components/layouts/MainLayout.stories.tsx
-import type { Patient } from "@domains/patient";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 // ...existing imports...
+import { demoPatient } from "@/demo-data/patients/demoPatients";
 import MainLayout from "./MainLayout";
 
-const demoPatient: Patient = {
-  id: "p123",
-  name: "Alice Example",
-  dob: "01/01/1980",
-  age: 44,
-  sex: "F",
-  nhsNumber: "123 456 7890",
-};
-
-// demoPatientFull moved to Complete.stories.tsx
+// demoPatient imported from centralized demo-data
 
 const Content = () => (
   <div style={{ flex: 1, padding: 16, color: "#667085" }}>
@@ -92,7 +83,7 @@ const LongContent = () => (
 );
 
 const meta: Meta<typeof MainLayout> = {
-  title: "MainLayout",
+  title: "Layout-MainLayout",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   // Default child for most stories

@@ -1,7 +1,7 @@
+import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import Messaging, { type Message } from "./Messaging";
-import demoMessages from "./demoMessages";
 
 const meta: Meta<typeof Messaging> = {
   title: "Message",

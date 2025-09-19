@@ -1,3 +1,4 @@
+import { demoPatientFull as fullPatient } from "@/demo-data/patients/demoPatients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PatientDemographics from "./PatientDemographics";
 
@@ -11,19 +12,7 @@ export default meta;
 
 type Story = StoryObj<typeof PatientDemographics>;
 
-const fullPatient = {
-  id: "p1",
-  name: "Jane Doe",
-  dob: "1980-05-12",
-  age: 45,
-  sex: "F",
-  nhsNumber: "123 456 7890",
-  address: "1 High Street, Town",
-  telephone: "01234 567890",
-  mobile: "07123 456789",
-  onQuill: true,
-  nextOfKin: { name: "John Doe", phone: "07999 888777" },
-};
+// use demo patient from centralized demo-data
 
 export const Default: Story = {
   args: {

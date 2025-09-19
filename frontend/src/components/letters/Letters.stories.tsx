@@ -1,6 +1,7 @@
+import { sampleLetters } from "@/demo-data/letters/demoLetters";
 import { MantineProvider } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import Letters, { type Letter } from "./Letters";
+import Letters from "./Letters";
 
 const meta: Meta<typeof Letters> = {
   title: "Letters",
@@ -10,22 +11,7 @@ const meta: Meta<typeof Letters> = {
 export default meta;
 type Story = StoryObj<typeof Letters>;
 
-const sampleLetters: Letter[] = [
-  {
-    id: "l1",
-    subject: "Discharge summary: left knee",
-    from: "Orthopaedics",
-    date: new Date().toISOString(),
-    snippet: "Patient seen in clinic and referred for physiotherapy...",
-  },
-  {
-    id: "l2",
-    subject: "Letter: Investigations arranged",
-    from: "Clinic Admin",
-    date: new Date().toISOString(),
-    snippet: "Bloods and stool sample arranged for next week...",
-  },
-];
+// sampleLetters imported from centralized demo-data
 
 export const Default: Story = {
   render: () => (

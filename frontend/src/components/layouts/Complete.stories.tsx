@@ -1,27 +1,14 @@
 import Messaging, { type Message } from "@/components/messaging/Messaging";
-import demoMessages from "@/components/messaging/demoMessages";
 import PatientDemographics from "@/components/patients/PatientDemographics";
-import type { Patient } from "@domains/patient";
+import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import MainLayout from "./MainLayout";
 
-const demoPatientFull: Patient = {
-  id: "p123",
-  name: "Alice Example",
-  dob: "01/01/1980",
-  age: 44,
-  sex: "F",
-  nhsNumber: "123 456 7890",
-  address: "Flat 2, 10 High Street, Exampletown, EX4 3PL",
-  telephone: "020 7946 0000",
-  mobile: "07700 900123",
-  onQuill: true,
-  nextOfKin: { name: "Bob Example", phone: "07700 900124" },
-};
+import { demoPatientFull } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Complete",
+  title: "Layout-Complete",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
 };

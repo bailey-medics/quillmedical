@@ -1,6 +1,7 @@
 // TopRibbon.stories.tsx
+import { demoPatient } from "@/demo-data/patients/demoPatients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import TopRibbon, { type Patient } from "./TopRibbon";
+import TopRibbon from "./TopRibbon";
 
 const meta: Meta<typeof TopRibbon> = {
   title: "TopRibbon",
@@ -41,14 +42,7 @@ function DemoFrame({
   );
 }
 
-const demoPatient: Patient = {
-  id: "p123",
-  name: "Alice Example",
-  dob: "1980-01-01",
-  age: 44,
-  sex: "F",
-  nhsNumber: "123 456 7890",
-};
+// demoPatient comes from centralized demo-data
 
 export const NoPatient: Story = {
   args: {
