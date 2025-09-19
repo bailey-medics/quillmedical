@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import SideNav from "./SideNav";
 
 const meta = {
-  title: "Navigation/SideNav",
+  title: "SideNav",
   component: SideNav,
 } satisfies Meta<typeof SideNav>;
 export default meta;

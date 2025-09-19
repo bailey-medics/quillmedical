@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import TopRibbon, { type Patient } from "./TopRibbon";
 
 const meta: Meta<typeof TopRibbon> = {
-  title: "Ribbon/TopRibbon",
+  title: "TopRibbon",
   component: TopRibbon,
   parameters: {
     layout: "fullscreen",

@@ -1,9 +1,7 @@
 // src/components/layouts/MainLayout.stories.tsx
-import Messaging, { type Message } from "@/components/messaging/Messaging";
-import demoMessages from "@/components/messaging/demoMessages";
 import type { Patient } from "@domains/patient";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+// ...existing imports...
 import MainLayout from "./MainLayout";
 
 const demoPatient: Patient = {
@@ -14,6 +12,8 @@ const demoPatient: Patient = {
   sex: "F",
   nhsNumber: "123 456 7890",
 };
+
+// demoPatientFull moved to Complete.stories.tsx
 
 const Content = () => (
   <div style={{ flex: 1, padding: 16, color: "#667085" }}>
@@ -92,7 +92,7 @@ const LongContent = () => (
 );
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/MainLayout",
+  title: "MainLayout",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   // Default child for most stories
@@ -126,42 +126,4 @@ export const LongRead: Story = {
 
 export const Loading: Story = {
   args: { patient: null, isLoading: true },
-};
-
-// Story: MainLayout with Messaging component inside
-export const WithMessaging: Story = {
-  args: { patient: demoPatient, isLoading: false },
-  render: (args) => {
-    function MessagingContent() {
-      const [messages, setMessages] = useState<Message[]>(
-        demoMessages as Message[]
-      );
-
-      return (
-        <div style={{ height: 480 }}>
-          <Messaging
-            messages={messages}
-            currentUserId="me"
-            onSend={(text: string) =>
-              setMessages((m) => [
-                ...m,
-                {
-                  id: String(m.length + 1),
-                  senderId: "me",
-                  text,
-                  timestamp: new Date().toISOString(),
-                },
-              ])
-            }
-          />
-        </div>
-      );
-    }
-
-    return (
-      <MainLayout {...args}>
-        <MessagingContent />
-      </MainLayout>
-    );
-  },
 };

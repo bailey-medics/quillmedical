@@ -4,7 +4,7 @@ import Messaging, { type Message } from "./Messaging";
 import demoMessages from "./demoMessages";
 
 const meta: Meta<typeof Messaging> = {
-  title: "Message/Message",
+  title: "Message",
   component: Messaging,
 };
 

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
 
 const meta: Meta<typeof QuillName> = {
-  title: "Images/QuillName",
+  title: "images/QuillName",
   component: QuillName,
   tags: ["autodocs"],
   argTypes: {
