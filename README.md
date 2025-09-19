@@ -13,7 +13,7 @@ Quill Medical is delivered as a modular, containerised system using :
 
 - **Docker Compose**
 - **Caddy** – reverse proxy with TLS termination and security headers.
-- **Frontend** – Vite, React, TypeScript, and Mantine UI, single page application (SPA), progressive web app (PWA) + Yarn Berry
+- **Frontend** – Vite, React, TypeScript, and Mantine UI, single page application (SPA), progressive web app (PWA), Yarn Berry + Storybook
 - **Backend** – FastAPI + Python 3.12 + poetry
 - **Database** – Alembic + PostgreSQL
 
