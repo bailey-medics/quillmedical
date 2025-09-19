@@ -1,7 +1,7 @@
 import { Avatar, Box, Button, ScrollArea, Text, Textarea } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 
-export type ChatMessage = {
+export type Message = {
   id: string;
   senderId: string;
   senderName?: string;
@@ -11,13 +11,13 @@ export type ChatMessage = {
 };
 
 type Props = {
-  messages: ChatMessage[];
+  messages: Message[];
   currentUserId: string;
   onSend?: (text: string) => void;
   placeholder?: string;
 };
 
-export default function Conversation({
+export default function Messaging({
   messages,
   currentUserId,
   onSend,

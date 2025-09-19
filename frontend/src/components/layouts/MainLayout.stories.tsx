@@ -1,6 +1,9 @@
 // src/components/layouts/MainLayout.stories.tsx
+import Messaging, { type Message } from "@/components/messaging/Messaging";
+import demoMessages from "@/components/messaging/demoMessages";
 import type { Patient } from "@domains/patient";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import MainLayout from "./MainLayout";
 
 const demoPatient: Patient = {
@@ -111,10 +114,6 @@ export const WithPatient: Story = {
   args: { patient: demoPatient, isLoading: false },
 };
 
-export const Loading: Story = {
-  args: { patient: null, isLoading: true },
-};
-
 // New: lots of text to test scrolling and sticky ribbon
 export const LongRead: Story = {
   args: { patient: demoPatient, isLoading: false },
@@ -123,4 +122,46 @@ export const LongRead: Story = {
       <LongContent />
     </MainLayout>
   ),
+};
+
+export const Loading: Story = {
+  args: { patient: null, isLoading: true },
+};
+
+// Story: MainLayout with Messaging component inside
+export const WithMessaging: Story = {
+  args: { patient: demoPatient, isLoading: false },
+  render: (args) => {
+    function MessagingContent() {
+      const [messages, setMessages] = useState<Message[]>(
+        demoMessages as Message[]
+      );
+
+      return (
+        <div style={{ height: 480 }}>
+          <Messaging
+            messages={messages}
+            currentUserId="me"
+            onSend={(text: string) =>
+              setMessages((m) => [
+                ...m,
+                {
+                  id: String(m.length + 1),
+                  senderId: "me",
+                  text,
+                  timestamp: new Date().toISOString(),
+                },
+              ])
+            }
+          />
+        </div>
+      );
+    }
+
+    return (
+      <MainLayout {...args}>
+        <MessagingContent />
+      </MainLayout>
+    );
+  },
 };
