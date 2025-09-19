@@ -24,6 +24,13 @@ const preview: Preview = {
     actions: { argTypesRegex: "^on[A-Z].*" },
     controls: { expanded: true },
     layout: "fullscreen",
+    // Ensure stories are sorted alphabetically in the sidebar
+    options: {
+      storySort: {
+        method: "alphabetical",
+        locales: "en-US",
+      },
+    },
   },
 };
 
