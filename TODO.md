@@ -1,2 +1,13 @@
+# TODO
+
 - Read audit
-- full loging
+- full logging
+- bandit
+- ts equivalent
+- pre-commit
+- add tests
+- document
+- E2E tests
+- CI/CD
+- production build
+- hardening
