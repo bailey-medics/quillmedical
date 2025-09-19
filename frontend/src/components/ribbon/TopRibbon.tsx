@@ -1,5 +1,6 @@
 import type { Patient } from "@/domains/patient";
 import SearchField from "@components//search/SearchField";
+import QuillName from "@components/images/QuillName";
 import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";
 import classes from "./TopRibbon.module.scss";
@@ -86,11 +87,7 @@ export default function TopRibbon({
 
         {showBrand && (
           <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
-            <img
-              src="/app/quill-name.png"
-              alt="Quill"
-              style={{ height: "24px", marginRight: "8px" }}
-            />
+            <QuillName />
           </div>
         )}
         {/* middle: patient info */}

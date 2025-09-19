@@ -5,4 +5,12 @@ export type Patient = {
   age?: number;
   sex?: string;
   nhsNumber?: string;
+  address?: string;
+  telephone?: string;
+  mobile?: string;
+  onQuill?: boolean;
+  nextOfKin?: {
+    name?: string;
+    phone?: string;
+  };
 };

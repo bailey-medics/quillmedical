@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import SearchField from "./SearchField";
 
 const meta: Meta<typeof SearchField> = {
-  title: "Components/SearchField",
+  title: "Search/SearchField",
   component: SearchField,
   parameters: {
     layout: "centered",

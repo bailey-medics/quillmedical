@@ -246,9 +246,9 @@ def create_patient_repo(payload: PatientCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# READ: open (make this protected if you want)
+# READ: protected - require authenticated user
 @app.get("/api/patients")
-def list_patients():
+def list_patients(u: User = Depends(current_user)):
     """Return all patient repos and any demographics if present."""
     try:
         patients = []
@@ -300,9 +300,9 @@ def upsert_demographics(patient_id: str, demographics: Demographics):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# READ: open (protect if needed)
+# READ: protected - require authenticated user
 @app.get("/api/patients/{patient_id}/demographics")
-def get_demographics(patient_id: str):
+def get_demographics(patient_id: str, u: User = Depends(current_user)):
     repo = patient_repo_name(patient_id)
     try:
         content = read_file(repo, "demographics/profile.json")
@@ -356,9 +356,9 @@ def write_letter(patient_id: str, letter: LetterIn):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# READ: open (protect if needed)
+# READ: protected - require authenticated user
 @app.get("/api/patients/{patient_id}/letters/{name}")
-def read_letter(patient_id: str, name: str):
+def read_letter(patient_id: str, name: str, u: User = Depends(current_user)):
     repo = patient_repo_name(patient_id)
     path = (
         f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"

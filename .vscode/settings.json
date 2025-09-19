@@ -23,6 +23,7 @@
   "terminal.integrated.tabs.description": "${sequence}",
   "terminal.integrated.tabs.title": "${process}",
   "cSpell.words": [
+    "autodocs",
     "autoflush",
     "Caddyfile",
     "Cotswoldsmaker",
