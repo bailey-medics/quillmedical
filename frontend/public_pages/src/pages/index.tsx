@@ -33,9 +33,11 @@ createRoot(document.getElementById("root")!).render(
         pricing based on clinician time.
       </Text>
       <Group mt="lg">
-        <Button size="md">Get Started</Button>
-        <Button variant="outline" size="md">
-          Learn More
+        <Button component="a" href="/app/" size="md">
+          Sign in / register
+        </Button>
+        <Button variant="outline" component="a" href="/features.html" size="md">
+          Features
         </Button>
       </Group>
     </Stack>
