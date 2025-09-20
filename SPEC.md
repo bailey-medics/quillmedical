@@ -66,7 +66,7 @@ Letter states:
 
 ---
 
-## Data Model (core objects) asdaf
+## Data Model (core objects)
 
 - **Conversation**: id, patient id, status, opened time, excerpt, staff title.
 - **Message**: conversation id, sender role, body, attachments, time.
