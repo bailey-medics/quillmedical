@@ -33,7 +33,12 @@ abbreviate-just:
     echo "Please run the following command to apply the changes to this terminal:"
     echo "source ~/.zshrc"
 
-
+alias du := db-users
+# Show the database users
+db-users:
+    #!/usr/bin/env bash
+    {{initialise}} "db-users"
+    docker compose -f compose.dev.yml exec database psql -U quill -d quill -c "\d users"
 
 alias eb := enter-backend
 # Enter the backend container shell
@@ -67,6 +72,14 @@ migrate message:
     alembic revision -m "{{message}}" --autogenerate
     alembic upgrade head
 
+alias pi := poetry-install
+# Install the poetry dependencies
+poetry-install:
+    #!/usr/bin/env bash
+    {{initialise}} "poetry-install"
+    cd backend
+    poetry lock
+    poetry install
 
 alias pp := poetry-path
 # Show the poetry path

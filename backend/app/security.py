@@ -1,10 +1,12 @@
 # app/security.py
 from datetime import datetime, timedelta, timezone
 
-from app.config import settings
+import pyotp
 from itsdangerous import URLSafeSerializer
 from jose import jwt
 from passlib.hash import argon2
+
+from app.config import settings
 
 
 def _now() -> datetime:
@@ -65,5 +67,32 @@ def verify_csrf(token: str, sub: str) -> bool:
     try:
         data = _csrf.loads(token)
         return data.get("sub") == sub
+    except Exception:
+        return False
+
+
+# ----- TOTP helpers (pyotp) -----
+def generate_totp_secret() -> str:
+    """Return a base32 secret for a new TOTP key."""
+    return pyotp.random_base32()
+
+
+def totp_provisioning_uri(
+    secret: str, username: str, issuer: str | None = None
+) -> str:
+    """Return an otpauth:// URI which can be converted to QR code by
+    the frontend.
+    """
+    totp = pyotp.totp.TOTP(secret)
+    if issuer:
+        return totp.provisioning_uri(name=username, issuer_name=issuer)
+    return totp.provisioning_uri(name=username)
+
+
+def verify_totp_code(secret: str, code: str) -> bool:
+    try:
+        t = pyotp.TOTP(secret)
+        # allow short window to accommodate clock drift
+        return t.verify(code, valid_window=1)
     except Exception:
         return False

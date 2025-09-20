@@ -1,5 +1,5 @@
-import detectStorybook from "@/lib/urlUpdate";
 import Image from "@components/images/Image";
+import detectStorybook from "@lib/urlUpdate";
 import React from "react";
 
 type Props = {
@@ -16,8 +16,6 @@ export default function QuillLogo({
   style,
 }: Props) {
   const src = detectStorybook("/quill-logo.png");
-
-  console.log("Image source:", src);
 
   return (
     <Image

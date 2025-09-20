@@ -10,13 +10,16 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_session
 from app.models import User
-from app.security import (
+from app.security import (  # hashing helpers are available if you add a register route later
     create_access_token,
     create_refresh_token,
     decode_token,
+    generate_totp_secret,
     make_csrf,
+    totp_provisioning_uri,
     verify_csrf,
-    verify_password,  # hashing helpers are available if you add a register route later
+    verify_password,
+    verify_totp_code,
 )
 
 app = FastAPI(title="Quill API")
@@ -108,6 +111,7 @@ def require_csrf(request: Request, u: User = Depends(current_user)):
 class LoginIn(BaseModel):
     username: str
     password: str
+    totp_code: str | None = None
 
 
 @app.post("/api/auth/login")
@@ -119,6 +123,12 @@ def login(
     )
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(400, "Invalid credentials")
+    # If user has TOTP enabled, require totp_code
+    if getattr(user, "is_totp_enabled", False):
+        if not data.totp_code:
+            raise HTTPException(400, "Invalid two-factor code")
+        if not verify_totp_code(user.totp_secret or "", data.totp_code):
+            raise HTTPException(400, "Invalid two-factor code")
     roles = [r.name for r in user.roles]
     access = create_access_token(user.username, roles)
     refresh = create_refresh_token(user.username)
@@ -128,6 +138,63 @@ def login(
         "detail": "ok",
         "user": {"username": user.username, "roles": roles},
     }
+
+
+# ---------- TOTP management endpoints ----------
+class TotpSetupOut(BaseModel):
+    provision_uri: str
+
+
+@app.post("/api/auth/totp/setup", response_model=TotpSetupOut)
+def totp_setup(
+    u: User = Depends(current_user), db: Session = Depends(get_session)
+):
+    """Return a provisioning URI for the user's current (or new) secret.
+    The frontend should render this as a QR code. This endpoint is protected.
+    """
+    # ensure user has a secret; we'll generate one server-side if missing
+    if not getattr(u, "totp_secret", None):
+        u.totp_secret = generate_totp_secret()
+    # Persist the secret immediately so callers (and other sessions)
+    # will see the secret without relying on session autoflush semantics.
+    db.add(u)
+    db.commit()
+    issuer = getattr(settings, "PROJECT_NAME", "Quill")
+    uri = totp_provisioning_uri(u.totp_secret, u.username, issuer=issuer)
+    return {"provision_uri": uri}
+
+
+class TotpVerifyIn(BaseModel):
+    code: str
+
+
+@app.post("/api/auth/totp/verify")
+def totp_verify(
+    payload: TotpVerifyIn,
+    u: User = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    """Verify a code and enable TOTP for the current user when valid."""
+    if not getattr(u, "totp_secret", None):
+        raise HTTPException(400, "No TOTP secret set")
+    if not verify_totp_code(u.totp_secret, payload.code):
+        raise HTTPException(400, "Invalid code")
+    u.is_totp_enabled = True
+    db.add(u)
+    db.commit()
+    return {"detail": "enabled"}
+
+
+@app.post("/api/auth/totp/disable")
+def totp_disable(
+    u: User = Depends(require_csrf), db: Session = Depends(get_session)
+):
+    """Disable TOTP for current user (requires CSRF)."""
+    u.is_totp_enabled = False
+    u.totp_secret = None
+    db.add(u)
+    db.commit()
+    return {"detail": "disabled"}
 
 
 @app.post("/api/auth/logout")
