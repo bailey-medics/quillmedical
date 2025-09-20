@@ -1,5 +1,6 @@
 import QuillLogo from "@/components/images/QuillLogo";
 import {
+  Anchor,
   Button,
   Paper,
   PasswordInput,
@@ -8,9 +9,8 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { Anchor } from "@mantine/core";
 
 export default function LoginPage() {
   const { login } = useAuth();

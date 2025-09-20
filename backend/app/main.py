@@ -17,13 +17,13 @@ from app.security import (
     create_refresh_token,
     decode_token,
     generate_totp_secret,
+    hash_password,
     make_csrf,
     totp_provisioning_uri,
     verify_csrf,
     verify_password,
     verify_totp_code,
 )
-from app.security import hash_password
 
 app = FastAPI(title="Quill API")
 

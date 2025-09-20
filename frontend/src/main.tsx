@@ -10,8 +10,8 @@ import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
-import TotpSetup from "./pages/TotpSetup";
 import RegisterPage from "./pages/RegisterPage";
+import TotpSetup from "./pages/TotpSetup";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";

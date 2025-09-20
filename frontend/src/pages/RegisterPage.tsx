@@ -1,3 +1,4 @@
+import { api } from "@/lib/api";
 import {
   Button,
   Paper,
@@ -7,7 +8,6 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
