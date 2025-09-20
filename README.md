@@ -21,7 +21,7 @@ Quill Medical is delivered as a modular, containerised system using :
 
 ## Formatting and Linting
 
-- **Python**: `black`, `black`
+- **Python**: `ruff`, `black`
 - **TypeScript**: `prettier`, `eslint`
 - **Git hooks**: `pre-commit` to run formatters and linters on commit
 - **Spell checking**: `streetsidesoftware.code-spell-checker` for common typos in code and text files

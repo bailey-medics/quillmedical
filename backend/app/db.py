@@ -1,7 +1,8 @@
 # app/db.py
-from app.config import settings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from app.config import settings
 
 if not getattr(settings, "DATABASE_URL", None):
     raise RuntimeError("DATABASE_URL must be set (in .env or env)")

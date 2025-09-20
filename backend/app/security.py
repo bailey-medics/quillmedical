@@ -1,5 +1,5 @@
 # app/security.py
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pyotp
 from itsdangerous import URLSafeSerializer
@@ -10,7 +10,7 @@ from app.config import settings
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def hash_password(p: str) -> str:

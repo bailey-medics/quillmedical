@@ -29,3 +29,35 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = false
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.13.1"
+black = "^25.9.0"
+mypy = "^1.18.2"
+pytest = "^8.4.2"
+pytest-cov = "^7.0.0"
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+# Rule sets: pyflakes/pycodestyle/imports/pyupgrade/bugbear
+lint.select = ["E", "F", "W", "I", "UP", "B"]
+# Let Black own long lines (optional; ruff will still flag egregious cases)
+lint.ignore = ["E501"]
+
+[tool.black]
+line-length = 79
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+# Pydantic v2 works fine without a plugin; enable later if you want.
+# plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --maxfail=1"
+testpaths = ["tests"]
+

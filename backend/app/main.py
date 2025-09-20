@@ -27,6 +27,9 @@ from app.security import (
 
 app = FastAPI(title="Quill API")
 
+# Module-level Depends singletons
+DEP_GET_SESSION = Depends(get_session)
+
 # ---------- Cookie helpers ----------
 
 COOKIE_KW = dict(
@@ -68,14 +71,14 @@ def clear_auth_cookies(resp: Response):
 # ---------- Auth dependencies ----------
 
 
-def current_user(request: Request, db: Session = Depends(get_session)) -> User:
+def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     tok = request.cookies.get("access_token")
     if not tok:
         raise HTTPException(401, "Not authenticated")
     try:
         payload = decode_token(tok)
-    except Exception:
-        raise HTTPException(401, "Invalid token")
+    except Exception as e:
+        raise HTTPException(401, "Invalid token") from e
     sub = payload.get("sub")
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
@@ -85,8 +88,12 @@ def current_user(request: Request, db: Session = Depends(get_session)) -> User:
     return user
 
 
+# Module-level Depends for current_user
+DEP_CURRENT_USER = Depends(current_user)
+
+
 def require_roles(*need: str):
-    def dep(request: Request, _u: User = Depends(current_user)):
+    def dep(request: Request, _u: User = DEP_CURRENT_USER):
         have = set(getattr(request.state, "roles", []))
         if not set(need).issubset(have):
             raise HTTPException(403, "Forbidden")
@@ -95,7 +102,7 @@ def require_roles(*need: str):
     return dep
 
 
-def require_csrf(request: Request, u: User = Depends(current_user)):
+def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
     header = request.headers.get("x-csrf-token")
     cookie = request.cookies.get("XSRF-TOKEN")
     if (
@@ -106,6 +113,11 @@ def require_csrf(request: Request, u: User = Depends(current_user)):
     ):
         raise HTTPException(403, "CSRF failed")
     return u
+
+
+# Module-level Depends for common route dependencies
+DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
+DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
 # ---------- Auth routes (new) ----------
@@ -125,8 +137,8 @@ class RegisterIn(BaseModel):
 
 @app.post("/api/auth/login")
 def login(
-    data: LoginIn, response: Response, db: Session = Depends(get_session)
-):
+    data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
+) -> dict:
     user = db.scalar(
         select(User).where(User.username == data.username.strip())
     )
@@ -164,7 +176,7 @@ def login(
 
 
 @app.post("/api/auth/register")
-def register(payload: RegisterIn, db: Session = Depends(get_session)):
+def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
     """Create a new user account. This is intentionally simple for the
     development environment: it validates uniqueness of username/email and
     stores a hashed password. Returns a minimal success response.
@@ -200,9 +212,7 @@ class TotpSetupOut(BaseModel):
 
 
 @app.post("/api/auth/totp/setup", response_model=TotpSetupOut)
-def totp_setup(
-    u: User = Depends(current_user), db: Session = Depends(get_session)
-):
+def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
     """Return a provisioning URI for the user's current (or new) secret.
     The frontend should render this as a QR code. This endpoint is protected.
     """
@@ -225,8 +235,8 @@ class TotpVerifyIn(BaseModel):
 @app.post("/api/auth/totp/verify")
 def totp_verify(
     payload: TotpVerifyIn,
-    u: User = Depends(current_user),
-    db: Session = Depends(get_session),
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
 ):
     """Verify a code and enable TOTP for the current user when valid."""
     if not getattr(u, "totp_secret", None):
@@ -249,9 +259,7 @@ def totp_verify(
 
 
 @app.post("/api/auth/totp/disable")
-def totp_disable(
-    u: User = Depends(require_csrf), db: Session = Depends(get_session)
-):
+def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
     """Disable TOTP for current user (requires CSRF)."""
     u.is_totp_enabled = False
     u.totp_secret = None
@@ -261,13 +269,13 @@ def totp_disable(
 
 
 @app.post("/api/auth/logout")
-def logout(response: Response, _u: User = Depends(current_user)):
+def logout(response: Response, _u: User = DEP_CURRENT_USER):
     clear_auth_cookies(response)
     return {"detail": "ok"}
 
 
 @app.get("/api/auth/me")
-def me(u: User = Depends(current_user)):
+def me(u: User = DEP_CURRENT_USER):
     return {
         "id": u.id,
         "username": u.username,
@@ -278,7 +286,7 @@ def me(u: User = Depends(current_user)):
 
 @app.post("/api/auth/refresh")
 def refresh(
-    response: Response, request: Request, db: Session = Depends(get_session)
+    response: Response, request: Request, db: Session = DEP_GET_SESSION
 ):
     tok = request.cookies.get("refresh_token")
     if not tok:
@@ -287,8 +295,8 @@ def refresh(
         payload = decode_token(tok)
         if payload.get("type") != "refresh":
             raise ValueError("not refresh")
-    except Exception:
-        raise HTTPException(401, "Bad refresh token")
+    except Exception as e:
+        raise HTTPException(401, "Bad refresh token") from e
     sub = payload.get("sub")
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
@@ -351,7 +359,7 @@ class PatientCreate(BaseModel):
 # WRITE: protected (role + CSRF)
 @app.post(
     "/api/patients",
-    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def create_patient_repo(payload: PatientCreate):
     repo = patient_repo_name(payload.patient_id)
@@ -373,12 +381,12 @@ def create_patient_repo(payload: PatientCreate):
         )
         return {"repo": repo, "initialized": True}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # READ: protected - require authenticated user
 @app.get("/api/patients")
-def list_patients(u: User = Depends(current_user)):
+def list_patients(u: User = DEP_CURRENT_USER):
     """Return all patient repos and any demographics if present."""
     try:
         patients = []
@@ -397,7 +405,7 @@ def list_patients(u: User = Depends(current_user)):
                     patients.append({"repo": entry.name, "demographics": demo})
         return {"patients": patients}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class Demographics(BaseModel):
@@ -413,7 +421,7 @@ class Demographics(BaseModel):
 # WRITE: protected (role + CSRF)
 @app.put(
     "/api/patients/{patient_id}/demographics",
-    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def upsert_demographics(patient_id: str, demographics: Demographics):
     repo = patient_repo_name(patient_id)
@@ -427,12 +435,12 @@ def upsert_demographics(patient_id: str, demographics: Demographics):
         write_file(repo, path, content, "feat: upsert demographics")
         return {"repo": repo, "path": path}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # READ: protected - require authenticated user
 @app.get("/api/patients/{patient_id}/demographics")
-def get_demographics(patient_id: str, u: User = Depends(current_user)):
+def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
     repo = patient_repo_name(patient_id)
     try:
         content = read_file(repo, "demographics/profile.json")
@@ -444,7 +452,7 @@ def get_demographics(patient_id: str, u: User = Depends(current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # -------- Letters --------
@@ -460,7 +468,7 @@ class LetterIn(BaseModel):
 # WRITE: protected (role + CSRF)
 @app.post(
     "/api/patients/{patient_id}/letters",
-    dependencies=[Depends(require_roles("Clinician")), Depends(require_csrf)],
+    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def write_letter(patient_id: str, letter: LetterIn):
     repo = patient_repo_name(patient_id)
@@ -483,12 +491,12 @@ def write_letter(patient_id: str, letter: LetterIn):
         )
         return {"repo": repo, "path": filename}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # READ: protected - require authenticated user
 @app.get("/api/patients/{patient_id}/letters/{name}")
-def read_letter(patient_id: str, name: str, u: User = Depends(current_user)):
+def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
     repo = patient_repo_name(patient_id)
     path = (
         f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"
@@ -501,4 +509,4 @@ def read_letter(patient_id: str, name: str, u: User = Depends(current_user)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
