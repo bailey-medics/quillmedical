@@ -1,33 +1,70 @@
-import QuillLogo from "@/components/images/QuillLogo";
-import { Button, Group, Stack, Text, Title } from "@mantine/core";
+import PatientsList from "@/components/patients/PatientsList";
+import type { Patient } from "@/domains/patient";
+import { api } from "@/lib/api";
+import { Stack } from "@mantine/core";
+import { useEffect, useState } from "react";
+
+type Demographics = {
+  given_name?: string | null;
+  family_name?: string | null;
+  date_of_birth?: string | null;
+  sex?: string | null;
+};
+
+type PatientsApiRes = {
+  patients: Array<{ repo: string; demographics?: Demographics | null }>;
+};
 
 export default function Home() {
+  const [patients, setPatients] = useState<Patient[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    api
+      .get<PatientsApiRes>("/patients")
+      .then((res) => {
+        if (cancelled) return;
+        const mapped: Patient[] = (res.patients || []).map((p) => {
+          const demo = p.demographics || {};
+          return {
+            id: p.repo,
+            name:
+              demo?.given_name || demo?.family_name
+                ? [demo.given_name, demo.family_name].filter(Boolean).join(" ")
+                : p.repo,
+            dob: demo?.date_of_birth ?? undefined,
+            age: undefined,
+            sex: demo?.sex ?? undefined,
+            onQuill: true,
+          } as Patient;
+        });
+        setPatients(mapped);
+        setError(null);
+      })
+      .catch((err: Error & { error_code?: string }) => {
+        if (cancelled) return;
+        setError(err.message || "Failed to load patients");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Stack
       align="center"
       justify="center"
       style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
     >
-      <QuillLogo height={128} />
-      <Title order={1}>Welcome to Quill Medical</Title>
-      <Text size="lg" ta="center">
-        Quill is a modern, secure platform for patients and clinics to
-        communicate seamlessly. Send messages, receive expert responses, and get
-        professional clinical letters—all with transparent billing and
-        tamper-evident records stored in dedicated Git repositories. Designed
-        for fairness, privacy, and future-ready electronic patient records.
-      </Text>
-      <Text size="md" ta="center" c="dimmed">
-        Whether you're a patient seeking care or a clinic managing
-        communications, Quill ensures secure, auditable interactions with fair
-        pricing based on clinician time.
-      </Text>
-      <Group mt="lg">
-        <Button size="md">Get Started</Button>
-        <Button variant="outline" size="md">
-          Learn More
-        </Button>
-      </Group>
+      <PatientsList patients={patients ?? []} isLoading={isLoading} />
+      {error ? <div style={{ color: "red" }}>{error}</div> : null}
     </Stack>
   );
 }
