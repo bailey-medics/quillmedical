@@ -8,8 +8,9 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { Anchor } from "@mantine/core";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -174,6 +175,10 @@ export default function LoginPage() {
             >
               Sign in
             </Button>
+            {/* Use router-relative path so react-router's basename is applied once */}
+            <Anchor component={Link} to="/register">
+              Create an account
+            </Anchor>
           </Stack>
         </form>
       </Paper>

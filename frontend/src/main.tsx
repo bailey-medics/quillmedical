@@ -11,6 +11,7 @@ import About from "./pages/About";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import TotpSetup from "./pages/TotpSetup";
+import RegisterPage from "./pages/RegisterPage";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
@@ -27,12 +28,22 @@ const basename = rawBase === "/" ? undefined : rawBase.replace(/\/$/, "");
 
 const router = createBrowserRouter(
   [
-    // Public login route
+    // Public routes (login, register) — placed before protected routes so
+    // they are matched directly and not captured by the authenticated
+    // parent route.
     {
       path: "/login",
       element: (
         <GuestOnly>
           <LoginPage />
+        </GuestOnly>
+      ),
+    },
+    {
+      path: "/register",
+      element: (
+        <GuestOnly>
+          <RegisterPage />
         </GuestOnly>
       ),
     },

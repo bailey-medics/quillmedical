@@ -23,6 +23,7 @@ from app.security import (
     verify_password,
     verify_totp_code,
 )
+from app.security import hash_password
 
 app = FastAPI(title="Quill API")
 
@@ -116,6 +117,12 @@ class LoginIn(BaseModel):
     totp_code: str | None = None
 
 
+class RegisterIn(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
 @app.post("/api/auth/login")
 def login(
     data: LoginIn, response: Response, db: Session = Depends(get_session)
@@ -154,6 +161,37 @@ def login(
         "detail": "ok",
         "user": {"username": user.username, "roles": roles},
     }
+
+
+@app.post("/api/auth/register")
+def register(payload: RegisterIn, db: Session = Depends(get_session)):
+    """Create a new user account. This is intentionally simple for the
+    development environment: it validates uniqueness of username/email and
+    stores a hashed password. Returns a minimal success response.
+    """
+    username = payload.username.strip()
+    email = payload.email.strip()
+    if not username or not email or not payload.password:
+        raise HTTPException(status_code=400, detail="Missing fields")
+    # Basic password length check
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password too short")
+    # Check uniqueness
+    existing = db.scalar(select(User).where(User.username == username))
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    return {"detail": "created"}
 
 
 # ---------- TOTP management endpoints ----------
