@@ -44,7 +44,7 @@ export default defineConfig({
             const isHtmlRequest =
               accept.includes("text/html") || accept.includes("*/*") || !hasExt;
             if (isHtmlRequest) {
-              const fallback = path.join(server.config.root, "404.html");
+              const fallback = path.join(server.config.root, "not-found.html");
               const has404 = await fs.promises
                 .stat(fallback)
                 .then(() => true)

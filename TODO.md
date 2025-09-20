@@ -14,3 +14,4 @@
 - dedicated secrets server
 - Time-based One-Time Password (TOTP) 2FA - IETF RFC 6238 standard
 - suspend account after multiple failed login attempts
+- get public_pages not-found.tsx to use the NotFoundLayout component
