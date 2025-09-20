@@ -39,9 +39,29 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
 
   if (!res.ok) {
     let message = res.statusText;
+    let errorCode: string | undefined = undefined;
     try {
       const data = await res.json();
-      message = (data?.detail ?? data?.message ?? message) as string;
+      // FastAPI often returns { detail: { message: ..., error_code: ... } }
+      // Handle both cases where `detail` is a string or an object.
+      if (data && typeof data === "object") {
+        const detail = (data as Record<string, unknown>)["detail"];
+        if (detail && typeof detail === "object") {
+          // detail is an object with nested message / error_code
+          const d = detail as Record<string, unknown>;
+          if (typeof d["message"] === "string")
+            message = d["message"] as string;
+          else if (typeof d["detail"] === "string")
+            message = d["detail"] as string;
+          errorCode = (d["error_code"] as string) ?? undefined;
+        } else {
+          // detail is likely a string
+          message = (data?.detail ?? data?.message ?? message) as string;
+          errorCode = (data as Record<string, unknown>)["error_code"] as
+            | string
+            | undefined;
+        }
+      }
     } catch {
       try {
         message = await res.text();
@@ -49,7 +69,11 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
         /* ignore */
       }
     }
-    throw new Error(message || `HTTP ${res.status}`);
+    const err = new Error(message || `HTTP ${res.status}`) as Error & {
+      error_code?: string;
+    };
+    if (errorCode) err.error_code = errorCode;
+    throw err;
   }
 
   if (res.status === 204) return undefined as T;

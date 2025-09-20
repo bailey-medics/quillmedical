@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_session
 from app.models import User
-from app.security import (  # hashing helpers are available if you add a register route later
+
+# hashing helpers are available if you add a register route later
+from app.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -126,9 +128,23 @@ def login(
     # If user has TOTP enabled, require totp_code
     if getattr(user, "is_totp_enabled", False):
         if not data.totp_code:
-            raise HTTPException(400, "Invalid two-factor code")
+            # Signal to the client that two-factor is required
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Two-factor required",
+                    "error_code": "two_factor_required",
+                },
+            )
         if not verify_totp_code(user.totp_secret or "", data.totp_code):
-            raise HTTPException(400, "Invalid two-factor code")
+            # Explicit invalid TOTP
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Invalid two-factor code",
+                    "error_code": "invalid_totp",
+                },
+            )
     roles = [r.name for r in user.roles]
     access = create_access_token(user.username, roles)
     refresh = create_refresh_token(user.username)
@@ -176,9 +192,18 @@ def totp_verify(
 ):
     """Verify a code and enable TOTP for the current user when valid."""
     if not getattr(u, "totp_secret", None):
-        raise HTTPException(400, "No TOTP secret set")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "No TOTP secret set",
+                "error_code": "no_totp_secret",
+            },
+        )
     if not verify_totp_code(u.totp_secret, payload.code):
-        raise HTTPException(400, "Invalid code")
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Invalid code", "error_code": "invalid_totp"},
+        )
     u.is_totp_enabled = True
     db.add(u)
     db.commit()

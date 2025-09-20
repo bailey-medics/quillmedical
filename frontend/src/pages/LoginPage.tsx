@@ -49,24 +49,84 @@ export default function LoginPage() {
     } catch (err: unknown) {
       function extractMessage(e: unknown): string | null {
         if (typeof e === "string") return e;
+        if (e instanceof Error) {
+          // Some Errors may carry an attached `error_code` (set by api helper)
+          const anyErr = e as Error & { error_code?: string };
+          if (anyErr.message && typeof anyErr.message === "string") {
+            // message may itself be the string '[object Object]'; try to
+            // detect and fall back to other fields below.
+            if (anyErr.message !== "[object Object]") return anyErr.message;
+          }
+        }
+
         if (typeof e === "object" && e !== null) {
-          const maybe = (e as Record<string, unknown>)["message"];
-          if (typeof maybe === "string") return maybe;
+          const obj = e as Record<string, unknown>;
+          // Common shapes: { message: string }, { detail: string },
+          // { detail: { message: string, error_code: string } }
+          if (typeof obj["message"] === "string")
+            return obj["message"] as string;
+          if (typeof obj["detail"] === "string") return obj["detail"] as string;
+          const detail = obj["detail"];
+          if (detail && typeof detail === "object") {
+            const d = detail as Record<string, unknown>;
+            if (typeof d["message"] === "string") return d["message"] as string;
+            if (typeof d["detail"] === "string") return d["detail"] as string;
+          }
+          // If there is an error_code, show a readable fallback
+          if (typeof obj["error_code"] === "string")
+            return (obj["error_code"] as string).replace(/_/g, " ");
+          // As a last resort, stringify the object so UI gets a useful value
+          try {
+            return JSON.stringify(obj);
+          } catch {
+            return String(obj);
+          }
         }
         return null;
       }
 
       const message = extractMessage(err) ?? "Login failed";
-      // If server indicates two-factor is required, show the TOTP input
-      if (
-        /(two[ -]?factor|two[ -]?factor code|two[ -]?factor required)/i.test(
-          message
-        )
-      ) {
+      // Prefer structured error_code from the thrown Error when available.
+      // Our API attaches `error_code` to the Error object for newer responses.
+      const errObj = err as Error & { error_code?: string };
+      const code = errObj.error_code;
+
+      const invalidCodeRegex = /invalid two[ -]?factor code|invalid code/i;
+      const requiresTwoFactorRegex = /two[ -]?factor|two[ -]?factor required/i;
+
+      if (code === "invalid_totp") {
+        if (requireTotp) {
+          setRequireTotp(true);
+          setError(
+            "Wrong code entered, please try entering your 6-digit authenticator code again"
+          );
+        } else {
+          setRequireTotp(true);
+          setError("Enter the 6-digit authenticator code");
+        }
+      } else if (code === "two_factor_required") {
         setRequireTotp(true);
         setError("Enter the 6-digit authenticator code");
       } else {
-        setError(message);
+        // Fallback to legacy message parsing
+        const invalidCode = invalidCodeRegex.test(message);
+        const requiresTwoFactor = requiresTwoFactorRegex.test(message);
+        if (invalidCode) {
+          if (requireTotp) {
+            setRequireTotp(true);
+            setError(
+              "Wrong code entered, please try entering your 6-digit authenticator code again"
+            );
+          } else {
+            setRequireTotp(true);
+            setError("Enter the 6-digit authenticator code");
+          }
+        } else if (requiresTwoFactor) {
+          setRequireTotp(true);
+          setError("Enter the 6-digit authenticator code");
+        } else {
+          setError(message);
+        }
       }
     } finally {
       setSubmitting(false);

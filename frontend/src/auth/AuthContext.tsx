@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../lib/api";
 
@@ -40,6 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     };
     if (totp) body["totp_code"] = totp;
+    // Let errors bubble to the caller (LoginPage) so it can inspect
+    // any structured `error_code` attached by the API helper.
     await api.post("/auth/login", body);
     await reload();
   }

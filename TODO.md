@@ -13,3 +13,4 @@
 - hardening
 - dedicated secrets server
 - Time-based One-Time Password (TOTP) 2FA - IETF RFC 6238 standard
+- suspend account after multiple failed login attempts
