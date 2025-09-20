@@ -24,7 +24,7 @@ Quill Medical is delivered as a modular, containerised system using :
 - **Python**: `ruff`, `black`
 - **TypeScript**: `prettier`, `eslint`
 - **Git hooks**: `pre-commit` to run formatters and linters on commit
-- **Spell checking**: `streetsidesoftware.code-spell-checker` for common typos in code and text files
+- **Spell checking**: `streetsidesoftware.code-spell-checker` for common typos in code and text files. For any new words, please chose "Add words to CSpell Configuration" so they are added to `cspell.config.json`.
 
 ---
 

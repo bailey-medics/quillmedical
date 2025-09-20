@@ -52,7 +52,7 @@ Thread states:
 
 ---
 
-## Letter Workflow asdfas
+## Letter Workflow
 
 1. Clinician drafts a letter in Markdown.
 2. Optional review by another staff member.
@@ -66,7 +66,7 @@ Letter states:
 
 ---
 
-## Data Model (core objects)
+## Data Model (core objects) asdaf
 
 - **Conversation**: id, patient id, status, opened time, excerpt, staff title.
 - **Message**: conversation id, sender role, body, attachments, time.

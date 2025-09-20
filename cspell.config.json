@@ -1,0 +1,40 @@
+{
+  "version": "0.2",
+  "language": "en-GB",
+  "ignorePaths": [
+    "node_modules",
+    ".yarn",
+    "dist",
+    "build",
+    "poetry.lock",
+    "yarn.lock"
+  ],
+  "words": [
+    "autodocs",
+    "autoflush",
+    "autogenerating",
+    "Caddyfile",
+    "Cotswoldsmaker",
+    "fastapi",
+    "getifaddr",
+    "Gitea",
+    "healthcheck",
+    "httpx",
+    "isready",
+    "linters",
+    "mantine",
+    "passlib",
+    "pycache",
+    "pydantic",
+    "qrcode",
+    "quillmedical",
+    "sessionmaker",
+    "sqlalchemy",
+    "tabler",
+    "totp",
+    "uvicorn",
+    "Wifi",
+    "yarnrc",
+    "zstd"
+  ]
+}

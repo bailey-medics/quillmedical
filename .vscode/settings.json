@@ -21,30 +21,5 @@
   },
   "terminal.integrated.tabs.enableAnimation": true,
   "terminal.integrated.tabs.description": "${sequence}",
-  "terminal.integrated.tabs.title": "${process}",
-  "cSpell.words": [
-    "autodocs",
-    "autoflush",
-    "Caddyfile",
-    "Cotswoldsmaker",
-    "fastapi",
-    "getifaddr",
-    "Gitea",
-    "healthcheck",
-    "httpx",
-    "isready",
-    "mantine",
-    "pycache",
-    "pydantic",
-    "qrcode",
-    "quillmedical",
-    "sessionmaker",
-    "sqlalchemy",
-    "tabler",
-    "totp",
-    "uvicorn",
-    "Wifi",
-    "yarnrc",
-    "zstd"
-  ]
+  "terminal.integrated.tabs.title": "${process}"
 }
