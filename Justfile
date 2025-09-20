@@ -117,6 +117,8 @@ start-dev build="":
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
+        cd frontend && yarn install && cd ..
+        cd backend && poetry lock && poetry install && cd ..
         docker compose -f compose.dev.yml up --build; \
     else \
         docker compose -f compose.dev.yml up; \

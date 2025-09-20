@@ -15,6 +15,8 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [requireTotp, setRequireTotp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, requireTotp ? totp : undefined);
       // If the user was trying to reach the app home (router path "/") or
       // there is no 'from' path, perform a full navigation to Vite's
       // BASE_URL (which usually includes a trailing slash, e.g. '/app/').
@@ -55,7 +57,17 @@ export default function LoginPage() {
       }
 
       const message = extractMessage(err) ?? "Login failed";
-      setError(message);
+      // If server indicates two-factor is required, show the TOTP input
+      if (
+        /(two[ -]?factor|two[ -]?factor code|two[ -]?factor required)/i.test(
+          message
+        )
+      ) {
+        setRequireTotp(true);
+        setError("Enter the 6-digit authenticator code");
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -85,11 +97,20 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
             />
+            {requireTotp && (
+              <TextInput
+                label="Authenticator code"
+                value={totp}
+                onChange={(e) => setTotp(e.currentTarget.value)}
+                placeholder="123456"
+                required
+              />
+            )}
             {error && <div style={{ color: "crimson" }}>{error}</div>}
             <Button
               type="submit"
               loading={submitting}
-              disabled={!email || !password}
+              disabled={!email || !password || (requireTotp && !totp)}
             >
               Sign in
             </Button>

@@ -15,7 +15,7 @@ type State =
 
 type Ctx = {
   state: State;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, totp?: string) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
 };
@@ -34,8 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(username: string, password: string) {
-    await api.post("/auth/login", { username: username.trim(), password });
+  async function login(username: string, password: string, totp?: string) {
+    const body: Record<string, unknown> = {
+      username: username.trim(),
+      password,
+    };
+    if (totp) body["totp_code"] = totp;
+    await api.post("/auth/login", body);
     await reload();
   }
 
