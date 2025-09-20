@@ -1,4 +1,4 @@
-import getAssetPath from "@/lib/getAssetPath";
+import QuillLogo from "@/components/images/QuillLogo";
 import { Button, Group, Stack, Text, Title } from "@mantine/core";
 
 export default function Home() {
@@ -8,11 +8,7 @@ export default function Home() {
       justify="center"
       style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
     >
-      <img
-        src={getAssetPath("quill-logo.png")}
-        alt="Quill Medical Logo"
-        style={{ width: "128px", height: "128px" }}
-      />
+      <QuillLogo height={128} />
       <Title order={1}>Welcome to Quill Medical</Title>
       <Text size="lg" ta="center">
         Quill is a modern, secure platform for patients and clinics to

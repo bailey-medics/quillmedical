@@ -1,3 +1,4 @@
+import QuillLogo from "@/components/images/QuillLogo";
 import {
   Button,
   Paper,
@@ -62,17 +63,9 @@ export default function LoginPage() {
 
   return (
     <>
-      <img
-        src="/app/quill-logo.png"
-        alt="Quill Medical Logo"
-        style={{
-          width: "128px",
-          height: "128px",
-          display: "block",
-          margin: "0 auto",
-          marginTop: "30px",
-        }}
-      />
+      <Stack align="center" justify="center" style={{ marginTop: "30px" }}>
+        <QuillLogo height={128} />
+      </Stack>
 
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
         <form onSubmit={onSubmit}>

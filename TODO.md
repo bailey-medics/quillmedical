@@ -11,3 +11,5 @@
 - CI/CD
 - production build
 - hardening
+- dedicated secrets server
+- Time-based One-Time Password (TOTP) 2FA - IETF RFC 6238 standard
