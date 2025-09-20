@@ -57,6 +57,10 @@ const router = createBrowserRouter(
       ),
       children: [
         { path: "/", element: <Home /> },
+        {
+          path: "/settings",
+          element: import("./pages/Settings").then((m) => <m.default />),
+        },
         { path: "/settings/totp", element: <TotpSetup /> },
         { path: "/about", element: <About /> },
       ],

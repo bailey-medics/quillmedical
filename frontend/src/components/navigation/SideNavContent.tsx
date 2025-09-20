@@ -1,11 +1,6 @@
 import { NavLink, ThemeIcon } from "@mantine/core";
-import {
-  IconFileText,
-  IconHome2,
-  IconLogout,
-  IconSettings,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconHome2, IconLogout, IconSettings } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 
 type Props = {
@@ -26,12 +21,16 @@ export default function SideNavContent({
   showIcons = false,
 }: Props) {
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <>
       <NavLink
         label="Home"
-        onClick={onNavigate}
+        onClick={() => {
+          navigate("/");
+          if (onNavigate) onNavigate();
+        }}
         leftSection={
           showIcons ? (
             <LeftIcon>
@@ -41,30 +40,11 @@ export default function SideNavContent({
         }
       />
       <NavLink
-        label="Patients"
-        onClick={onNavigate}
-        leftSection={
-          showIcons ? (
-            <LeftIcon>
-              <IconUsers size={16} />
-            </LeftIcon>
-          ) : undefined
-        }
-      />
-      <NavLink
-        label="Letters"
-        onClick={onNavigate}
-        leftSection={
-          showIcons ? (
-            <LeftIcon>
-              <IconFileText size={16} />
-            </LeftIcon>
-          ) : undefined
-        }
-      />
-      <NavLink
         label="Settings"
-        onClick={onNavigate}
+        onClick={() => {
+          navigate("/settings");
+          if (onNavigate) onNavigate();
+        }}
         leftSection={
           showIcons ? (
             <LeftIcon>
