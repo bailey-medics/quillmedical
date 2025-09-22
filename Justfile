@@ -62,14 +62,14 @@ hex-32:
     {{initialise}} "hex-32"
     openssl rand -hex 32
 
-alias i := initialise
+alias i := initialise-repo
 # Initialise the repository (run this first)
-initialise:
+initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
     pre-commit install
-    just aj
     yarn install
+    just aj
 
 alias m := migrate
 # Run the database migrations
