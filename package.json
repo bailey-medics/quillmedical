@@ -17,6 +17,9 @@
     ],
     "frontend/**/*.{css,scss,md,json,yml,yaml}": [
       "yarn workspace frontend prettier --write"
+    ],
+    "frontend/**/*.{css,scss}": [
+      "yarn workspace frontend stylelint --fix"
     ]
   }
 }
