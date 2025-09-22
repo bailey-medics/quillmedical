@@ -1,4 +1,8 @@
 {
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^16.2.0"
