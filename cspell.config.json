@@ -33,6 +33,7 @@
     "tabler",
     "totp",
     "uvicorn",
+    "virtualenv",
     "Wifi",
     "yarnrc",
     "zstd"

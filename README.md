@@ -72,6 +72,12 @@ Build and start the stack:
 docker compose up --build
 ```
 
+Make sure you have Just installed. Then run:
+
+```bash
+just initialise
+```
+
 Access the services:
 
 Frontend: http://localhost

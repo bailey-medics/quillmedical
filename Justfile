@@ -62,6 +62,13 @@ hex-32:
     {{initialise}} "hex-32"
     openssl rand -hex 32
 
+alias i := initialise
+# Initialise the repository (run this first)
+initialise:
+    #!/usr/bin/env bash
+    {{initialise}} "initialise"
+    pre-commit install
+    just aj
 
 alias m := migrate
 # Run the database migrations
