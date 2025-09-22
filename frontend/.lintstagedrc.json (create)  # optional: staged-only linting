@@ -1,0 +1,10 @@
+{
+  "*.ts": [
+    "eslint --fix",
+    "tsc --noEmit"
+  ],
+  "*.tsx": [
+    "eslint --fix",
+    "tsc --noEmit"
+  ]
+}
