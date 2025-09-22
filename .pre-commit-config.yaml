@@ -30,3 +30,9 @@ repos:
           - --no-summary
           - --config
           - cspell.config.json
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests]

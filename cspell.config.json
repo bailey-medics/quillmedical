@@ -23,6 +23,7 @@
     "isready",
     "linters",
     "mantine",
+    "mypy",
     "passlib",
     "pycache",
     "pydantic",
