@@ -69,6 +69,7 @@ initialise:
     {{initialise}} "initialise"
     pre-commit install
     just aj
+    yarn install
 
 alias m := migrate
 # Run the database migrations

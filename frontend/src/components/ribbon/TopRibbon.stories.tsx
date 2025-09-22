@@ -1,46 +1,22 @@
 // TopRibbon.stories.tsx
-import { demoPatient } from "@/demo-data/patients/demoPatients";
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import TopRibbon from "./TopRibbon";
+import { demoPatient } from '@/demo-data/patients/demoPatients';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import TopRibbon from './TopRibbon';
 
 const meta: Meta<typeof TopRibbon> = {
-  title: "TopRibbon",
+  title: 'TopRibbon',
   component: TopRibbon,
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
     controls: { expanded: true },
   },
   argTypes: {
-    onBurgerClick: { action: "burger-clicked" },
+    onBurgerClick: { action: 'burger-clicked' },
   },
 };
 export default meta;
 
 type Story = StoryObj<typeof TopRibbon>;
-
-// Simple frame so we can demo container-width behaviour
-function DemoFrame({
-  width = 1024,
-  children,
-}: {
-  width?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        width,
-        margin: "24px auto",
-        border: "1px dashed #e5e7eb",
-        borderRadius: 12,
-        overflow: "hidden",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 // demoPatient comes from centralized demo-data
 
