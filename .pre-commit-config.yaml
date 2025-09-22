@@ -1,6 +1,12 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.1   # Pin a specific version
+    rev: v0.13.1
     hooks:
       - id: ruff
-        args: [--fix]   # optional: auto-fix issues where possible
+        args: [--fix]
+
+  - repo: https://github.com/psf/black
+    rev: 25.9.0   # pin a recent stable release
+    hooks:
+      - id: black
+        language_version: python3.12
