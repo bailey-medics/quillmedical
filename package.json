@@ -1,0 +1,18 @@
+{
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.0"
+  },
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "yarn workspace frontend eslint --fix --max-warnings=0",
+      "yarn workspace frontend prettier --write"
+    ],
+    "frontend/**/*.{css,scss,md,json,yml,yaml}": [
+      "yarn workspace frontend prettier --write"
+    ]
+  }
+}
