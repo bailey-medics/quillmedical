@@ -19,3 +19,14 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: check-json
+
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v9.2.0
+    hooks:
+      - id: cspell
+        name: cspell (spelling checker)
+        args:
+          - --no-progress
+          - --no-summary
+          - --config
+          - cspell.config.json
