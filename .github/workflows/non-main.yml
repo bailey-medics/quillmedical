@@ -41,8 +41,28 @@ jobs:
           corepack prepare yarn@4.10.3 --activate
           yarn --version
 
+      - name: Cache Yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            .yarn/install-state.gz
+            node_modules
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-nm-
+
       - name: Install deps
         run: yarn install --immutable
+
+      - name: Debug Yarn env
+        run: |
+          yarn -v
+          yarn config get nodeLinker
+          test -f .yarn/install-state.gz && echo "install-state present" || echo "install-state missing"
+          ls -la node_modules || true
+          ls -la frontend/node_modules || true
 
       # JS/TS linters — use workspace exec (or run from frontend dir)
       - name: ESLint (frontend, fail on warnings)
