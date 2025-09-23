@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # (Optional) OS deps if you ever have to compile wheels; keep minimal.
-# Most of our deps ship manylinux wheels, so you can usually skip build-essential.
+# Most of our deps ship many linux wheels, so you can usually skip build-essential.
 # RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry (pinned)

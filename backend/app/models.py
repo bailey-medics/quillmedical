@@ -1,7 +1,10 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 user_role = Table(
     "user_role",

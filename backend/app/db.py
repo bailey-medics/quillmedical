@@ -7,7 +7,8 @@ from app.config import settings
 if not getattr(settings, "DATABASE_URL", None):
     raise RuntimeError("DATABASE_URL must be set (in .env or env)")
 
-engine = create_engine(settings.DATABASE_URL, future=True)
+database_url: str = settings.DATABASE_URL  # type: ignore[assignment]
+engine = create_engine(database_url, future=True)
 SessionLocal = sessionmaker(
     bind=engine, autoflush=False, autocommit=False, future=True
 )

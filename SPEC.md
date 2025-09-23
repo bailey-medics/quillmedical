@@ -1,9 +1,9 @@
 # Quill Specification
 
-Quill is a modern, secure messaging and clinical letter service.  
-It enables patients to communicate with clinics, receive responses, and obtain signed letters, with fair and transparent billing.  
-All patient-related content is stored in a dedicated Git repository per patient.  
-This creates a durable, auditable, and tamper-evident record.  
+Quill is a modern, secure messaging and clinical letter service.
+It enables patients to communicate with clinics, receive responses, and obtain signed letters, with fair and transparent billing.
+All patient-related content is stored in a dedicated Git repository per patient.
+This creates a durable, auditable, and tamper-evident record.
 The system is designed to be extendable into a full electronic patient record in the future.
 
 ---
@@ -20,19 +20,19 @@ The system is designed to be extendable into a full electronic patient record in
 
 ## Roles
 
-- **Patient (or relative)**  
+- **Patient (or relative)**
   Can start new message threads, pay for quotes, and view letters.
 
-- **Administrator**  
+- **Administrator**
   Reviews new messages, routes them to clinicians, manages subscriptions, and sends approved letters.
 
-- **Clinician**  
+- **Clinician**
   Estimates response effort in six-minute units, generates quotes, replies to patients, drafts and approves letters.
 
-- **Clinic Owner**  
+- **Clinic Owner**
   Configures pricing, subscription plans, and settings. Has full audit rights.
 
-- **Billing Staff**  
+- **Billing Staff**
   Manages invoices, refunds, and subscriptions. Cannot access clinical content.
 
 ---
@@ -47,7 +47,7 @@ The system is designed to be extendable into a full electronic patient record in
 6. Clinician replies once payment confirmed.
 7. Thread closes when resolved.
 
-Thread states:  
+Thread states:
 `NEW → ADMIN_REVIEW → ASSIGNED → ESTIMATED → QUOTED → WAITING_PAYMENT → PAID → ANSWERED → CLOSED`
 
 ---
@@ -61,7 +61,7 @@ Thread states:
 5. Letter is sent to the patient (or another recipient).
 6. Patient acknowledges receipt.
 
-Letter states:  
+Letter states:
 `DRAFT → REVIEW → APPROVED → SENT → ACKNOWLEDGED`
 
 ---
@@ -84,7 +84,7 @@ Letter states:
 
 ## Git Repository Structure
 
-Each patient has one private Git repository.  
+Each patient has one private Git repository.
 Suggested layout:
 
 /meta/

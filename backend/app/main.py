@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -40,14 +41,14 @@ COOKIE_KW = dict(
 )
 
 
-def set_auth_cookies(resp: Response, access: str, refresh: str, xsrf: str):
-    resp.set_cookie("access_token", access, path="/", **COOKIE_KW)
+def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
+    response.set_cookie("access_token", access, path="/", **COOKIE_KW)
     # scope refresh to its endpoint path (optional hardening)
-    resp.set_cookie(
+    response.set_cookie(
         "refresh_token", refresh, path="/api/auth/refresh", **COOKIE_KW
     )
     # CSRF cookie is readable by JS so SPA can echo back in header
-    resp.set_cookie(
+    response.set_cookie(
         "XSRF-TOKEN",
         xsrf,
         path="/",
@@ -58,14 +59,18 @@ def set_auth_cookies(resp: Response, access: str, refresh: str, xsrf: str):
     )
 
 
-def clear_auth_cookies(resp: Response):
-    resp.delete_cookie("access_token", path="/", domain=settings.COOKIE_DOMAIN)
-    resp.delete_cookie(
+def clear_auth_cookies(response: Response):
+    response.delete_cookie(
+        "access_token", path="/", domain=settings.COOKIE_DOMAIN
+    )
+    response.delete_cookie(
         "refresh_token",
         path="/api/auth/refresh",
         domain=settings.COOKIE_DOMAIN,
     )
-    resp.delete_cookie("XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN)
+    response.delete_cookie(
+        "XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN
+    )
 
 
 # ---------- Auth dependencies ----------
@@ -109,7 +114,7 @@ def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
         not header
         or not cookie
         or header != cookie
-        or not verify_csrf(cookie, u.username)
+        or not verify_csrf(cookie, cast(str, u.username))
     ):
         raise HTTPException(403, "CSRF failed")
     return u
@@ -142,7 +147,11 @@ def login(
     user = db.scalar(
         select(User).where(User.username == data.username.strip())
     )
-    if not user or not verify_password(data.password, user.password_hash):
+    # `user.password_hash` is typed as a SQLAlchemy Column[...] by stubs;
+    # cast to `str` so mypy recognizes the runtime type on instances.
+    if not user or not verify_password(
+        data.password, cast(str, user.password_hash)
+    ):
         raise HTTPException(400, "Invalid credentials")
     # If user has TOTP enabled, require totp_code
     if getattr(user, "is_totp_enabled", False):
@@ -155,7 +164,9 @@ def login(
                     "error_code": "two_factor_required",
                 },
             )
-        if not verify_totp_code(user.totp_secret or "", data.totp_code):
+        if not verify_totp_code(
+            cast(str, user.totp_secret or ""), data.totp_code
+        ):
             # Explicit invalid TOTP
             raise HTTPException(
                 status_code=400,
@@ -165,9 +176,9 @@ def login(
                 },
             )
     roles = [r.name for r in user.roles]
-    access = create_access_token(user.username, roles)
-    refresh = create_refresh_token(user.username)
-    xsrf = make_csrf(user.username)
+    access = create_access_token(cast(str, user.username), roles)
+    refresh = create_refresh_token(cast(str, user.username))
+    xsrf = make_csrf(cast(str, user.username))
     set_auth_cookies(response, access, refresh, xsrf)
     return {
         "detail": "ok",
@@ -218,13 +229,18 @@ def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
     """
     # ensure user has a secret; we'll generate one server-side if missing
     if not getattr(u, "totp_secret", None):
-        u.totp_secret = generate_totp_secret()
+        # assign and silence mypy Column[...] vs instance attribute type
+        u.totp_secret = generate_totp_secret()  # type: ignore[assignment]
     # Persist the secret immediately so callers (and other sessions)
     # will see the secret without relying on session autoflush semantics.
     db.add(u)
     db.commit()
     issuer = getattr(settings, "PROJECT_NAME", "Quill")
-    uri = totp_provisioning_uri(u.totp_secret, u.username, issuer=issuer)
+    uri = totp_provisioning_uri(
+        cast(str, u.totp_secret or ""),
+        cast(str, u.username),
+        issuer=issuer,
+    )
     return {"provision_uri": uri}
 
 
@@ -247,12 +263,16 @@ def totp_verify(
                 "error_code": "no_totp_secret",
             },
         )
-    if not verify_totp_code(u.totp_secret, payload.code):
+    if not verify_totp_code(
+        cast(str, u.totp_secret or ""),
+        payload.code,
+    ):
         raise HTTPException(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
         )
-    u.is_totp_enabled = True
+    # mark TOTP enabled on the instance
+    u.is_totp_enabled = True  # type: ignore[assignment]
     db.add(u)
     db.commit()
     return {"detail": "enabled"}
@@ -261,8 +281,8 @@ def totp_verify(
 @app.post("/api/auth/totp/disable")
 def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
     """Disable TOTP for current user (requires CSRF)."""
-    u.is_totp_enabled = False
-    u.totp_secret = None
+    u.is_totp_enabled = False  # type: ignore[assignment]
+    u.totp_secret = None  # type: ignore[assignment]
     db.add(u)
     db.commit()
     return {"detail": "disabled"}
@@ -302,9 +322,9 @@ def refresh(
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
     roles = [r.name for r in user.roles]
-    new_access = create_access_token(user.username, roles)
-    new_refresh = create_refresh_token(user.username)  # rotate
-    xsrf = make_csrf(user.username)
+    new_access = create_access_token(cast(str, user.username), roles)
+    new_refresh = create_refresh_token(cast(str, user.username))  # rotate
+    xsrf = make_csrf(cast(str, user.username))
     set_auth_cookies(response, new_access, new_refresh, xsrf)
     return {"detail": "refreshed"}
 

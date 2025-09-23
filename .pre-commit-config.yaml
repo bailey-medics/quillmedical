@@ -35,7 +35,7 @@ repos:
     rev: v1.18.2
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests]
+        additional_dependencies: [alembic, types-requests]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6

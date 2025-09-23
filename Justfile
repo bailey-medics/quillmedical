@@ -11,7 +11,7 @@ initialise:= 'set -euxo pipefail
     trap initialise EXIT
     just _terminal-description'
 
-    
+
 _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
@@ -29,7 +29,7 @@ abbreviate-just:
         echo "$alias_definition" >> ~/.zshrc
         echo "Alias added to ~/.zshrc"
     fi
-    
+
     echo "Please run the following command to apply the changes to this terminal:"
     echo "source ~/.zshrc"
 
@@ -159,4 +159,3 @@ yarn-install:
     {{initialise}} "yarn-install"
     cd frontend
     yarn install
-    

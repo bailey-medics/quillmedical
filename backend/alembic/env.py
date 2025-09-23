@@ -19,9 +19,9 @@ sys.path.append(
 # Alembic Config object (reads alembic.ini)
 config = context.config
 
-# Use the same DB URL your app uses (from .env via pydantic-settings)
-if getattr(settings, "DATABASE_URL", None):
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+db_url = getattr(settings, "DATABASE_URL", None)
+if db_url is not None:
+    config.set_main_option("sqlalchemy.url", db_url)
 
 # Configure logging from alembic.ini
 if config.config_file_name is not None:

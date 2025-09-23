@@ -4,15 +4,15 @@
     "jsx": "react-jsx",
     "moduleResolution": "node",
     "types": ["node"],
-    "baseUrl": ".", // base is the public_pages folder
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["../src/*"], // map @/* -> frontend/src/*
+      "@/*": ["../src/*"],
       "@components/*": ["../src/components/*"],
       "@utils/*": ["../.storybook/utils/*"],
       "@design/*": ["../src/design/*"],
       "@domains/*": ["../src/domains/*"]
     }
   },
-  "include": ["src", "../src"], // ensure TS indexes the app src
+  "include": ["src", "../src"],
   "exclude": ["../src/**/*.stories.*"]
 }
