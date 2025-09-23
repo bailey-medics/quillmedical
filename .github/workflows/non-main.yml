@@ -27,3 +27,45 @@ jobs:
       - name: Run pre-commit (all files)
         run: |
           pre-commit run --all-files
+
+  husky-lint-staged:
+    name: Husky & lint-staged checks
+    runs-on: ubuntu-latest
+    needs: pre-commit-config
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'yarn'
+
+      - name: Enable corepack (Yarn 4)
+        run: |
+          corepack enable
+          corepack prepare yarn@stable --activate
+
+      - name: Install dependencies (yarn workspace)
+        run: |
+          yarn --version
+          yarn install --immutable
+
+      - name: Run lint-staged (staged files; non-fatal if none)
+        # lint-staged operates on staged files; allow empty to avoid CI failure when no staged files
+        run: |
+          yarn lint-staged --verbose --allow-empty || true
+
+      - name: Run frontend ESLint (fail on warnings)
+        run: |
+          # run ESLint across the frontend workspace and fail if there are warnings
+          yarn workspace frontend eslint . --max-warnings=0
+
+      - name: Run frontend Prettier (check)
+        run: |
+          yarn workspace frontend prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}"
+
+      - name: Run frontend Stylelint (fixable errors will fail)
+        run: |
+          yarn workspace frontend stylelint "**/*.{scss,css}" --allow-empty-input
