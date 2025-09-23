@@ -54,7 +54,7 @@ jobs:
             ${{ runner.os }}-yarn4-nm-
 
       - name: Install deps
-        run: yarn install --immutable
+        run: yarn install
 
       - name: Debug Yarn env
         run: |
