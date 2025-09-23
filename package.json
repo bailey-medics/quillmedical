@@ -10,7 +10,11 @@
   },
   "scripts": {
     "prepare": "husky",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "lint:eslint": "eslint --cwd frontend . --max-warnings=0 --format github",
+    "lint:prettier": "prettier --cwd frontend --check \"**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
+    "lint:style": "stylelint --cwd frontend \"**/*.{scss,css}\" --allow-empty-input",
+    "typecheck": "tsc -p frontend/tsconfig.json --noEmit"
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx,js,jsx}": [
