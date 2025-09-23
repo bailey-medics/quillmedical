@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ---------- Python pre-commit (only if you use it) ----------
+      # Python pre-commit (only if you use it)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,43 +29,43 @@ jobs:
         with:
           extra_args: --all-files
 
-      # ---------- Node / Yarn Berry ----------
-      - name: Set up Node
+      # Node / Yarn Berry
+      - name: Set up Node (LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: '22'   # LTS; change if you truly need 24
-      - name: Enable Corepack (Yarn 4)
+          node-version: '22'
+
+      - name: Enable Corepack & pin Yarn
         run: |
           corepack enable
-          corepack prepare yarn@stable --activate
+          corepack prepare yarn@4.10.3 --activate
           yarn --version
 
-      # Cache Yarn Berry artifacts (.yarn/cache + install-state)
-      - name: Cache Yarn
+      - name: Cache Yarn (PnP)
         uses: actions/cache@v4
         with:
           path: |
             .yarn/cache
             .yarn/install-state.gz
-            **/.pnp.cjs
-            **/.pnp.data.json
+            .pnp.cjs
+            .pnp.data.json
           key: ${{ runner.os }}-yarn4-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
           restore-keys: |
             ${{ runner.os }}-yarn4-
 
-      - name: Install dependencies
+      - name: Install deps
         run: yarn install --immutable
 
-      # ---------- JS/TS linters (run directly; no lint-staged in CI) ----------
-      # Run ESLint from inside the frontend workspace
+      # JS/TS linters — use workspace exec (or run from frontend dir)
       - name: ESLint (frontend, fail on warnings)
-        working-directory: frontend
-        run: yarn eslint . --max-warnings=0 --format github
+        run: yarn workspace frontend exec eslint . --max-warnings=0 --format github
 
-      - name: Prettier (check)
-        working-directory: frontend
-        run: yarn prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+      - name: Prettier (check only)
+        run: yarn workspace frontend exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
 
       - name: Stylelint (scss/css)
-        working-directory: frontend
-        run: yarn stylelint "**/*.{scss,css}" --allow-empty-input
+        run: yarn workspace frontend exec stylelint "**/*.{scss,css}" --allow-empty-input
+
+      # Optional: TypeScript type-check
+      # - name: TypeScript (noEmit)
+      #   run: yarn workspace frontend exec tsc --noEmit
