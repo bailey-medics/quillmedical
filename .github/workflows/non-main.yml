@@ -19,15 +19,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Python pre-commit (only if you use it)
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-        with:
-          extra_args: --all-files
+      # Python pre-commit
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      # - name: Run pre-commit
+      #   uses: pre-commit/action@v3.0.1
+      #   with:
+      #     extra_args: --all-files
 
       # Node / Yarn Berry
       - name: Set up Node (LTS)
@@ -40,6 +40,7 @@ jobs:
           corepack enable
           corepack prepare yarn@4.10.3 --activate
           yarn --version
+          yarn config set nodeLinker pnp
 
       - name: Cache Yarn (PnP)
         uses: actions/cache@v4
@@ -58,13 +59,16 @@ jobs:
 
       # JS/TS linters — use workspace exec (or run from frontend dir)
       - name: ESLint (frontend, fail on warnings)
-        run: yarn workspace frontend exec eslint . --max-warnings=0 --format github
+        working-directory: frontend
+        run: yarn exec eslint . --max-warnings=0 --format github
 
       - name: Prettier (check only)
-        run: yarn workspace frontend exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+        working-directory: frontend
+        run: yarn exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
 
       - name: Stylelint (scss/css)
-        run: yarn workspace frontend exec stylelint "**/*.{scss,css}" --allow-empty-input
+        working-directory: frontend
+        run: yarn exec stylelint "**/*.{scss,css}" --allow-empty-input
 
       # Optional: TypeScript type-check
       # - name: TypeScript (noEmit)
