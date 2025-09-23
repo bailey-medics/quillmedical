@@ -65,17 +65,14 @@ jobs:
           ls -la frontend/node_modules || true
 
       # JS/TS linters — use workspace exec (or run from frontend dir)
-      - name: ESLint (frontend, fail on warnings)
-        working-directory: frontend
-        run: yarn exec eslint . --max-warnings=0 --format github
+      - name: ESLint (frontend)
+        run: yarn workspace frontend run lint:eslint
 
-      - name: Prettier (check only)
-        working-directory: frontend
-        run: yarn exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+      - name: Prettier (frontend)
+        run: yarn workspace frontend run lint:prettier
 
-      - name: Stylelint (scss/css)
-        working-directory: frontend
-        run: yarn exec stylelint "**/*.{scss,css}" --allow-empty-input
+      - name: Stylelint (frontend)
+        run: yarn workspace frontend run lint:style
 
       # Optional: TypeScript type-check
       # - name: TypeScript (noEmit)
