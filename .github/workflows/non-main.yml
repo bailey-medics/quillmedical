@@ -63,8 +63,8 @@ jobs:
       - name: Prettier (frontend)
         run: yarn run lint:prettier
 
-      # - name: Stylelint (frontend)
-      #   run: yarn run lint:style
+      - name: Stylelint (frontend)
+        run: yarn run lint:style
 
       # Optional: TypeScript type-check
       # - name: TypeScript (noEmit)

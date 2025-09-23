@@ -3,10 +3,11 @@ body {
   font-family:
     system-ui,
     -apple-system,
-    Segoe UI,
+    "Segoe UI",
     Roboto,
     sans-serif;
 }
+
 a {
   text-decoration: none;
 }
