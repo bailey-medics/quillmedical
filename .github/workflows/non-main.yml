@@ -2,70 +2,70 @@ name: non-main
 
 on:
   push:
-    branches-ignore: [ main, master ]
+    branches-ignore: [main, master]
   pull_request:
-    branches-ignore: [ main, master ]
+    branches-ignore: [main, master]
 
+permissions:
+  contents: read
 
 jobs:
-  pre-commit-config:
+  code-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # ---------- Python pre-commit (only if you use it) ----------
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files
 
-      - name: Install pre-commit
-        run: |
-          python -m pip install --upgrade pip
-          pip install pre-commit
-
-      - name: Run pre-commit (all files)
-        run: |
-          pre-commit run --all-files
-
-  husky-lint-staged:
-    name: Husky & lint-staged checks
-    runs-on: ubuntu-latest
-    needs: pre-commit-config
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      # ---------- Node / Yarn Berry ----------
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'yarn'
-
-      - name: Enable corepack (Yarn 4)
+          node-version: '22'   # LTS; change if you truly need 24
+      - name: Enable Corepack (Yarn 4)
         run: |
           corepack enable
           corepack prepare yarn@stable --activate
-
-      - name: Install dependencies (yarn workspace)
-        run: |
           yarn --version
-          yarn install --immutable
 
-      - name: Run lint-staged (staged files; non-fatal if none)
-        # lint-staged operates on staged files; allow empty to avoid CI failure when no staged files
-        run: |
-          yarn lint-staged --verbose --allow-empty || true
+      # Cache Yarn Berry artifacts (.yarn/cache + install-state)
+      - name: Cache Yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            .yarn/install-state.gz
+            **/.pnp.cjs
+            **/.pnp.data.json
+          key: ${{ runner.os }}-yarn4-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-
 
-      - name: Run frontend ESLint (fail on warnings)
-        run: |
-          # run ESLint across the frontend workspace and fail if there are warnings
-          yarn workspace frontend eslint . --max-warnings=0
+      - name: Install dependencies
+        run: yarn install --immutable
 
-      - name: Run frontend Prettier (check)
-        run: |
-          yarn workspace frontend prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}"
+      # ---------- JS/TS linters (run directly; no lint-staged in CI) ----------
+      - name: ESLint (frontend, fail on warnings)
+        run: yarn workspace frontend eslint . --max-warnings=0 --format github
 
-      - name: Run frontend Stylelint (fixable errors will fail)
-        run: |
-          yarn workspace frontend stylelint "**/*.{scss,css}" --allow-empty-input
+      - name: Prettier (check only)
+        run: yarn workspace frontend prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+
+      - name: Stylelint (scss/css)
+        run: yarn workspace frontend stylelint "**/*.{scss,css}" --allow-empty-input
+
+      # Optional: TypeScript type-check
+      - name: TypeScript (noEmit)
+        run: yarn workspace frontend tsc --noEmit
