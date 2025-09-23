@@ -2,15 +2,13 @@ name: non-main
 
 on:
   push:
-    # run on pushes except for main and master
     branches-ignore: [ main, master ]
   pull_request:
-    # run for PRs except when the base is main or master
     branches-ignore: [ main, master ]
 
 
 jobs:
-  non-main:
+  pre-commit-config:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.12'
 
       - name: Install pre-commit
         run: |
