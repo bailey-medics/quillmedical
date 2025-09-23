@@ -8,7 +8,7 @@
     "lint-staged": "^16.2.0"
   },
   "scripts": {
-    "prepare": "husky"
+    "lint-staged": "husky ."
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx,js,jsx}": [

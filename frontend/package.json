@@ -56,5 +56,18 @@
     "vite": "^7.1.2",
     "vite-tsconfig-paths": "^5.1.4"
   },
-  "packageManager": "yarn@4.9.4"
+  "packageManager": "yarn@4.9.4",
+  "lint-staged": {
+    "*.+(js|jsx|ts|tsx)": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.scss": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md,json,mdx,html,scss}": [
+      "prettier --write"
+    ]
+  }
 }
