@@ -20,14 +20,14 @@ jobs:
           fetch-depth: 0
 
       # Python pre-commit
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.12'
-      # - name: Run pre-commit
-      #   uses: pre-commit/action@v3.0.1
-      #   with:
-      #     extra_args: --all-files
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files
 
       # Node / Yarn Berry
       - name: Set up Node (LTS)
@@ -56,16 +56,14 @@ jobs:
       - name: Install deps
         run: yarn install
 
-      # JS/TS linters — use workspace exec (or run from frontend dir)
-      - name: ESLint (frontend)
+      - name: ESLint
         run: yarn run lint:eslint
 
-      - name: Prettier (frontend)
+      - name: Prettier
         run: yarn run lint:prettier
 
-      - name: Stylelint (frontend)
+      - name: Stylelint
         run: yarn run lint:style
 
-      # Optional: TypeScript type-check
-      # - name: TypeScript (noEmit)
-      #   run: yarn workspace frontend exec tsc --noEmit
+      - name: TypeScript (noEmit)
+        run: yarn workspace frontend exec tsc --noEmit
