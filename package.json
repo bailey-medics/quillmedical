@@ -4,12 +4,13 @@
     "frontend"
   ],
   "devDependencies": {
-    "husky": "^9.1.7",
+    "husky": "^8.0.0",
     "lint-staged": "^16.2.0"
   },
   "scripts": {
-    "prepare": "husky .",
-    "lint-staged": "lint-staged"
+    "prepare": "husky",
+    "lint-staged": "lint-staged",
+    "postinstall": "husky install"
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx,js,jsx}": [
