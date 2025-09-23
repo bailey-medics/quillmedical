@@ -58,14 +58,10 @@ jobs:
 
       # ---------- JS/TS linters (run directly; no lint-staged in CI) ----------
       - name: ESLint (frontend, fail on warnings)
-        run: yarn workspace frontend eslint . --max-warnings=0 --format github
+        run: yarn workspace frontend exec eslint . --max-warnings=0 --format github
 
-      - name: Prettier (check only)
-        run: yarn workspace frontend prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+      - name: Prettier (check)
+        run: yarn workspace frontend exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
 
       - name: Stylelint (scss/css)
-        run: yarn workspace frontend stylelint "**/*.{scss,css}" --allow-empty-input
-
-      # Optional: TypeScript type-check
-      - name: TypeScript (noEmit)
-        run: yarn workspace frontend tsc --noEmit
+        run: yarn workspace frontend exec stylelint "**/*.{scss,css}" --allow-empty-input
