@@ -40,19 +40,6 @@ jobs:
           corepack enable
           corepack prepare yarn@4.10.3 --activate
           yarn --version
-          yarn config set nodeLinker pnp
-
-      - name: Cache Yarn (PnP)
-        uses: actions/cache@v4
-        with:
-          path: |
-            .yarn/cache
-            .yarn/install-state.gz
-            .pnp.cjs
-            .pnp.data.json
-          key: ${{ runner.os }}-yarn4-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn4-
 
       - name: Install deps
         run: yarn install --immutable
