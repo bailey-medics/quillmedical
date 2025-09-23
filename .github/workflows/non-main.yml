@@ -57,11 +57,15 @@ jobs:
         run: yarn install --immutable
 
       # ---------- JS/TS linters (run directly; no lint-staged in CI) ----------
+      # Run ESLint from inside the frontend workspace
       - name: ESLint (frontend, fail on warnings)
-        run: yarn workspace frontend exec eslint . --max-warnings=0 --format github
+        working-directory: frontend
+        run: yarn eslint . --max-warnings=0 --format github
 
       - name: Prettier (check)
-        run: yarn workspace frontend exec prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
+        working-directory: frontend
+        run: yarn prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}" --ignore-unknown
 
       - name: Stylelint (scss/css)
-        run: yarn workspace frontend exec stylelint "**/*.{scss,css}" --allow-empty-input
+        working-directory: frontend
+        run: yarn stylelint "**/*.{scss,css}" --allow-empty-input
