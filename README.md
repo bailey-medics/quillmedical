@@ -80,12 +80,30 @@ just initialise
 
 Access the services:
 
-Frontend: http://localhost
+Frontend: <http://localhost>
 
-Backend API: http://localhost/api/health
+Backend API: <http://localhost/api/health>
 
-Gitea: http://localhost:3001
+Gitea: <http://localhost:3001>
 
 ## Environment Variables
 
 - Only ASCII characters for the gitea token in the `.env` file.
+
+## Pre-commit CI
+
+This repository uses `pre-commit` to run formatters, linters and checks. A GitHub Actions workflow (`.github/workflows/pre-commit.yml`) runs `pre-commit run --all-files` on pushes and pull requests.
+
+To run the checks locally:
+
+```bash
+# install pre-commit (use your python environment / poetry if needed)
+python -m pip install --upgrade pip
+pip install pre-commit
+
+# install hooks (optional, to run automatically on commit)
+pre-commit install
+
+# run all checks across the repository
+pre-commit run --all-files
+```
