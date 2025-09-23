@@ -6673,8 +6673,20 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
+    "@typescript-eslint/eslint-plugin": "npm:^8.44.1"
+    "@typescript-eslint/parser": "npm:^8.44.1"
+    eslint: "npm:^9.36.0"
+    eslint-plugin-react: "npm:^7.37.5"
+    eslint-plugin-react-hooks: "npm:^5.2.0"
     husky: "npm:^8.0.0"
     lint-staged: "npm:^16.2.0"
+    postcss: "npm:^8.5.6"
+    postcss-scss: "npm:^4.0.9"
+    prettier: "npm:^3.6.2"
+    stylelint: "npm:^16.24.0"
+    stylelint-config-standard-scss: "npm:^16.0.0"
+    stylelint-scss: "npm:^6.12.1"
+    typescript: "npm:^5.9.2"
   languageName: unknown
   linkType: soft
 

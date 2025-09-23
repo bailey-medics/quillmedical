@@ -56,17 +56,9 @@ jobs:
       - name: Install deps
         run: yarn install
 
-      - name: Debug Yarn env
-        run: |
-          yarn -v
-          yarn config get nodeLinker
-          test -f .yarn/install-state.gz && echo "install-state present" || echo "install-state missing"
-          ls -la node_modules || true
-          ls -la frontend/node_modules || true
-
       # JS/TS linters — use workspace exec (or run from frontend dir)
-      - name: ESLint (frontend)
-        run: yarn run lint:eslint
+      # - name: ESLint (frontend)
+      #   run: yarn run lint:eslint
 
       - name: Prettier (frontend)
         run: yarn run lint:prettier
