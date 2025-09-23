@@ -8,31 +8,21 @@ export function useBreakpoint(): BreakKey {
   const theme = useMantineTheme();
 
   // Use min-width so we can pick the largest matching key
-  const upXs = useMediaQuery(
-    `(min-width: ${theme.breakpoints.xs})`,
-    undefined,
-    { getInitialValueInEffect: true }
-  );
-  const upSm = useMediaQuery(
-    `(min-width: ${theme.breakpoints.sm})`,
-    undefined,
-    { getInitialValueInEffect: true }
-  );
-  const upMd = useMediaQuery(
-    `(min-width: ${theme.breakpoints.md})`,
-    undefined,
-    { getInitialValueInEffect: true }
-  );
-  const upLg = useMediaQuery(
-    `(min-width: ${theme.breakpoints.lg})`,
-    undefined,
-    { getInitialValueInEffect: true }
-  );
-  const upXl = useMediaQuery(
-    `(min-width: ${theme.breakpoints.xl})`,
-    undefined,
-    { getInitialValueInEffect: true }
-  );
+  const upXs = useMediaQuery(`(min-width: ${theme.breakpoints.xs})`, undefined, {
+    getInitialValueInEffect: true,
+  });
+  const upSm = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`, undefined, {
+    getInitialValueInEffect: true,
+  });
+  const upMd = useMediaQuery(`(min-width: ${theme.breakpoints.md})`, undefined, {
+    getInitialValueInEffect: true,
+  });
+  const upLg = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`, undefined, {
+    getInitialValueInEffect: true,
+  });
+  const upXl = useMediaQuery(`(min-width: ${theme.breakpoints.xl})`, undefined, {
+    getInitialValueInEffect: true,
+  });
 
   if (upXl) return "xl";
   if (upLg) return "lg";

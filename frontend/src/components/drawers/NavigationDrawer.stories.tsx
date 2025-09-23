@@ -84,16 +84,10 @@ export const Interactive: Story = {
     return (
       <>
         <Group mb="sm">
-          <Button onClick={() => setOpen((v) => !v)}>
-            {open ? "Close" : "Open"} drawer
-          </Button>
+          <Button onClick={() => setOpen((v) => !v)}>{open ? "Close" : "Open"} drawer</Button>
         </Group>
 
-        <NavigationDrawer
-          {...args}
-          opened={open}
-          onClose={() => setOpen(false)}
-        >
+        <NavigationDrawer {...args} opened={open} onClose={() => setOpen(false)}>
           <DrawerContent />
         </NavigationDrawer>
       </>

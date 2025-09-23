@@ -1,13 +1,5 @@
 import QuillLogo from "@/components/images/QuillLogo";
-import {
-  Anchor,
-  Button,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { Anchor, Button, Paper, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -64,8 +56,7 @@ export default function LoginPage() {
           const obj = e as Record<string, unknown>;
           // Common shapes: { message: string }, { detail: string },
           // { detail: { message: string, error_code: string } }
-          if (typeof obj["message"] === "string")
-            return obj["message"] as string;
+          if (typeof obj["message"] === "string") return obj["message"] as string;
           if (typeof obj["detail"] === "string") return obj["detail"] as string;
           const detail = obj["detail"];
           if (detail && typeof detail === "object") {
@@ -98,9 +89,7 @@ export default function LoginPage() {
       if (code === "invalid_totp") {
         if (requireTotp) {
           setRequireTotp(true);
-          setError(
-            "Wrong code entered, please try entering your 6-digit authenticator code again"
-          );
+          setError("Wrong code entered, please try entering your 6-digit authenticator code again");
         } else {
           setRequireTotp(true);
           setError("Enter the 6-digit authenticator code");
@@ -116,7 +105,7 @@ export default function LoginPage() {
           if (requireTotp) {
             setRequireTotp(true);
             setError(
-              "Wrong code entered, please try entering your 6-digit authenticator code again"
+              "Wrong code entered, please try entering your 6-digit authenticator code again",
             );
           } else {
             setRequireTotp(true);

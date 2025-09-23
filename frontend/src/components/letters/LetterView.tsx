@@ -17,12 +17,7 @@ type Props = {
   actions?: ReactNode;
 };
 
-export default function LetterView({
-  letter,
-  isLoading = false,
-  onBack,
-  actions,
-}: Props) {
+export default function LetterView({ letter, isLoading = false, onBack, actions }: Props) {
   if (isLoading) {
     return (
       <div style={{ padding: 16 }}>
@@ -43,9 +38,7 @@ export default function LetterView({
   if (!letter) return null;
 
   return (
-    <div
-      style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div
         style={{
           display: "flex",
@@ -57,16 +50,13 @@ export default function LetterView({
           <ActionIcon variant="light" onClick={onBack} aria-label="Back">
             <IconArrowLeft size={16} />
           </ActionIcon>
-          <Avatar radius="xl">
-            {letter.from ? letter.from.charAt(0) : "L"}
-          </Avatar>
+          <Avatar radius="xl">{letter.from ? letter.from.charAt(0) : "L"}</Avatar>
           <div>
             <Title order={4} style={{ margin: 0 }}>
               {letter.subject}
             </Title>
             <Text size="xs" color="dimmed">
-              {letter.from}{" "}
-              {letter.date ? `• ${new Date(letter.date).toLocaleString()}` : ""}
+              {letter.from} {letter.date ? `• ${new Date(letter.date).toLocaleString()}` : ""}
             </Text>
           </div>
         </div>

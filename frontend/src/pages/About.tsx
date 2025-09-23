@@ -7,8 +7,8 @@ export default function About() {
         About Quill
       </Title>
       <Text>
-        FastAPI + PostgreSQL on the backend. Vite + React on the frontend.
-        Styled with Mantine for clean, accessible components.
+        FastAPI + PostgreSQL on the backend. Vite + React on the frontend. Styled with Mantine for
+        clean, accessible components.
       </Text>
     </Container>
   );

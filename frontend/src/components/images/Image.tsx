@@ -25,8 +25,7 @@ export default function Image({
   const resolvedSrc = src || fallback || "";
 
   // Decorative image helper: if alt === "" treat as decorative (aria-hidden)
-  const imgProps =
-    alt === "" ? { "aria-hidden": true, role: "img", alt: "" } : { alt };
+  const imgProps = alt === "" ? { "aria-hidden": true, role: "img", alt: "" } : { alt };
 
   return (
     <img

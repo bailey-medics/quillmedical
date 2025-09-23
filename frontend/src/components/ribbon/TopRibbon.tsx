@@ -29,9 +29,7 @@ function patientDetailsLong(patient: Patient) {
         {patient.name}
       </Text>
       {patient.dob && <Text size="sm">DOB: {patient.dob}</Text>}
-      {typeof patient.age === "number" && (
-        <Text size="sm">Age: {patient.age}</Text>
-      )}
+      {typeof patient.age === "number" && <Text size="sm">Age: {patient.age}</Text>}
       {patient.sex && <Text size="sm">Sex: {patient.sex}</Text>}
       {patient.nhsNumber && <Text size="sm">NHS: {patient.nhsNumber}</Text>}
     </>
@@ -95,11 +93,7 @@ export default function TopRibbon({
           {isLoading ? (
             <RibbonSkeleton />
           ) : patient ? (
-            <>
-              {isNarrow
-                ? patientDetailsShort(patient)
-                : patientDetailsLong(patient)}
-            </>
+            <>{isNarrow ? patientDetailsShort(patient) : patientDetailsLong(patient)}</>
           ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}

@@ -1,13 +1,4 @@
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Text,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { Alert, Badge, Box, Button, Group, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 import Messaging, { type Message } from "./Messaging";
 
@@ -33,9 +24,7 @@ export default function MessagingTriagePayment({
     },
   ]);
 
-  const [role, setRole] = useState<"patient" | "admin" | "clinician">(
-    "patient"
-  );
+  const [role, setRole] = useState<"patient" | "admin" | "clinician">("patient");
   const [input, setInput] = useState("");
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
 
@@ -112,16 +101,14 @@ export default function MessagingTriagePayment({
           senderId: "clinician-1",
           senderName: "Dr. Clinician",
           text: `Offer created: ${minutes} minutes — $${(price / 100).toFixed(
-            2
+            2,
           )} (patient must accept).`,
           timestamp: new Date().toISOString(),
         });
         pushMessage({
           senderId: "system",
           senderName: "System",
-          text: `Offer pending: ${minutes} minutes ($${(price / 100).toFixed(
-            2
-          )})`,
+          text: `Offer pending: ${minutes} minutes ($${(price / 100).toFixed(2)})`,
           timestamp: new Date().toISOString(),
         });
       } else {
@@ -229,8 +216,8 @@ export default function MessagingTriagePayment({
               role === "clinician"
                 ? "Type /12 to offer 12 minutes, or message normally"
                 : role === "admin"
-                ? "Type a reply or @Gareth.Corben to tag"
-                : "Ask your question"
+                  ? "Type a reply or @Gareth.Corben to tag"
+                  : "Ask your question"
             }
             value={input}
             onChange={(e) => setInput(e.currentTarget.value)}
@@ -245,14 +232,8 @@ export default function MessagingTriagePayment({
               Offer: {offer.minutes} minutes —{" "}
               <strong>${(offer.priceCents / 100).toFixed(2)}</strong>
               <Group mt={8}>
-                <Button onClick={patientAcceptOffer}>
-                  Accept & Pay (simulate)
-                </Button>
-                <Button
-                  variant="outline"
-                  color="red"
-                  onClick={patientDeclineOffer}
-                >
+                <Button onClick={patientAcceptOffer}>Accept & Pay (simulate)</Button>
+                <Button variant="outline" color="red" onClick={patientDeclineOffer}>
                   Decline
                 </Button>
               </Group>

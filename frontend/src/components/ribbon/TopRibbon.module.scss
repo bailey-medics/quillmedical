@@ -4,7 +4,6 @@
 .cq {
   /* This is the magic: children can query this element's inline size */
   container-type: inline-size;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -24,9 +23,26 @@
 }
 
 /* Sections */
-.left { display: block; margin-top: 5px; margin-bottom: -5px;}
-.middle { display: flex; align-items: center; gap: var(--mantine-spacing-lg); flex: 1; justify-content: center; flex-wrap: wrap; }
-.right { display: block; margin-top: 5px; margin-bottom: -5px;}
+.left {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: -5px;
+}
+
+.middle {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.right {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: -5px;
+}
 
 // /* Container query: react to the container's width, not the window */
 // @container (max-width: #{$cq-narrow}) {

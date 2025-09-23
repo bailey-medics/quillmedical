@@ -52,12 +52,7 @@ export default function Messaging({
                 }}
               >
                 {!mine && (
-                  <Avatar
-                    src={m.avatar}
-                    size={32}
-                    radius="xl"
-                    style={{ marginRight: 8 }}
-                  />
+                  <Avatar src={m.avatar} size={32} radius="xl" style={{ marginRight: 8 }} />
                 )}
                 <div
                   style={{
@@ -89,14 +84,7 @@ export default function Messaging({
                     </Text>
                   )}
                 </div>
-                {mine && (
-                  <Avatar
-                    src={m.avatar}
-                    size={32}
-                    radius="xl"
-                    style={{ marginLeft: 8 }}
-                  />
-                )}
+                {mine && <Avatar src={m.avatar} size={32} radius="xl" style={{ marginLeft: 8 }} />}
               </div>
             );
           })}

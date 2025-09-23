@@ -14,5 +14,5 @@ createRoot(document.getElementById("root")!).render(
         Go to home
       </Button>
     </Container>
-  </MantineProvider>
+  </MantineProvider>,
 );

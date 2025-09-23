@@ -7,11 +7,7 @@ type Props = {
   onSelect?: (p: Patient) => void;
 };
 
-export default function PatientsList({
-  patients,
-  isLoading = false,
-  onSelect,
-}: Props) {
+export default function PatientsList({ patients, isLoading = false, onSelect }: Props) {
   if (isLoading) {
     return (
       <div>
@@ -51,9 +47,7 @@ export default function PatientsList({
               </Text>
             </div>
             <div>
-              {p.onQuill ? (
-                <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text>
-              ) : null}
+              {p.onQuill ? <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text> : null}
             </div>
           </Group>
         </UnstyledButton>

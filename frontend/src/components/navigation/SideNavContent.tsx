@@ -16,10 +16,7 @@ function LeftIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function SideNavContent({
-  onNavigate,
-  showIcons = false,
-}: Props) {
+export default function SideNavContent({ onNavigate, showIcons = false }: Props) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 

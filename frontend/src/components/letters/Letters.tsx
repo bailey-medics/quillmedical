@@ -16,12 +16,7 @@ type Props = {
   children?: ReactNode;
 };
 
-export default function Letters({
-  letters = [],
-  isLoading = false,
-  onOpen,
-  children,
-}: Props) {
+export default function Letters({ letters = [], isLoading = false, onOpen, children }: Props) {
   if (isLoading) {
     return (
       <div>
@@ -55,9 +50,7 @@ export default function Letters({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {letters.length === 0 && (
-          <Text color="dimmed">No letters available</Text>
-        )}
+        {letters.length === 0 && <Text color="dimmed">No letters available</Text>}
 
         {letters.map((l) => (
           <div

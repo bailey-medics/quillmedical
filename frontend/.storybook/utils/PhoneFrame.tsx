@@ -153,9 +153,7 @@ export function PhoneFrame({
                 )}
                 {/* Cellular bars (full) */}
                 {showSignal && (
-                  <div
-                    style={{ display: "flex", alignItems: "flex-end", gap: 2 }}
-                  >
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
                     {[8, 11, 14, 17].map((h, i) => (
                       <div
                         key={i}
@@ -302,9 +300,7 @@ export function PhoneFrame({
         >
           {children}
           {/* demo filler */}
-          <div
-            style={{ height: 1200, background: "linear-gradient(#fff,#eee)" }}
-          />
+          <div style={{ height: 1200, background: "linear-gradient(#fff,#eee)" }} />
         </div>
       </div>
     </div>

@@ -15,5 +15,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <a href="/">← Back home</a>
       </p>
     </main>
-  </MantineProvider>
+  </MantineProvider>,
 );

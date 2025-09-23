@@ -9,21 +9,8 @@ type Props = {
   style?: React.CSSProperties;
 };
 
-export default function QuillLogo({
-  alt = "Quill",
-  height = 128,
-  className,
-  style,
-}: Props) {
+export default function QuillLogo({ alt = "Quill", height = 128, className, style }: Props) {
   const src = detectStorybook("/quill-logo.png");
 
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      height={height}
-      className={className}
-      style={style}
-    />
-  );
+  return <Image src={src} alt={alt} height={height} className={className} style={style} />;
 }

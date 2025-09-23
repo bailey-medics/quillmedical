@@ -60,10 +60,7 @@ export function urlUpdate(url: string): string {
 
     try {
       const loc = window.location;
-      if (
-        loc &&
-        (loc.port === "6006" || (loc.hostname === "localhost" && loc.port))
-      ) {
+      if (loc && (loc.port === "6006" || (loc.hostname === "localhost" && loc.port))) {
         if (loc.port === "6006") return url;
       }
     } catch {

@@ -1,12 +1,5 @@
 import { api } from "@/lib/api";
-import {
-  Button,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { Button, Paper, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 

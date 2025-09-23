@@ -13,9 +13,7 @@ export default meta;
 type Story = StoryObj<typeof Messaging>;
 
 function Wrapper() {
-  const [messages, setMessages] = useState<Message[]>(
-    demoMessages as Message[]
-  );
+  const [messages, setMessages] = useState<Message[]>(demoMessages as Message[]);
 
   return (
     <div style={{ height: 400 }}>

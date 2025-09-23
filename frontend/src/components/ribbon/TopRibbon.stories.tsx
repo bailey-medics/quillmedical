@@ -1,17 +1,17 @@
 // TopRibbon.stories.tsx
-import { demoPatient } from '@/demo-data/patients/demoPatients';
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import TopRibbon from './TopRibbon';
+import { demoPatient } from "@/demo-data/patients/demoPatients";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import TopRibbon from "./TopRibbon";
 
 const meta: Meta<typeof TopRibbon> = {
-  title: 'TopRibbon',
+  title: "TopRibbon",
   component: TopRibbon,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     controls: { expanded: true },
   },
   argTypes: {
-    onBurgerClick: { action: 'burger-clicked' },
+    onBurgerClick: { action: "burger-clicked" },
   },
 };
 export default meta;

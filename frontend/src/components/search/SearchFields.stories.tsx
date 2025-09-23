@@ -21,9 +21,7 @@ export const Expanded: Story = {
   render: () => <SearchField />,
   play: async ({ canvasElement }) => {
     // simulate a click so it shows expanded state
-    const button = canvasElement.querySelector(
-      'button[aria-label="Open search"]'
-    );
+    const button = canvasElement.querySelector('button[aria-label="Open search"]');
     if (button) (button as HTMLButtonElement).click();
   },
 };

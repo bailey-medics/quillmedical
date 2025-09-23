@@ -7,9 +7,7 @@ import MainLayout from "./MainLayout";
 // demoPatient imported from centralized demo-data
 
 const Content = () => (
-  <div style={{ flex: 1, padding: 16, color: "#667085" }}>
-    Desktop content area.
-  </div>
+  <div style={{ flex: 1, padding: 16, color: "#667085" }}>Desktop content area.</div>
 );
 
 // ...existing code...

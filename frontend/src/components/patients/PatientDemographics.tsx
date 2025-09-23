@@ -30,11 +30,7 @@ export default function PatientDemographics({
 
   return (
     <Group align="center">
-      <Avatar
-        radius="xl"
-        size={isCompact ? 40 : 56}
-        src={avatarSrc ?? undefined}
-      />
+      <Avatar radius="xl" size={isCompact ? 40 : 56} src={avatarSrc ?? undefined} />
       <div style={{ display: "flex", flexDirection: "column" }}>
         <Text fw={700} style={{ fontSize: isCompact ? 14 : 16 }}>
           {patient.name}
@@ -52,9 +48,7 @@ export default function PatientDemographics({
         {(patient.address || patient.telephone || patient.mobile) && (
           <div style={{ marginTop: 6 }}>
             {patient.address && <Text size="xs">{patient.address}</Text>}
-            {patient.telephone && (
-              <Text size="xs">Tel: {patient.telephone}</Text>
-            )}
+            {patient.telephone && <Text size="xs">Tel: {patient.telephone}</Text>}
             {patient.mobile && <Text size="xs">Mobile: {patient.mobile}</Text>}
           </div>
         )}
@@ -63,19 +57,14 @@ export default function PatientDemographics({
             {patient.onQuill ? "On Quill app" : "Not on Quill"}
           </Text>
         )}
-        {patient.nextOfKin &&
-          (patient.nextOfKin.name || patient.nextOfKin.phone) && (
-            <div style={{ marginTop: 6 }}>
-              {patient.nextOfKin.name && (
-                <Text size="xs">Next of kin: {patient.nextOfKin.name}</Text>
-              )}
-              {patient.nextOfKin.phone && (
-                <Text size="xs">
-                  Next of kin tel: {patient.nextOfKin.phone}
-                </Text>
-              )}
-            </div>
-          )}
+        {patient.nextOfKin && (patient.nextOfKin.name || patient.nextOfKin.phone) && (
+          <div style={{ marginTop: 6 }}>
+            {patient.nextOfKin.name && <Text size="xs">Next of kin: {patient.nextOfKin.name}</Text>}
+            {patient.nextOfKin.phone && (
+              <Text size="xs">Next of kin tel: {patient.nextOfKin.phone}</Text>
+            )}
+          </div>
+        )}
         {patient.nhsNumber && (
           <Text
             style={{

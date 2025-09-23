@@ -1,6 +1,6 @@
-import Image from '@components/images/Image';
-import React from 'react';
-import quillName from '/quill-name.png';
+import Image from "@components/images/Image";
+import React from "react";
+import quillName from "/quill-name.png";
 
 type Props = {
   alt?: string;
@@ -10,7 +10,7 @@ type Props = {
 };
 
 export default function QuillName({
-  alt = 'Quill Medical',
+  alt = "Quill Medical",
   height = 24,
   className,
   style = { marginRight: 8 },

@@ -69,7 +69,7 @@ const router = createBrowserRouter(
     // Fallback -> show 404 page instead of redirecting to home
     { path: "*", element: <NotFound /> },
   ],
-  { basename }
+  { basename },
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -77,5 +77,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>
-  </MantineProvider>
+  </MantineProvider>,
 );

@@ -23,19 +23,11 @@ export default function Settings() {
               Use an authenticator app to add a second factor to your account.
             </Text>
           </div>
-          <Switch
-            checked={useTotp}
-            onChange={(e) => setUseTotp(e.currentTarget.checked)}
-          />
+          <Switch checked={useTotp} onChange={(e) => setUseTotp(e.currentTarget.checked)} />
         </div>
         <div style={{ height: 12 }} />
         <Group>
-          <Button
-            disabled={!useTotp}
-            variant="outline"
-            component="a"
-            href="/settings/totp"
-          >
+          <Button disabled={!useTotp} variant="outline" component="a" href="/settings/totp">
             Configure TOTP
           </Button>
           <Button

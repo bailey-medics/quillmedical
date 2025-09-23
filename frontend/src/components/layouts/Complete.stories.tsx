@@ -32,9 +32,7 @@ export const WithMessaging: Story = {
   args: { patient: demoPatientFull, isLoading: false },
   render: (args) => {
     function MessagingContent() {
-      const [messages, setMessages] = useState<Message[]>(
-        demoMessages as Message[]
-      );
+      const [messages, setMessages] = useState<Message[]>(demoMessages as Message[]);
 
       return (
         <div style={{ height: 480 }}>
@@ -96,8 +94,8 @@ const LongContent = () => (
     <div style={{ maxWidth: 880, margin: "0 auto" }}>
       <h1 style={{ margin: "0 0 0.5rem" }}>An Extremely Long Read</h1>
       <p style={{ marginTop: 0, color: "#6b7280" }}>
-        This page is intentionally verbose to test scrolling, sticky headers,
-        and general layout behaviour inside <code>MainLayout</code>.
+        This page is intentionally verbose to test scrolling, sticky headers, and general layout
+        behaviour inside <code>MainLayout</code>.
       </p>
 
       {[...Array(12)].map((_, i) => (
@@ -106,24 +104,19 @@ const LongContent = () => (
             Section {i + 1}: Responsive Layout Considerations
           </h2>
           <p>
-            In wider viewports we expect the search bar to remain visible
-            alongside patient details. When space becomes constrained, the
-            layout should gracefully collapse. Container queries let components
-            adapt to the width they actually have, rather than guessing via the
+            In wider viewports we expect the search bar to remain visible alongside patient details.
+            When space becomes constrained, the layout should gracefully collapse. Container queries
+            let components adapt to the width they actually have, rather than guessing via the
             viewport.
           </p>
           <p>
-            Real-world interfaces need to cope with split views, drawers, and
-            odd aspect ratios. That’s why component-level responsiveness is such
-            a reliable default. It avoids brittle assumptions and keeps
-            components portable.
+            Real-world interfaces need to cope with split views, drawers, and odd aspect ratios.
+            That’s why component-level responsiveness is such a reliable default. It avoids brittle
+            assumptions and keeps components portable.
           </p>
           <ul>
             <li>Use container queries for visual changes.</li>
-            <li>
-              Use a ResizeObserver-based hook for JS behaviour tied to component
-              width.
-            </li>
+            <li>Use a ResizeObserver-based hook for JS behaviour tied to component width.</li>
             <li>Reserve global breakpoint context for app-shell decisions.</li>
           </ul>
           <p>Here is a tiny code sample to illustrate the point:</p>
@@ -142,19 +135,18 @@ const LongContent = () => (
 }`}
           </pre>
           <p>
-            As the section continues, imagine a stream of clinical notes,
-            letters, tasks, and audit trails—enough content to ensure the page
-            scrolls and your ribbon remains pinned to the top if{" "}
-            <code>sticky</code> is enabled.
+            As the section continues, imagine a stream of clinical notes, letters, tasks, and audit
+            trails—enough content to ensure the page scrolls and your ribbon remains pinned to the
+            top if <code>sticky</code> is enabled.
           </p>
         </section>
       ))}
 
       <h2 style={{ marginTop: "2rem" }}>Summary</h2>
       <p>
-        If you can scroll comfortably and the header stays put, your sticky
-        handling works. If the search hides on narrow widths and reappears when
-        there’s room, your container queries are doing their job.
+        If you can scroll comfortably and the header stays put, your sticky handling works. If the
+        search hides on narrow widths and reappears when there’s room, your container queries are
+        doing their job.
       </p>
     </div>
   </div>

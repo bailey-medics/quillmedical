@@ -12,11 +12,7 @@ type Props = {
   children?: ReactNode;
 };
 
-export default function MainLayout({
-  patient,
-  isLoading = false,
-  children,
-}: Props) {
+export default function MainLayout({ patient, isLoading = false, children }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -43,12 +39,7 @@ export default function MainLayout({
           minHeight: `calc(100vh - ${HEADER_H}px)`,
         }}
       >
-        <NavigationDrawer
-          opened={opened}
-          onClose={close}
-          topOffset={HEADER_H}
-          width={DRAWER_W}
-        >
+        <NavigationDrawer opened={opened} onClose={close} topOffset={HEADER_H} width={DRAWER_W}>
           <div style={{ width: DRAWER_W }}>
             <SideNav showSearch={isSm} onNavigate={close} />
           </div>

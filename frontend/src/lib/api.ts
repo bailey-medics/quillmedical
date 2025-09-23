@@ -49,17 +49,13 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
         if (detail && typeof detail === "object") {
           // detail is an object with nested message / error_code
           const d = detail as Record<string, unknown>;
-          if (typeof d["message"] === "string")
-            message = d["message"] as string;
-          else if (typeof d["detail"] === "string")
-            message = d["detail"] as string;
+          if (typeof d["message"] === "string") message = d["message"] as string;
+          else if (typeof d["detail"] === "string") message = d["detail"] as string;
           errorCode = (d["error_code"] as string) ?? undefined;
         } else {
           // detail is likely a string
           message = (data?.detail ?? data?.message ?? message) as string;
-          errorCode = (data as Record<string, unknown>)["error_code"] as
-            | string
-            | undefined;
+          errorCode = (data as Record<string, unknown>)["error_code"] as string | undefined;
         }
       }
     } catch {
@@ -89,21 +85,12 @@ export const api = {
   request,
   get: <T>(path: string, opts?: Omit<Options, "method" | "body">) =>
     request<T>(path, { ...opts, method: "GET" }),
-  post: <T>(
-    path: string,
-    body?: unknown,
-    opts?: Omit<Options, "method" | "body">
-  ) => request<T>(path, { ...opts, method: "POST", body }),
-  put: <T>(
-    path: string,
-    body?: unknown,
-    opts?: Omit<Options, "method" | "body">
-  ) => request<T>(path, { ...opts, method: "PUT", body }),
-  patch: <T>(
-    path: string,
-    body?: unknown,
-    opts?: Omit<Options, "method" | "body">
-  ) => request<T>(path, { ...opts, method: "PATCH", body }),
+  post: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
+    request<T>(path, { ...opts, method: "POST", body }),
+  put: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
+    request<T>(path, { ...opts, method: "PUT", body }),
+  patch: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
+    request<T>(path, { ...opts, method: "PATCH", body }),
   del: <T>(path: string, opts?: Omit<Options, "method" | "body">) =>
     request<T>(path, { ...opts, method: "DELETE" }),
 };
