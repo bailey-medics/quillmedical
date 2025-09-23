@@ -57,14 +57,14 @@ jobs:
         run: yarn install
 
       # JS/TS linters — use workspace exec (or run from frontend dir)
-      # - name: ESLint (frontend)
-      #   run: yarn run lint:eslint
+      - name: ESLint (frontend)
+        run: yarn run lint:eslint
 
-      - name: Prettier (frontend)
-        run: yarn run lint:prettier
+      # - name: Prettier (frontend)
+      #   run: yarn run lint:prettier
 
-      - name: Stylelint (frontend)
-        run: yarn run lint:style
+      # - name: Stylelint (frontend)
+      #   run: yarn run lint:style
 
       # Optional: TypeScript type-check
       # - name: TypeScript (noEmit)
