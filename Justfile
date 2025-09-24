@@ -80,6 +80,15 @@ migrate message:
     alembic revision -m "{{message}}" --autogenerate
     alembic upgrade head
 
+
+alias pc := pre-commit
+# Run pre-commit checks
+pre-commit:
+    #!/usr/bin/env bash
+    {{initialise}} "pre-commit"
+    pre-commit run --all-files
+
+
 alias pi := poetry-install
 # Install the poetry dependencies
 poetry-install:

@@ -8,7 +8,8 @@
     "build",
     "poetry.lock",
     "yarn.lock",
-    "cookies.txt"
+    "cookies.txt",
+    ".pnp.*"
   ],
   "words": [
     "Abstra",

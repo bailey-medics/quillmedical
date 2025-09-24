@@ -3843,11 +3843,11 @@ __metadata:
   linkType: hard
 
 "eslint-plugin-react-refresh@npm:^0.4.20":
-  version: 0.4.20
-  resolution: "eslint-plugin-react-refresh@npm:0.4.20"
+  version: 0.4.21
+  resolution: "eslint-plugin-react-refresh@npm:0.4.21"
   peerDependencies:
     eslint: ">=8.40"
-  checksum: 10c0/2ccf4ba28f1dcbcb9e773e46eae1e61e568bba69281a700eb26fd762152e4e90a78c991f9c8173342a7cd2a82f3f52fedb40a1e81360cef9c40ea5b814fa3613
+  checksum: 10c0/327f09c10ff8f73610170697ac4e82768fb68af3a469db627109fd0f5c9bfd985a5510bada5a0489d09c5149d7bbc2f5cb4f30693d6ee1140d8638344e501aca
   languageName: node
   linkType: hard
 
@@ -4063,9 +4063,9 @@ __metadata:
   linkType: hard
 
 "fast-equals@npm:^5.2.2":
-  version: 5.2.2
-  resolution: "fast-equals@npm:5.2.2"
-  checksum: 10c0/2bfeac6317a8959a00e2134749323557e5df6dea3af24e4457297733eace8ce4313fcbca2cf4532f3a6792607461e80442cd8d3af148d5c2e4e98ad996d6e5b5
+  version: 5.3.0
+  resolution: "fast-equals@npm:5.3.0"
+  checksum: 10c0/11876b841195c9206cd7804b7399a540f99c5e91c4e7238a0832a231643c79fab35ac1901ae1851063a698b660ca103cc56cd0b58a364a53c832ad193e20a980
   languageName: node
   linkType: hard
 
