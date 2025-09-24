@@ -12,12 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "spell": "cspell '../*.{md,mdx,markdown}' '../**/*.{md,mdx,markdown}'",
-    "lint:eslint": "eslint . --max-warnings=0 --ignore-pattern '.yarn/**' --ignore-pattern 'node_modules/**' --ignore-pattern 'dist/**'",
-    "lint:prettier": "prettier --check \"**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
-    "lint:style": "stylelint \"**/*.{scss,css}\" --allow-empty-input",
-    "typecheck": "tsc --noEmit"
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",

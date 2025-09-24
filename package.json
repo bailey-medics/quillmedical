@@ -7,11 +7,11 @@
   "scripts": {
     "prepare": "husky",
     "lint-staged": "lint-staged",
-    "lint:eslint": "eslint -c frontend/eslint.config.js \"frontend/**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
-    "lint:prettier": "prettier --check \"frontend/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
-    "lint:prettier:fix": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
-    "lint:style": "stylelint --config frontend/.stylelintrc.* \"frontend/**/*.{scss,css}\" --allow-empty-input",
-    "lint:style:fix": "stylelint --config frontend/.stylelintrc.* \"frontend/**/*.{scss,css}\" --fix --allow-empty-input",
+    "eslint": "eslint -c frontend/eslint.config.js \"frontend/**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
+    "prettier": "prettier --check \"frontend/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
+    "prettier:fix": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
+    "stylelint": "stylelint --config frontend/.stylelintrc.* \"frontend/**/*.{scss,css}\" --allow-empty-input",
+    "style:fix": "stylelint --config frontend/.stylelintrc.* \"frontend/**/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit"
   },
   "devDependencies": {

@@ -57,13 +57,13 @@ jobs:
         run: yarn install
 
       - name: ESLint
-        run: yarn run lint:eslint
+        run: yarn eslint
 
       - name: Prettier
-        run: yarn run lint:prettier
+        run: yarn prettier
 
       - name: Stylelint
-        run: yarn run lint:style
+        run: yarn style
 
       - name: TypeScript (noEmit)
-        run: yarn workspace frontend exec tsc --noEmit
+        run: yarn typecheck
