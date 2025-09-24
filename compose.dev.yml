@@ -9,6 +9,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://quill:${POSTGRES_PASSWORD}@database:5432/quill
+      BACKEND_ENV: development
     expose:
       - "8000"
     depends_on:

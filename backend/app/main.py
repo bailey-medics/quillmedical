@@ -2,7 +2,14 @@ import json
 from datetime import datetime
 from typing import cast
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+)
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +19,7 @@ from app.db import get_session
 from app.models import User
 from app.patient_records import (
     PATIENT_DATA_ROOT,
+    Demographics,
     PatientCreate,
     ensure_repo_exists,
     patient_repo_name,
@@ -33,7 +41,24 @@ from app.security import (
     verify_totp_code,
 )
 
-app = FastAPI(title="Quill API")
+# --- Docs toggle (dev-only) ---
+DEV_MODE = (
+    str(getattr(settings, "BACKEND_ENV", "development"))
+    .lower()
+    .startswith("dev")
+)
+
+
+router = APIRouter(prefix=settings.API_PREFIX)
+
+app = FastAPI(
+    title="Quill API",
+    docs_url=f"{settings.API_PREFIX}/docs" if DEV_MODE else None,
+    redoc_url=f"{settings.API_PREFIX}/redoc" if DEV_MODE else None,
+    openapi_url=f"{settings.API_PREFIX}/openapi.json" if DEV_MODE else None,
+    swagger_ui_parameters={"persistAuthorization": True},
+)
+
 
 # Module-level Depends singletons
 DEP_GET_SESSION = Depends(get_session)
@@ -52,7 +77,10 @@ def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
     response.set_cookie("access_token", access, path="/", **COOKIE_KW)
     # scope refresh to its endpoint path (optional hardening)
     response.set_cookie(
-        "refresh_token", refresh, path="/api/auth/refresh", **COOKIE_KW
+        "refresh_token",
+        refresh,
+        path=f"{settings.API_PREFIX}/auth/refresh",
+        **COOKIE_KW,
     )
     # CSRF cookie is readable by JS so SPA can echo back in header
     response.set_cookie(
@@ -72,7 +100,7 @@ def clear_auth_cookies(response: Response):
     )
     response.delete_cookie(
         "refresh_token",
-        path="/api/auth/refresh",
+        path=f"{settings.API_PREFIX}/auth/refresh",
         domain=settings.COOKIE_DOMAIN,
     )
     response.delete_cookie(
@@ -147,7 +175,7 @@ class RegisterIn(BaseModel):
     password: str
 
 
-@app.post("/api/auth/login")
+@router.post("/auth/login")
 def login(
     data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
 ) -> dict:
@@ -193,7 +221,7 @@ def login(
     }
 
 
-@app.post("/api/auth/register")
+@router.post("/auth/register")
 def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
     """Create a new user account. This is intentionally simple for the
     development environment: it validates uniqueness of username/email and
@@ -229,7 +257,7 @@ class TotpSetupOut(BaseModel):
     provision_uri: str
 
 
-@app.post("/api/auth/totp/setup", response_model=TotpSetupOut)
+@router.post("/auth/totp/setup", response_model=TotpSetupOut)
 def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
     """Return a provisioning URI for the user's current (or new) secret.
     The frontend should render this as a QR code. This endpoint is protected.
@@ -255,7 +283,7 @@ class TotpVerifyIn(BaseModel):
     code: str
 
 
-@app.post("/api/auth/totp/verify")
+@router.post("/auth/totp/verify")
 def totp_verify(
     payload: TotpVerifyIn,
     u: User = DEP_CURRENT_USER,
@@ -285,7 +313,7 @@ def totp_verify(
     return {"detail": "enabled"}
 
 
-@app.post("/api/auth/totp/disable")
+@router.post("/auth/totp/disable")
 def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
     """Disable TOTP for current user (requires CSRF)."""
     u.is_totp_enabled = False  # type: ignore[assignment]
@@ -295,13 +323,13 @@ def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
     return {"detail": "disabled"}
 
 
-@app.post("/api/auth/logout")
+@router.post("/auth/logout")
 def logout(response: Response, _u: User = DEP_CURRENT_USER):
     clear_auth_cookies(response)
     return {"detail": "ok"}
 
 
-@app.get("/api/auth/me")
+@router.get("/auth/me")
 def me(u: User = DEP_CURRENT_USER):
     return {
         "id": u.id,
@@ -311,7 +339,7 @@ def me(u: User = DEP_CURRENT_USER):
     }
 
 
-@app.post("/api/auth/refresh")
+@router.post("/auth/refresh")
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
 ):
@@ -340,8 +368,8 @@ def refresh(
 
 
 # WRITE: protected (role + CSRF)
-@app.post(
-    "/api/patients",
+@router.post(
+    "/patients",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def create_patient_repo(payload: PatientCreate):
@@ -368,7 +396,7 @@ def create_patient_repo(payload: PatientCreate):
 
 
 # READ: protected - require authenticated user
-@app.get("/api/patients")
+@router.get("/patients")
 def list_patients(u: User = DEP_CURRENT_USER):
     """Return all patient repos and any demographics if present."""
     try:
@@ -391,19 +419,9 @@ def list_patients(u: User = DEP_CURRENT_USER):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-class Demographics(BaseModel):
-    given_name: str | None = None
-    family_name: str | None = None
-    date_of_birth: str | None = None  # ISO date
-    sex: str | None = None
-    address: dict | None = None
-    contact: dict | None = None
-    meta: dict | None = None
-
-
 # WRITE: protected (role + CSRF)
-@app.put(
-    "/api/patients/{patient_id}/demographics",
+@router.put(
+    "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def upsert_demographics(patient_id: str, demographics: Demographics):
@@ -422,7 +440,7 @@ def upsert_demographics(patient_id: str, demographics: Demographics):
 
 
 # READ: protected - require authenticated user
-@app.get("/api/patients/{patient_id}/demographics")
+@router.get("/patients/{patient_id}/demographics")
 def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
     repo = patient_repo_name(patient_id)
     try:
@@ -449,8 +467,8 @@ class LetterIn(BaseModel):
 
 
 # WRITE: protected (role + CSRF)
-@app.post(
-    "/api/patients/{patient_id}/letters",
+@router.post(
+    "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def write_letter(patient_id: str, letter: LetterIn):
@@ -478,7 +496,7 @@ def write_letter(patient_id: str, letter: LetterIn):
 
 
 # READ: protected - require authenticated user
-@app.get("/api/patients/{patient_id}/letters/{name}")
+@router.get("/patients/{patient_id}/letters/{name}")
 def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
     repo = patient_repo_name(patient_id)
     path = (
@@ -493,8 +511,6 @@ def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-        raise HTTPException(status_code=500, detail=str(e)) from e
-        raise HTTPException(status_code=500, detail=str(e)) from e
-        raise HTTPException(status_code=500, detail=str(e)) from e
-        raise HTTPException(status_code=500, detail=str(e)) from e
-        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+app.include_router(router)

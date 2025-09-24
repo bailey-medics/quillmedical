@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    API_PREFIX: str = "/api"
+
     # No env_file: read env provided by Docker/Compose (and Docker secrets)
     model_config = SettingsConfigDict(
         extra="ignore",

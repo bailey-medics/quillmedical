@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field
 PATIENT_DATA_ROOT = Path("/patient_data")
 
 
+class Demographics(BaseModel):
+    given_name: str | None = None
+    family_name: str | None = None
+    date_of_birth: str | None = None  # ISO date
+    sex: str | None = None
+    address: dict | None = None
+    contact: dict | None = None
+    meta: dict | None = None
+
+
 def patient_repo_name(patient_id: str) -> str:
     """Return a safe repo folder name for a patient id."""
     safe = "".join(

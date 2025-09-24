@@ -70,8 +70,8 @@
     "Pipfile",
     "pixi",
     "poolclass",
-    "psycopg",
     "psql",
+    "psycopg",
     "pybuilder",
     "pycache",
     "pydantic",
@@ -89,6 +89,7 @@
     "qrcode",
     "qualname",
     "quillmedical",
+    "REDOC",
     "repr",
     "ropeproject",
     "Scrapy",
@@ -116,5 +117,7 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": ["Exampletown"]
+  "ignoreWords": [
+    "Exampletown"
+  ]
 }
