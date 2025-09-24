@@ -1,3 +1,14 @@
+"""
+main.py
+
+Entry point for the Quill Medical FastAPI application.
+
+This module configures the API, dependencies, authentication,
+and patient record routes. All endpoints are exposed under the
+`/api` prefix. In development, Swagger UI and ReDoc documentation
+are also served under `/api/docs` and `/api/redoc`.
+"""
+
 import json
 from datetime import datetime
 from typing import cast
@@ -26,8 +37,8 @@ from app.patient_records import (
     read_file,
     write_file,
 )
-
-# hashing helpers are available if you add a register route later
+from app.schemas.auth import LoginIn, RegisterIn
+from app.schemas.letters import LetterIn
 from app.security import (
     create_access_token,
     create_refresh_token,
@@ -41,7 +52,6 @@ from app.security import (
     verify_totp_code,
 )
 
-# --- Docs toggle (dev-only) ---
 DEV_MODE = (
     str(getattr(settings, "BACKEND_ENV", "development"))
     .lower()
@@ -60,10 +70,8 @@ app = FastAPI(
 )
 
 
-# Module-level Depends singletons
 DEP_GET_SESSION = Depends(get_session)
 
-# ---------- Cookie helpers ----------
 
 COOKIE_KW = dict(
     httponly=True,
@@ -74,15 +82,21 @@ COOKIE_KW = dict(
 
 
 def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
+    """Set authentication cookies for access, refresh, and CSRF tokens.
+
+    Args:
+        response (Response): The outgoing FastAPI response object.
+        access (str): Encoded access token (short-lived).
+        refresh (str): Encoded refresh token (long-lived).
+        xsrf (str): Cross-site request forgery token.
+    """
     response.set_cookie("access_token", access, path="/", **COOKIE_KW)
-    # scope refresh to its endpoint path (optional hardening)
     response.set_cookie(
         "refresh_token",
         refresh,
         path=f"{settings.API_PREFIX}/auth/refresh",
         **COOKIE_KW,
     )
-    # CSRF cookie is readable by JS so SPA can echo back in header
     response.set_cookie(
         "XSRF-TOKEN",
         xsrf,
@@ -95,6 +109,11 @@ def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
 
 
 def clear_auth_cookies(response: Response):
+    """Clear authentication cookies from the client.
+
+    Args:
+        response (Response): The outgoing FastAPI response object.
+    """
     response.delete_cookie(
         "access_token", path="/", domain=settings.COOKIE_DOMAIN
     )
@@ -108,10 +127,19 @@ def clear_auth_cookies(response: Response):
     )
 
 
-# ---------- Auth dependencies ----------
-
-
 def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
+    """Get the currently authenticated user from cookies.
+
+    Args:
+        request (Request): Incoming FastAPI request.
+        db (Session): Active SQLAlchemy session.
+
+    Returns:
+        User: The authenticated and active user.
+
+    Raises:
+        HTTPException: If the user is not authenticated or inactive.
+    """
     tok = request.cookies.get("access_token")
     if not tok:
         raise HTTPException(401, "Not authenticated")
@@ -123,16 +151,26 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
-    # stash roles on request for role checks
     request.state.roles = [r.name for r in user.roles]
     return user
 
 
-# Module-level Depends for current_user
 DEP_CURRENT_USER = Depends(current_user)
 
 
 def require_roles(*need: str):
+    """Create a dependency that enforces required roles on a route.
+
+    Args:
+        *need (str): Role names that the caller must possess.
+
+    Returns:
+        Callable: A dependency for injection into route `dependencies=[...]`.
+
+    Raises:
+        HTTPException: 403 if the user lacks required roles.
+    """
+
     def dep(request: Request, _u: User = DEP_CURRENT_USER):
         have = set(getattr(request.state, "roles", []))
         if not set(need).issubset(have):
@@ -143,6 +181,18 @@ def require_roles(*need: str):
 
 
 def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
+    """Validate CSRF by comparing header and cookie and checking the signature.
+
+    Args:
+        request (Request): Incoming request carrying the header and cookie.
+        u (User): Current authenticated user.
+
+    Returns:
+        User: The validated user (pass-through).
+
+    Raises:
+        HTTPException: 403 on CSRF failure.
+    """
     header = request.headers.get("x-csrf-token")
     cookie = request.cookies.get("XSRF-TOKEN")
     if (
@@ -155,43 +205,42 @@ def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
     return u
 
 
-# Module-level Depends for common route dependencies
 DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
-
-
-# ---------- Auth routes (new) ----------
-
-
-class LoginIn(BaseModel):
-    username: str
-    password: str
-    totp_code: str | None = None
-
-
-class RegisterIn(BaseModel):
-    username: str
-    email: str
-    password: str
 
 
 @router.post("/auth/login")
 def login(
     data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
 ) -> dict:
+    """Authenticate a user and set auth cookies.
+
+    Validates username/password, optionally verifies a time-based one-time code
+    when two-factor is enabled, then issues access/refresh/CSRF cookies.
+
+    Args:
+        data (LoginIn): Login payload including username, password, and optional TOTP.
+        response (Response): Outgoing response used to set cookies.
+        db (Session): Database session.
+
+    Returns:
+        dict: Minimal result and the caller's username/roles.
+
+    Raises:
+        HTTPException: 400 for invalid credentials or TOTP; 401 if token decoding fails.
+    """
+
     user = db.scalar(
         select(User).where(User.username == data.username.strip())
     )
-    # `user.password_hash` is typed as a SQLAlchemy Column[...] by stubs;
-    # cast to `str` so mypy recognizes the runtime type on instances.
+
     if not user or not verify_password(
         data.password, cast(str, user.password_hash)
     ):
         raise HTTPException(400, "Invalid credentials")
-    # If user has TOTP enabled, require totp_code
+
     if getattr(user, "is_totp_enabled", False):
         if not data.totp_code:
-            # Signal to the client that two-factor is required
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -202,7 +251,6 @@ def login(
         if not verify_totp_code(
             cast(str, user.totp_secret or ""), data.totp_code
         ):
-            # Explicit invalid TOTP
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -223,22 +271,37 @@ def login(
 
 @router.post("/auth/register")
 def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
-    """Create a new user account. This is intentionally simple for the
-    development environment: it validates uniqueness of username/email and
-    stores a hashed password. Returns a minimal success response.
+    """Register a new user with username, email, and password.
+
+    Performs minimal validation and uniqueness checks, then stores a hashed
+    password.
+
+    Args:
+        payload (RegisterIn): Registration data.
+        db (Session): Database session.
+
+    Returns:
+        dict: Confirmation payload.
+
+    Raises:
+        HTTPException: 400 if fields are missing/short or username/email
+                        already exists.
     """
     username = payload.username.strip()
     email = payload.email.strip()
     if not username or not email or not payload.password:
         raise HTTPException(status_code=400, detail="Missing fields")
-    # Basic password length check
+
     if len(payload.password) < 6:
         raise HTTPException(status_code=400, detail="Password too short")
-    # Check uniqueness
+
     existing = db.scalar(select(User).where(User.username == username))
+
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
+
     existing = db.scalar(select(User).where(User.email == email))
+
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -252,22 +315,28 @@ def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
     return {"detail": "created"}
 
 
-# ---------- TOTP management endpoints ----------
 class TotpSetupOut(BaseModel):
+    """Output model containing a provisioning URI for authenticator apps."""
+
     provision_uri: str
 
 
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
 def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
-    """Return a provisioning URI for the user's current (or new) secret.
-    The frontend should render this as a QR code. This endpoint is protected.
+    """Create (if missing) a TOTP secret and return a provisioning URI.
+
+    The frontend should render the URI as a QR code for an authenticator app.
+
+    Args:
+        u (User): Current authenticated user (injected).
+        db (Session): Database session.
+
+    Returns:
+        TotpSetupOut: Provisioning URI encoded with issuer and account name.
     """
-    # ensure user has a secret; we'll generate one server-side if missing
     if not getattr(u, "totp_secret", None):
-        # assign and silence mypy Column[...] vs instance attribute type
-        u.totp_secret = generate_totp_secret()  # type: ignore[assignment]
-    # Persist the secret immediately so callers (and other sessions)
-    # will see the secret without relying on session autoflush semantics.
+        u.totp_secret = generate_totp_secret()
+
     db.add(u)
     db.commit()
     issuer = getattr(settings, "PROJECT_NAME", "Quill")
@@ -280,6 +349,8 @@ def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
 
 
 class TotpVerifyIn(BaseModel):
+    """Input model for verifying a TOTP code during setup."""
+
     code: str
 
 
@@ -289,7 +360,19 @@ def totp_verify(
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ):
-    """Verify a code and enable TOTP for the current user when valid."""
+    """Verify a TOTP code and enable two-factor authentication for the user.
+
+    Args:
+        payload (TotpVerifyIn): The six-digit code from the authenticator app.
+        u (User): Current authenticated user.
+        db (Session): Database session.
+
+    Returns:
+        dict: Confirmation payload.
+
+    Raises:
+        HTTPException: 400 if no secret exists or code is invalid.
+    """
     if not getattr(u, "totp_secret", None):
         raise HTTPException(
             status_code=400,
@@ -306,8 +389,7 @@ def totp_verify(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
         )
-    # mark TOTP enabled on the instance
-    u.is_totp_enabled = True  # type: ignore[assignment]
+    u.is_totp_enabled = True
     db.add(u)
     db.commit()
     return {"detail": "enabled"}
@@ -315,9 +397,19 @@ def totp_verify(
 
 @router.post("/auth/totp/disable")
 def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
-    """Disable TOTP for current user (requires CSRF)."""
-    u.is_totp_enabled = False  # type: ignore[assignment]
-    u.totp_secret = None  # type: ignore[assignment]
+    """Disable TOTP for the current user.
+
+    CSRF protection is required.
+
+    Args:
+        u (User): Current authenticated user (CSRF-checked).
+        db (Session): Database session.
+
+    Returns:
+        dict: Confirmation payload.
+    """
+    u.is_totp_enabled = False
+    u.totp_secret = None
     db.add(u)
     db.commit()
     return {"detail": "disabled"}
@@ -325,12 +417,29 @@ def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
 
 @router.post("/auth/logout")
 def logout(response: Response, _u: User = DEP_CURRENT_USER):
+    """Log out the current user by clearing auth cookies.
+
+    Args:
+        response (Response): Outgoing response used to clear cookies.
+        _u (User): Current authenticated user (unused; enforces auth).
+
+    Returns:
+        dict: Confirmation payload.
+    """
     clear_auth_cookies(response)
     return {"detail": "ok"}
 
 
 @router.get("/auth/me")
 def me(u: User = DEP_CURRENT_USER):
+    """Return a minimal profile for the current user.
+
+    Args:
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Basic identity fields and role names.
+    """
     return {
         "id": u.id,
         "username": u.username,
@@ -343,6 +452,21 @@ def me(u: User = DEP_CURRENT_USER):
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
 ):
+    """Rotate refresh token and issue a new access token.
+
+    Reads the refresh token cookie, validates it, then sets new access/refresh/CSRF cookies.
+
+    Args:
+        response (Response): Outgoing response used to set cookies.
+        request (Request): Incoming request (reads refresh cookie).
+        db (Session): Database session.
+
+    Returns:
+        dict: Confirmation payload.
+
+    Raises:
+        HTTPException: 401 if the refresh token is missing/invalid or user is inactive.
+    """
     tok = request.cookies.get("refresh_token")
     if not tok:
         raise HTTPException(401, "No refresh token")
@@ -364,15 +488,22 @@ def refresh(
     return {"detail": "refreshed"}
 
 
-# ---------- Your existing file-based patient API ----------
-
-
-# WRITE: protected (role + CSRF)
 @router.post(
     "/patients",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def create_patient_repo(payload: PatientCreate):
+    """Create a new patient repository and seed it with a README.
+
+    Args:
+        payload (PatientCreate): Patient identifier and any setup metadata.
+
+    Returns:
+        dict: Repo name and initialisation status.
+
+    Raises:
+        HTTPException: 500 on storage/write errors.
+    """
     repo = patient_repo_name(payload.patient_id)
     try:
         ensure_repo_exists(repo, private=True)
@@ -395,10 +526,16 @@ def create_patient_repo(payload: PatientCreate):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# READ: protected - require authenticated user
 @router.get("/patients")
 def list_patients(u: User = DEP_CURRENT_USER):
-    """Return all patient repos and any demographics if present."""
+    """List patient repositories and any stored demographics.
+
+    Args:
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Array of patient repo names with optional demographics.
+    """
     try:
         patients = []
         if PATIENT_DATA_ROOT.exists():
@@ -419,12 +556,23 @@ def list_patients(u: User = DEP_CURRENT_USER):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# WRITE: protected (role + CSRF)
 @router.put(
     "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def upsert_demographics(patient_id: str, demographics: Demographics):
+    """Create or update demographics for a patient.
+
+    Args:
+        patient_id (str): Patient identifier.
+        demographics (Demographics): Structured demographics payload.
+
+    Returns:
+        dict: Repo name and stored path.
+
+    Raises:
+        HTTPException: 500 on write errors.
+    """
     repo = patient_repo_name(patient_id)
     try:
         ensure_repo_exists(repo)
@@ -439,9 +587,20 @@ def upsert_demographics(patient_id: str, demographics: Demographics):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# READ: protected - require authenticated user
 @router.get("/patients/{patient_id}/demographics")
 def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
+    """Fetch demographics JSON for a given patient.
+
+    Args:
+        patient_id (str): Patient identifier.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Repo name and raw demographics content.
+
+    Raises:
+        HTTPException: 404 if not found; 500 on read errors.
+    """
     repo = patient_repo_name(patient_id)
     try:
         content = read_file(repo, "demographics/profile.json")
@@ -456,24 +615,25 @@ def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# -------- Letters --------
-
-
-class LetterIn(BaseModel):
-    title: str
-    body: str
-    author_name: str | None = None
-    author_email: str | None = None
-
-
-# WRITE: protected (role + CSRF)
 @router.post(
     "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def write_letter(patient_id: str, letter: LetterIn):
+    """Write and store a new letter in the patient’s repository.
+
+    Args:
+        patient_id (str): Patient identifier.
+        letter (LetterIn): Letter metadata and markdown body.
+
+    Returns:
+        dict: Repo and stored file path.
+
+    Raises:
+        HTTPException: 500 on write errors.
+    """
     repo = patient_repo_name(patient_id)
-    ts = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
+    ts = datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     slug = "".join(
         ch if (ch.isalnum() or ch in "-_") else "-"
         for ch in letter.title.lower()
@@ -495,9 +655,21 @@ def write_letter(patient_id: str, letter: LetterIn):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# READ: protected - require authenticated user
 @router.get("/patients/{patient_id}/letters/{name}")
 def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
+    """Read a specific letter file from the patient’s repository.
+
+    Args:
+        patient_id (str): Patient identifier.
+        name (str): Letter filename (with or without .md).
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Repo, resolved file path, and markdown content.
+
+    Raises:
+        HTTPException: 404 if not found; 500 on read errors.
+    """
     repo = patient_repo_name(patient_id)
     path = (
         f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"
