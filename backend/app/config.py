@@ -43,7 +43,7 @@ class Settings(BaseSettings):
             and self.POSTGRES_DB
         ):
             self.DATABASE_URL = (
-                f"postgresql+psycopg2://{self.POSTGRES_USER}:"
+                f"postgresql+psycopg://{self.POSTGRES_USER}:"
                 f"{quote_plus(self.POSTGRES_PASSWORD)}@"
                 f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
             )

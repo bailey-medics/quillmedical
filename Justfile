@@ -40,6 +40,7 @@ db-users:
     {{initialise}} "db-users"
     docker compose -f compose.dev.yml exec database psql -U quill -d quill -c "\d users"
 
+
 alias eb := enter-backend
 # Enter the backend container shell
 enter-backend:
@@ -47,7 +48,8 @@ enter-backend:
     {{initialise}} "enter-backend"
     docker exec -it quill_backend /bin/sh
 
-alias ef := enter-backend
+
+alias ef := enter-frontend
 # Enter the frontend container shell
 enter-frontend:
     #!/usr/bin/env bash
@@ -62,6 +64,7 @@ hex-32:
     {{initialise}} "hex-32"
     openssl rand -hex 32
 
+
 alias i := initialise-repo
 # Initialise the repository (run this first)
 initialise-repo:
@@ -70,6 +73,7 @@ initialise-repo:
     pre-commit install
     yarn install
     just aj
+
 
 alias m := migrate
 # Run the database migrations
@@ -98,6 +102,7 @@ poetry-install:
     poetry lock
     poetry install
 
+
 alias pp := poetry-path
 # Show the poetry path
 poetry-path:
@@ -105,7 +110,7 @@ poetry-path:
     {{initialise}} "poetry-path"
     cd backend
     poetry env info -p
-    echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) and select 'Python: Select Interpreter'. Then paste the path above."
+    echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
 
 alias sb := storybook
@@ -116,12 +121,14 @@ storybook:
     cd frontend
     yarn storybook
 
+
 alias sdc := show-dev-containers
 # Show the running dev containers
 show-dev-containers:
     #!/usr/bin/env bash
     {{initialise}} "show-dev-containers"
     docker compose -f compose.dev.yml ps
+
 
 alias sd := start-dev
 # Start the dev app (build: 'b' will also build the images)
@@ -159,6 +166,14 @@ stop:
     {{initialise}} "stop"
     docker compose -f compose.yml -f compose.dev.yml down
     docker compose -f compose.yml -f compose.prod.yml down
+
+alias ub := unit-tests-backend
+# Run the backend unit tests
+unit-tests-backend:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-backend"
+    cd backend
+    poetry run pytest -q
 
 
 alias yi := yarn-install
