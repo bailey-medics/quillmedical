@@ -63,7 +63,7 @@ jobs:
         run: yarn prettier
 
       - name: Stylelint
-        run: yarn style
+        run: yarn stylelint
 
       - name: TypeScript (noEmit)
         run: yarn typecheck
