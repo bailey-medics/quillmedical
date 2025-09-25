@@ -1,7 +1,22 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-yarn lint-staged
-SH
+# Ensure we run lint-staged from the frontend workspace where package.json now lives
+if [ -d "frontend" ]; then
+	cd frontend || exit 1
+fi
 
-chmod +x .husky/pre-commit
+# Use npx with --no-install so it fails if lint-staged isn't installed (encourages running install)
+# Require Yarn Berry (v2+) for running lint-staged
+if [ -f "../.yarnrc.yml" ] || [ -f "./.yarnrc.yml" ] || [ -d "../.yarn" ] || [ -d "./.yarn" ]; then
+	if command -v yarn >/dev/null 2>&1; then
+	# Use yarn dlx in Yarn v2+ to run binaries from the project
+	yarn dlx lint-staged || exit $?
+	else
+		echo "Error: Yarn is not available in PATH, but Yarn Berry is required to run lint-staged" >&2
+		exit 1
+	fi
+else
+	echo "Error: Yarn Berry not detected (no .yarnrc.yml or .yarn). Husky pre-commit requires Yarn Berry." >&2
+	exit 1
+fi
