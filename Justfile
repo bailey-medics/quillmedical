@@ -33,6 +33,15 @@ abbreviate-just:
     echo "Please run the following command to apply the changes to this terminal:"
     echo "source ~/.zshrc"
 
+alias d := docs
+# Open the documentation in the browser
+docs:
+    #!/usr/bin/env bash
+    {{initialise}} "docs"
+    mkdocs serve -f docs/mkdocs.yml & sleep 2
+    open http://127.0.0.1:8000
+
+
 alias du := db-users
 # Show the database users
 db-users:

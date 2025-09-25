@@ -6,7 +6,7 @@ const meta: Meta<typeof QuillLogo> = {
   component: QuillLogo,
   tags: ["autodocs"],
   argTypes: {
-    size: { control: "number" },
+    height: { control: "number" },
     alt: { control: "text" },
   },
 };
@@ -17,7 +17,7 @@ type Story = StoryObj<typeof QuillLogo>;
 
 export const Default: Story = {
   args: {
-    size: 128,
+    height: 128,
     alt: "Quill",
   },
 };

@@ -1,8 +1,25 @@
 import { Button, Card, Group, Stack, Switch, Text, Title } from "@mantine/core";
 import { useState } from "react";
 
+/**
+ * Settings page component.
+ *
+ * Provides account settings such as enabling
+ * time-based one-time password (TOTP) two-factor
+ * authentication and changing the user password.
+ *
+ * @returns A JSX element containing the settings UI.
+ */
 export default function Settings() {
+  /**
+   * Whether the user has opted to enable
+   * TOTP-based two-factor authentication.
+   */
   const [useTotp, setUseTotp] = useState(false);
+  /**
+   * Tracks whether the settings are currently being saved.
+   * Used to show a loading state on the Save button.
+   */
   const [saving, setSaving] = useState(false);
 
   return (
@@ -23,11 +40,19 @@ export default function Settings() {
               Use an authenticator app to add a second factor to your account.
             </Text>
           </div>
-          <Switch checked={useTotp} onChange={(e) => setUseTotp(e.currentTarget.checked)} />
+          <Switch
+            checked={useTotp}
+            onChange={(e) => setUseTotp(e.currentTarget.checked)}
+          />
         </div>
         <div style={{ height: 12 }} />
         <Group>
-          <Button disabled={!useTotp} variant="outline" component="a" href="/settings/totp">
+          <Button
+            disabled={!useTotp}
+            variant="outline"
+            component="a"
+            href="/settings/totp"
+          >
             Configure TOTP
           </Button>
           <Button

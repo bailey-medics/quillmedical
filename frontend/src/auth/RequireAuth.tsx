@@ -2,8 +2,9 @@
 import { Center, Loader } from "@mantine/core";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import type { ReactNode } from "@tabler/icons-react";
 
-export default function RequireAuth({ children }: { children: JSX.Element }) {
+export default function RequireAuth({ children }: { children: ReactNode }) {
   const { state } = useAuth();
   const location = useLocation();
 

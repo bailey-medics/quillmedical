@@ -1,5 +1,5 @@
 site_name: Quill Docs
-docs_dir: .
+docs_dir: docs
 
 theme:
   name: material
@@ -10,7 +10,9 @@ theme:
 
 nav:
   - Home: index.md
+  - Frontend App: frontend/README.md
   - Backend API: backend/index.md
+
 
 plugins:
   - search
@@ -34,4 +36,5 @@ markdown_extensions:
   - pymdownx.superfences
 
 watch:
-  - ../backend/app
+  - ../backend
+  - docs

@@ -18,7 +18,8 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "types": ["react", "react-dom"]
   },
   "include": ["src", ".storybook/utils/PhoneFrame.tsx"]
 }

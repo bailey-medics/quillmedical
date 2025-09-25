@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 
-export default function GuestOnly({ children }: { children: JSX.Element }) {
+export default function GuestOnly({ children }: { children: ReactNode }) {
   const { state } = useAuth();
   useEffect(() => {
     if (state.status === "authenticated") {

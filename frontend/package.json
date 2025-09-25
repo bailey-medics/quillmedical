@@ -13,7 +13,8 @@
     "husky:prepare": "husky",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "docs:build": "typedoc"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
@@ -61,6 +62,8 @@
     "stylelint-config-prettier-scss": "^1.0.0",
     "stylelint-config-standard-scss": "^16.0.0",
     "stylelint-scss": "^6.12.1",
+    "typedoc": "^0.28.13",
+    "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.7",
