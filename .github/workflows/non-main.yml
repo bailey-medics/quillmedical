@@ -1,4 +1,4 @@
-name: non-main
+name: Non-main branch workflows
 
 on:
   push:
