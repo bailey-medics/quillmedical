@@ -1,4 +1,4 @@
-name: Build and deploy MkDocs
+name: Main branch workflows
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
           poetry run mkdocs build -f ../docs/mkdocs.yml -d ../site
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
