@@ -101,10 +101,31 @@ jobs:
 
           # Create a merge commit of the current HEAD into main
           git checkout main
-          # Determine branch name: for PRs use github.head_ref, otherwise use ref_name
-          # Set by the runner via env replacement below if available
-          BRANCH_NAME="${BRANCH_NAME}"
-          echo "Merging ${BRANCH_NAME} into main"
+          # Determine branch name: for PRs use GITHUB_HEAD_REF, otherwise use GITHUB_REF_NAME
+          # GITHUB_HEAD_REF is populated for pull_request events, and GITHUB_REF_NAME is set by actions/checkout
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
+          BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
+
+          if [ -z "$BRANCH_NAME" ]; then
+            echo "ERROR: BRANCH_NAME is empty. Could not determine the branch to merge. Exiting." >&2
+            exit 1
+          fi
+
+          echo "Merging '$BRANCH_NAME' into main"
+
+          if [ "$BRANCH_NAME" = "main" ] || [ "$BRANCH_NAME" = "refs/heads/main" ]; then
+            echo "Refusing to merge 'main' into main. Nothing to do.";
+            exit 0
+          fi
+
+          # Ensure we have the target branch locally so we can merge it
+          if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
+            echo "Fetching branch '$BRANCH_NAME' from origin"
+            if ! git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"; then
+              echo "ERROR: Failed to fetch branch '$BRANCH_NAME' from origin" >&2
+              exit 1
+            fi
+          fi
 
           # Attempt the merge; on conflict, abort and fail the job so humans can resolve
           if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main [skip ci]"; then
