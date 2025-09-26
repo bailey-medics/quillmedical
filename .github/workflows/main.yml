@@ -53,7 +53,7 @@ jobs:
       - name: Build Storybook static site
         working-directory: frontend
         run: |
-          yarn build-storybook
+          yarn storybook:build
 
       - name: Build frontend docs
         working-directory: frontend
