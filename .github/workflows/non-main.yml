@@ -128,7 +128,7 @@ jobs:
           fi
 
           # Attempt the merge; on conflict, abort and fail the job so humans can resolve
-          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main [skip ci]"; then
+          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
             echo "Merge succeeded"
           else
             echo "Merge failed due to conflicts. Aborting merge and exiting with failure." >&2
