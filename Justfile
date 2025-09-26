@@ -33,6 +33,15 @@ abbreviate-just:
     echo "Please run the following command to apply the changes to this terminal:"
     echo "source ~/.zshrc"
 
+
+alias cu := create-user
+# Create a new user in the database
+create-user:
+    #!/usr/bin/env bash
+    {{initialise}} "create-user"
+    cd backend && ./create_user.sh
+
+
 alias d := docs
 # Open the documentation in the browser
 docs:
@@ -89,9 +98,12 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
-    just eb
-    alembic revision -m "{{message}}" --autogenerate
-    alembic upgrade head
+    docker exec quill_backend sh -lc '
+        set -e
+        alembic upgrade head &&
+        alembic revision --autogenerate -m "$AL_MSG" &&
+        alembic upgrade head
+    ' AL_MSG='{{message}}'
 
 
 alias pc := pre-commit

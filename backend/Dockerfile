@@ -36,6 +36,9 @@ EXPOSE 8000
 
 # ---------- Dev target (hot-reload) ----------
 FROM base AS dev
+# Dev-only utilities (do not copy these into the `prod` stage)
+# Copy the scripts directory into the dev image and set ownership to the unprivileged user.
+COPY --chown=appuser:appuser scripts ./scripts
 # Caddy will forward X-Forwarded-*; trust them so URLs and client IPs are correct
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--proxy-headers", "--forwarded-allow-ips", "*"]
 
