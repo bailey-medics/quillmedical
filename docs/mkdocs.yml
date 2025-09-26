@@ -10,9 +10,10 @@ theme:
 
 nav:
   - Home: index.md
-  - Frontend App: frontend/README.md
-  - Storybook: storybook/index.html
-  - Backend API: backend/index.md
+  - Frontend code: frontend/README.md
+  - User interface (storybook): storybook/index.html
+  - Backend code: backend/index.md
+  - API (Swagger): swagger/index.html
 
 
 plugins:
@@ -21,13 +22,14 @@ plugins:
       handlers:
         python:
           paths:
-            - ../backend         # <-- key change
+            - ../backend
           options:
             docstring_style: google
             show_source: true
             separate_signature: true
             members_order: source
             inherited_members: false
+  - swagger-ui-tag
 
 markdown_extensions:
   - admonition

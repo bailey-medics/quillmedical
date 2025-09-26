@@ -1,2 +1,4 @@
 frontend/
 storybook/
+site/
+docs/swagger/openapi.json

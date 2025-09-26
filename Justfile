@@ -95,6 +95,14 @@ initialise-repo:
     just aj
 
 
+alias p := port-8000
+# Kill any processes listening on port 8000
+port-8000:
+    #!/usr/bin/env bash
+    {{initialise}} "port-8000"
+    lsof -i :8000
+
+
 alias m := migrate
 # Run the database migrations
 migrate message:
