@@ -24,7 +24,7 @@
       "source.fixAll": "explicit"
     }
   },
-  
+
   "terminal.integrated.tabs.enableAnimation": true,
   "terminal.integrated.tabs.description": "${sequence}",
   "terminal.integrated.tabs.title": "${process}"

@@ -10,7 +10,7 @@ are also served under `/api/docs` and `/api/redoc`.
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 
 from fastapi import (
@@ -633,7 +633,7 @@ def write_letter(patient_id: str, letter: LetterIn):
         HTTPException: 500 on write errors.
     """
     repo = patient_repo_name(patient_id)
-    ts = datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H%M%SZ")
     slug = "".join(
         ch if (ch.isalnum() or ch in "-_") else "-"
         for ch in letter.title.lower()

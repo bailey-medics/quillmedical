@@ -56,6 +56,7 @@ strict = false
 disallow_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --maxfail=1"

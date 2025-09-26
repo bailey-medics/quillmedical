@@ -1,5 +1,8 @@
+# app/models.py
+from __future__ import annotations
+
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -14,20 +17,38 @@ user_role = Table(
 )
 
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    username = Column(String(150), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    # TOTP (optional) - base32 secret string
-    totp_secret = Column(String(64), nullable=True)
-    is_totp_enabled = Column(Boolean, default=False)
-    is_active = Column(Boolean, default=True)
-    roles = relationship("Role", secondary=user_role, lazy="joined")
-
-
 class Role(Base):
     __tablename__ = "roles"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(64), unique=True, nullable=False)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+
+    # Many-to-many back-reference to users
+    users: Mapped[list[User]] = relationship(
+        secondary=user_role,
+        back_populates="roles",
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(
+        String(150), unique=True, index=True, nullable=False
+    )
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False
+    )
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # TOTP (optional) - base32 secret string
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    roles: Mapped[list[Role]] = relationship(
+        secondary=user_role,
+        back_populates="users",
+        lazy="joined",
+    )

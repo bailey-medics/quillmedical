@@ -38,6 +38,7 @@
     "euxo",
     "fastapi",
     "getifaddr",
+    "griffe",
     "Gitea",
     "healthcheck",
     "htmlcov",
@@ -45,6 +46,7 @@
     "ipynb",
     "ipython",
     "isready",
+    "invis",
     "itsdangerous",
     "levelname",
     "linters",
@@ -55,6 +57,7 @@
     "maxfail",
     "meds",
     "mkdocs",
+    "mkdocstrings",
     "mypy",
     "njsproj",
     "noncommercially",
@@ -119,7 +122,5 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": [
-    "Exampletown"
-  ]
+  "ignoreWords": ["Exampletown"]
 }
