@@ -11,6 +11,7 @@ theme:
 nav:
   - Home: index.md
   - Frontend App: frontend/README.md
+  - Storybook: storybook/index.html
   - Backend API: backend/index.md
 
 
