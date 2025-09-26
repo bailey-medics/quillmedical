@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    container_name: quill_backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://quill:${POSTGRES_PASSWORD}@database:5432/quill
+      BACKEND_ENV: development
+    expose:
+      - "8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - public
+      - private
+    volumes:
+      - ./backend:/app
+      - ./patient_data:/patient_data
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: quill_frontend
+    environment:
+      - NODE_ENV=development
+    expose:
+      - "5173"
+      - "5174"
+    ports:
+      - "5173:5173"
+      - "5174:5174"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: ["/bin/sh", "-c", "/app/dev-start.sh"]
+    depends_on:
+      - backend
+    networks:
+      - public
+
+  database:
+    image: postgres:16-alpine
+    container_name: quill_database
+    env_file: .env
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+    # TODO: do we need to change quill to a env variable?
+      test: ["CMD-SHELL", "pg_isready -U quill -d quill"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - private
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: quill_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/dev/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - public
+
+volumes:
+  database_data:
+  caddy_data:
+  caddy_config:
+  frontend_node_modules:
+
+networks:
+  public: {}
+  private:
+    internal: true

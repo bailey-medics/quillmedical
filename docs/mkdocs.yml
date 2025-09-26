@@ -1,0 +1,40 @@
+site_name: Quill Docs
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Frontend App: frontend/README.md
+  - Backend API: backend/index.md
+
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - ../backend         # <-- key change
+          options:
+            docstring_style: google
+            show_source: true
+            separate_signature: true
+            members_order: source
+            inherited_members: false
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+watch:
+  - ../backend
+  - docs

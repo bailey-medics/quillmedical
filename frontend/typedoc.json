@@ -1,0 +1,12 @@
+{
+  "tsconfig": "./tsconfig.app.json",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "../docs/docs/frontend",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "exclude": ["**/*.stories.*", "**/*.test.*", "**/*.spec.*"],
+  "hideBreadcrumbs": true
+}

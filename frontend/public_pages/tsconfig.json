@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../src/*"],
+      "@components/*": ["../src/components/*"],
+      "@utils/*": ["../.storybook/utils/*"],
+      "@design/*": ["../src/design/*"],
+      "@domains/*": ["../src/domains/*"]
+    }
+  },
+  "include": ["src", "../src"],
+  "exclude": ["../src/**/*.stories.*"]
+}
