@@ -45,10 +45,14 @@ target-version = "py313"
 line-length = 79
 lint.select = ["E", "F", "W", "I", "UP", "B"]
 lint.ignore = ["E501"]
+exclude = ["alembic/versions"]
 
 [tool.black]
 target-version = ["py313"]
 line-length = 79
+# Exclude alembic revision files under backend/alembic/versions
+# Black expects a regex string; match paths that include 'backend/alembic/versions'
+exclude = "(^|/)backend/alembic/versions(/|$)"
 
 [tool.mypy]
 python_version = "3.13"
