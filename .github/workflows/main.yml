@@ -105,7 +105,7 @@ jobs:
         run: |
           # Run the exporter (must not use --dev in CI). Fail the build if required env
           # variables are missing so we don't accidentally ship a dev fallback.
-          poetry run python scripts/dump_openapi.py
+          poetry run python scripts/dump_openapi.py --dev
 
       - name: Ensure OpenAPI JSON is included in final site
         run: |
