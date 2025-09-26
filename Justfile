@@ -39,8 +39,7 @@ alias cu := create-user
 create-user:
     #!/usr/bin/env bash
     {{initialise}} "create-user"
-    cd backend && ./create_user.sh
-
+    docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
 alias d := docs
 # Open the documentation in the browser
