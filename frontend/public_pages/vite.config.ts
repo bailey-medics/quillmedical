@@ -17,7 +17,11 @@ export default defineConfig({
             if (!req || req.method !== "GET") return next();
             const reqUrl = req.url || "/";
             // ignore vite internals and websockets
-            if (reqUrl.startsWith("/@") || reqUrl.startsWith("/__") || reqUrl.startsWith("/sockjs"))
+            if (
+              reqUrl.startsWith("/@") ||
+              reqUrl.startsWith("/__") ||
+              reqUrl.startsWith("/sockjs")
+            )
               return next();
             const parsed = new URL(reqUrl, "http://localhost");
             const pathname = decodeURIComponent(parsed.pathname);
@@ -33,10 +37,12 @@ export default defineConfig({
             if (exists) return next();
 
             // For HTML requests, serve 404.html with 404 status instead of index.html
-            const accept = (req.headers && (req.headers.accept || "")) as string;
+            const accept = (req.headers &&
+              (req.headers.accept || "")) as string;
             // treat as HTML if Accept explicitly wants HTML, accepts anything, or the path has no file extension
             const hasExt = path.extname(pathname) !== "";
-            const isHtmlRequest = accept.includes("text/html") || accept.includes("*/*") || !hasExt;
+            const isHtmlRequest =
+              accept.includes("text/html") || accept.includes("*/*") || !hasExt;
             if (isHtmlRequest) {
               const fallback = path.join(server.config.root, "not-found.html");
               const has404 = await fs.promises
