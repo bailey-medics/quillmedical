@@ -7,7 +7,7 @@ on:
     branches-ignore: [main, master]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   code-quality:
@@ -76,3 +76,45 @@ jobs:
         run: |
           cd frontend
           yarn typecheck
+
+  merge-to-main:
+    needs: code-quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge branch into main and push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Ensure we have the main branch
+          git fetch origin main:main || git fetch origin refs/heads/main:main
+
+          # Create a merge commit of the current HEAD into main
+          git checkout main
+          # Determine branch name: for PRs use github.head_ref, otherwise use ref_name
+          # Set by the runner via env replacement below if available
+          BRANCH_NAME="${BRANCH_NAME}"
+          echo "Merging ${BRANCH_NAME} into main"
+
+          # Attempt the merge; on conflict, abort and fail the job so humans can resolve
+          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main [skip ci]"; then
+            echo "Merge succeeded"
+          else
+            echo "Merge failed due to conflicts. Aborting merge and exiting with failure." >&2
+            git merge --abort || true
+            exit 1
+          fi
+
+          # Push back to origin main (GITHUB_TOKEN used by the checkout action)
+          git push origin main
+
