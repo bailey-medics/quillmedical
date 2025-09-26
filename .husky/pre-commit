@@ -1,6 +1,15 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Run repository-level pre-commit hooks (Python / repo hooks)
+if command -v pre-commit >/dev/null 2>&1; then
+	echo "Running repo pre-commit hooks"
+	# Run hooks on staged files for speed; fall back to all files if none staged
+	pre-commit run --staged || pre-commit run --all-files || true
+else
+	echo "pre-commit not found in PATH; skipping repo pre-commit hooks" >&2
+fi
+
 # Ensure we run lint-staged from the frontend workspace where package.json now lives
 if [ -d "frontend" ]; then
 	cd frontend || exit 1
