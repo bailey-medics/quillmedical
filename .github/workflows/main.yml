@@ -100,6 +100,24 @@ jobs:
           cd backend
           poetry install --no-interaction --no-ansi --with dev
 
+      - name: Export OpenAPI JSON for docs
+        working-directory: backend
+        run: |
+          # Run the exporter (must not use --dev in CI). Fail the build if required env
+          # variables are missing so we don't accidentally ship a dev fallback.
+          poetry run python scripts/dump_openapi.py
+
+      - name: Ensure OpenAPI JSON is included in final site
+        run: |
+          mkdir -p site/swagger
+          # The exporter writes to docs/docs/swagger/openapi.json at repo root
+          if [ -f ../docs/docs/swagger/openapi.json ]; then
+            cp ../docs/docs/swagger/openapi.json site/swagger/openapi.json
+          else
+            echo "ERROR: openapi.json not found at ../docs/docs/swagger/openapi.json"
+            exit 1
+          fi
+
       - name: Build MkDocs site into /site
         run: |
           cd backend
