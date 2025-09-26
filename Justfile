@@ -46,7 +46,9 @@ alias d := docs
 docs:
     #!/usr/bin/env bash
     {{initialise}} "docs"
-    cd frontend && yarn docs:build && cd ..
+    cd frontend && yarn docs:build
+    yarn storybook:build
+    cd ..
     mkdocs serve -f docs/mkdocs.yml & sleep 2
     open http://127.0.0.1:8000
 

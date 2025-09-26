@@ -50,6 +50,11 @@ jobs:
         run: |
           yarn install --frozen-lockfile
 
+      - name: Build Storybook static site
+        working-directory: frontend
+        run: |
+          yarn build-storybook
+
       - name: Build frontend docs
         working-directory: frontend
         run: |
@@ -63,20 +68,18 @@ jobs:
 
           # Add or adjust these candidate output paths to match your frontend build
           CANDIDATES=(
-            "frontend/docs-dist"
-            "frontend/dist"
-            "frontend/out"
-            "frontend/build"
-            "frontend/docs"
+            "docs/docs/frontend"
+            "docs/docs/storybook"
           )
 
           copied="false"
           for d in "${CANDIDATES[@]}"; do
             if [ -d "$d" ]; then
-              echo "Found frontend docs at: $d"
-              cp -r "$d"/. site/
+              name=$(basename "$d")
+              echo "Copying $d -> site/$name"
+              mkdir -p "site/$name"
+              cp -r "$d"/. "site/$name/"
               copied="true"
-              break
             fi
           done
 
