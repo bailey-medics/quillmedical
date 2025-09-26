@@ -96,6 +96,7 @@
     "REDOC",
     "repr",
     "ropeproject",
+    "shellcheck",
     "Scrapy",
     "sdist",
     "sessionmaker",
