@@ -9,29 +9,41 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: nonmain-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  code-quality:
+  # ---------- Python: pre-commit (runs in parallel with JS checks) ----------
+  precommit_py:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      # Python pre-commit
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
         with:
           extra_args: --all-files
 
-      # Node / Yarn Berry
-      - name: Set up Node (LTS)
-        uses: actions/setup-node@v4
+  # ---------- JS: run multiple tools in parallel via matrix ----------
+  js_checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [eslint, prettier, stylelint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
@@ -53,39 +65,34 @@ jobs:
             ${{ runner.os }}-yarn4-nm-
 
       - name: Install deps
-        run: |
-          cd frontend
-          yarn install
+        working-directory: frontend
+        run: yarn install --immutable
 
-      - name: ESLint
+      - name: Run ${{ matrix.task }}
+        working-directory: frontend
         run: |
-          cd frontend
-          yarn eslint
+          case "${{ matrix.task }}" in
+            eslint)   yarn eslint ;;
+            prettier) yarn prettier ;;
+            stylelint) yarn stylelint ;;
+            typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
+          esac
 
-      - name: Prettier
-        run: |
-          cd frontend
-          yarn prettier
-
-      - name: Stylelint
-        run: |
-          cd frontend
-          yarn stylelint
-
-      - name: TypeScript (noEmit)
-        run: |
-          cd frontend
-          yarn typecheck
-
-  merge-to-main:
-    needs: code-quality
+  # ---------- Gate: only proceeds if ALL fast jobs pass ----------
+  gate:
     runs-on: ubuntu-latest
-
+    needs: [precommit_py, js_checks]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - run: echo "All checks passed."
+
+  # ---------- Merge to main (only on push, never from main) ----------
+  merge-to-main:
+    runs-on: ubuntu-latest
+    needs: gate
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
       - name: Configure git
         run: |
@@ -96,45 +103,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ensure we have the main branch
+          # Ensure we have latest main locally
           git fetch origin main:main || git fetch origin refs/heads/main:main
 
-          # Create a merge commit of the current HEAD into main
-          git checkout main
-          # Determine branch name: for PRs use GITHUB_HEAD_REF, otherwise use GITHUB_REF_NAME
-          # GITHUB_HEAD_REF is populated for pull_request events, and GITHUB_REF_NAME is set by actions/checkout
-          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
+          # Source branch name from the push event
+          BRANCH_NAME="${GITHUB_REF_NAME:-}"
           BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
 
           if [ -z "$BRANCH_NAME" ]; then
-            echo "ERROR: BRANCH_NAME is empty. Could not determine the branch to merge. Exiting." >&2
+            echo "ERROR: Cannot determine source branch." >&2
             exit 1
           fi
 
-          echo "Merging '$BRANCH_NAME' into main"
-
-          if [ "$BRANCH_NAME" = "main" ] || [ "$BRANCH_NAME" = "refs/heads/main" ]; then
-            echo "Refusing to merge 'main' into main. Nothing to do.";
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "Not merging main into main. Exiting."
             exit 0
           fi
 
-          # Ensure we have the target branch locally so we can merge it
+          echo "Merging '$BRANCH_NAME' into main"
+          git checkout main
+
+          # Ensure the source branch exists locally
           if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
             echo "Fetching branch '$BRANCH_NAME' from origin"
-            if ! git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"; then
-              echo "ERROR: Failed to fetch branch '$BRANCH_NAME' from origin" >&2
-              exit 1
-            fi
+            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
           fi
 
-          # Attempt the merge; on conflict, abort and fail the job so humans can resolve
+          # Attempt merge; on conflict, abort and fail
           if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
             echo "Merge succeeded"
           else
-            echo "Merge failed due to conflicts. Aborting merge and exiting with failure." >&2
+            echo "Merge conflict. Aborting."
             git merge --abort || true
             exit 1
           fi
 
-          # Push back to origin main (GITHUB_TOKEN used by the checkout action)
           git push origin main
