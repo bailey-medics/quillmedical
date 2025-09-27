@@ -118,6 +118,7 @@
     "timezone",
     "totp",
     "uvicorn",
+    "vars",
     "venv",
     "virtualenv",
     "virtualenvs",
