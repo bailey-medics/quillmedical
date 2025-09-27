@@ -50,18 +50,6 @@ jobs:
             pc-styling-${{ runner.os }}-py${{ matrix.python }}-
             pc-styling-${{ runner.os }}-
 
-      - name: Cache Poetry venv & pip (unit)
-        if: matrix.task == 'unit'
-        uses: actions/cache@v4
-        with:
-          path: |
-            backend/.venv
-            ${{ env.PIP_CACHE_DIR }}
-          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
-          restore-keys: |
-            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
-            pc-unit-${{ runner.os }}-
-
       # ---- styling steps ----
       - name: Ensure venv + pre-commit (styling)
         if: matrix.task == 'styling'
@@ -87,7 +75,20 @@ jobs:
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
-      # ---- unit test steps ----
+
+      - name: Cache Poetry venv & pip (unit)
+        if: matrix.task == 'unit'
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ${{ env.PIP_CACHE_DIR }}
+          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-unit-${{ runner.os }}-
+
+
       - name: Install Poetry (unit)
         if: matrix.task == 'unit'
         run: |
@@ -95,11 +96,13 @@ jobs:
           # in-project venv to make caching deterministic
           poetry config virtualenvs.in-project true
 
+
       - name: Install backend deps (unit)
         if: matrix.task == 'unit'
         working-directory: backend
         run: |
           poetry install --with dev --no-interaction --no-ansi
+
 
       - name: Pytest (unit)
         if: matrix.task == 'unit'
