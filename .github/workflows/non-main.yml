@@ -91,19 +91,12 @@ jobs:
             typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
           esac
 
-  # ---------- Gate: only proceeds if ALL fast jobs pass ----------
-  gate:
-    runs-on: ubuntu-latest
-    name: Gate to main push
-    needs: [python_styling, typescript_styling]
-    steps:
-      - run: echo "All checks passed."
 
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: gate
+    needs: [python_styling, typescript_styling]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
