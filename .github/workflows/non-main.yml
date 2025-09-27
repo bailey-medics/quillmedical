@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Python styling
     timeout-minutes: 15
+    env:
+      PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
+      PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -27,21 +30,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Expand PRE_COMMIT_HOME properly (tilde does NOT expand in env vars).
-      - name: Set PRE_COMMIT_HOME
-        run: echo "PRE_COMMIT_HOME=$HOME/.cache/pre-commit" >> "$GITHUB_ENV"
-
-      - name: Show PRE_COMMIT_HOME
-        run: echo "PRE_COMMIT_HOME is $PRE_COMMIT_HOME"
-
-      # Cache the venv + pre-commit hook envs + pip wheels
-      - name: Cache venv & pre-commit
+      - name: Cache venv & pre-commit & pip wheels
+      # expressions below are valid because env is defined at job level
         uses: actions/cache@v4
         with:
           path: |
             .venv
             ${{ env.PRE_COMMIT_HOME }}
-            ${{ env.HOME }}/.cache/pip
+            ${{ env.PIP_CACHE_DIR }}
           key: pc-venv-${{ runner.os }}-py312-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
             pc-venv-${{ runner.os }}-py312-
@@ -53,13 +49,12 @@ jobs:
             python -m venv .venv
             . .venv/bin/activate
             python -m pip install -U pip
-            # Pin for reproducibility (optional):
             python -m pip install "pre-commit>=3,<5"
           else
             echo "Using cached .venv with pre-commit."
           fi
 
-      - name: Warm pre-commit hooks (optional but makes next step quieter)
+      - name: Warm pre-commit hooks (optional)
         run: |
           . .venv/bin/activate
           pre-commit install-hooks
@@ -68,6 +63,7 @@ jobs:
         run: |
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
+
 
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
