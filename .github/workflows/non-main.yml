@@ -111,14 +111,13 @@ jobs:
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
-  typescript_styling:
+  typescript_checks:
     runs-on: ubuntu-latest
-    name: TypeScript styling
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        task: [eslint, prettier, stylelint, typecheck, "test:run"]
+        task: [eslint, prettier, stylelint, typecheck, "unit-test:run"]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -156,7 +155,7 @@ jobs:
             prettier) yarn prettier ;;
             stylelint) yarn stylelint ;;
             typecheck) yarn typecheck ;;
-            test:run) yarn test:run ;;
+            test:run) yarn unit-test:run ;;
           esac
 
 

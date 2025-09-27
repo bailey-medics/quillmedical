@@ -21,8 +21,8 @@
     "stylelint": "stylelint \"*/*.{scss,css}\" --allow-empty-input",
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
-    "test": "vitest --environment jsdom",
-    "test:run": "vitest --environment jsdom --run --watch=false"
+    "unit-test": "vitest --environment jsdom",
+    "unit-test:run": "vitest --environment jsdom --run --watch=false"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
