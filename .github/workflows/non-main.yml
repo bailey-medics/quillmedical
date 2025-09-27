@@ -162,7 +162,7 @@ jobs:
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: [python_styling, typescript_styling, python_unit_tests]
+    needs: [python_checks, typescript_styling]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
