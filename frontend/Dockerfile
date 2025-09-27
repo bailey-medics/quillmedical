@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24.8.0-alpine3.22
+FROM node:24.8.0-bookworm-slim
+
 
 RUN corepack enable
 
