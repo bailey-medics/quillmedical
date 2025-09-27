@@ -215,7 +215,7 @@ unit-tests-frontend:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
     cd frontend
-    yarn test:run
+    yarn unit-test:run
 
 
 alias yi := yarn-install
