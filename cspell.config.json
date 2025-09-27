@@ -23,6 +23,7 @@
     "celerybeat",
     "centered",
     "codz",
+    "color",
     "Cotswoldsmaker",
     "cursorignore",
     "cursorindexingignore",
@@ -93,6 +94,7 @@
     "PYTHONDONTWRITEBYTECODE",
     "PYTHONUNBUFFERED",
     "pytype",
+    "pyver",
     "qrcode",
     "qualname",
     "quillmedical",
@@ -127,7 +129,5 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": [
-    "Exampletown"
-  ]
+  "ignoreWords": ["Exampletown"]
 }

@@ -14,13 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------- Python: pre-commit (runs in parallel with JS checks) ----------
+  # ---------- Python: pre-commit (Option B: own venv + cache) ----------
   python_styling:
     runs-on: ubuntu-latest
     name: Python styling
     timeout-minutes: 15
     env:
-      PRE_COMMIT_HOME: ~/.cache/pre-commit   # put hook envs in a known place
+      PRE_COMMIT_HOME: ~/.cache/pre-commit
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -29,19 +29,39 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Cache pre-commit hook environments (HUGE speed-up)
-      - name: Cache pre-commit
+      - id: pyver
+        name: Detect Python minor
+        run: echo "minor=$(python -c 'import sys;print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')" >> $GITHUB_OUTPUT
+
+      # Restore venv + pre-commit hook envs + pip cache
+      - name: Cache venv & pre-commit
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pre-commit
-          key: precommit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          path: |
+            .venv
+            ~/.cache/pre-commit
+            ~/.cache/pip
+          key: pc-venv-${{ runner.os }}-py${{ steps.pyver.outputs.minor }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            precommit-${{ runner.os }}-
+            pc-venv-${{ runner.os }}-py${{ steps.pyver.outputs.minor }}-
+            pc-venv-${{ runner.os }}-
 
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-        with:
-          extra_args: --all-files
+      - name: Ensure venv + pre-commit installed
+        run: |
+          if [ ! -x .venv/bin/pre-commit ]; then
+            python -m venv .venv
+            . .venv/bin/activate
+            python -m pip install -U pip
+            # Pin or float; pin if you want reproducibility:
+            python -m pip install "pre-commit>=3,<5"
+          else
+            echo "Using cached .venv with pre-commit."
+          fi
+
+      - name: Run pre-commit (all files)
+        run: |
+          . .venv/bin/activate
+          pre-commit run --all-files --show-diff-on-failure --color=always
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_styling:
@@ -90,7 +110,6 @@ jobs:
             stylelint) yarn stylelint ;;
             typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
           esac
-
 
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
