@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Expand PRE_COMMIT_HOME properly (tilde does NOT expand in env vars)
+      # Expand PRE_COMMIT_HOME properly (tilde does NOT expand in env vars).
       - name: Set PRE_COMMIT_HOME
         run: echo "PRE_COMMIT_HOME=$HOME/.cache/pre-commit" >> "$GITHUB_ENV"
 
