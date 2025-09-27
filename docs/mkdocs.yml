@@ -10,6 +10,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Documentation: documentation/index.md
   - Frontend code: frontend/README.md
   - User interface (storybook): storybook/index.html
   - Backend code: backend/index.md
