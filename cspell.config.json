@@ -43,6 +43,7 @@
     "Gitea",
     "griffe",
     "healthcheck",
+    "hrefs",
     "htmlcov",
     "httpx",
     "innerhtml",
@@ -75,6 +76,7 @@
     "pipefail",
     "pipenv",
     "Pipfile",
+    "pipx",
     "pixi",
     "poolclass",
     "psql",
@@ -134,7 +136,5 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": [
-    "Exampletown"
-  ]
+  "ignoreWords": ["Exampletown"]
 }
