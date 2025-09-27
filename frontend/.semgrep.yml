@@ -1,0 +1,29 @@
+rules:
+  - id: js.dom.xss.innerhtml
+    languages: [javascript, typescript]
+    message: Avoid writing raw HTML; prefer safe rendering or sanitize with DOMPurify.
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: $X.innerHTML = $Y
+          - pattern: document.write($Y)
+
+  - id: js.dangerous.eval
+    languages: [javascript, typescript]
+    message: Avoid eval/new Function. Use safe alternatives.
+    severity: ERROR
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: new Function($X, ...)
+
+  - id: js.url.concat
+    languages: [javascript, typescript]
+    message: Build URLs with URL/URLSearchParams instead of string concatenation.
+    severity: WARNING
+    pattern: '"http" + $X'
+
+  - id: js.regex.superlinear
+    languages: [javascript, typescript]
+    message: Potential super-linear backtracking; prefer a safer regex.
+    severity: WARNING
+    pattern: /(x+)+y/
