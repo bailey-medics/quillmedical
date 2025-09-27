@@ -31,7 +31,7 @@ jobs:
           python-version: '3.12'
 
       - name: Cache venv & pre-commit & pip wheels
-      # expressions below are valid because env is defined at job level.
+      # expressions below are valid because env is defined at job level
         uses: actions/cache@v4
         with:
           path: |
@@ -114,11 +114,41 @@ jobs:
             typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
           esac
 
+  python_unit_tests:
+    runs-on: ubuntu-latest
+    name: Python unit tests
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          poetry install --no-interaction --no-ansi --with dev
+
+      - name: Run unit tests
+        working-directory: backend
+        run: |
+          poetry run pytest -q
+
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: [python_styling, typescript_styling]
+    needs: [python_styling, typescript_styling, python_unit_tests]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
