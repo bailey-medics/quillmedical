@@ -14,11 +14,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------- Python: pre-commit (Option B: own venv + cache) ----------
-  python_styling:
+  # ---------- Python ----------
+  python_checks:
     runs-on: ubuntu-latest
-    name: Python styling
-    timeout-minutes: 15
+    name: Python ${{ matrix.task }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [styling, unit]
+        python: ['3.12']  # default for all tasks
+        include:
+          - task: unit
+            python: '3.13'  # override just for unit tests
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
       PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
@@ -28,22 +36,37 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
 
-      - name: Cache venv & pre-commit & pip wheels
-      # expressions below are valid because env is defined at job level
+      # ---- caches (pick per task) ----
+      - name: Cache pre-commit & venv (styling)
+        if: matrix.task == 'styling'
         uses: actions/cache@v4
         with:
           path: |
             .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-venv-${{ runner.os }}-py312-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pc-styling-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            pc-venv-${{ runner.os }}-py312-
-            pc-venv-${{ runner.os }}-
+            pc-styling-${{ runner.os }}-py${{ matrix.python }}-
+            pc-styling-${{ runner.os }}-
 
-      - name: Ensure venv + pre-commit installed
+      - name: Cache Poetry venv & pip (unit)
+        if: matrix.task == 'unit'
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ${{ env.PIP_CACHE_DIR }}
+          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-unit-${{ runner.os }}-
+
+      # ---- styling steps ----
+      - name: Ensure venv + pre-commit (styling)
+        if: matrix.task == 'styling'
         run: |
           if [ ! -x .venv/bin/pre-commit ]; then
             python -m venv .venv
@@ -54,17 +77,37 @@ jobs:
             echo "Using cached .venv with pre-commit."
           fi
 
-      - name: Warm pre-commit hooks (optional)
+      - name: Warm pre-commit hooks (styling)
+        if: matrix.task == 'styling'
         run: |
           . .venv/bin/activate
           pre-commit install-hooks
 
-      - name: Run pre-commit (all files)
+      - name: Run pre-commit (styling)
+        if: matrix.task == 'styling'
         run: |
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+      # ---- unit test steps ----
+      - name: Install Poetry (unit)
+        if: matrix.task == 'unit'
+        run: |
+          python -m pip install -U pip poetry
+          # in-project venv to make caching deterministic
+          poetry config virtualenvs.in-project true
 
+      - name: Install backend deps (unit)
+        if: matrix.task == 'unit'
+        working-directory: backend
+        run: |
+          poetry install --with dev --no-interaction --no-ansi
+
+      - name: Pytest (unit)
+        if: matrix.task == 'unit'
+        working-directory: backend
+        run: |
+          poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_styling:
@@ -114,38 +157,6 @@ jobs:
             typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
           esac
 
-
-  # ---------- Python: unit tests ----------
-
-  python_unit_tests:
-    runs-on: ubuntu-latest
-    name: Python unit tests
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Poetry
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install poetry
-
-      - name: Install backend deps
-        working-directory: backend
-        run: |
-          poetry install --no-interaction --no-ansi --with dev
-
-      - name: Run unit tests
-        working-directory: backend
-        run: |
-          poetry run pytest -q
 
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
