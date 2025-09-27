@@ -23,10 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         task: [styling, unit]
-        python: ['3.12']  # default for all tasks
-        include:
-          - task: unit
-            python: '3.13'  # override just for unit tests
+        python: ['3.13']
+
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
       PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
