@@ -216,8 +216,6 @@ export default function MarkdownView({
     return DOMPurify.sanitize(rawHtml, {
       ALLOWED_TAGS,
       ALLOWED_ATTR,
-      // optional: explicitly forbid event handlers just in case
-      FORBID_ATTR: [/^on/i],
     });
   }, [rawHtml, asPlainText]);
 
