@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from app import main as main_mod
+from app import patient_records
 
 
 def test_patient_repo_name_sanitizes():
@@ -12,7 +13,7 @@ def test_patient_repo_name_sanitizes():
 
 def test_write_and_read_file(tmp_path, monkeypatch):
     # Point the module's PATIENT_DATA_ROOT at a temporary directory
-    monkeypatch.setattr(main_mod, "PATIENT_DATA_ROOT", Path(tmp_path))
+    monkeypatch.setattr(patient_records, "PATIENT_DATA_ROOT", Path(tmp_path))
 
     repo = main_mod.patient_repo_name("demo-1")
 

@@ -66,3 +66,4 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --maxfail=1"
 testpaths = ["tests"]
+pythonpath = ["."]

@@ -92,6 +92,7 @@
     "pysqlite",
     "pytest",
     "PYTHONDONTWRITEBYTECODE",
+    "pythonpath",
     "PYTHONUNBUFFERED",
     "pytype",
     "pyver",
@@ -130,5 +131,7 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": ["Exampletown"]
+  "ignoreWords": [
+    "Exampletown"
+  ]
 }
