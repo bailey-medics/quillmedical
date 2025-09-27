@@ -33,7 +33,7 @@ jobs:
         name: Detect Python minor
         run: echo "minor=$(python -c 'import sys;print(f\"{sys.version_info.major}.{sys.version_info.minor}\")')" >> $GITHUB_OUTPUT
 
-      # Restore venv + pre-commit hook envs + pip cache
+      # Restore venv + pre-commit hook envs + pip cache.
       - name: Cache venv & pre-commit
         uses: actions/cache@v4
         with:
