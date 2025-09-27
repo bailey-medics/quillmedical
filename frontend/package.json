@@ -22,8 +22,7 @@
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
     "unit-test": "vitest --environment jsdom",
-    "unit-test:run": "vitest --environment jsdom --run --watch=false",
-    "scan:semgrep": "semgrep --config .semgrep.yml --error"
+    "unit-test:run": "vitest --environment jsdom --run --watch=false"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
@@ -31,6 +30,7 @@
     "@mantine/notifications": "^8.3.1",
     "@tabler/icons-react": "^3.34.1",
     "axios": "^1.12.2",
+    "dompurify": "^3.2.7",
     "js-cookie": "^3.0.5",
     "qrcode": "^1.5.1",
     "react": "^19.1.1",
@@ -46,6 +46,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/dompurify": "^3.2.0",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^24.5.0",
     "@types/react": "^19.1.13",

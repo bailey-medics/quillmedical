@@ -155,15 +155,36 @@ jobs:
             prettier) yarn prettier ;;
             stylelint) yarn stylelint ;;
             typecheck) yarn typecheck ;;
-            test:run) yarn unit-test:run ;;
+            "unit-test:run") yarn unit-test:run ;;
           esac
+
+  # ---------- Frontend security (Semgrep) ----------
+  frontend_security:
+    runs-on: ubuntu-latest
+    name: Semgrep (frontend SAST)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # Install Semgrep via pipx (fast, isolated)
+      - name: Install Semgrep
+        run: pipx install semgrep
+
+      - name: Run Semgrep
+        working-directory: frontend
+        env:
+          SEMGREP_LOG_LEVEL: error
+          SEMGREP_DISABLE_ANALYTICS: "1"
+          SEMGREP_NO_VERSION_CHECK: "1"
+        run: semgrep --config .semgrep.yml --error
 
 
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: [python_checks, typescript_checks]
+    needs: [python_checks, typescript_checks, frontend_security]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4

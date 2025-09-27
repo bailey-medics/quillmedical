@@ -58,10 +58,13 @@ Quill Medical is delivered as a modular, containerised system using :
 
 ### Prerequisites
 
+What you need:
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Node.js 20+](https://nodejs.org/) (optional, to run the frontend locally)
-- [Python 3.14+](https://www.python.org/) (optional, to run the backend locally)
+- [Node.js 24](https://nodejs.org/)
+- [Python 3.14+](https://www.python.org/)
 - [Yarn Berry (v2+)](https://yarnpkg.com/getting-started/install)
+- [Semgrep](https://semgrep.dev/docs/getting-started/)
 
 ### Setup
 
