@@ -118,7 +118,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [eslint, prettier, stylelint, typecheck]
+        task: [eslint, prettier, stylelint, typecheck, "test:run"]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -155,7 +155,8 @@ jobs:
             eslint)   yarn eslint ;;
             prettier) yarn prettier ;;
             stylelint) yarn stylelint ;;
-            typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
+            typecheck) yarn typecheck ;;
+            test:run) yarn test:run ;;
           esac
 
 

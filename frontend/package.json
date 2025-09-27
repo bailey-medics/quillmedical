@@ -20,7 +20,9 @@
     "prettier:fix": "prettier --write \"*/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
     "stylelint": "stylelint \"*/*.{scss,css}\" --allow-empty-input",
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --environment jsdom",
+    "test:run": "vitest --environment jsdom --run --watch=false"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
@@ -39,6 +41,10 @@
     "@storybook/addon-a11y": "9.1.5",
     "@storybook/addon-links": "9.1.5",
     "@storybook/react-vite": "9.1.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^24.5.0",
     "@types/react": "^19.1.13",
@@ -58,6 +64,7 @@
     "eslint-plugin-storybook": "9.1.5",
     "globals": "^16.3.0",
     "husky": "^8.0.0",
+    "jsdom": "^27.0.0",
     "lint-staged": "^14.0.0",
     "postcss": "^8.5.6",
     "postcss-scss": "^4.0.9",
@@ -73,7 +80,8 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.7",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

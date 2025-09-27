@@ -29,7 +29,7 @@ repos:
         name: cspell (spelling checker)
         args:
           - --no-progress
-          - --no-summary
+          # - --no-summary
           - --config
           - cspell.config.json
 
