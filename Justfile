@@ -209,6 +209,14 @@ unit-tests-backend:
     cd backend
     poetry run pytest -q
 
+alias uf := unit-tests-frontend
+# Run the frontend unit tests
+unit-tests-frontend:
+    #!/usr/bin/env bash
+    {{initialise}} "unit-tests-frontend"
+    cd frontend
+    yarn test:run
+
 
 alias yi := yarn-install
 # Run yarn install in the frontend container
