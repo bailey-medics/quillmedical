@@ -17,7 +17,10 @@ jobs:
   # ---------- Python: pre-commit (runs in parallel with JS checks) ----------
   python_styling:
     runs-on: ubuntu-latest
+    name: Python styling
     timeout-minutes: 15
+    env:
+      PRE_COMMIT_HOME: ~/.cache/pre-commit   # put hook envs in a known place
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -25,6 +28,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # Cache pre-commit hook environments (HUGE speed-up)
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: precommit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            precommit-${{ runner.os }}-
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
@@ -34,6 +46,7 @@ jobs:
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_styling:
     runs-on: ubuntu-latest
+    name: TypeScript styling
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -81,6 +94,7 @@ jobs:
   # ---------- Gate: only proceeds if ALL fast jobs pass ----------
   gate:
     runs-on: ubuntu-latest
+    name: Gate to main push
     needs: [python_styling, typescript_styling]
     steps:
       - run: echo "All checks passed."
@@ -88,6 +102,7 @@ jobs:
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
     runs-on: ubuntu-latest
+    name: Merge branch into main
     needs: gate
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
