@@ -114,6 +114,9 @@ jobs:
             typecheck) yarn typecheck ;;  # typically: tsc --noEmit -p tsconfig.app.json
           esac
 
+
+  # ---------- Python: unit tests ----------
+
   python_unit_tests:
     runs-on: ubuntu-latest
     name: Python unit tests
