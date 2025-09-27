@@ -56,6 +56,19 @@ docs:
     open http://127.0.0.1:8000
 
 
+alias dds := docker-daemon-start
+# Start the Docker daemon (Mac only)
+docker-daemon-start:
+    #!/usr/bin/env bash
+    {{initialise}} "docker-daemon-start"
+    open /Applications/Docker.app
+    while ! docker system info > /dev/null 2>&1; do
+        echo "Waiting for Docker to start..."
+        sleep 1
+    done
+    echo "Docker is running."
+
+
 alias du := db-users
 # Show the database users
 db-users:
@@ -171,6 +184,8 @@ start-dev build="":
     {{initialise}} "start-dev"
 
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+
+    # just dds
 
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.dev.yml down
