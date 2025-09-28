@@ -7,12 +7,18 @@
     reverse_proxy backend:8000
   }
 
-  # 2) SPA served under `/app` and `/app/*` → preserve the `/app` prefix when
-  # proxying to the frontend dev server. Vite is configured with base `/app/`,
-  # so forwarding the original path prevents redirect loops.
+  # 2a) Ensure the PWA manifest is served with the correct MIME type
+  @webmanifest path /app/*.webmanifest
+  header @webmanifest Content-Type "application/manifest+json"
+  header @webmanifest Cache-Control "no-cache"
+
+  # 2) SPA served under `/app` and `/app/*`
+  # Vite is configured with base `/app/`, so proxying the original path avoids redirect loops
   handle /app/* {
     reverse_proxy frontend:5173
   }
+
+
 
   # 3) Everything else → public pages dev server
   handle {

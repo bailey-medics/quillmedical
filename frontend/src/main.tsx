@@ -79,3 +79,39 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </AuthProvider>
   </MantineProvider>,
 );
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const base = import.meta.env.BASE_URL ?? "/"; // usually "/app/"
+      const swUrl = `${base}sw.js`; // -> "/app/sw.js"
+      console.log("Registering service worker at", swUrl);
+
+      const reg = await navigator.serviceWorker.register(swUrl);
+      console.log("SW registered:", reg);
+
+      reg.update();
+      setInterval(() => reg.update(), 60 * 60 * 1000);
+
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        console.log("SW controller changed → reloading");
+        window.location.reload();
+      });
+
+      reg.addEventListener("updatefound", () => {
+        const installing = reg.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (
+            installing.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
+            reg.waiting?.postMessage("SKIP_WAITING");
+          }
+        });
+      });
+    } catch (err) {
+      console.error("Service worker registration failed:", err);
+    }
+  });
+}
