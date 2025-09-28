@@ -1,0 +1,3 @@
+
+- Send a push notification to all subscribers (for testing)
+curl -X POST http://localhost/api/push/send-test
