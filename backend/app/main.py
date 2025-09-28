@@ -37,6 +37,8 @@ from app.patient_records import (
     read_file,
     write_file,
 )
+from app.push import router as push_router
+from app.push_send import router as push_send_router
 from app.schemas.auth import LoginIn, RegisterIn
 from app.schemas.letters import LetterIn
 from app.security import (
@@ -61,6 +63,8 @@ DEV_MODE = (
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
+router.include_router(push_router)
+
 app = FastAPI(
     title="Quill API",
     docs_url=f"{settings.API_PREFIX}/docs" if DEV_MODE else None,
@@ -69,6 +73,7 @@ app = FastAPI(
     swagger_ui_parameters={"persistAuthorization": True},
 )
 
+app.include_router(push_send_router)
 
 DEP_GET_SESSION = Depends(get_session)
 

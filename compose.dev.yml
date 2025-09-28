@@ -6,9 +6,8 @@ services:
       context: ./backend
       target: dev
     container_name: quill_backend
-    env_file: .env
+    env_file: backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://quill:${POSTGRES_PASSWORD}@database:5432/quill
       BACKEND_ENV: development
     expose:
       - "8000"
@@ -26,6 +25,7 @@ services:
     build:
       context: ./frontend
     container_name: quill_frontend
+    env_file: frontend/.env
     environment:
       - NODE_ENV=development
     expose:
@@ -46,7 +46,7 @@ services:
   database:
     image: postgres:16-alpine
     container_name: quill_database
-    env_file: .env
+    env_file: backend/.env
     volumes:
       - database_data:/var/lib/postgresql/data
     healthcheck:

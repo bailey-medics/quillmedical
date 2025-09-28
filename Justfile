@@ -233,6 +233,14 @@ unit-tests-frontend:
     yarn unit-test:run
 
 
+alias vk := vapid-key
+# Generate a new VAPID key pair
+vapid-key:
+    #!/usr/bin/env bash
+    {{initialise}} "vapid-key"
+    cd frontend
+    yarn dlx web-push generate-vapid-keys
+
 alias yi := yarn-install
 # Run yarn install in the frontend container
 yarn-install:

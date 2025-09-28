@@ -66,6 +66,8 @@ What you need:
 - [Yarn Berry (v2+)](https://yarnpkg.com/getting-started/install)
 - [Semgrep](https://semgrep.dev/docs/getting-started/)
 
+- Complete env files in root and backend directories.
+
 ### Setup
 
 1. Clone this repository

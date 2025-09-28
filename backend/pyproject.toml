@@ -19,7 +19,9 @@ dependencies = [
     "pyotp (>=2.8.0,<3.0.0)",
     "itsdangerous (>=2.2.0,<3.0.0)",
     "pydantic-settings (>=2.10.1,<3.0.0)",
-    "alembic (>=1.16.5,<2.0.0)"
+    "alembic (>=1.16.5,<2.0.0)",
+    "pywebpush (>=2.0.3,<3.0.0)",
+    "cryptography (>=46.0.1,<47.0.0)"
 ]
 
 [build-system]
