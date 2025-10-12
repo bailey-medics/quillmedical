@@ -6,7 +6,7 @@
 - Security/encryption/consent controls,
 - And a clinician-friendly interface that hides Git but benefits from its strengths.
 
-## I think me need to define a high level spec for GitEHR-openEHR. This might include:
+## I think me need to define a high level spec for GitEHR-openEHR. This might include
 
 - only one branch (main) - as we only want a single source of truth
 - How ever we parse the patient record in gitEHR, it should be naturally be readable by openEHR's server eg AQL

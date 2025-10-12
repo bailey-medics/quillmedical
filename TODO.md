@@ -18,13 +18,13 @@
 - enable search field to find patients by name, dob, nhs
 - CORS
 
-## If your goal is both “time on page” and “API latency”, a neat approach is:
+## If your goal is both “time on page” and “API latency”, a neat approach is
 
 - Frontend: PostHog JS SDK → page views, task timers, flows.
 - Backend: OpenTelemetry Python + FastAPI integration → API timings.
 - Dashboard: Grafana/Metabase, or PostHog’s own product analytics dashboards.
 
-## openEHR glos:
+## openEHR glos
 
 COMPOSITION → Document
 
