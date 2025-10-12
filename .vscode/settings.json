@@ -27,6 +27,5 @@
 
   "terminal.integrated.tabs.enableAnimation": true,
   "terminal.integrated.tabs.description": "${sequence}",
-  "terminal.integrated.tabs.title": "${process}",
-  "cSpell.words": ["priv"]
+  "terminal.integrated.tabs.title": "${process}"
 }
