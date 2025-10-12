@@ -78,6 +78,12 @@ Create a .env file in the project root:
 POSTGRES_PASSWORD=change_me_now
 ```
 
+For dev, add the VPR git repo:
+
+```bash
+git clone https://github.com/bailey-medics/vpr.git vpr
+```
+
 Build and start the stack:
 
 ```bash
