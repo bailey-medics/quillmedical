@@ -44,7 +44,7 @@ services:
       - public
 
   database:
-    image: postgres:16-alpine
+    image: ehrbase/ehrbase-v2-postgres:16.2
     container_name: quill_database
     env_file: backend/.env
     volumes:
@@ -87,6 +87,38 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
+
+  ehrbase:
+    image: ehrbase/ehrbase:latest
+    container_name: quill_ehrbase
+    environment:
+      - DB_URL=jdbc:postgresql://database:5432/quill
+      - DB_USER=quill
+      - DB_PASS=vspct8I2iLUkfC3JsXxefy
+      - DB_USER_ADMIN=quill
+      - DB_PASS_ADMIN=vspct8I2iLUkfC3JsXxefy
+      - SECURITY_AUTHTYPE=BASIC
+      - SECURITY_AUTHUSER=ehrbase_user
+      - SECURITY_AUTHPASSWORD=SecureEHRbasePassword123
+      - SECURITY_AUTHADMINUSER=ehrbase_admin
+      - SECURITY_AUTHADMINPASSWORD=SuperSecureAdminPassword456
+      - SERVER_NODENAME=quill.ehrbase.node
+      - SYSTEM_ALLOW_TEMPLATE_OVERWRITE=true
+      - DB_JDBC_PARAMS=?stringtype=unspecified&lc_collate=C
+    expose:
+      - "8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - private
+      - public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   caddy:
     image: caddy:2-alpine

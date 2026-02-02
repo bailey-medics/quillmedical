@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     # --- FHIR Server ---
     FHIR_SERVER_URL: str = "http://fhir:8080/fhir"
 
+    # --- EHRbase Server ---
+    EHRBASE_URL: str = "http://ehrbase:8080/ehrbase"
+    EHRBASE_USER: str = "ehrbase-user"
+    EHRBASE_PASSWORD: SecretStr = Field(
+        ..., description="EHRbase user password"
+    )
+    EHRBASE_ADMIN_USER: str = "ehrbase-admin"
+    EHRBASE_ADMIN_PASSWORD: SecretStr = Field(
+        ..., description="EHRbase admin password"
+    )
+
     @model_validator(mode="after")
     def build_db_url_if_missing(self):
         if (
