@@ -13,7 +13,10 @@ nav:
   - Documentation: documentation/index.md
   - Frontend code: frontend/README.md
   - User interface (storybook): storybook/index.html
-  - Backend code: backend/index.md
+  - Backend code:
+      - Overview: backend/index.md
+      - FHIR Quick Start: backend/fhir-quickstart.md
+      - FHIR Setup Guide: backend/fhir-setup.md
   - API (Swagger): swagger/index.html
 
 

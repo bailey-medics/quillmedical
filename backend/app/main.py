@@ -27,9 +27,13 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_session
+from app.fhir_client import (
+    create_fhir_patient,
+    list_fhir_patients,
+    read_fhir_patient,
+)
 from app.models import User
 from app.patient_records import (
-    PATIENT_DATA_ROOT,
     Demographics,
     PatientCreate,
     ensure_repo_exists,
@@ -533,29 +537,16 @@ def create_patient_repo(payload: PatientCreate):
 
 @router.get("/patients")
 def list_patients(u: User = DEP_CURRENT_USER):
-    """List patient repositories and any stored demographics.
+    """List all patients from FHIR server.
 
     Args:
         u (User): Current authenticated user.
 
     Returns:
-        dict: Array of patient repo names with optional demographics.
+        dict: Array of FHIR patient resources.
     """
     try:
-        patients = []
-        if PATIENT_DATA_ROOT.exists():
-            for entry in sorted(PATIENT_DATA_ROOT.iterdir()):
-                if entry.is_dir() and entry.name.startswith("patient-"):
-                    demo_content = read_file(
-                        entry.name, "demographics/profile.json"
-                    )
-                    demo = None
-                    if demo_content:
-                        try:
-                            demo = json.loads(demo_content)
-                        except Exception:
-                            demo = {"raw": demo_content}
-                    patients.append({"repo": entry.name, "demographics": demo})
+        patients = list_fhir_patients()
         return {"patients": patients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -688,6 +679,73 @@ def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# --- FHIR Endpoints ---
+
+
+class FHIRPatientCreateIn(BaseModel):
+    """Input model for creating a FHIR patient."""
+
+    given_name: str
+    family_name: str
+    patient_id: str | None = None
+
+
+@router.post("/fhir/patients")
+def create_patient_in_fhir(
+    data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
+):
+    """Create a new patient in FHIR server with first and last name.
+
+    Args:
+        data (FHIRPatientCreateIn): Patient name information.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Created FHIR Patient resource.
+
+    Raises:
+        HTTPException: 500 if FHIR creation fails.
+    """
+    try:
+        patient = create_fhir_patient(
+            data.given_name, data.family_name, data.patient_id
+        )
+        return patient
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create FHIR patient: {e}"
+        ) from e
+
+
+@router.get("/fhir/patients/{patient_id}")
+def get_patient_from_fhir(patient_id: str, u: User = DEP_CURRENT_USER):
+    """Read a patient from FHIR server by ID.
+
+    Args:
+        patient_id (str): FHIR Patient resource ID.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found; 500 on other errors.
+    """
+    try:
+        patient = read_fhir_patient(patient_id)
+        if patient is None:
+            raise HTTPException(
+                status_code=404, detail="Patient not found in FHIR server"
+            )
+        return patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to read FHIR patient: {e}"
+        ) from e
 
 
 app.include_router(router)

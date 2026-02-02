@@ -238,7 +238,10 @@ files = [
 ]
 
 [package.dependencies]
-cffi = {version = ">=1.0.1", markers = "python_version < \"3.14\""}
+cffi = [
+    {version = ">=1.0.1", markers = "python_version < \"3.14\""},
+    {version = ">=2.0.0b1", markers = "python_version >= \"3.14\""},
+]
 
 [[package]]
 name = "attrs"
@@ -761,6 +764,24 @@ typing-extensions = ">=4.8.0"
 [package.extras]
 all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
 standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=2.11.2)", "python-multipart (>=0.0.7)", "uvicorn[standard] (>=0.12.0)"]
+
+[[package]]
+name = "fhirclient"
+version = "4.3.2"
+description = "A flexible client for FHIR servers supporting the SMART on FHIR protocol"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "fhirclient-4.3.2-py3-none-any.whl", hash = "sha256:7718869d4ddfd8d9d148991290276f6337b86a385dfa69ad6d1bd703074b06d2"},
+    {file = "fhirclient-4.3.2.tar.gz", hash = "sha256:e71881a06167681e53d780c1a581d3e18cca3a93e789ca21acf2d8374a3c59a6"},
+]
+
+[package.dependencies]
+requests = ">=2.4"
+
+[package.extras]
+tests = ["pytest (>=2.5)", "pytest-cov", "responses"]
 
 [[package]]
 name = "frozenlist"
@@ -3131,5 +3152,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "==3.13.*"
-content-hash = "e4d1277082bd0a92333ec0a33e85499991edc665de16811824d48ee8b6f222f7"
+python-versions = "^3.13"
+content-hash = "dd94a1665286aa992a6eb8daf0a8e3fbeb7040386c2ef440838f185eb296aaae"

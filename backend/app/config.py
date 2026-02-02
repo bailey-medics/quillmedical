@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     )  # Docker service name
     POSTGRES_PORT: int | None = Field(5432, alias="postgres_port")
 
+    # --- FHIR Server ---
+    FHIR_SERVER_URL: str = "http://fhir:8080/fhir"
+
     @model_validator(mode="after")
     def build_db_url_if_missing(self):
         if (

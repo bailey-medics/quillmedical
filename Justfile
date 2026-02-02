@@ -183,9 +183,8 @@ start-dev build="":
     #!/usr/bin/env bash
     {{initialise}} "start-dev"
 
+    just _start-docker-daemon
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
-
-    # just dds
 
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.dev.yml down
@@ -195,6 +194,46 @@ start-dev build="":
         docker compose -f compose.dev.yml up --build; \
     else \
         docker compose -f compose.dev.yml up; \
+    fi
+
+
+# Check if Docker daemon is running, start Docker Desktop if not (macOS)
+_start-docker-daemon:
+    #!/usr/bin/env bash
+    echo "Checking Docker daemon status..."
+
+    # Check if Docker daemon is responsive
+    if docker info >/dev/null 2>&1; then
+        echo "Docker daemon is running"
+        exit 0
+    fi
+
+    echo "Docker daemon is not running"
+
+    # Check if we're on macOS and Docker Desktop is available
+    if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "/Applications/Docker.app" ]]; then
+        echo "Starting Docker Desktop..."
+        open -a Docker
+
+        # Wait for Docker daemon to start (with timeout)
+        echo "Waiting for Docker daemon to start..."
+        for i in {1..60}; do
+            if docker info >/dev/null 2>&1; then
+                echo "Docker daemon is now running (took ${i} seconds)"
+                exit 0
+            fi
+            echo -n "."
+            sleep 1
+        done
+
+        echo ""
+        echo "Timeout: Docker daemon did not start within 60 seconds"
+        echo "Please check Docker Desktop manually"
+        exit 1
+    else
+        echo "Docker Desktop not found or not on macOS"
+        echo "Please start Docker manually or install Docker Desktop"
+        exit 1
     fi
 
 alias sp := start-prod

@@ -58,6 +58,36 @@ services:
     networks:
       - private
 
+  fhir:
+    image: hapiproject/hapi:latest
+    container_name: quill_fhir
+    env_file: backend/.env
+    environment:
+      - spring.datasource.url=jdbc:postgresql://database:5432/quill
+      - spring.datasource.username=${POSTGRES_USER}
+      - spring.datasource.password=${POSTGRES_PASSWORD}
+      - spring.datasource.driverClassName=org.postgresql.Driver
+      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      - hapi.fhir.fhir_version=R4
+      - hapi.fhir.subscription.resthook_enabled=false
+      - hapi.fhir.subscription.email.enabled=false
+      - hapi.fhir.subscription.websocket_enabled=false
+      - hapi.fhir.cors.allowed_origin=*
+    expose:
+      - "8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - private
+      - public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/fhir/metadata || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
   caddy:
     image: caddy:2-alpine
     container_name: quill_caddy
