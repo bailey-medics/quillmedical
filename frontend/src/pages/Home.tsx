@@ -4,15 +4,29 @@ import { api } from "@/lib/api";
 import { Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
 
-type Demographics = {
-  given_name?: string | null;
-  family_name?: string | null;
-  date_of_birth?: string | null;
-  sex?: string | null;
+// FHIR Patient resource structure
+type FhirName = {
+  given?: string[];
+  family?: string;
+  use?: string;
+};
+
+type FhirIdentifier = {
+  system?: string;
+  value?: string;
+};
+
+type FhirPatient = {
+  resourceType: string;
+  id: string;
+  name?: FhirName[];
+  birthDate?: string;
+  gender?: string;
+  identifier?: FhirIdentifier[];
 };
 
 type PatientsApiRes = {
-  patients: Array<{ repo: string; demographics?: Demographics | null }>;
+  patients: FhirPatient[];
 };
 
 export default function Home() {
@@ -27,19 +41,58 @@ export default function Home() {
       .get<PatientsApiRes>("/patients")
       .then((res) => {
         if (cancelled) return;
-        const mapped: Patient[] = (res.patients || []).map((p) => {
-          const demo = p.demographics || {};
-          return {
-            id: p.repo,
-            name:
-              demo?.given_name || demo?.family_name
-                ? [demo.given_name, demo.family_name].filter(Boolean).join(" ")
-                : p.repo,
-            dob: demo?.date_of_birth ?? undefined,
-            age: undefined,
-            sex: demo?.sex ?? undefined,
+        console.log("Raw FHIR patients:", res.patients);
+        const mapped: Patient[] = (res.patients || []).map((fhirPatient) => {
+          // Extract name from FHIR structure
+          let displayName = fhirPatient.id;
+          if (fhirPatient.name && fhirPatient.name.length > 0) {
+            const primaryName = fhirPatient.name[0];
+            const givenNames = primaryName.given || [];
+            const familyName = primaryName.family || "";
+            const nameParts = [...givenNames, familyName].filter(Boolean);
+            if (nameParts.length > 0) {
+              displayName = nameParts.join(" ");
+            }
+          }
+
+          // Extract NHS number from identifiers
+          let nhsNumber: string | undefined;
+          if (fhirPatient.identifier && fhirPatient.identifier.length > 0) {
+            const nhsIdentifier = fhirPatient.identifier.find(
+              (id) => id.system === "https://fhir.nhs.uk/Id/nhs-number",
+            );
+            if (nhsIdentifier) {
+              nhsNumber = nhsIdentifier.value;
+            }
+          }
+
+          // Calculate age from birthDate
+          let age: number | undefined;
+          if (fhirPatient.birthDate) {
+            const birthDate = new Date(fhirPatient.birthDate);
+            const today = new Date();
+            age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (
+              monthDiff < 0 ||
+              (monthDiff === 0 && today.getDate() < birthDate.getDate())
+            ) {
+              age--;
+            }
+          }
+
+          const patient = {
+            id: fhirPatient.id,
+            name: displayName,
+            dob: fhirPatient.birthDate ?? undefined,
+            age: age,
+            sex: fhirPatient.gender ?? undefined,
+            nhsNumber: nhsNumber,
             onQuill: true,
           } as Patient;
+
+          console.log("Mapped patient:", patient);
+          return patient;
         });
         setPatients(mapped);
         setError(null);

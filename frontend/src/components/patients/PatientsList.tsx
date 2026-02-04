@@ -7,7 +7,11 @@ type Props = {
   onSelect?: (p: Patient) => void;
 };
 
-export default function PatientsList({ patients, isLoading = false, onSelect }: Props) {
+export default function PatientsList({
+  patients,
+  isLoading = false,
+  onSelect,
+}: Props) {
   if (isLoading) {
     return (
       <div>
@@ -42,12 +46,16 @@ export default function PatientsList({ patients, isLoading = false, onSelect }: 
                   color: "var(--mantine-color-dimmed, #6b7280)",
                 }}
               >
-                {p.dob ? `DOB: ${p.dob}` : ""}
-                {p.age ? ` • ${p.age}` : ""}
+                {p.dob ? `DOB: ${p.dob.replace(/-/g, "/")}` : ""}
+                {p.age !== undefined ? `    ${p.age}` : ""}
+                {p.sex ? ` ${p.sex}` : ""}
+                {p.nhsNumber ? `      NHS${p.nhsNumber}` : ""}
               </Text>
             </div>
             <div>
-              {p.onQuill ? <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text> : null}
+              {p.onQuill ? (
+                <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text>
+              ) : null}
             </div>
           </Group>
         </UnstyledButton>

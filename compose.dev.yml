@@ -6,26 +6,29 @@ services:
       context: ./backend
       target: dev
     container_name: quill_backend
-    env_file: .env
+    env_file: backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://quill:${POSTGRES_PASSWORD}@database:5432/quill
       BACKEND_ENV: development
     expose:
       - "8000"
     depends_on:
-      database:
+      postgres-auth:
+        condition: service_healthy
+      postgres-fhir:
+        condition: service_healthy
+      postgres-ehrbase:
         condition: service_healthy
     networks:
       - public
       - private
     volumes:
       - ./backend:/app
-      - ./patient_data:/patient_data
 
   frontend:
     build:
       context: ./frontend
     container_name: quill_frontend
+    env_file: frontend/.env
     environment:
       - NODE_ENV=development
     expose:
@@ -43,20 +46,133 @@ services:
     networks:
       - public
 
-  database:
+  postgres-auth:
     image: postgres:16-alpine
-    container_name: quill_database
-    env_file: .env
+    container_name: quill_postgres_auth
+    environment:
+      POSTGRES_DB: quill_auth
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: vspct8I2iLUkfC3JsXxefy
     volumes:
-      - database_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     healthcheck:
-    # TODO: do we need to change quill to a env variable?
-      test: ["CMD-SHELL", "pg_isready -U quill -d quill"]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_auth"]
       interval: 5s
       timeout: 3s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
     networks:
       - private
+
+  postgres-fhir:
+    image: postgres:16-alpine
+    container_name: quill_postgres_fhir
+    environment:
+      POSTGRES_DB: hapi
+      POSTGRES_USER: hapi_user
+      POSTGRES_PASSWORD: hapi_secure_password_123
+    volumes:
+      - postgres_fhir_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hapi_user -d hapi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    networks:
+      - private
+
+  postgres-ehrbase:
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    container_name: quill_postgres_ehrbase
+    environment:
+      POSTGRES_USER: ehrbase_user
+      POSTGRES_PASSWORD: ehrbase_secure_password_456
+    volumes:
+      - postgres_ehrbase_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ehrbase_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 3G
+    networks:
+      - private
+
+  fhir:
+    image: hapiproject/hapi:latest
+    container_name: quill_fhir
+    env_file: backend/.env
+    environment:
+      - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
+      - spring.datasource.username=hapi_user
+      - spring.datasource.password=hapi_secure_password_123
+      - spring.datasource.driverClassName=org.postgresql.Driver
+      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      - hapi.fhir.fhir_version=R4
+      - hapi.fhir.subscription.resthook_enabled=false
+      - hapi.fhir.subscription.email.enabled=false
+      - hapi.fhir.subscription.websocket_enabled=false
+      - hapi.fhir.cors.allowed_origin=*
+    expose:
+      - "8080"
+    depends_on:
+      postgres-fhir:
+        condition: service_healthy
+    networks:
+      - private
+      - public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/fhir/metadata || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  ehrbase:
+    image: ehrbase/ehrbase:latest
+    container_name: quill_ehrbase
+    env_file: backend/.env
+    environment:
+      - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/ehrbase
+      - DB_USER=ehrbase_user
+      - DB_PASS=ehrbase_secure_password_456
+      - DB_USER_ADMIN=ehrbase_user
+      - DB_PASS_ADMIN=ehrbase_secure_password_456
+      - SECURITY_AUTHTYPE=BASIC
+      - SECURITY_AUTHUSER=ehrbase_user
+      - SECURITY_AUTHPASSWORD=SecureEHRbasePassword123
+      - SECURITY_AUTHADMINUSER=ehrbase_admin
+      - SECURITY_AUTHADMINPASSWORD=SuperSecureAdminPassword456
+      - SERVER_NODENAME=quill.ehrbase.node
+      - SYSTEM_ALLOW_TEMPLATE_OVERWRITE=true
+      - DB_JDBC_PARAMS=?stringtype=unspecified&lc_collate=C
+    expose:
+      - "8080"
+    depends_on:
+      postgres-ehrbase:
+        condition: service_healthy
+    networks:
+      - private
+      - public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   caddy:
     image: caddy:2-alpine
@@ -75,7 +191,9 @@ services:
       - public
 
 volumes:
-  database_data:
+  postgres_auth_data:
+  postgres_fhir_data:
+  postgres_ehrbase_data:
   caddy_data:
   caddy_config:
   frontend_node_modules:

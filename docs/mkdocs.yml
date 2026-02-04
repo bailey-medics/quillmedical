@@ -3,18 +3,72 @@ docs_dir: docs
 
 theme:
   name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  navigation_depth: 4
   features:
     - navigation.sections
-    - toc.integrate
     - content.code.copy
+    - toc.follow
 
 nav:
   - Home: index.md
-  - Documentation: documentation/index.md
-  - Frontend code: frontend/README.md
-  - User interface (storybook): storybook/index.html
-  - Backend code: backend/index.md
-  - API (Swagger): swagger/index.html
+  - Backend:
+      - Overview: backend/index.md
+      - Three-Database Migration: backend/three-database-migration.md
+      - FastAPI:
+          - Overview: backend/fastapi/index.md
+      - FHIR:
+          - Overview: backend/fhir/index.md
+      - OpenEHR:
+          - Overview: backend/openehr/index.md
+      - Caddy:
+          - Overview: backend/caddy/index.md
+      - Files:
+          - Overview: backend/files/index.md
+      - Payments:
+          - Overview: backend/payments/index.md
+  - Frontend:
+      - Overview: frontend/index.md
+      - User Workflows: frontend/workflows.md
+      - Security: frontend/security.md
+      - Accessibility: frontend/accessibility.md
+  - LLM:
+      - Copilot Instructions: llm/copilot-instructions.md
+      - Roadmap: llm/roadmap.md
+      - Specs: llm/specs.md
+  - Code Documentation:
+      - Frontend: code/frontend/README.md
+      - Storybook: code/storybook/index.html
+      - Swagger: code/swagger/index.md
+      - Backend:
+          - Overview: code/fastapi/index.md
+          - Main: code/fastapi/main.md
+          - Configuration: code/fastapi/config.md
+          - Database: code/fastapi/db.md
+          - Models: code/fastapi/models.md
+          - Security: code/fastapi/security.md
+          - FHIR Client: code/fastapi/fhir_client.md
+          - EHRbase Client: code/fastapi/ehrbase_client.md
+          - Patient Records: code/fastapi/patient_records.md
+          - Push Notifications: code/fastapi/push.md
+          - Push Send: code/fastapi/push_send.md
+          - Schemas: code/fastapi/schemas.md
 
 
 plugins:

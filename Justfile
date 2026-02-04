@@ -41,6 +41,7 @@ create-user:
     {{initialise}} "create-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
+
 alias d := docs
 # Open the documentation in the browser
 docs:
@@ -51,8 +52,8 @@ docs:
     yarn storybook:build
     cd ../backend
     poetry run python scripts/dump_openapi.py --dev
+    poetry run mkdocs serve -f ../docs/mkdocs.yml & sleep 2
     cd ..
-    mkdocs serve -f docs/mkdocs.yml & sleep 2
     open http://127.0.0.1:8000
 
 
@@ -183,9 +184,8 @@ start-dev build="":
     #!/usr/bin/env bash
     {{initialise}} "start-dev"
 
+    just _start-docker-daemon
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
-
-    # just dds
 
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.dev.yml down
@@ -195,6 +195,46 @@ start-dev build="":
         docker compose -f compose.dev.yml up --build; \
     else \
         docker compose -f compose.dev.yml up; \
+    fi
+
+
+# Check if Docker daemon is running, start Docker Desktop if not (macOS)
+_start-docker-daemon:
+    #!/usr/bin/env bash
+    echo "Checking Docker daemon status..."
+
+    # Check if Docker daemon is responsive
+    if docker info >/dev/null 2>&1; then
+        echo "Docker daemon is running"
+        exit 0
+    fi
+
+    echo "Docker daemon is not running"
+
+    # Check if we're on macOS and Docker Desktop is available
+    if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "/Applications/Docker.app" ]]; then
+        echo "Starting Docker Desktop..."
+        open -a Docker
+
+        # Wait for Docker daemon to start (with timeout)
+        echo "Waiting for Docker daemon to start..."
+        for i in {1..60}; do
+            if docker info >/dev/null 2>&1; then
+                echo "Docker daemon is now running (took ${i} seconds)"
+                exit 0
+            fi
+            echo -n "."
+            sleep 1
+        done
+
+        echo ""
+        echo "Timeout: Docker daemon did not start within 60 seconds"
+        echo "Please check Docker Desktop manually"
+        exit 1
+    else
+        echo "Docker Desktop not found or not on macOS"
+        echo "Please start Docker manually or install Docker Desktop"
+        exit 1
     fi
 
 alias sp := start-prod
@@ -216,22 +256,30 @@ stop:
     docker compose -f compose.yml -f compose.dev.yml down
     docker compose -f compose.yml -f compose.prod.yml down
 
+
 alias ub := unit-tests-backend
 # Run the backend unit tests
 unit-tests-backend:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
-    cd backend
-    poetry run pytest -q
+    docker exec quill_backend sh -lc "pytest -q -m 'not integration'"
+
 
 alias uf := unit-tests-frontend
 # Run the frontend unit tests
 unit-tests-frontend:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
-    cd frontend
-    yarn unit-test:run
+    docker exec quill_frontend sh -lc "yarn unit-test:run"
 
+
+alias vk := vapid-key
+# Generate a new VAPID key pair
+vapid-key:
+    #!/usr/bin/env bash
+    {{initialise}} "vapid-key"
+    cd frontend
+    yarn dlx web-push generate-vapid-keys
 
 alias yi := yarn-install
 # Run yarn install in the frontend container

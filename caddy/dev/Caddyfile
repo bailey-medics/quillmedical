@@ -7,14 +7,23 @@
     reverse_proxy backend:8000
   }
 
+  # 1b) EHRbase requests → ehrbase
+  @ehrbase path /ehrbase/*
+  handle @ehrbase {
+    reverse_proxy ehrbase:8080
+  }
+
   # 2a) Ensure the PWA manifest is served with the correct MIME type
   @webmanifest path /app/*.webmanifest
   header @webmanifest Content-Type "application/manifest+json"
   header @webmanifest Cache-Control "no-cache"
 
+  # 2b) Redirect /app to /app/ for proper SPA routing
+  redir /app /app/ 301
+
   # 2) SPA served under `/app` and `/app/*`
   # Vite is configured with base `/app/`, so proxying the original path avoids redirect loops
-  handle /app/* {
+  handle /app* {
     reverse_proxy frontend:5173
   }
 

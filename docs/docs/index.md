@@ -16,6 +16,8 @@ Quill Medical is delivered as a modular, containerised system using :
 - **Frontend** – Vite, React, TypeScript, and Mantine UI, single page application (SPA), progressive web app (PWA), Yarn Berry + Storybook
 - **Backend** – FastAPI + Python 3.12 + poetry
 - **Database** – Alembic + PostgreSQL
+- **FHIR** – HAPI FHIR server for patient demographics and administrative data (HL7 FHIR R4)
+- **OpenEHR** – EHRbase server for clinical documents, letters, and longitudinal health records
 
 ---
 
@@ -31,14 +33,12 @@ Quill Medical is delivered as a modular, containerised system using :
 ## Security & Authentication
 
 - **Authentication**: FastAPI with **JWT (JSON Web Tokens)**
-
   - **Access tokens**: short-lived (≈15 minutes), stored in secure `HttpOnly` cookies.
   - **Refresh tokens**: long-lived (≈7 days), also in cookies for automatic renewal.
 
 - **CSRF protection**: Each session issues an `XSRF-TOKEN` cookie. Clients must send it back as an `X-CSRF-Token` header for all state-changing requests.
 
 - **Cookie settings**:
-
   - `HttpOnly`, `Secure`, and `SameSite` flags applied (depending on environment).
   - Optional `COOKIE_DOMAIN` ensures cookies are scoped correctly in prod.
 
@@ -65,6 +65,8 @@ What you need:
 - [Python 3.14+](https://www.python.org/)
 - [Yarn Berry (v2+)](https://yarnpkg.com/getting-started/install)
 - [Semgrep](https://semgrep.dev/docs/getting-started/)
+
+- Complete env files in root and backend directories.
 
 ### Setup
 

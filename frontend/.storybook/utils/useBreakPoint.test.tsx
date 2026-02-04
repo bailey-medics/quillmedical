@@ -1,17 +1,9 @@
 /* @vitest-environment jsdom */
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, vi, afterEach, Mock } from "vitest";
-
-vi.mock("@mantine/core", () => ({
-  useMantineTheme: vi.fn(),
-}));
-vi.mock("@mantine/hooks", () => ({
-  useMediaQuery: vi.fn(),
-}));
+import { MantineProvider } from "@mantine/core";
+import { describe, it, expect, afterEach } from "vitest";
 
 import { useBreakpoint } from "./useBreakPoint";
-import { useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 
 function TestComponent() {
   const bp = useBreakpoint();
@@ -19,7 +11,6 @@ function TestComponent() {
 }
 
 afterEach(() => {
-  vi.resetAllMocks();
   cleanup();
 });
 
@@ -34,11 +25,29 @@ describe("useBreakpoint", () => {
     },
   };
 
-  function setupMediaMocks(values: Record<string, boolean>) {
-    (useMantineTheme as Mock).mockReturnValue(theme);
-    (useMediaQuery as Mock).mockImplementation((q: string) => {
-      return Boolean(values[q]);
+  function setupMediaQuery(matches: Record<string, boolean>) {
+    // Override matchMedia to return specific matches
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: (query: string) => ({
+        matches: matches[query] ?? false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
     });
+  }
+
+  function renderWithProvider() {
+    return render(
+      <MantineProvider theme={theme}>
+        <TestComponent />
+      </MantineProvider>,
+    );
   }
 
   it("returns xl when xl media query matches", () => {
@@ -49,8 +58,8 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: true,
       [`(min-width: ${theme.breakpoints.xs})`]: true,
     };
-    setupMediaMocks(queries);
-    render(<TestComponent />);
+    setupMediaQuery(queries);
+    renderWithProvider();
     expect(screen.getByTestId("bp").textContent).toBe("xl");
   });
 
@@ -62,8 +71,8 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: true,
       [`(min-width: ${theme.breakpoints.xs})`]: true,
     };
-    setupMediaMocks(queries);
-    render(<TestComponent />);
+    setupMediaQuery(queries);
+    renderWithProvider();
     expect(screen.getByTestId("bp").textContent).toBe("lg");
   });
 
@@ -75,8 +84,8 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: true,
       [`(min-width: ${theme.breakpoints.xs})`]: true,
     };
-    setupMediaMocks(queries);
-    render(<TestComponent />);
+    setupMediaQuery(queries);
+    renderWithProvider();
     expect(screen.getByTestId("bp").textContent).toBe("md");
   });
 
@@ -88,8 +97,8 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: true,
       [`(min-width: ${theme.breakpoints.xs})`]: true,
     };
-    setupMediaMocks(queries);
-    render(<TestComponent />);
+    setupMediaQuery(queries);
+    renderWithProvider();
     expect(screen.getByTestId("bp").textContent).toBe("sm");
   });
 
@@ -101,11 +110,11 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: false,
       [`(min-width: ${theme.breakpoints.xs})`]: true,
     };
-    setupMediaMocks(queries1);
-    render(<TestComponent />);
+    setupMediaQuery(queries1);
+    renderWithProvider();
     expect(screen.getByTestId("bp").textContent).toBe("xs");
 
-    vi.resetAllMocks();
+    cleanup();
 
     const queries2 = {
       [`(min-width: ${theme.breakpoints.xl})`]: false,
@@ -114,8 +123,8 @@ describe("useBreakpoint", () => {
       [`(min-width: ${theme.breakpoints.sm})`]: false,
       [`(min-width: ${theme.breakpoints.xs})`]: false,
     };
-    setupMediaMocks(queries2);
-    render(<TestComponent />);
+    setupMediaQuery(queries2);
+    renderWithProvider();
     expect(screen.getAllByTestId("bp")[0].textContent).toBe("xs");
   });
 });

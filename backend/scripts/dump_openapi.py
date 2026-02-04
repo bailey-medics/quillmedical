@@ -22,15 +22,15 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Dump the FastAPI app OpenAPI JSON to "
-            "docs/docs/swagger/openapi.json"
+            "docs/docs/code/swagger/openapi.json"
         )
     )
     parser.add_argument(
         "--dev",
         action="store_true",
         help=(
-            "Allow dev fallback values for JWT_SECRET and DATABASE_URL "
-            "(local use only)"
+            "Allow dev fallback values for JWT_SECRET, DATABASE_URL, "
+            "and EHRBASE credentials (local use only)"
         ),
     )
     args = parser.parse_args()
@@ -51,6 +51,31 @@ def main():
                 "(export_openapi) WARNING: DATABASE_URL not set; "
                 "using in-memory SQLite for export"
             )
+        if not os.environ.get("EHRBASE_PASSWORD"):
+            os.environ["EHRBASE_PASSWORD"] = "dev-password"
+            print(
+                "(export_openapi) WARNING: EHRBASE_PASSWORD not set; "
+                "using temporary dev password for export"
+            )
+        if not os.environ.get("EHRBASE_ADMIN_PASSWORD"):
+            os.environ["EHRBASE_ADMIN_PASSWORD"] = "dev-admin-password"
+            print(
+                "(export_openapi) WARNING: EHRBASE_ADMIN_PASSWORD not set; "
+                "using temporary dev admin password for export"
+            )
+        if not os.environ.get("VAPID_PRIVATE"):
+            # Generate a temporary VAPID key for export
+            os.environ["VAPID_PRIVATE"] = "dev-vapid-private-key"
+            print(
+                "(export_openapi) WARNING: VAPID_PRIVATE not set; "
+                "using temporary dev VAPID key for export"
+            )
+        if not os.environ.get("COMPANY_EMAIL"):
+            os.environ["COMPANY_EMAIL"] = "admin@example.com"
+            print(
+                "(export_openapi) WARNING: COMPANY_EMAIL not set; "
+                "using temporary dev email for export"
+            )
     # Now import the FastAPI app; do this after any env injection so
     # pydantic Settings pick up the temporary values when run with --dev.
     try:
@@ -62,7 +87,7 @@ def main():
             print("  ", p)
         # Re-raise the original exception so the caller sees the traceback
         raise
-    out = REPO_ROOT / "docs" / "docs" / "swagger" / "openapi.json"
+    out = REPO_ROOT / "docs" / "docs" / "code" / "swagger" / "openapi.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     spec = app.openapi()
     out.write_text(json.dumps(spec, indent=2))

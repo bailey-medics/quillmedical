@@ -9,9 +9,7 @@ and patient record routes. All endpoints are exposed under the
 are also served under `/api/docs` and `/api/redoc`.
 """
 
-import json
-from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 from fastapi import (
     APIRouter,
@@ -27,16 +25,20 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_session
-from app.models import User
-from app.patient_records import (
-    PATIENT_DATA_ROOT,
-    Demographics,
-    PatientCreate,
-    ensure_repo_exists,
-    patient_repo_name,
-    read_file,
-    write_file,
+from app.ehrbase_client import (
+    create_letter_composition,
+    get_letter_composition,
+    list_letters_for_patient,
 )
+from app.fhir_client import (
+    create_fhir_patient,
+    list_fhir_patients,
+    read_fhir_patient,
+    update_fhir_patient,
+)
+from app.models import User
+from app.push import router as push_router
+from app.push_send import router as push_send_router
 from app.schemas.auth import LoginIn, RegisterIn
 from app.schemas.letters import LetterIn
 from app.security import (
@@ -61,6 +63,8 @@ DEV_MODE = (
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
+router.include_router(push_router)
+
 app = FastAPI(
     title="Quill API",
     docs_url=f"{settings.API_PREFIX}/docs" if DEV_MODE else None,
@@ -69,6 +73,7 @@ app = FastAPI(
     swagger_ui_parameters={"persistAuthorization": True},
 )
 
+app.include_router(push_send_router)
 
 DEP_GET_SESSION = Depends(get_session)
 
@@ -492,65 +497,44 @@ def refresh(
     "/patients",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
-def create_patient_repo(payload: PatientCreate):
-    """Create a new patient repository and seed it with a README.
+def create_patient_record(patient_id: str):
+    """Verify or create patient record in FHIR.
 
     Args:
-        payload (PatientCreate): Patient identifier and any setup metadata.
+        patient_id (str): Patient identifier.
 
     Returns:
-        dict: Repo name and initialisation status.
+        dict: Patient ID and status.
 
     Raises:
-        HTTPException: 500 on storage/write errors.
+        HTTPException: 404 if patient not found; 500 on errors.
     """
-    repo = patient_repo_name(payload.patient_id)
     try:
-        ensure_repo_exists(repo, private=True)
-        ts = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
-        readme = (
-            f"# Patient Repository: {repo}\n\n"
-            "Folders:\n"
-            "- `demographics/` – non-clinical demographics JSON\n"
-            "- `letters/` – correspondence in Markdown/PDF\n\n"
-            f"*Initialized {ts} UTC*\n"
-        )
-        write_file(
-            repo,
-            "README.md",
-            readme,
-            "chore: add patient README",
-        )
-        return {"repo": repo, "initialized": True}
+        # Check if patient exists in FHIR
+        patient = read_fhir_patient(patient_id)
+        if not patient:
+            raise HTTPException(
+                status_code=404, detail="Patient not found in FHIR server"
+            )
+        return {"patient_id": patient_id, "status": "ready"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/patients")
 def list_patients(u: User = DEP_CURRENT_USER):
-    """List patient repositories and any stored demographics.
+    """List all patients from FHIR server.
 
     Args:
         u (User): Current authenticated user.
 
     Returns:
-        dict: Array of patient repo names with optional demographics.
+        dict: Array of FHIR patient resources.
     """
     try:
-        patients = []
-        if PATIENT_DATA_ROOT.exists():
-            for entry in sorted(PATIENT_DATA_ROOT.iterdir()):
-                if entry.is_dir() and entry.name.startswith("patient-"):
-                    demo_content = read_file(
-                        entry.name, "demographics/profile.json"
-                    )
-                    demo = None
-                    if demo_content:
-                        try:
-                            demo = json.loads(demo_content)
-                        except Exception:
-                            demo = {"raw": demo_content}
-                    patients.append({"repo": entry.name, "demographics": demo})
+        patients = list_fhir_patients()
         return {"patients": patients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -560,55 +544,52 @@ def list_patients(u: User = DEP_CURRENT_USER):
     "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
-def upsert_demographics(patient_id: str, demographics: Demographics):
-    """Create or update demographics for a patient.
+def upsert_demographics(
+    patient_id: str, demographics: dict, u: User = DEP_CURRENT_USER
+):
+    """Update demographics for a patient in FHIR.
 
     Args:
         patient_id (str): Patient identifier.
-        demographics (Demographics): Structured demographics payload.
+        demographics (dict): Demographics fields to update.
+        u (User): Current authenticated user.
 
     Returns:
-        dict: Repo name and stored path.
+        dict: Updated patient resource.
 
     Raises:
-        HTTPException: 500 on write errors.
+        HTTPException: 404 if patient not found; 500 on update errors.
     """
-    repo = patient_repo_name(patient_id)
     try:
-        ensure_repo_exists(repo)
-        ts = datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
-        path = "demographics/profile.json"
-        content = json.dumps(
-            {"updated_at_utc": ts, **demographics.model_dump()}, indent=2
-        )
-        write_file(repo, path, content, "feat: upsert demographics")
-        return {"repo": repo, "path": path}
+        result = update_fhir_patient(patient_id, demographics)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        return {"patient_id": patient_id, "updated": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/patients/{patient_id}/demographics")
 def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
-    """Fetch demographics JSON for a given patient.
+    """Fetch demographics for a patient from FHIR.
 
     Args:
         patient_id (str): Patient identifier.
         u (User): Current authenticated user.
 
     Returns:
-        dict: Repo name and raw demographics content.
+        dict: Patient demographics from FHIR.
 
     Raises:
         HTTPException: 404 if not found; 500 on read errors.
     """
-    repo = patient_repo_name(patient_id)
     try:
-        content = read_file(repo, "demographics/profile.json")
-        if content is None:
-            raise HTTPException(
-                status_code=404, detail="No demographics found"
-            )
-        return {"repo": repo, "content": content}
+        patient = read_fhir_patient(patient_id)
+        if patient is None:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        return {"patient_id": patient_id, "data": patient}
     except HTTPException:
         raise
     except Exception as e:
@@ -620,69 +601,156 @@ def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def write_letter(patient_id: str, letter: LetterIn):
-    """Write and store a new letter in the patient’s repository.
+    """Write and store a new letter in OpenEHR.
 
     Args:
         patient_id (str): Patient identifier.
         letter (LetterIn): Letter metadata and markdown body.
 
     Returns:
-        dict: Repo and stored file path.
+        dict: Composition UID and metadata.
 
     Raises:
         HTTPException: 500 on write errors.
     """
-    repo = patient_repo_name(patient_id)
-    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H%M%SZ")
-    slug = "".join(
-        ch if (ch.isalnum() or ch in "-_") else "-"
-        for ch in letter.title.lower()
-    ).strip("-")
-    filename = f"letters/{ts}-{slug or 'letter'}.md"
-    md = f"# {letter.title}\n\n{letter.body}\n\n*Written at {ts} UTC*"
     try:
-        ensure_repo_exists(repo)
-        write_file(
-            repo,
-            filename,
-            md,
-            f"feat: add letter '{letter.title}'",
-            letter.author_name,
-            letter.author_email,
+        result = create_letter_composition(
+            patient_id=patient_id,
+            title=letter.title,
+            body=letter.body,
+            author_name=letter.author_name,
         )
-        return {"repo": repo, "path": filename}
+        return {
+            "patient_id": patient_id,
+            "composition_uid": result.get("uid", {}).get("value"),
+            "title": letter.title,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/letters/{name}")
-def read_letter(patient_id: str, name: str, u: User = DEP_CURRENT_USER):
-    """Read a specific letter file from the patient’s repository.
+@router.get("/patients/{patient_id}/letters/{composition_uid}")
+def read_letter(
+    patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
+    """Read a specific letter composition from OpenEHR.
 
     Args:
         patient_id (str): Patient identifier.
-        name (str): Letter filename (with or without .md).
+        composition_uid (str): OpenEHR composition UID.
         u (User): Current authenticated user.
 
     Returns:
-        dict: Repo, resolved file path, and markdown content.
+        dict: Composition data including title and content.
 
     Raises:
         HTTPException: 404 if not found; 500 on read errors.
     """
-    repo = patient_repo_name(patient_id)
-    path = (
-        f"letters/{name}.md" if not name.endswith(".md") else f"letters/{name}"
-    )
     try:
-        content = read_file(repo, path)
-        if content is None:
+        composition = get_letter_composition(patient_id, composition_uid)
+        if composition is None:
             raise HTTPException(status_code=404, detail="Letter not found")
-        return {"repo": repo, "path": path, "content": content}
+        return {
+            "patient_id": patient_id,
+            "composition_uid": composition_uid,
+            "data": composition,
+        }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/patients/{patient_id}/letters")
+def list_letters(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
+    """List all letters for a patient from OpenEHR.
+
+    Args:
+        patient_id (str): Patient identifier.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: List of letter metadata.
+
+    Raises:
+        HTTPException: 500 on read errors.
+    """
+    try:
+        letters = list_letters_for_patient(patient_id)
+        return {"patient_id": patient_id, "letters": letters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# --- FHIR Endpoints ---
+
+
+class FHIRPatientCreateIn(BaseModel):
+    """Input model for creating a FHIR patient."""
+
+    given_name: str
+    family_name: str
+    patient_id: str | None = None
+
+
+@router.post("/fhir/patients")
+def create_patient_in_fhir(
+    data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
+    """Create a new patient in FHIR server with first and last name.
+
+    Args:
+        data (FHIRPatientCreateIn): Patient name information.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: Created FHIR Patient resource.
+
+    Raises:
+        HTTPException: 500 if FHIR creation fails.
+    """
+    try:
+        patient = create_fhir_patient(
+            data.given_name, data.family_name, data.patient_id
+        )
+        return patient
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create FHIR patient: {e}"
+        ) from e
+
+
+@router.get("/fhir/patients/{patient_id}")
+def get_patient_from_fhir(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
+    """Read a patient from FHIR server by ID.
+
+    Args:
+        patient_id (str): FHIR Patient resource ID.
+        u (User): Current authenticated user.
+
+    Returns:
+        dict: FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found; 500 on other errors.
+    """
+    try:
+        patient = read_fhir_patient(patient_id)
+        if patient is None:
+            raise HTTPException(
+                status_code=404, detail="Patient not found in FHIR server"
+            )
+        return patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to read FHIR patient: {e}"
+        ) from e
 
 
 app.include_router(router)
