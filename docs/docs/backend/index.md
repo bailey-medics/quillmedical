@@ -125,11 +125,6 @@ All API endpoints are prefixed with `/api`:
 - `GET /api/patients/{id}/letters` - List all letters (OpenEHR)
 - `GET /api/patients/{id}/letters/{uid}` - Get specific letter (OpenEHR)
 
-### FHIR Operations
-
-- `POST /api/fhir/patients` - Create FHIR Patient directly
-- `GET /api/fhir/patients/{id}` - Read FHIR Patient directly
-
 ### Push Notifications
 
 - `POST /api/push/register` - Register for push notifications

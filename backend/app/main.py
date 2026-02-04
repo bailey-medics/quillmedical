@@ -695,7 +695,7 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-@router.post("/fhir/patients")
+@router.post("/patients")
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -719,37 +719,6 @@ def create_patient_in_fhir(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create FHIR patient: {e}"
-        ) from e
-
-
-@router.get("/fhir/patients/{patient_id}")
-def get_patient_from_fhir(
-    patient_id: str, u: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
-    """Read a patient from FHIR server by ID.
-
-    Args:
-        patient_id (str): FHIR Patient resource ID.
-        u (User): Current authenticated user.
-
-    Returns:
-        dict: FHIR Patient resource.
-
-    Raises:
-        HTTPException: 404 if patient not found; 500 on other errors.
-    """
-    try:
-        patient = read_fhir_patient(patient_id)
-        if patient is None:
-            raise HTTPException(
-                status_code=404, detail="Patient not found in FHIR server"
-            )
-        return patient
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read FHIR patient: {e}"
         ) from e
 
 

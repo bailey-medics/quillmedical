@@ -59,7 +59,7 @@ def test_fhir_create_and_read_patient():
         # Create a FHIR patient
         print("\n2. Creating FHIR patient...")
         response = client.post(
-            "/fhir/patients",
+            "/patients",
             json={
                 "given_name": "Alice",
                 "family_name": "Smith",
@@ -79,14 +79,15 @@ def test_fhir_create_and_read_patient():
 
         # Read the patient back
         print("\n3. Reading FHIR patient...")
-        response = client.get(f"/fhir/patients/{patient_id}")
+        response = client.get(f"/patients/{patient_id}/demographics")
 
         if response.status_code != 200:
             print(f"   ✗ Failed to read patient: {response.status_code}")
             print(f"   Response: {response.text}")
             return False
 
-        retrieved_patient = response.json()
+        response_data = response.json()
+        retrieved_patient = response_data.get("data", {})
         print("   ✓ Patient retrieved successfully")
         print(f"   ID: {retrieved_patient.get('id')}")
         name_obj = retrieved_patient.get("name", [{}])[0]
