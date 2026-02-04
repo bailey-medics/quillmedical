@@ -24,8 +24,8 @@ jobs:
     name: Build frontend + MkDocs site
     runs-on: ubuntu-latest
     env:
-      OPENAPI_SRC: docs/docs/swagger/openapi.json
-      OPENAPI_DST: site/swagger/openapi.json
+      OPENAPI_SRC: docs/docs/code/swagger/openapi.json
+      OPENAPI_DST: site/code/swagger/openapi.json
     # If this was triggered by workflow_run, only proceed if the previous workflow succeeded
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
@@ -109,17 +109,6 @@ jobs:
           # Run the exporter (must not use --dev in CI). Fail the build if required env
           # variables are missing so we don't accidentally ship a dev fallback.
           poetry run python scripts/dump_openapi.py --dev
-
-      - name: Ensure OpenAPI JSON is included in final site
-        run: |
-          mkdir -p $(dirname "$OPENAPI_DST")
-          # The exporter writes to $OPENAPI_SRC at repo root
-          if [ -f "$OPENAPI_SRC" ]; then
-            cp "$OPENAPI_SRC" "$OPENAPI_DST"
-          else
-            echo "ERROR: openapi.json not found at $OPENAPI_SRC"
-            exit 1
-          fi
 
       - name: Build MkDocs site into /site
         run: |
