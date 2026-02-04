@@ -48,6 +48,7 @@ def main() -> int:
     Exit codes:
         0: Success - user created or updated.
         1: Application import error or other internal failure.
+        2: Database not migrated (users table does not exist).
         3: Passwords did not match.
         4: Interactive input aborted by user.
     """
@@ -70,6 +71,8 @@ def main() -> int:
 
     # Import app modules here; inside the container these should be available.
     try:
+        from sqlalchemy import inspect
+
         from app.db import SessionLocal
         from app.models import User
         from app.security import hash_password
@@ -78,6 +81,28 @@ def main() -> int:
         return 1
 
     db = SessionLocal()
+    try:
+        # Check if database has been migrated by verifying the users table exists
+        if db.bind is None:
+            print("ERROR: Database bind is None", file=sys.stderr)
+            return 1
+        inspector = inspect(db.bind)
+        if "users" not in inspector.get_table_names():
+            print(
+                "ERROR: Database not initialised. Please run migrations first:",
+                file=sys.stderr,
+            )
+            print(
+                "  docker exec quill_backend sh -lc 'alembic upgrade head'",
+                file=sys.stderr,
+            )
+            print("Or use: just migrate 'initial setup'", file=sys.stderr)
+            return 2
+
+    except Exception as exc:  # pragma: no cover - runtime DB errors
+        print(f"Database connection error: {exc}", file=sys.stderr)
+        return 1
+
     try:
         u = db.query(User).filter(User.username == username).first()
         if not u:

@@ -51,6 +51,26 @@ def main():
                 "(export_openapi) WARNING: DATABASE_URL not set; "
                 "using in-memory SQLite for export"
             )
+        # Database passwords
+        if not os.environ.get("AUTH_DB_PASSWORD"):
+            os.environ["AUTH_DB_PASSWORD"] = "dev-auth-password"
+            print(
+                "(export_openapi) WARNING: AUTH_DB_PASSWORD not set; "
+                "using temporary dev password for export"
+            )
+        if not os.environ.get("FHIR_DB_PASSWORD"):
+            os.environ["FHIR_DB_PASSWORD"] = "dev-fhir-password"
+            print(
+                "(export_openapi) WARNING: FHIR_DB_PASSWORD not set; "
+                "using temporary dev password for export"
+            )
+        if not os.environ.get("EHRBASE_DB_PASSWORD"):
+            os.environ["EHRBASE_DB_PASSWORD"] = "dev-ehrbase-db-password"
+            print(
+                "(export_openapi) WARNING: EHRBASE_DB_PASSWORD not set; "
+                "using temporary dev password for export"
+            )
+        # EHRbase API credentials
         if not os.environ.get("EHRBASE_PASSWORD"):
             os.environ["EHRBASE_PASSWORD"] = "dev-password"
             print(
@@ -62,6 +82,18 @@ def main():
             print(
                 "(export_openapi) WARNING: EHRBASE_ADMIN_PASSWORD not set; "
                 "using temporary dev admin password for export"
+            )
+        if not os.environ.get("EHRBASE_API_PASSWORD"):
+            os.environ["EHRBASE_API_PASSWORD"] = "dev-api-password"
+            print(
+                "(export_openapi) WARNING: EHRBASE_API_PASSWORD not set; "
+                "using temporary dev password for export"
+            )
+        if not os.environ.get("EHRBASE_API_ADMIN_PASSWORD"):
+            os.environ["EHRBASE_API_ADMIN_PASSWORD"] = "dev-api-admin-password"
+            print(
+                "(export_openapi) WARNING: EHRBASE_API_ADMIN_PASSWORD not set; "
+                "using temporary dev password for export"
             )
         if not os.environ.get("VAPID_PRIVATE"):
             # Generate a temporary VAPID key for export
