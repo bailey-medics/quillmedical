@@ -119,7 +119,7 @@ def main():
             print("  ", p)
         # Re-raise the original exception so the caller sees the traceback
         raise
-    out = REPO_ROOT / "docs" / "docs" / "swagger" / "openapi.json"
+    out = REPO_ROOT / "docs" / "docs" / "code" / "swagger" / "openapi.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     spec = app.openapi()
     out.write_text(json.dumps(spec, indent=2))

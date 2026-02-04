@@ -253,8 +253,8 @@ alias sc := stop
 stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
-    docker compose -f compose.yml -f compose.dev.yml down
-    docker compose -f compose.yml -f compose.prod.yml down
+    docker compose -f compose.dev.yml down
+    docker compose -f compose.prod.yml down
 
 
 alias ub := unit-tests-backend
