@@ -66,3 +66,6 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 addopts = "-q --strict-markers --maxfail=1"
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]

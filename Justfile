@@ -41,6 +41,7 @@ create-user:
     {{initialise}} "create-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
+
 alias d := docs
 # Open the documentation in the browser
 docs:
@@ -255,21 +256,21 @@ stop:
     docker compose -f compose.yml -f compose.dev.yml down
     docker compose -f compose.yml -f compose.prod.yml down
 
+
 alias ub := unit-tests-backend
 # Run the backend unit tests
 unit-tests-backend:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
-    cd backend
-    poetry run pytest -q
+    docker exec quill_backend sh -lc "pytest -q -m 'not integration'"
+
 
 alias uf := unit-tests-frontend
 # Run the frontend unit tests
 unit-tests-frontend:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
-    cd frontend
-    yarn unit-test:run
+    docker exec quill_frontend sh -lc "yarn unit-test:run"
 
 
 alias vk := vapid-key
