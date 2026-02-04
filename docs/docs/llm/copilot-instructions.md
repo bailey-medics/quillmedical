@@ -1,6 +1,6 @@
 # Copilot Instructions for Quill Medical
 
-See also [specs.md](specs.md) and [roadmap.md](roadmap.md) for high-level project context.
+See also [specs.md](specs.md), [roadmap.md](roadmap.md) and [architecture.md](architecture.md) for high-level project context.
 
 ## Architecture Overview
 
