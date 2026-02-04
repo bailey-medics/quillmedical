@@ -1,50 +1,59 @@
 # Quill Medical
 
-Quill Medical is a full-stack digital health platform designed for clinical-grade reliability.
-It provides a secure and scalable foundation for healthcare applications, combining a modern web stack
-with strong attention to interoperability, security, and compliance. Quill Medical provides paid for
-communication between patients and clinics and also letter generation and storage.
+Quill Medical is a secure web platform that connects patients with their healthcare providers. It enables:
+
+- **Secure messaging** between patients and clinics
+- **Clinical letter** creation and delivery
+- **Transparent pricing** for clinical time and consultations
+- **Safe storage** of medical correspondence
+
+The platform is designed for clinical reliability, security, and compliance with healthcare standards.
 
 ---
 
-## Architecture
+## How It Works
 
-Quill Medical is delivered as a modular, containerised system using :
+Quill Medical is built from several connected components:
 
-- **Docker Compose**
-- **Caddy** – reverse proxy with TLS termination and security headers.
-- **Frontend** – Vite, React, TypeScript, and Mantine UI, single page application (SPA), progressive web app (PWA), Yarn Berry + Storybook
-- **Backend** – FastAPI + Python 3.12 + poetry
-- **Database** – Alembic + PostgreSQL
-- **FHIR** – HAPI FHIR server for patient demographics and administrative data (HL7 FHIR R4)
-- **OpenEHR** – EHRbase server for clinical documents, letters, and longitudinal health records
+- **Web application** – What patients and staff see and use in their browsers
+- **Web server** – Handles secure connections and routes traffic
+- **Application server** – Processes requests and manages business logic
+- **Databases** – Store patient information, clinical letters, and user accounts
+- **Healthcare standards** – Uses FHIR for patient demographics and OpenEHR for clinical documents
 
 ---
 
-## Formatting and Linting
+## Code Quality
 
-- **Python**: `ruff`, `black`
-- **TypeScript**: `prettier`, `eslint`
-- **Git hooks**: `pre-commit` to run formatters and linters on commit
-- **Spell checking**: `streetsidesoftware.code-spell-checker` for common typos in code and text files. For any new words, please chose "Add words to CSpell Configuration" so they are added to `cspell.config.json`.
+The codebase uses automated tools to maintain consistent formatting and catch common errors:
+
+- Code formatters ensure consistent style
+- Linters check for potential issues
+- Spell checkers catch typos in documentation
+- Pre-commit checks run automatically before code is saved
 
 ---
 
 ## Security & Authentication
 
-- **Authentication**: FastAPI with **JWT (JSON Web Tokens)**
-  - **Access tokens**: short-lived (≈15 minutes), stored in secure `HttpOnly` cookies.
-  - **Refresh tokens**: long-lived (≈7 days), also in cookies for automatic renewal.
+### User Authentication
 
-- **CSRF protection**: Each session issues an `XSRF-TOKEN` cookie. Clients must send it back as an `X-CSRF-Token` header for all state-changing requests.
+- Users log in with username and password
+- Passwords are encrypted and never stored in plain text
+- Sessions last 15 minutes, then automatically refresh
+- Optional two-factor authentication for extra security
 
-- **Cookie settings**:
-  - `HttpOnly`, `Secure`, and `SameSite` flags applied (depending on environment).
-  - Optional `COOKIE_DOMAIN` ensures cookies are scoped correctly in prod.
+### Data Protection
 
-- **Password storage**: Strong hashing using **argon2** via `passlib`.
+- All connections use HTTPS encryption
+- Protection against common web attacks
+- Secure session management with automatic expiry
+- User permissions control who can access what data
 
-- **Database migrations**: Managed with **Alembic**, autogenerating schema changes from `app.models`.
+### Database Management
+
+- Changes to database structure are tracked and versioned
+- Updates can be applied safely without data loss
 
 ---
 
@@ -56,47 +65,28 @@ Quill Medical is delivered as a modular, containerised system using :
 
 ## Getting Started
 
-### Prerequisites
+### For Developers
 
-What you need:
+#### Required Software
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Node.js 24](https://nodejs.org/)
-- [Python 3.14+](https://www.python.org/)
-- [Yarn Berry (v2+)](https://yarnpkg.com/getting-started/install)
-- [Semgrep](https://semgrep.dev/docs/getting-started/)
+- Docker Desktop – runs the application in containers
+- Node.js 24 – for frontend development
+- Python 3.14+ – for backend development
+- Yarn – JavaScript package manager
+- Just – command runner for common tasks
 
-- Complete env files in root and backend directories.
+#### Setup Steps
 
-### Setup
+1. Download the code from the repository
+2. Create configuration files with secure passwords
+3. Build and start all services
+4. Initialise the development environment
 
-1. Clone this repository
+#### Access Points
 
-Create a .env file in the project root:
-
-```text
-POSTGRES_PASSWORD=change_me_now
-```
-
-Build and start the stack:
-
-```bash
-docker compose up --build
-```
-
-Make sure you have Just installed. Then run:
-
-```bash
-just initialise
-```
-
-Access the services:
-
-Frontend: <http://localhost>
-
-Backend API: <http://localhost/api/health>
-
-Gitea: <http://localhost:3001>
+- Main application: <http://localhost>
+- API documentation: <http://localhost/api/health>
+- Version control: <http://localhost:3001>
 
 ## Environment Variables
 
