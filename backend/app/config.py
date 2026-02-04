@@ -1,7 +1,7 @@
 # app/config.py
 from urllib.parse import quote_plus
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,44 +26,91 @@ class Settings(BaseSettings):
     COOKIE_DOMAIN: str | None = None
     SECURE_COOKIES: bool = False
 
-    # --- DB (compose from parts; Docker DNS host 'database' by default) ---
-    DATABASE_URL: str | None = None
-    POSTGRES_USER: str | None = Field(None, alias="postgres_user")
-    POSTGRES_PASSWORD: str | None = Field(None, alias="postgres_password")
-    POSTGRES_DB: str | None = Field(None, alias="postgres_db")
-    POSTGRES_HOST: str | None = Field(
-        "database", alias="postgres_host"
-    )  # Docker service name
-    POSTGRES_PORT: int | None = Field(5432, alias="postgres_port")
+    # --- Auth Database ---
+    AUTH_DB_NAME: str = Field("quill_auth", description="Auth database name")
+    AUTH_DB_USER: str = Field("auth_user", description="Auth database user")
+    AUTH_DB_PASSWORD: SecretStr = Field(
+        ..., description="Auth database password"
+    )
+    AUTH_DB_HOST: str = Field(
+        "postgres-auth", description="Auth database host"
+    )
+    AUTH_DB_PORT: int = Field(5432, description="Auth database port")
 
-    # --- FHIR Server ---
+    # --- FHIR Database ---
+    FHIR_DB_NAME: str = Field("hapi", description="FHIR database name")
+    FHIR_DB_USER: str = Field("hapi_user", description="FHIR database user")
+    FHIR_DB_PASSWORD: SecretStr = Field(
+        ..., description="FHIR database password"
+    )
+    FHIR_DB_HOST: str = Field(
+        "postgres-fhir", description="FHIR database host"
+    )
+    FHIR_DB_PORT: int = Field(5432, description="FHIR database port")
+
+    # --- EHRbase Database ---
+    EHRBASE_DB_NAME: str = Field(
+        "ehrbase", description="EHRbase database name"
+    )
+    EHRBASE_DB_USER: str = Field(
+        "ehrbase_user", description="EHRbase database user"
+    )
+    EHRBASE_DB_PASSWORD: SecretStr = Field(
+        ..., description="EHRbase database password"
+    )
+    EHRBASE_DB_HOST: str = Field(
+        "postgres-ehrbase", description="EHRbase database host"
+    )
+    EHRBASE_DB_PORT: int = Field(5432, description="EHRbase database port")
+
+    # --- FHIR Server API ---
     FHIR_SERVER_URL: str = "http://fhir:8080/fhir"
 
-    # --- EHRbase Server ---
+    # --- EHRbase Server API ---
     EHRBASE_URL: str = "http://ehrbase:8080/ehrbase"
-    EHRBASE_USER: str = "ehrbase-user"
-    EHRBASE_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase user password"
+    EHRBASE_API_USER: str = Field(
+        "ehrbase_user", description="EHRbase API user"
     )
-    EHRBASE_ADMIN_USER: str = "ehrbase-admin"
-    EHRBASE_ADMIN_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase admin password"
+    EHRBASE_API_PASSWORD: SecretStr = Field(
+        ..., description="EHRbase API password"
+    )
+    EHRBASE_API_ADMIN_USER: str = Field(
+        "ehrbase_admin", description="EHRbase API admin user"
+    )
+    EHRBASE_API_ADMIN_PASSWORD: SecretStr = Field(
+        ..., description="EHRbase API admin password"
     )
 
-    @model_validator(mode="after")
-    def build_db_url_if_missing(self):
-        if (
-            (not self.DATABASE_URL)
-            and self.POSTGRES_USER
-            and self.POSTGRES_PASSWORD
-            and self.POSTGRES_DB
-        ):
-            self.DATABASE_URL = (
-                f"postgresql+psycopg://{self.POSTGRES_USER}:"
-                f"{quote_plus(self.POSTGRES_PASSWORD)}@"
-                f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-            )
-        return self
+    # --- Computed Database URLs ---
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def AUTH_DATABASE_URL(self) -> str:
+        """Construct auth database URL from components."""
+        return (
+            f"postgresql+psycopg://{self.AUTH_DB_USER}:"
+            f"{quote_plus(self.AUTH_DB_PASSWORD.get_secret_value())}@"
+            f"{self.AUTH_DB_HOST}:{self.AUTH_DB_PORT}/{self.AUTH_DB_NAME}"
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def FHIR_DATABASE_URL(self) -> str:
+        """Construct FHIR database URL from components."""
+        return (
+            f"postgresql+psycopg://{self.FHIR_DB_USER}:"
+            f"{quote_plus(self.FHIR_DB_PASSWORD.get_secret_value())}@"
+            f"{self.FHIR_DB_HOST}:{self.FHIR_DB_PORT}/{self.FHIR_DB_NAME}"
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def EHRBASE_DATABASE_URL(self) -> str:
+        """Construct EHRbase database URL from components."""
+        return (
+            f"postgresql+psycopg://{self.EHRBASE_DB_USER}:"
+            f"{quote_plus(self.EHRBASE_DB_PASSWORD.get_secret_value())}@"
+            f"{self.EHRBASE_DB_HOST}:{self.EHRBASE_DB_PORT}/{self.EHRBASE_DB_NAME}"
+        )
 
 
 settings = Settings()

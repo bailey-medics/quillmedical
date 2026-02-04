@@ -30,6 +30,7 @@ nav:
   - Home: index.md
   - Backend:
       - Overview: backend/index.md
+      - Three-Database Migration: backend/three-database-migration.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:

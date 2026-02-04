@@ -12,7 +12,11 @@ services:
     expose:
       - "8000"
     depends_on:
-      database:
+      postgres-auth:
+        condition: service_healthy
+      postgres-fhir:
+        condition: service_healthy
+      postgres-ehrbase:
         condition: service_healthy
     networks:
       - public
@@ -42,18 +46,72 @@ services:
     networks:
       - public
 
-  database:
-    image: ehrbase/ehrbase-v2-postgres:16.2
-    container_name: quill_database
+  postgres-auth:
+    image: postgres:16-alpine
+    container_name: quill_postgres_auth
     env_file: backend/.env
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-quill_auth}
+      POSTGRES_USER: ${AUTH_DB_USER:-auth_user}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
     volumes:
-      - database_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     healthcheck:
-    # TODO: do we need to change quill to a env variable?
-      test: ["CMD-SHELL", "pg_isready -U quill -d quill"]
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-auth_user} -d ${AUTH_DB_NAME:-quill_auth}"]
       interval: 5s
       timeout: 3s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - private
+
+  postgres-fhir:
+    image: postgres:16-alpine
+    container_name: quill_postgres_fhir
+    env_file: backend/.env
+    environment:
+      POSTGRES_DB: ${FHIR_DB_NAME:-hapi}
+      POSTGRES_USER: ${FHIR_DB_USER:-hapi_user}
+      POSTGRES_PASSWORD: ${FHIR_DB_PASSWORD}
+    volumes:
+      - postgres_fhir_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FHIR_DB_USER:-hapi_user} -d ${FHIR_DB_NAME:-hapi}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    networks:
+      - private
+
+  postgres-ehrbase:
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    container_name: quill_postgres_ehrbase
+    env_file: backend/.env
+    environment:
+      POSTGRES_DB: ${EHRBASE_DB_NAME:-ehrbase}
+      POSTGRES_USER: ${EHRBASE_DB_USER:-ehrbase_user}
+      POSTGRES_PASSWORD: ${EHRBASE_DB_PASSWORD}
+    volumes:
+      - postgres_ehrbase_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EHRBASE_DB_USER:-ehrbase_user} -d ${EHRBASE_DB_NAME:-ehrbase}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 3G
     networks:
       - private
 
@@ -62,9 +120,9 @@ services:
     container_name: quill_fhir
     env_file: backend/.env
     environment:
-      - spring.datasource.url=jdbc:postgresql://database:5432/quill
-      - spring.datasource.username=${POSTGRES_USER}
-      - spring.datasource.password=${POSTGRES_PASSWORD}
+      - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/${FHIR_DB_NAME:-hapi}
+      - spring.datasource.username=${FHIR_DB_USER:-hapi_user}
+      - spring.datasource.password=${FHIR_DB_PASSWORD}
       - spring.datasource.driverClassName=org.postgresql.Driver
       - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
       - hapi.fhir.fhir_version=R4
@@ -75,7 +133,7 @@ services:
     expose:
       - "8080"
     depends_on:
-      database:
+      postgres-fhir:
         condition: service_healthy
     networks:
       - private
@@ -90,24 +148,25 @@ services:
   ehrbase:
     image: ehrbase/ehrbase:latest
     container_name: quill_ehrbase
+    env_file: backend/.env
     environment:
-      - DB_URL=jdbc:postgresql://database:5432/quill
-      - DB_USER=quill
-      - DB_PASS=vspct8I2iLUkfC3JsXxefy
-      - DB_USER_ADMIN=quill
-      - DB_PASS_ADMIN=vspct8I2iLUkfC3JsXxefy
+      - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/${EHRBASE_DB_NAME:-ehrbase}
+      - DB_USER=${EHRBASE_DB_USER:-ehrbase_user}
+      - DB_PASS=${EHRBASE_DB_PASSWORD}
+      - DB_USER_ADMIN=${EHRBASE_DB_USER:-ehrbase_user}
+      - DB_PASS_ADMIN=${EHRBASE_DB_PASSWORD}
       - SECURITY_AUTHTYPE=BASIC
-      - SECURITY_AUTHUSER=ehrbase_user
-      - SECURITY_AUTHPASSWORD=SecureEHRbasePassword123
-      - SECURITY_AUTHADMINUSER=ehrbase_admin
-      - SECURITY_AUTHADMINPASSWORD=SuperSecureAdminPassword456
+      - SECURITY_AUTHUSER=${EHRBASE_API_USER:-ehrbase_user}
+      - SECURITY_AUTHPASSWORD=${EHRBASE_API_PASSWORD}
+      - SECURITY_AUTHADMINUSER=${EHRBASE_API_ADMIN_USER:-ehrbase_admin}
+      - SECURITY_AUTHADMINPASSWORD=${EHRBASE_API_ADMIN_PASSWORD}
       - SERVER_NODENAME=quill.ehrbase.node
       - SYSTEM_ALLOW_TEMPLATE_OVERWRITE=true
       - DB_JDBC_PARAMS=?stringtype=unspecified&lc_collate=C
     expose:
       - "8080"
     depends_on:
-      database:
+      postgres-ehrbase:
         condition: service_healthy
     networks:
       - private
@@ -136,7 +195,9 @@ services:
       - public
 
 volumes:
-  database_data:
+  postgres_auth_data:
+  postgres_fhir_data:
+  postgres_ehrbase_data:
   caddy_data:
   caddy_config:
   frontend_node_modules:
