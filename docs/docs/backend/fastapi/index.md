@@ -115,8 +115,7 @@ def create_letter(patient_id: str, letter: LetterIn):
 All API endpoints are prefixed with `/api`:
 
 - `/api/auth/*` - Authentication endpoints
-- `/api/patients/*` - Patient management
-- `/api/fhir/*` - Direct FHIR operations
+- `/api/patients/*` - Patient management (backed by FHIR)
 - `/api/push/*` - Web push notifications
 
 ### Authentication & Security
