@@ -11,7 +11,7 @@ Quill Medical uses a three-layer storage architecture for clinical documents:
          │                    │                    │
          ▼                    ▼                    ▼
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│    MinIO     │    │ PostgreSQL   │    │  HAPI FHIR   │
+│    MinIO     │    │ PostgreSQL   │    │  EHRbase     │
 │   (Binary    │    │  (Metadata)  │    │(DocumentRef) │
 │   Storage)   │    │  & Audit)    │    │              │
 └──────────────┘    └──────────────┘    └──────────────┘
@@ -47,7 +47,7 @@ Quill Medical uses a three-layer storage architecture for clinical documents:
 2. Backend validates and calculates SHA-256 hash
 3. Binary stored in MinIO
 4. Metadata saved to PostgreSQL
-5. FHIR DocumentReference created
+5. EHRbase DocumentReference created
 
 ### File Download
 
@@ -73,14 +73,7 @@ Quill Medical uses a three-layer storage architecture for clinical documents:
 
 ## Scaling
 
-- **Current:** Single MinIO server (suitable for <100 users, <1TB)
-- **Growth:** Add MinIO nodes for distributed cluster
+- **Current:** Single MinIO server (suitable for initial deployment and growth)
+- **Distributed Cluster:** Upgrade when you need high availability, erasure coding, or exceed single-server hardware limits
 - **Enterprise:** Migrate to Azure Blob Storage (UK region) when needed
 - **Migration:** S3-compatible API enables seamless transition
-
-## Compliance
-
-- **Data Residency:** All data stored in UK
-- **Standards:** FHIR R4 DocumentReference compliant
-- **NHS Requirements:** 8+ year retention, complete audit trail
-- **GDPR:** Encryption, audit logs, right to erasure supported
