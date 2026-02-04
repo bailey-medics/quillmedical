@@ -1,22 +1,42 @@
-# Three-Database Architecture Migration
+# Database Architecture Update
 
 ## Overview
 
-Quill Medical has migrated from a single PostgreSQL instance to three isolated database services for enterprise-grade architecture and improved security.
+Quill Medical has updated its database structure from a single shared database to three separate databases. This improves security, performance, and makes the system easier to maintain.
 
-## Architecture Changes
+## What Changed
 
-### Before (Single Database)
+### Before
 
-- One PostgreSQL container (`quill_database`)
-- Single database named `quill`
-- All data (auth, FHIR, EHRbase) shared one instance
+- One database container storing everything
+- All data (user accounts, patient information, clinical letters) in one place
+- Single point of failure
 
-### After (Three Databases)
+### After
 
-- **postgres-auth**: User authentication and application state
-- **postgres-fhir**: HAPI FHIR patient demographics
-- **postgres-ehrbase**: OpenEHR clinical documents and letters
+- **User database**: Stores login credentials and application settings
+- **Patient database**: Stores patient demographics via FHIR
+- **Clinical database**: Stores clinical documents via OpenEHR
+
+## Why Three Databases?
+
+### Better Security
+
+- Different data types are isolated from each other
+- A security issue in one area doesn't affect the others
+- Different access permissions for different data
+
+### Better Performance
+
+- Each database can be optimised for its specific data type
+- Different resource allocations based on usage patterns
+- Easier to scale individual components
+
+### Easier Maintenance
+
+- Updates can be applied to one database without affecting others
+- Backup and restore operations are more flexible
+- Troubleshooting is simpler
 
 ## Database Configuration
 
@@ -136,6 +156,7 @@ Each database has independent resource limits:
    ```
 
 4. Verify all health checks pass:
+
    ```bash
    docker compose -f compose.dev.yml ps
    ```

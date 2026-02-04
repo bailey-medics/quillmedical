@@ -52,6 +52,10 @@ nav:
       - Copilot Instructions: llm/copilot-instructions.md
       - Roadmap: llm/roadmap.md
       - Specs: llm/specs.md
+      - Prompts:
+          - Overview: llm/prompts/index.md
+          - FastAPI Docs: llm/prompts/fast-api-docs.md
+          - Update Navigation: llm/prompts/update-nav.md
   - Code Documentation:
       - Frontend: code/frontend/README.md
       - Storybook: code/storybook/index.html

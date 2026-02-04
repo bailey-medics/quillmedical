@@ -2,43 +2,41 @@
 
 ## Overview
 
-The Quill Medical backend is a modern, standards-based healthcare application built with Python and FastAPI. It integrates multiple healthcare data standards and technologies to provide a robust, interoperable platform for managing patient data and clinical information.
+The Quill Medical backend is the application server that handles all the business logic, data processing, and communication between the web interface and the databases. It ensures patient data is stored securely and can be accessed by authorised users.
 
-## Technology Stack
+## What Does It Do?
 
-### Core Framework
+### Core Functions
 
-**[FastAPI](fastapi/)** - Modern Python web framework
+**Application Server** - Processes requests and manages business logic
 
-- High-performance async API framework
-- Automatic API documentation (Swagger UI, ReDoc)
-- Type-safe request/response handling with Pydantic
-- Built-in security utilities and dependency injection
+- Handles all communication from the web interface
+- Applies business rules and workflows
+- Ensures data is valid before storing it
+- Provides automatic documentation of all functions
 
 ### Healthcare Data Standards
 
-**[FHIR](fhir/)** (Fast Healthcare Interoperability Resources)
+#### FHIR (Fast Healthcare Interoperability Resources)
 
-- **Purpose**: Patient demographics and administrative data
-- **Implementation**: HAPI FHIR server with PostgreSQL
-- **Scope**: Patient registry, identity management, demographics
-- **Standard**: HL7 FHIR R4
+- **Purpose**: Stores patient demographics and administrative information
+- **What it holds**: Patient names, dates of birth, addresses, contact details
+- **Why it matters**: International healthcare standard for data exchange
 
-**[OpenEHR](openehr/)**
+#### OpenEHR
 
-- **Purpose**: Clinical documents and detailed health records
-- **Implementation**: EHRbase server with PostgreSQL
-- **Scope**: Letters, clinical notes, observations, longitudinal records
-- **Standard**: ISO 13606, openEHR specifications
+- **Purpose**: Stores clinical documents and detailed health records
+- **What it holds**: Clinical letters, medical notes, observations, patient history
+- **Why it matters**: Specialised standard for long-term health records
 
-### Infrastructure
+### Web Server
 
-**[Caddy](caddy/)** Web Server
+**Caddy** Web Server
 
-- Reverse proxy for all services
-- Automatic HTTPS with Let's Encrypt
-- Static file serving for frontend
-- Request routing and load balancing
+- Routes web traffic to the right services
+- Manages HTTPS security certificates automatically
+- Serves the web application files
+- Balances load across multiple servers if needed
 
 ## Architecture Diagram
 
@@ -82,59 +80,59 @@ The Quill Medical backend is a modern, standards-based healthcare application bu
 └──────────────────┘
 ```
 
-## Data Flow
+## How Data Flows Through the System
 
-### Patient Demographics
+### Managing Patient Information
 
-1. **Create Patient**: Client → FastAPI → FHIR Server → PostgreSQL
-2. **Read Demographics**: Client → FastAPI → FHIR Server → Return Patient resource
-3. **Update Demographics**: Client → FastAPI → FHIR Server → Update Patient resource
+1. **Creating a new patient**: Web interface → Application server → FHIR system → Database
+2. **Viewing patient details**: Web interface → Application server → FHIR system → Returns patient information
+3. **Updating patient details**: Web interface → Application server → FHIR system → Updates database
 
-The FastAPI backend communicates with the FHIR server to manage patient information including names, dates of birth, gender, addresses, and contact details.
+The application server communicates with the FHIR system to manage patient information including names, dates of birth, gender, addresses, and contact details.
 
-### Clinical Letters
+### Managing Clinical Letters
 
-1. **Create Letter**: Client → FastAPI → EHRbase → PostgreSQL
-2. **Read Letter**: Client → FastAPI → EHRbase → Return Composition
-3. **List Letters**: Client → FastAPI → EHRbase (AQL query) → Return list
+1. **Creating a letter**: Web interface → Application server → OpenEHR system → Database
+2. **Viewing a letter**: Web interface → Application server → OpenEHR system → Returns letter
+3. **Listing all letters**: Web interface → Application server → OpenEHR system → Returns list of letters
 
-The FastAPI backend communicates with the EHRbase server to create, retrieve, and manage clinical letters and other health records for patients.
+The application server communicates with the OpenEHR system to create, retrieve, and manage clinical letters and other health records for patients.
 
-## API Structure
+## Available Functions
 
-All API endpoints are prefixed with `/api`:
+All functions are organised under the `/api` prefix:
 
-### Authentication
+### User Authentication
 
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login with credentials
-- `POST /api/auth/refresh` - Refresh access token
-- `POST /api/auth/logout` - Logout (invalidate refresh token)
-- `GET /api/auth/me` - Get current user profile
+- Register a new account
+- Log in with credentials
+- Refresh your session
+- Log out securely
+- View your profile
 
 ### Patient Management
 
-- `GET /api/patients` - List all patients from FHIR
-- `POST /api/patients` - Verify patient exists
-- `PUT /api/patients/{id}/demographics` - Update demographics (FHIR)
-- `GET /api/patients/{id}/demographics` - Get demographics (FHIR)
+- View list of all patients
+- Create new patient record
+- Update patient demographics
+- View patient demographics
 
 ### Clinical Letters
 
-- `POST /api/patients/{id}/letters` - Create letter (OpenEHR)
-- `GET /api/patients/{id}/letters` - List all letters (OpenEHR)
-- `GET /api/patients/{id}/letters/{uid}` - Get specific letter (OpenEHR)
+- Create a new clinical letter
+- View all letters for a patient
+- Retrieve a specific letter
 
 ### Push Notifications
 
-- `POST /api/push/register` - Register for push notifications
-- `POST /api/push/send` - Send push notification
+- Register device for notifications
+- Send notifications to users
 
-## Data Storage
+## What Data is Stored Where
 
-### FHIR Patient Data
+### Patient Demographics (FHIR System)
 
-Patient demographic and administrative information is stored in the FHIR server, including:
+Basic patient information stored in the FHIR system:
 
 - Patient names and identifiers
 - Gender and date of birth
@@ -142,149 +140,148 @@ Patient demographic and administrative information is stored in the FHIR server,
 - Addresses
 - Emergency contacts
 
-### OpenEHR Clinical Records
+### Clinical Records (OpenEHR System)
 
-Clinical documents and health records are stored in EHRbase, including:
+Medical documentation stored in the OpenEHR system:
 
 - Clinical letters and correspondence
 - Consultation notes
 - Treatment plans and care records
 - Medical history and observations
 
-### User Authentication
+### User Accounts (Application Database)
 
-User accounts and authentication data are stored in PostgreSQL, including:
+User login and permission information:
 
 - Usernames and email addresses
-- Securely hashed passwords
+- Encrypted passwords
 - User roles (patient, clinician, admin)
 - Two-factor authentication settings
 
 ## Security
 
-### Authentication Flow
+### How Users Log In
 
-1. **User Registration**: Username/email + password → bcrypt hash → PostgreSQL
-2. **Login**: Credentials → Verify hash → Generate JWT tokens
-3. **Access Token**: Short-lived (15 minutes), included in Authorization header
-4. **Refresh Token**: Long-lived (7 days), HttpOnly cookie, used to get new access token
-5. **TOTP 2FA**: Optional two-factor authentication using authenticator apps
+1. **Creating an account**: User provides username/email and password → Password is encrypted → Account created
+2. **Logging in**: User enters credentials → System checks encrypted password → Creates secure session
+3. **Staying logged in**: Short session tokens (15 minutes) automatically refresh for convenience
+4. **Extra security**: Users can enable two-factor authentication using authenticator apps
 
-### Authorization
+### Access Control
 
-- **Role-Based Access**: Users are assigned roles (patient, clinician, admin) that determine what actions they can perform
-- **Endpoint Protection**: Each API endpoint checks user permissions before allowing access
-- **CSRF Protection**: Additional security tokens are required for operations that modify data
+- **User roles**: Users are assigned roles (patient, clinician, admin) that control their permissions
+- **Function protection**: Each function checks user permissions before allowing access
+- **Additional security**: Important operations require extra verification tokens
 
-For example, only users with the clinician role can create clinical letters, and they must provide a valid CSRF token.
+For example, only users with the clinician role can create clinical letters, and they must provide additional security verification.
 
 ### Data Security
 
-- **At Rest**: PostgreSQL encrypted storage
-- **In Transit**: TLS/HTTPS via Caddy
-- **Passwords**: Bcrypt hashing with salt
-- **Tokens**: JWT with RS256 signatures
-- **Secrets**: Environment variables, never committed
+- **Stored data**: Database encryption protects data at rest
+- **Transmitted data**: HTTPS encryption protects data in transit
+- **Passwords**: Strong encryption with random salt values
+- **Session tokens**: Cryptographically signed tokens
+- **Secrets**: Configuration stored in environment variables, never in code
 
 ## Development Setup
 
-### Prerequisites
+### What You Need
 
-The development environment requires:
+To work on the application, developers need:
 
-- Docker & Docker Compose for containerisation
-- Python 3.13+ with Poetry package manager
+- Docker for running all services together
+- Python 3.13+ for backend development
 - Node.js for frontend development
 
-### Quick Start
+### Getting Started
 
-Developers can start the entire application stack with a single command. This launches all services including:
+One command starts the entire application with all services:
 
-- Frontend application (accessible at <http://localhost:8080>)
-- Backend API with interactive documentation (<http://localhost:8080/api/docs>)
+- Web application (accessible at <http://localhost:8080>)
+- Application server with documentation (<http://localhost:8080/api/docs>)
 - FHIR server for patient data
-- EHRbase for clinical records
-- PostgreSQL database
-- Caddy web server
+- OpenEHR server for clinical records
+- Database
+- Web server
 
 ### Development Services
 
 The development environment runs these services:
 
-- **Backend**: FastAPI application (port 8000)
-- **Database**: PostgreSQL for user authentication (port 5432)
-- **FHIR Server**: HAPI FHIR (port 8081) with dedicated database (port 5433)
-- **EHRbase**: OpenEHR server (port 8082) with dedicated database (port 5434)
-- **Web Server**: Caddy reverse proxy (port 8080)
+- **Application server**: Main business logic (port 8000)
+- **Database**: User authentication (port 5432)
+- **FHIR Server**: Patient demographics (port 8081) with database (port 5433)
+- **OpenEHR Server**: Clinical documents (port 8082) with database (port 5434)
+- **Web Server**: Entry point for all requests (port 8080)
 
 ## Testing
 
-The backend includes automated tests to ensure reliability:
+Automated tests ensure the application works correctly:
 
-- **Patient endpoint tests**: Verify patient data operations
-- **FHIR integration tests**: Ensure correct communication with the FHIR server
-- **Authentication tests**: Validate security and access control
+- **Patient data tests**: Verify patient information is handled correctly
+- **FHIR integration tests**: Ensure communication with patient data system works
+- **Authentication tests**: Validate login and access control
 
-Tests can be run locally during development or automatically via continuous integration.
+Tests run automatically during development and before deploying updates.
 
-## Database Migrations
+## Database Changes
 
-Database schema changes are managed using Alembic, which provides:
+When the structure of stored data needs to change, the system uses migration tools that:
 
-- **Automatic migration generation**: Detects changes to database models
-- **Version control**: Tracks all database schema changes
-- **Safe upgrades**: Apply changes to production databases without data loss
-- **Rollback capability**: Revert changes if issues occur
+- **Detect changes automatically**: Compares current structure with desired structure
+- **Track versions**: Maintains history of all database changes
+- **Apply safely**: Updates production databases without losing data
+- **Allow rollback**: Can undo changes if problems occur
 
-This ensures the database structure stays in sync across development, testing, and production environments.
+This ensures databases stay consistent across development, testing, and production environments.
 
 ## Deployment
 
-### Production Setup
+### Running in Production
 
-The application can be deployed to production using Docker containers. The production configuration:
+The application deploys using containers. The production configuration:
 
-- Uses optimised Docker images for performance
-- Runs all services in detached mode for continuous operation
-- Includes health checks for monitoring
+- Uses optimised builds for better performance
+- Runs continuously in the background
+- Includes health monitoring for all services
 
-### Configuration
+### Configuration Requirements
 
-Production deployment requires several environment variables:
+Production needs several secure settings:
 
-- **Database connection**: Credentials for PostgreSQL
-- **Security keys**: Secrets for JWT token generation
-- **Service URLs**: Endpoints for FHIR and EHRbase servers
-- **HTTPS settings**: Domain name and administrator email for SSL certificates
+- **Database credentials**: Secure usernames and passwords
+- **Security keys**: Secret values for session management
+- **Service addresses**: URLs for FHIR and OpenEHR systems
+- **HTTPS settings**: Domain name and administrator email for security certificates
 
-These values should be stored securely and never committed to version control.
+These values are stored securely and never included in code.
 
 ## Monitoring
 
 ### Application Logs
 
-All services generate logs that can be used for:
+All services record activity that can be used for:
 
-- Troubleshooting issues
-- Monitoring system activity
+- Finding and fixing problems
+- Tracking system activity
 - Auditing access and changes
-- Performance analysis
+- Analysing performance
 
-Logs can be viewed in real-time or searched for specific events and errors.
+Logs can be viewed in real-time or searched for specific events.
 
-### Health Checks
+### Health Monitoring
 
-Each service provides health check endpoints to verify it's running correctly:
+Each service reports its status to verify it's working correctly:
 
-- **Backend API**: Reports overall application health
+- **Application server**: Reports overall health
 - **FHIR Server**: Confirms patient data system is operational
-- **EHRbase**: Verifies clinical records system is accessible
+- **OpenEHR Server**: Verifies clinical records system is accessible
 
-These checks can be monitored automatically to detect and alert on any service failures.
+These checks can be monitored automatically to detect and alert on service failures.
 
-## Next Steps
+## Learn More
 
-- **[FHIR Documentation](fhir/)** - Learn about patient demographics storage
-- **[OpenEHR Documentation](openehr/)** - Learn about clinical data storage
-- **[FastAPI Documentation](fastapi/)** - Learn about the API framework
-- **[Caddy Documentation](caddy/)** - Learn about the web server configuration
+- **[FHIR Documentation](fhir/)** - Patient demographics storage system
+- **[OpenEHR Documentation](openehr/)** - Clinical data storage system
+- **[Application Framework](fastapi/)** - Core application framework
+- **[Web Server](caddy/)** - Web server configuration
