@@ -51,8 +51,8 @@ docs:
     yarn storybook:build
     cd ../backend
     poetry run python scripts/dump_openapi.py --dev
+    poetry run mkdocs serve -f ../docs/mkdocs.yml & sleep 2
     cd ..
-    mkdocs serve -f docs/mkdocs.yml & sleep 2
     open http://127.0.0.1:8000
 
 

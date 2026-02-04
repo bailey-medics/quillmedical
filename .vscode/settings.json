@@ -10,9 +10,6 @@
   "black-formatter.args": ["--line-length", "79"],
   "python.analysis.extraPaths": ["./app", "./"],
 
-  "markdownlint.config": {
-    "default": true
-  },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

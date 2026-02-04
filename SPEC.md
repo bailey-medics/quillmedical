@@ -2,7 +2,7 @@
 
 Quill is a modern, secure messaging and clinical letter service.
 It enables patients to communicate with clinics, receive responses, and obtain signed letters, with fair and transparent billing.
-All patient-related content is stored in a dedicated Git repository per patient.
+All patient-related content is stored using healthcare standards: FHIR for demographics and OpenEHR for clinical documents.
 This creates a durable, auditable, and tamper-evident record.
 The system is designed to be extendable into a full electronic patient record in the future.
 
@@ -11,7 +11,7 @@ The system is designed to be extendable into a full electronic patient record in
 ## Purpose
 
 - Provide a secure channel between patients and clinics.
-- Store all clinical content in versioned, signed Git repositories.
+- Store all clinical content using FHIR and OpenEHR standards.
 - Allow clinics to charge fairly for time spent responding.
 - Produce professional letters with provenance.
 - Create a clean “record spine” to support future EPR expansion.
@@ -82,40 +82,36 @@ Letter states:
 
 ---
 
-## Git Repository Structure
+## Data Storage Architecture
 
-Each patient has one private Git repository.
-Suggested layout:
+Quill uses a multi-database architecture following healthcare standards:
 
-/meta/
-patient.json
-consent.jsonl
-audit.jsonl
+### PostgreSQL (FastAPI)
 
-/messages/
-YYYY/MM/conversation-000123/
-index.json
-message-001.md
-message-002.md
-attachments/
+- Authentication and authorization (users, roles, sessions)
+- TOTP tokens for two-factor authentication
+- Application state and configuration
 
-/letters/
-YYYY/MM/letter-000045/
-letter.md
-letter.pdf
-receipt.json
+### HAPI FHIR Server (PostgreSQL)
 
-/billing/
-payments.jsonl
-subscriptions.jsonl
+- Patient demographics (FHIR Patient resources)
+- Structured patient data following FHIR R4 standard
+- RESTful API for patient information
 
-/index/
-conversations.json
-letters.json
+### EHRbase (PostgreSQL)
 
-- Commits are signed with the clinic key.
-- All health data in Git is encrypted at rest.
-- Large attachments may be stored in object storage with a pointer in Git.
+- Clinical documents and letters (OpenEHR Compositions)
+- Structured clinical data following OpenEHR standard
+- AQL (Archetype Query Language) for querying
+- Templates define document structure
+
+### Security
+
+- All databases use PostgreSQL with encrypted connections
+- All traffic uses Transport Layer Security
+- Health data encrypted at rest
+- Role-based access control enforced at database and application level
+- All actions logged to append-only audit log
 
 ---
 
@@ -126,8 +122,9 @@ letters.json
 - Keys are managed in a Key Management Service.
 - No patient details in logs, notifications, or emails.
 - Role-based access control enforced at every action.
-- All actions written to append-only audit log.
+- All actions written to append-only audit log in PostgreSQL.
 - Exports must include all conversations, letters, and billing notes.
+- Data follows FHIR and OpenEHR security best practices.
 
 ---
 
@@ -138,7 +135,7 @@ letters.json
 - Quotes expire after 48 hours.
 - Pay-as-you-go handled by Stripe Checkout.
 - Subscriptions handled by Stripe Billing.
-- Only lean payment events stored in Git (no card data).
+- Only lean payment events stored in database (no card data).
 
 ---
 

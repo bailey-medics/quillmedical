@@ -221,3 +221,166 @@ def list_compositions_for_ehr(ehr_id: str) -> list[dict[str, Any]]:
 
     result = query_aql(aql)
     return result.get("rows", [])
+
+
+def create_letter_composition(
+    patient_id: str, title: str, body: str, author_name: str | None = None
+) -> dict[str, Any]:
+    """
+    Create a letter/correspondence composition in OpenEHR.
+
+    Args:
+        patient_id: FHIR Patient ID
+        title: Letter title
+        body: Letter content (markdown)
+        author_name: Optional author name
+
+    Returns:
+        Created composition response with composition_uid
+    """
+    from datetime import UTC, datetime
+
+    # Get or create EHR for this patient
+    ehr_id = get_or_create_ehr(patient_id)
+
+    # Create a simple letter composition
+    # Using a generic composition structure for letters
+    composition_data = {
+        "_type": "COMPOSITION",
+        "name": {"_type": "DV_TEXT", "value": title},
+        "archetype_node_id": "openEHR-EHR-COMPOSITION.report.v1",
+        "language": {
+            "_type": "CODE_PHRASE",
+            "terminology_id": {
+                "_type": "TERMINOLOGY_ID",
+                "value": "ISO_639-1",
+            },
+            "code_string": "en",
+        },
+        "territory": {
+            "_type": "CODE_PHRASE",
+            "terminology_id": {
+                "_type": "TERMINOLOGY_ID",
+                "value": "ISO_3166-1",
+            },
+            "code_string": "US",
+        },
+        "category": {
+            "_type": "DV_CODED_TEXT",
+            "value": "event",
+            "defining_code": {
+                "_type": "CODE_PHRASE",
+                "terminology_id": {
+                    "_type": "TERMINOLOGY_ID",
+                    "value": "openehr",
+                },
+                "code_string": "433",
+            },
+        },
+        "composer": {
+            "_type": "PARTY_IDENTIFIED",
+            "name": author_name or "System",
+        },
+        "context": {
+            "_type": "EVENT_CONTEXT",
+            "start_time": {
+                "_type": "DV_DATE_TIME",
+                "value": datetime.now(UTC).isoformat(),
+            },
+            "setting": {
+                "_type": "DV_CODED_TEXT",
+                "value": "other care",
+                "defining_code": {
+                    "_type": "CODE_PHRASE",
+                    "terminology_id": {
+                        "_type": "TERMINOLOGY_ID",
+                        "value": "openehr",
+                    },
+                    "code_string": "238",
+                },
+            },
+        },
+        "content": [
+            {
+                "_type": "EVALUATION",
+                "name": {"_type": "DV_TEXT", "value": "Letter"},
+                "archetype_node_id": "openEHR-EHR-EVALUATION.clinical_synopsis.v1",
+                "data": {
+                    "_type": "ITEM_TREE",
+                    "name": {"_type": "DV_TEXT", "value": "Tree"},
+                    "archetype_node_id": "at0001",
+                    "items": [
+                        {
+                            "_type": "ELEMENT",
+                            "name": {"_type": "DV_TEXT", "value": "Synopsis"},
+                            "archetype_node_id": "at0002",
+                            "value": {"_type": "DV_TEXT", "value": body},
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+
+    return create_composition(
+        ehr_id, "openEHR-EHR-COMPOSITION.report.v1", composition_data
+    )
+
+
+def get_letter_composition(
+    patient_id: str, composition_uid: str
+) -> dict[str, Any] | None:
+    """
+    Retrieve a letter composition from OpenEHR.
+
+    Args:
+        patient_id: FHIR Patient ID
+        composition_uid: The composition UID
+
+    Returns:
+        Composition data or None if not found
+    """
+    try:
+        ehr = get_ehr_by_subject(patient_id)
+        if not ehr:
+            return None
+
+        ehr_id = ehr["ehr_id"]["value"]
+        return get_composition(ehr_id, composition_uid)
+    except Exception:
+        return None
+
+
+def list_letters_for_patient(patient_id: str) -> list[dict[str, Any]]:
+    """
+    List all letter compositions for a patient.
+
+    Args:
+        patient_id: FHIR Patient ID
+
+    Returns:
+        List of letter compositions with metadata
+    """
+    try:
+        ehr = get_ehr_by_subject(patient_id)
+        if not ehr:
+            return []
+
+        ehr_id = ehr["ehr_id"]["value"]
+
+        # Query for all report compositions (letters)
+        aql = f"""
+        SELECT
+            c/uid/value as composition_uid,
+            c/name/value as title,
+            c/context/start_time/value as created_at,
+            c/composer/name as author
+        FROM EHR e[ehr_id/value='{ehr_id}']
+        CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.report.v1]
+        ORDER BY c/context/start_time/value DESC
+        """
+
+        result = query_aql(aql)
+        return result.get("rows", [])
+    except Exception:
+        return []

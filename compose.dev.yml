@@ -19,7 +19,6 @@ services:
       - private
     volumes:
       - ./backend:/app
-      - ./patient_data:/patient_data
 
   frontend:
     build:
