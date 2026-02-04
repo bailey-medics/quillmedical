@@ -12,6 +12,7 @@
     ".pnp.*"
   ],
   "words": [
+    "ABAC",
     "Abstra",
     "addopts",
     "appuser",
@@ -67,6 +68,7 @@
     "hapiproject",
     "healthcheck",
     "healthchecks",
+    "HMAC",
     "hrefs",
     "HSTS",
     "htmlcov",
@@ -111,6 +113,7 @@
     "otpauth",
     "passlib",
     "pathsep",
+    "pgbouncer",
     "pipefail",
     "pipenv",
     "Pipfile",
@@ -175,6 +178,7 @@
     "testuser",
     "timezone",
     "totp",
+    "Traefik",
     "uvicorn",
     "vars",
     "VARCHAR",
