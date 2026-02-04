@@ -1,0 +1,3 @@
+# Main Application
+
+::: app.main

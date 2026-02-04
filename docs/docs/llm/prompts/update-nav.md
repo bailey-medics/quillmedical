@@ -1,0 +1,7 @@
+# Update navigation
+
+Please can you:
+
+1. Review the navigation section in `/docs/mkdocs.yml`
+2. Review the files in `/docs/docs/`
+3. Update `/docs/mkdocs.yml` to align with your findings in 2.

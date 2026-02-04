@@ -9,7 +9,7 @@ and patient record routes. All endpoints are exposed under the
 are also served under `/api/docs` and `/api/redoc`.
 """
 
-from typing import cast
+from typing import Any, cast
 
 from fastapi import (
     APIRouter,
@@ -632,7 +632,7 @@ def write_letter(patient_id: str, letter: LetterIn):
 @router.get("/patients/{patient_id}/letters/{composition_uid}")
 def read_letter(
     patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
-):
+) -> dict[str, Any]:
     """Read a specific letter composition from OpenEHR.
 
     Args:
@@ -662,7 +662,9 @@ def read_letter(
 
 
 @router.get("/patients/{patient_id}/letters")
-def list_letters(patient_id: str, u: User = DEP_CURRENT_USER):
+def list_letters(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
     """List all letters for a patient from OpenEHR.
 
     Args:
@@ -696,7 +698,7 @@ class FHIRPatientCreateIn(BaseModel):
 @router.post("/fhir/patients")
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
-):
+) -> dict[str, Any]:
     """Create a new patient in FHIR server with first and last name.
 
     Args:
@@ -721,7 +723,9 @@ def create_patient_in_fhir(
 
 
 @router.get("/fhir/patients/{patient_id}")
-def get_patient_from_fhir(patient_id: str, u: User = DEP_CURRENT_USER):
+def get_patient_from_fhir(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
     """Read a patient from FHIR server by ID.
 
     Args:

@@ -10,7 +10,7 @@ Quill Medical is a full-stack clinical messaging platform with a multi-database 
 - **Frontend**: React 19 + Vite + TypeScript with Mantine UI, served under `/app/`
 - **Databases**: PostgreSQL (auth/app state), HAPI FHIR (patient demographics), EHRbase (clinical documents/letters in OpenEHR format)
 - **Reverse Proxy**: Caddy routes `/api/*` → backend:8000, `/app/*` → frontend:5173, `/ehrbase/*` → ehrbase:8080
-- **Containerized**: Docker Compose orchestrates 6 services (backend, frontend, database, fhir, ehrbase, caddy)
+- **Containerised**: Docker Compose orchestrates 6 services (backend, frontend, database, fhir, ehrbase, caddy)
 
 ## Critical Developer Workflows
 
@@ -41,6 +41,11 @@ just create-user  # Interactive user creation in container
 
 ## Project-Specific Conventions
 
+### Language and Spelling
+- **British English**: All documentation, comments, commit messages, and user-facing text must use British English spelling (e.g., "organise" not "organize", "colour" not "color", "behaviour" not "behavior")
+- **Code identifiers**: Where possible and appropriate, use British English in function names, variable names, class names, and other identifiers (e.g., `get_patient_colour()`, `OrganisationSettings`)
+- **Exceptions**: External APIs, third-party library conventions, and established technical terms that use American English should be preserved (e.g., `color` in CSS properties, `Authorization` HTTP headers)
+
 ### Backend (FastAPI)
 - **Strict typing**: `mypy --strict` enabled, all functions require type annotations
 - **Security**: JWT tokens (15min access, 7d refresh) + optional TOTP 2FA using `pyotp`. Argon2 for password hashing.
@@ -50,7 +55,7 @@ just create-user  # Interactive user creation in container
 - **SQLAlchemy 2.0 style**: Use `Mapped` type hints, `DeclarativeBase`, eager loading for roles (`backend/app/models.py`)
 
 ### Frontend (React + TypeScript)
-- **API client**: Centralized in `frontend/src/lib/api.ts` with auto-retry on 401, JSON-only, credentials included
+- **API client**: Centralised in `frontend/src/lib/api.ts` with auto-retry on 401, JSON-only, credentials included
 - **Auth context**: `frontend/src/auth/AuthContext.tsx` wraps app, provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router with `basename` from `import.meta.env.BASE_URL` to support `/app/` proxy mount
 - **Protected routes**: Use `<RequireAuth>` wrapper, guests use `<GuestOnly>` (redirects authenticated users)

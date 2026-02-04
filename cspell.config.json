@@ -44,6 +44,7 @@
     "dbname",
     "Dept",
     "dmypy",
+    "docstrings",
     "Dockerised",
     "dotenv",
     "ehrbase",
@@ -184,5 +185,5 @@
     "zoneinfo",
     "zstd"
   ],
-  "ignoreWords": ["Exampletown"]
+  "ignoreWords": ["Exampletown", "behavior"]
 }

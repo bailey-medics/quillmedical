@@ -37,7 +37,7 @@ FastAPI is a modern, high-performance web framework for building APIs with Pytho
 
 ### Application Structure
 
-The backend is organized in `backend/app/`:
+The backend is organised in `backend/app/`:
 
 ```
 app/

@@ -197,7 +197,7 @@ For example, only users with the clinician role can create clinical letters, and
 
 The development environment requires:
 
-- Docker & Docker Compose for containerization
+- Docker & Docker Compose for containerisation
 - Python 3.13+ with Poetry package manager
 - Node.js for frontend development
 
@@ -205,8 +205,8 @@ The development environment requires:
 
 Developers can start the entire application stack with a single command. This launches all services including:
 
-- Frontend application (accessible at http://localhost:8080)
-- Backend API with interactive documentation (http://localhost:8080/api/docs)
+- Frontend application (accessible at <http://localhost:8080>)
+- Backend API with interactive documentation (<http://localhost:8080/api/docs>)
 - FHIR server for patient data
 - EHRbase for clinical records
 - PostgreSQL database
@@ -249,7 +249,7 @@ This ensures the database structure stays in sync across development, testing, a
 
 The application can be deployed to production using Docker containers. The production configuration:
 
-- Uses optimized Docker images for performance
+- Uses optimised Docker images for performance
 - Runs all services in detached mode for continuous operation
 - Includes health checks for monitoring
 

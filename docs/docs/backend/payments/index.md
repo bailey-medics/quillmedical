@@ -84,7 +84,7 @@ Planned support for subscription-based services:
 - Patient payment information never passes through our servers
 - All card details handled exclusively by Stripe
 - Reduces our PCI compliance scope
-- Minimizes security risks
+- Minimises security risks
 
 ### Verification and Authentication
 

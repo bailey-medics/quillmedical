@@ -38,6 +38,8 @@ nav:
           - Overview: backend/openehr/index.md
       - Caddy:
           - Overview: backend/caddy/index.md
+      - Files:
+          - Overview: backend/files/index.md
       - Payments:
           - Overview: backend/payments/index.md
   - Frontend:
@@ -50,12 +52,22 @@ nav:
       - Roadmap: llm/roadmap.md
       - Specs: llm/specs.md
   - Code Documentation:
-      - Frontend:
-          - TypeDoc: code/frontend/README.md
-      - UI Components:
-          - Storybook: code/storybook/index.html
-      - API:
-          - Swagger: code/swagger/index.html
+      - Frontend: code/frontend/README.md
+      - Storybook: code/storybook/index.html
+      - Swagger: code/swagger/index.md
+      - Backend:
+          - Overview: code/fastapi/index.md
+          - Main: code/fastapi/main.md
+          - Configuration: code/fastapi/config.md
+          - Database: code/fastapi/db.md
+          - Models: code/fastapi/models.md
+          - Security: code/fastapi/security.md
+          - FHIR Client: code/fastapi/fhir_client.md
+          - EHRbase Client: code/fastapi/ehrbase_client.md
+          - Patient Records: code/fastapi/patient_records.md
+          - Push Notifications: code/fastapi/push.md
+          - Push Send: code/fastapi/push_send.md
+          - Schemas: code/fastapi/schemas.md
 
 
 plugins:

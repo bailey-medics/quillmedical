@@ -8,21 +8,21 @@ FHIR is a modern healthcare interoperability standard developed by HL7 (Health L
 
 ### Industry Standard
 
-- **Global Adoption**: FHIR is the leading international standard for healthcare data exchange, supported by major EHR vendors, healthcare organizations, and regulatory bodies worldwide
-- **Regulatory Compliance**: Widely recognized and required by healthcare regulations in many jurisdictions (e.g., CMS in the US, NHS in the UK)
+- **Global Adoption**: FHIR is the leading international standard for healthcare data exchange, supported by major EHR vendors, healthcare organisations, and regulatory bodies worldwide
+- **Regulatory Compliance**: Widely recognised and required by healthcare regulations in many jurisdictions (e.g., CMS in the US, NHS in the UK)
 - **Interoperability**: Designed specifically to enable seamless data exchange between different healthcare systems
 
 ### Modern Technology Stack
 
 - **RESTful API**: Built on modern web standards (HTTP, JSON, REST) making it developer-friendly
-- **Resource-Based**: Data is organized into well-defined "resources" (Patient, Observation, Medication, etc.)
+- **Resource-Based**: Data is organised into well-defined "resources" (Patient, Observation, Medication, etc.)
 - **Extensible**: Supports custom extensions while maintaining core standard compliance
 - **Active Development**: Regular updates and improvements from the HL7 community
 
 ### Clinical Data Benefits
 
 - **Rich Patient Demographics**: Comprehensive support for patient information including names, addresses, contact details, identifiers, and relationships
-- **Standardized Terminology**: Built-in support for medical coding systems (SNOMED CT, LOINC, ICD-10)
+- **Standardised Terminology**: Built-in support for medical coding systems (SNOMED CT, LOINC, ICD-10)
 - **Search Capabilities**: Powerful search parameters for querying patient data
 - **Data Quality**: Enforces structure and validation rules to maintain data integrity
 
@@ -40,7 +40,7 @@ We use [HAPI FHIR](https://hapifhir.io/), an open-source Java-based FHIR server 
 
 ### What We Store in FHIR
 
-**Patient Demographics**
+#### Patient Demographics
 
 - Names (given, family, titles, prefixes)
 - Date of birth
@@ -50,10 +50,10 @@ We use [HAPI FHIR](https://hapifhir.io/), an open-source Java-based FHIR server 
 - Patient identifiers (NHS number, MRN, etc.)
 - Relationships and emergency contacts
 
-**Administrative Data**
+#### Administrative Data
 
 - Patient registration status
-- Managing organization
+- Managing organisation
 - Care team assignments
 - Patient preferences and communication needs
 

@@ -336,10 +336,10 @@ Caddy provides an admin API (default port 2019):
 
 ```bash
 # Get current configuration
-curl http://localhost:2019/config/
+curl <http://localhost:2019/config/>
 
 # Reload configuration
-curl -X POST http://localhost:2019/load \
+curl -X POST <http://localhost:2019/load> \
   -H "Content-Type: application/json" \
   -d @config.json
 ```
