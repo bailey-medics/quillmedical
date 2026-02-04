@@ -83,6 +83,9 @@ def main() -> int:
     db = SessionLocal()
     try:
         # Check if database has been migrated by verifying the users table exists
+        if db.bind is None:
+            print("ERROR: Database bind is None", file=sys.stderr)
+            return 1
         inspector = inspect(db.bind)
         if "users" not in inspector.get_table_names():
             print(
