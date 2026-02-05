@@ -110,6 +110,12 @@ Never use raw `fetch` — always use `api` helper for consistent error handling 
 - **Secrets**: Use `SecretStr` in backend settings, never commit `.env` files
 - **Audit trail**: All clinical actions should be logged to append-only audit table (future implementation)
 
+## Git & Version Control Workflow
+- **NEVER automatically commit or push**: Always ask for explicit permission before running `git commit` or `git push`
+- **When fixing issues**: Stop after fixing the technical issue and report what was fixed, then wait for user instruction
+- **Exception**: Only proceed with git operations if the user explicitly requests it (e.g., "commit these changes", "push to remote")
+- **Asking for permission**: Use phrases like "Would you like me to commit these changes?" or "Should I create a commit with these fixes?"
+
 ## Documentation & Markdown Conventions
 - **Headings**: Always use proper markdown heading syntax (`#`, `##`, `###`, etc.) - never use bold text as headings
 - **Heading levels**: Use appropriate hierarchy (h1 for title, h2 for main sections, h3 for subsections, h4 for detailed sections)
