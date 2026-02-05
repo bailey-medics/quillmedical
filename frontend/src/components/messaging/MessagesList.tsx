@@ -6,11 +6,20 @@
  */
 
 import type { Conversation } from "@/pages/Messages";
-import { Avatar, Badge, Card, Group, Stack, Text } from "@mantine/core";
+import {
+  Avatar,
+  Badge,
+  Card,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+} from "@mantine/core";
 
 type Props = {
   conversations: Conversation[];
   onConversationClick: (conversation: Conversation) => void;
+  isLoading?: boolean;
 };
 
 /**
@@ -63,7 +72,27 @@ function formatTime(timestamp: string): string {
 export default function MessagesList({
   conversations,
   onConversationClick,
+  isLoading,
 }: Props) {
+  if (isLoading) {
+    return (
+      <Stack gap="sm">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} shadow="sm" padding="md" radius="md" withBorder>
+            <Group wrap="nowrap" align="flex-start">
+              <Skeleton height={50} circle />
+              <div style={{ flex: 1 }}>
+                <Skeleton height={20} width="60%" mb="xs" />
+                <Skeleton height={16} width="100%" mb="xs" />
+                <Skeleton height={14} width="40%" />
+              </div>
+            </Group>
+          </Card>
+        ))}
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="sm">
       {conversations.map((conv) => (
