@@ -1,69 +1,56 @@
-import { NavLink, ThemeIcon } from "@mantine/core";
-import { IconHome2, IconLogout, IconSettings } from "@tabler/icons-react";
+import { NavLink, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import NavIcon from "../icons/NavIcon";
 
 type Props = {
   onNavigate?: () => void;
   showIcons?: boolean;
+  fontSize?: number;
 };
 
-function LeftIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemeIcon variant="light" color="gray" radius="xl" size="sm">
-      {children}
-    </ThemeIcon>
-  );
-}
-
-export default function SideNavContent({ onNavigate, showIcons = false }: Props) {
+export default function SideNavContent({
+  onNavigate,
+  showIcons = false,
+  fontSize = 20,
+}: Props) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  const navLinkStyles = {
+    root: { fontSize: `${fontSize}px` },
+    label: { fontSize: `${fontSize}px` },
+  };
+
   return (
-    <>
+    <Stack gap={0}>
       <NavLink
         label="Home"
+        styles={navLinkStyles}
         onClick={() => {
           navigate("/");
           if (onNavigate) onNavigate();
         }}
-        leftSection={
-          showIcons ? (
-            <LeftIcon>
-              <IconHome2 size={16} />
-            </LeftIcon>
-          ) : undefined
-        }
+        leftSection={showIcons ? <NavIcon name="home" /> : undefined}
       />
       <NavLink
         label="Settings"
+        styles={navLinkStyles}
         onClick={() => {
           navigate("/settings");
           if (onNavigate) onNavigate();
         }}
-        leftSection={
-          showIcons ? (
-            <LeftIcon>
-              <IconSettings size={16} />
-            </LeftIcon>
-          ) : undefined
-        }
+        leftSection={showIcons ? <NavIcon name="settings" /> : undefined}
       />
       <NavLink
         label="Logout"
+        styles={navLinkStyles}
         onClick={() => {
           void logout();
           if (onNavigate) onNavigate();
         }}
-        leftSection={
-          showIcons ? (
-            <LeftIcon>
-              <IconLogout size={16} />
-            </LeftIcon>
-          ) : undefined
-        }
+        leftSection={showIcons ? <NavIcon name="logout" /> : undefined}
       />
-    </>
+    </Stack>
   );
 }

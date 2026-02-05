@@ -12,7 +12,11 @@ type Props = {
   children?: ReactNode;
 };
 
-export default function MainLayout({ patient, isLoading = false, children }: Props) {
+export default function MainLayout({
+  patient,
+  isLoading = false,
+  children,
+}: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -21,7 +25,7 @@ export default function MainLayout({ patient, isLoading = false, children }: Pro
   const DRAWER_W = 260;
 
   return (
-    <AppShell header={{ height: HEADER_H }} padding="md" withBorder={false}>
+    <AppShell header={{ height: HEADER_H }} padding={0} withBorder={false}>
       <AppShell.Header>
         <TopRibbon
           onBurgerClick={toggle}
@@ -32,30 +36,41 @@ export default function MainLayout({ patient, isLoading = false, children }: Pro
         />
       </AppShell.Header>
 
-      {/* Inline drawer below the header (works for desktop and narrow widths alike) */}
-      <div
+      <AppShell.Main
         style={{
-          position: "relative",
-          minHeight: `calc(100vh - ${HEADER_H}px)`,
+          height: `calc(100vh - ${HEADER_H}px)`,
+          overflow: "hidden",
         }}
       >
-        <NavigationDrawer opened={opened} onClose={close} topOffset={HEADER_H} width={DRAWER_W}>
+        <NavigationDrawer
+          opened={opened}
+          onClose={close}
+          topOffset={HEADER_H}
+          width={DRAWER_W}
+        >
           <div style={{ width: DRAWER_W }}>
             <SideNav showSearch={isSm} onNavigate={close} />
           </div>
         </NavigationDrawer>
 
-        <AppShell.Main>
-          <div style={{ display: "flex", height: "100%" }}>
-            {!isSm && (
-              <div style={{ borderRight: "1px solid #e0e0e0" }}>
-                <SideNav showSearch={false} showIcons={true} />
-              </div>
-            )}
+        <div style={{ display: "flex", height: "100%" }}>
+          {!isSm && (
+            <div
+              style={{
+                borderRight: "1px solid #e0e0e0",
+                height: "100%",
+                overflowY: "auto",
+                flexShrink: 0,
+              }}
+            >
+              <SideNav showSearch={false} showIcons={true} />
+            </div>
+          )}
+          <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
             {children}
           </div>
-        </AppShell.Main>
-      </div>
+        </div>
+      </AppShell.Main>
     </AppShell>
   );
 }
