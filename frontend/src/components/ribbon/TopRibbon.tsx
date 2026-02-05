@@ -12,6 +12,7 @@ type Props = {
   /** Whether the nav drawer/rail is currently open (for a11y) */
   navOpen?: boolean;
   isNarrow?: boolean;
+  fontSize?: number;
 };
 
 function RibbonSkeleton() {
@@ -22,35 +23,59 @@ function RibbonSkeleton() {
   );
 }
 
-function patientDetailsLong(patient: Patient) {
+function patientDetailsLong(patient: Patient, fontSize: number) {
   return (
     <>
-      <Text fw={700} size="sm">
+      <Text fw={700} size="sm" style={{ fontSize }}>
         {patient.name}
       </Text>
-      {patient.dob && <Text size="sm">DOB: {patient.dob}</Text>}
-      {typeof patient.age === "number" && <Text size="sm">Age: {patient.age}</Text>}
-      {patient.sex && <Text size="sm">Sex: {patient.sex}</Text>}
-      {patient.nhsNumber && <Text size="sm">NHS: {patient.nhsNumber}</Text>}
+      {patient.dob && (
+        <Text size="sm" style={{ fontSize }}>
+          DOB: {patient.dob}
+        </Text>
+      )}
+      {typeof patient.age === "number" && (
+        <Text size="sm" style={{ fontSize }}>
+          Age: {patient.age}
+        </Text>
+      )}
+      {patient.sex && (
+        <Text size="sm" style={{ fontSize }}>
+          Sex: {patient.sex}
+        </Text>
+      )}
+      {patient.nhsNumber && (
+        <Text size="sm" style={{ fontSize }}>
+          NHS: {patient.nhsNumber}
+        </Text>
+      )}
     </>
   );
 }
 
-function patientDetailsShort(patient: Patient) {
+function patientDetailsShort(patient: Patient, fontSize: number) {
   return (
     <>
-      <Text fw={700} size="sm">
+      <Text fw={700} size="sm" style={{ fontSize }}>
         {patient.name}
       </Text>
-      {patient.dob && <Text size="sm">{patient.dob}</Text>}
+      {patient.dob && (
+        <Text size="sm" style={{ fontSize }}>
+          {patient.dob}
+        </Text>
+      )}
       {typeof patient.age === "number" && (
-        <Text size="sm">
+        <Text size="sm" style={{ fontSize }}>
           {" "}
           {patient.age}
           {patient.sex}
         </Text>
       )}
-      {patient.nhsNumber && <Text size="sm">{patient.nhsNumber}</Text>}
+      {patient.nhsNumber && (
+        <Text size="sm" style={{ fontSize }}>
+          {patient.nhsNumber}
+        </Text>
+      )}
     </>
   );
 }
@@ -61,6 +86,7 @@ export default function TopRibbon({
   isLoading,
   navOpen = false,
   isNarrow = false,
+  fontSize = 20,
 }: Props) {
   const showBrand = isLoading || !patient || (patient && !isNarrow);
   return (
@@ -93,7 +119,11 @@ export default function TopRibbon({
           {isLoading ? (
             <RibbonSkeleton />
           ) : patient ? (
-            <>{isNarrow ? patientDetailsShort(patient) : patientDetailsLong(patient)}</>
+            <>
+              {isNarrow
+                ? patientDetailsShort(patient, fontSize)
+                : patientDetailsLong(patient, fontSize)}
+            </>
           ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}

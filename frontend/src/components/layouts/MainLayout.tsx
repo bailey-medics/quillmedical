@@ -2,7 +2,7 @@ import type { Patient } from "@/domains/patient";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
-import { AppShell, useMantineTheme } from "@mantine/core";
+import { AppShell, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 
@@ -67,7 +67,16 @@ export default function MainLayout({
             </div>
           )}
           <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
-            {children}
+            {isLoading ? (
+              <Stack gap="md">
+                <Skeleton height={50} radius="md" />
+                <Skeleton height={200} radius="md" />
+                <Skeleton height={150} radius="md" />
+                <Skeleton height={100} radius="md" />
+              </Stack>
+            ) : (
+              children
+            )}
           </div>
         </div>
       </AppShell.Main>

@@ -33,7 +33,7 @@ const sampleLines = [
 
 const sample = sampleLines.join("\n");
 
-export const Default: Story = {
+export const RenderedMarkdown: Story = {
   render: () => (
     <MantineProvider>
       <div style={{ maxWidth: 720 }}>
@@ -43,11 +43,30 @@ export const Default: Story = {
   ),
 };
 
-export const PlainText: Story = {
+export const Markdown: Story = {
   render: () => (
     <MantineProvider>
       <div style={{ maxWidth: 720 }}>
-        <MarkdownView source={sample} asPlainText />
+        <pre
+          style={{
+            whiteSpace: "pre-wrap",
+            fontFamily: "monospace",
+            padding: "1rem",
+            borderRadius: "4px",
+          }}
+        >
+          {sample}
+        </pre>
+      </div>
+    </MantineProvider>
+  ),
+};
+
+export const Loading: Story = {
+  render: () => (
+    <MantineProvider>
+      <div style={{ maxWidth: 720 }}>
+        <MarkdownView source={sample} isLoading />
       </div>
     </MantineProvider>
   ),
