@@ -41,6 +41,12 @@ create-user:
     {{initialise}} "create-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
+alias cur := create-user-with-role
+# Create a new user with role assignment (supports Clinician role)
+create-user-with-role:
+    #!/usr/bin/env bash
+    {{initialise}} "create-user-with-role"
+    docker exec -it quill_backend sh -lc "cd scripts && python create_user_with_role.py"
 
 alias d := docs
 # Open the documentation in the browser

@@ -46,7 +46,9 @@ class TestCreateFhirPatient:
 
         with patch("app.fhir_client.Patient") as mock_patient_class:
             mock_patient_class.return_value = mock_patient
-            result = fhir_client.create_fhir_patient("Jane", "Smith", "new123")
+            result = fhir_client.create_fhir_patient(
+                "Jane", "Smith", patient_id="new123"
+            )
 
         assert result["id"] == "new123"
 
@@ -62,7 +64,9 @@ class TestCreateFhirPatient:
             mock_patient_class.return_value = mock_patient
 
             with pytest.raises(Exception) as exc_info:
-                fhir_client.create_fhir_patient("Test", "User", "123")
+                fhir_client.create_fhir_patient(
+                    "Test", "User", patient_id="123"
+                )
 
             assert "Creation failed" in str(exc_info.value)
 

@@ -5,6 +5,8 @@ FHIR client wrapper for connecting to HAPI FHIR server.
 Provides utility functions for creating and reading FHIR resources.
 """
 
+import uuid
+
 from fhirclient import client
 from fhirclient.models.address import Address
 from fhirclient.models.contactpoint import ContactPoint
@@ -29,13 +31,23 @@ def get_fhir_client() -> client.FHIRClient:
 
 
 def create_fhir_patient(
-    given_name: str, family_name: str, patient_id: str | None = None
+    given_name: str,
+    family_name: str,
+    birth_date: str | None = None,
+    gender: str | None = None,
+    nhs_number: str | None = None,
+    mrn: str | None = None,
+    patient_id: str | None = None,
 ) -> dict:
     """Create a new FHIR Patient resource.
 
     Args:
         given_name (str): Patient's first/given name.
         family_name (str): Patient's family/last name.
+        birth_date (str | None): Date of birth in YYYY-MM-DD format.
+        gender (str | None): Gender (male, female, other, unknown).
+        nhs_number (str | None): NHS number (10-digit UK national identifier).
+        mrn (str | None): Medical Record Number (local hospital identifier).
         patient_id (str | None): Optional ID for the patient.
 
     Returns:
@@ -48,8 +60,12 @@ def create_fhir_patient(
 
     # Create Patient resource
     patient = Patient()
+
+    # Generate UUID for patient ID if not provided
     if patient_id:
         patient.id = patient_id
+    else:
+        patient.id = str(uuid.uuid4())
 
     # Create name
     name = HumanName()
@@ -58,6 +74,38 @@ def create_fhir_patient(
     name.use = "official"
 
     patient.name = [name]
+
+    # Add birth date if provided
+    if birth_date:
+        patient.birthDate = FHIRDate(birth_date)
+
+    # Add gender if provided (must be one of: male, female, other, unknown)
+    if gender and gender.lower() in ["male", "female", "other", "unknown"]:
+        patient.gender = gender.lower()
+
+    # Add identifiers
+    identifiers = []
+
+    # NHS Number (UK national identifier)
+    if nhs_number:
+        from fhirclient.models.identifier import Identifier
+
+        nhs_id = Identifier()
+        nhs_id.system = "https://fhir.nhs.uk/Id/nhs-number"
+        nhs_id.value = nhs_number
+        identifiers.append(nhs_id)
+
+    # Medical Record Number (local hospital identifier)
+    if mrn:
+        from fhirclient.models.identifier import Identifier
+
+        mrn_id = Identifier()
+        mrn_id.system = "http://hospital.example.org/identifiers/mrn"
+        mrn_id.value = mrn
+        identifiers.append(mrn_id)
+
+    if identifiers:
+        patient.identifier = identifiers
 
     # Save to FHIR server
     patient.create(fhir.server)
@@ -82,6 +130,25 @@ def read_fhir_patient(patient_id: str) -> dict | None:
         return patient.as_json()
     except Exception:
         return None
+
+
+def delete_fhir_patient(patient_id: str) -> bool:
+    """Delete a FHIR Patient resource by ID.
+
+    Args:
+        patient_id (str): FHIR Patient resource ID to delete.
+
+    Returns:
+        bool: True if deletion successful, False otherwise.
+    """
+    fhir = get_fhir_client()
+
+    try:
+        patient = Patient.read(patient_id, fhir.server)
+        patient.delete()
+        return True
+    except Exception:
+        return False
 
 
 def list_fhir_patients() -> list[dict]:

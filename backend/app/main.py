@@ -44,6 +44,7 @@ from app.ehrbase_client import (
 )
 from app.fhir_client import (
     create_fhir_patient,
+    delete_fhir_patient,
     list_fhir_patients,
     read_fhir_patient,
     update_fhir_patient,
@@ -668,7 +669,7 @@ def refresh(
 
 
 @router.post(
-    "/patients",
+    "/patients/verify",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def create_patient_record(patient_id: str):
@@ -729,6 +730,43 @@ def list_patients(u: User = DEP_CURRENT_USER):
         return {"patients": patients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.delete(
+    "/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+)
+def delete_patient(patient_id: str, u: User = DEP_CURRENT_USER):
+    """Delete Patient from FHIR Server.
+
+    Permanently deletes a patient from the FHIR server. This operation cannot
+    be undone. Requires Clinician role and CSRF token validation as this is
+    a destructive operation.
+
+    Args:
+        patient_id: FHIR Patient resource ID to delete.
+        u: Currently authenticated user (must have Clinician role).
+
+    Returns:
+        dict: Success confirmation with deleted patient_id.
+
+    Raises:
+        HTTPException: 404 if patient not found.
+        HTTPException: 500 if deletion fails.
+    """
+    try:
+        success = delete_fhir_patient(patient_id)
+        if not success:
+            raise HTTPException(
+                status_code=404, detail=f"Patient {patient_id} not found"
+            )
+        return {"detail": "Patient deleted", "patient_id": patient_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete patient: {e}"
+        ) from e
 
 
 @router.put(
@@ -926,18 +964,26 @@ def list_letters(
 class FHIRPatientCreateIn(BaseModel):
     """FHIR Patient Creation Request.
 
-    Request model for creating a new FHIR Patient resource with basic name
-    information. Optional patient_id allows specifying a custom FHIR resource
-    ID instead of auto-generated ID.
+    Request model for creating a new FHIR Patient resource with demographics.
+    Optional patient_id allows specifying a custom FHIR resource ID instead
+    of auto-generated ID.
 
     Attributes:
         given_name: Patient's first/given name.
         family_name: Patient's surname/family name.
+        birth_date: Patient's date of birth (YYYY-MM-DD format).
+        gender: Patient's gender (male, female, other, unknown).
+        nhs_number: NHS number (10 digits, UK national identifier).
+        mrn: Medical Record Number (local hospital identifier).
         patient_id: Optional custom FHIR resource ID.
     """
 
     given_name: str
     family_name: str
+    birth_date: str | None = None
+    gender: str | None = None
+    nhs_number: str | None = None
+    mrn: str | None = None
     patient_id: str | None = None
 
 
@@ -949,13 +995,7 @@ def create_patient_in_fhir(
 
     Creates a new FHIR R4 Patient resource with the provided name information.
     The patient will be assigned a FHIR resource ID (either auto-generated or
-    custom if patient_id provided). This is separate from the patient record
-    verification endpoint which only checks existence.
-
-    Note:
-        This endpoint has a route conflict with POST /patients (patient record
-        verification). FastAPI registers only the last defined route. Consider
-        separating these into distinct endpoints or combining functionality.
+    custom if patient_id provided).
 
     Args:
         data: Patient name and optional ID.
@@ -969,7 +1009,13 @@ def create_patient_in_fhir(
     """
     try:
         patient = create_fhir_patient(
-            data.given_name, data.family_name, data.patient_id
+            given_name=data.given_name,
+            family_name=data.family_name,
+            birth_date=data.birth_date,
+            gender=data.gender,
+            nhs_number=data.nhs_number,
+            mrn=data.mrn,
+            patient_id=data.patient_id,
         )
         return patient
     except Exception as e:
