@@ -3,6 +3,8 @@ set -euo pipefail
 
 # Load dev environment guard rails
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=dev-scripts/_guard.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/_guard.sh"
 
 # Script to create 5 random patients via FastAPI API
@@ -15,7 +17,7 @@ DEBUG="${DEBUG:-0}"
 # Default to Caddy proxy on port 80 (not direct backend on 8000)
 API_BASE="${API_BASE:-http://localhost/api}"
 COOKIE_JAR=$(mktemp)
-trap "rm -f $COOKIE_JAR" EXIT
+trap 'rm -f "$COOKIE_JAR"' EXIT
 
 # Colors for output
 RED='\033[0;31m'
@@ -57,8 +59,10 @@ random_element() {
 # Generate random date of birth (between 1940 and 2005)
 random_dob() {
     local year=$((1940 + RANDOM % 66))  # 1940-2005
-    local month=$(printf "%02d" $((1 + RANDOM % 12)))
-    local day=$(printf "%02d" $((1 + RANDOM % 28)))  # Avoid Feb 29 issues
+    local month
+    month=$(printf "%02d" $((1 + RANDOM % 12)))
+    local day
+    day=$(printf "%02d" $((1 + RANDOM % 28)))  # Avoid Feb 29 issues
     echo "${year}-${month}-${day}"
 }
 
@@ -105,8 +109,8 @@ fi
 success "Backend is running"
 echo ""
 
-read -p "Username: " USERNAME
-read -s -p "Password: " PASSWORD
+read -r -p "Username: " USERNAME
+read -r -s -p "Password: " PASSWORD
 echo ""
 echo ""
 

@@ -16,7 +16,8 @@ check_dev_environment() {
     # This checks if quill_backend container has BACKEND_ENV=development
     if command -v docker >/dev/null 2>&1; then
         if docker ps --filter "name=quill_backend" --format "{{.Names}}" 2>/dev/null | grep -q "quill_backend"; then
-            local backend_env=$(docker exec quill_backend sh -c 'echo $BACKEND_ENV' 2>/dev/null || echo "")
+            local backend_env
+            backend_env=$(docker exec quill_backend sh -c 'echo $BACKEND_ENV' 2>/dev/null || echo "")
             if [ "$backend_env" = "development" ]; then
                 is_dev=1
             fi

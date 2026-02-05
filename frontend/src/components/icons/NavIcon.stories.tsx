@@ -23,8 +23,9 @@ const meta = {
       ],
     },
     size: {
-      description: "The size of the icon in pixels",
-      control: "number",
+      description: "The size preset for the icon",
+      control: "select",
+      options: ["xs", "sm", "md", "lg", "xl"],
     },
   },
 } satisfies Meta<typeof NavIcon>;
@@ -83,7 +84,7 @@ export const Notification: Story = {
 export const LargerIcon: Story = {
   args: {
     name: "home",
-    size: 24,
+    size: "xl",
   },
 };
 

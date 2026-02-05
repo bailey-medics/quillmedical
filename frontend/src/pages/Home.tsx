@@ -94,7 +94,6 @@ export default function Home() {
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch patients function
   const fetchPatients = () => {
@@ -157,7 +156,33 @@ export default function Home() {
           console.log("Mapped patient:", patient);
           return patient;
         });
-        setPatients(mapped);
+
+        // Only update state if data has actually changed
+        setPatients((currentPatients) => {
+          // If no current patients, always set the new ones
+          if (!currentPatients) {
+            return mapped;
+          }
+
+          // Compare patient lists by IDs
+          const currentIds = currentPatients
+            .map((p) => p.id)
+            .sort()
+            .join(",");
+          const newIds = mapped
+            .map((p) => p.id)
+            .sort()
+            .join(",");
+
+          // Only update if patient list has changed
+          if (currentIds !== newIds) {
+            console.log("Patient list changed, updating UI");
+            return mapped;
+          }
+
+          console.log("No changes detected, skipping UI update");
+          return currentPatients;
+        });
         setError(null);
       })
       .catch((err: Error & { error_code?: string }) => {
@@ -173,16 +198,16 @@ export default function Home() {
     };
   };
 
-  // Fetch on mount and when refreshKey changes
+  // Fetch on mount
   useEffect(() => {
     const cleanup = fetchPatients();
     return cleanup;
-  }, [refreshKey]);
+  }, []);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 30 seconds - fetches data but only updates UI if changed
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefreshKey((prev) => prev + 1);
+      fetchPatients();
     }, 30000);
     return () => clearInterval(interval);
   }, []);
