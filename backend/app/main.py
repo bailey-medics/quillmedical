@@ -1,12 +1,24 @@
-"""
-main.py
+"""FastAPI Application Entry Point.
 
-Entry point for the Quill Medical FastAPI application.
+This module is the main entry point for the Quill Medical REST API. It configures
+the FastAPI application, authentication middleware, and all API routes.
 
-This module configures the API, dependencies, authentication,
-and patient record routes. All endpoints are exposed under the
-`/api` prefix. In development, Swagger UI and ReDoc documentation
-are also served under `/api/docs` and `/api/redoc`.
+Key Features:
+- JWT-based authentication with HTTP-only cookies
+- TOTP two-factor authentication support
+- Role-based access control (RBAC)
+- CSRF protection for state-changing operations
+- Integration with FHIR (patient demographics) and OpenEHR (clinical letters)
+- Push notification support via Web Push protocol
+
+All API endpoints are exposed under the `/api` prefix. Development mode enables
+Swagger UI at `/api/docs` and ReDoc at `/api/redoc` for interactive API exploration.
+
+Architecture:
+- Auth database: User accounts and roles (PostgreSQL via SQLAlchemy)
+- FHIR server: Patient demographics (HAPI FHIR)
+- EHRbase: Clinical documents and letters (OpenEHR)
+- Push notifications: In-memory subscriptions (production should use database)
 """
 
 from typing import Any, cast
@@ -87,13 +99,23 @@ COOKIE_KW = dict(
 
 
 def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
-    """Set authentication cookies for access, refresh, and CSRF tokens.
+    """Set Authentication Cookies.
+
+    Sets three HTTP cookies for authentication: access token (short-lived),
+    refresh token (long-lived), and CSRF token (for state-changing operations).
+    Access and refresh tokens are HTTP-only for security. CSRF token is readable
+    by JavaScript so it can be included in request headers.
+
+    Cookie Configuration:
+    - access_token: Path=/, HttpOnly, SameSite=Lax, TTL=15min
+    - refresh_token: Path=/api/auth/refresh, HttpOnly, SameSite=Lax, TTL=7days
+    - XSRF-TOKEN: Path=/, SameSite=Lax (not HttpOnly), TTL matches access token
 
     Args:
-        response (Response): The outgoing FastAPI response object.
-        access (str): Encoded access token (short-lived).
-        refresh (str): Encoded refresh token (long-lived).
-        xsrf (str): Cross-site request forgery token.
+        response: FastAPI response object to set cookies on.
+        access: Encoded JWT access token.
+        refresh: Encoded JWT refresh token.
+        xsrf: CSRF protection token.
     """
     response.set_cookie("access_token", access, path="/", **COOKIE_KW)
     response.set_cookie(
@@ -114,10 +136,14 @@ def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
 
 
 def clear_auth_cookies(response: Response):
-    """Clear authentication cookies from the client.
+    """Clear Authentication Cookies.
+
+    Removes all authentication cookies from the client browser by setting
+    them with expired dates. Used during logout to end the user's session.
+    Deletes access_token, refresh_token, and XSRF-TOKEN cookies.
 
     Args:
-        response (Response): The outgoing FastAPI response object.
+        response: FastAPI response object to clear cookies from.
     """
     response.delete_cookie(
         "access_token", path="/", domain=settings.COOKIE_DOMAIN
@@ -133,17 +159,27 @@ def clear_auth_cookies(response: Response):
 
 
 def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
-    """Get the currently authenticated user from cookies.
+    """Get Currently Authenticated User.
+
+    FastAPI dependency that extracts and validates the JWT access token from
+    cookies, then loads the corresponding user from the database. The user's
+    roles are stored in request.state for authorization checks.
+
+    Token Validation:
+    - Checks for access_token cookie presence
+    - Verifies JWT signature and expiration
+    - Loads user from database by username
+    - Verifies user account is active
 
     Args:
-        request (Request): Incoming FastAPI request.
-        db (Session): Active SQLAlchemy session.
+        request: Incoming FastAPI request with cookies.
+        db: Active SQLAlchemy database session.
 
     Returns:
-        User: The authenticated and active user.
+        User: The authenticated and active user with roles loaded.
 
     Raises:
-        HTTPException: If the user is not authenticated or inactive.
+        HTTPException: 401 if token missing, invalid, expired, or user inactive.
     """
     tok = request.cookies.get("access_token")
     if not tok:
@@ -164,16 +200,24 @@ DEP_CURRENT_USER = Depends(current_user)
 
 
 def require_roles(*need: str):
-    """Create a dependency that enforces required roles on a route.
+    """Create Role Authorization Dependency.
+
+    Factory function that creates a FastAPI dependency to enforce role-based
+    access control. The returned dependency checks if the authenticated user
+    possesses all required roles. Used in route decorators to protect endpoints.
+
+    Usage Example:
+        @router.get("/patients", dependencies=[require_roles("Clinician")])
+        def list_patients(): ...
 
     Args:
-        *need (str): Role names that the caller must possess.
+        *need: One or more role names required (e.g., "Clinician", "Administrator").
 
     Returns:
-        Callable: A dependency for injection into route `dependencies=[...]`.
+        Callable: FastAPI dependency function that validates roles.
 
     Raises:
-        HTTPException: 403 if the user lacks required roles.
+        HTTPException: 403 Forbidden if user lacks any required role.
     """
 
     def dep(request: Request, _u: User = DEP_CURRENT_USER):
@@ -186,17 +230,28 @@ def require_roles(*need: str):
 
 
 def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
-    """Validate CSRF by comparing header and cookie and checking the signature.
+    """Validate CSRF Token.
+
+    FastAPI dependency that validates CSRF tokens to protect against cross-site
+    request forgery attacks. Compares the X-CSRF-Token header with the XSRF-TOKEN
+    cookie, verifies they match, and validates the signature against the user's
+    identity. Required for all state-changing operations (POST/PUT/PATCH/DELETE).
+
+    CSRF Protection Flow:
+    1. Extract X-CSRF-Token header and XSRF-TOKEN cookie
+    2. Verify both exist and match exactly
+    3. Verify signature is valid for authenticated user
+    4. Return user if validation passes
 
     Args:
-        request (Request): Incoming request carrying the header and cookie.
-        u (User): Current authenticated user.
+        request: Incoming request with headers and cookies.
+        u: Current authenticated user from JWT.
 
     Returns:
-        User: The validated user (pass-through).
+        User: The validated user (pass-through for chaining).
 
     Raises:
-        HTTPException: 403 on CSRF failure.
+        HTTPException: 403 Forbidden if CSRF validation fails.
     """
     header = request.headers.get("x-csrf-token")
     cookie = request.cookies.get("XSRF-TOKEN")
@@ -218,21 +273,33 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 def login(
     data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
 ) -> dict:
-    """Authenticate a user and set auth cookies.
+    """User Login with Optional TOTP.
 
-    Validates username/password, optionally verifies a time-based one-time code
-    when two-factor is enabled, then issues access/refresh/CSRF cookies.
+    Authenticates a user with username and password, optionally verifying a
+    6-digit TOTP code if two-factor authentication is enabled. On successful
+    authentication, sets HTTP-only cookies for access token, refresh token,
+    and CSRF token. The access token contains the user's roles for authorization.
+
+    Authentication Flow:
+    1. Verify username exists in database
+    2. Verify password hash matches using Argon2
+    3. If TOTP enabled, verify 6-digit code from authenticator app
+    4. Generate access token (15min), refresh token (7d), CSRF token
+    5. Set HTTP-only cookies with tokens
+    6. Return success with username and roles
 
     Args:
-        data (LoginIn): Login payload including username, password, and optional TOTP.
-        response (Response): Outgoing response used to set cookies.
-        db (Session): Database session.
+        data: Login credentials (username, password, optional totp_code).
+        response: FastAPI response object for setting cookies.
+        db: Database session for user lookup.
 
     Returns:
-        dict: Minimal result and the caller's username/roles.
+        dict: Success response with keys:
+            - detail: "ok"
+            - user: {username: str, roles: list[str]}
 
     Raises:
-        HTTPException: 400 for invalid credentials or TOTP; 401 if token decoding fails.
+        HTTPException: 400 if credentials invalid, 2FA required, or TOTP code invalid.
     """
 
     user = db.scalar(
@@ -276,21 +343,33 @@ def login(
 
 @router.post("/auth/register")
 def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
-    """Register a new user with username, email, and password.
+    """User Registration.
 
-    Performs minimal validation and uniqueness checks, then stores a hashed
-    password.
+    Creates a new user account with username, email, and password. Performs
+    validation checks for required fields, password minimum length, and uniqueness
+    constraints. The password is hashed with Argon2 before storage. Users are
+    created without any roles by default and must be assigned roles by an
+    administrator.
+
+    Validation Rules:
+    - Username and email must not be empty after stripping whitespace
+    - Password must be at least 6 characters long
+    - Username must be unique across all users
+    - Email must be unique across all users
 
     Args:
-        payload (RegisterIn): Registration data.
-        db (Session): Database session.
+        payload: Registration data (username, email, password).
+        db: Database session for user creation.
 
     Returns:
-        dict: Confirmation payload.
+        dict: Success response with {"detail": "created"}.
 
     Raises:
-        HTTPException: 400 if fields are missing/short or username/email
-                        already exists.
+        HTTPException: 400 if validation fails or constraints violated:
+            - "Missing fields" if username, email, or password empty
+            - "Password too short" if password < 6 characters
+            - "Username already exists" if username taken
+            - "Email already exists" if email taken
     """
     username = payload.username.strip()
     email = payload.email.strip()
@@ -321,16 +400,44 @@ def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
 
 
 class TotpSetupOut(BaseModel):
-    """Output model containing a provisioning URI for authenticator apps."""
+    """TOTP Setup Response.
+
+    Response model for TOTP setup endpoint containing the otpauth:// URI
+    for QR code generation. This URI can be rendered as a QR code by the
+    frontend for scanning with authenticator apps.
+
+    Attributes:
+        provision_uri: otpauth://totp/... URI for authenticator app setup.
+    """
 
     provision_uri: str
 
 
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
 def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
-    """Create (if missing) a TOTP secret and return a provisioning URI.
+    """TOTP Two-Factor Setup.
+
+    Generates a new TOTP secret for the authenticated user (or reuses existing)
+    and returns a provision URI for QR code display. The frontend renders this
+    URI as a QR code that users scan with their authenticator app (Google
+    Authenticator, Authy, etc.). The secret is saved to the database but TOTP
+    is not enabled until the user verifies a code with /auth/totp/verify.
+
+    Setup Flow:
+    1. Check if user already has TOTP secret
+    2. Generate new Base32 secret if missing
+    3. Save secret to database
+    4. Generate otpauth:// provision URI
+    5. Return URI for QR code rendering
 
     The frontend should render the URI as a QR code for an authenticator app.
+
+    Args:
+        u: Currently authenticated user from JWT.
+        db: Database session for updating user.
+
+    Returns:
+        TotpSetupOut: Object containing provision_uri for QR code.
 
     Args:
         u (User): Current authenticated user (injected).
@@ -354,7 +461,15 @@ def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
 
 
 class TotpVerifyIn(BaseModel):
-    """Input model for verifying a TOTP code during setup."""
+    """TOTP Verification Request.
+
+    Request model for verifying a TOTP code during two-factor authentication
+    setup. After scanning the QR code, users enter the 6-digit code from their
+    authenticator app to prove they can generate valid codes.
+
+    Attributes:
+        code: 6-digit numeric code from authenticator app.
+    """
 
     code: str
 
@@ -365,18 +480,31 @@ def totp_verify(
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ):
-    """Verify a TOTP code and enable two-factor authentication for the user.
+    """Verify TOTP and Enable Two-Factor.
+
+    Verifies the 6-digit TOTP code from the user's authenticator app and
+    enables two-factor authentication on their account. This must be called
+    after /auth/totp/setup to complete 2FA setup. Once enabled, the user
+    will be required to provide a TOTP code on every login.
+
+    Verification Flow:
+    1. Check user has TOTP secret from setup
+    2. Verify 6-digit code matches current time window
+    3. Set is_totp_enabled=True in database
+    4. Return success
 
     Args:
-        payload (TotpVerifyIn): The six-digit code from the authenticator app.
-        u (User): Current authenticated user.
-        db (Session): Database session.
+        payload: Request containing the 6-digit TOTP code.
+        u: Currently authenticated user from JWT.
+        db: Database session for updating user.
 
     Returns:
-        dict: Confirmation payload.
+        dict: Success response with {"detail": "enabled"}.
 
     Raises:
-        HTTPException: 400 if no secret exists or code is invalid.
+        HTTPException: 400 if:
+            - No TOTP secret exists (must call /auth/totp/setup first)
+            - TOTP code is invalid or expired
     """
     if not getattr(u, "totp_secret", None):
         raise HTTPException(
@@ -402,16 +530,22 @@ def totp_verify(
 
 @router.post("/auth/totp/disable")
 def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
-    """Disable TOTP for the current user.
+    """Disable Two-Factor Authentication.
 
-    CSRF protection is required.
+    Disables TOTP two-factor authentication for the current user and clears
+    their TOTP secret. Future logins will only require username and password.
+    Requires CSRF token validation since this is a security-sensitive operation.
+
+    Security Note:
+        This is a privileged operation that reduces account security. CSRF
+        protection prevents unauthorized disabling of 2FA via CSRF attacks.
 
     Args:
-        u (User): Current authenticated user (CSRF-checked).
-        db (Session): Database session.
+        u: Currently authenticated user (with CSRF validation).
+        db: Database session for updating user.
 
     Returns:
-        dict: Confirmation payload.
+        dict: Success response with {"detail": "disabled"}.
     """
     u.is_totp_enabled = False
     u.totp_secret = None
@@ -422,14 +556,24 @@ def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
 
 @router.post("/auth/logout")
 def logout(response: Response, _u: User = DEP_CURRENT_USER):
-    """Log out the current user by clearing auth cookies.
+    """User Logout.
+
+    Logs out the current user by clearing all authentication cookies (access_token,
+    refresh_token, XSRF-TOKEN). The user will need to login again to access
+    protected endpoints. Note that this only clears client-side cookies; the
+    tokens remain valid until expiration since there's no server-side revocation.
+
+    Implementation Note:
+        Production systems should implement token blacklisting for immediate
+        revocation. Current implementation relies on short access token TTL
+        (15 minutes) to limit exposure window.
 
     Args:
-        response (Response): Outgoing response used to clear cookies.
-        _u (User): Current authenticated user (unused; enforces auth).
+        response: FastAPI response object for clearing cookies.
+        _u: Currently authenticated user (validates auth before logout).
 
     Returns:
-        dict: Confirmation payload.
+        dict: Success response with {"detail": "ok"}.
     """
     clear_auth_cookies(response)
     return {"detail": "ok"}
@@ -437,13 +581,22 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER):
 
 @router.get("/auth/me")
 def me(u: User = DEP_CURRENT_USER):
-    """Return a minimal profile for the current user.
+    """Get Current User Profile.
+
+    Returns the authenticated user's profile information including username,
+    email, assigned roles, and TOTP status. Used by frontend to display user
+    information and determine available features based on roles.
 
     Args:
-        u (User): Current authenticated user.
+        u: Currently authenticated user from JWT.
 
     Returns:
-        dict: Basic identity fields and role names.
+        dict: User profile with keys:
+            - id: User's database ID
+            - username: User's username
+            - email: User's email address
+            - roles: List of assigned role names
+            - totp_enabled: Whether 2FA is active
     """
     return {
         "id": u.id,
@@ -457,20 +610,41 @@ def me(u: User = DEP_CURRENT_USER):
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
 ):
-    """Rotate refresh token and issue a new access token.
+    """Rotate Tokens and Issue New Access Token.
 
-    Reads the refresh token cookie, validates it, then sets new access/refresh/CSRF cookies.
+    Validates the refresh token from cookies and issues new access, refresh,
+    and CSRF tokens. This extends the user's session without requiring re-login.
+    Frontend automatically calls this endpoint when the access token expires
+    (401 response) to maintain seamless user experience.
+
+    Token Rotation Flow:
+    1. Extract refresh token from HTTP-only cookie
+    2. Decode and validate refresh token (check expiry, type="refresh")
+    3. Load user from database by username in token
+    4. Generate new access token (15min TTL)
+    5. Generate new refresh token (7 day TTL)
+    6. Generate new CSRF token
+    7. Set all three cookies in response
+
+    Security Note:
+        Token rotation reduces risk of token replay attacks. Each refresh
+        invalidates the old tokens and issues new ones with fresh expiry times.
 
     Args:
-        response (Response): Outgoing response used to set cookies.
-        request (Request): Incoming request (reads refresh cookie).
-        db (Session): Database session.
+        response: FastAPI response object for setting new cookies.
+        request: FastAPI request object for reading refresh token cookie.
+        db: Database session for loading user.
 
     Returns:
-        dict: Confirmation payload.
+        dict: Success response with {"detail": "ok"}.
 
     Raises:
-        HTTPException: 401 if the refresh token is missing/invalid or user is inactive.
+    Raises:
+        HTTPException: 401 if:
+            - No refresh_token cookie present
+            - Token signature invalid or expired
+            - Token type is not "refresh"
+            - User not found in database or inactive
     """
     tok = request.cookies.get("refresh_token")
     if not tok:
@@ -498,16 +672,24 @@ def refresh(
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def create_patient_record(patient_id: str):
-    """Verify or create patient record in FHIR.
+    """Create or Verify Patient in FHIR.
+
+    Verifies that a patient exists in the FHIR server before allowing clinical
+    operations. This ensures the patient has a valid FHIR Patient resource
+    before creating letters or other clinical documents. Requires Clinician
+    role and CSRF token validation.
 
     Args:
-        patient_id (str): Patient identifier.
+        patient_id: FHIR Patient resource ID to verify.
 
     Returns:
-        dict: Patient ID and status.
+        dict: Patient verification response with keys:
+            - patient_id: The verified patient ID
+            - status: "ready" indicating patient exists
 
     Raises:
-        HTTPException: 404 if patient not found; 500 on errors.
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR communication fails.
     """
     try:
         # Check if patient exists in FHIR
@@ -525,13 +707,22 @@ def create_patient_record(patient_id: str):
 
 @router.get("/patients")
 def list_patients(u: User = DEP_CURRENT_USER):
-    """List all patients from FHIR server.
+    """List All Patients from FHIR.
+
+    Retrieves all patient demographics from the FHIR server. Returns FHIR R4
+    Patient resources including name, date of birth, gender, identifiers (NHS
+    number), and contact information. Used by frontend to display patient list
+    and search functionality.
 
     Args:
-        u (User): Current authenticated user.
+        u: Currently authenticated user (any role can view patients).
 
     Returns:
-        dict: Array of FHIR patient resources.
+        dict: Response with key:
+            - patients: Array of FHIR Patient resources
+
+    Raises:
+        HTTPException: 500 if FHIR server communication fails.
     """
     try:
         patients = list_fhir_patients()
@@ -547,18 +738,27 @@ def list_patients(u: User = DEP_CURRENT_USER):
 def upsert_demographics(
     patient_id: str, demographics: dict, u: User = DEP_CURRENT_USER
 ):
-    """Update demographics for a patient in FHIR.
+    """Update Patient Demographics in FHIR.
+
+    Updates patient demographic information in the FHIR server. Accepts a
+    dictionary of FHIR-compatible demographic fields (name, address, telecom,
+    birthDate, gender, etc.). Requires Clinician role and CSRF token validation
+    since this modifies patient data.
 
     Args:
-        patient_id (str): Patient identifier.
-        demographics (dict): Demographics fields to update.
-        u (User): Current authenticated user.
+        patient_id: FHIR Patient resource ID to update.
+        demographics: Dictionary of FHIR Patient fields to update.
+        u: Currently authenticated user (unused but validates auth).
 
     Returns:
-        dict: Updated patient resource.
+        dict: Update response with keys:
+            - patient_id: The updated patient ID
+            - updated: True indicating success
+            - data: Complete updated FHIR Patient resource
 
     Raises:
-        HTTPException: 404 if patient not found; 500 on update errors.
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR update operation fails.
     """
     try:
         result = update_fhir_patient(patient_id, demographics)
@@ -573,17 +773,24 @@ def upsert_demographics(
 
 @router.get("/patients/{patient_id}/demographics")
 def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
-    """Fetch demographics for a patient from FHIR.
+    """Get Patient Demographics from FHIR.
+
+    Retrieves complete demographic information for a specific patient from the
+    FHIR server. Returns the full FHIR R4 Patient resource including name,
+    date of birth, gender, identifiers, contact information, and address.
 
     Args:
-        patient_id (str): Patient identifier.
-        u (User): Current authenticated user.
+        patient_id: FHIR Patient resource ID to retrieve.
+        u: Currently authenticated user (any role can read demographics).
 
     Returns:
-        dict: Patient demographics from FHIR.
+        dict: Patient demographics response with keys:
+            - patient_id: The requested patient ID
+            - data: Complete FHIR Patient resource
 
     Raises:
-        HTTPException: 404 if not found; 500 on read errors.
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR read operation fails.
     """
     try:
         patient = read_fhir_patient(patient_id)
@@ -601,17 +808,31 @@ def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def write_letter(patient_id: str, letter: LetterIn):
-    """Write and store a new letter in OpenEHR.
+    """Create Clinical Letter in OpenEHR.
+
+    Creates a new clinical letter composition in EHRbase for the specified patient.
+    Automatically ensures the patient has an EHR in EHRbase (creates if missing).
+    Stores the letter title, markdown body, and author information. Requires
+    Clinician role and CSRF token validation.
+
+    Letter Storage:
+        - Letters stored as OpenEHR Compositions in EHRbase
+        - Each patient has corresponding EHR linked by FHIR patient ID
+        - Markdown body preserved for future rendering
+        - Author metadata includes name and email
 
     Args:
-        patient_id (str): Patient identifier.
-        letter (LetterIn): Letter metadata and markdown body.
+        patient_id: FHIR Patient ID to associate letter with.
+        letter: Letter content (title, body, author metadata).
 
     Returns:
-        dict: Composition UID and metadata.
+        dict: Created letter response with keys:
+            - patient_id: The patient ID
+            - composition_uid: OpenEHR composition UID for retrieval
+            - title: Letter title
 
     Raises:
-        HTTPException: 500 on write errors.
+        HTTPException: 500 if EHR creation or composition write fails.
     """
     try:
         result = create_letter_composition(
@@ -633,18 +854,26 @@ def write_letter(patient_id: str, letter: LetterIn):
 def read_letter(
     patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
-    """Read a specific letter composition from OpenEHR.
+    """Read Specific Clinical Letter from OpenEHR.
+
+    Retrieves a specific clinical letter composition from EHRbase by its
+    composition UID. Returns the complete composition including title, body,
+    author information, and OpenEHR metadata.
 
     Args:
-        patient_id (str): Patient identifier.
-        composition_uid (str): OpenEHR composition UID.
-        u (User): Current authenticated user.
+        patient_id: FHIR Patient ID the letter belongs to.
+        composition_uid: OpenEHR composition UID from letter creation.
+        u: Currently authenticated user (any role can read letters).
 
     Returns:
-        dict: Composition data including title and content.
+        dict: Letter retrieval response with keys:
+            - patient_id: The patient ID
+            - composition_uid: The composition UID
+            - data: Complete OpenEHR Composition structure
 
     Raises:
-        HTTPException: 404 if not found; 500 on read errors.
+        HTTPException: 404 if letter not found in EHRbase.
+        HTTPException: 500 if EHRbase read operation fails.
     """
     try:
         composition = get_letter_composition(patient_id, composition_uid)
@@ -665,17 +894,24 @@ def read_letter(
 def list_letters(
     patient_id: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
-    """List all letters for a patient from OpenEHR.
+    """List All Clinical Letters for Patient.
+
+    Retrieves all clinical letter compositions for a specific patient from
+    EHRbase. Returns a list of letter metadata (UID, title, creation date)
+    without fetching the full content of each letter. Use the individual
+    letter endpoint to retrieve complete letter content.
 
     Args:
-        patient_id (str): Patient identifier.
-        u (User): Current authenticated user.
+        patient_id: FHIR Patient ID to retrieve letters for.
+        u: Currently authenticated user (any role can list letters).
 
     Returns:
-        dict: List of letter metadata.
+        dict: Letter list response with keys:
+            - patient_id: The patient ID
+            - letters: Array of letter metadata (UID, title, created date)
 
     Raises:
-        HTTPException: 500 on read errors.
+        HTTPException: 500 if EHRbase query fails.
     """
     try:
         letters = list_letters_for_patient(patient_id)
@@ -688,7 +924,17 @@ def list_letters(
 
 
 class FHIRPatientCreateIn(BaseModel):
-    """Input model for creating a FHIR patient."""
+    """FHIR Patient Creation Request.
+
+    Request model for creating a new FHIR Patient resource with basic name
+    information. Optional patient_id allows specifying a custom FHIR resource
+    ID instead of auto-generated ID.
+
+    Attributes:
+        given_name: Patient's first/given name.
+        family_name: Patient's surname/family name.
+        patient_id: Optional custom FHIR resource ID.
+    """
 
     given_name: str
     family_name: str
@@ -699,17 +945,27 @@ class FHIRPatientCreateIn(BaseModel):
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
-    """Create a new patient in FHIR server with first and last name.
+    """Create New Patient in FHIR Server.
+
+    Creates a new FHIR R4 Patient resource with the provided name information.
+    The patient will be assigned a FHIR resource ID (either auto-generated or
+    custom if patient_id provided). This is separate from the patient record
+    verification endpoint which only checks existence.
+
+    Note:
+        This endpoint has a route conflict with POST /patients (patient record
+        verification). FastAPI registers only the last defined route. Consider
+        separating these into distinct endpoints or combining functionality.
 
     Args:
-        data (FHIRPatientCreateIn): Patient name information.
-        u (User): Current authenticated user.
+        data: Patient name and optional ID.
+        u: Currently authenticated user (any role can create patients).
 
     Returns:
-        dict: Created FHIR Patient resource.
+        dict: Complete FHIR Patient resource with assigned ID.
 
     Raises:
-        HTTPException: 500 if FHIR creation fails.
+        HTTPException: 500 if FHIR patient creation fails.
     """
     try:
         patient = create_fhir_patient(

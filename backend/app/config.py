@@ -1,4 +1,17 @@
-# app/config.py
+"""Application configuration management.
+
+This module defines the application settings using Pydantic Settings,
+reading configuration from environment variables and providing computed
+properties for database connection strings.
+
+The configuration is organized into sections:
+- JWT authentication settings
+- Auth database connection
+- FHIR database connection
+- EHRbase connection
+- VAPID keys for push notifications
+"""
+
 from urllib.parse import quote_plus
 
 from pydantic import Field, SecretStr, computed_field
@@ -6,6 +19,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables.
+
+    All database passwords and secrets are stored as SecretStr to prevent
+    accidental logging of sensitive values. Connection URLs are computed
+    from individual components to support Docker Compose networking.
+
+    Attributes:
+        API_PREFIX: Base path for all API routes (default: /api)
+        JWT_SECRET: Secret key for JWT token signing (min 32 chars)
+        JWT_ALG: JWT signing algorithm (default: HS256)
+        ACCESS_TTL_MIN: Access token lifetime in minutes (default: 15)
+        REFRESH_TTL_DAYS: Refresh token lifetime in days (default: 7)
+        COOKIE_DOMAIN: Domain for auth cookies (None = current domain)
+        SECURE_COOKIES: Whether to use Secure flag on cookies (default: False)
+
+        AUTH_DB_*: Authentication database connection parameters
+        FHIR_DB_*: FHIR database connection parameters
+        EHRBASE_*: EHRbase API connection parameters
+        VAPID_PRIVATE: VAPID private key for push notifications
+    """
+
     API_PREFIX: str = "/api"
 
     # No env_file: read env provided by Docker/Compose (and Docker secrets)
@@ -85,6 +119,17 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def AUTH_DATABASE_URL(self) -> str:
+        """Auth Database Connection URL.
+
+        Constructs a PostgreSQL connection URL for the authentication database
+        using psycopg (pure Python driver). The password is URL-encoded to handle
+        special characters safely. This URL is used by SQLAlchemy to establish
+        connections to the auth database container.
+
+        Returns:
+            str: SQLAlchemy-compatible database URL in format:
+                postgresql+psycopg://user:password@host:port/database
+        """
         """Construct auth database URL from components."""
         return (
             f"postgresql+psycopg://{self.AUTH_DB_USER}:"
@@ -95,7 +140,16 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def FHIR_DATABASE_URL(self) -> str:
-        """Construct FHIR database URL from components."""
+        """FHIR Database Connection URL.
+
+        Constructs a PostgreSQL connection URL for the HAPI FHIR database.
+        This database stores patient demographics and FHIR resources managed
+        by the HAPI FHIR server. The password is URL-encoded for safe inclusion
+        in the connection string.
+
+        Returns:
+            str: SQLAlchemy-compatible database URL for FHIR database.
+        """
         return (
             f"postgresql+psycopg://{self.FHIR_DB_USER}:"
             f"{quote_plus(self.FHIR_DB_PASSWORD.get_secret_value())}@"
@@ -105,7 +159,16 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def EHRBASE_DATABASE_URL(self) -> str:
-        """Construct EHRbase database URL from components."""
+        """EHRbase Database Connection URL.
+
+        Constructs a PostgreSQL connection URL for the EHRbase database.
+        This database stores OpenEHR compositions (clinical documents and letters)
+        managed by the EHRbase server. The password is URL-encoded and includes
+        special PostgreSQL parameters required by EHRbase.
+
+        Returns:
+            str: SQLAlchemy-compatible database URL for EHRbase database.
+        """
         return (
             f"postgresql+psycopg://{self.EHRBASE_DB_USER}:"
             f"{quote_plus(self.EHRBASE_DB_PASSWORD.get_secret_value())}@"

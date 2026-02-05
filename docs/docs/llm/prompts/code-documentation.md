@@ -1,10 +1,15 @@
 # Code documentation
 
+## Review all code
+
+- Read through the entire code base and document as below.
+
 ## Python
 
 Add comprehensive Google-style docstrings to all functions, classes, and methods. For each:
 
-- Brief summary
+- Heading
+- Summary
 - Args: parameter descriptions with types
 - Returns: return value description with type
 - Raises: any exceptions thrown
@@ -16,7 +21,8 @@ Also, add summary module documentation at the top of the module.
 
 Add comprehensive JSDoc comments to all functions, classes, and methods. For each:
 
-- Brief summary
+- Header
+- Summary
 - @param: parameter descriptions (types inferred from TypeScript)
 - @returns: return value description (type inferred from TypeScript)
 - @throws: any exceptions thrown
