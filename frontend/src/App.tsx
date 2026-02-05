@@ -1,8 +1,25 @@
+/**
+ * App Component (Sample/Unused)
+ *
+ * Default Vite + React template component showing basic state management.
+ * Not currently used in the application - routing is handled in main.tsx.
+ * Kept for reference or testing purposes.
+ *
+ * Note: The actual application uses RootLayout.tsx as the root component
+ * within the router configuration in main.tsx.
+ */
+
 import { useState } from "react";
 import "./App.css";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 
+/**
+ * App
+ *
+ * Sample counter component from Vite + React template.
+ * Not used in production routing - see main.tsx for actual app structure.
+ */
 function App() {
   const [count, setCount] = useState(0);
 

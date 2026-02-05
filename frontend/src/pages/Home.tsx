@@ -1,34 +1,95 @@
+/**
+ * Home Page Module
+ *
+ * Main dashboard page displaying the list of all patients from the FHIR server.
+ * Fetches patient demographics, maps FHIR R4 Patient resources to internal Patient
+ * type, and displays them in a card-based list view.
+ */
+
 import PatientsList from "@/components/patients/PatientsList";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
 
-// FHIR Patient resource structure
+/**
+ * FHIR Name
+ *
+ * FHIR R4 HumanName structure containing name components.
+ */
 type FhirName = {
+  /** Array of given names (first, middle) */
   given?: string[];
+  /** Family name (surname) */
   family?: string;
+  /** Name use context (usual, official, temp, etc.) */
   use?: string;
 };
 
+/**
+ * FHIR Identifier
+ *
+ * FHIR R4 Identifier structure for patient identifiers (NHS number, MRN, etc.).
+ */
 type FhirIdentifier = {
+  /** Identifier system/namespace (e.g., https://fhir.nhs.uk/Id/nhs-number) */
   system?: string;
+  /** Identifier value (e.g., 10-digit NHS number) */
   value?: string;
 };
 
+/**
+ * FHIR Patient
+ *
+ * FHIR R4 Patient resource structure returned from backend.
+ */
 type FhirPatient = {
+  /** FHIR resource type (always "Patient") */
   resourceType: string;
+  /** Unique FHIR resource ID */
   id: string;
+  /** Array of patient names (official, usual, etc.) */
   name?: FhirName[];
+  /** Date of birth in YYYY-MM-DD format */
   birthDate?: string;
+  /** Administrative gender (male, female, other, unknown) */
   gender?: string;
+  /** Array of patient identifiers (NHS number, MRN, etc.) */
   identifier?: FhirIdentifier[];
 };
 
+/**
+ * Patients API Response
+ *
+ * Response structure from GET /api/patients.
+ */
 type PatientsApiRes = {
+  /** Array of FHIR Patient resources */
   patients: FhirPatient[];
 };
 
+/**
+ * Home Page
+ *
+ * Main application dashboard displaying all patients from the FHIR server.
+ * Automatically fetches patients on mount, maps FHIR resources to internal
+ * Patient type with computed fields (age, formatted name, NHS number extraction),
+ * and displays loading/error states.
+ *
+ * FHIR Mapping Logic:
+ * - Concatenates given + family names into single display name
+ * - Extracts NHS number from identifiers with NHS system URI
+ * - Calculates age from birth date accounting for leap years
+ * - Maps FHIR gender to sex field
+ *
+ * @example
+ * // Routing configuration
+ * <Route path="/" element={
+ *   <RequireAuth>
+ *     <Home />
+ *   </RequireAuth>
+ * } />
+ */
 export default function Home() {
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
