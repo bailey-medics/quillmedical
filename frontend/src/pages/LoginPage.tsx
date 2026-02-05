@@ -1,3 +1,11 @@
+/**
+ * Login Page Module
+ *
+ * User authentication page with username/password login and optional TOTP
+ * two-factor authentication. Handles automatic redirection after successful
+ * login and displays contextual error messages for common failure cases.
+ */
+
 import QuillLogo from "@/components/images/QuillLogo";
 import {
   Anchor,
@@ -12,6 +20,39 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
+/**
+ * Login Page
+ *
+ * Authentication page component that handles user login with optional TOTP
+ * two-factor authentication. Provides intelligent error handling with structured
+ * error code parsing from backend responses.
+ *
+ * Authentication Flow:
+ * 1. User enters username and password
+ * 2. On submission, calls login() from AuthContext
+ * 3. If backend requires TOTP, shows 6-digit code input
+ * 4. On success, redirects to intended destination or home
+ * 5. On failure, displays contextual error message
+ *
+ * Error Handling:
+ * - Detects error_code from backend (invalid_totp, two_factor_required)
+ * - Falls back to regex parsing for legacy error messages
+ * - Automatically shows TOTP input when 2FA is required
+ * - Provides helpful messages for wrong TOTP codes
+ *
+ * Redirection Logic:
+ * - Redirects to location.state.from after login (intended destination)
+ * - Uses full navigation (window.location.assign) for home to ensure base URL
+ * - Uses React Router navigate() for other protected routes
+ *
+ * @example
+ * // Routing configuration
+ * <Route path="/login" element={
+ *   <GuestOnly>
+ *     <LoginPage />
+ *   </GuestOnly>
+ * } />
+ */
 export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");

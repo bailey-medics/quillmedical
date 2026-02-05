@@ -1,3 +1,22 @@
+/**
+ * Main Application Entry Point
+ *
+ * Root module that initializes the React application with routing, authentication,
+ * UI framework, and service worker registration. Sets up the entire application
+ * component tree including AuthProvider, MantineProvider, and React Router.
+ *
+ * Architecture:
+ * - React Router with base URL support (for /app/ mounting)
+ * - Mantine UI for styling and components
+ * - Auth context wrapping all routes
+ * - Service worker for PWA functionality
+ *
+ * Route Structure:
+ * - Public routes: /login, /register (guest-only)
+ * - Protected routes: /, /settings, /about (require authentication)
+ * - 404 fallback for unknown paths
+ */
+
 // src/main.tsx
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";

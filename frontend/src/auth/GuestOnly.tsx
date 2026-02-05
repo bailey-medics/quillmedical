@@ -1,6 +1,34 @@
+/**
+ * Guest-Only Route Guard
+ *
+ * Higher-order component that protects routes intended only for unauthenticated
+ * users (e.g., login, registration). Redirects authenticated users to the
+ * application home page.
+ */
+
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 
+/**
+ * GuestOnly
+ *
+ * Route protection component that ensures only unauthenticated users can
+ * access child routes. Redirects authenticated users to the base application
+ * URL (typically /app/).
+ *
+ * Used for login and registration pages to prevent authenticated users from
+ * accessing them. Performs full navigation (window.location.assign) to ensure
+ * proper base URL handling with trailing slash.
+ *
+ * @param children - Guest-only route components (login, register)
+ *
+ * @example
+ * <Route path="/login" element={
+ *   <GuestOnly>
+ *     <LoginPage />
+ *   </GuestOnly>
+ * } />
+ */
 export default function GuestOnly({ children }: { children: ReactNode }) {
   const { state } = useAuth();
   useEffect(() => {

@@ -1,12 +1,53 @@
-// src/lib/api.ts
+/**
+ * API Client Module
+ *
+ * Centralized HTTP client for making authenticated API requests to the FastAPI backend.
+ * Handles automatic token refresh, CSRF protection, error parsing, and redirects on
+ * authentication failure. All requests include credentials (cookies) and use JSON format.
+ */
+
+/**
+ * HTTP Methods
+ *
+ * Supported HTTP methods for API requests.
+ */
 export type HTTPMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+/**
+ * Request Options
+ *
+ * Configuration options for API requests, extending RequestInit but excluding
+ * method, body, and credentials (managed internally).
+ */
 type Options = Omit<RequestInit, "method" | "body" | "credentials"> & {
   method?: HTTPMethod;
   body?: unknown;
   retry?: boolean;
 };
 
+/**
+ * Core API Request Handler
+ *
+ * Makes an authenticated HTTP request to the backend API with automatic token
+ * refresh on 401 responses. Handles JSON serialization/deserialization, error
+ * extraction from FastAPI responses, and login redirects.
+ *
+ * Authentication Flow:
+ * 1. Send request with credentials (JWT cookies)
+ * 2. On 401, attempt token refresh via POST /api/auth/refresh
+ * 3. If refresh succeeds, retry original request
+ * 4. If refresh fails, redirect to login page
+ *
+ * Error Handling:
+ * - Extracts error messages from FastAPI { detail: ... } responses
+ * - Attaches error_code to Error object when present
+ * - Falls back to status text or response body on parse failure
+ *
+ * @param path - API endpoint path (without /api prefix)
+ * @param opts - Request configuration options
+ * @returns Promise resolving to typed response data
+ * @throws Error with message from backend or HTTP status text
+ */
 async function request<T>(path: string, opts: Options = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: opts.method ?? "GET",
@@ -49,13 +90,17 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
         if (detail && typeof detail === "object") {
           // detail is an object with nested message / error_code
           const d = detail as Record<string, unknown>;
-          if (typeof d["message"] === "string") message = d["message"] as string;
-          else if (typeof d["detail"] === "string") message = d["detail"] as string;
+          if (typeof d["message"] === "string")
+            message = d["message"] as string;
+          else if (typeof d["detail"] === "string")
+            message = d["detail"] as string;
           errorCode = (d["error_code"] as string) ?? undefined;
         } else {
           // detail is likely a string
           message = (data?.detail ?? data?.message ?? message) as string;
-          errorCode = (data as Record<string, unknown>)["error_code"] as string | undefined;
+          errorCode = (data as Record<string, unknown>)["error_code"] as
+            | string
+            | undefined;
         }
       }
     } catch {
@@ -81,16 +126,49 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   return (await res.text()) as unknown as T;
 }
 
+/**
+ * API Client
+ *
+ * Exported API client with convenience methods for common HTTP operations.
+ * All methods automatically include authentication cookies and handle token refresh.
+ *
+ * @example
+ * // GET request
+ * const patients = await api.get<Patient[]>('/patients');
+ *
+ * // POST request with body
+ * await api.post('/auth/login', { username, password });
+ *
+ * // PUT request with custom headers
+ * await api.put('/patients/123/demographics', data, {
+ *   headers: { 'X-CSRF-Token': token }
+ * });
+ */
 export const api = {
+  /** Core request handler */
   request,
+  /** GET request */
   get: <T>(path: string, opts?: Omit<Options, "method" | "body">) =>
     request<T>(path, { ...opts, method: "GET" }),
-  post: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
-    request<T>(path, { ...opts, method: "POST", body }),
-  put: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
-    request<T>(path, { ...opts, method: "PUT", body }),
-  patch: <T>(path: string, body?: unknown, opts?: Omit<Options, "method" | "body">) =>
-    request<T>(path, { ...opts, method: "PATCH", body }),
+  /** POST request with optional body */
+  post: <T>(
+    path: string,
+    body?: unknown,
+    opts?: Omit<Options, "method" | "body">,
+  ) => request<T>(path, { ...opts, method: "POST", body }),
+  /** PUT request with optional body */
+  put: <T>(
+    path: string,
+    body?: unknown,
+    opts?: Omit<Options, "method" | "body">,
+  ) => request<T>(path, { ...opts, method: "PUT", body }),
+  /** PATCH request with optional body */
+  patch: <T>(
+    path: string,
+    body?: unknown,
+    opts?: Omit<Options, "method" | "body">,
+  ) => request<T>(path, { ...opts, method: "PATCH", body }),
+  /** DELETE request */
   del: <T>(path: string, opts?: Omit<Options, "method" | "body">) =>
     request<T>(path, { ...opts, method: "DELETE" }),
 };
