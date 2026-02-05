@@ -34,6 +34,15 @@ export default function SideNavContent({
         leftSection={showIcons ? <NavIcon name="home" /> : undefined}
       />
       <NavLink
+        label="Messages"
+        styles={navLinkStyles}
+        onClick={() => {
+          navigate("/messages");
+          if (onNavigate) onNavigate();
+        }}
+        leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+      />
+      <NavLink
         label="Settings"
         styles={navLinkStyles}
         onClick={() => {

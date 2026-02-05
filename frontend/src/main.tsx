@@ -28,6 +28,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import Home from "./pages/Home";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Patient from "./pages/Patient";
 import RegisterPage from "./pages/RegisterPage";
@@ -78,6 +79,7 @@ const router = createBrowserRouter(
       children: [
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
+        { path: "/messages", element: <Messages /> },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),
