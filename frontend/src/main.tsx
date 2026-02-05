@@ -29,6 +29,7 @@ import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import Patient from "./pages/Patient";
 import RegisterPage from "./pages/RegisterPage";
 import TotpSetup from "./pages/TotpSetup";
 
@@ -76,6 +77,7 @@ const router = createBrowserRouter(
       ),
       children: [
         { path: "/", element: <Home /> },
+        { path: "/patients/:id", element: <Patient /> },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),

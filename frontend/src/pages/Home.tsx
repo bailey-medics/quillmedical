@@ -11,6 +11,7 @@ import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * FHIR Name
@@ -91,6 +92,7 @@ type PatientsApiRes = {
  * } />
  */
 export default function Home() {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,11 +178,9 @@ export default function Home() {
 
           // Only update if patient list has changed
           if (currentIds !== newIds) {
-            console.log("Patient list changed, updating UI");
             return mapped;
           }
 
-          console.log("No changes detected, skipping UI update");
           return currentPatients;
         });
         setError(null);
@@ -218,7 +218,11 @@ export default function Home() {
       justify="center"
       style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
     >
-      <PatientsList patients={patients ?? []} isLoading={isLoading} />
+      <PatientsList
+        patients={patients ?? []}
+        isLoading={isLoading}
+        onSelect={(patient) => navigate(`/patients/${patient.id}`)}
+      />
       {error ? <div style={{ color: "red" }}>{error}</div> : null}
     </Stack>
   );
