@@ -94,8 +94,10 @@ export default function Home() {
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
+  // Fetch patients function
+  const fetchPatients = () => {
     let cancelled = false;
     setIsLoading(true);
     api
@@ -169,6 +171,20 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
+  };
+
+  // Fetch on mount and when refreshKey changes
+  useEffect(() => {
+    const cleanup = fetchPatients();
+    return cleanup;
+  }, [refreshKey]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey((prev) => prev + 1);
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (

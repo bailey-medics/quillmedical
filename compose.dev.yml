@@ -125,6 +125,12 @@ services:
       - hapi.fhir.subscription.email.enabled=false
       - hapi.fhir.subscription.websocket_enabled=false
       - hapi.fhir.cors.allowed_origin=*
+      # Improve search indexing performance for development
+      - hapi.fhir.reuse_cached_search_results_millis=0
+      - hapi.fhir.bulk_export_enabled=false
+      - hapi.fhir.advanced_lucene_indexing=false
+      # Force synchronous search parameter indexing (slower writes, faster reads)
+      - hapi.fhir.write_wait_for_reindex=true
     expose:
       - "8080"
     depends_on:

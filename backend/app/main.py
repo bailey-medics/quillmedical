@@ -23,6 +23,7 @@ Architecture:
 
 from typing import Any, cast
 
+import httpx
 from fastapi import (
     APIRouter,
     Depends,
@@ -44,7 +45,6 @@ from app.ehrbase_client import (
 )
 from app.fhir_client import (
     create_fhir_patient,
-    delete_fhir_patient,
     list_fhir_patients,
     read_fhir_patient,
     update_fhir_patient,
@@ -97,6 +97,78 @@ COOKIE_KW = dict(
     secure=settings.SECURE_COOKIES,
     domain=settings.COOKIE_DOMAIN,
 )
+
+
+def check_fhir_health() -> dict[str, bool | int | str]:
+    """Check if FHIR server is available.
+
+    Returns:
+        dict with 'available' boolean and optional 'error' message
+    """
+    try:
+        response = httpx.get(
+            f"{settings.FHIR_SERVER_URL}/metadata", timeout=5.0
+        )
+        return {
+            "available": response.status_code == 200,
+            "status_code": response.status_code,
+        }
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
+
+def check_ehrbase_health() -> dict[str, bool | int | str]:
+    """Check if EHRbase server is available.
+
+    Returns:
+        dict with 'available' boolean and optional 'error' message
+    """
+    try:
+        # Use get_secret_value() to extract the actual password string
+        api_user = settings.EHRBASE_API_USER
+        api_password = settings.EHRBASE_API_PASSWORD.get_secret_value()
+
+        response = httpx.get(
+            f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4",
+            timeout=5.0,
+            auth=(api_user, api_password),
+        )
+        return {
+            "available": response.status_code
+            in (200, 404),  # 404 = no templates but server works
+            "status_code": response.status_code,
+        }
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Check service availability on startup."""
+    print("\n" + "=" * 60)
+    print("Quill Medical Backend Starting...")
+    print("=" * 60)
+
+    fhir_status = check_fhir_health()
+    ehrbase_status = check_ehrbase_health()
+
+    if fhir_status["available"]:
+        print("✓ FHIR server is available")
+    else:
+        print(
+            f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
+        )
+        print("  Patient operations will fail until FHIR server is ready")
+
+    if ehrbase_status["available"]:
+        print("✓ EHRbase server is available")
+    else:
+        print(
+            f"✗ WARNING: EHRbase not available - {ehrbase_status.get('error', 'Unknown error')}"
+        )
+        print("  Clinical letter operations will fail until EHRbase is ready")
+
+    print("=" * 60 + "\n")
 
 
 def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
@@ -157,6 +229,33 @@ def clear_auth_cookies(response: Response):
     response.delete_cookie(
         "XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN
     )
+
+
+@router.get("/health")
+def health_check():
+    """Health Check Endpoint.
+
+    Checks availability of all required services (FHIR, EHRbase).
+    Returns overall status and detailed service availability.
+
+    Returns:
+        dict: Health status with service availability details
+    """
+    fhir_status = check_fhir_health()
+    ehrbase_status = check_ehrbase_health()
+
+    all_healthy = fhir_status["available"] and ehrbase_status["available"]
+
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "services": {
+            "fhir": fhir_status,
+            "ehrbase": ehrbase_status,
+            "auth_db": {
+                "available": True
+            },  # If we can respond, auth DB is working
+        },
+    }
 
 
 def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
@@ -730,43 +829,6 @@ def list_patients(u: User = DEP_CURRENT_USER):
         return {"patients": patients}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.delete(
-    "/patients/{patient_id}",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
-)
-def delete_patient(patient_id: str, u: User = DEP_CURRENT_USER):
-    """Delete Patient from FHIR Server.
-
-    Permanently deletes a patient from the FHIR server. This operation cannot
-    be undone. Requires Clinician role and CSRF token validation as this is
-    a destructive operation.
-
-    Args:
-        patient_id: FHIR Patient resource ID to delete.
-        u: Currently authenticated user (must have Clinician role).
-
-    Returns:
-        dict: Success confirmation with deleted patient_id.
-
-    Raises:
-        HTTPException: 404 if patient not found.
-        HTTPException: 500 if deletion fails.
-    """
-    try:
-        success = delete_fhir_patient(patient_id)
-        if not success:
-            raise HTTPException(
-                status_code=404, detail=f"Patient {patient_id} not found"
-            )
-        return {"detail": "Patient deleted", "patient_id": patient_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete patient: {e}"
-        ) from e
 
 
 @router.put(

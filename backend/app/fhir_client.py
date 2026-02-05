@@ -61,11 +61,10 @@ def create_fhir_patient(
     # Create Patient resource
     patient = Patient()
 
-    # Generate UUID for patient ID if not provided
-    if patient_id:
-        patient.id = patient_id
-    else:
-        patient.id = str(uuid.uuid4())
+    # Generate UUID for client-assigned ID (standard FHIR pattern)
+    # FHIR servers must support client-assigned IDs via PUT requests
+    patient_uuid = patient_id if patient_id else str(uuid.uuid4())
+    patient.id = patient_uuid
 
     # Create name
     name = HumanName()
@@ -107,10 +106,12 @@ def create_fhir_patient(
     if identifiers:
         patient.identifier = identifiers
 
-    # Save to FHIR server
-    patient.create(fhir.server)
+    # Use PUT to create with client-assigned UUID (standard FHIR pattern)
+    # PUT /Patient/{uuid} creates the resource with our specified ID
+    # This is standard FHIR behavior - no server configuration needed
+    fhir.server.put_json(f"Patient/{patient_uuid}", patient.as_json())
 
-    # Return as dict
+    # Return the patient data with the UUID
     return patient.as_json()
 
 
@@ -134,6 +135,10 @@ def read_fhir_patient(patient_id: str) -> dict | None:
 
 def delete_fhir_patient(patient_id: str) -> bool:
     """Delete a FHIR Patient resource by ID.
+
+    WARNING: This function is ONLY for development/testing purposes!
+    It should NOT be exposed via API endpoints in production.
+    Patient data should be soft-deleted (Patient.active = false) instead.
 
     Args:
         patient_id (str): FHIR Patient resource ID to delete.
