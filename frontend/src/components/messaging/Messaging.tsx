@@ -43,7 +43,8 @@ export default function Messaging({
   const endRef = useRef<HTMLDivElement | null>(null);
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const avatarSize = isSm ? 32 : 48;
+  const avatarSize = isSm ? "sm" : "md";
+  const avatarSizePixels = isSm ? 32 : 48;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -142,7 +143,7 @@ export default function Messaging({
                             color="dimmed"
                             style={{
                               marginTop: 4,
-                              marginRight: avatarSize + 8,
+                              marginRight: avatarSizePixels + 8,
                             }}
                           >
                             {new Date(m.timestamp).toLocaleDateString("en-GB", {
@@ -173,7 +174,7 @@ export default function Messaging({
                             color="dimmed"
                             style={{
                               marginBottom: 2,
-                              marginLeft: avatarSize + 8,
+                              marginLeft: avatarSizePixels + 8,
                             }}
                           >
                             {m.senderName}
@@ -210,7 +211,10 @@ export default function Messaging({
                           <Text
                             size="xs"
                             color="dimmed"
-                            style={{ marginTop: 4, marginLeft: avatarSize + 8 }}
+                            style={{
+                              marginTop: 4,
+                              marginLeft: avatarSizePixels + 8,
+                            }}
                           >
                             {new Date(m.timestamp).toLocaleDateString("en-GB", {
                               day: "2-digit",
