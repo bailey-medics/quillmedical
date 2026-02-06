@@ -35,40 +35,6 @@ def get_fhir_client() -> client.FHIRClient:
     return client.FHIRClient(settings=fhir_settings)
 
 
-def extract_avatar_gradient(patient_dict: dict) -> dict[str, str] | None:
-    """Extract avatar gradient colors from FHIR Patient extension.
-
-    Args:
-        patient_dict: FHIR Patient resource as dictionary.
-
-    Returns:
-        dict with colorFrom and colorTo, or None if extension not present.
-
-    Example:
-        >>> gradient = extract_avatar_gradient(patient)
-        >>> gradient
-        {"colorFrom": "#FF6B6B", "colorTo": "#4ECDC4"}
-    """
-    extensions = patient_dict.get("extension", [])
-
-    for ext in extensions:
-        if ext.get("url") == AVATAR_GRADIENT_EXTENSION_URL:
-            # Extract nested extensions
-            color_from = None
-            color_to = None
-
-            for sub_ext in ext.get("extension", []):
-                if sub_ext.get("url") == "colorFrom":
-                    color_from = sub_ext.get("valueString")
-                elif sub_ext.get("url") == "colorTo":
-                    color_to = sub_ext.get("valueString")
-
-            if color_from and color_to:
-                return {"colorFrom": color_from, "colorTo": color_to}
-
-    return None
-
-
 def add_avatar_gradient_extension(
     patient: Patient, gradient_index: int | None = None
 ) -> None:
