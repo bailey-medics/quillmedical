@@ -28,10 +28,7 @@ function formatNHSNumber(number: string): string {
  * For NHS numbers: shows "NHS 123 456 7890" format.
  * For other systems: shows the number as-is without any prefix or formatting.
  */
-export default function NationalNumber({
-  nationalNumber,
-  nationalNumberSystem,
-}: Props) {
+function NationalNumber({ nationalNumber, nationalNumberSystem }: Props) {
   // If NHS system, format with spaces and add NHS prefix
   if (nationalNumberSystem?.includes("nhs.uk")) {
     const formattedNumber = formatNHSNumber(nationalNumber);
@@ -41,3 +38,5 @@ export default function NationalNumber({
   // For all other systems, return number as-is (no prefix, no formatting)
   return <>{nationalNumber}</>;
 }
+
+export default NationalNumber;

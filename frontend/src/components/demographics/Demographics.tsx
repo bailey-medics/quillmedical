@@ -1,5 +1,5 @@
 import type { Patient } from "@/domains/patient";
-import NationalNumber from "@/components/patients/NationalNumber";
+import NationalNumber from "@/components/demographics/NationalNumber";
 import { Skeleton, Text } from "@mantine/core";
 
 type Props = {

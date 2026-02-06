@@ -30,12 +30,6 @@ export const Default: Story = {
   },
 };
 
-export const Loading: Story = {
-  args: {
-    isLoading: true,
-  },
-};
-
 export const WithAllDetails: Story = {
   args: {
     patient: {
@@ -96,5 +90,11 @@ export const LongName: Story = {
       nationalNumber: "1111222233",
       nationalNumberSystem: "http://example.org/national-health-id",
     },
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    isLoading: true,
   },
 };

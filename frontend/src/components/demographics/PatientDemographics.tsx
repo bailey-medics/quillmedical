@@ -1,5 +1,5 @@
 import type { Patient } from "@/domains/patient";
-import NationalNumber from "@/components/patients/NationalNumber";
+import NationalNumber from "@/components/demographics/NationalNumber";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";

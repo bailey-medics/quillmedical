@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import NavIcon from "./NavIcon";
 
 const meta = {
-  title: "Components/Icons/NavIcon",
+  title: "Icons/NavIcon",
   component: NavIcon,
   parameters: {
     layout: "padded",
