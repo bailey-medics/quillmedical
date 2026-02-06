@@ -12,11 +12,11 @@
  *
  * @example
  * // Real picture
- * <ProfilePic givenName="John" familyName="Smith" colorFrom="#FF6B6B" colorTo="#4ECDC4" src="https://..." />
+ * <ProfilePic givenName="John" familyName="Smith" gradientIndex={5} src="https://..." />
  *
  * @example
  * // Initials with gradient background
- * <ProfilePic givenName="John" familyName="Smith" colorFrom="#FF6B6B" colorTo="#4ECDC4" />  // Shows "JS"
+ * <ProfilePic givenName="John" familyName="Smith" gradientIndex={5} />  // Shows "JS"
  *
  * @example
  * // With FHIR Patient data (direct ingestion)
@@ -24,13 +24,13 @@
  * <ProfilePic
  *   givenName={patient.name[0].given[0]}
  *   familyName={patient.name[0].family}
- *   colorFrom="#FF6B6B"
- *   colorTo="#4ECDC4"
+ *   gradientIndex={5}
  *   src={patient.photo?.[0]?.url}
  * />
  */
 
 import { Avatar, Skeleton, Tooltip } from "@mantine/core";
+import { AVATAR_GRADIENTS } from "./gradients";
 
 type ProfilePicSize = "sm" | "md" | "lg";
 
@@ -41,10 +41,8 @@ type Props = {
   givenName?: string;
   /** Family name from FHIR Patient.name[0].family */
   familyName?: string;
-  /** Gradient start color (top-left) - hex color code */
-  colorFrom?: string;
-  /** Gradient end color (bottom-right) - hex color code */
-  colorTo?: string;
+  /** Gradient color index (0-35). If index exceeds available gradients, shows white background */
+  gradientIndex?: number;
   /** Force generic person icon instead of initials (useful for showing tooltip with name) */
   showGeneric?: boolean;
   /** Size of the avatar: sm (32px), md (48px), lg (64px) */
@@ -87,12 +85,24 @@ export default function ProfilePic({
   src,
   givenName,
   familyName,
-  colorFrom = "#667eea",
-  colorTo = "#764ba2",
+  gradientIndex = 0,
   showGeneric = false,
   size = "md",
   isLoading = false,
 }: Props) {
+  // Get gradient colors from index, or use white background if index out of range
+  const gradient = AVATAR_GRADIENTS[gradientIndex];
+  const colorFrom = gradient?.colorFrom ?? "#FFFFFF";
+  const colorTo = gradient?.colorTo ?? "#FFFFFF";
+
+  // Determine background style - use solid color if undefined, otherwise gradient
+  const backgroundStyle = gradient
+    ? `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`
+    : "#FFFFFF !important";
+
+  // Add border for high index values (out of range)
+  const borderStyle = gradient ? undefined : "1px solid #000000";
+
   // Map size prop to pixel values
   const sizeMap: Record<ProfilePicSize, number> = {
     sm: 32,
@@ -127,7 +137,8 @@ export default function ProfilePic({
         size={avatarSize}
         styles={{
           root: {
-            background: `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`,
+            background: backgroundStyle,
+            border: borderStyle,
           },
           placeholder: {
             color: "#333333",
@@ -155,7 +166,8 @@ export default function ProfilePic({
       size={avatarSize}
       styles={{
         root: {
-          background: `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`,
+          background: backgroundStyle,
+          border: borderStyle,
         },
         placeholder: {
           color: "#333333",

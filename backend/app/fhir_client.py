@@ -16,8 +16,9 @@ from fhirclient.models.humanname import HumanName
 from fhirclient.models.patient import Patient
 
 from app.config import settings
-from app.utils.colors import generate_avatar_gradient
+from app.utils.colors import generate_avatar_gradient_index
 
+# FHIR extension URL for avatar gradient index
 AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
 
 
@@ -69,40 +70,34 @@ def extract_avatar_gradient(patient_dict: dict) -> dict[str, str] | None:
 
 
 def add_avatar_gradient_extension(
-    patient: Patient, gradient: dict[str, str] | None = None
+    patient: Patient, gradient_index: int | None = None
 ) -> None:
-    """Add avatar gradient colors extension to FHIR Patient.
+    """Add avatar gradient index extension to FHIR Patient.
+
+    Stores a single gradient index (0-29) which maps to predefined
+    gradients in the frontend.
 
     Args:
         patient: FHIR Patient resource instance.
-        gradient: Optional gradient dict. If None, generates new colors.
+        gradient_index: Index of gradient (0-29), or None to generate random.
 
     Example:
         >>> patient = Patient()
-        >>> add_avatar_gradient_extension(patient)
-        >>> # patient.extension now contains gradient colors
+        >>> add_avatar_gradient_extension(patient, gradient_index=5)
+        >>> # patient.extension now contains gradientIndex = 5
     """
-    if gradient is None:
-        gradient = generate_avatar_gradient()
+    if gradient_index is None:
+        gradient_index = generate_avatar_gradient_index()
 
-    # Create nested extensions for colorFrom and colorTo
-    color_from_ext = Extension()
-    color_from_ext.url = "colorFrom"
-    color_from_ext.valueString = gradient["colorFrom"]
-
-    color_to_ext = Extension()
-    color_to_ext.url = "colorTo"
-    color_to_ext.valueString = gradient["colorTo"]
-
-    # Create parent extension
-    avatar_ext = Extension()
-    avatar_ext.url = AVATAR_GRADIENT_EXTENSION_URL
-    avatar_ext.extension = [color_from_ext, color_to_ext]
+    # Create extension with gradient index
+    gradient_ext = Extension()
+    gradient_ext.url = AVATAR_GRADIENT_EXTENSION_URL
+    gradient_ext.valueInteger = gradient_index
 
     # Add to patient extensions
     if patient.extension is None:
         patient.extension = []
-    patient.extension.append(avatar_ext)
+    patient.extension.append(gradient_ext)
 
 
 def create_fhir_patient(

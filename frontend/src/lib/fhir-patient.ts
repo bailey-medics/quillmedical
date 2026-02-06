@@ -4,13 +4,9 @@
  * Helper functions for working with FHIR R4 Patient resources.
  */
 
-export interface AvatarGradient {
-  colorFrom: string;
-  colorTo: string;
-}
-
 interface FhirExtension {
   url?: string;
+  valueInteger?: number;
   valueString?: string;
   extension?: FhirExtension[];
 }
@@ -23,49 +19,36 @@ interface FhirPatient {
 const AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient";
 
 /**
- * Extract avatar gradient colors from FHIR Patient extension.
+ * Extract avatar gradient index from FHIR Patient extension.
  *
- * Looks for the `urn:quillmedical:avatar-gradient` extension with nested
- * colorFrom and colorTo extensions.
+ * Looks for the `urn:quillmedical:avatar-gradient` extension with a
+ * valueInteger field containing the gradient index (0-29).
  *
  * @param fhirPatient - FHIR R4 Patient resource
- * @returns Gradient colors if found, null otherwise
+ * @returns Gradient index (0-29) if found, undefined otherwise
  *
  * @example
  * ```ts
- * const gradient = extractAvatarGradient(fhirPatient);
- * if (gradient) {
- *   console.log(gradient.colorFrom); // "#FF6B6B"
- *   console.log(gradient.colorTo);   // "#4ECDC4"
+ * const gradientIndex = extractAvatarGradientIndex(fhirPatient);
+ * if (gradientIndex !== undefined) {
+ *   console.log(gradientIndex); // 5
  * }
  * ```
  */
-export function extractAvatarGradient(
+export function extractAvatarGradientIndex(
   fhirPatient: FhirPatient,
-): AvatarGradient | null {
+): number | undefined {
   if (!fhirPatient?.extension) {
-    return null;
+    return undefined;
   }
 
   const avatarExt = fhirPatient.extension.find(
     (ext) => ext.url === AVATAR_GRADIENT_EXTENSION_URL,
   );
 
-  if (!avatarExt?.extension) {
-    return null;
+  if (avatarExt?.valueInteger !== undefined) {
+    return avatarExt.valueInteger;
   }
 
-  const colorFromExt = avatarExt.extension.find(
-    (ext) => ext.url === "colorFrom",
-  );
-  const colorToExt = avatarExt.extension.find((ext) => ext.url === "colorTo");
-
-  if (colorFromExt?.valueString && colorToExt?.valueString) {
-    return {
-      colorFrom: colorFromExt.valueString,
-      colorTo: colorToExt.valueString,
-    };
-  }
-
-  return null;
+  return undefined;
 }

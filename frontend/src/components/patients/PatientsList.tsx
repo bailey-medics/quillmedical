@@ -76,8 +76,7 @@ export default function PatientsList({
               <ProfilePic
                 givenName={givenName}
                 familyName={familyName}
-                colorFrom={p.colorFrom}
-                colorTo={p.colorTo}
+                gradientIndex={p.gradientIndex}
                 size={avatarSize}
               />
               <div style={{ flex: 1 }}>

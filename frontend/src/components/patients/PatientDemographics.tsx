@@ -45,8 +45,7 @@ export default function PatientDemographics({
         src={avatarSrc}
         givenName={givenName}
         familyName={familyName}
-        colorFrom="#667eea"
-        colorTo="#764ba2"
+        gradientIndex={patient.gradientIndex}
         size={avatarSize}
       />
       <div style={{ display: "flex", flexDirection: "column" }}>

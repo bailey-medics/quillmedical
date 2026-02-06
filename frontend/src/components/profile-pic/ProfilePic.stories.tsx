@@ -29,43 +29,37 @@ export const Generic: Story = {
       <ProfilePic
         givenName="Alice"
         familyName="Anderson"
-        colorFrom="#FF6B6B"
-        colorTo="#FFE66D"
+        gradientIndex={0}
         showGeneric
       />
       <ProfilePic
         givenName="Bob"
         familyName="Brown"
-        colorFrom="#4ECDC4"
-        colorTo="#44A08D"
+        gradientIndex={1}
         showGeneric
       />
       <ProfilePic
         givenName="Charlie"
         familyName="Davis"
-        colorFrom="#A8E6CF"
-        colorTo="#3EECAC"
+        gradientIndex={2}
         showGeneric
       />
       <ProfilePic
         givenName="Diana"
         familyName="Evans"
-        colorFrom="#667eea"
-        colorTo="#764ba2"
+        gradientIndex={3}
         showGeneric
       />
       <ProfilePic
         givenName="Frank"
         familyName="Green"
-        colorFrom="#f093fb"
-        colorTo="#f5576c"
+        gradientIndex={4}
         showGeneric
       />
       <ProfilePic
         givenName="Grace"
         familyName="Hill"
-        colorFrom="#FFA07A"
-        colorTo="#FF6347"
+        gradientIndex={5}
         showGeneric
       />
     </div>
@@ -79,8 +73,7 @@ export const RealPicture: Story = {
   args: {
     givenName: "Sarah",
     familyName: "Johnson",
-    colorFrom: "#667eea",
-    colorTo: "#764ba2",
+    gradientIndex: 3,
     src: "https://i.pravatar.cc/150?img=45",
   },
 };
@@ -95,47 +88,68 @@ export const Initials: Story = {
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         gap: "1rem",
-        flexWrap: "wrap",
-        alignItems: "flex-start",
       }}
     >
-      <ProfilePic
-        givenName="Alice"
-        familyName="Anderson"
-        colorFrom="#FF6B6B"
-        colorTo="#FFE66D"
-      />
-      <ProfilePic
-        givenName="Bob"
-        familyName="Brown"
-        colorFrom="#4ECDC4"
-        colorTo="#44A08D"
-      />
-      <ProfilePic
-        givenName="Charlie"
-        familyName="Davis"
-        colorFrom="#A8E6CF"
-        colorTo="#3EECAC"
-      />
-      <ProfilePic
-        givenName="Diana"
-        familyName="Evans"
-        colorFrom="#667eea"
-        colorTo="#764ba2"
-      />
-      <ProfilePic
-        givenName="Frank"
-        familyName="Green"
-        colorFrom="#f093fb"
-        colorTo="#f5576c"
-      />
-      <ProfilePic
-        givenName="Grace"
-        familyName="Hill"
-        colorFrom="#FFA07A"
-        colorTo="#FF6347"
-      />
+      {/* Row 1 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic givenName="Alice" familyName="Anderson" gradientIndex={0} />
+        <ProfilePic givenName="Bob" familyName="Brown" gradientIndex={1} />
+        <ProfilePic givenName="Charlie" familyName="Davis" gradientIndex={2} />
+        <ProfilePic givenName="Diana" familyName="Evans" gradientIndex={3} />
+        <ProfilePic givenName="Frank" familyName="Green" gradientIndex={4} />
+        <ProfilePic givenName="Grace" familyName="Hill" gradientIndex={5} />
+      </div>
+
+      {/* Row 2 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic givenName="Henry" familyName="Harris" gradientIndex={6} />
+        <ProfilePic givenName="Iris" familyName="Irving" gradientIndex={7} />
+        <ProfilePic givenName="Jack" familyName="Jones" gradientIndex={8} />
+        <ProfilePic givenName="Kate" familyName="King" gradientIndex={9} />
+        <ProfilePic givenName="Leo" familyName="Lane" gradientIndex={10} />
+        <ProfilePic givenName="Maya" familyName="Mills" gradientIndex={11} />
+      </div>
+
+      {/* Row 3 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic givenName="Noah" familyName="Nash" gradientIndex={12} />
+        <ProfilePic givenName="Olivia" familyName="Owen" gradientIndex={13} />
+        <ProfilePic givenName="Paul" familyName="Price" gradientIndex={14} />
+        <ProfilePic givenName="Quinn" familyName="Quick" gradientIndex={15} />
+        <ProfilePic givenName="Rose" familyName="Reed" gradientIndex={16} />
+        <ProfilePic givenName="Sam" familyName="Shaw" gradientIndex={17} />
+      </div>
+
+      {/* Row 4 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic givenName="Tara" familyName="Todd" gradientIndex={18} />
+        <ProfilePic givenName="Uma" familyName="Underwood" gradientIndex={19} />
+        <ProfilePic givenName="Victor" familyName="Vale" gradientIndex={20} />
+        <ProfilePic givenName="Wendy" familyName="Ward" gradientIndex={21} />
+        <ProfilePic givenName="Xavier" familyName="Xu" gradientIndex={22} />
+        <ProfilePic givenName="Yara" familyName="Young" gradientIndex={23} />
+      </div>
+
+      {/* Row 5 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic givenName="Zara" familyName="Zhang" gradientIndex={24} />
+        <ProfilePic givenName="Adam" familyName="Allen" gradientIndex={25} />
+        <ProfilePic givenName="Beth" familyName="Bell" gradientIndex={26} />
+        <ProfilePic givenName="Carl" familyName="Cole" gradientIndex={27} />
+        <ProfilePic givenName="Dora" familyName="Drake" gradientIndex={28} />
+        <ProfilePic givenName="Evan" familyName="Ellis" gradientIndex={29} />
+      </div>
+
+      {/* Row 5 */}
+      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <ProfilePic
+          givenName="High"
+          familyName="Index Value"
+          gradientIndex={30}
+        />
+      </div>
     </div>
   ),
 };
@@ -168,8 +182,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Alice"
               familyName="Anderson"
-              colorFrom="#667eea"
-              colorTo="#764ba2"
+              gradientIndex={3}
               size="sm"
             />
             <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
@@ -180,8 +193,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Bob"
               familyName="Brown"
-              colorFrom="#4ECDC4"
-              colorTo="#44A08D"
+              gradientIndex={1}
               size="md"
             />
             <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
@@ -192,8 +204,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Charlie"
               familyName="Davis"
-              colorFrom="#FF6B6B"
-              colorTo="#FFE66D"
+              gradientIndex={0}
               size="lg"
             />
             <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
@@ -219,8 +230,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Diana"
               familyName="Evans"
-              colorFrom="#f093fb"
-              colorTo="#f5576c"
+              gradientIndex={4}
               showGeneric
               size="sm"
             />
@@ -232,8 +242,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Emma"
               familyName="Foster"
-              colorFrom="#A8E6CF"
-              colorTo="#3EECAC"
+              gradientIndex={2}
               showGeneric
               size="md"
             />
@@ -245,8 +254,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Frank"
               familyName="Green"
-              colorFrom="#FFA07A"
-              colorTo="#FF6347"
+              gradientIndex={5}
               showGeneric
               size="lg"
             />
@@ -273,8 +281,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Grace"
               familyName="Hill"
-              colorFrom="#667eea"
-              colorTo="#764ba2"
+              gradientIndex={3}
               src="https://i.pravatar.cc/150?img=45"
               size="sm"
             />
@@ -286,8 +293,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Henry"
               familyName="Irving"
-              colorFrom="#4ECDC4"
-              colorTo="#44A08D"
+              gradientIndex={1}
               src="https://i.pravatar.cc/150?img=12"
               size="md"
             />
@@ -299,8 +305,7 @@ export const Sizes: Story = {
             <ProfilePic
               givenName="Ivy"
               familyName="Jones"
-              colorFrom="#FF6B6B"
-              colorTo="#FFE66D"
+              gradientIndex={0}
               src="https://i.pravatar.cc/150?img=27"
               size="lg"
             />

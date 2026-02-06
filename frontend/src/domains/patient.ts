@@ -43,8 +43,6 @@ export type Patient = {
     /** Next of kin contact phone number */
     phone?: string;
   };
-  /** ProfilePic gradient start color */
-  colorFrom?: string;
-  /** ProfilePic gradient end color */
-  colorTo?: string;
+  /** ProfilePic gradient index (0-29) from FHIR extension */
+  gradientIndex?: number;
 };
