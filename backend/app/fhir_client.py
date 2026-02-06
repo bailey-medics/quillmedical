@@ -10,11 +10,15 @@ import uuid
 from fhirclient import client
 from fhirclient.models.address import Address
 from fhirclient.models.contactpoint import ContactPoint
+from fhirclient.models.extension import Extension
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.humanname import HumanName
 from fhirclient.models.patient import Patient
 
 from app.config import settings
+from app.utils.colors import generate_avatar_gradient
+
+AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
 
 
 def get_fhir_client() -> client.FHIRClient:
@@ -28,6 +32,77 @@ def get_fhir_client() -> client.FHIRClient:
         "api_base": settings.FHIR_SERVER_URL,
     }
     return client.FHIRClient(settings=fhir_settings)
+
+
+def extract_avatar_gradient(patient_dict: dict) -> dict[str, str] | None:
+    """Extract avatar gradient colors from FHIR Patient extension.
+
+    Args:
+        patient_dict: FHIR Patient resource as dictionary.
+
+    Returns:
+        dict with colorFrom and colorTo, or None if extension not present.
+
+    Example:
+        >>> gradient = extract_avatar_gradient(patient)
+        >>> gradient
+        {"colorFrom": "#FF6B6B", "colorTo": "#4ECDC4"}
+    """
+    extensions = patient_dict.get("extension", [])
+
+    for ext in extensions:
+        if ext.get("url") == AVATAR_GRADIENT_EXTENSION_URL:
+            # Extract nested extensions
+            color_from = None
+            color_to = None
+
+            for sub_ext in ext.get("extension", []):
+                if sub_ext.get("url") == "colorFrom":
+                    color_from = sub_ext.get("valueString")
+                elif sub_ext.get("url") == "colorTo":
+                    color_to = sub_ext.get("valueString")
+
+            if color_from and color_to:
+                return {"colorFrom": color_from, "colorTo": color_to}
+
+    return None
+
+
+def add_avatar_gradient_extension(
+    patient: Patient, gradient: dict[str, str] | None = None
+) -> None:
+    """Add avatar gradient colors extension to FHIR Patient.
+
+    Args:
+        patient: FHIR Patient resource instance.
+        gradient: Optional gradient dict. If None, generates new colors.
+
+    Example:
+        >>> patient = Patient()
+        >>> add_avatar_gradient_extension(patient)
+        >>> # patient.extension now contains gradient colors
+    """
+    if gradient is None:
+        gradient = generate_avatar_gradient()
+
+    # Create nested extensions for colorFrom and colorTo
+    color_from_ext = Extension()
+    color_from_ext.url = "colorFrom"
+    color_from_ext.valueString = gradient["colorFrom"]
+
+    color_to_ext = Extension()
+    color_to_ext.url = "colorTo"
+    color_to_ext.valueString = gradient["colorTo"]
+
+    # Create parent extension
+    avatar_ext = Extension()
+    avatar_ext.url = AVATAR_GRADIENT_EXTENSION_URL
+    avatar_ext.extension = [color_from_ext, color_to_ext]
+
+    # Add to patient extensions
+    if patient.extension is None:
+        patient.extension = []
+    patient.extension.append(avatar_ext)
 
 
 def create_fhir_patient(
@@ -105,6 +180,9 @@ def create_fhir_patient(
 
     if identifiers:
         patient.identifier = identifiers
+
+    # Add avatar gradient extension (generate colors automatically)
+    add_avatar_gradient_extension(patient)
 
     # Use PUT to create with client-assigned UUID (standard FHIR pattern)
     # PUT /Patient/{uuid} creates the resource with our specified ID

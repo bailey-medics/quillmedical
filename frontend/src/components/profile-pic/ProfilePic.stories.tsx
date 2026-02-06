@@ -352,32 +352,5 @@ export const Sizes: Story = {
  * Shows circular skeleton while data is being fetched
  */
 export const Loading: Story = {
-  render: () => (
-    <div
-      style={{
-        display: "flex",
-        gap: "2rem",
-        alignItems: "flex-end",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <ProfilePic isLoading size="sm" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Small (32px)
-        </div>
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <ProfilePic isLoading size="md" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Medium (48px)
-        </div>
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <ProfilePic isLoading size="lg" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Large (64px)
-        </div>
-      </div>
-    </div>
-  ),
+  render: () => <ProfilePic isLoading />,
 };
