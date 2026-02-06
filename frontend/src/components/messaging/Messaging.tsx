@@ -58,8 +58,23 @@ export default function Messaging({
 
   return (
     <Box style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScrollArea style={{ flex: 1, padding: 12 }} type="auto">
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <ScrollArea
+        style={{
+          flex: 1,
+          paddingLeft: 12,
+          paddingRight: 12,
+          paddingBottom: 12,
+        }}
+        type="auto"
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            paddingTop: 10,
+          }}
+        >
           {isLoading ? (
             // Loading skeleton
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>

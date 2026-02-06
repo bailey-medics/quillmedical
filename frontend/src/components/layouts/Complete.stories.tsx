@@ -47,23 +47,21 @@ export const WithMessaging: Story = {
       );
 
       return (
-        <div style={{ height: 480 }}>
-          <Messaging
-            messages={messages}
-            currentUserId="me"
-            onSend={(text: string) =>
-              setMessages((m) => [
-                ...m,
-                {
-                  id: String(m.length + 1),
-                  senderId: "me",
-                  text,
-                  timestamp: new Date().toISOString(),
-                },
-              ])
-            }
-          />
-        </div>
+        <Messaging
+          messages={messages}
+          currentUserId="me"
+          onSend={(text: string) =>
+            setMessages((m) => [
+              ...m,
+              {
+                id: String(m.length + 1),
+                senderId: "me",
+                text,
+                timestamp: new Date().toISOString(),
+              },
+            ])
+          }
+        />
       );
     }
 

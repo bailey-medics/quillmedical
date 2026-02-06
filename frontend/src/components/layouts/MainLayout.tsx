@@ -66,7 +66,15 @@ export default function MainLayout({
               <SideNav showSearch={false} showIcons={true} />
             </div>
           )}
-          <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              paddingLeft: "1rem",
+              paddingRight: "1rem",
+              paddingBottom: "1rem",
+            }}
+          >
             {isLoading ? (
               <Stack gap="md">
                 <Skeleton height={50} radius="md" />
