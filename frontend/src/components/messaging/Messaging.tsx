@@ -20,8 +20,7 @@ export type Message = {
   text: string;
   timestamp?: string; // ISO
   avatar?: string;
-  colorFrom?: string;
-  colorTo?: string;
+  gradientIndex?: number;
 };
 
 type Props = {
@@ -132,8 +131,7 @@ export default function Messaging({
                             src={m.avatar}
                             givenName={m.givenName}
                             familyName={m.familyName}
-                            colorFrom={m.colorFrom}
-                            colorTo={m.colorTo}
+                            gradientIndex={m.gradientIndex}
                             size={avatarSize}
                           />
                         </div>
@@ -191,8 +189,7 @@ export default function Messaging({
                             src={m.avatar}
                             givenName={m.givenName}
                             familyName={m.familyName}
-                            colorFrom={m.colorFrom}
-                            colorTo={m.colorTo}
+                            gradientIndex={m.gradientIndex}
                             size={avatarSize}
                           />
                           <div

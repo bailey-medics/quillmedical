@@ -129,6 +129,12 @@ Quill Medical is a secure clinical messaging and letter platform for patient-cli
 - [x] Display patient cards
 - [x] Calculate age from birthdate
 - [x] Extract NHS number
+- [x] Avatar gradient colors (FHIR extension storage and display)
+- [ ] **TODO**: Further refine avatar gradient color algorithm for maximum clinical distinctiveness
+  - Current: 10 base hues with 90-150° separation, 60-95% saturation, 45-70% lightness
+  - Consider: User testing with clinicians to validate color distinguishability in peripheral vision
+  - Consider: Colour-blind-safe palette validation (deuteranopia, protanopia, tritanopia)
+  - Consider: Contrast ratio testing for accessibility
 - [ ] Create new patient form
 - [ ] Edit patient demographics form
 - [ ] Patient search/filtering

@@ -9,6 +9,7 @@
 import PatientsList from "@/components/patients/PatientsList";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
+import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import { Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -145,6 +146,9 @@ export default function Home() {
             }
           }
 
+          // Extract avatar gradient index from FHIR extension
+          const gradientIndex = extractAvatarGradientIndex(fhirPatient);
+
           const patient = {
             id: fhirPatient.id,
             name: displayName,
@@ -152,6 +156,7 @@ export default function Home() {
             age: age,
             sex: fhirPatient.gender ?? undefined,
             nhsNumber: nhsNumber,
+            gradientIndex: gradientIndex,
             onQuill: true,
           } as Patient;
 

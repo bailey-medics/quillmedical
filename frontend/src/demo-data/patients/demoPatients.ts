@@ -9,8 +9,7 @@ export const demoPatientsList: Patient[] = [
     sex: "female",
     nhsNumber: "1234567890",
     onQuill: true,
-    colorFrom: "#667eea",
-    colorTo: "#764ba2",
+    gradientIndex: 3,
   },
   {
     id: "p2",
@@ -19,8 +18,7 @@ export const demoPatientsList: Patient[] = [
     age: 35,
     sex: "male",
     nhsNumber: "9876543210",
-    colorFrom: "#4ECDC4",
-    colorTo: "#44A08D",
+    gradientIndex: 6,
   },
   {
     id: "p3",
@@ -29,7 +27,6 @@ export const demoPatientsList: Patient[] = [
     age: 50,
     sex: "male",
     nhsNumber: "5555555555",
-    colorFrom: "#FF6B6B",
-    colorTo: "#FFE66D",
+    gradientIndex: 5,
   },
 ];

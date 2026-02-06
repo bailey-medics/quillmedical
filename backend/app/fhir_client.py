@@ -10,11 +10,16 @@ import uuid
 from fhirclient import client
 from fhirclient.models.address import Address
 from fhirclient.models.contactpoint import ContactPoint
+from fhirclient.models.extension import Extension
 from fhirclient.models.fhirdate import FHIRDate
 from fhirclient.models.humanname import HumanName
 from fhirclient.models.patient import Patient
 
 from app.config import settings
+from app.utils.colors import generate_avatar_gradient_index
+
+# FHIR extension URL for avatar gradient index
+AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
 
 
 def get_fhir_client() -> client.FHIRClient:
@@ -28,6 +33,37 @@ def get_fhir_client() -> client.FHIRClient:
         "api_base": settings.FHIR_SERVER_URL,
     }
     return client.FHIRClient(settings=fhir_settings)
+
+
+def add_avatar_gradient_extension(
+    patient: Patient, gradient_index: int | None = None
+) -> None:
+    """Add avatar gradient index extension to FHIR Patient.
+
+    Stores a single gradient index (0-29) which maps to predefined
+    gradients in the frontend.
+
+    Args:
+        patient: FHIR Patient resource instance.
+        gradient_index: Index of gradient (0-29), or None to generate random.
+
+    Example:
+        >>> patient = Patient()
+        >>> add_avatar_gradient_extension(patient, gradient_index=5)
+        >>> # patient.extension now contains gradientIndex = 5
+    """
+    if gradient_index is None:
+        gradient_index = generate_avatar_gradient_index()
+
+    # Create extension with gradient index
+    gradient_ext = Extension()
+    gradient_ext.url = AVATAR_GRADIENT_EXTENSION_URL
+    gradient_ext.valueInteger = gradient_index
+
+    # Add to patient extensions
+    if patient.extension is None:
+        patient.extension = []
+    patient.extension.append(gradient_ext)
 
 
 def create_fhir_patient(
@@ -105,6 +141,9 @@ def create_fhir_patient(
 
     if identifiers:
         patient.identifier = identifiers
+
+    # Add avatar gradient extension (generate colors automatically)
+    add_avatar_gradient_extension(patient)
 
     # Use PUT to create with client-assigned UUID (standard FHIR pattern)
     # PUT /Patient/{uuid} creates the resource with our specified ID
