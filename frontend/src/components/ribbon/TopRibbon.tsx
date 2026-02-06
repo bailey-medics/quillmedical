@@ -71,8 +71,7 @@ function patientDetailsShort(patient: Patient, fontSize: number) {
       {typeof patient.age === "number" && (
         <Text size="sm" style={{ fontSize }}>
           {" "}
-          {patient.age}
-          {patient.sex}
+          {patient.age} {patient.sex}
         </Text>
       )}
       {patient.nationalNumber && (
