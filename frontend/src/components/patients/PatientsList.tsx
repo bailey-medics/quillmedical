@@ -1,5 +1,6 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
+import Demographics from "@/components/patients/Demographics";
 import {
   Group,
   Skeleton,
@@ -79,22 +80,7 @@ export default function PatientsList({
                 gradientIndex={p.gradientIndex}
                 size={avatarSize}
               />
-              <div style={{ flex: 1 }}>
-                <Text fw={700} size="lg">
-                  {p.name}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: "#4a5568",
-                  }}
-                >
-                  {p.dob ? `${p.dob.replace(/-/g, "/")}` : ""}
-                  {p.age !== undefined ? `    ${p.age}` : ""}
-                  {p.sex ? ` ${p.sex}` : ""}
-                  {p.nhsNumber ? `      NHS${p.nhsNumber}` : ""}
-                </Text>
-              </div>
+              <Demographics patient={p} />
               <div>
                 {p.onQuill ? (
                   <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text>
