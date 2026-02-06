@@ -1,6 +1,7 @@
 import MarkdownView from "@/components/markdown/MarkdownView";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import PatientDemographics from "@/components/patients/PatientDemographics";
+import PatientsList from "@/components/patients/PatientsList";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
@@ -17,6 +18,48 @@ const meta: Meta<typeof MainLayout> = {
 export default meta;
 type Story = StoryObj<typeof MainLayout>;
 
+const demoPatients = [
+  {
+    id: "p1",
+    name: "Jane Doe",
+    dob: "1980-05-12",
+    age: 45,
+    onQuill: true,
+    nhsNumber: "1234567890",
+    colorFrom: "#667eea",
+    colorTo: "#764ba2",
+  },
+  {
+    id: "p2",
+    name: "Alex Smith",
+    dob: "1990-01-01",
+    age: 35,
+    sex: "male",
+    colorFrom: "#4ECDC4",
+    colorTo: "#44A08D",
+  },
+  {
+    id: "p3",
+    name: "Sam Brown",
+    dob: "1975-08-08",
+    age: 50,
+    onQuill: true,
+    colorFrom: "#FF6B6B",
+    colorTo: "#FFE66D",
+  },
+];
+
+export const WithPatientList: Story = {
+  args: { patient: null, isLoading: false },
+  render: (args) => (
+    <MainLayout {...args}>
+      <div style={{ padding: 16 }}>
+        <PatientsList patients={demoPatients} />
+      </div>
+    </MainLayout>
+  ),
+};
+
 export const WithPatientDemographics: Story = {
   args: { patient: demoPatientFull, isLoading: false },
   render: (args) => (
@@ -32,7 +75,9 @@ export const WithMessaging: Story = {
   args: { patient: demoPatientFull, isLoading: false },
   render: (args) => {
     function MessagingContent() {
-      const [messages, setMessages] = useState<Message[]>(demoMessages as Message[]);
+      const [messages, setMessages] = useState<Message[]>(
+        demoMessages as Message[],
+      );
 
       return (
         <div style={{ height: 480 }}>
@@ -94,8 +139,8 @@ const LongContent = () => (
     <div style={{ maxWidth: 880, margin: "0 auto" }}>
       <h1 style={{ margin: "0 0 0.5rem" }}>An Extremely Long Read</h1>
       <p style={{ marginTop: 0, color: "#6b7280" }}>
-        This page is intentionally verbose to test scrolling, sticky headers, and general layout
-        behaviour inside <code>MainLayout</code>.
+        This page is intentionally verbose to test scrolling, sticky headers,
+        and general layout behaviour inside <code>MainLayout</code>.
       </p>
 
       {[...Array(12)].map((_, i) => (
@@ -104,19 +149,24 @@ const LongContent = () => (
             Section {i + 1}: Responsive Layout Considerations
           </h2>
           <p>
-            In wider viewports we expect the search bar to remain visible alongside patient details.
-            When space becomes constrained, the layout should gracefully collapse. Container queries
-            let components adapt to the width they actually have, rather than guessing via the
+            In wider viewports we expect the search bar to remain visible
+            alongside patient details. When space becomes constrained, the
+            layout should gracefully collapse. Container queries let components
+            adapt to the width they actually have, rather than guessing via the
             viewport.
           </p>
           <p>
-            Real-world interfaces need to cope with split views, drawers, and odd aspect ratios.
-            That’s why component-level responsiveness is such a reliable default. It avoids brittle
-            assumptions and keeps components portable.
+            Real-world interfaces need to cope with split views, drawers, and
+            odd aspect ratios. That’s why component-level responsiveness is such
+            a reliable default. It avoids brittle assumptions and keeps
+            components portable.
           </p>
           <ul>
             <li>Use container queries for visual changes.</li>
-            <li>Use a ResizeObserver-based hook for JS behaviour tied to component width.</li>
+            <li>
+              Use a ResizeObserver-based hook for JS behaviour tied to component
+              width.
+            </li>
             <li>Reserve global breakpoint context for app-shell decisions.</li>
           </ul>
           <p>Here is a tiny code sample to illustrate the point:</p>
@@ -135,18 +185,19 @@ const LongContent = () => (
 }`}
           </pre>
           <p>
-            As the section continues, imagine a stream of clinical notes, letters, tasks, and audit
-            trails—enough content to ensure the page scrolls and your ribbon remains pinned to the
-            top if <code>sticky</code> is enabled.
+            As the section continues, imagine a stream of clinical notes,
+            letters, tasks, and audit trails—enough content to ensure the page
+            scrolls and your ribbon remains pinned to the top if{" "}
+            <code>sticky</code> is enabled.
           </p>
         </section>
       ))}
 
       <h2 style={{ marginTop: "2rem" }}>Summary</h2>
       <p>
-        If you can scroll comfortably and the header stays put, your sticky handling works. If the
-        search hides on narrow widths and reappears when there’s room, your container queries are
-        doing their job.
+        If you can scroll comfortably and the header stays put, your sticky
+        handling works. If the search hides on narrow widths and reappears when
+        there’s room, your container queries are doing their job.
       </p>
     </div>
   </div>

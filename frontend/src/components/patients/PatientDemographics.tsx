@@ -1,6 +1,7 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
-import { Group, Skeleton, Text } from "@mantine/core";
+import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 type Props = {
   patient: Patient | null;
@@ -15,6 +16,9 @@ export default function PatientDemographics({
   isCompact = false,
   avatarSrc = null,
 }: Props) {
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const avatarSize = isSm ? "sm" : "lg";
   if (isLoading) {
     return (
       <Group align="center">
@@ -43,7 +47,7 @@ export default function PatientDemographics({
         familyName={familyName}
         colorFrom="#667eea"
         colorTo="#764ba2"
-        isCompact={isCompact}
+        size={avatarSize}
       />
       <div style={{ display: "flex", flexDirection: "column" }}>
         <Text fw={700} style={{ fontSize: isCompact ? 14 : 16 }}>

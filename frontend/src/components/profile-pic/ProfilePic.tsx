@@ -32,6 +32,8 @@
 
 import { Avatar, Skeleton, Tooltip } from "@mantine/core";
 
+type ProfilePicSize = "sm" | "md" | "lg";
+
 type Props = {
   /** Image source URL */
   src?: string | null;
@@ -45,10 +47,8 @@ type Props = {
   colorTo?: string;
   /** Force generic person icon instead of initials (useful for showing tooltip with name) */
   showGeneric?: boolean;
-  /** Size of the avatar in pixels */
-  size?: number;
-  /** Alternative way to specify size - compact mode uses 40px, normal uses 56px */
-  isCompact?: boolean;
+  /** Size of the avatar: sm (32px), md (48px), lg (64px) */
+  size?: ProfilePicSize;
   /** Show loading skeleton */
   isLoading?: boolean;
 };
@@ -90,11 +90,16 @@ export default function ProfilePic({
   colorFrom = "#667eea",
   colorTo = "#764ba2",
   showGeneric = false,
-  size,
-  isCompact = false,
+  size = "md",
   isLoading = false,
 }: Props) {
-  const avatarSize = size ?? (isCompact ? 40 : 56);
+  // Map size prop to pixel values
+  const sizeMap: Record<ProfilePicSize, number> = {
+    sm: 32,
+    md: 48,
+    lg: 64,
+  };
+  const avatarSize = sizeMap[size];
   const fullName = getFullName(givenName, familyName);
 
   // Loading state

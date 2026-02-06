@@ -43,4 +43,8 @@ export type Patient = {
     /** Next of kin contact phone number */
     phone?: string;
   };
+  /** ProfilePic gradient start color */
+  colorFrom?: string;
+  /** ProfilePic gradient end color */
+  colorTo?: string;
 };
