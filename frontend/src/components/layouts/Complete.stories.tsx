@@ -1,6 +1,6 @@
 import MarkdownView from "@/components/markdown/MarkdownView";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
-import PatientDemographics from "@/components/patients/PatientDemographics";
+import DemographicsDetailed from "@/components/demographics/DemographicsDetailed";
 import PatientsList from "@/components/patients/PatientsList";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -34,7 +34,7 @@ export const WithPatientDemographics: Story = {
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <PatientDemographics patient={demoPatientsList[0]} />
+        <DemographicsDetailed patient={demoPatientsList[0]} />
       </div>
     </MainLayout>
   ),

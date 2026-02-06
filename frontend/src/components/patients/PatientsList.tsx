@@ -1,6 +1,6 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
-import Demographics from "@/components/patients/Demographics";
+import Demographics from "@/components/demographics/Demographics";
 import {
   Group,
   Skeleton,
