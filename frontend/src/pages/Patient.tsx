@@ -30,12 +30,12 @@ type FhirName = {
 /**
  * FHIR Identifier
  *
- * FHIR R4 Identifier structure for patient identifiers (NHS number, MRN, etc.).
+ * FHIR R4 Identifier structure for patient identifiers (national health IDs, MRN, etc.).
  */
 type FhirIdentifier = {
-  /** Identifier system/namespace (e.g., https://fhir.nhs.uk/Id/nhs-number) */
+  /** Identifier system/namespace (e.g., https://fhir.nhs.uk/Id/nhs-number, national health ID URIs) */
   system?: string;
-  /** Identifier value (e.g., 10-digit NHS number) */
+  /** Identifier value (e.g., 10-digit NHS number, Medicare number, etc.) */
   value?: string;
 };
 
@@ -120,15 +120,23 @@ export default function Patient() {
           }
         }
 
-        // Extract NHS number from identifiers
-        let nhsNumber: string | undefined;
+        // Extract national health identifier from identifiers
+        // This could be NHS number (UK), Medicare number (AU), etc.
+        let nationalNumber: string | undefined;
+        let nationalNumberSystem: string | undefined;
         if (fhirPatient.identifier && fhirPatient.identifier.length > 0) {
-          const nhsIdentifier = fhirPatient.identifier.find(
+          // Try to find a national health identifier (prioritize common systems)
+          const nationalIdentifier = fhirPatient.identifier.find(
             (identifier) =>
-              identifier.system === "https://fhir.nhs.uk/Id/nhs-number",
+              identifier.system === "https://fhir.nhs.uk/Id/nhs-number" ||
+              identifier.system ===
+                "http://ns.electronichealth.net.au/id/medicare-number" ||
+              identifier.system?.includes("/national") ||
+              identifier.system?.includes("/health-id"),
           );
-          if (nhsIdentifier) {
-            nhsNumber = nhsIdentifier.value;
+          if (nationalIdentifier) {
+            nationalNumber = nationalIdentifier.value;
+            nationalNumberSystem = nationalIdentifier.system;
           }
         }
 
@@ -153,7 +161,8 @@ export default function Patient() {
           dob: fhirPatient.birthDate ?? undefined,
           age: age,
           sex: fhirPatient.gender ?? undefined,
-          nhsNumber: nhsNumber,
+          nationalNumber: nationalNumber,
+          nationalNumberSystem: nationalNumberSystem,
           onQuill: true,
         };
 

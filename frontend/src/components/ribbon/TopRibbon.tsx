@@ -44,9 +44,12 @@ function patientDetailsLong(patient: Patient, fontSize: number) {
           Sex: {patient.sex}
         </Text>
       )}
-      {patient.nhsNumber && (
+      {patient.nationalNumber && (
         <Text size="sm" style={{ fontSize }}>
-          NHS: {patient.nhsNumber}
+          <NationalNumber
+            nationalNumber={patient.nationalNumber}
+            nationalNumberSystem={patient.nationalNumberSystem}
+          />
         </Text>
       )}
     </>
@@ -71,9 +74,12 @@ function patientDetailsShort(patient: Patient, fontSize: number) {
           {patient.sex}
         </Text>
       )}
-      {patient.nhsNumber && (
+      {patient.nationalNumber && (
         <Text size="sm" style={{ fontSize }}>
-          {patient.nhsNumber}
+          <NationalNumber
+            nationalNumber={patient.nationalNumber}
+            nationalNumberSystem={patient.nationalNumberSystem}
+          />
         </Text>
       )}
     </>

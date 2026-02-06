@@ -26,8 +26,10 @@ export type Patient = {
   age?: number;
   /** Gender/sex (male, female, other, unknown) */
   sex?: string;
-  /** UK NHS number (10 digits) */
-  nhsNumber?: string;
+  /** National health identifier (e.g., NHS number, Medicare number) */
+  nationalNumber?: string;
+  /** FHIR system URL for the national identifier (used to determine display label) */
+  nationalNumberSystem?: string;
   /** Residential address (not yet mapped from FHIR) */
   address?: string;
   /** Home telephone number (not yet mapped from FHIR) */
@@ -46,3 +48,26 @@ export type Patient = {
   /** ProfilePic gradient index (0-29) from FHIR extension */
   gradientIndex?: number;
 };
+
+/**
+ * Get the display label for a national health identifier based on its FHIR system
+ *
+ * @param system - FHIR identifier system URL
+ * @returns Display label (e.g., "NHS", "Medicare", "ID")
+ */
+export function getNationalNumberLabel(system?: string): string {
+  if (!system) return "ID";
+
+  if (system.includes("nhs.uk")) {
+    return "NHS";
+  }
+  if (system.includes("medicare")) {
+    return "Medicare";
+  }
+  if (system.includes("medicaid")) {
+    return "Medicaid";
+  }
+
+  // Default to generic ID for unknown systems
+  return "ID";
+}
