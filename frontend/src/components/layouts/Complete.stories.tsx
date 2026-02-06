@@ -7,7 +7,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import MainLayout from "./MainLayout";
 
-import { demoPatientFull } from "@/demo-data/patients/demoPatients";
+import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof MainLayout> = {
   title: "Layout-Complete",
@@ -18,61 +18,30 @@ const meta: Meta<typeof MainLayout> = {
 export default meta;
 type Story = StoryObj<typeof MainLayout>;
 
-const demoPatients = [
-  {
-    id: "p1",
-    name: "Jane Doe",
-    dob: "1980-05-12",
-    age: 45,
-    onQuill: true,
-    nhsNumber: "1234567890",
-    colorFrom: "#667eea",
-    colorTo: "#764ba2",
-  },
-  {
-    id: "p2",
-    name: "Alex Smith",
-    dob: "1990-01-01",
-    age: 35,
-    sex: "male",
-    colorFrom: "#4ECDC4",
-    colorTo: "#44A08D",
-  },
-  {
-    id: "p3",
-    name: "Sam Brown",
-    dob: "1975-08-08",
-    age: 50,
-    onQuill: true,
-    colorFrom: "#FF6B6B",
-    colorTo: "#FFE66D",
-  },
-];
-
 export const WithPatientList: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <PatientsList patients={demoPatients} />
+        <PatientsList patients={demoPatientsList} />
       </div>
     </MainLayout>
   ),
 };
 
 export const WithPatientDemographics: Story = {
-  args: { patient: demoPatientFull, isLoading: false },
+  args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <PatientDemographics patient={demoPatientFull} />
+        <PatientDemographics patient={demoPatientsList[0]} />
       </div>
     </MainLayout>
   ),
 };
 
 export const WithMessaging: Story = {
-  args: { patient: demoPatientFull, isLoading: false },
+  args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => {
     function MessagingContent() {
       const [messages, setMessages] = useState<Message[]>(
@@ -123,7 +92,7 @@ const mdSampleLines = [
 ].join("\n");
 
 export const WithMarkdown: Story = {
-  args: { patient: demoPatientFull, isLoading: false },
+  args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
@@ -204,7 +173,7 @@ const LongContent = () => (
 );
 
 export const LongRead: Story = {
-  args: { patient: demoPatientFull, isLoading: false },
+  args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
       <LongContent />

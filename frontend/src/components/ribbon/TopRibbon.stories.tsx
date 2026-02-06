@@ -1,5 +1,5 @@
 // TopRibbon.stories.tsx
-import { demoPatient } from "@/demo-data/patients/demoPatients";
+import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import TopRibbon from "./TopRibbon";
 
@@ -18,7 +18,7 @@ export default meta;
 
 type Story = StoryObj<typeof TopRibbon>;
 
-// demoPatient comes from centralized demo-data
+// demoPatientsList comes from centralized demo-data
 
 export const NoPatient: Story = {
   args: {
@@ -32,7 +32,7 @@ export const NoPatient: Story = {
 /** Patient selected — wide container (search visible if your CQ allows) */
 export const WithPatientWide: Story = {
   args: {
-    patient: demoPatient,
+    patient: demoPatientsList[0],
     isLoading: false,
     navOpen: false,
     isNarrow: false,
@@ -43,7 +43,7 @@ export const WithPatientWide: Story = {
 /** Patient selected — narrow container (search should hide via @container) */
 export const WithPatientNarrow: Story = {
   args: {
-    patient: demoPatient,
+    patient: demoPatientsList[0],
     isLoading: false,
     navOpen: false,
     isNarrow: true,
