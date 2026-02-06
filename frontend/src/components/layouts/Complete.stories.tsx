@@ -22,9 +22,7 @@ export const WithPatientList: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
-      <div style={{ padding: 16 }}>
-        <PatientsList patients={demoPatientsList} />
-      </div>
+      <PatientsList patients={demoPatientsList} />
     </MainLayout>
   ),
 };

@@ -23,7 +23,7 @@ const preview: Preview = {
   parameters: {
     actions: { argTypesRegex: "^on[A-Z].*" },
     controls: { expanded: true },
-    layout: "fullscreen",
+    layout: "padded",
     // Ensure stories are sorted alphabetically in the sidebar
     options: {
       storySort: {

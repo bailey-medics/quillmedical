@@ -21,7 +21,7 @@ export default function MainLayout({
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
-  const HEADER_H = 88;
+  const HEADER_H = 60;
   const DRAWER_W = 260;
 
   return (
