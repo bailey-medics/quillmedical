@@ -3,6 +3,8 @@ set -euo pipefail
 
 # Load dev environment guard rails
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=dev-scripts/_guard.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/_guard.sh"
 
 # Enable debug mode if DEBUG=1
@@ -49,7 +51,7 @@ echo ""
 echo -e "${RED}WARNING: This will DELETE ALL patients from the FHIR server!${NC}"
 echo -e "${RED}This action cannot be undone.${NC}"
 echo ""
-read -p "Are you sure you want to continue? (type 'yes' to confirm): " CONFIRM
+read -r -p "Are you sure you want to continue? (type 'yes' to confirm): " CONFIRM
 
 if [ "$CONFIRM" != "yes" ]; then
     echo "Cancelled."

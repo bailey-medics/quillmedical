@@ -11,6 +11,7 @@ import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * FHIR Name
@@ -91,11 +92,13 @@ type PatientsApiRes = {
  * } />
  */
 export default function Home() {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Fetch patients function
+  const fetchPatients = () => {
     let cancelled = false;
     setIsLoading(true);
     api
@@ -155,7 +158,31 @@ export default function Home() {
           console.log("Mapped patient:", patient);
           return patient;
         });
-        setPatients(mapped);
+
+        // Only update state if data has actually changed
+        setPatients((currentPatients) => {
+          // If no current patients, always set the new ones
+          if (!currentPatients) {
+            return mapped;
+          }
+
+          // Compare patient lists by IDs
+          const currentIds = currentPatients
+            .map((p) => p.id)
+            .sort()
+            .join(",");
+          const newIds = mapped
+            .map((p) => p.id)
+            .sort()
+            .join(",");
+
+          // Only update if patient list has changed
+          if (currentIds !== newIds) {
+            return mapped;
+          }
+
+          return currentPatients;
+        });
         setError(null);
       })
       .catch((err: Error & { error_code?: string }) => {
@@ -169,6 +196,20 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
+  };
+
+  // Fetch on mount
+  useEffect(() => {
+    const cleanup = fetchPatients();
+    return cleanup;
+  }, []);
+
+  // Auto-refresh every 30 seconds - fetches data but only updates UI if changed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPatients();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -177,7 +218,11 @@ export default function Home() {
       justify="center"
       style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
     >
-      <PatientsList patients={patients ?? []} isLoading={isLoading} />
+      <PatientsList
+        patients={patients ?? []}
+        isLoading={isLoading}
+        onSelect={(patient) => navigate(`/patients/${patient.id}`)}
+      />
       {error ? <div style={{ color: "red" }}>{error}</div> : null}
     </Stack>
   );

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import DOMPurify from "dompurify";
+import { Skeleton, Stack } from "@mantine/core";
 
 type Props = {
   source: string;
@@ -8,6 +9,7 @@ type Props = {
   className?: string;
   onLinkClick?: (href: string) => void;
   children?: ReactNode;
+  isLoading?: boolean;
 };
 
 // Narrow, explicit allowlist for rendered HTML
@@ -199,6 +201,7 @@ export default function MarkdownView({
   className,
   onLinkClick,
   children,
+  isLoading = false,
 }: Props) {
   // 1) Render markdown to HTML
   const rawHtml = useMemo(() => {
@@ -218,6 +221,21 @@ export default function MarkdownView({
       ALLOWED_ATTR,
     });
   }, [rawHtml, asPlainText]);
+
+  // Show loading skeleton (after hooks to follow rules of hooks)
+  if (isLoading) {
+    return (
+      <div className={className}>
+        <Stack gap="md">
+          <Skeleton height={40} width="60%" radius="md" />
+          <Skeleton height={100} radius="md" />
+          <Skeleton height={30} width="80%" radius="md" />
+          <Skeleton height={80} radius="md" />
+          <Skeleton height={30} width="70%" radius="md" />
+        </Stack>
+      </div>
+    );
+  }
 
   function handleClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement | null;
