@@ -1,13 +1,27 @@
-import { Avatar, Box, Button, ScrollArea, Text, Textarea } from "@mantine/core";
+import {
+  Box,
+  Button,
+  ScrollArea,
+  Skeleton,
+  Text,
+  Textarea,
+  useMantineTheme,
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
+import ProfilePic from "@/components/profile-pic/ProfilePic";
 
 export type Message = {
   id: string;
   senderId: string;
   senderName?: string;
+  givenName?: string;
+  familyName?: string;
   text: string;
   timestamp?: string; // ISO
   avatar?: string;
+  colorFrom?: string;
+  colorTo?: string;
 };
 
 type Props = {
@@ -15,6 +29,7 @@ type Props = {
   currentUserId: string;
   onSend?: (text: string) => void;
   placeholder?: string;
+  isLoading?: boolean;
 };
 
 export default function Messaging({
@@ -22,9 +37,13 @@ export default function Messaging({
   currentUserId,
   onSend,
   placeholder = "Type a message...",
+  isLoading = false,
 }: Props) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const avatarSize = isSm ? 32 : 48;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -41,54 +60,178 @@ export default function Messaging({
     <Box style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ScrollArea style={{ flex: 1, padding: 12 }} type="auto">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {messages.map((m) => {
-            const mine = m.senderId === currentUserId;
-            return (
-              <div
-                key={m.id}
-                style={{
-                  display: "flex",
-                  justifyContent: mine ? "flex-end" : "flex-start",
-                }}
-              >
-                {!mine && (
-                  <Avatar src={m.avatar} size={32} radius="xl" style={{ marginRight: 8 }} />
-                )}
+          {isLoading ? (
+            // Loading skeleton
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              {[1, 2, 3, 4].map((i) => (
                 <div
+                  key={i}
                   style={{
-                    maxWidth: "70%",
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: mine ? "flex-end" : "flex-start",
+                    justifyContent: i % 2 === 0 ? "flex-end" : "flex-start",
                   }}
                 >
-                  {!mine && m.senderName && (
-                    <Text size="xs" color="dimmed" style={{ marginBottom: 2 }}>
-                      {m.senderName}
-                    </Text>
-                  )}
                   <div
                     style={{
-                      background: mine ? "#DCF8C6" : "#FFFFFF",
-                      padding: "8px 12px",
-                      borderRadius: 12,
-                      boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
-                      wordBreak: "break-word",
+                      width: "70%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
                     }}
                   >
-                    <Text size="sm">{m.text}</Text>
+                    {i % 2 === 1 && <ProfilePic isLoading size={avatarSize} />}
+                    <Skeleton height={60} radius="md" style={{ flex: 1 }} />
+                    {i % 2 === 0 && <ProfilePic isLoading size={avatarSize} />}
                   </div>
-                  {m.timestamp && (
-                    <Text size="xs" color="dimmed" style={{ marginTop: 4 }}>
-                      {new Date(m.timestamp).toLocaleString()}
-                    </Text>
-                  )}
                 </div>
-                {mine && <Avatar src={m.avatar} size={32} radius="xl" style={{ marginLeft: 8 }} />}
-              </div>
-            );
-          })}
-          <div ref={endRef} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {messages.map((m) => {
+                const mine = m.senderId === currentUserId;
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: mine ? "flex-end" : "flex-start",
+                      marginBottom: 8,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    {mine ? (
+                      <div
+                        style={{
+                          maxWidth: "80%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <div
+                            style={{
+                              background: "#BBDEFB",
+                              padding: "8px 12px",
+                              borderRadius: 12,
+                              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            <Text size="sm">{m.text}</Text>
+                          </div>
+                          <ProfilePic
+                            src={m.avatar}
+                            givenName={m.givenName}
+                            familyName={m.familyName}
+                            colorFrom={m.colorFrom}
+                            colorTo={m.colorTo}
+                            size={avatarSize}
+                          />
+                        </div>
+                        {m.timestamp && (
+                          <Text
+                            size="xs"
+                            color="dimmed"
+                            style={{
+                              marginTop: 4,
+                              marginRight: avatarSize + 8,
+                            }}
+                          >
+                            {new Date(m.timestamp).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}{" "}
+                            {new Date(m.timestamp).toLocaleTimeString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </Text>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          maxWidth: "80%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        {m.senderName && (
+                          <Text
+                            size="xs"
+                            color="dimmed"
+                            style={{
+                              marginBottom: 2,
+                              marginLeft: avatarSize + 8,
+                            }}
+                          >
+                            {m.senderName}
+                          </Text>
+                        )}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <ProfilePic
+                            src={m.avatar}
+                            givenName={m.givenName}
+                            familyName={m.familyName}
+                            colorFrom={m.colorFrom}
+                            colorTo={m.colorTo}
+                            size={avatarSize}
+                          />
+                          <div
+                            style={{
+                              background: "#FFF3E0",
+                              padding: "8px 12px",
+                              borderRadius: 12,
+                              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            <Text size="sm">{m.text}</Text>
+                          </div>
+                        </div>
+                        {m.timestamp && (
+                          <Text
+                            size="xs"
+                            color="dimmed"
+                            style={{ marginTop: 4, marginLeft: avatarSize + 8 }}
+                          >
+                            {new Date(m.timestamp).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}{" "}
+                            {new Date(m.timestamp).toLocaleTimeString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </Text>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div ref={endRef} />
+            </>
+          )}
         </div>
       </ScrollArea>
 
@@ -108,6 +251,7 @@ export default function Messaging({
           minRows={1}
           maxRows={6}
           style={{ flex: 1 }}
+          disabled={isLoading}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -115,7 +259,9 @@ export default function Messaging({
             }
           }}
         />
-        <Button onClick={submit}>Send</Button>
+        <Button onClick={submit} disabled={isLoading}>
+          Send
+        </Button>
       </div>
     </Box>
   );

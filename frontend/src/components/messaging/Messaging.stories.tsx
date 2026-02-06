@@ -41,3 +41,11 @@ function Wrapper() {
 export const Default: Story = {
   render: () => <Wrapper />,
 };
+
+export const Loading: Story = {
+  render: () => (
+    <div style={{ height: 400 }}>
+      <Messaging messages={[]} currentUserId="me" isLoading={true} />
+    </div>
+  ),
+};

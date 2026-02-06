@@ -30,7 +30,7 @@
  * />
  */
 
-import { Avatar, Tooltip } from "@mantine/core";
+import { Avatar, Skeleton, Tooltip } from "@mantine/core";
 
 type Props = {
   /** Image source URL */
@@ -49,6 +49,8 @@ type Props = {
   size?: number;
   /** Alternative way to specify size - compact mode uses 40px, normal uses 56px */
   isCompact?: boolean;
+  /** Show loading skeleton */
+  isLoading?: boolean;
 };
 
 /**
@@ -90,9 +92,15 @@ export default function ProfilePic({
   showGeneric = false,
   size,
   isCompact = false,
+  isLoading = false,
 }: Props) {
   const avatarSize = size ?? (isCompact ? 40 : 56);
   const fullName = getFullName(givenName, familyName);
+
+  // Loading state
+  if (isLoading) {
+    return <Skeleton circle height={avatarSize} width={avatarSize} />;
+  }
 
   // Case 2: Real picture
   if (src) {
@@ -117,7 +125,8 @@ export default function ProfilePic({
             background: `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`,
           },
           placeholder: {
-            color: "black",
+            color: "#333333",
+            fontWeight: "bold",
             transform: "scale(1.2)",
           },
         }}
@@ -144,7 +153,8 @@ export default function ProfilePic({
           background: `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`,
         },
         placeholder: {
-          color: "black",
+          color: "#333333",
+          fontWeight: "bold",
           transform: "scale(1.2)",
         },
       }}

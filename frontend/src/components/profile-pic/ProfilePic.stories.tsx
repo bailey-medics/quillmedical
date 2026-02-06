@@ -139,3 +139,22 @@ export const Initials: Story = {
     </div>
   ),
 };
+
+/**
+ * Loading state with skeleton placeholders
+ * Shows circular skeleton while data is being fetched
+ */
+export const Loading: Story = {
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        gap: "1rem",
+        flexWrap: "wrap",
+        alignItems: "flex-start",
+      }}
+    >
+      <ProfilePic isLoading />
+    </div>
+  ),
+};
