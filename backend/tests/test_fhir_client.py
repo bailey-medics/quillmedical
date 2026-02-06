@@ -34,18 +34,18 @@ class TestCreateFhirPatient:
     def test_create_fhir_patient_success(self, mock_get_client):
         """Test successful patient creation."""
         mock_fhir = MagicMock()
-        mock_patient = MagicMock()
-        mock_patient.create.return_value = {"created": True}
-        mock_patient.as_json.return_value = {
-            "resourceType": "Patient",
-            "id": "new123",
-            "name": [{"family": "Smith", "given": ["Jane"]}],
-        }
-
+        mock_fhir.server.put_json.return_value = None
         mock_get_client.return_value = mock_fhir
 
         with patch("app.fhir_client.Patient") as mock_patient_class:
+            mock_patient = MagicMock()
+            mock_patient.as_json.return_value = {
+                "resourceType": "Patient",
+                "id": "new123",
+                "name": [{"family": "Smith", "given": ["Jane"]}],
+            }
             mock_patient_class.return_value = mock_patient
+
             result = fhir_client.create_fhir_patient(
                 "Jane", "Smith", patient_id="new123"
             )
@@ -56,13 +56,10 @@ class TestCreateFhirPatient:
     def test_create_fhir_patient_exception(self, mock_get_client):
         """Test patient creation with exception."""
         mock_fhir = MagicMock()
+        mock_fhir.server.put_json.side_effect = Exception("Creation failed")
         mock_get_client.return_value = mock_fhir
 
-        with patch("app.fhir_client.Patient") as mock_patient_class:
-            mock_patient = MagicMock()
-            mock_patient.create.side_effect = Exception("Creation failed")
-            mock_patient_class.return_value = mock_patient
-
+        with patch("app.fhir_client.Patient"):
             with pytest.raises(Exception) as exc_info:
                 fhir_client.create_fhir_patient(
                     "Test", "User", patient_id="123"
