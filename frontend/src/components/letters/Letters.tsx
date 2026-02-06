@@ -1,11 +1,17 @@
-import { Avatar, Skeleton, Text, Title } from "@mantine/core";
+import { Skeleton, Text, Title, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import ProfilePic from "@/components/profile-pic/ProfilePic";
 
 export type Letter = {
   id: string;
   subject: string;
   date?: string; // ISO or display
   from?: string;
+  fromGivenName?: string;
+  fromFamilyName?: string;
+  colorFrom?: string;
+  colorTo?: string;
   snippet?: string;
 };
 
@@ -16,7 +22,16 @@ type Props = {
   children?: ReactNode;
 };
 
-export default function Letters({ letters = [], isLoading = false, onOpen, children }: Props) {
+export default function Letters({
+  letters = [],
+  isLoading = false,
+  onOpen,
+  children,
+}: Props) {
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`);
+  const avatarSize = isSm ? "lg" : "sm";
+
   if (isLoading) {
     return (
       <div>
@@ -24,7 +39,7 @@ export default function Letters({ letters = [], isLoading = false, onOpen, child
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[0, 1, 2].map((i) => (
             <div key={i} style={{ display: "flex", alignItems: "flex-start" }}>
-              <Skeleton circle width={40} height={40} />
+              <ProfilePic size={avatarSize} isLoading />
               <div style={{ flex: 1, marginLeft: 12 }}>
                 <Skeleton height={14} width="60%" />
                 <Skeleton height={12} width="40%" style={{ marginTop: 6 }} />
@@ -50,7 +65,9 @@ export default function Letters({ letters = [], isLoading = false, onOpen, child
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {letters.length === 0 && <Text color="dimmed">No letters available</Text>}
+        {letters.length === 0 && (
+          <Text color="dimmed">No letters available</Text>
+        )}
 
         {letters.map((l) => (
           <div
@@ -62,9 +79,14 @@ export default function Letters({ letters = [], isLoading = false, onOpen, child
             }}
             onClick={() => onOpen?.(l.id)}
           >
-            <Avatar radius="xl" size={40}>
-              {l.from ? l.from.charAt(0) : "L"}
-            </Avatar>
+            <ProfilePic
+              size={avatarSize}
+              givenName={l.fromGivenName}
+              familyName={l.fromFamilyName}
+              colorFrom={l.colorFrom}
+              colorTo={l.colorTo}
+              showGeneric={!l.fromGivenName && !l.fromFamilyName}
+            />
             <div style={{ flex: 1, marginLeft: 12 }}>
               <Text fw={600}>{l.subject}</Text>
               {l.snippet && (

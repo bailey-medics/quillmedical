@@ -1,4 +1,4 @@
-import { demoPatientFull as fullPatient } from "@/demo-data/patients/demoPatients";
+import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PatientDemographics from "./PatientDemographics";
 
@@ -16,7 +16,7 @@ type Story = StoryObj<typeof PatientDemographics>;
 
 export const Default: Story = {
   args: {
-    patient: fullPatient,
+    patient: demoPatientsList[0],
     isLoading: false,
     isCompact: false,
   },

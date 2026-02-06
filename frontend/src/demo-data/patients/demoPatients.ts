@@ -1,31 +1,35 @@
 import type { Patient } from "@/domains/patient";
 
-export const demoPatientFull: Patient = {
-  id: "p123",
-  name: "Alice Example",
-  dob: "01/01/1980",
-  age: 44,
-  sex: "F",
-  nhsNumber: "123 456 7890",
-  address: "Flat 2, 10 High Street, Exampletown, EX4 3PL",
-  telephone: "020 7946 0000",
-  mobile: "07700 900123",
-  onQuill: true,
-  nextOfKin: { name: "Bob Example", phone: "07700 900124" },
-};
-
-export const demoPatient: Patient = {
-  id: "p124",
-  name: "Sam Demo",
-  dob: "05/05/1990",
-  age: 35,
-  sex: "M",
-  nhsNumber: "987 654 3210",
-  address: "Flat 1, 2 Station Road, DemoCity, DC1 2DD",
-  telephone: "020 7946 1111",
-  mobile: "07700 900125",
-  onQuill: false,
-  nextOfKin: { name: "Pat Demo", phone: "07700 900126" },
-};
-
-export default demoPatientFull;
+export const demoPatientsList: Patient[] = [
+  {
+    id: "p1",
+    name: "Jane Doe",
+    dob: "1980-05-12",
+    age: 45,
+    sex: "female",
+    nhsNumber: "1234567890",
+    onQuill: true,
+    colorFrom: "#667eea",
+    colorTo: "#764ba2",
+  },
+  {
+    id: "p2",
+    name: "Alex Smith",
+    dob: "1990-01-01",
+    age: 35,
+    sex: "male",
+    nhsNumber: "9876543210",
+    colorFrom: "#4ECDC4",
+    colorTo: "#44A08D",
+  },
+  {
+    id: "p3",
+    name: "Sam Brown",
+    dob: "1975-08-08",
+    age: 50,
+    sex: "male",
+    nhsNumber: "5555555555",
+    colorFrom: "#FF6B6B",
+    colorTo: "#FFE66D",
+  },
+];

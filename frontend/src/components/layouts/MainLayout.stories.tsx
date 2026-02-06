@@ -1,13 +1,15 @@
 // src/components/layouts/MainLayout.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
 // ...existing imports...
-import { demoPatient } from "@/demo-data/patients/demoPatients";
+import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 import MainLayout from "./MainLayout";
 
-// demoPatient imported from centralized demo-data
+// demoPatientsList imported from centralized demo-data
 
 const Content = () => (
-  <div style={{ flex: 1, padding: 16, color: "#667085" }}>Desktop content area.</div>
+  <div style={{ flex: 1, padding: 16, color: "#667085" }}>
+    Desktop content area.
+  </div>
 );
 
 // ...existing code...
@@ -32,7 +34,7 @@ export const NoPatient: Story = {
 };
 
 export const WithPatient: Story = {
-  args: { patient: demoPatient, isLoading: false },
+  args: { patient: demoPatientsList[0], isLoading: false },
 };
 
 export const Loading: Story = {

@@ -5,7 +5,7 @@ const meta = {
   title: "Components/Icons/NavIcon",
   component: NavIcon,
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
   tags: ["autodocs"],
   argTypes: {
@@ -39,6 +39,7 @@ type Story = StoryObj<typeof meta>;
 export const Home: Story = {
   args: {
     name: "home",
+    size: "lg",
   },
 };
 
@@ -48,6 +49,7 @@ export const Home: Story = {
 export const Settings: Story = {
   args: {
     name: "settings",
+    size: "lg",
   },
 };
 
@@ -57,6 +59,7 @@ export const Settings: Story = {
 export const Logout: Story = {
   args: {
     name: "logout",
+    size: "lg",
   },
 };
 
@@ -66,6 +69,7 @@ export const Logout: Story = {
 export const User: Story = {
   args: {
     name: "user",
+    size: "lg",
   },
 };
 
@@ -75,6 +79,7 @@ export const User: Story = {
 export const Notification: Story = {
   args: {
     name: "bell",
+    size: "lg",
   },
 };
 
