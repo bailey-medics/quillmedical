@@ -1,4 +1,5 @@
 import type { Patient } from "@/domains/patient";
+import NationalNumber from "@/components/patients/NationalNumber";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
@@ -89,14 +90,17 @@ export default function PatientDemographics({
               )}
             </div>
           )}
-        {patient.nhsNumber && (
+        {patient.nationalNumber && (
           <Text
             style={{
               color: "var(--mantine-color-dimmed, #6b7280)",
               fontSize: 12,
             }}
           >
-            NHS: {patient.nhsNumber}
+            <NationalNumber
+              nationalNumber={patient.nationalNumber}
+              nationalNumberSystem={patient.nationalNumberSystem}
+            />
           </Text>
         )}
       </div>

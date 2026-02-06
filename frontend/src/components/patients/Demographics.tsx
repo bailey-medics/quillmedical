@@ -1,4 +1,5 @@
 import type { Patient } from "@/domains/patient";
+import NationalNumber from "@/components/patients/NationalNumber";
 import { Skeleton, Text } from "@mantine/core";
 
 type Props = {
@@ -34,7 +35,17 @@ export default function Demographics({ patient, isLoading = false }: Props) {
         {patient.dob ? `${patient.dob.replace(/-/g, "/")}` : ""}
         {patient.age !== undefined ? `    ${patient.age}` : ""}
         {patient.sex ? ` ${patient.sex}` : ""}
-        {patient.nhsNumber ? `      NHS${patient.nhsNumber}` : ""}
+        {patient.nationalNumber ? (
+          <>
+            {"      "}
+            <NationalNumber
+              nationalNumber={patient.nationalNumber}
+              nationalNumberSystem={patient.nationalNumberSystem}
+            />
+          </>
+        ) : (
+          ""
+        )}
       </Text>
     </div>
   );
