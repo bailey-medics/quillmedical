@@ -5,9 +5,10 @@ import userEvent from "@testing-library/user-event";
 import EnableNotificationsButton from "./EnableNotificationsButton";
 
 // Mock the global Notification API
+const mockRequestPermission = vi.fn();
 const mockNotification = {
-  requestPermission: vi.fn(),
-};
+  requestPermission: mockRequestPermission,
+} as unknown as typeof Notification;
 
 // Mock service worker
 const mockPushManager = {
@@ -20,15 +21,18 @@ const mockServiceWorkerRegistration = {
 
 describe("EnableNotificationsButton Component", () => {
   beforeEach(() => {
+    // Setup VAPID key
+    import.meta.env.VITE_VAPID_PUBLIC = "test-vapid-key";
+
     // Setup global mocks
-    global.Notification = mockNotification as unknown as typeof Notification;
+    global.Notification = mockNotification;
     global.navigator.serviceWorker = {
       ready: Promise.resolve(mockServiceWorkerRegistration),
     } as unknown as ServiceWorkerContainer;
     global.fetch = vi.fn();
 
     // Reset mocks
-    mockNotification.requestPermission.mockReset();
+    mockRequestPermission.mockReset();
     mockPushManager.subscribe.mockReset();
     (global.fetch as unknown as ReturnType<typeof vi.fn>).mockReset();
   });
@@ -55,8 +59,15 @@ describe("EnableNotificationsButton Component", () => {
   describe("Enabling notifications", () => {
     it("requests permission when clicked", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue({});
+      mockRequestPermission.mockResolvedValue("granted");
+      const mockSub = {
+        endpoint: "test",
+        toJSON: () => ({
+          endpoint: "test",
+          keys: { p256dh: "key1", auth: "key2" },
+        }),
+      };
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
       });
@@ -66,13 +77,20 @@ describe("EnableNotificationsButton Component", () => {
 
       await user.click(button);
 
-      expect(mockNotification.requestPermission).toHaveBeenCalledOnce();
+      expect(mockRequestPermission).toHaveBeenCalledOnce();
     });
 
     it("shows busy state while enabling", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue({ endpoint: "test" });
+      mockRequestPermission.mockResolvedValue("granted");
+      const mockSub = {
+        endpoint: "test",
+        toJSON: () => ({
+          endpoint: "test",
+          keys: { p256dh: "key1", auth: "key2" },
+        }),
+      };
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
       });
@@ -89,8 +107,15 @@ describe("EnableNotificationsButton Component", () => {
 
     it("subscribes to push manager when permission granted", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue({ endpoint: "test" });
+      mockRequestPermission.mockResolvedValue("granted");
+      const mockSub = {
+        endpoint: "test",
+        toJSON: () => ({
+          endpoint: "test",
+          keys: { p256dh: "key1", auth: "key2" },
+        }),
+      };
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
       });
@@ -112,8 +137,12 @@ describe("EnableNotificationsButton Component", () => {
         endpoint: "https://example.com/push",
         keys: { p256dh: "key1", auth: "key2" },
       };
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue(mockSubscription);
+      const mockSub = {
+        ...mockSubscription,
+        toJSON: () => mockSubscription,
+      };
+      mockRequestPermission.mockResolvedValue("granted");
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
       });
@@ -137,8 +166,15 @@ describe("EnableNotificationsButton Component", () => {
 
     it("shows success state after enabling", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue({ endpoint: "test" });
+      mockRequestPermission.mockResolvedValue("granted");
+      const mockSub = {
+        endpoint: "test",
+        toJSON: () => ({
+          endpoint: "test",
+          keys: { p256dh: "key1", auth: "key2" },
+        }),
+      };
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: true,
       });
