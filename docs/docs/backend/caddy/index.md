@@ -41,19 +41,39 @@ Caddy is a powerful, enterprise-ready web server with automatic HTTPS. In Quill 
 Our Caddy configuration is in `caddy/dev/Caddyfile`:
 
 ```caddyfile
-# Development configuration
-localhost:8080
+:80 {
+  encode zstd gzip
 
-# Reverse proxy to FastAPI backend
-reverse_proxy /api/* http://backend:8000
+  # API requests → backend
+  @api path /api/*
+  handle @api {
+    reverse_proxy backend:8000
+  }
 
-# Reverse proxy to FHIR server
-reverse_proxy /fhir/* http://hapi-fhir:8080
+  # EHRbase requests → ehrbase
+  @ehrbase path /ehrbase/*
+  handle @ehrbase {
+    reverse_proxy ehrbase:8080
+  }
 
-# Serve frontend static files
-file_server
-root * /srv
-try_files {path} /index.html
+  # PWA manifest with correct MIME type
+  @webmanifest path /app/*.webmanifest
+  header @webmanifest Content-Type "application/manifest+json"
+  header @webmanifest Cache-Control "no-cache"
+
+  # Redirect /app to /app/ for SPA routing
+  redir /app /app/ 301
+
+  # SPA served under /app and /app/*
+  handle /app* {
+    reverse_proxy frontend:5173
+  }
+
+  # Everything else → public pages
+  handle {
+    reverse_proxy frontend:5174
+  }
+}
 ```
 
 ### Architecture Role
@@ -63,12 +83,12 @@ Caddy sits at the edge of our application stack:
 ```
 Client Browser
       ↓
-   Caddy (Port 80/443)
+   Caddy (Port 80)
       ↓
-      ├→ FastAPI Backend (Port 8000) - /api/*
-      ├→ FHIR Server (Port 8080)     - /fhir/*
-      ├→ OpenEHR Server (Port 8080)  - /ehrbase/*
-      └→ Frontend Static Files       - /*
+      ├→ FastAPI Backend (Port 8000)    - /api/*
+      ├→ EHRbase Server (Port 8080)     - /ehrbase/*
+      ├→ Frontend SPA (Port 5173)       - /app/* (Vite dev server)
+      └→ Public Pages (Port 5174)       - /* (marketing/landing)
 ```
 
 ## Key Features in Use

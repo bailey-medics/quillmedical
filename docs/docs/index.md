@@ -71,7 +71,7 @@ The codebase uses automated tools to maintain consistent formatting and catch co
 
 - Docker Desktop – runs the application in containers
 - Node.js 24 – for frontend development
-- Python 3.14+ – for backend development
+- Python 3.13+ – for backend development
 - Yarn – JavaScript package manager
 - Just – command runner for common tasks
 

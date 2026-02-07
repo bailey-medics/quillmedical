@@ -2,7 +2,9 @@
 
 ## Overview
 
-Quill Medical uses a three-layer storage architecture for clinical documents:
+**Status:** Planned feature - not yet implemented in current deployment.
+
+Quill Medical will use a three-layer storage architecture for clinical documents:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐

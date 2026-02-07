@@ -2,7 +2,9 @@
 
 ## Overview
 
-Quill Medical uses [Stripe](https://stripe.com/) as its payment processing platform to handle secure financial transactions between patients and healthcare providers. Stripe enables patients to pay for clinical communication services and other healthcare-related charges safely and reliably.
+**Status:** Planned feature - not yet implemented in current deployment.
+
+Quill Medical will use [Stripe](https://stripe.com/) as its payment processing platform to handle secure financial transactions between patients and healthcare providers. Stripe will enable patients to pay for clinical communication services and other healthcare-related charges safely and reliably.
 
 ## Why Stripe?
 

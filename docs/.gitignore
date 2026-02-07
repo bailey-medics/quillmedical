@@ -1,4 +1,4 @@
-frontend/
-storybook/
+docs/code/frontend/
+docs/code/storybook/
 site/
 docs/code/swagger/openapi.json
