@@ -55,8 +55,8 @@ export default function FormattedDate({
       format === "short"
         ? {
             year: "numeric",
-            month: "numeric",
-            day: "numeric",
+            month: "2-digit",
+            day: "2-digit",
           }
         : format === "medium"
           ? {

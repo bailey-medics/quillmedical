@@ -47,25 +47,30 @@ export default function GenderIcon({
   ...iconProps
 }: GenderIconProps) {
   const iconSize = iconProps.size || 24;
+  const iconColor = iconProps.color || "#495057"; // Dark grey (Mantine gray.7)
 
   if (loading) {
     return <Skeleton circle height={iconSize} width={iconSize} />;
   }
 
   if (!gender || gender === "unspecified") {
-    return <IconGenderAgender {...iconProps} />;
+    return (
+      <IconGenderAgender {...iconProps} size={iconSize} color={iconColor} />
+    );
   }
 
   const normalized = gender.toLowerCase();
 
   if (normalized === "male") {
-    return <IconGenderMale {...iconProps} />;
+    return <IconGenderMale {...iconProps} size={iconSize} color={iconColor} />;
   }
 
   if (normalized === "female") {
-    return <IconGenderFemale {...iconProps} />;
+    return (
+      <IconGenderFemale {...iconProps} size={iconSize} color={iconColor} />
+    );
   }
 
   // Fallback for any unexpected value
-  return <IconGenderAgender {...iconProps} />;
+  return <IconGenderAgender {...iconProps} size={iconSize} color={iconColor} />;
 }

@@ -29,22 +29,22 @@ type Story = StoryObj<typeof FormattedDate>;
 
 /**
  * Default British format (en-GB, short)
- * Displays as DD/MM/YYYY (e.g., 12/05/1980)
+ * Displays as DD/MM/YYYY (e.g., 15/09/1980)
  */
 export const BritishShort: Story = {
   args: {
-    date: "1980-05-12",
+    date: "1980-09-15",
     locale: "en-GB",
   },
 };
 
 /**
  * American format (en-US, short)
- * Displays as M/D/YYYY (e.g., 5/12/1980)
+ * Displays as MM/DD/YYYY (e.g., 09/15/1980)
  */
 export const AmericanShort: Story = {
   args: {
-    date: "1980-05-12",
+    date: "1980-09-15",
     locale: "en-US",
   },
 };
@@ -54,7 +54,7 @@ export const AmericanShort: Story = {
  */
 export const Medium: Story = {
   args: {
-    date: "1980-05-12",
+    date: "1980-09-15",
     locale: "en-GB",
     format: "medium",
   },
@@ -65,7 +65,7 @@ export const Medium: Story = {
  */
 export const Long: Story = {
   args: {
-    date: "1980-05-12",
+    date: "1980-09-15",
     locale: "en-GB",
     format: "long",
   },
@@ -76,7 +76,7 @@ export const Long: Story = {
  */
 export const Full: Story = {
   args: {
-    date: "1980-05-12",
+    date: "1980-09-15",
     locale: "en-GB",
     format: "full",
   },
@@ -87,7 +87,7 @@ export const Full: Story = {
  */
 export const Comparison: Story = {
   render: () => {
-    const testDate = "1980-05-12";
+    const testDate = "1980-09-15";
 
     return (
       <Stack gap="xl">
@@ -186,7 +186,7 @@ export const EdgeCases: Story = {
         <Text size="sm" c="dimmed">
           Valid date with styling:
         </Text>
-        <FormattedDate date="1980-05-12" fw={700} c="blue" size="lg" />
+        <FormattedDate date="1980-09-15" fw={700} c="blue" size="lg" />
       </div>
     </Stack>
   ),
