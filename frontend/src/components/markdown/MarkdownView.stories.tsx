@@ -1,4 +1,14 @@
 import { MantineProvider } from "@mantine/core";
+/**
+ * MarkdownView Component Stories
+ *
+ * Demonstrates the markdown rendering component:
+ * - Rich text formatting (bold, italic, lists, links)
+ * - Code blocks with syntax highlighting
+ * - Tables and blockquotes
+ * - Safe HTML rendering (XSS protection)
+ * - Used for clinical letters and messages
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import MarkdownView from "./MarkdownView";
 

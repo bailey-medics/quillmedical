@@ -1,16 +1,46 @@
+/**
+ * Demographics Detailed Component
+ *
+ * Expanded patient demographics view with profile picture, name, age,
+ * gender, DOB, and national number. Supports compact/full layout modes
+ * and responsive sizing for mobile/desktop.
+ */
+
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
+/**
+ * DemographicsDetailed Props
+ */
 type Props = {
+  /** Patient data to display (null if not loaded) */
   patient: Patient | null;
+  /** Whether patient data is currently loading */
   isLoading?: boolean;
+  /** Whether to use compact layout with smaller fonts */
   isCompact?: boolean;
+  /** Optional custom avatar image source URL */
   avatarSrc?: string | null;
 };
 
+/**
+ * Demographics Detailed
+ *
+ * Renders detailed patient demographics with:
+ * - Profile picture/avatar with gradient
+ * - Patient name
+ * - Age, gender, DOB
+ * - National number (NHS format)
+ * - Responsive sizing (mobile/desktop)
+ * - Compact/full layout modes
+ * - Loading skeleton state
+ *
+ * @param props - Component props
+ * @returns Detailed demographics component
+ */
 export default function DemographicsDetailed({
   patient,
   isLoading = false,

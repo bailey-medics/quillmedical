@@ -1,3 +1,11 @@
+/**
+ * Messaging Component Module
+ *
+ * Chat/messaging interface for patient-clinician conversations. Displays
+ * message thread with sent/received messages, profile pictures, and a
+ * message input box with send functionality.
+ */
+
 import {
   Box,
   Button,
@@ -11,6 +19,11 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 
+/**
+ * Message
+ *
+ * Represents a single message in a conversation thread.
+ */
 export type Message = {
   id: string;
   senderId: string;

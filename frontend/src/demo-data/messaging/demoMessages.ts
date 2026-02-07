@@ -1,8 +1,23 @@
+/**
+ * Demo Messages Data
+ *
+ * Sample messages for use in messaging component stories and testing.
+ * Includes helper function for generating realistic timestamps and a variety
+ * of message types (sent/received, text/attachments).
+ */
+
 import type { Message } from "@/components/messaging/Messaging";
 
-// Helper to produce reproducible demo timestamps.
-// By default this returns an ISO timestamp for `daysAgo` days before now,
-// plus an optional `offsetMs` (milliseconds) to stagger messages.
+/**
+ * Helper to produce reproducible demo timestamps.
+ *
+ * Generates ISO timestamp for specified days in the past plus optional offset.
+ * Used to create consistent message timestamps across story renders.
+ *
+ * @param offsetMs - Milliseconds to offset from base time (default: 0)
+ * @param daysAgo - Number of days before now (default: 1)
+ * @returns ISO 8601 timestamp string
+ */
 const demoTimestamp = (offsetMs = 0, daysAgo = 1) =>
   new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000 + offsetMs).toISOString();
 

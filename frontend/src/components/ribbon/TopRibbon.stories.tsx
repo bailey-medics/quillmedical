@@ -1,5 +1,15 @@
 // TopRibbon.stories.tsx
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
+/**
+ * TopRibbon Component Stories
+ *
+ * Demonstrates the top navigation ribbon:
+ * - Quill Medical branding/logo
+ * - User profile menu
+ * - Notification bell
+ * - Navigation drawer toggle
+ * - Responsive layout adjustments
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import TopRibbon from "./TopRibbon";
 

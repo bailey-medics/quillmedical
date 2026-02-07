@@ -1,3 +1,12 @@
+/**
+ * NationalNumber Component Stories
+ *
+ * Demonstrates the NHS number display component:
+ * - Formatted NHS number (XXX-XXX-XXXX pattern)
+ * - Copy to clipboard functionality
+ * - Validation indicator (valid/invalid checksum)
+ * - Accessible labels and tooltips
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import NationalNumber from "./NationalNumber";
 

@@ -1,3 +1,12 @@
+/**
+ * NavIcon Component Stories
+ *
+ * Demonstrates the navigation icon component:
+ * - Different icon types (home, settings, logout, user, bell, message, file)
+ * - Size presets (xs, sm, md, lg, xl)
+ * - Accessible labeling
+ * - Used in navigation menus and buttons
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import NavIcon from "./NavIcon";
 

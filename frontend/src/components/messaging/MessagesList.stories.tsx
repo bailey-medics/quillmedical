@@ -1,3 +1,13 @@
+/**
+ * MessagesList Component Stories
+ *
+ * Demonstrates the conversations list component:
+ * - List of patient conversations
+ * - Unread message indicators
+ * - Priority/status badges
+ * - Click to open conversation
+ * - Loading and empty states
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import MessagesList from "./MessagesList";
 import type { Conversation } from "@/pages/Messages";

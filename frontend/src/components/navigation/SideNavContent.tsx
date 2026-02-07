@@ -1,14 +1,37 @@
+/**
+ * Side Navigation Content Component
+ *
+ * Renders the actual navigation links and items for the side navigation.
+ * Includes Home, Settings, About, and Logout links with optional icons.
+ * Separated from SideNav to allow reuse in drawer/desktop contexts.
+ */
+
 import { NavLink, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import NavIcon from "../icons/NavIcon";
 
+/**
+ * SideNavContent Props
+ */
 type Props = {
+  /** Called after navigation (to close drawer on mobile) */
   onNavigate?: () => void;
+  /** Whether to display icons next to labels */
   showIcons?: boolean;
+  /** Font size for navigation labels (default: 20px) */
   fontSize?: number;
 };
 
+/**
+ * Side Navigation Content
+ *
+ * Renders navigation link items with optional icons. Handles navigation
+ * via React Router and logout functionality via AuthContext.
+ *
+ * @param props - Component props
+ * @returns Navigation links stack
+ */
 export default function SideNavContent({
   onNavigate,
   showIcons = false,

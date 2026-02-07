@@ -1,13 +1,52 @@
-import { Alert, Badge, Box, Button, Group, Text, TextInput, Title } from "@mantine/core";
+/**
+ * Messaging Triage Payment Component
+ *
+ * Complex demonstration component showing full messaging workflow with:
+ * - Patient messaging interface
+ * - Administrator triage controls
+ * - Clinician assignment
+ * - Time estimation and quotes
+ * - Payment calculation
+ * - State transitions (NEW → ADMIN_REVIEW → ASSIGNED → QUOTED → etc.)
+ *
+ * Used in Storybook to demonstrate complete messaging and billing workflow.
+ */
+
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Group,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useState } from "react";
 import Messaging, { type Message } from "./Messaging";
 
+/**
+ * MessagingTriagePayment Props
+ */
 type Props = {
+  /** Patient identifier */
   patientId?: string;
+  /** Initial messages for conversation */
   initialMessages?: Message[];
-  perHourRateCents?: number; // clinic hourly rate in cents
+  /** Clinic hourly rate in cents (default: 12000 = $120/hour) */
+  perHourRateCents?: number;
 };
 
+/**
+ * Messaging Triage Payment
+ *
+ * Demonstrates complete messaging workflow from patient inquiry through
+ * triage, assignment, time estimation, quote generation, and payment.
+ * Shows role-based UI (patient, admin, clinician views).
+ *
+ * @param props - Component props
+ * @returns Interactive messaging workflow demo
+ */
 export default function MessagingTriagePayment({
   patientId = "patient-1",
   initialMessages = [],
@@ -24,7 +63,9 @@ export default function MessagingTriagePayment({
     },
   ]);
 
-  const [role, setRole] = useState<"patient" | "admin" | "clinician">("patient");
+  const [role, setRole] = useState<"patient" | "admin" | "clinician">(
+    "patient",
+  );
   const [input, setInput] = useState("");
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
 
@@ -232,8 +273,14 @@ export default function MessagingTriagePayment({
               Offer: {offer.minutes} minutes —{" "}
               <strong>${(offer.priceCents / 100).toFixed(2)}</strong>
               <Group mt={8}>
-                <Button onClick={patientAcceptOffer}>Accept & Pay (simulate)</Button>
-                <Button variant="outline" color="red" onClick={patientDeclineOffer}>
+                <Button onClick={patientAcceptOffer}>
+                  Accept & Pay (simulate)
+                </Button>
+                <Button
+                  variant="outline"
+                  color="red"
+                  onClick={patientDeclineOffer}
+                >
                   Decline
                 </Button>
               </Group>

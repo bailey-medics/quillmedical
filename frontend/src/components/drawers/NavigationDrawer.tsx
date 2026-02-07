@@ -1,14 +1,42 @@
+/**
+ * Navigation Drawer Component
+ *
+ * Mobile slide-out navigation drawer with overlay backdrop. Displays
+ * navigation content in a panel that slides in from the left side.
+ * Includes focus trap for accessibility.
+ */
+
 // src/components/navigation/InlineDrawer.tsx
 import { FocusTrap, Overlay, Paper } from "@mantine/core";
 
+/**
+ * NavigationDrawer Props
+ */
 type Props = {
+  /** Whether the drawer is currently open */
   opened: boolean;
+  /** Callback when user closes drawer (clicks overlay or navigates) */
   onClose: () => void;
+  /** Width of the drawer panel in pixels (default: 260) */
   width?: number;
-  topOffset?: number; // e.g. header height
+  /** Offset from top to account for header height (default: 0) */
+  topOffset?: number;
+  /** Navigation content to render inside drawer */
   children: React.ReactNode;
 };
 
+/**
+ * Navigation Drawer
+ *
+ * Renders slide-out navigation drawer for mobile with:
+ * - Animated slide-in from left
+ * - Semi-transparent backdrop overlay
+ * - Focus trap to keep keyboard navigation within drawer
+ * - Click-outside-to-close functionality
+ *
+ * @param props - Component props
+ * @returns Navigation drawer with overlay
+ */
 export default function NavigationDrawer({
   opened,
   onClose,

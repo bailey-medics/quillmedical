@@ -1,8 +1,32 @@
+/**
+ * Registration Page Module
+ *
+ * User registration page for creating new accounts. Validates password
+ * confirmation, submits registration data to backend, and redirects to
+ * login page on success.
+ */
+
 import { api } from "@/lib/api";
-import { Button, Paper, PasswordInput, Stack, TextInput, Title } from "@mantine/core";
+import {
+  Button,
+  Paper,
+  PasswordInput,
+  Stack,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Registration Page
+ *
+ * Provides account registration form with username, email, and password fields.
+ * Validates password confirmation locally before submitting to backend.
+ * Displays error messages for validation failures or backend errors.
+ *
+ * @returns Registration form page component
+ */
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

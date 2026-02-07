@@ -1,5 +1,14 @@
+/**
+ * Demo Patients Data
+ *
+ * Sample patient records for use in patient list stories and testing.
+ * Provides realistic patient demographics with various ages, genders, and
+ * NHS numbers for demonstrating patient list functionality.
+ */
+
 import type { Patient } from "@/domains/patient";
 
+/** Array of sample patient records for demo purposes */
 export const demoPatientsList: Patient[] = [
   {
     id: "p1",

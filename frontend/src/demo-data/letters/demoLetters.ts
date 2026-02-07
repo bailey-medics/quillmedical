@@ -1,5 +1,13 @@
+/**
+ * Demo Letters Data
+ *
+ * Sample clinical letters for use in Storybook stories and component testing.
+ * Provides realistic letter data with various subjects, authors, and dates.
+ */
+
 import type { Letter } from "@/components/letters/Letters";
 
+/** Array of sample clinical letters for demo purposes */
 export const sampleLetters: Letter[] = [
   {
     id: "l1",

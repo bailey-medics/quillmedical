@@ -1,26 +1,64 @@
+/**
+ * Letters List Component Module
+ *
+ * Displays a list of clinical letters with sender information, subject,
+ * and preview snippets. Provides loading state and responsive layout
+ * for mobile/desktop viewing.
+ */
+
 import { Skeleton, Text, Title, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 
+/**
+ * Letter
+ *
+ * Represents a clinical letter in the list view.
+ */
 export type Letter = {
+  /** Unique letter identifier */
   id: string;
+  /** Letter subject/title */
   subject: string;
-  date?: string; // ISO or display
+  /** Letter date (ISO string or display format) */
+  date?: string;
+  /** Sender department or full name */
   from?: string;
+  /** Sender's given name (for profile pic) */
   fromGivenName?: string;
+  /** Sender's family name (for profile pic) */
   fromFamilyName?: string;
+  /** Gradient color index for sender avatar */
   gradientIndex?: number;
+  /** Letter content preview/snippet */
   snippet?: string;
 };
 
+/**
+ * Letters Props
+ */
 type Props = {
+  /** Array of letters to display */
   letters?: Letter[];
+  /** Whether letters are currently loading */
   isLoading?: boolean;
+  /** Callback when letter is clicked to open detail view */
   onOpen?: (id: string) => void;
+  /** Optional child content (e.g., custom empty state) */
   children?: ReactNode;
 };
 
+/**
+ * Letters List
+ *
+ * Renders list of clinical letters with sender avatars, subject lines,
+ * and preview snippets. Shows loading skeletons while fetching data.
+ * Responsive layout adapts to screen size.
+ *
+ * @param props - Component props
+ * @returns Letters list component
+ */
 export default function Letters({
   letters = [],
   isLoading = false,

@@ -1,14 +1,35 @@
+/**
+ * Side Navigation Component
+ *
+ * Primary navigation panel with optional search field and navigation items.
+ * Used in main layout sidebar and mobile navigation drawer.
+ */
+
 import { Divider, Stack, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import SideNavContent from "./SideNavContent";
 
+/**
+ * SideNav Props
+ */
 type Props = {
+  /** Whether to show the search input field at the top */
   showSearch: boolean;
   /** Called after a nav item is chosen (use to close mobile overlay) */
   onNavigate?: () => void;
+  /** Whether to show icons next to navigation labels */
   showIcons?: boolean;
 };
 
+/**
+ * Side Navigation
+ *
+ * Renders navigation menu with optional search field and navigation items.
+ * Provides aria-label for accessibility.
+ *
+ * @param props - Component props
+ * @returns Side navigation panel
+ */
 export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
   return (
     <nav

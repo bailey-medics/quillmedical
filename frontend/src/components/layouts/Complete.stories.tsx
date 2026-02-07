@@ -1,3 +1,13 @@
+/**
+ * Complete Layout Component Stories
+ *
+ * Demonstrates complete page layouts with all components integrated:
+ * - Messaging interface within main layout
+ * - Patient demographics display
+ * - Patient list with navigation
+ * - Letter viewing with markdown rendering
+ * - Real-world application page examples
+ */
 import MarkdownView from "@/components/markdown/MarkdownView";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import DemographicsDetailed from "@/components/demographics/DemographicsDetailed";
