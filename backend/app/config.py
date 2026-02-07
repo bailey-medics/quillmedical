@@ -176,4 +176,4 @@ class Settings(BaseSettings):
         )
 
 
-settings = Settings()
+settings = Settings(_env_file=".env")  # type: ignore[call-arg]

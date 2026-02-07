@@ -16,7 +16,7 @@ Example:
 import os
 
 from fastapi import APIRouter, HTTPException
-from pywebpush import WebPushException, webpush
+from pywebpush import WebPushException, webpush  # type: ignore[import-untyped]
 
 from .push import SUBSCRIPTIONS
 
@@ -27,7 +27,7 @@ VAPID_CLAIM = os.environ.get("COMPANY_EMAIL") or "mailto:admin@example.com"
 
 
 @router.post("/send-test")
-def send_test():
+def send_test() -> dict[str, bool | list[str]]:
     """Send test push notification to all subscribed clients.
 
     Attempts to send a test notification to all subscriptions. If a subscription

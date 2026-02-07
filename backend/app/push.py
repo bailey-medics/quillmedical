@@ -53,7 +53,7 @@ class PushSubscription(BaseModel):
 
 
 @router.post("/subscribe")
-def subscribe(sub: PushSubscription):
+def subscribe(sub: PushSubscription) -> dict[str, bool | int]:
     """Register a new push notification subscription.
 
     De-duplicates by endpoint URL to prevent duplicate subscriptions.

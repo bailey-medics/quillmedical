@@ -6,14 +6,21 @@ Provides utility functions for creating and reading FHIR resources.
 """
 
 import uuid
+from typing import Any
 
-from fhirclient import client
-from fhirclient.models.address import Address
-from fhirclient.models.contactpoint import ContactPoint
-from fhirclient.models.extension import Extension
-from fhirclient.models.fhirdate import FHIRDate
-from fhirclient.models.humanname import HumanName
-from fhirclient.models.patient import Patient
+from fhirclient import client  # type: ignore[import-untyped]
+from fhirclient.models.address import Address  # type: ignore[import-untyped]
+from fhirclient.models.contactpoint import (
+    ContactPoint,  # type: ignore[import-untyped]
+)
+from fhirclient.models.extension import (
+    Extension,  # type: ignore[import-untyped]
+)
+from fhirclient.models.fhirdate import FHIRDate  # type: ignore[import-untyped]
+from fhirclient.models.humanname import (
+    HumanName,  # type: ignore[import-untyped]
+)
+from fhirclient.models.patient import Patient  # type: ignore[import-untyped]
 
 from app.config import settings
 from app.utils.colors import generate_avatar_gradient_index
@@ -74,7 +81,7 @@ def create_fhir_patient(
     nhs_number: str | None = None,
     mrn: str | None = None,
     patient_id: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create a new FHIR Patient resource.
 
     Args:
@@ -123,7 +130,9 @@ def create_fhir_patient(
 
     # NHS Number (UK national identifier)
     if nhs_number:
-        from fhirclient.models.identifier import Identifier
+        from fhirclient.models.identifier import (
+            Identifier,  # type: ignore[import-untyped]
+        )
 
         nhs_id = Identifier()
         nhs_id.system = "https://fhir.nhs.uk/Id/nhs-number"
@@ -151,10 +160,10 @@ def create_fhir_patient(
     fhir.server.put_json(f"Patient/{patient_uuid}", patient.as_json())
 
     # Return the patient data with the UUID
-    return patient.as_json()
+    return patient.as_json()  # type: ignore[no-any-return]
 
 
-def read_fhir_patient(patient_id: str) -> dict | None:
+def read_fhir_patient(patient_id: str) -> dict[str, Any] | None:
     """Read a FHIR Patient resource by ID.
 
     Args:
@@ -167,7 +176,7 @@ def read_fhir_patient(patient_id: str) -> dict | None:
 
     try:
         patient = Patient.read(patient_id, fhir.server)
-        return patient.as_json()
+        return patient.as_json()  # type: ignore[no-any-return]
     except Exception:
         return None
 
@@ -195,7 +204,7 @@ def delete_fhir_patient(patient_id: str) -> bool:
         return False
 
 
-def list_fhir_patients() -> list[dict]:
+def list_fhir_patients() -> list[dict[str, Any]]:
     """List all FHIR Patient resources.
 
     Returns:
@@ -212,7 +221,9 @@ def list_fhir_patients() -> list[dict]:
         return []
 
 
-def update_fhir_patient(patient_id: str, demographics: dict) -> dict | None:
+def update_fhir_patient(
+    patient_id: str, demographics: dict[str, Any]
+) -> dict[str, Any] | None:
     """Update a FHIR Patient resource with demographics data.
 
     Args:
@@ -301,6 +312,6 @@ def update_fhir_patient(patient_id: str, demographics: dict) -> dict | None:
         # Save updates
         patient.update(fhir.server)
 
-        return patient.as_json()
+        return patient.as_json()  # type: ignore[no-any-return]
     except Exception:
         return None

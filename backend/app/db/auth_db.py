@@ -4,8 +4,10 @@ This module provides SQLAlchemy engine and session management for the
 authentication database (user accounts, roles, sessions).
 """
 
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
 
@@ -33,7 +35,7 @@ class AuthBase(DeclarativeBase):
     pass
 
 
-def get_auth_db():
+def get_auth_db() -> Generator[Session]:
     """FastAPI dependency to provide auth database sessions.
 
     Yields:

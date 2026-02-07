@@ -243,9 +243,9 @@ class TestGetAuthHeader:
         """Test that Basic Auth header is correctly generated."""
         import base64
 
-        mock_settings.EHRBASE_USER = "test_user"
-        mock_settings.EHRBASE_PASSWORD = MagicMock()
-        mock_settings.EHRBASE_PASSWORD.get_secret_value.return_value = (
+        mock_settings.EHRBASE_API_USER = "test_user"
+        mock_settings.EHRBASE_API_PASSWORD = MagicMock()
+        mock_settings.EHRBASE_API_PASSWORD.get_secret_value.return_value = (
             "test_pass"
         )
 
