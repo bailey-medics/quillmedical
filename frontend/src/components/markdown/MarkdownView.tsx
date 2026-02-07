@@ -1,18 +1,38 @@
+/**
+ * Markdown View Component Module
+ *
+ * Safe markdown-to-HTML renderer with XSS protection using DOMPurify.
+ * Supports rich text formatting (bold, italic, lists, links, code blocks)
+ * with strict allowlist of HTML tags. Used for clinical letters and messages.
+ */
+
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import DOMPurify from "dompurify";
 import { Skeleton, Stack } from "@mantine/core";
 
+/**
+ * MarkdownView Props
+ */
 type Props = {
+  /** Markdown source text to render */
   source: string;
-  asPlainText?: boolean; // if true, return plain text instead of HTML
+  /** If true, return plain text instead of HTML */
+  asPlainText?: boolean;
+  /** CSS class name for styling */
   className?: string;
+  /** Callback when link is clicked (for custom handling) */
   onLinkClick?: (href: string) => void;
+  /** Optional child content */
   children?: ReactNode;
+  /** Whether markdown is currently loading */
   isLoading?: boolean;
 };
 
-// Narrow, explicit allowlist for rendered HTML
+/**
+ * Allowed HTML tags for markdown rendering.
+ * Narrow, explicit allowlist for security (XSS protection).
+ */
 const ALLOWED_TAGS = [
   "a",
   "strong",

@@ -1,3 +1,14 @@
+/**
+ * National Number Component Module
+ *
+ * Displays national health identifiers (NHS numbers, etc.) with appropriate
+ * formatting and labeling based on FHIR system URL. Automatically formats
+ * NHS numbers to standard 3-3-4 digit pattern.
+ */
+
+/**
+ * NationalNumber Props
+ */
 type Props = {
   /** National identifier value */
   nationalNumber: string;
@@ -7,6 +18,9 @@ type Props = {
 
 /**
  * Format NHS number in standard format: 123 456 7890
+ *
+ * @param number - Raw NHS number string (may contain spaces/non-digits)
+ * @returns Formatted NHS number (3-3-4 pattern) or original if not 10 digits
  */
 function formatNHSNumber(number: string): string {
   // Remove any existing spaces or non-digits

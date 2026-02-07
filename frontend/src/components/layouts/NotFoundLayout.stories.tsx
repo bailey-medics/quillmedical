@@ -1,3 +1,12 @@
+/**
+ * NotFoundLayout Component Stories
+ *
+ * Demonstrates the 404 error page layout:
+ * - User-friendly error message
+ * - Navigation back to home
+ * - Maintains application header/footer
+ * - Helpful suggestions for users
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import NotFoundLayout from "./NotFoundLayout";
 

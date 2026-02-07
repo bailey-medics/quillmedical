@@ -1,3 +1,13 @@
+/**
+ * Demographics Component Stories
+ *
+ * Demonstrates the compact patient demographics summary:
+ * - Patient name and age
+ * - Gender icon and label
+ * - Date of birth formatting
+ * - NHS number display
+ * - Used in patient cards and summaries
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import Demographics from "./Demographics";
 import type { Patient } from "@/domains/patient";

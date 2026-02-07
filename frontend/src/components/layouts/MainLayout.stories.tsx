@@ -1,3 +1,13 @@
+/**
+ * MainLayout Component Stories
+ *
+ * Demonstrates the main application layout structure:
+ * - Top navigation ribbon
+ * - Side navigation panel
+ * - Main content area
+ * - Mobile responsive layout
+ * - Navigation drawer behavior
+ */
 // src/components/layouts/MainLayout.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
 // ...existing imports...

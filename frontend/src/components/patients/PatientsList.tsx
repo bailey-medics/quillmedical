@@ -1,3 +1,11 @@
+/**
+ * Patients List Component
+ *
+ * Displays a list of patients with profile pictures and demographics.
+ * Responsive layout adapts to mobile/desktop screen sizes. Provides
+ * loading skeleton state and click handlers for patient selection.
+ */
+
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import Demographics from "@/components/demographics/Demographics";
@@ -10,12 +18,28 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
+/**
+ * PatientsList Props
+ */
 type Props = {
+  /** Array of patients to display */
   patients: Patient[];
+  /** Whether patient data is currently loading */
   isLoading?: boolean;
+  /** Callback when patient is clicked/selected */
   onSelect?: (p: Patient) => void;
 };
 
+/**
+ * Patients List
+ *
+ * Renders list of patient cards with profile pictures and demographics.
+ * Shows skeleton loaders while loading. Adapts avatar size based on
+ * screen width (sm/lg).
+ *
+ * @param props - Component props
+ * @returns Patient list component
+ */
 export default function PatientsList({
   patients,
   isLoading = false,

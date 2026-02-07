@@ -1,3 +1,11 @@
+/**
+ * Top Ribbon Component Module
+ *
+ * Top navigation bar displaying Quill branding, patient information,
+ * and mobile hamburger menu. Adapts layout based on screen width
+ * and patient data loading state.
+ */
+
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
 import SearchField from "@/components/search/SearchFields";
@@ -6,16 +14,27 @@ import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";
 import classes from "./TopRibbon.module.scss";
 
+/**
+ * TopRibbon Props
+ */
 type Props = {
+  /** Callback when hamburger menu is clicked (opens drawer) */
   onBurgerClick: () => void;
+  /** Currently selected patient (null if none) */
   patient: Patient | null;
+  /** Whether patient data is currently loading */
   isLoading: boolean;
   /** Whether the nav drawer/rail is currently open (for a11y) */
   navOpen?: boolean;
+  /** Whether to use narrow/mobile layout */
   isNarrow?: boolean;
+  /** Font size for patient details (default: 16) */
   fontSize?: number;
 };
 
+/**
+ * Skeleton placeholder shown while patient data loads
+ */
 function RibbonSkeleton() {
   return (
     <Group gap="xs" wrap="nowrap" w="100%">

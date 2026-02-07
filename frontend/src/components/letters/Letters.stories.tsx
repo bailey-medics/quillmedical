@@ -1,5 +1,15 @@
 import { sampleLetters } from "@/demo-data/letters/demoLetters";
 import { MantineProvider } from "@mantine/core";
+/**
+ * Letters Component Stories
+ *
+ * Demonstrates the clinical letters list view:
+ * - List of letters for a patient
+ * - Letter status indicators (draft, sent, acknowledged)
+ * - Date formatting and sorting
+ * - Click to open letter detail view
+ * - Empty state when no letters exist
+ */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import Letters from "./Letters";
 

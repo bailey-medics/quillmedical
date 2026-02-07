@@ -1,8 +1,26 @@
+/**
+ * Search Field Component
+ *
+ * Collapsible search input that toggles between icon button and full
+ * text input. Provides animated expand/collapse with auto-focus.
+ */
+
 import { useEffect, useRef, useState } from "react";
 
 import { ActionIcon, TextInput } from "@mantine/core";
 import { IconSearch, IconX } from "@tabler/icons-react";
 
+/**
+ * Search Field
+ *
+ * Collapsible search input component:
+ * - Collapsed: Shows magnifying glass icon button
+ * - Expanded: Shows full text input with close button
+ * - Auto-focuses input when expanded
+ * - Closes on blur (can be disabled if needed)
+ *
+ * @returns Collapsible search field component
+ */
 export default function SearchField() {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

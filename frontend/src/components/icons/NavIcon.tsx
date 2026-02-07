@@ -1,3 +1,11 @@
+/**
+ * Navigation Icon Component Module
+ *
+ * Provides consistent styled navigation icons using Tabler Icons.
+ * Supports multiple icon types (home, settings, logout, user, bell,
+ * message, file) with configurable sizes (xs, sm, md, lg, xl).
+ */
+
 import { ThemeIcon } from "@mantine/core";
 import {
   IconHome2,
@@ -9,6 +17,7 @@ import {
   IconFileText,
 } from "@tabler/icons-react";
 
+/** Available icon types */
 type IconName =
   | "home"
   | "settings"
@@ -18,13 +27,20 @@ type IconName =
   | "message"
   | "file";
 
+/** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
 
+/**
+ * NavIcon Props
+ */
 type NavIconProps = {
+  /** Icon type to display */
   name: IconName;
+  /** Icon size preset (default: "md") */
   size?: IconSize;
 };
 
+/** Map icon names to Tabler icon components */
 const iconMap = {
   home: IconHome2,
   settings: IconSettings,

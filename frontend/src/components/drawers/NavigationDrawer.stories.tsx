@@ -1,3 +1,13 @@
+/**
+ * NavigationDrawer Component Stories
+ *
+ * Demonstrates the mobile navigation drawer:
+ * - Slide-out panel with navigation items
+ * - Open/close animations
+ * - Overlay backdrop
+ * - Touch-friendly navigation on mobile
+ * - Auto-closes on navigation selection
+ */
 // src/components/navigation/InlineDrawer.stories.tsx
 import { Button, Group, Text } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";

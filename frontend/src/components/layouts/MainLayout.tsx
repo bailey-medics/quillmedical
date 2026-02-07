@@ -1,3 +1,11 @@
+/**
+ * Main Layout Component Module
+ *
+ * Primary application layout structure providing top navigation ribbon,
+ * side navigation panel (desktop), navigation drawer (mobile), and main
+ * content area. Responsive layout that adapts to screen size.
+ */
+
 import type { Patient } from "@/domains/patient";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
@@ -6,12 +14,30 @@ import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 
+/**
+ * MainLayout Props
+ */
 type Props = {
+  /** Currently selected patient (displayed in ribbon) */
   patient: Patient | null;
+  /** Whether patient data is loading */
   isLoading?: boolean;
+  /** Page content to render in main area */
   children?: ReactNode;
 };
 
+/**
+ * Main Layout
+ *
+ * Renders complete application layout with responsive behavior:
+ * - Desktop: Fixed side navigation panel
+ * - Mobile: Hamburger menu with slide-out drawer
+ * - Top ribbon always visible with patient info
+ * - Main content area scrollable
+ *
+ * @param props - Component props
+ * @returns Main application layout
+ */
 export default function MainLayout({
   patient,
   isLoading = false,
