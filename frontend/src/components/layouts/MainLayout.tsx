@@ -2,7 +2,7 @@ import type { Patient } from "@/domains/patient";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
-import { AppShell, Skeleton, Stack, useMantineTheme } from "@mantine/core";
+import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 
@@ -21,12 +21,28 @@ export default function MainLayout({
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
-  const HEADER_H = 60;
   const DRAWER_W = 260;
 
   return (
-    <AppShell header={{ height: HEADER_H }} padding={0} withBorder={false}>
-      <AppShell.Header>
+    <Flex
+      direction="column"
+      h="100dvh"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <Box
+        component="header"
+        pos="sticky"
+        top={0}
+        bg="white"
+        style={{
+          zIndex: 100,
+          borderBottom: `1px solid ${theme.colors.gray[2]}`,
+          flexShrink: 0,
+        }}
+      >
         <TopRibbon
           onBurgerClick={toggle}
           isLoading={isLoading}
@@ -34,18 +50,13 @@ export default function MainLayout({
           navOpen={opened}
           isNarrow={isSm}
         />
-      </AppShell.Header>
+      </Box>
 
-      <AppShell.Main
-        style={{
-          height: `calc(100vh - ${HEADER_H}px)`,
-          overflow: "hidden",
-        }}
-      >
+      <Flex flex={1} style={{ overflow: "hidden" }}>
         <NavigationDrawer
           opened={opened}
           onClose={close}
-          topOffset={HEADER_H}
+          topOffset={0}
           width={DRAWER_W}
         >
           <div style={{ width: DRAWER_W }}>
@@ -53,28 +64,21 @@ export default function MainLayout({
           </div>
         </NavigationDrawer>
 
-        <div style={{ display: "flex", height: "100%" }}>
+        <Flex style={{ flex: 1, height: "100%" }}>
           {!isSm && (
-            <div
+            <Box
+              component="aside"
               style={{
-                borderRight: "1px solid #e0e0e0",
+                borderRight: `1px solid ${theme.colors.gray[2]}`,
                 height: "100%",
                 overflowY: "auto",
                 flexShrink: 0,
               }}
             >
               <SideNav showSearch={false} showIcons={true} />
-            </div>
+            </Box>
           )}
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              paddingLeft: "1rem",
-              paddingRight: "1rem",
-              paddingBottom: "1rem",
-            }}
-          >
+          <Box component="main" flex={1} style={{ overflowY: "auto" }} p="md">
             {isLoading ? (
               <Stack gap="md">
                 <Skeleton height={50} radius="md" />
@@ -85,9 +89,9 @@ export default function MainLayout({
             ) : (
               children
             )}
-          </div>
-        </div>
-      </AppShell.Main>
-    </AppShell>
+          </Box>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }

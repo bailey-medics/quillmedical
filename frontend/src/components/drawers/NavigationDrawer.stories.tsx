@@ -19,7 +19,7 @@ const meta: Meta<typeof NavigationDrawer> = {
         <div
           style={{
             position: "relative",
-            height: "70vh",
+            height: "70dvh",
             background:
               "repeating-linear-gradient(45deg,#f8fafc,#f8fafc 10px,#f1f5f9 10px,#f1f5f9 20px)",
           }}
@@ -84,10 +84,16 @@ export const Interactive: Story = {
     return (
       <>
         <Group mb="sm">
-          <Button onClick={() => setOpen((v) => !v)}>{open ? "Close" : "Open"} drawer</Button>
+          <Button onClick={() => setOpen((v) => !v)}>
+            {open ? "Close" : "Open"} drawer
+          </Button>
         </Group>
 
-        <NavigationDrawer {...args} opened={open} onClose={() => setOpen(false)}>
+        <NavigationDrawer
+          {...args}
+          opened={open}
+          onClose={() => setOpen(false)}
+        >
           <DrawerContent />
         </NavigationDrawer>
       </>

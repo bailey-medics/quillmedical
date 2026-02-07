@@ -16,7 +16,7 @@ createRoot(document.getElementById("root")!).render(
     <Stack
       align="center"
       justify="center"
-      style={{ minHeight: "70vh", padding: "2rem", margin: "0 auto" }}
+      style={{ minHeight: "70dvh", padding: "2rem", margin: "0 auto" }}
     >
       <QuillLogo height={128} />
       <Title order={1}>Welcome to Quill Medical</Title>
