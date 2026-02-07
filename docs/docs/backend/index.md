@@ -69,15 +69,12 @@ The Quill Medical backend is the application server that handles all the busines
     │      │  (OpenEHR)  │    │   Server    │
     │      │   (Java)    │    │   (Java)    │
     │      └──────┬──────┘    └──────┬──────┘
-    │    ┌────────┘                  │
-    │    │    ┌──────────────────────┘
-    ↓    ↓    ↓
-┌──────────────────┐
-│                  │
-│   PostgreSQL     │
-│  (Shared DB)     │
-│                  │
-└──────────────────┘
+    │             │                  │
+    ↓             ↓                  ↓
+┌──────────┐ ┌──────────┐    ┌──────────┐
+│PostgreSQL│ │PostgreSQL│    │PostgreSQL│
+│  (Auth)  │ │(EHRbase) │    │  (FHIR)  │
+└──────────┘ └──────────┘    └──────────┘
 ```
 
 ## How Data Flows Through the System
