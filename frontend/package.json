@@ -21,6 +21,7 @@
     "stylelint": "stylelint \"*/*.{scss,css}\" --allow-empty-input",
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
+    "typecheck:all": "tsc --project tsconfig.check.json --noEmit",
     "unit-test": "vitest --environment jsdom",
     "unit-test:run": "vitest --environment jsdom --run --watch=false",
     "unit-test:coverage": "vitest --environment jsdom --coverage"

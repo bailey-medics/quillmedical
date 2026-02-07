@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         task: [eslint, prettier, stylelint, typecheck, "unit-test:run", "storybook:build"]
     steps:
@@ -155,6 +155,7 @@ jobs:
             prettier) yarn prettier ;;
             stylelint) yarn stylelint ;;
             typecheck) yarn typecheck ;;
+            "typecheck:all") yarn typecheck:all ;;
             "unit-test:run") yarn unit-test:run ;;
             "storybook:build") yarn storybook:build ;;
           esac
