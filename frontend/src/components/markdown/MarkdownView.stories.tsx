@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
-  title: "MarkdownView",
+  title: "Markdown/MarkdownView",
   component: MarkdownView,
 };
 

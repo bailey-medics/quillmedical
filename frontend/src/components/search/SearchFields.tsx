@@ -28,7 +28,11 @@ export default function SearchField() {
       onBlur={() => setOpen(false)}
     />
   ) : (
-    <ActionIcon aria-label="Open search" onClick={() => setOpen(true)} variant="transparent">
+    <ActionIcon
+      aria-label="Open search"
+      onClick={() => setOpen(true)}
+      variant="transparent"
+    >
       <IconSearch size={30} stroke={2.5} color="#290661" />
     </ActionIcon>
   );

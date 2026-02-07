@@ -27,6 +27,7 @@ repos:
     hooks:
       - id: cspell
         name: cspell (spelling checker)
+        exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$'
         args:
           - --no-progress
           # - --no-summary

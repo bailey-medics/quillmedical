@@ -4,7 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import Letters from "./Letters";
 
 const meta: Meta<typeof Letters> = {
-  title: "Letters",
+  title: "Letters/Letters",
   component: Letters,
 };
 

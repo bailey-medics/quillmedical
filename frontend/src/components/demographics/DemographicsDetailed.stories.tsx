@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import DemographicsDetailed from "./DemographicsDetailed";
 
 const meta: Meta<typeof DemographicsDetailed> = {
-  title: "DemographicsDetailed",
+  title: "Demographics/DemographicsDetailed",
   component: DemographicsDetailed,
   tags: ["autodocs"],
 };

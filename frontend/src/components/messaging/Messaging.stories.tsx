@@ -4,7 +4,7 @@ import { useState } from "react";
 import Messaging, { type Message } from "./Messaging";
 
 const meta: Meta<typeof Messaging> = {
-  title: "Messaging",
+  title: "Messaging/Messaging",
   component: Messaging,
 };
 

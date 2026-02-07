@@ -3,7 +3,7 @@ import Demographics from "./Demographics";
 import type { Patient } from "@/domains/patient";
 
 const meta = {
-  title: "Demographics",
+  title: "Demographics/Demographics",
   component: Demographics,
   parameters: {
     layout: "padded",

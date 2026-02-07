@@ -36,7 +36,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
 
   if (state.status === "loading") {
     return (
-      <Center mih="60vh">
+      <Center mih="60dvh">
         <Loader />
       </Center>
     );

@@ -1,9 +1,9 @@
 // src/components/SearchField.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import SearchField from "./SearchField";
+import SearchField from "./SearchFields";
 
 const meta: Meta<typeof SearchField> = {
-  title: "SearchField",
+  title: "Search/SearchField",
   component: SearchField,
   parameters: {
     layout: "centered",
@@ -21,7 +21,9 @@ export const Expanded: Story = {
   render: () => <SearchField />,
   play: async ({ canvasElement }) => {
     // simulate a click so it shows expanded state
-    const button = canvasElement.querySelector('button[aria-label="Open search"]');
+    const button = canvasElement.querySelector(
+      'button[aria-label="Open search"]',
+    );
     if (button) (button as HTMLButtonElement).click();
   },
 };

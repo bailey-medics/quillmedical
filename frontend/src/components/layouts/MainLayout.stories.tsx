@@ -15,7 +15,7 @@ const Content = () => (
 // ...existing code...
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layout-MainLayout",
+  title: "Layouts/Layout-MainLayout",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   // Default child for most stories
