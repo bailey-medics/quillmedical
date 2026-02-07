@@ -10,8 +10,7 @@ export type Letter = {
   from?: string;
   fromGivenName?: string;
   fromFamilyName?: string;
-  colorFrom?: string;
-  colorTo?: string;
+  gradientIndex?: number;
   snippet?: string;
 };
 
@@ -83,8 +82,7 @@ export default function Letters({
               size={avatarSize}
               givenName={l.fromGivenName}
               familyName={l.fromFamilyName}
-              colorFrom={l.colorFrom}
-              colorTo={l.colorTo}
+              gradientIndex={l.gradientIndex}
               showGeneric={!l.fromGivenName && !l.fromFamilyName}
             />
             <div style={{ flex: 1, marginLeft: 12 }}>

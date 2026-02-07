@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import Gender from "./Gender";
+import type { GenderValue } from "./Gender.types";
 
 describe("Gender Component", () => {
   describe("Full format", () => {
@@ -35,7 +36,7 @@ describe("Gender Component", () => {
     });
 
     it("renders unspecified for empty string", () => {
-      renderWithMantine(<Gender gender="" />);
+      renderWithMantine(<Gender gender={"" as unknown as GenderValue} />);
       expect(screen.getByText("Unspecified")).toBeInTheDocument();
     });
   });
@@ -64,17 +65,22 @@ describe("Gender Component", () => {
 
   describe("Case insensitivity", () => {
     it("handles uppercase MALE", () => {
-      renderWithMantine(<Gender gender="MALE" />);
+      renderWithMantine(<Gender gender={"MALE" as unknown as GenderValue} />);
       expect(screen.getByText("Male")).toBeInTheDocument();
     });
 
     it("handles mixed case FeMaLe", () => {
-      renderWithMantine(<Gender gender="FeMaLe" />);
+      renderWithMantine(<Gender gender={"FeMaLe" as unknown as GenderValue} />);
       expect(screen.getByText("Female")).toBeInTheDocument();
     });
 
     it("handles uppercase in abbreviated format", () => {
-      renderWithMantine(<Gender gender="MALE" format="abbreviated" />);
+      renderWithMantine(
+        <Gender
+          gender={"MALE" as unknown as GenderValue}
+          format="abbreviated"
+        />,
+      );
       expect(screen.getByText("M")).toBeInTheDocument();
     });
   });
