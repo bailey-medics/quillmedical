@@ -21,7 +21,8 @@ Architecture:
 - Push notifications: In-memory subscriptions (production should use database)
 """
 
-from typing import Any, cast
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 from fastapi import (
@@ -91,12 +92,13 @@ app.include_router(push_send_router)
 DEP_GET_SESSION = Depends(get_session)
 
 
-COOKIE_KW = dict(
-    httponly=True,
-    samesite="lax",
-    secure=settings.SECURE_COOKIES,
-    domain=settings.COOKIE_DOMAIN,
-)
+# Type the cookie kwargs properly to avoid mypy complaints
+COOKIE_KW: dict[str, Any] = {
+    "httponly": True,
+    "samesite": "lax",
+    "secure": settings.SECURE_COOKIES,
+    "domain": settings.COOKIE_DOMAIN,
+}
 
 
 def check_fhir_health() -> dict[str, bool | int | str]:
@@ -143,7 +145,7 @@ def check_ehrbase_health() -> dict[str, bool | int | str]:
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Check service availability on startup."""
     print("\n" + "=" * 60)
     print("Quill Medical Backend Starting...")
@@ -171,7 +173,9 @@ async def startup_event():
     print("=" * 60 + "\n")
 
 
-def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
+def set_auth_cookies(
+    response: Response, access: str, refresh: str, xsrf: str
+) -> None:
     """Set Authentication Cookies.
 
     Sets three HTTP cookies for authentication: access token (short-lived),
@@ -208,7 +212,7 @@ def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str):
     )
 
 
-def clear_auth_cookies(response: Response):
+def clear_auth_cookies(response: Response) -> None:
     """Clear Authentication Cookies.
 
     Removes all authentication cookies from the client browser by setting
@@ -232,7 +236,7 @@ def clear_auth_cookies(response: Response):
 
 
 @router.get("/health")
-def health_check():
+def health_check() -> dict[str, Any]:
     """Health Check Endpoint.
 
     Checks availability of all required services (FHIR, EHRbase).
@@ -299,7 +303,7 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
 DEP_CURRENT_USER = Depends(current_user)
 
 
-def require_roles(*need: str):
+def require_roles(*need: str) -> Callable[[Request, User], User]:
     """Create Role Authorization Dependency.
 
     Factory function that creates a FastAPI dependency to enforce role-based
@@ -320,7 +324,7 @@ def require_roles(*need: str):
         HTTPException: 403 Forbidden if user lacks any required role.
     """
 
-    def dep(request: Request, _u: User = DEP_CURRENT_USER):
+    def dep(request: Request, _u: User = DEP_CURRENT_USER) -> User:
         have = set(getattr(request.state, "roles", []))
         if not set(need).issubset(have):
             raise HTTPException(403, "Forbidden")
@@ -329,7 +333,7 @@ def require_roles(*need: str):
     return dep
 
 
-def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
+def require_csrf(request: Request, u: User = DEP_CURRENT_USER) -> User:
     """Validate CSRF Token.
 
     FastAPI dependency that validates CSRF tokens to protect against cross-site
@@ -359,7 +363,7 @@ def require_csrf(request: Request, u: User = DEP_CURRENT_USER):
         not header
         or not cookie
         or header != cookie
-        or not verify_csrf(cookie, cast(str, u.username))
+        or not verify_csrf(cookie, u.username)
     ):
         raise HTTPException(403, "CSRF failed")
     return u
@@ -372,7 +376,7 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 @router.post("/auth/login")
 def login(
     data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
-) -> dict:
+) -> dict[str, Any]:
     """User Login with Optional TOTP.
 
     Authenticates a user with username and password, optionally verifying a
@@ -406,9 +410,7 @@ def login(
         select(User).where(User.username == data.username.strip())
     )
 
-    if not user or not verify_password(
-        data.password, cast(str, user.password_hash)
-    ):
+    if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(400, "Invalid credentials")
 
     if getattr(user, "is_totp_enabled", False):
@@ -420,9 +422,7 @@ def login(
                     "error_code": "two_factor_required",
                 },
             )
-        if not verify_totp_code(
-            cast(str, user.totp_secret or ""), data.totp_code
-        ):
+        if not verify_totp_code(user.totp_secret or "", data.totp_code):
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -431,9 +431,9 @@ def login(
                 },
             )
     roles = [r.name for r in user.roles]
-    access = create_access_token(cast(str, user.username), roles)
-    refresh = create_refresh_token(cast(str, user.username))
-    xsrf = make_csrf(cast(str, user.username))
+    access = create_access_token(user.username, roles)
+    refresh = create_refresh_token(user.username)
+    xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
     return {
         "detail": "ok",
@@ -442,7 +442,9 @@ def login(
 
 
 @router.post("/auth/register")
-def register(payload: RegisterIn, db: Session = DEP_GET_SESSION):
+def register(
+    payload: RegisterIn, db: Session = DEP_GET_SESSION
+) -> dict[str, str]:
     """User Registration.
 
     Creates a new user account with username, email, and password. Performs
@@ -514,7 +516,9 @@ class TotpSetupOut(BaseModel):
 
 
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
-def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
+def totp_setup(
+    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
 
     Generates a new TOTP secret for the authenticated user (or reuses existing)
@@ -553,11 +557,11 @@ def totp_setup(u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION):
     db.commit()
     issuer = getattr(settings, "PROJECT_NAME", "Quill")
     uri = totp_provisioning_uri(
-        cast(str, u.totp_secret or ""),
-        cast(str, u.username),
+        u.totp_secret or "",
+        u.username,
         issuer=issuer,
     )
-    return {"provision_uri": uri}
+    return TotpSetupOut(provision_uri=uri)
 
 
 class TotpVerifyIn(BaseModel):
@@ -579,7 +583,7 @@ def totp_verify(
     payload: TotpVerifyIn,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-):
+) -> dict[str, str]:
     """Verify TOTP and Enable Two-Factor.
 
     Verifies the 6-digit TOTP code from the user's authenticator app and
@@ -615,7 +619,7 @@ def totp_verify(
             },
         )
     if not verify_totp_code(
-        cast(str, u.totp_secret or ""),
+        u.totp_secret or "",
         payload.code,
     ):
         raise HTTPException(
@@ -629,7 +633,9 @@ def totp_verify(
 
 
 @router.post("/auth/totp/disable")
-def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
+def totp_disable(
+    u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION
+) -> dict[str, str]:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
@@ -655,7 +661,7 @@ def totp_disable(u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION):
 
 
 @router.post("/auth/logout")
-def logout(response: Response, _u: User = DEP_CURRENT_USER):
+def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
     """User Logout.
 
     Logs out the current user by clearing all authentication cookies (access_token,
@@ -680,7 +686,7 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER):
 
 
 @router.get("/auth/me")
-def me(u: User = DEP_CURRENT_USER):
+def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
@@ -703,13 +709,14 @@ def me(u: User = DEP_CURRENT_USER):
         "username": u.username,
         "email": u.email,
         "roles": [r.name for r in u.roles],
+        "totp_enabled": u.is_totp_enabled,
     }
 
 
 @router.post("/auth/refresh")
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
-):
+) -> dict[str, str]:
     """Rotate Tokens and Issue New Access Token.
 
     Validates the refresh token from cookies and issues new access, refresh,
@@ -760,9 +767,9 @@ def refresh(
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
     roles = [r.name for r in user.roles]
-    new_access = create_access_token(cast(str, user.username), roles)
-    new_refresh = create_refresh_token(cast(str, user.username))  # rotate
-    xsrf = make_csrf(cast(str, user.username))
+    new_access = create_access_token(user.username, roles)
+    new_refresh = create_refresh_token(user.username)  # rotate
+    xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
     return {"detail": "refreshed"}
 
@@ -771,7 +778,7 @@ def refresh(
     "/patients/verify",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
-def create_patient_record(patient_id: str):
+def create_patient_record(patient_id: str) -> dict[str, str]:
     """Create or Verify Patient in FHIR.
 
     Verifies that a patient exists in the FHIR server before allowing clinical
@@ -806,7 +813,7 @@ def create_patient_record(patient_id: str):
 
 
 @router.get("/patients")
-def list_patients(u: User = DEP_CURRENT_USER):
+def list_patients(u: User = DEP_CURRENT_USER) -> dict[str, list[Any]]:
     """List All Patients from FHIR.
 
     Retrieves all patient demographics from the FHIR server. Returns FHIR R4
@@ -836,8 +843,8 @@ def list_patients(u: User = DEP_CURRENT_USER):
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
 def upsert_demographics(
-    patient_id: str, demographics: dict, u: User = DEP_CURRENT_USER
-):
+    patient_id: str, demographics: dict[str, Any], u: User = DEP_CURRENT_USER
+) -> dict[str, str | Any]:
     """Update Patient Demographics in FHIR.
 
     Updates patient demographic information in the FHIR server. Accepts a
@@ -872,7 +879,9 @@ def upsert_demographics(
 
 
 @router.get("/patients/{patient_id}/demographics")
-def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
+def get_demographics(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, str | Any]:
     """Get Patient Demographics from FHIR.
 
     Retrieves complete demographic information for a specific patient from the
@@ -907,7 +916,7 @@ def get_demographics(patient_id: str, u: User = DEP_CURRENT_USER):
     "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
 )
-def write_letter(patient_id: str, letter: LetterIn):
+def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
     """Create Clinical Letter in OpenEHR.
 
     Creates a new clinical letter composition in EHRbase for the specified patient.

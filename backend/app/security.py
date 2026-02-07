@@ -10,11 +10,12 @@ All functions use industry-standard algorithms and handle secrets securely.
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pyotp
 from itsdangerous import URLSafeSerializer
-from jose import jwt
-from passlib.hash import argon2
+from jose import jwt  # type: ignore[import-untyped]
+from passlib.hash import argon2  # type: ignore[import-untyped]
 
 from app.config import settings
 
@@ -44,7 +45,7 @@ def hash_password(p: str) -> str:
     Returns:
         str: Argon2 hash string in PHC format, suitable for database storage.
     """
-    return argon2.hash(p)
+    return argon2.hash(p)  # type: ignore[no-any-return]
 
 
 def verify_password(p: str, h: str) -> bool:
@@ -60,7 +61,7 @@ def verify_password(p: str, h: str) -> bool:
     Returns:
         bool: True if password matches hash, False otherwise.
     """
-    return argon2.verify(p, h)
+    return argon2.verify(p, h)  # type: ignore[no-any-return]
 
 
 def create_access_token(sub: str, roles: list[str]) -> str:
@@ -77,12 +78,12 @@ def create_access_token(sub: str, roles: list[str]) -> str:
     Returns:
         str: Encoded JWT access token valid for ACCESS_TTL_MIN minutes.
     """
-    payload = {
+    payload: dict[str, Any] = {
         "sub": sub,
         "roles": roles,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
-    return jwt.encode(
+    return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -107,14 +108,14 @@ def create_refresh_token(sub: str) -> str:
         "type": "refresh",
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
     }
-    return jwt.encode(
+    return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
     )
 
 
-def decode_token(tok: str) -> dict:
+def decode_token(tok: str) -> dict[str, Any]:
     """Decode and Verify JWT Token.
 
     Decodes a JWT token and verifies its signature using the configured
@@ -133,7 +134,7 @@ def decode_token(tok: str) -> dict:
         jose.ExpiredSignatureError: If token has expired.
         jose.JWTClaimsError: If token claims are invalid.
     """
-    return jwt.decode(
+    return jwt.decode(  # type: ignore[no-any-return]
         tok,
         settings.JWT_SECRET.get_secret_value(),
         algorithms=[settings.JWT_ALG],
@@ -193,7 +194,7 @@ def verify_csrf(token: str, sub: str) -> bool:
     """
     try:
         data = _csrf.loads(token)
-        return data.get("sub") == sub
+        return bool(data.get("sub") == sub)
     except Exception:
         return False
 

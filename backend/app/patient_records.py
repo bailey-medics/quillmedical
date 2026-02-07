@@ -14,6 +14,7 @@ Attributes:
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -42,9 +43,9 @@ class Demographics(BaseModel):
     family_name: str | None = None
     date_of_birth: str | None = None  # ISO date
     sex: str | None = None
-    address: dict | None = None
-    contact: dict | None = None
-    meta: dict | None = None
+    address: dict[str, Any] | None = None
+    contact: dict[str, Any] | None = None
+    meta: dict[str, Any] | None = None
 
 
 def patient_repo_name(patient_id: str) -> str:
@@ -87,7 +88,7 @@ def write_file(
     commit_message: str = "",
     author_name: str | None = None,
     author_email: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Write content to a file in patient repository.
 
     Creates parent directories as needed. Returns path information
