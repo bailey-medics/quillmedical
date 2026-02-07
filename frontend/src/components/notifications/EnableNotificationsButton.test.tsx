@@ -26,9 +26,13 @@ describe("EnableNotificationsButton Component", () => {
 
     // Setup global mocks
     global.Notification = mockNotification;
-    global.navigator.serviceWorker = {
-      ready: Promise.resolve(mockServiceWorkerRegistration),
-    } as unknown as ServiceWorkerContainer;
+    Object.defineProperty(global.navigator, "serviceWorker", {
+      value: {
+        ready: Promise.resolve(mockServiceWorkerRegistration),
+      },
+      writable: true,
+      configurable: true,
+    });
     global.fetch = vi.fn();
 
     // Reset mocks
@@ -194,7 +198,7 @@ describe("EnableNotificationsButton Component", () => {
   describe("Permission denied", () => {
     it("shows denied state when user denies permission", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("denied");
+      mockRequestPermission.mockResolvedValue("denied");
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -208,7 +212,7 @@ describe("EnableNotificationsButton Component", () => {
 
     it("button remains enabled after permission denied", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("denied");
+      mockRequestPermission.mockResolvedValue("denied");
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -225,7 +229,7 @@ describe("EnableNotificationsButton Component", () => {
   describe("Error handling", () => {
     it("shows error state when subscription fails", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
+      mockRequestPermission.mockResolvedValue("granted");
       mockPushManager.subscribe.mockRejectedValue(
         new Error("Subscribe failed"),
       );
@@ -242,8 +246,15 @@ describe("EnableNotificationsButton Component", () => {
 
     it("shows error state when backend request fails", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockResolvedValue("granted");
-      mockPushManager.subscribe.mockResolvedValue({ endpoint: "test" });
+      mockRequestPermission.mockResolvedValue("granted");
+      const mockSub = {
+        endpoint: "test",
+        toJSON: () => ({
+          endpoint: "test",
+          keys: { p256dh: "key1", auth: "key2" },
+        }),
+      };
+      mockPushManager.subscribe.mockResolvedValue(mockSub);
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: false,
       });
@@ -260,7 +271,7 @@ describe("EnableNotificationsButton Component", () => {
 
     it("button remains enabled after error", async () => {
       const user = userEvent.setup();
-      mockNotification.requestPermission.mockRejectedValue(new Error("Failed"));
+      mockRequestPermission.mockRejectedValue(new Error("Failed"));
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
