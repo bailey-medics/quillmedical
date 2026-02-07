@@ -117,7 +117,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [eslint, prettier, stylelint, typecheck, "unit-test:run"]
+        task: [eslint, prettier, stylelint, typecheck, "unit-test:run", "storybook:build"]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -156,6 +156,7 @@ jobs:
             stylelint) yarn stylelint ;;
             typecheck) yarn typecheck ;;
             "unit-test:run") yarn unit-test:run ;;
+            "storybook:build") yarn storybook:build ;;
           esac
 
   # ---------- Frontend security (Semgrep) ----------

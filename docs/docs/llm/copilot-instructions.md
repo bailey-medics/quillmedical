@@ -34,6 +34,20 @@ just unit-tests-frontend  # vitest in frontend
 ```
 Backend tests require minimal env vars (see `backend/tests/conftest.py`). Frontend uses jsdom environment.
 
+**Test Requirements:**
+- **ALWAYS create tests** when creating new components, functions, or API endpoints
+- **ALWAYS update tests** when modifying existing code
+- Backend: Use pytest with fixtures from `conftest.py`
+- Frontend: Use vitest + @testing-library/react with `renderWithMantine` or `renderWithRouter` utilities
+- Test coverage should include:
+  - All component props variations
+  - Edge cases (null, undefined, empty values)
+  - User interactions (clicks, typing, navigation)
+  - Loading states and error handling
+  - All format/style variations
+- Follow existing test patterns in `frontend/src/test/infrastructure.test.tsx` and `backend/tests/`
+- Run tests before considering work complete: `just unit-tests-frontend` or `just unit-tests-backend`
+
 ### User management
 ```bash
 just create-user  # Interactive user creation in container
@@ -53,6 +67,7 @@ just create-user  # Interactive user creation in container
 - **Authentication flow**: Login → JWT in HTTP-only cookies → auto-refresh on 401 → CSRF tokens using `itsdangerous`
 - **Settings**: Use `pydantic-settings` with `SecretStr` for sensitive values. Docker Compose injects env vars.
 - **SQLAlchemy 2.0 style**: Use `Mapped` type hints, `DeclarativeBase`, eager loading for roles (`backend/app/models.py`)
+- **Testing**: Use pytest with fixtures, ALL new endpoints/functions MUST have corresponding tests in `backend/tests/`
 
 ### Frontend (React + TypeScript)
 - **API client**: Centralised in `frontend/src/lib/api.ts` with auto-retry on 401, JSON-only, credentials included
@@ -61,6 +76,8 @@ just create-user  # Interactive user creation in container
 - **Protected routes**: Use `<RequireAuth>` wrapper, guests use `<GuestOnly>` (redirects authenticated users)
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Testing**: Vitest with `@testing-library/react`, prefer `user-event` for interactions
+- **Test utilities**: Always use `renderWithMantine` (for components) or `renderWithRouter` (for components with navigation) from `@test/test-utils`
+- **Storybook components**: ALL components with `.stories.tsx` files MUST have corresponding `.test.tsx` files
 - **Linting**: ESLint with React/TypeScript rules, no secrets plugin, unicorn, regexp plugins enabled
 
 ### Healthcare Integration

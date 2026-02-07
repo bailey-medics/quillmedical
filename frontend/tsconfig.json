@@ -7,9 +7,13 @@
       "@components/*": ["src/components/*"],
       "@utils/*": [".storybook/utils/*"],
       "@design/*": ["src/design/*"],
-      "@domains/*": ["src/domains/*"]
+      "@domains/*": ["src/domains/*"],
+      "@test/*": ["src/test/*"]
     }
   },
   "files": [],
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
 }
