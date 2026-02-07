@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import MessagingTriagePayment from "./MessagingTriagePayment";
 
 const meta: Meta<typeof MessagingTriagePayment> = {
-  title: "MessagingTriagePayment",
+  title: "Messaging/MessagingTriagePayment",
   component: MessagingTriagePayment,
 };
 

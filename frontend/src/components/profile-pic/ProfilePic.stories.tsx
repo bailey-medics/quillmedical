@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ProfilePic from "./ProfilePic";
 
 const meta: Meta<typeof ProfilePic> = {
-  title: "ProfilePic",
+  title: "Avatars/ProfilePic",
   component: ProfilePic,
   tags: ["autodocs"],
 };

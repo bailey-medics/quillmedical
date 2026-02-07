@@ -4,7 +4,7 @@ import "@mantine/notifications/styles.css";
 import ReactDOM from "react-dom/client";
 
 // Import the component from your app’s shared code
-import SearchField from "@components/search/SearchField";
+import SearchField from "@/components/search/SearchFields";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <MantineProvider defaultColorScheme="light">

@@ -1,6 +1,6 @@
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
-import SearchField from "@components//search/SearchField";
+import SearchField from "@/components/search/SearchFields";
 import QuillName from "@components/images/QuillName";
 import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";

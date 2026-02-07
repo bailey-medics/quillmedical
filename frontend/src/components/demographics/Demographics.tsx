@@ -1,5 +1,6 @@
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
+import FormattedDate from "@/components/date/Date";
 import { Skeleton, Text } from "@mantine/core";
 
 type Props = {
@@ -32,7 +33,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
           color: "#4a5568",
         }}
       >
-        {patient.dob ? `${patient.dob.replace(/-/g, "/")}` : ""}
+        {patient.dob && <FormattedDate date={patient.dob} span inherit />}
         {patient.age !== undefined ? `    ${patient.age}` : ""}
         {patient.sex ? ` ${patient.sex}` : ""}
         {patient.nationalNumber ? (

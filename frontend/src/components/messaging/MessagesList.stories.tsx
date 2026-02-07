@@ -3,7 +3,7 @@ import MessagesList from "./MessagesList";
 import type { Conversation } from "@/pages/Messages";
 
 const meta: Meta<typeof MessagesList> = {
-  title: "MessagesList",
+  title: "Messaging/MessagesList",
   component: MessagesList,
   tags: ["autodocs"],
 };
