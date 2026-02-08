@@ -22,7 +22,7 @@ Attacker with log access (compromised logging service, log file access, insider 
 
 ### Design controls (manufacturer)
 
-- Override Settings.**repr** method to redact secrets. Return dictionary with SecretStr fields masked: {"JWT*SECRET": "\*\*\_REDACTED***", "AUTH_DB_PASSWORD": "**_REDACTED_**"}. Use custom **repr\*\* that checks field type before including in output.
+- Override Settings.**repr** method to redact secrets. Return dictionary with SecretStr fields masked: {"JWT*SECRET": "\*\*\_REDACTED***", "AUTH_DB_PASSWORD": "***REDACTED***"}. Use custom**repr\*\* that checks field type before including in output.
 - Implement structured logging with secret redaction: use structlog library with RedactingProcessor. Configure processor with list of secret field names (JWT_SECRET, AUTH_DB_PASSWORD, VAPID_PRIVATE, etc.). Automatically redact these fields from all log messages.
 - Add startup validation that prevents settings object logging: create custom log filter that blocks log messages containing Settings class name or secret field names. Raise error if attempted in development mode (warns developers during testing).
 - Configure logging library (python logging) with custom Formatter that detects SecretStr values. Replace SecretStr values with "[REDACTED]" string before writing to log handlers. Apply formatter to all handlers (console, file, syslog).

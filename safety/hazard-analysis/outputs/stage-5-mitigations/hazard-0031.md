@@ -22,7 +22,7 @@ Unauthorized users access clinical data without any verification that they are l
 
 ### Design controls (manufacturer)
 
-- Implement email verification workflow: after registration, generate cryptographically secure verification token (32 bytes from secrets.token_urlsafe). Store token hash (SHA-256) in email_verification_tokens table with columns: user_id, token_hash, expires_at (24 hours from creation), created_at. Send verification email with link: https://quillmedical.com/verify-email?token={token}.
+- Implement email verification workflow: after registration, generate cryptographically secure verification token (32 bytes from secrets.token_urlsafe). Store token hash (SHA-256) in email_verification_tokens table with columns: user_id, token_hash, expires_at (24 hours from creation), created_at. Send verification email with link: <https://quillmedical.com/verify-email?token={token}>.
 - Create /api/auth/verify-email endpoint: accepts token parameter, looks up token hash in database, validates expiry, transitions user.is_active from False to True, deletes verification token. Return success message with redirect to login page.
 - Add account_status enum to User model: PENDING_VERIFICATION, ACTIVE, SUSPENDED. New registrations start in PENDING_VERIFICATION state. Login endpoint checks account_status, returns 403 if not ACTIVE with message "Please verify your email address."
 - Implement resend verification email endpoint: /api/auth/resend-verification-email. Rate limited to 3 requests per hour per email address. Generates new verification token (invalidates old token), sends new verification email.

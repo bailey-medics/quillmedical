@@ -30,7 +30,7 @@ Unauthorized access to all clinical letters in system, complete bypass of role-b
 
 ### Testing controls (manufacturer)
 
-- Integration test: Attempt to query EHRbase directly via http://quillmedical.com/ehrbase/rest/openehr/v1/ehr. Assert connection refused or 404 Not Found (route doesn't exist).
+- Integration test: Attempt to query EHRbase directly via <http://quillmedical.com/ehrbase/rest/openehr/v1/ehr>. Assert connection refused or 404 Not Found (route doesn't exist).
 - Network test: From external network (outside Docker), attempt to connect to EHRbase container IP:8080. Assert connection timeout or refused (EHRbase on internal-only network).
 - Authentication test: If EHRbase still exposed, attempt API request without Basic Auth header. Assert 401 Unauthorized. Attempt with invalid credentials. Assert 401. Attempt with valid backend credentials. Assert 200 OK (demonstrates authentication required).
 - Authorization bypass test: Attempt to use backend /api/patients/{id}/letters endpoint without JWT token. Assert 401. Attempt to access patient B's letter while authenticated as clinician assigned to patient A only. Assert 403 Forbidden. Verify backend enforces authorization even though EHRbase would allow access.

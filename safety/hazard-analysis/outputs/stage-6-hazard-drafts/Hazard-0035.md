@@ -94,11 +94,11 @@ Clinical Risk Management
 
 ### Design controls (manufacturer)
 
-- Implement path normalization using URL constructor: create URL object from path, extract pathname property (automatically resolves ".." segments). Validate normalized path starts with "/api/". Reject paths containing ".." after normalization. Example: new URL(path, "https://dummy.com").pathname.
+- Implement path normalization using URL constructor: create URL object from path, extract pathname property (automatically resolves ".." segments). Validate normalized path starts with "/api/". Reject paths containing ".." after normalization. Example: new URL(path, "<https://dummy.com").pathname>.
 - Add allowlist of valid API endpoint patterns: maintain list of allowed path regex patterns [/^\/api\/patients/, /^\/api\/auth/, /^\/api\/letters/]. Validate requested path matches at least one pattern. Reject requests to unrecognized endpoints.
 - Implement Content Security Policy (CSP): set CSP header that restricts fetch/XMLHttpRequest to same-origin only. Prevents malicious browser extensions from making API calls to arbitrary URLs. CSP: "default-src 'self'; connect-src 'self'".
-- Add request origin validation: backend checks Origin header matches expected frontend domain. Reject requests from unexpected origins (e.g., attacker-controlled page). CORS policy: only allow requests from https://quillmedical.com.
-- Implement Subresource Integrity (SRI) for all JavaScript files: include integrity attribute on script tags with base64 hash of file content. Browser refuses to execute script if hash mismatch (prevents tampering with api.ts file). Example: <script src="api.js" integrity="sha384-..."></script>.
+- Add request origin validation: backend checks Origin header matches expected frontend domain. Reject requests from unexpected origins (e.g., attacker-controlled page). CORS policy: only allow requests from <https://quillmedical.com>.
+- Implement Subresource Integrity (SRI) for all JavaScript files: include integrity attribute on script tags with base64 hash of file content. Browser refuses to execute script if hash mismatch (prevents tampering with api.ts file). Example: `<script src="api.js" integrity="sha384-..."></script>`.
 
 ### Testing controls (manufacturer)
 

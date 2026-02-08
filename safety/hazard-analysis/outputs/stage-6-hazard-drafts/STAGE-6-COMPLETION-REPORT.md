@@ -83,7 +83,7 @@ The automated hazard type inference identified:
 - **Unavailable:** 2 hazards
 - **Delayed:** 1 hazard
 
-_Note: Some hazards have multiple types assigned_
+**Note:** Some hazards have multiple types assigned
 
 ---
 

@@ -83,19 +83,19 @@ The following hazards require substantial architectural modifications (not just 
 
 ### Medium Impact Architectural Changes
 
-7. **Hazard-0041: Database connection pool exhaustion**
+1. **Hazard-0041: Database connection pool exhaustion**
    - Requires: Connection pool monitoring infrastructure, metrics endpoint, alerting system (Prometheus/Grafana), circuit breaker pattern
    - Impact: Monitoring stack deployment, database configuration tuning
 
-8. **Hazard-0042: Caddy reverse proxy lacks rate limiting**
+2. **Hazard-0042: Caddy reverse proxy lacks rate limiting**
    - Requires: Rate limiting plugin installation (caddy-rate-limit), Redis for distributed rate limiting, IP reputation system, DDoS protection mode
    - Impact: Redis deployment, Caddy plugin infrastructure, IP blocklist management
 
-9. **Hazard-0045: Docker containers lack resource limits**
+3. **Hazard-0045: Docker containers lack resource limits**
    - Requires: Resource limit configuration, health check infrastructure with resource monitoring, graceful degradation mechanism, orchestrator setup
    - Impact: Docker Compose resource configuration, health monitoring integration
 
-10. **Hazard-0046: Backend starts before FHIR server ready**
+4. **Hazard-0046: Backend starts before FHIR server ready**
     - Requires: Service health checks, readiness probes, startup status API, circuit breaker for service dependencies
     - Impact: Docker Compose dependency configuration, health check endpoints
 
@@ -155,19 +155,19 @@ Based on harm severity and architectural complexity:
 
 ### High Priority (Clinical Safety)
 
-6. **Hazard-0037:** Associate push notifications with users (alarm fatigue)
-7. **Hazard-0030:** Implement audit logging (compliance + incident response)
-8. **Hazard-0047:** Automate backup before migrations (data loss risk)
-9. **Hazard-0036:** Add cache staleness indicators (wrong demographics)
-10. **Hazard-0039:** Standardize date formats (medication dosing errors)
+1. **Hazard-0037:** Associate push notifications with users (alarm fatigue)
+2. **Hazard-0030:** Implement audit logging (compliance + incident response)
+3. **Hazard-0047:** Automate backup before migrations (data loss risk)
+4. **Hazard-0036:** Add cache staleness indicators (wrong demographics)
+5. **Hazard-0039:** Standardize date formats (medication dosing errors)
 
 ### Medium Priority (Reliability)
 
-11. **Hazard-0042:** Add rate limiting to Caddy (DoS protection)
-12. **Hazard-0041:** Configure connection pool limits (system unavailability)
-13. **Hazard-0045:** Add container resource limits (system crash)
-14. **Hazard-0046:** Fix startup dependency ordering (system unavailability)
-15. **Hazard-0034:** Prevent infinite token refresh loops (system unavailability)
+1. **Hazard-0042:** Add rate limiting to Caddy (DoS protection)
+2. **Hazard-0041:** Configure connection pool limits (system unavailability)
+3. **Hazard-0045:** Add container resource limits (system crash)
+4. **Hazard-0046:** Fix startup dependency ordering (system unavailability)
+5. **Hazard-0034:** Prevent infinite token refresh loops (system unavailability)
 
 ### Lower Priority (Defense in Depth)
 

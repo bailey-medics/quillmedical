@@ -22,7 +22,7 @@ CSRF attacks succeed despite CSRF token protection, allowing forged clinical act
 
 ### Design controls (manufacturer)
 
-- Configure CORS with explicit origin allowlist: header Access-Control-Allow-Origin "https://quillmedical.com" in Caddyfile. Never use wildcard "\*". Only allow requests from known frontend domains. For multi-tenant deployments, maintain allowlist of clinic-specific domains.
+- Configure CORS with explicit origin allowlist: header Access-Control-Allow-Origin "<https://quillmedical.com>" in Caddyfile. Never use wildcard "\*". Only allow requests from known frontend domains. For multi-tenant deployments, maintain allowlist of clinic-specific domains.
 - Disable credentials for CORS requests: header Access-Control-Allow-Credentials "false". Prevents malicious sites from including authentication cookies in cross-origin requests. Note: This changes authentication flow - consider token-based auth instead of cookies for cross-origin scenarios.
 - Implement SameSite cookie attribute: set SameSite=Strict for authentication cookies. Prevents cookies from being sent in cross-origin requests even if CORS allows request. Provides defense-in-depth against CSRF. Update cookie setting: Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict.
 - Add Content-Security-Policy header: CSP: "default-src 'self'". Prevents malicious scripts from making cross-origin requests even if CORS misconfigured. Whitelist only trusted domains for script-src, connect-src directives.
@@ -30,11 +30,11 @@ CSRF attacks succeed despite CSRF token protection, allowing forged clinical act
 
 ### Testing controls (manufacturer)
 
-- CORS test: Create test page at https://attacker.com that attempts to fetch https://quillmedical.com/api/patients with credentials. Assert browser blocks request with CORS error (Access-Control-Allow-Origin doesn't include attacker.com).
+- CORS test: Create test page at <https://attacker.com> that attempts to fetch <https://quillmedical.com/api/patients> with credentials. Assert browser blocks request with CORS error (Access-Control-Allow-Origin doesn't include attacker.com).
 - Wildcard test: Temporarily set Access-Control-Allow-Origin to "\*" in test environment. Attempt cross-origin authenticated request. Verify browser blocks request when credentials=true (browser enforces: wildcard not allowed with credentials).
-- SameSite test: Set authentication cookie with SameSite=Strict. Navigate to attacker-controlled page that embeds iframe to https://quillmedical.com/api/patients. Assert cookie not sent with iframe request (SameSite=Strict prevents cross-site cookie usage).
-- CSP test: Load frontend, open browser devtools console. Attempt to execute fetch('https://attacker.com/api') from console. Assert browser blocks request with CSP violation error.
-- Origin validation test: Send POST /api/patients request with Origin: https://attacker.com header. Assert backend returns 403 Forbidden with error "Invalid request origin."
+- SameSite test: Set authentication cookie with SameSite=Strict. Navigate to attacker-controlled page that embeds iframe to <https://quillmedical.com/api/patients>. Assert cookie not sent with iframe request (SameSite=Strict prevents cross-site cookie usage).
+- CSP test: Load frontend, open browser devtools console. Attempt to execute fetch('<https://attacker.com/api>') from console. Assert browser blocks request with CSP violation error.
+- Origin validation test: Send POST /api/patients request with Origin: <https://attacker.com> header. Assert backend returns 403 Forbidden with error "Invalid request origin."
 
 ### Training controls (deployment)
 

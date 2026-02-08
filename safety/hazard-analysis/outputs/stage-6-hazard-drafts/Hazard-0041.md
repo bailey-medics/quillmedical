@@ -111,7 +111,7 @@ Clinical Risk Management
 ### Training controls (deployment)
 
 - Train operations team on connection pool monitoring: check /api/metrics daily, watch for pool utilization >80%, understand pool_size vs max_overflow, escalate if sustained high utilization observed.
-- Document connection pool capacity planning: guidelines for adjusting pool_size based on concurrent user count. Formula: pool_size = (concurrent_users _ 1.5). Max_overflow = pool_size _ 0.5. Update configuration if user count grows.
+- Document connection pool capacity planning: guidelines for adjusting pool_size based on concurrent user count. Formula: pool_size = (concurrent_users_ 1.5). Max_overflow = pool_size _ 0.5. Update configuration if user count grows.
 
 ### Business process controls (deployment)
 
