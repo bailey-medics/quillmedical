@@ -84,7 +84,16 @@ nav:
           - Push Notifications: code/fastapi/push.md
           - Push Send: code/fastapi/push_send.md
           - Schemas: code/fastapi/schemas.md
-  - Other:
+  - Clinical Safety:
+      - Overview: safety/overview/index.md
+      - Regulatory Framework: safety/overview/regulatory-framework.md
+      - Risk Management System: safety/overview/risk-management-system.md
+      - Hazard Log: safety/overview/hazard-log.md
+      - EPR Hazards: safety/overview/epr-hazards.md
+      - Clinical Safety Officer: safety/overview/clinical-safety-officer.md
+      - Development Integration: safety/overview/development-integration.md
+      - Resources: safety/overview/resources.md
+  - Authorization:
       - ABAC: ABAC.md
 
 
