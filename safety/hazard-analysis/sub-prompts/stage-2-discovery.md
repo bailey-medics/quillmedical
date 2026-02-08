@@ -4,13 +4,12 @@
 
 - Output from stage 1 - `/safety/outputs/stage-1-inventory.md`
 - The root level codebase
-- The hazard type taxonomy - `/safety/templates/hazard-types.md`
 
 ## Output
 
 - `/safety/outputs/stage-2-discovery.md`
 
-## Your Task
+## Your task
 
 **Process**: For each Tier 1–3 file found in `/safety/outputs/stage-1-inventory.md`. Your job is to identify every potential clinical safety hazard.
 
@@ -20,7 +19,7 @@
 - You MUST NOT suggest fixes or implement anything at this stage.
 - You MUST err on the side of over-identification. A false positive costs a few minutes of CSO review time. A false negative could cost a patient's life.
 
-## Hazard Identification Method
+## Hazard identification method
 
 For each file, apply SWIFT-style "what-if" reasoning from these perspectives, eg:
 
@@ -58,12 +57,7 @@ For each file, apply SWIFT-style "what-if" reasoning from these perspectives, eg
 - What if OpenEHR composition validation fails silently?
 - What if a third-party service returns unexpected data?
 
-## Hazard Type Taxonomy
-
-When identifying hazards, classify each using one or more types from
-taxonomy `/safety/templates/hazard-types.md`.
-
-## Output Format
+## Output format
 
 For each hazard found, output this exact structure:
 
@@ -82,11 +76,9 @@ For each hazard found, output this exact structure:
 
 **Hazard:** [A verbose description of the potential for harm, even if it does not occur]
 
-**Hazard types:** WrongPatient, WrongPatientContext
-
 **Harm:** [What actually happens to the patient if the hazard is realised]
 
-**Code locations:**
+**Code associated with hazard:**
 
 - `path/to/file.tsx:LINE`
 - `path/to/other.ts:LINE`

@@ -8,45 +8,15 @@ Before starting, read `/safety/hazard-analysis/sub-prompts/clinical-safety-offic
 
 Below is a multi-step LLM pipeline that reviews the entire medical application codebase to identify clinical safety hazards. Each stage outputs to a named file. The LLM identifies and documents hazards but does **not** score them and does **not** implement mitigations, although it can suggest mitigations.
 
-## Pipeline Stages
-
-```text
-┌──────────────────────┐
-│ Stage 1: Inventory   │
-│ Catalogue all code   │
-└─────────┬────────────┘
-          │
-┌─────────▼────────────┐
-│ Stage 2: Discovery   │
-│ Identify hazards     │
-└─────────┬────────────┘
-          │
-┌─────────▼────────────┐
-│ Stage 3: Deduplicate │
-│ Merge & consolidate  │
-└─────────┬────────────┘
-          │
-┌─────────▼─────────────┐
-│ Stage 4: Draft        │
-│ Full hazard log       │
-│ entries via generator │
-└─────────┬─────────────┘
-          │
-┌─────────▼────────────┐
-│ Stage 5: Mitigations │
-│ Suggested controls   │
-│ (advisory only)      │
-└──────────────────────┘
-```
-
 ## Stages
 
 Follow the below stages in order:
 
 - Run the prompt in `/safety/sub-prompts/stage-1-inventory.md`
-<!-- - Run the prompt in `/safety/sub-prompts/stage-2-discovery.md`
+- Run the prompt in `/safety/sub-prompts/stage-2-discovery.md`
 - Run the prompt in `/safety/sub-prompts/stage-3-deduplication.md`
-- Run the prompt in `/safety/sub-prompts/stage-4-structured.md` -->
-<!-- - Run the prompt in `/safety/sub-prompts/stage-5-mitigations.md` -->
+- Run the prompt in `/safety/sub-prompts/stage-4-hazard-typing.md`
+- Run the prompt in `/safety/sub-prompts/stage-5-structured.md`
+- Run the prompt in `/safety/sub-prompts/stage-6-mitigations.md`
 
 For all outputs, overwrite previous entries.

@@ -256,13 +256,17 @@ def parse_template(path: str | Path) -> list[TemplateField]:
             fields[-1].prose_lines.append(stripped)
         elif fields and fields[-1].field_type == FieldType.SEPARATOR:
             prose_field = TemplateField(
-                name="__prose__", field_type=FieldType.PROSE, prose_lines=[stripped]
+                name="__prose__",
+                field_type=FieldType.PROSE,
+                prose_lines=[stripped],
             )
             fields.append(prose_field)
         else:
             # Orphan prose
             prose_field = TemplateField(
-                name="__prose__", field_type=FieldType.PROSE, prose_lines=[stripped]
+                name="__prose__",
+                field_type=FieldType.PROSE,
+                prose_lines=[stripped],
             )
             fields.append(prose_field)
 

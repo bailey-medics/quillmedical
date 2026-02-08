@@ -4,15 +4,14 @@
 
 - Output from stage 2 - `/safety/outputs/stage-2-discovery.md`
 - The root level codebase
-- The hazard type taxonomy - `/safety/templates/hazard-types.md`
 
 ## Output
 
 - `/safety/outputs/stage-3-deduplicated.md`
 
-## Your Task
+## Your task
 
-You are given the raw hazard discovery output from Stage 2. This was produced by analysing the codebase file-by-file, so the same underlying hazard may appear multiple times. Do not consider `hazard type` to be a sign of duplication - use the real world analysis of the hazard itself to assess duplication. Your job is to consolidate the findings from stage 2 into a clean, deduplicated list of distinct hazards.
+You are given the raw hazard discovery output from Stage 2. This was produced by analysing the codebase file-by-file, so the same underlying hazard may appear multiple times. Your job is to consolidate the findings from stage 2 into a clean, deduplicated list of distinct hazards.
 
 ## CRITICAL CONSTRAINTS
 
@@ -25,7 +24,7 @@ You are given the raw hazard discovery output from Stage 2. This was produced by
 
 - If the same hazard (same cause, same harm) appears from multiple files, merge into one entry. Combine all file references.
 
-## Output Format
+## Output format
 
 Number each hazard sequentially (as the `Output destination` variable).
 
@@ -36,9 +35,9 @@ Use this exact structure:
 
 ---
 
-## [SHORT_NAME]
+**Hazard id:** Hazard-0001
 
-**Output destination:** Hazard-0001.md
+**Hazard name:** [A short name]
 
 **Description:** [A general description of the Hazard]
 
@@ -48,22 +47,20 @@ Use this exact structure:
 
 **Hazard:** [A verbose description of the potential for harm, even if it does not occur]
 
-**Hazard types:** WrongPatient, WrongPatientContext
-
 **Harm:** [What actually happens to the patient if the hazard is realised]
 
-**Code locations:**
+**Code associated with hazard:**
 
 - `path/to/file.tsx:LINE`
-- `path/to/other.ts:LINE`
+- `path/to/other1.ts:LINE`
 - `path/to/other2.tsx:LINE`
 - `path/to/other3.ts:LINE`
 
 ---
 
-## [SHORT_NAME]
+**Hazard id:** Hazard-0002
 
-**Output destination:** Hazard-0002.md
+**Hazard name:** [A short name]
 
 ...
 ```

@@ -85,7 +85,7 @@ TBC
 
 ---
 
-## New hazard controls
+## Hazard controls
 
 List controls that will be put into place to mitigate the hazard. These can include design, (unit/integration) testing, training or business process change.
 
