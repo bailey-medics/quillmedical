@@ -60,10 +60,16 @@ def patient_repo_name(patient_id: str) -> str:
     Returns:
         str: Safe directory name like "patient-abc123".
 
+    Raises:
+        ValueError: If patient_id is empty.
+
     Example:
         >>> patient_repo_name("Patient/123")
         'patient-Patient-123'
     """
+    # Defensive programming: validate input
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id cannot be empty")
     safe = "".join(
         ch if (ch.isalnum() or ch in "-_") else "-" for ch in patient_id
     )

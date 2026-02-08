@@ -44,7 +44,13 @@ def hash_password(p: str) -> str:
 
     Returns:
         str: Argon2 hash string in PHC format, suitable for database storage.
+
+    Raises:
+        ValueError: If password is empty or None.
     """
+    # Defensive programming: validate input
+    if not p:
+        raise ValueError("Password cannot be empty")
     return argon2.hash(p)  # type: ignore[no-any-return]
 
 
@@ -60,7 +66,15 @@ def verify_password(p: str, h: str) -> bool:
 
     Returns:
         bool: True if password matches hash, False otherwise.
+
+    Raises:
+        ValueError: If password or hash is empty.
     """
+    # Defensive programming: validate inputs
+    if not p:
+        raise ValueError("Password cannot be empty")
+    if not h:
+        raise ValueError("Hash cannot be empty")
     return argon2.verify(p, h)  # type: ignore[no-any-return]
 
 
@@ -77,7 +91,13 @@ def create_access_token(sub: str, roles: list[str]) -> str:
 
     Returns:
         str: Encoded JWT access token valid for ACCESS_TTL_MIN minutes.
+
+    Raises:
+        ValueError: If subject is empty.
     """
+    # Defensive programming: validate inputs
+    if not sub or not sub.strip():
+        raise ValueError("Subject (username) cannot be empty")
     payload: dict[str, Any] = {
         "sub": sub,
         "roles": roles,
@@ -158,7 +178,13 @@ def create_csrf_token(username: str) -> str:
 
     Returns:
         str: URL-safe CSRF token signed with JWT_SECRET.
+
+    Raises:
+        ValueError: If username is empty.
     """
+    # Defensive programming: validate input
+    if not username or not username.strip():
+        raise ValueError("Username cannot be empty")
     return _csrf.dumps({"sub": username})
 
 

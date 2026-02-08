@@ -49,6 +49,14 @@ type Options = Omit<RequestInit, "method" | "body" | "credentials"> & {
  * @throws Error with message from backend or HTTP status text
  */
 async function request<T>(path: string, opts: Options = {}): Promise<T> {
+  // Defensive programming: validate inputs
+  if (!path) {
+    throw new Error("API path cannot be empty");
+  }
+  if (!path.startsWith("/")) {
+    throw new Error(`API path must start with '/', got: ${path}`);
+  }
+
   const res = await fetch(`/api${path}`, {
     method: opts.method ?? "GET",
     headers: {
