@@ -2,17 +2,17 @@
 
 ## Input
 
-- Output from stage 5 - `/safety/outputs/stage-5-mitigations.md`
+- Output files from stage 5 - `/safety/hazard-analysis/outputs/stage-5-mitigations/hazard-NNNN.md`
 - The root level codebase
-- The hazard markdown generator - `/safety/sub-prompts/hazard_log_generator.py`
+- The hazard markdown generator - `/safety/hazard-analysis/src/hazard_log_generator.py`
 
 ## Output
 
-- `/safety/outputs/stage-6-hazard-drafts/Hazard-NNNN.md` — one file per hazard.
+- `/safety/hazard-analysis/outputs/stage-6-hazard-drafts/Hazard-NNNN.md` — one file per hazard.
 
 ## Your Task
 
-You are given the hazard list from Stage 5. Your job is to convert each hazard into a structured JSON object that can be fed into the Hazard Log Generator `/safety/sub-prompts/hazard_log_generator.py` to produce formal hazard log entries.
+You are given the hazard list from Stage 5. Your job is to convert each hazard into a structured JSON object that can be fed into the Hazard Log Generator `/safety/hazard-analysis/src/hazard_log_generator.py` to produce formal hazard log entries.
 
 ## CRITICAL CONSTRAINTS
 

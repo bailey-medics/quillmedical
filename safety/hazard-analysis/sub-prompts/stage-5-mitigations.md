@@ -1,13 +1,13 @@
 # Stage 5 — mitigation suggestions
 
-## Inputs
+## Input
 
-- Output from stage 4 - `/safety/outputs/stage-4-hazard-typing.md`
+- Output files from stage 4 - `/safety/hazard-analysis/outputs/stage-4-hazard-typing/hazard-NNNN.md`
 - The codebase
 
 ## Output
 
-- `/safety/outputs/stage-5-mitigations.md`
+- `/safety/hazard-analysis/outputs/stage-5-mitigations/hazard-NNNN.md` - one file per hazard
 
 ## Your task
 
@@ -50,14 +50,12 @@ policies, or workflows that the deploying organisation would need to implement. 
 
 ## Output format
 
-You will then add these mitigations to a copy of the hazards from stage 4, and output into a new file `/safety/outputs/stage-5-mitigations.md`, with the mitigations added, as the structure below:
+For each hazard file from stage 4, add the mitigations and output into a new file `/safety/hazard-analysis/outputs/stage-5-mitigations/hazard-NNNN.md` (with the same NNNN number), with the mitigations added, as the structure below:
 
 ```markdown
-# Stage 5 - mitigation suggestions
+# Hazard
 
----
-
-**Hazard id:** Hazard-0001
+**Hazard id:** Hazard-[NNNN]
 
 **Hazard name:** [A short name]
 
@@ -81,12 +79,4 @@ You will then add these mitigations to a copy of the hazards from stage 4, and o
 - `path/to/other.ts:LINE`
 - `path/to/other2.tsx:LINE`
 - `path/to/other3.ts:LINE`
-
----
-
-**Hazard id:** Hazard-0002
-
-**Hazard name:** [A short name]
-
-...
 ```

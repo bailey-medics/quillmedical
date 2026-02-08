@@ -2,28 +2,26 @@
 
 ## Input
 
-- Output from stage 3 - `/safety/outputs/stage-3-deduplication.md`
+- Output files from stage 3 - `/safety/hazard-analysis/outputs/stage-3-deduplication/hazard-NNNN.md`
 - The root level codebase
-- The hazard type taxonomy - `/safety/templates/hazard-types.md`
+- The hazard type taxonomy - `/safety/hazard-analysis/templates/hazard-types.md`
 
 ## Output
 
-- `/safety/outputs/stage-4-hazard-typing.md`
+- `/safety/hazard-analysis/outputs/stage-4-hazard-typing/hazard-NNNN.md` - one file per hazard
 
 ## Your task
 
-Go through each hazard in `/safety/outputs/stage-3-deduplication.md` and assign one or more `Hazard types`, as `/safety/templates/hazard-types.md`. `GeneralHazard` can be used if no other hazard type is appropriate.
+Go through each hazard file in `/safety/hazard-analysis/outputs/stage-3-deduplication/hazard-NNN.md` and assign one or more `Hazard types`, as `/safety/hazard-analysis/templates/hazard-types.md`. `GeneralHazard` can be used if no other hazard type is appropriate.
 
 ## Output format
 
-You will then add these hazard type(s) to a copy of the hazards from stage 3, and output into a new file `/safety/outputs/stage-4-hazard-typing.md`, with the hazard type(s) added, as the structure below:
+You will then add these hazard type(s) to a copy of the hazard file from stage 3, and output into a new file `/safety/hazard-analysis/outputs/stage-4-hazard-typing/hazard-NNNN.md`, with an identical `NNNN` number, with the hazard type(s) added, as the structure below:
 
 ```markdown
-# Stage 4 - hazard typing
+# Hazard
 
----
-
-**Hazard id:** Hazard-0001
+**Hazard id:** Hazard-[NNNN]
 
 **Hazard name:** [A short name]
 
@@ -35,7 +33,7 @@ You will then add these hazard type(s) to a copy of the hazards from stage 3, an
 
 **Hazard:** [A verbose description of the potential for harm, even if it does not occur]
 
-**Hazard types:** WrongPatient, WrongPatientContext <!-- New variable -->
+**Hazard types:** [A hazard type, as `/safety/hazard-analysis/templates/hazard-types.md`, in bullet point list form] <!-- New variable -->
 
 **Harm:** [What actually happens to the patient if the hazard is realised]
 
@@ -45,12 +43,4 @@ You will then add these hazard type(s) to a copy of the hazards from stage 3, an
 - `path/to/other.ts:LINE`
 - `path/to/other2.tsx:LINE`
 - `path/to/other3.ts:LINE`
-
----
-
-**Hazard id:** Hazard-0002
-
-**Hazard name:** [A short name]
-
-...
 ```

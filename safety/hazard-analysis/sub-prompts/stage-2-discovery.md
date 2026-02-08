@@ -2,16 +2,16 @@
 
 ## Inputs
 
-- Output from stage 1 - `/safety/outputs/stage-1-inventory.md`
+- Output from stage 1 - `/safety/hazard-analysis/outputs/stage-1-inventory.md`
 - The root level codebase
 
 ## Output
 
-- `/safety/outputs/stage-2-discovery.md`
+- `/safety/hazard-analysis/outputs/stage-2-discovery.md`
 
 ## Your task
 
-**Process**: For each Tier 1–3 file found in `/safety/outputs/stage-1-inventory.md`. Your job is to identify every potential clinical safety hazard.
+**Process**: For each Tier 1–3 file found in `/safety/hazard-analysis/outputs/stage-1-inventory.md`. Your job is to identify every potential clinical safety hazard.
 
 ## CRITICAL CONSTRAINTS
 

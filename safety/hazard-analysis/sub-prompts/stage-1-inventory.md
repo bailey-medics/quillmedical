@@ -6,7 +6,7 @@
 
 ## Output
 
-- `/safety/outputs/stage-1-inventory.md`
+- `/safety/hazard-analysis/outputs/stage-1-inventory.md`
 
 ## Your task
 

@@ -2,16 +2,16 @@
 
 ## Input
 
-- Output from stage 2 - `/safety/outputs/stage-2-discovery.md`
+- Output from stage 2 - `/safety/hazard-analysis/outputs/stage-2-discovery.md`
 - The root level codebase
 
 ## Output
 
-- `/safety/outputs/stage-3-deduplicated.md`
+- `/safety/hazard-analysis/outputs/stage-3-deduplication/hazard-NNNN.md` - one file per hazard
 
 ## Your task
 
-You are given the raw hazard discovery output from Stage 2. This was produced by analysing the codebase file-by-file, so the same underlying hazard may appear multiple times. Your job is to consolidate the findings from stage 2 into a clean, deduplicated list of distinct hazards.
+You are given the raw hazard discovery output from Stage 2. This was produced by analysing the codebase file-by-file, so the same underlying hazard may appear multiple times. Your job is to consolidate the findings from stage 2 into separate files for combined hazards.
 
 ## CRITICAL CONSTRAINTS
 
@@ -26,16 +26,14 @@ You are given the raw hazard discovery output from Stage 2. This was produced by
 
 ## Output format
 
-Number each hazard sequentially (as the `Output destination` variable).
+Export each hazard into its own file, as `/safety/hazard-analysis/outputs/stage-3-deduplication/hazard-NNN.md`. Number each hazard sequentially.
 
 Use this exact structure:
 
 ```markdown
-# Stage 3 - deduplicated hazard List
+# Hazard
 
----
-
-**Hazard id:** Hazard-0001
+**Hazard id:** Hazard-[NNNN]
 
 **Hazard name:** [A short name]
 
@@ -55,12 +53,4 @@ Use this exact structure:
 - `path/to/other1.ts:LINE`
 - `path/to/other2.tsx:LINE`
 - `path/to/other3.ts:LINE`
-
----
-
-**Hazard id:** Hazard-0002
-
-**Hazard name:** [A short name]
-
-...
 ```

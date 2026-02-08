@@ -1,7 +1,7 @@
 """
 Hazard Log Generator
 
-Parses the hazard-log-template.md and hazard-types.md files, accepts field
+Parses the hazard-template.md and hazard-types.md files, accepts field
 values, and outputs a filled hazard log markdown file.
 
 Template DSL:
@@ -20,8 +20,8 @@ Usage:
     from hazard_log_generator import HazardLogGenerator
 
     gen = HazardLogGenerator(
-        template_path="hazard-log-template.md",
-        hazard_types_path="hazard-types.md",
+        template_path="../templates/hazard-template.md",
+        hazard_types_path="../templates/hazard-types.md",
     )
 
     # See gen.fields for available field names and their types/options
@@ -556,8 +556,10 @@ class HazardLogGenerator:
 def main():
     """Quick demonstration of the generator."""
     gen = HazardLogGenerator(
-        template_path=Path(__file__).parent / "hazard-log-template.md",
-        hazard_types_path=Path(__file__).parent / "hazard-types.md",
+        template_path=Path(__file__).parent.parent / "templates" / "hazard-template.md",
+        hazard_types_path=Path(__file__).parent.parent
+        / "templates"
+        / "hazard-types.md",
     )
 
     print("Available fields:")
