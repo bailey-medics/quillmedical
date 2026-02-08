@@ -29,10 +29,12 @@ just create-user    # Interactive user creation
 ## Conventions
 
 ### Language
+
 - **British English** for all docs, comments, UI text, and code identifiers where appropriate
 - Exceptions: External APIs, libraries, CSS properties, HTTP headers
 
 ### Backend (FastAPI)
+
 - **mypy --strict**: All functions require explicit type annotations
 - **SQLAlchemy 2.0**: Use `Mapped[Type]` type hints, `DeclarativeBase`
 - **Security**: JWT in HTTP-only cookies (15min access, 7d refresh), TOTP 2FA, Argon2 passwords, CSRF via `itsdangerous`
@@ -40,6 +42,7 @@ just create-user    # Interactive user creation
 - **API**: All routes under `/api`, use `DEP_GET_SESSION` for DB, `get_current_user_from_jwt` for auth
 
 ### Frontend (React + TypeScript)
+
 - **API**: Use `frontend/src/lib/api.ts` client (auto-retry on 401, never raw `fetch`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router with `basename` from `import.meta.env.BASE_URL` for `/app/` mount
@@ -49,6 +52,7 @@ just create-user    # Interactive user creation
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
 
 ### Healthcare
+
 - **FHIR**: `fhirclient` library (`backend/app/fhir_client.py`) for patient demographics
 - **OpenEHR**: HTTP requests to EHRbase (`backend/app/ehrbase_client.py`) for clinical letters
 - Each FHIR patient gets corresponding EHR in EHRbase via `subject_id`
@@ -57,7 +61,8 @@ just create-user    # Interactive user creation
 
 ### Strong Static Typing (Critical for Healthcare Safety)
 
-**Backend (Python)**
+#### Backend (Python)
+
 - Pass `mypy --strict` with zero errors
 - Explicit type annotations on all function parameters and returns
 - Avoid `Any` types except for truly dynamic data
@@ -65,7 +70,8 @@ just create-user    # Interactive user creation
 - Prefer `Enum` or `Literal` over strings for constants
 - Use `Optional[Type]` or `Type | None` explicitly for nullables
 
-**Frontend (TypeScript)**
+#### Frontend (TypeScript)
+
 - `"strict": true` in `tsconfig.json`
 - Define interfaces for API responses, props, complex objects
 - Use type guards for runtime checks, avoid `as` assertions
@@ -73,29 +79,35 @@ just create-user    # Interactive user creation
 
 ### Defensive Programming (Critical for Clinical Apps)
 
-**Input Validation**
+#### Input Validation
+
 - Never trust user input: validate at API boundaries (Pydantic/Zod)
 - Sanitise data, enforce length limits, validate types/ranges/formats
 - Use Pydantic `extra='forbid'` to reject unexpected fields
 
-**Error Handling**
+#### Error Handling
+
 - try-except around all external calls (DB, FHIR, EHRbase, file I/O)
 - Catch specific exceptions, log context (not PHI), use user-friendly messages
 - Fail-safe defaults (deny access, safe fallbacks)
 
-**Null Safety**
+#### Null Safety
+
 - Check before use, early returns, guard clauses at function start
 
-**Database Safety**
+#### Database Safety
+
 - Parameterised queries only (SQLAlchemy ORM, never string concat)
 - Transactions with rollback, foreign key constraints
 - Idempotent operations for critical data (payments, clinical)
 
-**Security-First**
+#### Security-First
+
 - Whitelist over blacklist, least privilege, audit logging (no PHI in logs)
 - Authentication on all endpoints, authorisation checks, rate limiting
 
-**Healthcare-Specific**
+#### Healthcare-Specific
+
 - Never log/display PHI in errors or debug output
 - Validate clinical data strictly, ensure OpenEHR/FHIR compliance
 - Audit all clinical modifications (who, what, when)
@@ -110,6 +122,7 @@ just create-user    # Interactive user creation
 **Database models**: Define in `backend/app/models.py`, then `just migrate "description"`
 
 ## Key Files
+
 - `backend/app/main.py`: FastAPI routes
 - `backend/app/models.py`: SQLAlchemy models
 - `frontend/src/lib/api.ts`: API client
@@ -118,16 +131,19 @@ just create-user    # Interactive user creation
 
 ## Critical Rules
 
-**Security**
+### Security
+
 - Never log PHI in errors/logs/notifications
 - Enforce RBAC at DB and application level
 - Use `SecretStr` for secrets, never commit `.env` files
 
-**Git**
+### Git
+
 - NEVER auto-commit/push - always ask permission first
 - Stop after fixing issues, report, and wait for instruction
 
-**Markdown**
+### Markdown
+
 - Use proper heading syntax (`#`, `##`, `###`), not bold
 - No trailing punctuation on headings
 - Wrap emails in `<email@example.com>`
