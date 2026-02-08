@@ -93,6 +93,56 @@ nav:
       - Clinical Safety Officer: safety/overview/clinical-safety-officer.md
       - Development Integration: safety/overview/development-integration.md
       - Resources: safety/overview/resources.md
+      - Hazards:
+          - Overview: safety/hazards/README.md
+          - Completion Report: safety/hazards/STAGE-6-COMPLETION-REPORT.md
+          - Hazard-0001: safety/hazards/Hazard-0001.md
+          - Hazard-0002: safety/hazards/Hazard-0002.md
+          - Hazard-0003: safety/hazards/Hazard-0003.md
+          - Hazard-0004: safety/hazards/Hazard-0004.md
+          - Hazard-0005: safety/hazards/Hazard-0005.md
+          - Hazard-0006: safety/hazards/Hazard-0006.md
+          - Hazard-0007: safety/hazards/Hazard-0007.md
+          - Hazard-0008: safety/hazards/Hazard-0008.md
+          - Hazard-0009: safety/hazards/Hazard-0009.md
+          - Hazard-0010: safety/hazards/Hazard-0010.md
+          - Hazard-0011: safety/hazards/Hazard-0011.md
+          - Hazard-0012: safety/hazards/Hazard-0012.md
+          - Hazard-0013: safety/hazards/Hazard-0013.md
+          - Hazard-0014: safety/hazards/Hazard-0014.md
+          - Hazard-0015: safety/hazards/Hazard-0015.md
+          - Hazard-0016: safety/hazards/Hazard-0016.md
+          - Hazard-0017: safety/hazards/Hazard-0017.md
+          - Hazard-0018: safety/hazards/Hazard-0018.md
+          - Hazard-0019: safety/hazards/Hazard-0019.md
+          - Hazard-0020: safety/hazards/Hazard-0020.md
+          - Hazard-0021: safety/hazards/Hazard-0021.md
+          - Hazard-0022: safety/hazards/Hazard-0022.md
+          - Hazard-0023: safety/hazards/Hazard-0023.md
+          - Hazard-0024: safety/hazards/Hazard-0024.md
+          - Hazard-0025: safety/hazards/Hazard-0025.md
+          - Hazard-0026: safety/hazards/Hazard-0026.md
+          - Hazard-0027: safety/hazards/Hazard-0027.md
+          - Hazard-0028: safety/hazards/Hazard-0028.md
+          - Hazard-0029: safety/hazards/Hazard-0029.md
+          - Hazard-0030: safety/hazards/Hazard-0030.md
+          - Hazard-0031: safety/hazards/Hazard-0031.md
+          - Hazard-0032: safety/hazards/Hazard-0032.md
+          - Hazard-0033: safety/hazards/Hazard-0033.md
+          - Hazard-0034: safety/hazards/Hazard-0034.md
+          - Hazard-0035: safety/hazards/Hazard-0035.md
+          - Hazard-0036: safety/hazards/Hazard-0036.md
+          - Hazard-0037: safety/hazards/Hazard-0037.md
+          - Hazard-0038: safety/hazards/Hazard-0038.md
+          - Hazard-0039: safety/hazards/Hazard-0039.md
+          - Hazard-0040: safety/hazards/Hazard-0040.md
+          - Hazard-0041: safety/hazards/Hazard-0041.md
+          - Hazard-0042: safety/hazards/Hazard-0042.md
+          - Hazard-0043: safety/hazards/Hazard-0043.md
+          - Hazard-0044: safety/hazards/Hazard-0044.md
+          - Hazard-0045: safety/hazards/Hazard-0045.md
+          - Hazard-0046: safety/hazards/Hazard-0046.md
+          - Hazard-0047: safety/hazards/Hazard-0047.md
   - Authorization:
       - ABAC: ABAC.md
 
