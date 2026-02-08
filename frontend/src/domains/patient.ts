@@ -56,7 +56,8 @@ export type Patient = {
  * @returns Display label (e.g., "NHS", "Medicare", "ID")
  */
 export function getNationalNumberLabel(system?: string): string {
-  if (!system) return "ID";
+  // Defensive programming: handle null/undefined/empty
+  if (!system || system.trim().length === 0) return "ID";
 
   if (system.includes("nhs.uk")) {
     return "NHS";

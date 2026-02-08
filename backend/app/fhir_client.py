@@ -10,15 +10,15 @@ from typing import Any
 
 from fhirclient import client  # type: ignore[import-untyped]
 from fhirclient.models.address import Address  # type: ignore[import-untyped]
-from fhirclient.models.contactpoint import (
-    ContactPoint,  # type: ignore[import-untyped]
+from fhirclient.models.contactpoint import (  # type: ignore[import-untyped]
+    ContactPoint,
 )
-from fhirclient.models.extension import (
-    Extension,  # type: ignore[import-untyped]
+from fhirclient.models.extension import (  # type: ignore[import-untyped]
+    Extension,
 )
 from fhirclient.models.fhirdate import FHIRDate  # type: ignore[import-untyped]
-from fhirclient.models.humanname import (
-    HumanName,  # type: ignore[import-untyped]
+from fhirclient.models.humanname import (  # type: ignore[import-untyped]
+    HumanName,
 )
 from fhirclient.models.patient import Patient  # type: ignore[import-untyped]
 
@@ -97,8 +97,30 @@ def create_fhir_patient(
         dict: Created patient resource as dictionary.
 
     Raises:
+        ValueError: If required fields are empty or invalid.
         Exception: If creation fails.
     """
+    # Defensive programming: validate required inputs
+    if not given_name or not given_name.strip():
+        raise ValueError("Given name cannot be empty")
+    if not family_name or not family_name.strip():
+        raise ValueError("Family name cannot be empty")
+
+    # Validate gender if provided
+    if gender is not None:
+        valid_genders = {"male", "female", "other", "unknown"}
+        if gender.lower() not in valid_genders:
+            raise ValueError(
+                f"Gender must be one of {valid_genders}, got: {gender}"
+            )
+
+    # Validate NHS number format if provided
+    if nhs_number is not None and nhs_number.strip():
+        cleaned_nhs = nhs_number.strip().replace(" ", "")
+        if not cleaned_nhs.isdigit() or len(cleaned_nhs) != 10:
+            raise ValueError(
+                f"NHS number must be 10 digits, got: {nhs_number}"
+            )
     fhir = get_fhir_client()
 
     # Create Patient resource
@@ -130,8 +152,8 @@ def create_fhir_patient(
 
     # NHS Number (UK national identifier)
     if nhs_number:
-        from fhirclient.models.identifier import (
-            Identifier,  # type: ignore[import-untyped]
+        from fhirclient.models.identifier import (  # type: ignore[import-untyped]
+            Identifier,
         )
 
         nhs_id = Identifier()

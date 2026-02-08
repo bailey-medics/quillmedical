@@ -82,6 +82,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function login(username: string, password: string, totp?: string) {
+    // Defensive programming: validate inputs
+    if (!username || !username.trim()) {
+      throw new Error("Username cannot be empty");
+    }
+    if (!password) {
+      throw new Error("Password cannot be empty");
+    }
+    if (
+      totp !== undefined &&
+      totp.trim().length > 0 &&
+      totp.trim().length !== 6
+    ) {
+      throw new Error("TOTP code must be 6 digits");
+    }
+
     const body: Record<string, unknown> = {
       username: username.trim(),
       password,

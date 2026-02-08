@@ -27,7 +27,15 @@ def create_ehr(
 
     Returns:
         EHR response containing ehr_id
+
+    Raises:
+        ValueError: If subject_id is empty or invalid
     """
+    # Defensive programming: validate inputs
+    if not subject_id or not subject_id.strip():
+        raise ValueError("subject_id cannot be empty")
+    if not subject_namespace or not subject_namespace.strip():
+        raise ValueError("subject_namespace cannot be empty")
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr"
     headers = {
         **get_auth_header(),
@@ -68,7 +76,13 @@ def get_ehr_by_subject(
 
     Returns:
         EHR response or None if not found
+
+    Raises:
+        ValueError: If subject_id is empty
     """
+    # Defensive programming: validate inputs
+    if not subject_id or not subject_id.strip():
+        raise ValueError("subject_id cannot be empty")
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr"
     headers = get_auth_header()
     params = {"subject_id": subject_id, "subject_namespace": subject_namespace}

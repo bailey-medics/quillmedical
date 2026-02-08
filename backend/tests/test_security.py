@@ -50,11 +50,10 @@ class TestPasswordHashing:
         assert verify_password(wrong_password, hashed) is False
 
     def test_hash_empty_password(self):
-        """Test hashing empty password."""
-        # Should not raise exception
-        hashed = hash_password("")
-        assert hashed
-        assert verify_password("", hashed) is True
+        """Test hashing empty password raises ValueError."""
+        # Defensive programming: empty passwords should be rejected
+        with pytest.raises(ValueError, match="Password cannot be empty"):
+            hash_password("")
 
 
 class TestJWTTokens:
