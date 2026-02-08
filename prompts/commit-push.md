@@ -10,3 +10,5 @@
 6. Push to current branch
 
 If at any step there's an error requiring human judgement, stop and report the issue.
+
+Only commit and push code if it is run via this prompt in this file! Do not otherwise commit or push code without the user explicitly asking you to do so.

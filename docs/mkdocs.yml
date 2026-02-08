@@ -31,6 +31,7 @@ nav:
   - Backend:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
+      - Avatar Gradient Migration: backend/avatar-gradient-migration.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:
@@ -48,19 +49,29 @@ nav:
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
       - Accessibility: frontend/accessibility.md
+      - Storybook: frontend/storybook/index.md
+      - Test Infrastructure: frontend/test-infrastructure-setup.md
   - LLM:
       - Copilot Instructions: llm/copilot-instructions.md
+      - Architecture: llm/architecture.md
       - Roadmap: llm/roadmap.md
       - Specs: llm/specs.md
       - Prompts:
           - Overview: llm/prompts/index.md
+          - Code Documentation: llm/prompts/code-documentation.md
+          - Commit & Push: llm/prompts/commit-push.md
+          - Create Architecture: llm/prompts/create-architecture.md
+          - Create Docs: llm/prompts/create-docs-docs.md
+          - Create Roadmap: llm/prompts/create-roadmap.md
+          - Create Spec: llm/prompts/create-spec.md
           - FastAPI Docs: llm/prompts/fast-api-docs.md
+          - Strong Typing & Defensive Programming: llm/prompts/strong-static-typing-defensive-programming.md
           - Update Navigation: llm/prompts/update-nav.md
   - Code Documentation:
-      - Frontend: code/frontend/README.md
+      - Frontend TypeDoc: code/frontend/README.md
       - Storybook: code/storybook/index.html
-      - Swagger: code/swagger/index.md
-      - Backend:
+      - Backend API (Swagger): code/swagger/index.md
+      - Backend Code:
           - Overview: code/fastapi/index.md
           - Main: code/fastapi/main.md
           - Configuration: code/fastapi/config.md
@@ -73,6 +84,8 @@ nav:
           - Push Notifications: code/fastapi/push.md
           - Push Send: code/fastapi/push_send.md
           - Schemas: code/fastapi/schemas.md
+  - Other:
+      - ABAC: ABAC.md
 
 
 plugins:
