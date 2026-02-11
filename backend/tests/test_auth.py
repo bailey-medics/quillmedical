@@ -37,9 +37,7 @@ class TestRegister:
         assert response.status_code == 400
         assert "username already" in response.json()["detail"].lower()
 
-    def test_register_duplicate_email(
-        self, test_client: TestClient, test_user: User
-    ):
+    def test_register_duplicate_email(self, test_client: TestClient, test_user: User):
         """Test registration with existing email."""
         response = test_client.post(
             "/api/auth/register",
@@ -106,9 +104,7 @@ class TestLogin:
         assert response.status_code == 400
         assert "invalid credentials" in response.json()["detail"].lower()
 
-    def test_login_wrong_password(
-        self, test_client: TestClient, test_user: User
-    ):
+    def test_login_wrong_password(self, test_client: TestClient, test_user: User):
         """Test login with incorrect password."""
         response = test_client.post(
             "/api/auth/login",
@@ -222,9 +218,7 @@ class TestRefreshToken:
         assert authenticated_client.cookies.get("refresh_token") is not None
         assert authenticated_client.cookies.get("XSRF-TOKEN") is not None
 
-    def test_refresh_token_without_refresh_cookie(
-        self, test_client: TestClient
-    ):
+    def test_refresh_token_without_refresh_cookie(self, test_client: TestClient):
         """Test refresh without valid refresh token cookie."""
         response = test_client.post("/api/auth/refresh")
         assert response.status_code == 401
@@ -302,9 +296,7 @@ class TestTOTPVerify:
 
     def test_totp_verify_unauthenticated(self, test_client: TestClient):
         """Test TOTP verification without authentication."""
-        response = test_client.post(
-            "/api/auth/totp/verify", json={"code": "123456"}
-        )
+        response = test_client.post("/api/auth/totp/verify", json={"code": "123456"})
         assert response.status_code == 401
 
 

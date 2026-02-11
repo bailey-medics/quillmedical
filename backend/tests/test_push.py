@@ -135,6 +135,4 @@ class TestPushNotificationStorage:
 
         # Verify stored in SUBSCRIPTIONS
         assert len(SUBSCRIPTIONS) == 1
-        assert (
-            SUBSCRIPTIONS[0]["endpoint"] == "https://push.example.com/storage"
-        )
+        assert SUBSCRIPTIONS[0]["endpoint"] == "https://push.example.com/storage"

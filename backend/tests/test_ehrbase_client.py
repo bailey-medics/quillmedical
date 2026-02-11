@@ -20,9 +20,7 @@ class TestGetOrCreateEhr:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "ehr_id": {"value": "existing-ehr-123"}
-        }
+        mock_response.json.return_value = {"ehr_id": {"value": "existing-ehr-123"}}
         mock_get.return_value = mock_response
 
         result = ehrbase_client.get_or_create_ehr("patient-123")
@@ -34,9 +32,7 @@ class TestGetOrCreateEhr:
     @patch("app.ehrbase_client.requests.get")
     @patch("app.ehrbase_client.get_auth_header")
     @patch("app.ehrbase_client.settings")
-    def test_get_ehr_create_new(
-        self, mock_settings, mock_auth, mock_get, mock_post
-    ):
+    def test_get_ehr_create_new(self, mock_settings, mock_auth, mock_get, mock_post):
         """Test creating new EHR when none exists."""
         mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
         mock_auth.return_value = {"Authorization": "Basic test"}
@@ -49,9 +45,7 @@ class TestGetOrCreateEhr:
         # Mock POST creates EHR
         mock_post_response = MagicMock()
         mock_post_response.status_code = 201
-        mock_post_response.json.return_value = {
-            "ehr_id": {"value": "new-ehr-456"}
-        }
+        mock_post_response.json.return_value = {"ehr_id": {"value": "new-ehr-456"}}
         mock_post.return_value = mock_post_response
 
         result = ehrbase_client.get_or_create_ehr("patient-456")
@@ -195,14 +189,10 @@ class TestGetLetterComposition:
         mock_get_comp.return_value = {
             "uid": {"value": "comp-uid-123"},
             "name": {"value": "Test Letter"},
-            "content": [
-                {"data": {"items": [{"value": {"value": "Letter body"}}]}}
-            ],
+            "content": [{"data": {"items": [{"value": {"value": "Letter body"}}]}}],
         }
 
-        result = ehrbase_client.get_letter_composition(
-            "patient-123", "comp-uid-123"
-        )
+        result = ehrbase_client.get_letter_composition("patient-123", "comp-uid-123")
 
         assert result is not None
         assert result["uid"]["value"] == "comp-uid-123"
@@ -214,9 +204,7 @@ class TestGetLetterComposition:
         """Test retrieving letter when patient has no EHR."""
         mock_get_ehr.return_value = None
 
-        result = ehrbase_client.get_letter_composition(
-            "patient-123", "comp-uid-123"
-        )
+        result = ehrbase_client.get_letter_composition("patient-123", "comp-uid-123")
 
         assert result is None
 
@@ -227,9 +215,7 @@ class TestGetLetterComposition:
         mock_get_ehr.return_value = {"ehr_id": {"value": "ehr-123"}}
         mock_get_comp.side_effect = Exception("Retrieval failed")
 
-        result = ehrbase_client.get_letter_composition(
-            "patient-123", "comp-uid-123"
-        )
+        result = ehrbase_client.get_letter_composition("patient-123", "comp-uid-123")
 
         # Function catches exception and returns None
         assert result is None
@@ -245,9 +231,7 @@ class TestGetAuthHeader:
 
         mock_settings.EHRBASE_API_USER = "test_user"
         mock_settings.EHRBASE_API_PASSWORD = MagicMock()
-        mock_settings.EHRBASE_API_PASSWORD.get_secret_value.return_value = (
-            "test_pass"
-        )
+        mock_settings.EHRBASE_API_PASSWORD.get_secret_value.return_value = "test_pass"
 
         result = ehrbase_client.get_auth_header()
 
@@ -397,9 +381,7 @@ class TestListCompositionsForEhr:
     @patch("app.ehrbase_client.query_aql")
     def test_list_compositions(self, mock_query):
         """Test successful composition listing."""
-        mock_query.return_value = {
-            "rows": [{"uid": "comp-1"}, {"uid": "comp-2"}]
-        }
+        mock_query.return_value = {"rows": [{"uid": "comp-1"}, {"uid": "comp-2"}]}
 
         result = ehrbase_client.list_compositions_for_ehr("ehr-123")
 

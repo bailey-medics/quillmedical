@@ -70,9 +70,7 @@ def patient_repo_name(patient_id: str) -> str:
     # Defensive programming: validate input
     if not patient_id or not patient_id.strip():
         raise ValueError("patient_id cannot be empty")
-    safe = "".join(
-        ch if (ch.isalnum() or ch in "-_") else "-" for ch in patient_id
-    )
+    safe = "".join(ch if (ch.isalnum() or ch in "-_") else "-" for ch in patient_id)
     return f"patient-{safe}"
 
 

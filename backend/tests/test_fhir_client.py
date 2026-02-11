@@ -21,10 +21,7 @@ class TestFhirClient:
         mock_client_class.assert_called_once()
         # Verify settings were used
         call_args = mock_client_class.call_args
-        assert (
-            call_args[1]["settings"]["api_base"]
-            == "http://test-fhir:8080/fhir"
-        )
+        assert call_args[1]["settings"]["api_base"] == "http://test-fhir:8080/fhir"
 
 
 class TestCreateFhirPatient:
@@ -61,9 +58,7 @@ class TestCreateFhirPatient:
 
         with patch("app.fhir_client.Patient"):
             with pytest.raises(Exception) as exc_info:
-                fhir_client.create_fhir_patient(
-                    "Test", "User", patient_id="123"
-                )
+                fhir_client.create_fhir_patient("Test", "User", patient_id="123")
 
             assert "Creation failed" in str(exc_info.value)
 
@@ -97,9 +92,7 @@ class TestReadFhirPatient:
         mock_get_client.return_value = mock_fhir
 
         with patch("app.fhir_client.Patient") as mock_patient_class:
-            mock_patient_class.read.side_effect = Exception(
-                "Patient not found"
-            )
+            mock_patient_class.read.side_effect = Exception("Patient not found")
             result = fhir_client.read_fhir_patient("999")
 
         assert result is None
@@ -189,9 +182,7 @@ class TestUpdateFhirPatient:
         mock_get_client.return_value = mock_fhir
 
         with patch("app.fhir_client.Patient") as mock_patient_class:
-            mock_patient_class.read.side_effect = Exception(
-                "Patient not found"
-            )
+            mock_patient_class.read.side_effect = Exception("Patient not found")
             result = fhir_client.update_fhir_patient("999", {"name": []})
 
         assert result is None

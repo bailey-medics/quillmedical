@@ -51,9 +51,7 @@ class Settings(BaseSettings):
     )
 
     # --- Auth ---
-    JWT_SECRET: SecretStr = Field(
-        ..., min_length=32, description="JWT signing key"
-    )
+    JWT_SECRET: SecretStr = Field(..., min_length=32, description="JWT signing key")
     JWT_ALG: str = "HS256"
     ACCESS_TTL_MIN: int = 15
     REFRESH_TTL_DAYS: int = 7
@@ -63,35 +61,21 @@ class Settings(BaseSettings):
     # --- Auth Database ---
     AUTH_DB_NAME: str = Field("quill_auth", description="Auth database name")
     AUTH_DB_USER: str = Field("auth_user", description="Auth database user")
-    AUTH_DB_PASSWORD: SecretStr = Field(
-        ..., description="Auth database password"
-    )
-    AUTH_DB_HOST: str = Field(
-        "postgres-auth", description="Auth database host"
-    )
+    AUTH_DB_PASSWORD: SecretStr = Field(..., description="Auth database password")
+    AUTH_DB_HOST: str = Field("postgres-auth", description="Auth database host")
     AUTH_DB_PORT: int = Field(5432, description="Auth database port")
 
     # --- FHIR Database ---
     FHIR_DB_NAME: str = Field("hapi", description="FHIR database name")
     FHIR_DB_USER: str = Field("hapi_user", description="FHIR database user")
-    FHIR_DB_PASSWORD: SecretStr = Field(
-        ..., description="FHIR database password"
-    )
-    FHIR_DB_HOST: str = Field(
-        "postgres-fhir", description="FHIR database host"
-    )
+    FHIR_DB_PASSWORD: SecretStr = Field(..., description="FHIR database password")
+    FHIR_DB_HOST: str = Field("postgres-fhir", description="FHIR database host")
     FHIR_DB_PORT: int = Field(5432, description="FHIR database port")
 
     # --- EHRbase Database ---
-    EHRBASE_DB_NAME: str = Field(
-        "ehrbase", description="EHRbase database name"
-    )
-    EHRBASE_DB_USER: str = Field(
-        "ehrbase_user", description="EHRbase database user"
-    )
-    EHRBASE_DB_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase database password"
-    )
+    EHRBASE_DB_NAME: str = Field("ehrbase", description="EHRbase database name")
+    EHRBASE_DB_USER: str = Field("ehrbase_user", description="EHRbase database user")
+    EHRBASE_DB_PASSWORD: SecretStr = Field(..., description="EHRbase database password")
     EHRBASE_DB_HOST: str = Field(
         "postgres-ehrbase", description="EHRbase database host"
     )
@@ -102,12 +86,8 @@ class Settings(BaseSettings):
 
     # --- EHRbase Server API ---
     EHRBASE_URL: str = "http://ehrbase:8080/ehrbase"
-    EHRBASE_API_USER: str = Field(
-        "ehrbase_user", description="EHRbase API user"
-    )
-    EHRBASE_API_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase API password"
-    )
+    EHRBASE_API_USER: str = Field("ehrbase_user", description="EHRbase API user")
+    EHRBASE_API_PASSWORD: SecretStr = Field(..., description="EHRbase API password")
     EHRBASE_API_ADMIN_USER: str = Field(
         "ehrbase_admin", description="EHRbase API admin user"
     )
