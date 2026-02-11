@@ -9,7 +9,8 @@ repos:
     rev: 25.9.0
     hooks:
       - id: black
-        language_version: python3.12
+        language_version: python3.13
+        args: ['--config=backend/pyproject.toml']
         # Don't pass alembic revision files to Black via pre-commit
         exclude: '(^|/)backend/alembic/versions(/|$)'
 
