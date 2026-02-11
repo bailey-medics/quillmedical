@@ -2,12 +2,14 @@
 
 ## Context
 
-You are building a Competency-Based Access Control (CBAC) authorization system for Quill Medical, an NHS Electronic Patient Record (EPR) system. The system uses:
+You are building a Competency-Based Access Control (CBAC) authorization system for Quill Medical, an Electronic Patient Record (EPR) system. The system uses:
 
-- **Backend:** Python 3.11+ with FastAPI
-- **Frontend:** React with TypeScript (PWA)
-- **Database:** PostgreSQL (separate auth, FHIR, EHRbase instances)
-- **Standards:** FHIR for demographics, OpenEHR for clinical data
+- **Backend:** Python 3.13 with FastAPI, Poetry, SQLAlchemy 2.0
+- **Frontend:** React 19 + TypeScript + Vite + Mantine UI
+- **Database:** PostgreSQL (separate auth DB, HAPI FHIR, EHRbase)
+- **Standards:** FHIR for demographics (via HAPI FHIR), OpenEHR for clinical letters (via EHRbase)
+- **Authentication:** JWT in HTTP-only cookies, TOTP 2FA, Argon2 password hashing
+- **Configuration:** YAML source files in `shared/` (backend reads directly via PyYAML, frontend uses generated JSON for TypeScript types)
 
 **Key Principle:** Healthcare staff have **clinical competencies** (prescribe controlled drugs, discharge without review) not rigid job roles. This avoids "role explosion" and handles training progression, locums, supervision, and specialty-specific capabilities.
 
@@ -15,47 +17,53 @@ You are building a Competency-Based Access Control (CBAC) authorization system f
 
 ## Architecture Overview
 
-```
+```text
 quill-medical/
 ├── shared/
 │   ├── competencies.yaml           # HUMAN-EDITABLE: Competency definitions
 │   ├── base-professions.yaml       # HUMAN-EDITABLE: Profession templates
 │   └── jurisdiction-config.yaml    # HUMAN-EDITABLE: International deployment config
 │
-├── scripts/
-│   └── generate-json-from-yaml.ts  # Build script (creates JSON from YAML)
-│
 ├── backend/
-│   ├── generated/                  # GITIGNORED: Generated JSON files
-│   │   ├── competencies.json
-│   │   ├── base-professions.json
-│   │   └── jurisdiction-config.json
 │   ├── app/
-│   │   ├── models/
-│   │   │   ├── user.py             # User model with base_profession
-│   │   │   ├── competencies.py     # Competency enums/types from YAML
-│   │   │   └── token.py            # JWT token models
-│   │   ├── auth/
-│   │   │   ├── jwt_handler.py      # Token creation/validation
-│   │   │   └── decorators.py       # @requires_competency decorator
-│   │   └── routes/
-│   │       ├── auth.py             # Login, token generation
-│   │       └── prescriptions.py    # Example protected route
-│   └── requirements.txt            # Add PyYAML, PyJWT
+│   │   ├── models.py               # SQLAlchemy models (User with base_profession)
+│   │   ├── schemas/                # Pydantic schemas for API validation
+│   │   │   ├── cbac.py            # CBAC request/response models
+│   │   │   └── auth.py            # Auth schemas (existing)
+│   │   ├── cbac/                   # CBAC authorization module
+│   │   │   ├── __init__.py
+│   │   │   ├── competencies.py    # Load competency definitions from YAML
+│   │   │   ├── base_professions.py # Load profession templates from YAML
+│   │   │   ├── decorators.py      # @requires_competency decorator
+│   │   │   └── resolver.py        # Resolve final competencies
+│   │   ├── security.py             # Auth utilities (existing: JWT, Argon2, TOTP)
+│   │   ├── main.py                 # FastAPI app with route definitions
+│   │   └── db/
+│   │       └── auth_db.py          # Database operations (existing)
+│   └── pyproject.toml              # Poetry dependencies
 │
 └── frontend/
+    ├── scripts/
+    │   └── generate-json-from-yaml.ts  # Build script (creates JSON from YAML for TS types)
     ├── src/
-    │   ├── generated/              # GITIGNORED: Generated JSON files
+    │   ├── generated/              # GITIGNORED: Generated JSON files for TypeScript
     │   │   ├── competencies.json
     │   │   ├── base-professions.json
     │   │   └── jurisdiction-config.json
     │   ├── types/
-    │   │   └── competencies.ts     # Type inference from generated JSON
-    │   ├── auth/
-    │   │   ├── jwt.ts              # JWT decode utilities
-    │   │   └── permissions.ts      # Permission checking hooks
+    │   │   └── cbac.ts             # Type inference from generated JSON
+    │   ├── hooks/
+    │   │   └── useCompetencies.ts  # Permission checking hooks
+    │   ├── lib/
+    │   │   └── api.ts              # API client (extended with CBAC endpoints)
+    │   ├── contexts/
+    │   │   └── AuthContext.tsx     # Existing auth context
     │   └── components/
-    │       └── PrescribeButton.tsx # Example permission-gated component
+    │       └── PrescribeButton/    # Example permission-gated component
+    │           ├── PrescribeButton.tsx
+    │           ├── PrescribeButton.module.css
+    │           ├── PrescribeButton.stories.tsx
+    │           └── PrescribeButton.test.tsx
     └── package.json                # Add js-yaml as dev dependency
 ```
 
@@ -68,30 +76,30 @@ quill-medical/
 ```bash
 # Create directories
 mkdir -p shared
-mkdir -p scripts
-mkdir -p backend/generated
-mkdir -p backend/app/models
-mkdir -p backend/app/auth
-mkdir -p backend/app/routes
+mkdir -p backend/app/cbac
+mkdir -p backend/app/schemas
+mkdir -p frontend/scripts
 mkdir -p frontend/src/generated
 mkdir -p frontend/src/types
-mkdir -p frontend/src/auth
+mkdir -p frontend/src/lib/cbac
 ```
 
 ### Task 1.2: Update .gitignore
 
-Add to both root `.gitignore` and/or backend/frontend specific gitignores:
+Add to both root `.gitignore` and/or frontend specific `.gitignore`:
 
 ```gitignore
 # Generated files - DO NOT COMMIT
-backend/generated/
+# Backend uses YAML directly, only frontend needs generated JSON
 frontend/src/generated/
 
 # Generated JSON from YAML
 *.generated.json
 ```
 
-**Verification:** Confirm `backend/generated/` and `frontend/src/generated/` are gitignored.
+**Verification:** Confirm `frontend/src/generated/` is gitignored.
+
+**Note:** Backend uses YAML directly via PyYAML. Only frontend needs generated JSON for TypeScript type inference.
 
 ---
 
@@ -792,32 +800,28 @@ jurisdictions:
 
 ## Step 3: Create Build Script (YAML → JSON Generation)
 
-### Task 3.1: Create `scripts/generate-json-from-yaml.ts`
+**Architecture Note:**
+
+- **Backend (Python):** Uses YAML directly via PyYAML. Reads `shared/*.yaml` at runtime.
+- **Frontend (TypeScript):** Uses generated JSON for type inference. YAML can't be efficiently used in browser, and TypeScript needs concrete JSON to infer types.
+- **Build Process:** Frontend prebuild/predev hooks generate JSON from YAML automatically.
+
+### Task 3.1: Create `frontend/scripts/generate-json-from-yaml.ts`
 
 ```typescript
-// scripts/generate-json-from-yaml.ts
+// frontend/scripts/generate-json-from-yaml.ts
 //
-// Generates JSON files from YAML source for TypeScript type inference
-// Run this as part of the build process
+// Generates JSON files from YAML source for TypeScript type inference.
+// Backend uses YAML directly via PyYAML - this is only for frontend TypeScript types.
+//
+// Run this as part of the frontend build process (prebuild/predev hooks)
 
 import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 
-const SHARED_DIR = path.join(__dirname, "..", "shared");
-const BACKEND_GENERATED_DIR = path.join(
-  __dirname,
-  "..",
-  "backend",
-  "generated",
-);
-const FRONTEND_GENERATED_DIR = path.join(
-  __dirname,
-  "..",
-  "frontend",
-  "src",
-  "generated",
-);
+const SHARED_DIR = path.join(__dirname, "..", "..", "shared");
+const FRONTEND_GENERATED_DIR = path.join(__dirname, "..", "src", "generated");
 
 const FILES_TO_GENERATE = [
   "competencies.yaml",
@@ -841,104 +845,92 @@ function generateJson(yamlFile: string): void {
   const yamlContent = fs.readFileSync(yamlPath, "utf8");
   const data = yaml.load(yamlContent);
 
-  // Write JSON to backend
-  const backendJsonPath = path.join(BACKEND_GENERATED_DIR, jsonFile);
-  fs.writeFileSync(backendJsonPath, JSON.stringify(data, null, 2));
-  console.log(`  ✓ Generated ${backendJsonPath}`);
-
-  // Write JSON to frontend
+  // Write JSON to frontend (backend uses YAML directly)
   const frontendJsonPath = path.join(FRONTEND_GENERATED_DIR, jsonFile);
   fs.writeFileSync(frontendJsonPath, JSON.stringify(data, null, 2));
   console.log(`  ✓ Generated ${frontendJsonPath}`);
 }
 
 function main(): void {
-  console.log("Generating JSON from YAML...\n");
+  console.log("Generating JSON from YAML for TypeScript types...\n");
 
-  // Ensure directories exist
-  ensureDirectoryExists(BACKEND_GENERATED_DIR);
+  // Ensure frontend generated directory exists
   ensureDirectoryExists(FRONTEND_GENERATED_DIR);
 
   // Generate JSON for each YAML file
   FILES_TO_GENERATE.forEach(generateJson);
 
   console.log("\n✅ All JSON files generated successfully!");
-  console.log("\nGenerated files:");
-  console.log(`  Backend:  backend/generated/`);
-  console.log(`  Frontend: frontend/src/generated/`);
+  console.log(`\nGenerated: frontend/src/generated/`);
+  console.log("\nNote: Backend uses YAML directly via PyYAML.");
 }
 
 main();
 ```
 
-### Task 3.2: Update `package.json` scripts
+### Task 3.2: Update `frontend/package.json` scripts
 
-Add to root `package.json` (or create one if it doesn't exist):
+Add scripts to `frontend/package.json`:
 
 ```json
 {
-  "name": "quill-medical",
-  "version": "1.0.0",
-  "private": true,
   "scripts": {
     "generate:types": "tsx scripts/generate-json-from-yaml.ts",
-    "prebuild": "npm run generate:types"
+    "prebuild": "npm run generate:types",
+    "predev": "npm run generate:types"
   },
   "devDependencies": {
     "js-yaml": "^4.1.0",
-    "@types/js-yaml": "^4.0.5",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+    "@types/js-yaml": "^4.0.9",
+    "tsx": "^4.7.0"
   }
 }
 ```
 
+**Note:** These scripts should be added to the existing `frontend/package.json`, not replace it entirely.
+
 ### Task 3.3: Install dependencies and test
 
 ```bash
+cd frontend
 npm install
 npm run generate:types
 ```
 
 **Verification:**
 
-- JSON files created in `backend/generated/`
 - JSON files created in `frontend/src/generated/`
 - Files are valid JSON and match YAML structure
+- Backend can read YAML files directly from `shared/` directory
 
 ---
 
 ## Step 4: Backend Implementation (Python/FastAPI)
 
-### Task 4.1: Update `backend/requirements.txt`
+### Task 4.1: Update `backend/pyproject.toml`
 
-Add dependencies:
-
-```txt
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.5.0
-PyYAML>=6.0.1
-PyJWT>=2.8.0
-python-multipart>=0.0.6
-bcrypt>=4.1.0
-```
-
-Install:
+Add dependencies using Poetry:
 
 ```bash
 cd backend
-pip install -r requirements.txt
+poetry add pyyaml
 ```
+
+**Note:** FastAPI, Pydantic, python-jose (JWT), passlib[argon2], and other required packages are already in the project.
 
 ---
 
-### Task 4.2: Create `backend/app/models/competencies.py`
+### Task 4.2: Create `backend/app/cbac/competencies.py`
 
 Load competencies from YAML and create Python types:
 
 ```python
-# backend/app/models/competencies.py
+# backend/app/cbac/competencies.py
+"""Competency definitions loaded from YAML.
+
+This module loads and validates competency definitions from the shared/competencies.yaml
+file, providing type-safe access to competency IDs and metadata.
+"""
 
 import yaml
 from pathlib import Path
@@ -987,10 +979,15 @@ def get_competency_risk_level(competency_id: str) -> str:
 
 ---
 
-### Task 4.3: Create `backend/app/models/base_professions.py`
+### Task 4.3: Create `backend/app/cbac/base_professions.py`
 
 ```python
-# backend/app/models/base_professions.py
+# backend/app/cbac/base_professions.py
+"""Base profession definitions loaded from YAML.
+
+Provides templates for common healthcare professions with their standard
+competency sets, which can be customised per-user.
+"""
 
 import yaml
 from pathlib import Path
@@ -1045,205 +1042,217 @@ def resolve_user_competencies(
 
 ---
 
-### Task 4.4: Create `backend/app/models/user.py`
+### Task 4.4: Update `backend/app/models.py`
 
-User model with base profession and competencies:
+Add CBAC fields to existing User model:
 
 ```python
-# backend/app/models/user.py
+# backend/app/models.py
+# Add to existing User model
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from sqlalchemy import String, Boolean, ARRAY, JSON
+from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
+from typing import Optional
 
-class ProfessionalRegistration(BaseModel):
+# Add to existing User class in models.py:
+class User(DeclarativeBase):  # Extends existing User model
+    # ... existing fields ...
+
+    # CBAC fields
+    base_profession: Mapped[str] = mapped_column(String(100), nullable=False, default="patient")
+    additional_competencies: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, server_default="{}")
+    removed_competencies: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, server_default="{}")
+    professional_registrations: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    def get_final_competencies(self) -> list[str]:
+        """Calculate final competencies for this user."""
+        from app.cbac.base_professions import resolve_user_competencies
+        return resolve_user_competencies(
+            self.base_profession,
+            self.additional_competencies,
+            self.removed_competencies
+        )
+
+# For API schemas, create Pydantic models:
+from pydantic import BaseModel, Field
+
+class ProfessionalRegistrationSchema(BaseModel):
     """Professional registration details (GMC, NMC, DEA, etc.)."""
+    """Professional registration for API responses."""
     authority: str  # e.g., "GMC", "NMC", "DEA"
     number: str
     jurisdiction: str  # e.g., "uk", "us"
     verified: bool = False
     verified_at: Optional[datetime] = None
 
-class User(BaseModel):
-    """User model with CBAC."""
-
-    user_id: str
+class UserWithCompetencies(BaseModel):
+    """User data with resolved competencies for API responses."""
+    user_id: int
+    username: str
     email: str
-
-    # Base profession (e.g., "physician", "nurse", "patient")
     base_profession: str
-
-    # Competency modifications
-    additional_competencies: list[str] = Field(default_factory=list)
-    removed_competencies: list[str] = Field(default_factory=list)
-
-    # Professional registrations
-    professional_registrations: list[ProfessionalRegistration] = Field(default_factory=list)
-
-    # Metadata
-    active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def get_final_competencies(self) -> list[str]:
-        """Calculate final competencies for this user."""
-        from app.models.base_professions import resolve_user_competencies
-        return resolve_user_competencies(
-            self.base_profession,
-            self.additional_competencies,
-            self.removed_competencies
-        )
+    additional_competencies: list[str]
+    removed_competencies: list[str]
+    final_competencies: list[str]  # Computed field
+    professional_registrations: Optional[dict] = None
 ```
 
 **Verification:** Create a test user and verify `get_final_competencies()` returns correct results.
 
 ---
 
-### Task 4.5: Create `backend/app/models/token.py`
+### Task 4.5: Create `backend/app/schemas/cbac.py`
 
-JWT token models:
+CBAC-related Pydantic schemas for API requests/responses:
 
 ```python
-# backend/app/models/token.py
+# backend/app/schemas/cbac.py
+"""Pydantic schemas for CBAC API endpoints."""
 
 from pydantic import BaseModel
-from typing import Optional
 
-class TokenData(BaseModel):
-    """Data stored in JWT token."""
+class CompetencyCheck(BaseModel):
+    """Request to check if user has a competency."""
+    user_id: int
+    competency: str
 
-    user_id: str
-    email: str
+class CompetencyCheckResponse(BaseModel):
+    """Response for competency check."""
+    has_competency: bool
+    reason: str | None = None
+
+class UpdateCompetenciesRequest(BaseModel):
+    """Request to update user's additional/removed competencies."""
+    user_id: int
+    additional_competencies: list[str] | None = None
+    removed_competencies: list[str] | None = None
+
+class UserCompetenciesResponse(BaseModel):
+    """Response with user's competencies."""
+    user_id: int
     base_profession: str
-    competencies: list[str]  # Final resolved competencies
-    professional_registrations: list[dict] = []
-
-    # Standard JWT fields
-    exp: int  # Expiration timestamp
-    iat: int  # Issued at timestamp
-
-class Token(BaseModel):
-    """Token response."""
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int  # Seconds until expiration
-
-class LoginRequest(BaseModel):
-    """Login request."""
-    email: str
-    password: str
+    base_competencies: list[str]
+    additional_competencies: list[str]
+    removed_competencies: list[str]
+    final_competencies: list[str]
 ```
 
 ---
 
-### Task 4.6: Create `backend/app/auth/jwt_handler.py`
+### Task 4.6: Extend `backend/app/security.py`
 
-JWT creation and validation:
+Add CBAC support to existing JWT token creation:
 
 ```python
-# backend/app/auth/jwt_handler.py
+# backend/app/security.py
+# Add to existing security.py file
 
-import jwt
-from datetime import datetime, timedelta
-from typing import Optional
-from fastapi import HTTPException, status
-from app.models.user import User
-from app.models.token import TokenData
+from jose import jwt
+from datetime import datetime, timedelta, UTC
+from app.config import settings
+from app.models import User  # SQLAlchemy User model
 
-# TODO: Move to environment variables in production
-SECRET_KEY = "your-secret-key-change-this-in-production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+def create_jwt_with_competencies(user: User) -> str:
+    """Create JWT access token with CBAC competencies included.
 
-def create_access_token(user: User) -> str:
-    """Create JWT access token for user."""
-
+    Extends existing JWT creation to include competency data.
+    Tokens are stored in HTTP-only cookies (see existing security.py patterns).
+    """
     # Calculate final competencies
     competencies = user.get_final_competencies()
 
-    # Token expiration
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Token expiration (15 minutes for access tokens per project standards)
+    expire = datetime.now(UTC) + timedelta(minutes=15)
 
-    # Token payload
+    # Token payload - extend existing JWT claims
     payload = {
-        "user_id": user.user_id,
+        "sub": str(user.id),  # Standard JWT subject
+        "username": user.username,
         "email": user.email,
+        # CBAC claims
         "base_profession": user.base_profession,
         "competencies": competencies,
-        "professional_registrations": [
-            {
-                "authority": reg.authority,
-                "number": reg.number,
-                "jurisdiction": reg.jurisdiction
-            }
-            for reg in user.professional_registrations
-        ],
+        "professional_registrations": user.professional_registrations,
+        # Standard JWT fields
         "exp": int(expire.timestamp()),
-        "iat": int(datetime.utcnow().timestamp())
+        "iat": int(datetime.now(UTC).timestamp())
     }
 
-    # Encode token
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    # Use existing settings.JWT_SECRET_KEY and settings.JWT_ALGORITHM
+    token = jwt.encode(payload, settings.JWT_SECRET_KEY.get_secret_value(), algorithm="HS256")
     return token
 
-def decode_access_token(token: str) -> TokenData:
-    """Decode and validate JWT access token."""
+def decode_jwt_with_competencies(token: str) -> dict:
+    """Decode and validate JWT token with CBAC claims.
 
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    Use this alongside existing get_current_user_from_jwt dependency.
+    """
+    from jose import JWTError
+    from fastapi import HTTPException, status
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        # Validate required fields
-        user_id: Optional[str] = payload.get("user_id")
-        if user_id is None:
-            raise credentials_exception
-
-        return TokenData(**payload)
-
-    except jwt.ExpiredSignatureError:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=["HS256"]
+        )
+        return payload
+    except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise credentials_exception
-
-def verify_token_from_header(authorization: str) -> TokenData:
-    """Extract and verify token from Authorization header."""
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication scheme",
-        )
-
-    token = authorization.replace("Bearer ", "")
-    return decode_access_token(token)
+            detail="Could not validate credentials",
+        ) from e
 ```
 
 **Verification:** Test token creation and decoding with a sample user.
 
 ---
 
-### Task 4.7: Create `backend/app/auth/decorators.py`
+### Task 4.7: Create `backend/app/cbac/decorators.py`
 
-Authorization decorator for routes:
+Authorization decorators and dependencies for routes:
 
 ```python
-# backend/app/auth/decorators.py
+# backend/app/cbac/decorators.py
+"""CBAC authorization decorators and FastAPI dependencies.
 
-from functools import wraps
-from fastapi import Request, HTTPException, status
-from app.auth.jwt_handler import verify_token_from_header
-from app.models.competencies import get_competency_risk_level
+Provides @requires_competency and Depends(has_competency(...)) for
+protecting API endpoints based on user competencies.
+"""
 
-def requires_competency(competency: str):
+from fastapi import Depends, HTTPException, status, Request
+from app.security import get_current_user_from_jwt  # Existing auth function
+from app.cbac.competencies import get_competency_risk_level
+from app.models import User
+from typing import Annotated
+
+def has_competency(competency: str):
+    """FastAPI dependency to check if current user has a competency.
+
+    Usage:
+        @router.post("/prescriptions/controlled")
+        async def prescribe_controlled(
+            user: Annotated[User, Depends(has_competency("prescribe_controlled_drugs"))]
+        ):
+            # user has the required competency
+            ...
+    """
+    async def check_competency(user: Annotated[User, Depends(get_current_user_from_jwt)]) -> User:
+        final_competencies = user.get_final_competencies()
+
+        if competency not in final_competencies:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient privileges. Required competency: {competency}",
+            )
+
+        return user
+
+    return check_competency
+
+# Legacy decorator style (prefer FastAPI Depends above)
+def requires_competency_decorator(competency: str):
     """
     Decorator to require a specific competency for a route.
 
@@ -1319,160 +1328,79 @@ def requires_any_competency(*competencies: str):
     return decorator
 ```
 
-**Verification:** Test decorator with a mock request and token.
+**Verification:** Test dependency with a mock user and test client (see pytest patterns in conftest.py).
 
 ---
 
-### Task 4.8: Create `backend/app/routes/auth.py`
+### Task 4.8: Add CBAC routes to `backend/app/main.py`
 
-Authentication routes:
-
-```python
-# backend/app/routes/auth.py
-
-from fastapi import APIRouter, HTTPException, status
-from app.models.token import LoginRequest, Token
-from app.models.user import User, ProfessionalRegistration
-from app.auth.jwt_handler import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-import bcrypt
-
-router = APIRouter(prefix="/auth", tags=["authentication"])
-
-# TODO: Replace with actual database
-# Mock user database for demonstration
-MOCK_USERS = {
-    "doctor@example.com": User(
-        user_id="user_001",
-        email="doctor@example.com",
-        base_profession="physician",
-        additional_competencies=["prescribe_controlled_drugs", "discharge_without_review"],
-        removed_competencies=[],
-        professional_registrations=[
-            ProfessionalRegistration(
-                authority="GMC",
-                number="7654321",
-                jurisdiction="uk",
-                verified=True
-            )
-        ]
-    ),
-    "patient@example.com": User(
-        user_id="user_002",
-        email="patient@example.com",
-        base_profession="patient",
-        additional_competencies=[],
-        removed_competencies=[]
-    )
-}
-
-# Mock password hash (password: "password123")
-MOCK_PASSWORD_HASH = bcrypt.hashpw("password123".encode(), bcrypt.gensalt())
-
-@router.post("/login", response_model=Token)
-async def login(request: LoginRequest):
-    """
-    Authenticate user and return JWT token.
-
-    Token contains:
-    - user_id
-    - base_profession
-    - competencies (final resolved list)
-    - professional_registrations
-    """
-
-    # Find user
-    user = MOCK_USERS.get(request.email)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
-
-    # Verify password
-    if not bcrypt.checkpw(request.password.encode(), MOCK_PASSWORD_HASH):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
-
-    # Create token
-    access_token = create_access_token(user)
-
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
-
-@router.get("/me")
-async def get_current_user(request: Request):
-    """Get current user from token."""
-    from app.auth.jwt_handler import verify_token_from_header
-
-    authorization = request.headers.get("Authorization")
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    token_data = verify_token_from_header(authorization)
-    return token_data
-```
-
----
-
-### Task 4.9: Create example protected route `backend/app/routes/prescriptions.py`
+Add CBAC-specific routes to the existing FastAPI application:
 
 ```python
-# backend/app/routes/prescriptions.py
+# backend/app/main.py
+# Add these routes to the existing router
 
-from fastapi import APIRouter, Request
-from pydantic import BaseModel
-from app.auth.decorators import requires_competency
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.db.database import get_session
+from app.cbac.decorators import has_competency
+from app.schemas.cbac import UserCompetenciesResponse, PrescriptionRequest
+from app.models import User
+from typing import Annotated
 
-router = APIRouter(prefix="/prescriptions", tags=["prescriptions"])
+# Use existing dependencies
+DEP_GET_SESSION = Depends(get_session)
+DEP_CURRENT_USER = Depends(get_current_user_from_jwt)
 
-class PrescriptionRequest(BaseModel):
-    patient_id: str
-    medication: str
-    dose: str
-    duration_days: int
+# Get user's competencies
+@router.get(
+    "/cbac/my-competencies",
+    response_model=UserCompetenciesResponse,
+    tags=["cbac"]
+)
+async def get_my_competencies(
+    user: Annotated[User, DEP_CURRENT_USER],
+) -> UserCompetenciesResponse:
+    """Get current user's resolved competencies."""
+    from app.cbac.base_professions import get_profession_base_competencies
 
-@router.post("/non-controlled")
-@requires_competency("prescribe_non_controlled")
-async def prescribe_non_controlled(request: Request, prescription: PrescriptionRequest):
+    base_comps = get_profession_base_competencies(user.base_profession)
+    final_comps = user.get_final_competencies()
+
+    return UserCompetenciesResponse(
+        user_id=user.id,
+        base_profession=user.base_profession,
+        base_competencies=base_comps,
+        additional_competencies=user.additional_competencies,
+        removed_competencies=user.removed_competencies,
+        final_competencies=final_comps
+    )
+
+# Example: Protected route requiring competency
+@router.post(
+    "/prescriptions/controlled",
+    tags=["prescriptions"],
+    status_code=201
+)
+async def prescribe_controlled(
+    prescription: PrescriptionRequest,
+    user: Annotated[User, Depends(has_competency("prescribe_controlled_drugs"))],
+    db: Annotated[Session, DEP_GET_SESSION],
+) -> dict:
+    """Prescribe controlled substance.
+
+    Requires: prescribe_controlled_drugs competency.
     """
-    Prescribe non-controlled medication.
-    Requires: prescribe_non_controlled competency
-    """
-    user = request.state.user
-
-    # TODO: Implement prescription logic
-
-    return {
-        "message": "Prescription created",
-        "prescriber": user.user_id,
-        "patient": prescription.patient_id,
-        "medication": prescription.medication
-    }
-
-@router.post("/controlled")
-@requires_competency("prescribe_controlled_drugs")
-async def prescribe_controlled(request: Request, prescription: PrescriptionRequest):
-    """
-    Prescribe controlled substance.
-    Requires: prescribe_controlled_drugs competency
-    """
-    user = request.state.user
-
-    # TODO: Implement controlled substance prescription logic
-    # This would include additional checks:
-    # - Verify professional registration (GMC/DEA)
+    # TODO: Implement with FHIR/EHRbase
+    # - Verify professional registration
     # - Check prescription limits
+    # - Create FHIR MedicationRequest
     # - Enhanced audit logging
 
     return {
         "message": "Controlled substance prescription created",
-        "prescriber": user.user_id,
-        "patient": prescription.patient_id,
+        "prescriber_id": user.id,
+        "patient_id": prescription.patient_id,
         "medication": prescription.medication,
         "risk_level": "high"
     }
@@ -1480,347 +1408,441 @@ async def prescribe_controlled(request: Request, prescription: PrescriptionReque
 
 ---
 
-### Task 4.10: Create main FastAPI app `backend/app/main.py`
+### Task 4.9: Create database migration
 
-```python
-# backend/app/main.py
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, prescriptions
-
-app = FastAPI(
-    title="Quill Medical API",
-    description="NHS Electronic Patient Record System with CBAC",
-    version="1.0.0"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include routers
-app.include_router(auth.router)
-app.include_router(prescriptions.router)
-
-@app.get("/")
-async def root():
-    return {"message": "Quill Medical API", "version": "1.0.0"}
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-```
-
-### Task 4.11: Test backend
+Create an Alembic migration for CBAC fields:
 
 ```bash
 cd backend
-uvicorn app.main:app --reload
+just migrate "Add CBAC fields to User model"
 ```
 
-Test endpoints:
+This creates a migration file. Edit it to add:
+
+```python
+# In backend/alembic/versions/xxx_add_cbac_fields.py
+
+def upgrade() -> None:
+    op.add_column('users', sa.Column('base_profession', sa.String(100), nullable=False, server_default='patient'))
+    op.add_column('users', sa.Column('additional_competencies', sa.ARRAY(sa.String()), nullable=False, server_default='{}'))
+    op.add_column('users', sa.Column('removed_competencies', sa.ARRAY(sa.String()), nullable=False, server_default='{}'))
+    op.add_column('users', sa.Column('professional_registrations', sa.JSON(), nullable=True))
+
+def downgrade() -> None:
+    op.drop_column('users', 'professional_registrations')
+    op.drop_column('users', 'removed_competencies')
+    op.drop_column('users', 'additional_competencies')
+    op.drop_column('users', 'base_profession')
+```
+
+Apply migration:
 
 ```bash
-# Login as doctor
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"doctor@example.com","password":"password123"}'
-
-# Use token to prescribe controlled drug
-curl -X POST http://localhost:8000/prescriptions/controlled \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"patient_id":"PAT001","medication":"morphine","dose":"10mg","duration_days":7}'
+just db-upgrade  # or: alembic upgrade head
 ```
+
+---
+
+### Task 4.10: Test backend
+
+Start the development environment:
+
+```bash
+just start-dev  # Starts full stack with Docker Compose
+```
+
+The API will be available at `http://localhost:8000/api`.
+
+Test using interactive docs at `http://localhost:8000/api/docs`:
+
+1. Login with an existing user (use `just create-user` to create one)
+2. JWT is automatically set in HTTP-only cookie
+3. Call `/api/cbac/my-competencies` to see your competencies
+4. Try `/api/prescriptions/controlled` (will fail with 403 if you lack the competency)
 
 **Verification:**
 
-- Login works, returns JWT token
-- Protected routes require valid token
-- User without competency gets 403 error
-- Interactive API docs at <http://localhost:8000/docs>
+- Login works, sets JWT cookie
+- Protected routes require valid JWT
+- User without competency gets 403 Forbidden
+- Competency resolution works correctly
+- Database migration applied
+
+**Testing with pytest:**
+
+```bash
+cd backend
+just unit-tests-backend  # or: poetry run pytest
+```
+
+Create tests in `backend/tests/test_cbac.py`:
+
+```python
+# backend/tests/test_cbac.py
+
+from app.cbac.base_professions import resolve_user_competencies
+from app.models import User
+
+def test_competency_resolution():
+    """Test that competencies are resolved correctly."""
+    # Physician base includes view_patient_record
+    final = resolve_user_competencies(
+        base_profession="physician",
+        additional_competencies=["prescribe_controlled_drugs"],
+        removed_competencies=["certify_death"]
+    )
+
+    assert "view_patient_record" in final  # From base
+    assert "prescribe_controlled_drugs" in final  # Added
+    assert "certify_death" not in final  # Removed
+
+def test_protected_route_with_competency(client, auth_headers):
+    """Test that protected route allows user with competency."""
+    response = client.post(
+        "/api/prescriptions/controlled",
+        json={
+            "patient_id": 1,
+            "medication": "morphine",
+            "dose": "10mg",
+            "duration_days": 7
+        },
+        headers=auth_headers
+    )
+    assert response.status_code == 201
+
+def test_protected_route_without_competency(client, patient_auth_headers):
+    """Test that protected route denies user without competency."""
+    response = client.post(
+        "/api/prescriptions/controlled",
+        json={
+            "patient_id": 1,
+            "medication": "morphine",
+            "dose": "10mg",
+            "duration_days": 7
+        },
+        headers=patient_auth_headers
+    )
+    assert response.status_code == 403
+```
 
 ---
 
 ## Step 5: Frontend Implementation (React/TypeScript)
 
-### Task 5.1: Create `frontend/src/types/competencies.ts`
+**Note:** Frontend patterns should follow existing project conventions:
 
-Type inference from generated JSON:
+- Use `@/lib/api.ts` for API calls (never raw `fetch`)
+- `AuthContext` for authentication state
+- Mantine UI components with CSS modules
+- `renderWithMantine` / `renderWithRouter` for tests
+
+### Task 5.1: Create `frontend/src/types/cbac.ts`
+
+Type-safe competency definitions with JSON type inference:
 
 ```typescript
-// frontend/src/types/competencies.ts
+// frontend/src/types/cbac.ts
 
 import competenciesData from "../generated/competencies.json";
 import baseProfessionsData from "../generated/base-professions.json";
 
-// Infer competency types from JSON
+// Infer competency types from generated JSON
 export type CompetencyId = (typeof competenciesData.competencies)[number]["id"];
-
 export type Competency = (typeof competenciesData.competencies)[number];
-
 export type BaseProfessionId =
   (typeof baseProfessionsData.base_professions)[number]["id"];
-
 export type BaseProfession =
   (typeof baseProfessionsData.base_professions)[number];
 
-// Helper to check if string is valid competency
+// Type guard
 export function isCompetencyId(value: string): value is CompetencyId {
   return competenciesData.competencies.some((c) => c.id === value);
 }
 
-// Get competency details by ID
+// Competency lookup
 export function getCompetencyDetails(id: CompetencyId): Competency | undefined {
   return competenciesData.competencies.find((c) => c.id === id);
 }
 
-// Get base profession details by ID
+// Profession lookup
 export function getBaseProfessionDetails(
   id: BaseProfessionId,
 ): BaseProfession | undefined {
   return baseProfessionsData.base_professions.find((p) => p.id === id);
 }
-```
 
-**Verification:** TypeScript should auto-complete competency IDs when using `CompetencyId` type.
-
----
-
-### Task 5.2: Create `frontend/src/auth/jwt.ts`
-
-JWT decode utilities:
-
-```typescript
-// frontend/src/auth/jwt.ts
-
-import { jwtDecode } from "jwt-decode";
-import type { CompetencyId } from "../types/competencies";
-
-export interface ProfessionalRegistration {
-  authority: string;
-  number: string;
-  jurisdiction: string;
-}
-
-export interface TokenData {
-  user_id: string;
-  email: string;
+// API response types
+export interface UserCompetencies {
+  user_id: number;
   base_profession: string;
-  competencies: CompetencyId[];
-  professional_registrations: ProfessionalRegistration[];
-  exp: number;
-  iat: number;
+  base_competencies: string[];
+  additional_competencies: string[];
+  removed_competencies: string[];
+  final_competencies: CompetencyId[];
 }
+```
 
-export interface AuthState {
-  token: string | null;
-  user: TokenData | null;
-  isAuthenticated: boolean;
-}
+**Verification:** TypeScript auto-completes competency IDs when typing `CompetencyId`.
 
-/**
- * Decode JWT token (does NOT verify signature - backend must do that)
- */
-export function decodeToken(token: string): TokenData {
-  return jwtDecode<TokenData>(token);
-}
+---
 
-/**
- * Check if token is expired
- */
-export function isTokenExpired(token: string): boolean {
-  try {
-    const decoded = decodeToken(token);
-    const now = Math.floor(Date.now() / 1000);
-    return decoded.exp < now;
-  } catch {
-    return true;
-  }
-}
+### Task 5.2: Extend `frontend/src/lib/api.ts`
 
-/**
- * Get token from localStorage
- */
-export function getStoredToken(): string | null {
-  return localStorage.getItem("access_token");
-}
+Add CBAC API calls to existing API client:
 
-/**
- * Store token in localStorage
- */
-export function storeToken(token: string): void {
-  localStorage.setItem("access_token", token);
-}
+```typescript
+// frontend/src/lib/api.ts
+// Add to existing file
 
-/**
- * Remove token from localStorage
- */
-export function removeToken(): void {
-  localStorage.removeItem("access_token");
-}
+import type { UserCompetencies } from "@/types/cbac";
 
-/**
- * Get current auth state
- */
-export function getAuthState(): AuthState {
-  const token = getStoredToken();
+// CBAC endpoints
+export const cbacApi = {
+  /**
+   * Get current user's competencies
+   */
+  async getMyCompetencies(): Promise<UserCompetencies> {
+    const response = await api.get("/cbac/my-competencies");
+    if (!response.ok) {
+      throw new Error("Failed to fetch competencies");
+    }
+    return response.json();
+  },
 
-  if (!token || isTokenExpired(token)) {
-    return {
-      token: null,
-      user: null,
-      isAuthenticated: false,
-    };
-  }
-
-  return {
-    token,
-    user: decodeToken(token),
-    isAuthenticated: true,
-  };
-}
+  /**
+   * Check if current user has a specific competency
+   */
+  async hasCompetency(competencyId: string): Promise<boolean> {
+    try {
+      const competencies = await this.getMyCompetencies();
+      return competencies.final_competencies.includes(competencyId);
+    } catch {
+      return false;
+    }
+  },
+};
 ```
 
 ---
 
-### Task 5.3: Create `frontend/src/auth/permissions.ts`
+### Task 5.3: Create `frontend/src/hooks/useCompetencies.ts`
 
-Permission checking hooks:
+CBAC permission hooks using existing AuthContext:
 
 ```typescript
-// frontend/src/auth/permissions.ts
+// frontend/src/hooks/useCompetencies.ts
 
-import { useMemo } from "react";
-import type { CompetencyId } from "../types/competencies";
-import { getAuthState } from "./jwt";
+import { useQuery } from "@tanstack/react-query";
+import { cbacApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import type { CompetencyId } from "@/types/cbac";
 
 /**
- * Hook to check if current user has a specific competency
+ * Get current user's competencies from API
+ */
+export function useUserCompetencies() {
+  const { state } = useAuth();
+
+  return useQuery({
+    queryKey: ["user-competencies"],
+    queryFn: () => cbacApi.getMyCompetencies(),
+    enabled: state.isAuthenticated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Check if current user has a specific competency
+ *
+ * @param competency - Competency ID to check
+ * @returns boolean indicating if user has the competency
  */
 export function useHasCompetency(competency: CompetencyId): boolean {
-  return useMemo(() => {
-    const auth = getAuthState();
-    if (!auth.isAuthenticated || !auth.user) return false;
-
-    return auth.user.competencies.includes(competency);
-  }, [competency]);
+  const { data } = useUserCompetencies();
+  return data?.final_competencies.includes(competency) ?? false;
 }
 
 /**
- * Hook to check if user has ANY of the specified competencies
+ * Check if user has ANY of the specified competencies
  */
 export function useHasAnyCompetency(...competencies: CompetencyId[]): boolean {
-  return useMemo(() => {
-    const auth = getAuthState();
-    if (!auth.isAuthenticated || !auth.user) return false;
-
-    return competencies.some((c) => auth.user!.competencies.includes(c));
-  }, [competencies]);
+  const { data } = useUserCompetencies();
+  if (!data) return false;
+  return competencies.some((c) => data.final_competencies.includes(c));
 }
 
 /**
- * Hook to check if user has ALL of the specified competencies
+ * Check if user has ALL of the specified competencies
  */
 export function useHasAllCompetencies(
   ...competencies: CompetencyId[]
 ): boolean {
-  return useMemo(() => {
-    const auth = getAuthState();
-    if (!auth.isAuthenticated || !auth.user) return false;
-
-    return competencies.every((c) => auth.user!.competencies.includes(c));
-  }, [competencies]);
+  const { data } = useUserCompetencies();
+  if (!data) return false;
+  return competencies.every((c) => data.final_competencies.includes(c));
 }
 
 /**
- * Hook to get all user competencies
- */
-export function useUserCompetencies(): CompetencyId[] {
-  return useMemo(() => {
-    const auth = getAuthState();
-    return auth.user?.competencies || [];
-  }, []);
-}
-
-/**
- * Hook to get user base profession
+ * Get user's base profession
  */
 export function useBaseProfession(): string | null {
-  return useMemo(() => {
-    const auth = getAuthState();
-    return auth.user?.base_profession || null;
-  }, []);
+  const { data } = useUserCompetencies();
+  return data?.base_profession ?? null;
 }
 ```
 
 ---
 
-### Task 5.4: Create example component `frontend/src/components/PrescribeButton.tsx`
+### Task 5.4: Create example component `frontend/src/components/PrescribeButton/PrescribeButton.tsx`
 
-Permission-gated UI component:
+Permission-gated Mantine UI component:
 
 ```typescript
-// frontend/src/components/PrescribeButton.tsx
+// frontend/src/components/PrescribeButton/PrescribeButton.tsx
 
-import React from 'react';
-import { useHasCompetency } from '../auth/permissions';
+import { Button, Tooltip } from "@mantine/core";
+import { IconPill } from "@tabler/icons-react";
+import { useHasCompetency } from "@/hooks/useCompetencies";
+import classes from "./PrescribeButton.module.css";
 
-interface PrescribeButtonProps {
-  patientId: string;
+export interface PrescribeButtonProps {
+  /** Patient ID for prescription */
+  patientId: number;
+  /** Whether this is a controlled substance */
   isControlledSubstance: boolean;
+  /** Callback when prescription is initiated */
   onPrescribe: () => void;
+  /** Button variant */
+  variant?: "filled" | "outline";
 }
 
+/**
+ * Button for prescribing medications with CBAC permission checks.
+ *
+ * Automatically hides if user has no prescribing competencies.
+ * Disables with tooltip if user lacks specific competency required.
+ */
 export function PrescribeButton({
   patientId,
   isControlledSubstance,
-  onPrescribe
+  onPrescribe,
+  variant = "filled",
 }: PrescribeButtonProps) {
-  // Check competencies
-  const canPrescribeNonControlled = useHasCompetency('prescribe_non_controlled');
-  const canPrescribeControlled = useHasCompetency('prescribe_controlled_drugs');
+  const canPrescribeNonControlled = useHasCompetency("prescribe_non_controlled");
+  const canPrescribeControlled = useHasCompetency("prescribe_controlled_drugs");
 
-  // Determine if button should be shown and enabled
   const canPrescribe = isControlledSubstance
     ? canPrescribeControlled
     : canPrescribeNonControlled;
 
-  // Don't render button if user doesn't have ANY prescribing competency
+  // Don't render if user has no prescribing competencies at all
   if (!canPrescribeNonControlled && !canPrescribeControlled) {
     return null;
   }
 
-  return (
-    <button
+  const button = (
+    <Button
+      leftSection={<IconPill size={16} />}
       onClick={onPrescribe}
       disabled={!canPrescribe}
-      className={`
-        px-4 py-2 rounded font-medium
-        ${canPrescribe
-          ? 'bg-blue-600 text-white hover:bg-blue-700'
-          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-        }
-      `}
+      variant={variant}
+      color={isControlledSubstance ? "red" : "blue"}
+      className={classes.button}
+      data-testid="prescribe-button"
     >
-      {isControlledSubstance ? 'Prescribe Controlled Drug' : 'Prescribe'}
-      {isControlledSubstance && !canPrescribeControlled && (
-        <span className="ml-2 text-sm">(Insufficient privileges)</span>
-      )}
-    </button>
+      {isControlledSubstance ? "Prescribe Controlled Drug" : "Prescribe"}
+    </Button>
   );
+
+  // Show tooltip if button is disabled due to insufficient privileges
+  if (!canPrescribe) {
+    return (
+      <Tooltip
+        label={`You do not have the "${isControlledSubstance ? "prescribe_controlled_drugs" : "prescribe_non_controlled"}" competency`}
+        withArrow
+      >
+        <span>{button}</span>
+      </Tooltip>
+    );
+  }
+
+  return button;
+}
+```
+
+```css
+/* frontend/src/components/PrescribeButton/PrescribeButton.module.css */
+
+.button {
+  font-weight: 500;
 }
 ```
 
 ---
 
-### Task 5.5: Create login page `frontend/src/pages/Login.tsx`
+### Task 5.7: Frontend testing
+
+Run frontend tests:
+
+```bash
+cd frontend
+just unit-tests-frontend  # or: npm run test
+```
+
+**Verification:**
+
+- All Mantine component tests pass
+- Permission hooks return correct values based on mock data
+- Components hide/disable appropriately based on competencies
+- Storybook stories render correctly (`npm run storybook`)
+- TypeScript compiles without errors (`npm run type-check`)
+
+**Integration with existing auth:**
+
+The CBAC system integrates with the existing `AuthContext`:
+
+```typescript
+// Example usage in a protected page
+import { RequireAuth } from "@/components/RequireAuth";
+import { useHasCompetency } from "@/hooks/useCompetencies";
+
+function PrescriptionPage() {
+  const canPrescribe = useHasCompetency("prescribe_non_controlled");
+
+  if (!canPrescribe) {
+    return <div>You do not have permission to prescribe medications.</div>;
+  }
+
+  return (
+    <div>
+      {/* Prescription UI */}
+    </div>
+  );
+}
+
+// Wrap with RequireAuth for authentication
+export default function ProtectedPrescriptionPage() {
+  return (
+    <RequireAuth>
+      <PrescriptionPage />
+    </RequireAuth>
+  );
+}
+```
+
+**Key patterns:**
+
+- ✅ Use `@/lib/api.ts` client (never raw `fetch`)
+- ✅ Use `AuthContext` for authentication state
+- ✅ Use `<RequireAuth>` for page-level authentication
+- ✅ Permission checks with `useHasCompetency()` hooks
+- ✅ Mantine UI components with CSS modules
+- ✅ All components with stories have tests
+- ✅ British English in UI text
+
+---
+
+## Step 6: End-to-End Testing
 
 ```typescript
 // frontend/src/pages/Login.tsx
@@ -2130,12 +2152,12 @@ shared/
 ├── base-professions.yaml # Human-editable profession templates
 └── jurisdiction-config.yaml # Human-editable jurisdiction settings
 
-backend/generated/ # Auto-generated (gitignored)
-├── competencies.json
-├── base-professions.json
-└── jurisdiction-config.json
+backend/app/cbac/ # Backend reads YAML directly via PyYAML
+├── competencies.py # Loads from shared/competencies.yaml
+├── base_professions.py # Loads from shared/base-professions.yaml
+└── resolver.py # Resolves final user competencies
 
-frontend/src/generated/ # Auto-generated (gitignored)
+frontend/src/generated/ # Auto-generated JSON for TypeScript types (gitignored)
 ├── competencies.json
 ├── base-professions.json
 └── jurisdiction-config.json
@@ -2199,8 +2221,9 @@ function PrescribeButton() {
 
 1. Edit `shared/competencies.yaml`
 2. Add competency with full documentation
-3. Run `npm run generate:types`
-4. Use in code with type safety
+3. Run `npm run generate:types` (frontend only - updates TypeScript types)
+4. Backend picks up YAML changes automatically (no rebuild needed)
+5. Use in code with full type safety
 
 Example:
 
@@ -2249,8 +2272,9 @@ After completing all steps, verify:
 
 **File Structure:**
 - [ ] `shared/` contains only YAML files (human-editable)
-- [ ] `backend/generated/` and `frontend/src/generated/` contain auto-generated JSON (gitignored)
-- [ ] Build script converts YAML → JSON
+- [ ] `frontend/src/generated/` contains auto-generated JSON (gitignored)
+- [ ] Frontend build script converts YAML → JSON for TypeScript types
+- [ ] Backend reads YAML directly from `shared/` using PyYAML
 
 **Backend:**
 - [ ] Competencies loaded from YAML with Python types
