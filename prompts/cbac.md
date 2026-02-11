@@ -1544,7 +1544,7 @@ curl -X POST http://localhost:8000/prescriptions/controlled \
 - Login works, returns JWT token
 - Protected routes require valid token
 - User without competency gets 403 error
-- Interactive API docs at http://localhost:8000/docs
+- Interactive API docs at <http://localhost:8000/docs>
 
 ---
 
