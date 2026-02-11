@@ -169,7 +169,9 @@ def main() -> int:
                 f"✓ Successfully {action} user: {username} with role(s): {', '.join(role_names)}"
             )
         else:
-            print(f"✓ Successfully {action} user: {username} (no roles assigned)")
+            print(
+                f"✓ Successfully {action} user: {username} (no roles assigned)"
+            )
         return 0
     except Exception as exc:  # pragma: no cover - runtime DB errors
         print(f"✗ Database error: {exc}", file=sys.stderr)

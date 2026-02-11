@@ -30,7 +30,9 @@ def remove_avatar_gradients(dry_run: bool = True) -> None:
     Args:
         dry_run: If True, only reports what would be removed. If False, actually removes.
     """
-    print(f"{'[DRY RUN] ' if dry_run else ''}Starting avatar gradient removal...")
+    print(
+        f"{'[DRY RUN] ' if dry_run else ''}Starting avatar gradient removal..."
+    )
 
     # Get FHIR client
     fhir = get_fhir_client()
@@ -48,7 +50,8 @@ def remove_avatar_gradients(dry_run: bool = True) -> None:
         # Check if patient has avatar gradient extension
         extensions = patient_dict.get("extension", [])
         has_gradient = any(
-            ext.get("url") == AVATAR_GRADIENT_EXTENSION_URL for ext in extensions
+            ext.get("url") == AVATAR_GRADIENT_EXTENSION_URL
+            for ext in extensions
         )
 
         if not has_gradient:
@@ -86,7 +89,9 @@ def remove_avatar_gradients(dry_run: bool = True) -> None:
 
     print("\n" + "=" * 60)
     print(f"{'[DRY RUN] ' if dry_run else ''}Removal complete!")
-    print(f"  Patients {'that would be' if dry_run else ''} updated: {removed_count}")
+    print(
+        f"  Patients {'that would be' if dry_run else ''} updated: {removed_count}"
+    )
     print(f"  Patients skipped (no gradients): {skipped_count}")
     print(f"  Total patients: {len(patients_data)}")
 

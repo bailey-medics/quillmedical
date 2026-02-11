@@ -22,7 +22,9 @@ os.environ.setdefault("AUTH_DB_PASSWORD", "test_auth_password")
 os.environ.setdefault("FHIR_DB_PASSWORD", "test_fhir_password")
 os.environ.setdefault("EHRBASE_DB_PASSWORD", "test_ehrbase_password")
 os.environ.setdefault("EHRBASE_API_PASSWORD", "test_ehrbase_api_password")
-os.environ.setdefault("EHRBASE_API_ADMIN_PASSWORD", "test_ehrbase_admin_password")
+os.environ.setdefault(
+    "EHRBASE_API_ADMIN_PASSWORD", "test_ehrbase_admin_password"
+)
 
 from app.db import get_session
 from app.main import app
@@ -37,7 +39,9 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine
+)
 
 
 @pytest.fixture(scope="function")
@@ -110,7 +114,9 @@ def test_clinician(db_session: Session, clinician_role: Role) -> User:
 
 
 @pytest.fixture
-def authenticated_client(test_client: TestClient, test_user: User) -> TestClient:
+def authenticated_client(
+    test_client: TestClient, test_user: User
+) -> TestClient:
     """Create an authenticated test client."""
     response = test_client.post(
         "/api/auth/login",

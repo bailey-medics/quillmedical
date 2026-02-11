@@ -72,7 +72,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(
         String(150), unique=True, index=True, nullable=False
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False
+    )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # TOTP (optional) - base32 secret string

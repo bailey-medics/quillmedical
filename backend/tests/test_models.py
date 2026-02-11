@@ -239,7 +239,9 @@ class TestUserRoleRelationship:
 
         assert len(user.roles) == 0
 
-    def test_eager_loading_roles(self, db_session: Session, test_clinician: User):
+    def test_eager_loading_roles(
+        self, db_session: Session, test_clinician: User
+    ):
         """Test that roles are eagerly loaded with User."""
         # Query user from database
         from sqlalchemy import select

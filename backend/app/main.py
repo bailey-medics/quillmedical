@@ -69,7 +69,9 @@ from app.security import (
 )
 
 DEV_MODE = (
-    str(getattr(settings, "BACKEND_ENV", "development")).lower().startswith("dev")
+    str(getattr(settings, "BACKEND_ENV", "development"))
+    .lower()
+    .startswith("dev")
 )
 
 
@@ -106,7 +108,9 @@ def check_fhir_health() -> dict[str, bool | int | str]:
         dict with 'available' boolean and optional 'error' message
     """
     try:
-        response = httpx.get(f"{settings.FHIR_SERVER_URL}/metadata", timeout=5.0)
+        response = httpx.get(
+            f"{settings.FHIR_SERVER_URL}/metadata", timeout=5.0
+        )
         return {
             "available": response.status_code == 200,
             "status_code": response.status_code,
@@ -169,7 +173,9 @@ async def startup_event() -> None:
     print("=" * 60 + "\n")
 
 
-def set_auth_cookies(response: Response, access: str, refresh: str, xsrf: str) -> None:
+def set_auth_cookies(
+    response: Response, access: str, refresh: str, xsrf: str
+) -> None:
     """Set Authentication Cookies.
 
     Sets three HTTP cookies for authentication: access token (short-lived),
@@ -216,13 +222,17 @@ def clear_auth_cookies(response: Response) -> None:
     Args:
         response: FastAPI response object to clear cookies from.
     """
-    response.delete_cookie("access_token", path="/", domain=settings.COOKIE_DOMAIN)
+    response.delete_cookie(
+        "access_token", path="/", domain=settings.COOKIE_DOMAIN
+    )
     response.delete_cookie(
         "refresh_token",
         path=f"{settings.API_PREFIX}/auth/refresh",
         domain=settings.COOKIE_DOMAIN,
     )
-    response.delete_cookie("XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN)
+    response.delete_cookie(
+        "XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN
+    )
 
 
 @router.get("/health")
@@ -245,7 +255,9 @@ def health_check() -> dict[str, Any]:
         "services": {
             "fhir": fhir_status,
             "ehrbase": ehrbase_status,
-            "auth_db": {"available": True},  # If we can respond, auth DB is working
+            "auth_db": {
+                "available": True
+            },  # If we can respond, auth DB is working
         },
     }
 
@@ -394,7 +406,9 @@ def login(
         HTTPException: 400 if credentials invalid, 2FA required, or TOTP code invalid.
     """
 
-    user = db.scalar(select(User).where(User.username == data.username.strip()))
+    user = db.scalar(
+        select(User).where(User.username == data.username.strip())
+    )
 
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(400, "Invalid credentials")
@@ -428,7 +442,9 @@ def login(
 
 
 @router.post("/auth/register")
-def register(payload: RegisterIn, db: Session = DEP_GET_SESSION) -> dict[str, str]:
+def register(
+    payload: RegisterIn, db: Session = DEP_GET_SESSION
+) -> dict[str, str]:
     """User Registration.
 
     Creates a new user account with username, email, and password. Performs
@@ -984,7 +1000,9 @@ def read_letter(
 
 
 @router.get("/patients/{patient_id}/letters")
-def list_letters(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
+def list_letters(
+    patient_id: str, u: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
     """List All Clinical Letters for Patient.
 
     Retrieves all clinical letter compositions for a specific patient from

@@ -100,13 +100,25 @@ def parse_hazard_file(content: str) -> HazardData:
         elif current_section == "causes" and line.startswith("- "):
             data["causes"].append(line[2:].strip())
 
-        elif current_section == "effect" and line.strip() and not line.startswith("**"):
+        elif (
+            current_section == "effect"
+            and line.strip()
+            and not line.startswith("**")
+        ):
             data["effect"] = line.strip()
 
-        elif current_section == "hazard" and line.strip() and not line.startswith("**"):
+        elif (
+            current_section == "hazard"
+            and line.strip()
+            and not line.startswith("**")
+        ):
             data["hazard"] = line.strip()
 
-        elif current_section == "harm" and line.strip() and not line.startswith("**"):
+        elif (
+            current_section == "harm"
+            and line.strip()
+            and not line.startswith("**")
+        ):
             data["harm"] = line.strip()
 
         elif current_section == "code" and line.startswith("- "):
@@ -140,7 +152,11 @@ def infer_hazard_type(hazard_name: str, description: str, hazard: str) -> list:
     ):
         types.append("WrongPatient")
 
-    if "wrong patient context" in text or "stale" in text or "outdated" in text:
+    if (
+        "wrong patient context" in text
+        or "stale" in text
+        or "outdated" in text
+    ):
         types.append("WrongPatientContext")
 
     if "unavailable" in text or "not available" in text or "downtime" in text:
@@ -149,7 +165,11 @@ def infer_hazard_type(hazard_name: str, description: str, hazard: str) -> list:
     if "delayed" in text or "slow" in text or "performance" in text:
         types.append("Delayed")
 
-    if "unauthorized" in text or "security" in text or "authentication" in text:
+    if (
+        "unauthorized" in text
+        or "security" in text
+        or "authentication" in text
+    ):
         types.append("UnauthorizedAccess")
 
     if "data loss" in text or "lost" in text or "missing data" in text:
@@ -174,7 +194,9 @@ def generate_hazard_log(data: dict) -> str:
     )
 
     # Format causes as numbered list
-    causes_text = "\n".join(f"{i+1}. {cause}" for i, cause in enumerate(data["causes"]))
+    causes_text = "\n".join(
+        f"{i+1}. {cause}" for i, cause in enumerate(data["causes"])
+    )
 
     # Format hazard types as bullet list
     hazard_types_text = "\n".join(f"- {ht}" for ht in hazard_types)

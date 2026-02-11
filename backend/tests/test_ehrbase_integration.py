@@ -25,7 +25,9 @@ class TestEHRbaseLetterOperations:
         """Test creating a letter composition for a patient."""
         with httpx.Client(base_url=BASE_URL, follow_redirects=True) as client:
             # Setup: register, login, create patient
-            self._register_and_login(client, "ehrbase_create", "ehrbase@test.com")
+            self._register_and_login(
+                client, "ehrbase_create", "ehrbase@test.com"
+            )
             patient_id = self._create_patient(client, "Emily", "Davis")
 
             # Get CSRF token
@@ -54,7 +56,9 @@ class TestEHRbaseLetterOperations:
         """Test listing all letters for a patient."""
         with httpx.Client(base_url=BASE_URL, follow_redirects=True) as client:
             # Setup: register, login, create patient
-            self._register_and_login(client, "ehrbase_list", "list_letter@test.com")
+            self._register_and_login(
+                client, "ehrbase_list", "list_letter@test.com"
+            )
             patient_id = self._create_patient(client, "Frank", "Miller")
 
             # Get CSRF token
@@ -85,7 +89,9 @@ class TestEHRbaseLetterOperations:
         """Test reading a specific letter composition."""
         with httpx.Client(base_url=BASE_URL, follow_redirects=True) as client:
             # Setup: register, login, create patient
-            self._register_and_login(client, "ehrbase_read", "read_letter@test.com")
+            self._register_and_login(
+                client, "ehrbase_read", "read_letter@test.com"
+            )
             patient_id = self._create_patient(client, "Grace", "Wilson")
 
             # Get CSRF token
@@ -106,7 +112,9 @@ class TestEHRbaseLetterOperations:
             composition_uid = create_response.json()["composition_uid"]
 
             # Read letter
-            response = client.get(f"/patients/{patient_id}/letters/{composition_uid}")
+            response = client.get(
+                f"/patients/{patient_id}/letters/{composition_uid}"
+            )
             assert response.status_code == 200
             data = response.json()
             assert data["composition_uid"] == composition_uid
@@ -119,16 +127,22 @@ class TestEHRbaseLetterOperations:
         """Test reading non-existent letter returns 404."""
         with httpx.Client(base_url=BASE_URL, follow_redirects=True) as client:
             # Setup: register, login, create patient
-            self._register_and_login(client, "ehrbase_404", "404_letter@test.com")
+            self._register_and_login(
+                client, "ehrbase_404", "404_letter@test.com"
+            )
             patient_id = self._create_patient(client, "Henry", "Taylor")
 
             # Try to read non-existent letter
-            fake_uid = "00000000-0000-0000-0000-000000000000::quill.ehrbase.node::1"
+            fake_uid = (
+                "00000000-0000-0000-0000-000000000000::quill.ehrbase.node::1"
+            )
             response = client.get(f"/patients/{patient_id}/letters/{fake_uid}")
             # Should return 404 or 500 (depending on EHRbase error)
             assert response.status_code in [404, 500]
 
-    def _register_and_login(self, client: httpx.Client, username: str, email: str):
+    def _register_and_login(
+        self, client: httpx.Client, username: str, email: str
+    ):
         """Helper to register and login a test user."""
         # Register (ignore if already exists)
         try:
@@ -150,7 +164,9 @@ class TestEHRbaseLetterOperations:
         )
         assert response.status_code == 200
 
-    def _create_patient(self, client: httpx.Client, given: str, family: str) -> str:
+    def _create_patient(
+        self, client: httpx.Client, given: str, family: str
+    ) -> str:
         """Helper to create a FHIR patient and return patient_id."""
         response = client.post(
             "/patients",

@@ -280,7 +280,9 @@ def verify_totp_code(secret: str, code: str) -> bool:
         return False
 
 
-def totp_provisioning_uri(secret: str, username: str, issuer: str | None = None) -> str:
+def totp_provisioning_uri(
+    secret: str, username: str, issuer: str | None = None
+) -> str:
     """Return an otpauth:// URI which can be converted to QR code by
     the frontend.
     """

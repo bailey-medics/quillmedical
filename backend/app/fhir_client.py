@@ -110,13 +110,17 @@ def create_fhir_patient(
     if gender is not None:
         valid_genders = {"male", "female", "other", "unknown"}
         if gender.lower() not in valid_genders:
-            raise ValueError(f"Gender must be one of {valid_genders}, got: {gender}")
+            raise ValueError(
+                f"Gender must be one of {valid_genders}, got: {gender}"
+            )
 
     # Validate NHS number format if provided
     if nhs_number is not None and nhs_number.strip():
         cleaned_nhs = nhs_number.strip().replace(" ", "")
         if not cleaned_nhs.isdigit() or len(cleaned_nhs) != 10:
-            raise ValueError(f"NHS number must be 10 digits, got: {nhs_number}")
+            raise ValueError(
+                f"NHS number must be 10 digits, got: {nhs_number}"
+            )
     fhir = get_fhir_client()
 
     # Create Patient resource
@@ -287,7 +291,9 @@ def update_fhir_patient(
                 "other": "other",
                 "unknown": "unknown",
             }
-            patient.gender = gender_map.get(demographics["sex"].lower(), "unknown")
+            patient.gender = gender_map.get(
+                demographics["sex"].lower(), "unknown"
+            )
 
         # Update address if provided
         if demographics.get("address"):

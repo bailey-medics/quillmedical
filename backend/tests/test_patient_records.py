@@ -18,7 +18,8 @@ class TestPatientRecords:
         """Test patient repo name generation."""
         assert patient_repo_name("abc123") == "patient-abc123"
         assert (
-            patient_repo_name("patient/with/slashes") == "patient-patient-with-slashes"
+            patient_repo_name("patient/with/slashes")
+            == "patient-patient-with-slashes"
         )
         assert patient_repo_name("test@email.com") == "patient-test-email-com"
         assert patient_repo_name("test_user-123") == "patient-test_user-123"
@@ -50,7 +51,9 @@ class TestPatientRecords:
 
         result = write_file("test-repo", "test.txt", "test content")
 
-        mock_file_path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_file_path.parent.mkdir.assert_called_once_with(
+            parents=True, exist_ok=True
+        )
         mock_file_path.write_text.assert_called_once_with(
             "test content", encoding="utf-8"
         )

@@ -15,7 +15,9 @@ def get_auth_header() -> dict[str, str]:
     return {"Authorization": f"Basic {encoded}"}
 
 
-def create_ehr(subject_id: str, subject_namespace: str = "fhir") -> dict[str, Any]:
+def create_ehr(
+    subject_id: str, subject_namespace: str = "fhir"
+) -> dict[str, Any]:
     """
     Create a new EHR in EHRbase.
 

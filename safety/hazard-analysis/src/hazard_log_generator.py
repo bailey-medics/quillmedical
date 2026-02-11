@@ -76,7 +76,9 @@ class FieldOption:
 
     key: str  # e.g. "1", "2", "TBC"
     label: str  # e.g. "Very low"
-    description: str  # e.g. "Negligible or nearly negligible possibility of occurring"
+    description: (
+        str  # e.g. "Negligible or nearly negligible possibility of occurring"
+    )
     matchers: list[str] = field(
         default_factory=list
     )  # e.g. ["L1-S1", "L1-S2"] for calculate fields
@@ -89,11 +91,15 @@ class TemplateField:
 
     name: str
     field_type: FieldType
-    labels: list[str] = field(default_factory=list)  # e.g. ["L"], ["S"], ["L", "S"]
+    labels: list[str] = field(
+        default_factory=list
+    )  # e.g. ["L"], ["S"], ["L", "S"]
     options: list[FieldOption] = field(default_factory=list)
     placeholder_text: str = ""  # The placeholder/description text
     uses_hazard_types: bool = False
-    prose_lines: list[str] = field(default_factory=list)  # For PROSE type fields
+    prose_lines: list[str] = field(
+        default_factory=list
+    )  # For PROSE type fields
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +147,9 @@ def parse_template(path: str | Path) -> list[TemplateField]:
 
         # --- Icon line ---
         if stripped.startswith("<!-- [icon] -->"):
-            current_field = TemplateField(name="__icon__", field_type=FieldType.ICON)
+            current_field = TemplateField(
+                name="__icon__", field_type=FieldType.ICON
+            )
             fields.append(current_field)
             current_field = None
             in_field_type_options = False
@@ -151,7 +159,9 @@ def parse_template(path: str | Path) -> list[TemplateField]:
         # --- Section separator ---
         if stripped == "---":
             fields.append(
-                TemplateField(name="__separator__", field_type=FieldType.SEPARATOR)
+                TemplateField(
+                    name="__separator__", field_type=FieldType.SEPARATOR
+                )
             )
             current_field = None
             in_field_type_options = False
@@ -162,7 +172,9 @@ def parse_template(path: str | Path) -> list[TemplateField]:
         if stripped.startswith("### "):
             # Save any pending field
             field_name = stripped[4:].strip()
-            current_field = TemplateField(name=field_name, field_type=FieldType.TEXT)
+            current_field = TemplateField(
+                name=field_name, field_type=FieldType.TEXT
+            )
             fields.append(current_field)
             in_field_type_options = False
             i += 1
@@ -212,7 +224,9 @@ def parse_template(path: str | Path) -> list[TemplateField]:
                     label = option_match.group(2).strip()
                     description = (option_match.group(3) or "").strip()
                     matchers_str = option_match.group(4) or ""
-                    matchers = [m.strip() for m in matchers_str.split(",") if m.strip()]
+                    matchers = [
+                        m.strip() for m in matchers_str.split(",") if m.strip()
+                    ]
                     current_field.options.append(
                         FieldOption(
                             key=key,
@@ -237,7 +251,10 @@ def parse_template(path: str | Path) -> list[TemplateField]:
                     continue
 
             # Otherwise it's placeholder text or prose
-            if current_field.field_type == FieldType.TEXT and not in_field_type_options:
+            if (
+                current_field.field_type == FieldType.TEXT
+                and not in_field_type_options
+            ):
                 if current_field.placeholder_text:
                     current_field.placeholder_text += "\n" + stripped
                 else:
@@ -338,7 +355,9 @@ class HazardLogGenerator:
         for f in self.fields:
             if f.uses_hazard_types:
                 f.options = [
-                    FieldOption(key=ht, label=ht, description="", raw_line=f"- {ht}")
+                    FieldOption(
+                        key=ht, label=ht, description="", raw_line=f"- {ht}"
+                    )
                     for ht in self.hazard_types
                 ]
 
@@ -366,7 +385,10 @@ class HazardLogGenerator:
         key_str = str(value)
         for opt in field_def.options:
             if opt.key == key_str:
-                return opt.raw_line or f"{opt.key} - {opt.label}: {opt.description}"
+                return (
+                    opt.raw_line
+                    or f"{opt.key} - {opt.label}: {opt.description}"
+                )
         return f"{value} (unrecognised option)"
 
     def _format_multiselect_value(
@@ -382,7 +404,8 @@ class HazardLogGenerator:
             for opt in field_def.options:
                 if opt.key == key_str:
                     lines.append(
-                        opt.raw_line or f"{opt.key} - {opt.label}: {opt.description}"
+                        opt.raw_line
+                        or f"{opt.key} - {opt.label}: {opt.description}"
                     )
                     matched = True
                     break
@@ -390,7 +413,9 @@ class HazardLogGenerator:
                 lines.append(f"- {v}")
         return "\n".join(lines)
 
-    def _format_calculate_value(self, field_def: TemplateField, values: dict) -> str:
+    def _format_calculate_value(
+        self, field_def: TemplateField, values: dict
+    ) -> str:
         """
         Compute a calculate field by looking up the labelled dependency fields
         in the provided values dict.
@@ -432,7 +457,10 @@ class HazardLogGenerator:
 
         for opt in field_def.options:
             if target in opt.matchers:
-                return opt.raw_line or f"{opt.key} - {opt.label}: {opt.description}"
+                return (
+                    opt.raw_line
+                    or f"{opt.key} - {opt.label}: {opt.description}"
+                )
 
         return f"No matching risk level for {target}"
 
@@ -475,7 +503,8 @@ class HazardLogGenerator:
                 utility_values = values.get("General utility label", [])
                 if isinstance(utility_values, list) and utility_values:
                     icons = " ".join(
-                        UTILITY_LABEL_ICONS.get(v, "❓") for v in utility_values
+                        UTILITY_LABEL_ICONS.get(v, "❓")
+                        for v in utility_values
                     )
                     lines.append(f"<!-- {icons} -->")
                 else:
@@ -516,9 +545,13 @@ class HazardLogGenerator:
 
             elif field_def.field_type == FieldType.MULTISELECT:
                 if isinstance(value, list):
-                    lines.append(self._format_multiselect_value(field_def, value))
+                    lines.append(
+                        self._format_multiselect_value(field_def, value)
+                    )
                 elif value is not None:
-                    lines.append(self._format_multiselect_value(field_def, [value]))
+                    lines.append(
+                        self._format_multiselect_value(field_def, [value])
+                    )
                 else:
                     lines.append("None selected")
                 lines.append("")
@@ -556,7 +589,9 @@ class HazardLogGenerator:
 def main():
     """Quick demonstration of the generator."""
     gen = HazardLogGenerator(
-        template_path=Path(__file__).parent.parent / "templates" / "hazard-template.md",
+        template_path=Path(__file__).parent.parent
+        / "templates"
+        / "hazard-template.md",
         hazard_types_path=Path(__file__).parent.parent
         / "templates"
         / "hazard-types.md",

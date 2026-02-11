@@ -46,7 +46,9 @@ class TestRequireRolesDependency:
         assert response.status_code == 403
         assert "forbidden" in response.json()["detail"].lower()
 
-    def test_require_roles_success(self, authenticated_clinician_client: TestClient):
+    def test_require_roles_success(
+        self, authenticated_clinician_client: TestClient
+    ):
         """Test require_roles when user has required role."""
         with patch("app.fhir_client.list_fhir_patients") as mock_list:
             mock_list.return_value = []
@@ -85,7 +87,9 @@ class TestPatientEndpoints:
     """Test patient-related endpoints with mocked FHIR client."""
 
     @patch("app.main.list_fhir_patients")
-    def test_list_patients(self, mock_list, authenticated_clinician_client: TestClient):
+    def test_list_patients(
+        self, mock_list, authenticated_clinician_client: TestClient
+    ):
         """Test listing all patients."""
         mock_list.return_value = [
             {"resourceType": "Patient", "id": "1"},
@@ -103,7 +107,9 @@ class TestPatientEndpoints:
         """Test getting patient demographics."""
         mock_read.return_value = {"resourceType": "Patient", "id": "123"}
 
-        response = authenticated_clinician_client.get("/api/patients/123/demographics")
+        response = authenticated_clinician_client.get(
+            "/api/patients/123/demographics"
+        )
         assert response.status_code == 200
         assert "patient_id" in response.json()
 
@@ -130,7 +136,9 @@ class TestLetterEndpoints:
     """Test letter-related endpoints with mocked EHRbase client."""
 
     @patch("app.main.list_letters_for_patient")
-    def test_list_letters(self, mock_list, authenticated_clinician_client: TestClient):
+    def test_list_letters(
+        self, mock_list, authenticated_clinician_client: TestClient
+    ):
         """Test listing letters for a patient."""
         mock_list.return_value = [
             {"uid": "letter1", "title": "Letter 1"},
@@ -157,7 +165,9 @@ class TestLetterEndpoints:
         assert response.status_code == 500
 
     @patch("app.main.get_letter_composition")
-    def test_get_letter(self, mock_get, authenticated_clinician_client: TestClient):
+    def test_get_letter(
+        self, mock_get, authenticated_clinician_client: TestClient
+    ):
         """Test getting a specific letter."""
         mock_get.return_value = {
             "composition_uid": "uid123",

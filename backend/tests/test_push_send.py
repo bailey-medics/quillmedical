@@ -75,7 +75,9 @@ class TestPushSend:
         assert "https://push.example.com/fail" in data["removed"]
         # Failed subscription should be removed from list
         assert len(SUBSCRIPTIONS) == 1
-        assert SUBSCRIPTIONS[0]["endpoint"] == "https://push.example.com/success"
+        assert (
+            SUBSCRIPTIONS[0]["endpoint"] == "https://push.example.com/success"
+        )
 
     @patch("app.push_send.webpush")
     def test_send_test_multiple_subscribers(
