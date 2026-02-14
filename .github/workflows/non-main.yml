@@ -67,12 +67,14 @@ jobs:
       - name: Warm pre-commit hooks (styling)
         if: matrix.task == 'styling'
         run: |
-          .venv/bin/python -m pre_commit install-hooks
+          . .venv/bin/activate
+          pre-commit install-hooks
 
       - name: Run pre-commit (styling)
         if: matrix.task == 'styling'
         run: |
-          .venv/bin/python -m pre_commit run --all-files --show-diff-on-failure --color=always
+          . .venv/bin/activate
+          pre-commit run --all-files --show-diff-on-failure --color=always
 
 
       - name: Cache Poetry venv & pip (unit)
