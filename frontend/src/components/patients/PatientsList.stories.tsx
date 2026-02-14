@@ -33,12 +33,14 @@ export const Loading: Story = {
   args: {
     patients: [],
     isLoading: true,
+    fhirAvailable: false,
   },
 };
 
-export const AwaitingPatients: Story = {
+export const NoPatients: Story = {
   args: {
     patients: [],
     isLoading: false,
+    fhirAvailable: true,
   },
 };

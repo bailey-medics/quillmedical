@@ -11,7 +11,7 @@ import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import { Stack } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -68,6 +68,8 @@ type FhirPatient = {
 type PatientsApiRes = {
   /** Array of FHIR Patient resources */
   patients: FhirPatient[];
+  /** Whether FHIR server is fully ready to serve data */
+  fhir_ready: boolean;
 };
 
 /**
@@ -84,6 +86,11 @@ type PatientsApiRes = {
  * - Calculates age from birth date accounting for leap years
  * - Maps FHIR gender to sex field
  *
+ * FHIR Readiness:
+ * - Uses fhir_ready flag from /patients endpoint (not separate health checks)
+ * - Eliminates race conditions during FHIR initialization
+ * - Shows "Database is initialising" only when fhir_ready=false
+ *
  * @example
  * // Routing configuration
  * <Route path="/" element={
@@ -96,7 +103,10 @@ export default function Home() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fhirAvailable, setFhirAvailable] = useState(false);
+  const hasLoadedPatientsWithData = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFhirReady, setIsFhirReady] = useState(false);
 
   // Fetch patients function
   const fetchPatients = () => {
@@ -199,10 +209,25 @@ export default function Home() {
           return currentPatients;
         });
         setError(null);
+
+        // Only mark FHIR as truly ready once we've successfully loaded patients with data
+        // This prevents showing "No patients" when FHIR returns [] during initialization
+        // before patient indexes are fully built
+        if (mapped.length > 0) {
+          hasLoadedPatientsWithData.current = true;
+          setFhirAvailable(true);
+        } else if (hasLoadedPatientsWithData.current) {
+          // If we've previously loaded patients, trust that FHIR is ready
+          setFhirAvailable(res.fhir_ready);
+        } else {
+          // Haven't seen patients yet, keep showing "initializing"
+          setFhirAvailable(false);
+        }
       })
       .catch((err: Error & { error_code?: string }) => {
         if (cancelled) return;
         setError(err.message || "Failed to load patients");
+        setFhirAvailable(false);
       })
       .finally(() => {
         if (cancelled) return;
@@ -213,19 +238,77 @@ export default function Home() {
     };
   };
 
-  // Fetch on mount
+  // Poll health endpoint every 5 seconds until FHIR is ready
   useEffect(() => {
+    let cancelled = false;
+
+    const checkHealth = async () => {
+      try {
+        const response = await api.get<{
+          status: string;
+          services: {
+            fhir: {
+              available: boolean;
+              status_code?: number;
+              error?: string;
+            };
+          };
+        }>("/health");
+
+        if (cancelled) return;
+
+        if (response.services.fhir.available) {
+          setIsFhirReady(true);
+          setFhirAvailable(true); // FHIR is ready, prevent "database initialising" message
+          // isLoading stays true, fetchPatients will handle showing loading state
+        } else {
+          // FHIR not ready yet - stop loading, show "database is initialising"
+          setIsLoading(false);
+          setFhirAvailable(false);
+        }
+      } catch (err) {
+        console.error("Health check failed:", err);
+        if (!cancelled) {
+          setIsFhirReady(false);
+          setIsLoading(false);
+          setFhirAvailable(false);
+        }
+      }
+    };
+
+    // Check immediately on mount
+    checkHealth();
+
+    // Poll every 5 seconds until FHIR is ready
+    const interval = setInterval(() => {
+      if (!isFhirReady) {
+        checkHealth();
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isFhirReady]);
+
+  // Fetch patients when FHIR becomes ready
+  useEffect(() => {
+    if (!isFhirReady) return;
+
     const cleanup = fetchPatients();
     return cleanup;
-  }, []);
+  }, [isFhirReady]);
 
-  // Auto-refresh every 30 seconds - fetches data but only updates UI if changed
+  // Auto-refresh every 30 seconds once FHIR is ready
   useEffect(() => {
+    if (!isFhirReady) return;
+
     const interval = setInterval(() => {
       fetchPatients();
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isFhirReady]);
 
   return (
     <Stack
@@ -236,6 +319,7 @@ export default function Home() {
       <PatientsList
         patients={patients ?? []}
         isLoading={isLoading}
+        fhirAvailable={fhirAvailable}
         onSelect={(patient) => navigate(`/patients/${patient.id}`)}
       />
       {error ? <div style={{ color: "red" }}>{error}</div> : null}

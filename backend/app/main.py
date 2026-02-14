@@ -108,15 +108,26 @@ COOKIE_KW: dict[str, Any] = {
 
 
 def check_fhir_health() -> dict[str, bool | int | str]:
-    """Check if FHIR server is available.
+    """Check if FHIR server is available and ready to serve data.
+
+    Tests actual patient data access rather than just metadata endpoint,
+    since HAPI FHIR can return metadata before it's ready to serve resources.
+
+    Safety-critical: This determines whether frontend shows "Database initialising"
+    vs "No patients to show". False positive could cause clinical staff to think
+    database is empty when it's still loading.
 
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
     try:
+        # Test actual data access, not just metadata
+        # This ensures database is ready and indexes are loaded
         response = httpx.get(
-            f"{settings.FHIR_SERVER_URL}/metadata", timeout=5.0
+            f"{settings.FHIR_SERVER_URL}/Patient?_count=1", timeout=5.0
         )
+        # 200 = success (even if 0 patients), means FHIR is truly ready
+        # Other codes mean FHIR still loading or has errors
         return {
             "available": response.status_code == 200,
             "status_code": response.status_code,
@@ -823,7 +834,7 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
 
 
 @router.get("/patients")
-def list_patients(u: User = DEP_CURRENT_USER) -> dict[str, list[Any]]:
+def list_patients(u: User = DEP_CURRENT_USER) -> dict[str, Any]:
     """List All Patients from FHIR.
 
     Retrieves all patient demographics from the FHIR server. Returns FHIR R4
@@ -831,21 +842,29 @@ def list_patients(u: User = DEP_CURRENT_USER) -> dict[str, list[Any]]:
     number), and contact information. Used by frontend to display patient list
     and search functionality.
 
+    Also includes FHIR readiness status to prevent race conditions where
+    health check succeeds but patient query fails during FHIR initialization.
+
     Args:
         u: Currently authenticated user (any role can view patients).
 
     Returns:
-        dict: Response with key:
+        dict: Response with keys:
             - patients: Array of FHIR Patient resources
+            - fhir_ready: Boolean indicating if FHIR is fully initialized
 
     Raises:
         HTTPException: 500 if FHIR server communication fails.
     """
     try:
         patients = list_fhir_patients()
-        return {"patients": patients}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        # If we successfully got patients, FHIR is ready
+        # This is more reliable than separate health checks
+        return {"patients": patients, "fhir_ready": True}
+    except Exception:
+        # If patient query fails, FHIR might still be loading
+        # Return empty list with fhir_ready=False instead of 500 error
+        return {"patients": [], "fhir_ready": False}
 
 
 @router.put(
