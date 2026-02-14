@@ -54,7 +54,8 @@ jobs:
       - name: Ensure venv + pre-commit (styling)
         if: matrix.task == 'styling'
         run: |
-          if [ ! -x .venv/bin/pre-commit ]; then
+          if [ ! -f .venv/pyvenv.cfg ]; then
+            echo "Creating new virtual environment..."
             python -m venv .venv
             . .venv/bin/activate
             python -m pip install -U pip
@@ -67,13 +68,13 @@ jobs:
         if: matrix.task == 'styling'
         run: |
           . .venv/bin/activate
-          pre-commit install-hooks
+          python -m pre_commit install-hooks
 
       - name: Run pre-commit (styling)
         if: matrix.task == 'styling'
         run: |
           . .venv/bin/activate
-          pre-commit run --all-files --show-diff-on-failure --color=always
+          python -m pre_commit run --all-files --show-diff-on-failure --color=always
 
 
       - name: Cache Poetry venv & pip (unit)

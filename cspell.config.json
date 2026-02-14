@@ -196,6 +196,7 @@
     "pyproject",
     "pysqlite",
     "pytest",
+    "pyvenv",
     "pyyaml",
     "PYTHONDONTWRITEBYTECODE",
     "pythonpath",
