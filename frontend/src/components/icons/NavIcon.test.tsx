@@ -45,6 +45,12 @@ describe("NavIcon Component", () => {
       const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
+
+    it("renders adjustments icon", () => {
+      const { container } = renderWithMantine(<NavIcon name="adjustments" />);
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+    });
   });
 
   describe("Size variations", () => {
@@ -130,6 +136,7 @@ describe("NavIcon Component", () => {
       "bell",
       "message",
       "file",
+      "adjustments",
     ] as const;
 
     iconNames.forEach((iconName) => {
