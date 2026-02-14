@@ -57,12 +57,12 @@ jobs:
           if [ ! -f .venv/pyvenv.cfg ]; then
             echo "Creating new virtual environment..."
             python -m venv .venv
-            . .venv/bin/activate
-            python -m pip install -U pip
-            python -m pip install "pre-commit>=3,<5"
           else
-            echo "Using cached .venv with pre-commit."
+            echo "Using cached .venv"
           fi
+          # Always ensure pre-commit is installed (quick if already present)
+          .venv/bin/python -m pip install -U pip
+          .venv/bin/python -m pip install "pre-commit>=3,<5"
 
       - name: Warm pre-commit hooks (styling)
         if: matrix.task == 'styling'
