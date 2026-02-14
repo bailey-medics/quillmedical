@@ -37,6 +37,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.decorators import has_competency
 from app.config import settings
 from app.db import get_session
 from app.ehrbase_client import (
@@ -54,9 +55,14 @@ from app.models import User
 from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.schemas.auth import LoginIn, RegisterIn
+from app.schemas.cbac import (
+    PrescriptionRequest,
+    UpdateCompetenciesRequest,
+    UserCompetenciesResponse,
+)
 from app.schemas.letters import LetterIn
 from app.security import (
-    create_access_token,
+    create_jwt_with_competencies,
     create_refresh_token,
     decode_token,
     generate_totp_secret,
@@ -431,7 +437,8 @@ def login(
                 },
             )
     roles = [r.name for r in user.roles]
-    access = create_access_token(user.username, roles)
+    competencies = user.get_final_competencies()
+    access = create_jwt_with_competencies(user.username, roles, competencies)
     refresh = create_refresh_token(user.username)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
@@ -767,7 +774,10 @@ def refresh(
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
     roles = [r.name for r in user.roles]
-    new_access = create_access_token(user.username, roles)
+    competencies = user.get_final_competencies()
+    new_access = create_jwt_with_competencies(
+        user.username, roles, competencies
+    )
     new_refresh = create_refresh_token(user.username)  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
@@ -1093,6 +1103,124 @@ def create_patient_in_fhir(
         raise HTTPException(
             status_code=500, detail=f"Failed to create FHIR patient: {e}"
         ) from e
+
+
+# ==========================================================================
+# CBAC (Competency-Based Access Control) Routes
+# ==========================================================================
+
+
+@router.get(
+    "/cbac/my-competencies",
+    response_model=UserCompetenciesResponse,
+    tags=["cbac"],
+)
+async def get_my_competencies(
+    user: User = DEP_CURRENT_USER,
+) -> UserCompetenciesResponse:
+    """Get current user's resolved competencies.
+
+    Returns the authenticated user's base profession and final competencies
+    after resolving base profession + additional - removed competencies.
+
+    Returns:
+        UserCompetenciesResponse: User's competency information
+    """
+    return UserCompetenciesResponse(
+        user_id=user.id,
+        username=user.username,
+        base_profession=user.base_profession,
+        additional_competencies=user.additional_competencies or [],
+        removed_competencies=user.removed_competencies or [],
+        final_competencies=user.get_final_competencies(),
+    )
+
+
+@router.post(
+    "/prescriptions/controlled",
+    tags=["cbac", "prescriptions"],
+    status_code=201,
+)
+async def prescribe_controlled(
+    prescription: PrescriptionRequest,
+    user: User = Depends(has_competency("prescribe_controlled_schedule_2")),
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Prescribe controlled substance (Schedule 2).
+
+    Example endpoint demonstrating CBAC protection. Only users with
+    'prescribe_controlled_schedule_2' competency can access this endpoint.
+
+    Requires:
+        - Competency: prescribe_controlled_schedule_2
+        - Authentication: JWT cookie
+
+    Args:
+        prescription: Prescription details
+        user: Authenticated user (injected by dependency)
+        db: Database session
+
+    Returns:
+        dict: Prescription confirmation
+
+    Raises:
+        HTTPException: 403 if user lacks competency
+    """
+    # In real implementation, this would create prescription in database
+    return {
+        "status": "success",
+        "prescription_id": "RX001",
+        "prescriber": user.username,
+        "patient_id": prescription.patient_id,
+        "medication": prescription.medication,
+        "dose": prescription.dose,
+        "duration_days": prescription.duration_days,
+    }
+
+
+@router.patch(
+    "/cbac/my-competencies",
+    response_model=UserCompetenciesResponse,
+    tags=["cbac"],
+)
+async def update_my_competencies(
+    data: UpdateCompetenciesRequest,
+    user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> UserCompetenciesResponse:
+    """Update user's additional/removed competencies.
+
+    Allows system administrators to add or remove competencies from a user's
+    base profession template. This endpoint should be protected with additional
+    authorization in production (e.g., require "Administrator" role).
+
+    NOTE: In production, this should require Administrator role and CSRF token.
+
+    Args:
+        data: Additional and removed competencies to update
+        user: Authenticated user
+        db: Database session
+
+    Returns:
+        UserCompetenciesResponse: Updated user competency information
+    """
+    # Update user's competencies
+    if data.additional_competencies is not None:
+        user.additional_competencies = data.additional_competencies
+    if data.removed_competencies is not None:
+        user.removed_competencies = data.removed_competencies
+
+    db.commit()
+    db.refresh(user)
+
+    return UserCompetenciesResponse(
+        user_id=user.id,
+        username=user.username,
+        base_profession=user.base_profession,
+        additional_competencies=user.additional_competencies or [],
+        removed_competencies=user.removed_competencies or [],
+        final_competencies=user.get_final_competencies(),
+    )
 
 
 app.include_router(router)

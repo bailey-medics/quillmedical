@@ -1,0 +1,357 @@
+# shared/competencies.yaml
+#
+# COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Each competency represents a specific clinical or administrative capability.
+# Competencies are granted to users based on their training, qualifications,
+# and organisational approval.
+#
+# IMPORTANT: All changes to this file must be reviewed by Clinical Safety Officer
+# and documented in clinical safety log (DCB 0129 requirement).
+
+competencies:
+  # ==========================================================================
+  # PRESCRIBING COMPETENCIES
+  # ==========================================================================
+
+  - id: prescribe_non_controlled
+    display_name: "Prescribe Non-Controlled Medications"
+    description: "Ability to prescribe non-controlled medications (standard prescription drugs not classified as controlled substances)"
+    category: prescribing
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC", "NMC", "GPhC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires valid professional registration. Risks: Adverse drug reactions, contraindications, drug interactions."
+
+  - id: prescribe_controlled_schedule_2
+    display_name: "Prescribe Schedule 2 Controlled Drugs"
+    description: "Ability to prescribe Schedule 2 controlled drugs (e.g., morphine, fentanyl, oxycodone)"
+    category: prescribing
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk competency. Requires GMC registration and controlled drugs training. Risks: Addiction, overdose, diversion."
+
+  - id: prescribe_controlled_schedule_3_4_5
+    display_name: "Prescribe Schedule 3/4/5 Controlled Drugs"
+    description: "Ability to prescribe Schedule 3, 4, and 5 controlled drugs (e.g., benzodiazepines, tramadol)"
+    category: prescribing
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC", "NMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Risks: Dependence, misuse. Requires understanding of dependence risk and appropriate monitoring."
+
+  # ==========================================================================
+  # CERTIFICATION & DEATH COMPETENCIES
+  # ==========================================================================
+
+  - id: certify_death
+    display_name: "Certify Death"
+    description: "Ability to certify death and complete Medical Certificate of Cause of Death (MCCD)"
+    category: certification
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires understanding of death certification procedures, Coroner referral criteria, and MCCD guidance."
+
+  - id: certify_cremation
+    display_name: "Certify Cremation (Cremation Form 4/5)"
+    description: "Ability to complete cremation forms (independent medical referee)"
+    category: certification
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    minimum_experience_years: 5
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires 5 years post-qualification experience. Risks: Incorrect certification may delay cremation or miss foul play."
+
+  - id: certify_fitness_to_work
+    display_name: "Certify Fitness to Work (Fit Notes)"
+    description: "Ability to issue Statement of Fitness for Work (fit notes / sick notes)"
+    category: certification
+    risk_level: low
+    requires_registration: true
+    registration_type: ["GMC", "NMC"]
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Requires understanding of occupational health principles and DWP guidance."
+
+  - id: certify_fitness_to_drive
+    display_name: "Certify Fitness to Drive"
+    description: "Ability to certify fitness to drive (DVLA notifications)"
+    category: certification
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires knowledge of DVLA medical standards. Risks: Public safety if unfit driver certified."
+
+  # ==========================================================================
+  # CLINICAL PROCEDURES
+  # ==========================================================================
+
+  - id: perform_venepuncture
+    display_name: "Perform Venepuncture"
+    description: "Ability to perform blood draws (venous blood sampling)"
+    category: procedures
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 365  # 1 year
+    clinical_safety_notes: "Standard procedure. Risks: Infection, haematoma, vasovagal syncope."
+
+  - id: perform_cannulation
+    display_name: "Insert Intravenous Cannula"
+    description: "Ability to insert peripheral IV cannulas"
+    category: procedures
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 365  # 1 year
+    clinical_safety_notes: "Standard procedure. Risks: Infection, phlebitis, extravasation."
+
+  - id: perform_lumbar_puncture
+    display_name: "Perform Lumbar Puncture"
+    description: "Ability to perform lumbar puncture (CSF sampling / intrathecal injection)"
+    category: procedures
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: true
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk procedure. Risks: Post-LP headache, bleeding, infection, nerve damage. Requires supervision until competency demonstrated."
+
+  - id: perform_chest_drain
+    display_name: "Insert Chest Drain"
+    description: "Ability to insert chest drains (intercostal drains)"
+    category: procedures
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: true
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk procedure. Risks: Organ injury, bleeding, infection, pneumothorax. Requires supervision until competency demonstrated."
+
+  - id: perform_advanced_airway
+    display_name: "Perform Advanced Airway Management"
+    description: "Ability to perform endotracheal intubation and advanced airway techniques"
+    category: procedures
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: true
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk procedure. Risks: Hypoxia, aspiration, oesophageal intubation, airway trauma. Requires supervision and regular skill maintenance."
+
+  # ==========================================================================
+  # PATIENT MANAGEMENT
+  # ==========================================================================
+
+  - id: discharge_without_review
+    display_name: "Discharge Patient Without Senior Review"
+    description: "Ability to discharge patients independently without mandatory senior review"
+    category: patient_management
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk competency. Risks: Missed diagnosis, premature discharge, patient deterioration. Requires independent practice experience."
+
+  - id: admit_patient
+    display_name: "Admit Patient to Hospital"
+    description: "Ability to admit patients to hospital (clerking and admission decision)"
+    category: patient_management
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires understanding of admission criteria, bed management, and specialty referral pathways."
+
+  - id: refer_specialty
+    display_name: "Refer to Specialty Services"
+    description: "Ability to make specialty referrals (cardiology, surgery, psychiatry, etc.)"
+    category: patient_management
+    risk_level: low
+    requires_registration: true
+    registration_type: ["GMC", "NMC"]
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Requires understanding of referral criteria and urgency thresholds."
+
+  # ==========================================================================
+  # CONSENT & MENTAL CAPACITY
+  # ==========================================================================
+
+  - id: take_informed_consent
+    display_name: "Take Informed Consent"
+    description: "Ability to take informed consent for procedures and treatments"
+    category: consent
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC", "NMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires understanding of capacity assessment, consent principles, and MCA 2005."
+
+  - id: assess_mental_capacity
+    display_name: "Assess Mental Capacity"
+    description: "Ability to assess mental capacity under Mental Capacity Act 2005"
+    category: consent
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires training in MCA 2005. Risks: Inappropriate detention, denial of autonomy."
+
+  - id: apply_deprivation_of_liberty
+    display_name: "Apply Deprivation of Liberty Safeguards (DoLS)"
+    description: "Ability to initiate DoLS applications"
+    category: consent
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires training in DoLS and MCA 2005. Legal implications of incorrect application."
+
+  # ==========================================================================
+  # IMAGING & DIAGNOSTICS
+  # ==========================================================================
+
+  - id: request_plain_xray
+    display_name: "Request Plain X-rays"
+    description: "Ability to request plain radiographs (chest, abdomen, limb X-rays)"
+    category: diagnostics
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Requires understanding of ionising radiation risks and IRMER regulations."
+
+  - id: request_ct_scan
+    display_name: "Request CT Scans"
+    description: "Ability to request CT scans (computed tomography)"
+    category: diagnostics
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Requires understanding of CT indications, radiation exposure, and contrast risks. IRMER compliance required."
+
+  - id: request_mri_scan
+    display_name: "Request MRI Scans"
+    description: "Ability to request MRI scans (magnetic resonance imaging)"
+    category: diagnostics
+    risk_level: low
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Requires understanding of MRI safety (metal implants, pacemakers). IRMER compliance required."
+
+  # ==========================================================================
+  # ADMINISTRATIVE & SYSTEM ACCESS
+  # ==========================================================================
+
+  - id: access_patient_records
+    display_name: "Access Patient Records"
+    description: "Ability to view patient medical records (basic read access)"
+    category: administrative
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires Caldicott principles training. All access is logged for audit. Data protection compliance required."
+
+  - id: modify_patient_records
+    display_name: "Modify Patient Records"
+    description: "Ability to edit and append to patient medical records"
+    category: administrative
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC", "NMC", "GPhC", "HCPC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "All modifications logged for audit. Requires understanding of record-keeping standards (GMC Good Medical Practice)."
+
+  - id: access_clinic_admin
+    display_name: "Access Clinic Administration Functions"
+    description: "Ability to access clinic scheduling, staff management, and administrative functions"
+    category: administrative
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 730  # 2 years
+    clinical_safety_notes: "Non-clinical administrative access. Standard audit logging."
+
+  - id: approve_clinical_letters
+    display_name: "Approve Clinical Letters"
+    description: "Ability to approve and sign clinical letters (discharge summaries, referral letters)"
+    category: administrative
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires understanding of letter content standards and legal implications of signature."
+
+  - id: manage_users
+    display_name: "Manage User Accounts"
+    description: "Ability to create, modify, and deactivate user accounts"
+    category: administrative
+    risk_level: high
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "High-risk: Grants system access to others. Requires IT security training and understanding of access control principles."
+
+  # ==========================================================================
+  # SPECIALTY-SPECIFIC COMPETENCIES
+  # ==========================================================================
+
+  - id: manage_diabetes
+    display_name: "Manage Diabetes (Specialty)"
+    description: "Ability to independently manage diabetes patients (insulin prescribing, pump management)"
+    category: specialty
+    risk_level: medium
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires diabetes specialist training. Risks: Hypoglycaemia, diabetic ketoacidosis."
+
+  - id: manage_anticoagulation
+    display_name: "Manage Anticoagulation Therapy"
+    description: "Ability to independently manage anticoagulation (warfarin, DOACs, monitoring)"
+    category: specialty
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires anticoagulation training. Risks: Bleeding, thrombosis. INR monitoring required."
+
+  - id: interpret_ecg
+    display_name: "Interpret ECGs Independently"
+    description: "Ability to interpret ECGs without mandatory senior review"
+    category: specialty
+    risk_level: high
+    requires_registration: true
+    registration_type: ["GMC"]
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Requires ECG interpretation training. Risks: Missed acute coronary syndrome, arrhythmias."

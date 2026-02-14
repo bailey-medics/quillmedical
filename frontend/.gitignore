@@ -2,6 +2,13 @@
 
 dist/
 
+# Generated files - DO NOT COMMIT
+# Backend uses YAML directly, only frontend needs generated JSON
+src/generated/
+
+# Generated JSON from YAML
+*.generated.json
+
 # Logs
 logs
 *.log

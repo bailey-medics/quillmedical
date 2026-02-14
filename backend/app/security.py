@@ -290,3 +290,60 @@ def totp_provisioning_uri(
     if issuer:
         return totp.provisioning_uri(name=username, issuer_name=issuer)
     return totp.provisioning_uri(name=username)
+
+
+def create_jwt_with_competencies(
+    sub: str, roles: list[str], competencies: list[str]
+) -> str:
+    """Create JWT Access Token with CBAC Competencies.
+
+    Creates a short-lived JWT access token containing the user's identity,
+    assigned roles, and resolved competencies. This extends create_access_token
+    to include CBAC (Competency-Based Access Control) information in the token.
+
+    Args:
+        sub: Subject (username) for the token.
+        roles: List of role names assigned to the user (e.g., ["Clinician"]).
+        competencies: List of competency IDs user has (resolved from base profession).
+
+    Returns:
+        str: Encoded JWT access token with competencies, valid for ACCESS_TTL_MIN minutes.
+
+    Raises:
+        ValueError: If subject is empty.
+    """
+    if not sub or not sub.strip():
+        raise ValueError("Subject (username) cannot be empty")
+    payload: dict[str, Any] = {
+        "sub": sub,
+        "roles": roles,
+        "competencies": competencies,
+        "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
+    }
+    return jwt.encode(  # type: ignore[no-any-return]
+        payload,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithm=settings.JWT_ALG,
+    )
+
+
+def decode_jwt_with_competencies(tok: str) -> dict[str, Any]:
+    """Decode and Verify JWT Token with Competencies.
+
+    Decodes a JWT token and verifies its signature, extracting user identity,
+    roles, and competencies. This is a wrapper around decode_token that
+    documents the expected payload structure for CBAC tokens.
+
+    Args:
+        tok: JWT token string to decode.
+
+    Returns:
+        dict: Decoded token payload containing 'sub' (username), 'roles',
+            'competencies', 'exp' (expiration), and other claims.
+
+    Raises:
+        jose.JWTError: If token signature is invalid.
+        jose.ExpiredSignatureError: If token has expired.
+        jose.JWTClaimsError: If token claims are invalid.
+    """
+    return decode_token(tok)
