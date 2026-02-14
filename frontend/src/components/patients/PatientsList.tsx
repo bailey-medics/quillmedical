@@ -3,13 +3,17 @@
  *
  * Displays a list of patients with profile pictures and demographics.
  * Responsive layout adapts to mobile/desktop screen sizes. Provides
- * loading skeleton state and click handlers for patient selection.
+ * loading states and empty state messages for patient selection.
  *
  * Features:
- * - Loading skeletons while fetching patient data
- * - Informative message when FHIR/openEHR systems are initializing
+ * - Backend-driven FHIR health status checks (via /health endpoint)
+ * - Safe "Database is initialising" message when FHIR unavailable
+ * - "No patients to show" only when FHIR confirmed available
  * - Responsive avatar sizing (mobile/desktop)
  * - Patient selection callbacks
+ *
+ * Safety: Uses backend health checks instead of timing heuristics to
+ * prevent showing "No patients" when FHIR is still initializing.
  */
 
 import type { Patient } from "@/domains/patient";
@@ -18,10 +22,11 @@ import Demographics from "@/components/demographics/Demographics";
 import {
   Alert,
   Group,
-  Skeleton,
   Text,
   UnstyledButton,
   useMantineTheme,
+  Skeleton,
+  Stack,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -34,6 +39,8 @@ type Props = {
   patients: Patient[];
   /** Whether patient data is currently loading */
   isLoading?: boolean;
+  /** Whether FHIR server is available and ready */
+  fhirAvailable?: boolean;
   /** Callback when patient is clicked/selected */
   onSelect?: (p: Patient) => void;
 };
@@ -42,9 +49,11 @@ type Props = {
  * Patients List
  *
  * Renders list of patient cards with profile pictures and demographics.
- * Shows skeleton loaders while loading. Displays informative alert when
- * no patients are available (e.g., FHIR/openEHR initializing). Adapts
- * avatar size based on screen width (sm/lg).
+ * Displays context-aware messages based on backend FHIR health status:
+ * - FHIR unavailable: "Database is initialising" (blue alert)
+ * - FHIR available with no patients: "No patients to show" (gray alert)
+ * Uses backend /health endpoint to safely determine system readiness.
+ * Adapts avatar size based on screen width (sm/lg).
  *
  * @param props - Component props
  * @returns Patient list component
@@ -52,46 +61,52 @@ type Props = {
 export default function PatientsList({
   patients,
   isLoading = false,
+  fhirAvailable = false,
   onSelect,
 }: Props) {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const avatarSize = isSm ? "sm" : "lg";
+
   if (isLoading) {
     return (
-      <div>
-        <Group style={{ padding: 8 }} align="center">
-          <ProfilePic isLoading size={avatarSize} />
-          <div style={{ flex: 1 }}>
-            <Skeleton height={16} width="20%" mb={4} />
-            <Skeleton height={12} width="20%" />
-          </div>
-        </Group>
-        <div style={{ height: 8 }} />
-        <Group style={{ padding: 8 }} align="center">
-          <ProfilePic isLoading size={avatarSize} />
-          <div style={{ flex: 1 }}>
-            <Skeleton height={16} width="20%" mb={4} />
-            <Skeleton height={12} width="20%" />
-          </div>
-        </Group>
-        <div style={{ height: 8 }} />
-        <Group style={{ padding: 8 }} align="center">
-          <ProfilePic isLoading size={avatarSize} />
-          <div style={{ flex: 1 }}>
-            <Skeleton height={16} width="20%" mb={4} />
-            <Skeleton height={12} width="20%" />
-          </div>
-        </Group>
-      </div>
+      <Stack gap="md" style={{ width: "100%", maxWidth: 600 }}>
+        {[1, 2, 3].map((i) => (
+          <Group key={i} align="center" style={{ width: "100%", padding: 8 }}>
+            <Skeleton circle height={isSm ? 40 : 60} />
+            <div style={{ flex: 1 }}>
+              <Skeleton height={20} width="60%" mb={8} />
+              <Skeleton height={16} width="40%" />
+            </div>
+          </Group>
+        ))}
+      </Stack>
     );
   }
 
   if (!patients || patients.length === 0) {
+    // If FHIR is available and has no patients, show "no patients" message
+    if (fhirAvailable) {
+      return (
+        <Alert
+          icon={<IconInfoCircle size={20} />}
+          title="No patients to show"
+          color="gray"
+          variant="light"
+          styles={{
+            root: { maxWidth: 600 },
+          }}
+        >
+          <Text size="sm">There are currently no patients in the system.</Text>
+        </Alert>
+      );
+    }
+
+    // If FHIR is not available yet, show database initializing message
     return (
       <Alert
         icon={<IconInfoCircle size={20} />}
-        title="Patient demographics loading"
+        title="Database is initialising"
         color="blue"
         variant="light"
         styles={{
@@ -99,9 +114,8 @@ export default function PatientsList({
         }}
       >
         <Text size="sm">
-          Patient demographics are being retrieved from FHIR/openEHR. This may
-          take a few moments while the health record systems initialize. The
-          patient list will appear automatically once the data is available.
+          Patient data is being retrieved. This may take a few moments. The
+          patient list will appear automatically once available.
         </Text>
       </Alert>
     );
