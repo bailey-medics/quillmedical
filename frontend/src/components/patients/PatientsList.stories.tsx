@@ -35,3 +35,10 @@ export const Loading: Story = {
     isLoading: true,
   },
 };
+
+export const AwaitingPatients: Story = {
+  args: {
+    patients: [],
+    isLoading: false,
+  },
+};
