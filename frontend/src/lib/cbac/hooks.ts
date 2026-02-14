@@ -6,7 +6,7 @@
  * Integrates with AuthContext and provides simple boolean checks.
  */
 
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../auth/AuthContext";
 import type { CompetencyId } from "@/types/cbac";
 
 /**
