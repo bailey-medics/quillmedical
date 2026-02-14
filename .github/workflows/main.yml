@@ -53,6 +53,11 @@ jobs:
         run: |
           yarn install --frozen-lockfile
 
+      - name: Generate JSON from YAML for TypeScript types
+        working-directory: frontend
+        run: |
+          yarn generate:types
+
       - name: Build Storybook static site
         working-directory: frontend
         run: |
