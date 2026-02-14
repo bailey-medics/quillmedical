@@ -93,6 +93,66 @@ FHIR and OpenEHR work together:
 - **OpenEHR**: Clinical documents and detailed health records ("what happened to the patient?")
 - **Linkage**: OpenEHR EHRs reference FHIR Patient IDs
 
+## FHIR Initialization & Health Checking
+
+### Startup Behavior
+
+HAPI FHIR with PostgreSQL backend requires time to initialize after container startup:
+
+- **Container startup**: FHIR web application starts in 5-10 seconds
+- **Database initialization**: PostgreSQL schema creation and migrations take additional time
+- **Search index building**: HAPI FHIR builds search parameter indexes for Patient resources (30-60 seconds)
+- **Ready to serve**: FHIR can handle patient queries only after indexes fully built
+
+**Critical Safety Issue**: HAPI FHIR can return 200 OK responses on some endpoints before truly ready to serve patient data. Metadata endpoint (`/metadata`) responds successfully during index building, causing false positives in naive health checks.
+
+### Health Check Implementation
+
+Backend implements safety-critical health check that tests **actual patient data access**:
+
+```python
+def check_fhir_health() -> dict[str, bool | int | str]:
+    """Check if FHIR server ready to serve data.
+
+    Tests actual patient data access rather than metadata endpoint,
+    since HAPI FHIR can return metadata before ready to serve resources.
+
+    Safety-critical: False positive could cause clinical staff to think
+    database is empty when it's still loading.
+    """
+    try:
+        response = httpx.get(
+            f"{settings.FHIR_SERVER_URL}/Patient?_count=1", timeout=5.0
+        )
+        # 200 = success (even if 0 patients), means FHIR truly ready
+        return {
+            "available": response.status_code == 200,
+            "status_code": response.status_code,
+        }
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+```
+
+**Implementation**: [backend/app/main.py](../../backend/app/main.py) lines 110-139
+
+### Frontend Integration
+
+Frontend implements health polling during startup:
+
+1. **Initial health check**: On mount, immediately check `/api/health`
+2. **Polling loop**: Check every 5 seconds until `services.fhir.available=true`
+3. **Patient fetch trigger**: Once FHIR ready, fetch patients from `/api/patients`
+4. **User feedback**: Display "Database is initialising" message during polling
+
+**Implementation**: [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx) lines 242-295
+
+### Safety Controls
+
+- **Atomic response**: `/api/patients` returns `{patients: [...], fhir_ready: bool}` in single response (eliminates race conditions)
+- **Conservative tracking**: Frontend tracks if patients ever loaded successfully, prevents false "No patients" on navigation
+- **Visual distinction**: Different messages for "Database initialising" (blue, clock icon) vs "No patients" (gray, user-off icon)
+- **Hazard mitigation**: Addresses Hazard-0019 (FHIR health check false negative) and Hazard-0046 (Backend starts before FHIR ready)
+
 ## API Examples
 
 ### Read Patient Demographics

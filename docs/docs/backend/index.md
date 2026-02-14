@@ -99,6 +99,14 @@ The application server communicates with the OpenEHR system to create, retrieve,
 
 All functions are organised under the `/api` prefix:
 
+### System Health
+
+- **Health Check** (`GET /api/health`): Check availability of all services (FHIR, EHRbase, authentication database)
+  - Returns overall system status ("healthy" or "degraded")
+  - Provides detailed service availability for each dependency
+  - Used by frontend during startup to detect FHIR readiness
+  - Safety-critical: Tests actual patient data access (`/Patient?_count=1`) not just metadata
+
 ### User Authentication
 
 - Register a new account
@@ -109,7 +117,10 @@ All functions are organised under the `/api` prefix:
 
 ### Patient Management
 
-- View list of all patients
+- **View list of all patients** (`GET /api/patients`): Returns patient array plus `fhir_ready` flag
+  - `fhir_ready: true` means FHIR server is fully ready to serve patient data
+  - `fhir_ready: false` means FHIR is still initializing (search indexes building)
+  - Atomic response eliminates race conditions between health check and data fetch
 - Create new patient record
 - Update patient demographics
 - View patient demographics
@@ -268,13 +279,21 @@ Logs can be viewed in real-time or searched for specific events.
 
 ### Health Monitoring
 
-Each service reports its status to verify it's working correctly:
+The `/api/health` endpoint reports overall system status and individual service availability:
 
-- **Application server**: Reports overall health
-- **FHIR Server**: Confirms patient data system is operational
-- **OpenEHR Server**: Verifies clinical records system is accessible
+- **Application server**: Reports overall health status ("healthy" or "degraded")
+- **FHIR Server**: Tests actual patient data access with `GET /Patient?_count=1`
+  - 200 OK response (even with 0 patients) means FHIR is truly ready
+  - Other status codes mean FHIR still initializing or has errors
+  - Critical: HAPI FHIR can return metadata before ready to serve resources
+- **EHRbase Server**: Verifies clinical records system is accessible
+- **Auth Database**: Implicitly healthy if backend can respond
 
-These checks can be monitored automatically to detect and alert on service failures.
+**Frontend Integration**: Frontend polls `/health` every 5 seconds during startup until FHIR becomes available. Displays "Database is initialising" message to users during FHIR startup window (typically 30-60 seconds after deployment).
+
+**Safety-Critical**: Health check design prevents false "No patients" display during FHIR initialization. See Hazard-0019 (FHIR health check false negative) and Hazard-0046 (Backend starts before FHIR ready) for mitigation details.
+
+Health checks can be monitored automatically to detect and alert on service failures.
 
 ## Learn More
 
