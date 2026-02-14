@@ -144,7 +144,7 @@ nav:
           - Hazard-0046: safety/hazards/Hazard-0046.md
           - Hazard-0047: safety/hazards/Hazard-0047.md
   - Authorization:
-      - ABAC: ABAC.md
+      - CBAC (Competency-Based Access Control): cbac.md
 
 
 plugins:
