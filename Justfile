@@ -171,12 +171,28 @@ poetry-path:
 
 
 alias sb := storybook
-# Run yarn install in the frontend container
+# Run storybook dev server
 storybook:
     #!/usr/bin/env bash
     {{initialise}} "storybook"
     cd frontend
     yarn storybook
+
+alias sbt := storybook-test
+# Run storybook tests (requires storybook to be running)
+storybook-test:
+    #!/usr/bin/env bash
+    {{initialise}} "storybook-test"
+    cd frontend
+    yarn storybook:test
+
+alias sbtci := storybook-test-ci
+# Run storybook tests in CI mode (starts storybook, runs tests, stops storybook)
+storybook-test-ci:
+    #!/usr/bin/env bash
+    {{initialise}} "storybook-test-ci"
+    cd frontend
+    yarn storybook:test:ci
 
 
 alias sdc := show-dev-containers
