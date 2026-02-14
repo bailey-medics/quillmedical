@@ -15,6 +15,7 @@ import {
   IconBell,
   IconMessage,
   IconFileText,
+  IconAdjustmentsHorizontal,
 } from "@tabler/icons-react";
 
 /** Available icon types */
@@ -25,7 +26,8 @@ type IconName =
   | "user"
   | "bell"
   | "message"
-  | "file";
+  | "file"
+  | "adjustments";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -49,6 +51,7 @@ const iconMap = {
   bell: IconBell,
   message: IconMessage,
   file: IconFileText,
+  adjustments: IconAdjustmentsHorizontal,
 } as const;
 
 // Map size to icon pixel dimensions

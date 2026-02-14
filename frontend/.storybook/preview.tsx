@@ -18,6 +18,7 @@ import React, { useEffect, useState } from "react";
       email: "mark.bailey@example.com",
       name: "Mark Bailey",
       roles: ["Clinician"],
+      system_permissions: "superadmin",
     };
     return new Response(JSON.stringify(mockUser), {
       status: 200,

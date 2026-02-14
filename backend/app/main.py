@@ -708,8 +708,9 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
-    email, assigned roles, and TOTP status. Used by frontend to display user
-    information and determine available features based on roles.
+    email, assigned roles, system permissions, and TOTP status. Used by frontend
+    to display user information and determine available features based on roles
+    and permissions.
 
     Args:
         u: Currently authenticated user from JWT.
@@ -720,6 +721,7 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
             - username: User's username
             - email: User's email address
             - roles: List of assigned role names
+            - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
     """
     return {
@@ -727,6 +729,7 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
         "username": u.username,
         "email": u.email,
         "roles": [r.name for r in u.roles],
+        "system_permissions": u.system_permissions,
         "totp_enabled": u.is_totp_enabled,
     }
 
