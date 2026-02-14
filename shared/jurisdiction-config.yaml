@@ -1,0 +1,144 @@
+# shared/jurisdiction-config.yaml
+#
+# JURISDICTION-SPECIFIC CONFIGURATION
+#
+# Quill Medical is designed to work internationally. This file contains
+# deployment-specific settings for different regulatory jurisdictions.
+
+jurisdictions:
+  uk:
+    display_name: "United Kingdom"
+    regulatory_authority: "Care Quality Commission (CQC)"
+    data_protection: "UK GDPR (Data Protection Act 2018)"
+    prescribing_regulations: "Misuse of Drugs Regulations 2001"
+    professional_registrations:
+      - id: GMC
+        display_name: "General Medical Council"
+        description: "Medical doctor registration"
+        verification_url: "https://www.gmc-uk.org/registration-and-licensing/the-medical-register"
+        required_for_professions: ["foundation_year_1", "foundation_year_2", "specialty_trainee_1_2", "specialty_trainee_3_plus", "consultant", "general_practitioner"]
+      - id: NMC
+        display_name: "Nursing and Midwifery Council"
+        description: "Nurse and midwife registration"
+        verification_url: "https://www.nmc.org.uk/registration/search-the-register/"
+        required_for_professions: ["registered_nurse", "advanced_nurse_practitioner"]
+      - id: GPhC
+        display_name: "General Pharmaceutical Council"
+        description: "Pharmacist and pharmacy technician registration"
+        verification_url: "https://www.pharmacyregulation.org/registers"
+        required_for_professions: ["pharmacist", "pharmacy_technician"]
+      - id: HCPC
+        display_name: "Health and Care Professions Council"
+        description: "Allied health professional registration"
+        verification_url: "https://www.hcpc-uk.org/check-the-register/"
+        required_for_professions: ["physiotherapist", "occupational_therapist", "paramedic"]
+    controlled_drug_schedules:
+      - schedule: 2
+        description: "Schedule 2 Controlled Drugs (e.g., morphine, fentanyl, oxycodone)"
+        prescription_requirements: "Must be handwritten (or EPS). Must specify dose, frequency, duration. 30-day maximum supply."
+      - schedule: 3
+        description: "Schedule 3 Controlled Drugs (e.g., temazepam, buprenorphine)"
+        prescription_requirements: "Handwriting not required. Must specify dose and duration."
+      - schedule: 4
+        description: "Schedule 4 Part I (benzodiazepines) and Part II (anabolic steroids)"
+        prescription_requirements: "Standard prescription requirements."
+      - schedule: 5
+        description: "Schedule 5 (low-strength preparations)"
+        prescription_requirements: "Standard prescription requirements. No controlled drug restrictions."
+    audit_requirements:
+      medical_records_retention_years: 8  # NHS Records Management Code of Practice
+      prescribing_audit_retention_years: 7  # GMC Good Medical Practice
+      controlled_drugs_retention_years: 7  # Misuse of Drugs Regulations
+    clinical_safety_standards:
+      - DCB0129  # Clinical Risk Management
+      - DCB0160  # Clinical Safety Case Reports
+
+  us:
+    display_name: "United States"
+    regulatory_authority: "Various (FDA, state medical boards)"
+    data_protection: "HIPAA (Health Insurance Portability and Accountability Act)"
+    prescribing_regulations: "Controlled Substances Act (DEA schedules)"
+    professional_registrations:
+      - id: DEA
+        display_name: "Drug Enforcement Administration"
+        description: "DEA number for controlled substance prescribing"
+        verification_url: "https://www.deadiversion.usdoj.gov/"
+        required_for_professions: ["physician", "nurse_practitioner", "physician_assistant"]
+      - id: STATE_LICENSE
+        display_name: "State Medical License"
+        description: "State-specific medical license"
+        verification_url: "https://www.fsmb.org/fcvs/"
+        required_for_professions: ["physician", "nurse_practitioner", "physician_assistant", "registered_nurse"]
+    controlled_drug_schedules:
+      - schedule: II
+        description: "Schedule II (e.g., morphine, fentanyl, oxycodone, methylphenidate)"
+        prescription_requirements: "No refills. Written or e-prescribed. 90-day maximum supply in some states."
+      - schedule: III
+        description: "Schedule III (e.g., codeine combinations, buprenorphine)"
+        prescription_requirements: "Up to 5 refills in 6 months."
+      - schedule: IV
+        description: "Schedule IV (e.g., benzodiazepines, tramadol)"
+        prescription_requirements: "Up to 5 refills in 6 months."
+      - schedule: V
+        description: "Schedule V (low-dose codeine preparations)"
+        prescription_requirements: "Standard prescription requirements."
+    audit_requirements:
+      medical_records_retention_years: 7  # HIPAA minimum (state laws may vary)
+      prescribing_audit_retention_years: 7
+      controlled_drugs_retention_years: 7  # DEA requirement
+    clinical_safety_standards:
+      - HIPAA_Security_Rule
+      - FDA_21_CFR_Part_11  # Electronic records
+
+  eu:
+    display_name: "European Union"
+    regulatory_authority: "EMA (European Medicines Agency) + national authorities"
+    data_protection: "GDPR (General Data Protection Regulation)"
+    prescribing_regulations: "Varies by member state"
+    professional_registrations:
+      - id: NATIONAL_MEDICAL_REGISTER
+        display_name: "National Medical Register"
+        description: "Medical practitioner registration (varies by country)"
+        verification_url: "Varies by member state"
+        required_for_professions: ["physician"]
+    controlled_drug_schedules:
+      - schedule: "national"
+        description: "Controlled drugs regulated at member state level"
+        prescription_requirements: "Varies by member state. Generally follows WHO/UN conventions."
+    audit_requirements:
+      medical_records_retention_years: 10  # Varies by member state
+      prescribing_audit_retention_years: 10
+      controlled_drugs_retention_years: 10
+    clinical_safety_standards:
+      - GDPR
+      - ISO_13485  # Medical devices
+      - ISO_27001  # Information security
+
+  au:
+    display_name: "Australia"
+    regulatory_authority: "Therapeutic Goods Administration (TGA)"
+    data_protection: "Privacy Act 1988 (Australian Privacy Principles)"
+    prescribing_regulations: "Poisons Standard (SUSMP)"
+    professional_registrations:
+      - id: AHPRA
+        display_name: "Australian Health Practitioner Regulation Agency"
+        description: "Medical practitioner registration"
+        verification_url: "https://www.ahpra.gov.au/registration/registers-of-practitioners.aspx"
+        required_for_professions: ["medical_practitioner", "nurse", "pharmacist"]
+    controlled_drug_schedules:
+      - schedule: S8
+        description: "Schedule 8 (Controlled Drug)"
+        prescription_requirements: "Must be written on triplicate prescription form in some states. Electronic prescribing available in some jurisdictions."
+      - schedule: S4
+        description: "Schedule 4 (Prescription Only Medicine)"
+        prescription_requirements: "Standard prescription requirements."
+    audit_requirements:
+      medical_records_retention_years: 7  # Australian standard
+      prescribing_audit_retention_years: 7
+      controlled_drugs_retention_years: 7
+    clinical_safety_standards:
+      - NPAAC  # National Pathology Accreditation Advisory Council
+      - NSQHS_Standards  # National Safety and Quality Health Service Standards
+
+# Default jurisdiction (used if not specified)
+default_jurisdiction: uk

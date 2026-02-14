@@ -12,8 +12,18 @@ The schema includes:
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.cbac.base_professions import resolve_user_competencies
 
 
 class Base(DeclarativeBase):
@@ -64,6 +74,10 @@ class User(Base):
         is_totp_enabled: Whether two-factor authentication is enabled.
         is_active: Whether the account is active (for soft delete).
         roles: List of roles assigned to this user.
+        base_profession: Base profession template (e.g., "consultant", "patient").
+        additional_competencies: Extra competencies beyond base profession.
+        removed_competencies: Competencies removed from base profession.
+        professional_registrations: Professional registration details (GMC, NMC, etc.).
     """
 
     __tablename__ = "users"
@@ -82,8 +96,34 @@ class User(Base):
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # CBAC: Competency-Based Access Control fields
+    base_profession: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="patient"
+    )
+    additional_competencies: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=lambda: []
+    )
+    removed_competencies: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=lambda: []
+    )
+    professional_registrations: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True
+    )
+
     roles: Mapped[list[Role]] = relationship(
         secondary=user_role,
         back_populates="users",
         lazy="joined",
     )
+
+    def get_final_competencies(self) -> list[str]:
+        """Compute final competencies for this user.
+
+        Returns:
+            List of competency IDs this user has.
+        """
+        return resolve_user_competencies(
+            base_profession=self.base_profession,
+            additional_competencies=self.additional_competencies,
+            removed_competencies=self.removed_competencies,
+        )

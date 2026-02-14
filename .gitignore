@@ -5,3 +5,10 @@ node_modules/
 
 # Generated HTML files from public_pages templates
 frontend/public_pages/*.html
+
+# Generated files - DO NOT COMMIT
+# Backend uses YAML directly, only frontend needs generated JSON
+frontend/src/generated/
+
+# Generated JSON from YAML
+*.generated.json

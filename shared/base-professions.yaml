@@ -1,0 +1,311 @@
+# shared/base-professions.yaml
+#
+# BASE PROFESSION DEFINITIONS
+#
+# Each base profession represents a job role with a standard set of competencies.
+# Individual users can have additional competencies added or removed based on
+# their specific training, qualifications, and organisational needs.
+#
+# Final user competencies = base_profession competencies + additional - removed
+
+base_professions:
+  # ==========================================================================
+  # PATIENT / PUBLIC
+  # ==========================================================================
+
+  - id: patient
+    display_name: "Patient"
+    description: "Member of the public with patient account (no clinical access)"
+    base_competencies:
+      - access_patient_records  # Own records only (filtered by system)
+    notes: "Patients can only access their own records. System enforces patient-record ownership."
+
+  # ==========================================================================
+  # MEDICAL DOCTORS
+  # ==========================================================================
+
+  - id: foundation_year_1
+    display_name: "Foundation Year 1 Doctor (FY1)"
+    description: "Newly qualified doctor in first year of foundation training"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - take_informed_consent
+      - refer_specialty
+      - prescribe_non_controlled
+      - certify_fitness_to_work
+    notes: "FY1 doctors require supervision for prescribing and procedures. Discharge requires senior review."
+
+  - id: foundation_year_2
+    display_name: "Foundation Year 2 Doctor (FY2)"
+    description: "Doctor in second year of foundation training"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - request_ct_scan
+      - request_mri_scan
+      - take_informed_consent
+      - refer_specialty
+      - admit_patient
+      - prescribe_non_controlled
+      - prescribe_controlled_schedule_3_4_5
+      - certify_fitness_to_work
+      - certify_death  # After training
+    notes: "FY2 doctors gain more autonomy but complex cases require senior review."
+
+  - id: specialty_trainee_1_2
+    display_name: "Specialty Trainee Year 1-2 (ST1-2)"
+    description: "Doctor in early specialty training"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - request_ct_scan
+      - request_mri_scan
+      - take_informed_consent
+      - assess_mental_capacity
+      - refer_specialty
+      - admit_patient
+      - prescribe_non_controlled
+      - prescribe_controlled_schedule_3_4_5
+      - certify_fitness_to_work
+      - certify_death
+      - certify_fitness_to_drive
+      - interpret_ecg
+    notes: "ST1-2 developing specialty-specific skills. High-risk procedures require supervision."
+
+  - id: specialty_trainee_3_plus
+    display_name: "Specialty Trainee Year 3+ (ST3+)"
+    description: "Doctor in higher specialty training"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - perform_lumbar_puncture
+      - request_plain_xray
+      - request_ct_scan
+      - request_mri_scan
+      - take_informed_consent
+      - assess_mental_capacity
+      - refer_specialty
+      - admit_patient
+      - discharge_without_review  # With appropriate experience
+      - prescribe_non_controlled
+      - prescribe_controlled_schedule_2
+      - prescribe_controlled_schedule_3_4_5
+      - certify_fitness_to_work
+      - certify_death
+      - certify_fitness_to_drive
+      - approve_clinical_letters
+      - interpret_ecg
+      - manage_diabetes
+      - manage_anticoagulation
+    notes: "ST3+ are higher trainees with increasing autonomy. Near-consultant level expertise in their specialty."
+
+  - id: consultant
+    display_name: "Consultant"
+    description: "Fully qualified specialist consultant"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - perform_lumbar_puncture
+      - perform_chest_drain
+      - perform_advanced_airway
+      - request_plain_xray
+      - request_ct_scan
+      - request_mri_scan
+      - take_informed_consent
+      - assess_mental_capacity
+      - apply_deprivation_of_liberty
+      - refer_specialty
+      - admit_patient
+      - discharge_without_review
+      - prescribe_non_controlled
+      - prescribe_controlled_schedule_2
+      - prescribe_controlled_schedule_3_4_5
+      - certify_fitness_to_work
+      - certify_death
+      - certify_cremation
+      - certify_fitness_to_drive
+      - approve_clinical_letters
+      - interpret_ecg
+      - manage_diabetes
+      - manage_anticoagulation
+    notes: "Consultants have full independent practice. Specific procedure competencies may vary by specialty."
+
+  - id: general_practitioner
+    display_name: "General Practitioner (GP)"
+    description: "GP partner or salaried GP"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - request_ct_scan
+      - request_mri_scan
+      - take_informed_consent
+      - assess_mental_capacity
+      - refer_specialty
+      - prescribe_non_controlled
+      - prescribe_controlled_schedule_2
+      - prescribe_controlled_schedule_3_4_5
+      - certify_fitness_to_work
+      - certify_death
+      - certify_fitness_to_drive
+      - approve_clinical_letters
+      - interpret_ecg
+    notes: "GPs are specialists in general practice. Additional competencies may be added for extended roles (minor surgery, contraceptive fitting, etc.)."
+
+  # ==========================================================================
+  # NURSING STAFF
+  # ==========================================================================
+
+  - id: registered_nurse
+    display_name: "Registered Nurse (RN)"
+    description: "NMC-registered nurse (adult, paediatric, mental health, learning disability)"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - take_informed_consent
+      - refer_specialty
+      - certify_fitness_to_work  # If independent prescriber
+    notes: "Registered nurses may have additional competencies based on specialist training (e.g., independent prescriber, advanced clinical practitioner)."
+
+  - id: advanced_nurse_practitioner
+    display_name: "Advanced Nurse Practitioner (ANP)"
+    description: "Advanced clinical practitioner with extended responsibilities"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - take_informed_consent
+      - assess_mental_capacity
+      - refer_specialty
+      - prescribe_non_controlled  # If independent prescriber
+      - prescribe_controlled_schedule_3_4_5  # If independent prescriber
+      - certify_fitness_to_work
+      - approve_clinical_letters
+    notes: "ANPs have extended roles and may work independently in primary or secondary care. Prescribing requires independent prescriber qualification."
+
+  - id: healthcare_assistant
+    display_name: "Healthcare Assistant (HCA)"
+    description: "Unregistered nursing assistant"
+    base_competencies:
+      - access_patient_records
+      - perform_venepuncture  # After competency training
+    notes: "HCAs work under supervision of registered nurses. Competencies vary based on local training and delegation."
+
+  # ==========================================================================
+  # PHARMACY STAFF
+  # ==========================================================================
+
+  - id: pharmacist
+    display_name: "Pharmacist"
+    description: "GPhC-registered pharmacist"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - prescribe_non_controlled  # If independent prescriber
+      - prescribe_controlled_schedule_3_4_5  # If independent prescriber
+      - certify_fitness_to_work  # If independent prescriber
+    notes: "Pharmacists may be independent prescribers with extended competencies. Base competencies assume clinical pharmacist role."
+
+  - id: pharmacy_technician
+    display_name: "Pharmacy Technician"
+    description: "GPhC-registered pharmacy technician"
+    base_competencies:
+      - access_patient_records
+    notes: "Pharmacy technicians support pharmacists with dispensing and medicines management."
+
+  # ==========================================================================
+  # ALLIED HEALTH PROFESSIONALS
+  # ==========================================================================
+
+  - id: physiotherapist
+    display_name: "Physiotherapist"
+    description: "HCPC-registered physiotherapist"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - request_plain_xray  # Extended scope
+      - take_informed_consent
+      - refer_specialty
+      - certify_fitness_to_work  # If independent prescriber
+    notes: "Physiotherapists may have extended scope roles (musculoskeletal triage, injection therapy)."
+
+  - id: occupational_therapist
+    display_name: "Occupational Therapist"
+    description: "HCPC-registered occupational therapist"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - take_informed_consent
+      - refer_specialty
+    notes: "Occupational therapists assess functional ability and environmental adaptations."
+
+  - id: paramedic
+    display_name: "Paramedic"
+    description: "HCPC-registered paramedic"
+    base_competencies:
+      - access_patient_records
+      - modify_patient_records
+      - perform_venepuncture
+      - perform_cannulation
+      - take_informed_consent
+      - refer_specialty
+      - prescribe_non_controlled  # If independent prescriber
+      - certify_fitness_to_work  # If independent prescriber
+    notes: "Paramedics may have extended roles in urgent and emergency care. Some are independent prescribers."
+
+  # ==========================================================================
+  # ADMINISTRATIVE STAFF
+  # ==========================================================================
+
+  - id: medical_secretary
+    display_name: "Medical Secretary"
+    description: "Medical secretarial staff"
+    base_competencies:
+      - access_patient_records  # For correspondence and administration
+      - access_clinic_admin
+    notes: "Medical secretaries have read-only access to patient records for administrative purposes. All access logged."
+
+  - id: receptionist
+    display_name: "Receptionist"
+    description: "Front desk and reception staff"
+    base_competencies:
+      - access_clinic_admin
+    notes: "Receptionists manage appointments and administrative functions. Limited patient record access (demographics only)."
+
+  - id: clinic_manager
+    display_name: "Clinic Manager"
+    description: "Clinic management and operations staff"
+    base_competencies:
+      - access_patient_records  # For service delivery oversight
+      - access_clinic_admin
+      - manage_users  # Staff account management
+    notes: "Clinic managers have administrative oversight. Patient record access is for service improvement and complaint investigation (Caldicott principles)."
+
+  - id: system_administrator
+    display_name: "System Administrator"
+    description: "IT system administrator with technical access"
+    base_competencies:
+      - access_patient_records  # Technical support only
+      - access_clinic_admin
+      - manage_users
+    notes: "System administrators have technical access but are NOT clinical staff. All patient record access logged and restricted to support tickets only."
