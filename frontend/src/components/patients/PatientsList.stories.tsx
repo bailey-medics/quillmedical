@@ -38,6 +38,14 @@ export const Loading: Story = {
   },
 };
 
+export const DatabaseInitialising: Story = {
+  args: {
+    patients: [],
+    isLoading: false,
+    fhirAvailable: false,
+  },
+};
+
 export const NoPatients: Story = {
   args: {
     patients: [],
