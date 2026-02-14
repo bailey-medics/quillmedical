@@ -4,12 +4,19 @@
  * Displays a list of patients with profile pictures and demographics.
  * Responsive layout adapts to mobile/desktop screen sizes. Provides
  * loading skeleton state and click handlers for patient selection.
+ *
+ * Features:
+ * - Loading skeletons while fetching patient data
+ * - Informative message when FHIR/openEHR systems are initializing
+ * - Responsive avatar sizing (mobile/desktop)
+ * - Patient selection callbacks
  */
 
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import Demographics from "@/components/demographics/Demographics";
 import {
+  Alert,
   Group,
   Skeleton,
   Text,
@@ -17,6 +24,7 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { IconInfoCircle } from "@tabler/icons-react";
 
 /**
  * PatientsList Props
@@ -34,8 +42,9 @@ type Props = {
  * Patients List
  *
  * Renders list of patient cards with profile pictures and demographics.
- * Shows skeleton loaders while loading. Adapts avatar size based on
- * screen width (sm/lg).
+ * Shows skeleton loaders while loading. Displays informative alert when
+ * no patients are available (e.g., FHIR/openEHR initializing). Adapts
+ * avatar size based on screen width (sm/lg).
  *
  * @param props - Component props
  * @returns Patient list component
@@ -79,7 +88,23 @@ export default function PatientsList({
   }
 
   if (!patients || patients.length === 0) {
-    return <Text>No patients</Text>;
+    return (
+      <Alert
+        icon={<IconInfoCircle size={20} />}
+        title="Patient demographics loading"
+        color="blue"
+        variant="light"
+        styles={{
+          root: { maxWidth: 600 },
+        }}
+      >
+        <Text size="sm">
+          Patient demographics are being retrieved from FHIR/openEHR. This may
+          take a few moments while the health record systems initialize. The
+          patient list will appear automatically once the data is available.
+        </Text>
+      </Alert>
+    );
   }
 
   return (
