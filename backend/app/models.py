@@ -96,6 +96,11 @@ class User(Base):
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # System Permissions: Administrative and system-level access control
+    system_permissions: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="patient"
+    )
+
     # CBAC: Competency-Based Access Control fields
     base_profession: Mapped[str] = mapped_column(
         String(100), nullable=False, default="patient"

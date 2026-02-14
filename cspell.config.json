@@ -320,6 +320,7 @@
     "runbooks",
     "structlog",
     "Subresource",
+    "superadmin",
     "tablename",
     "timezones",
     "tracemalloc",
