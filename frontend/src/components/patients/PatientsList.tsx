@@ -19,8 +19,8 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import Demographics from "@/components/demographics/Demographics";
+import StateMessage from "@/components/state-message/StateMessage";
 import {
-  Alert,
   Group,
   Text,
   UnstyledButton,
@@ -29,7 +29,6 @@ import {
   Stack,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconInfoCircle } from "@tabler/icons-react";
 
 /**
  * PatientsList Props
@@ -87,38 +86,11 @@ export default function PatientsList({
   if (!patients || patients.length === 0) {
     // If FHIR is available and has no patients, show "no patients" message
     if (fhirAvailable) {
-      return (
-        <Alert
-          icon={<IconInfoCircle size={20} />}
-          title="No patients to show"
-          color="gray"
-          variant="light"
-          styles={{
-            root: { maxWidth: 600 },
-          }}
-        >
-          <Text size="sm">There are currently no patients in the system.</Text>
-        </Alert>
-      );
+      return <StateMessage type="no-patients" />;
     }
 
     // If FHIR is not available yet, show database initializing message
-    return (
-      <Alert
-        icon={<IconInfoCircle size={20} />}
-        title="Database is initialising"
-        color="blue"
-        variant="light"
-        styles={{
-          root: { maxWidth: 600 },
-        }}
-      >
-        <Text size="sm">
-          Patient data is being retrieved. This may take a few moments. The
-          patient list will appear automatically once available.
-        </Text>
-      </Alert>
-    );
+    return <StateMessage type="database-initialising" />;
   }
 
   return (
