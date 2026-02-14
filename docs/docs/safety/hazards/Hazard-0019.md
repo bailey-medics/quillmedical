@@ -157,6 +157,7 @@ Clinical Risk Management
 - Residual risk: No circuit breaker for prolonged FHIR outages (no graceful degradation with cached data)
 
 **Next steps for full mitigation**:
+
 1. Add Docker Compose `depends_on: service_healthy` to enforce startup order
 2. Implement circuit breaker pattern for prolonged FHIR unavailability
 3. Add exponential backoff retry logic to backend startup

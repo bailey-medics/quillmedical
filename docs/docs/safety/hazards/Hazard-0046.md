@@ -169,6 +169,7 @@ Clinical Risk Management
 - Startup monitoring: Operations team monitors startup metrics: time to ready, health check failures, dependency initialization time. Alert if startup time exceeds 5 minutes (indicates problem with FHIR, database, or network). Investigate alerts within 10 minutes.
 - Graceful shutdown: Before restarting services, initiate graceful shutdown: display "System maintenance in progress" message to active users, complete in-flight requests before stopping containers, flush cached data to databases. Minimizes disruption and data loss.
 - Rollback procedure: If deployment fails to start (FHIR health check never passes, backend crashes during startup), automatically rollback to previous version. Document rollback procedure: docker-compose down, revert to previous image tags, docker-compose up. Target: rollback completed within 5 minutes of startup failure detection.
+
 ---
 
 ## Residual hazard risk assessment
@@ -182,6 +183,7 @@ Clinical Risk Management
 - Actual data access testing (`/Patient?_count=1`) prevents false positives from metadata-only health checks
 
 **Residual risks**:
+
 - Backend still starts before FHIR ready (logs warnings, but frontend handles gracefully)
 - No Docker orchestration enforcement of startup order (`depends_on: service_healthy`)
 - No exponential backoff retry logic in backend startup
@@ -191,6 +193,7 @@ Clinical Risk Management
 **Impact**: Clinicians see clear startup messaging, no "failed to load" errors, system usable immediately after FHIR ready. Startup UX significantly improved from initial hazard state.
 
 **Next steps for full mitigation**:
+
 1. Add Docker Compose `depends_on: service_healthy` for backend → FHIR dependency
 2. Implement `/api/ready` endpoint for Caddy health checks
 3. Add exponential backoff retry logic to backend FHIR client initialization
