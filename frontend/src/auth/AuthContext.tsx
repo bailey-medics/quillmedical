@@ -27,6 +27,8 @@ export type User = {
   name?: string;
   /** Assigned role names (e.g., ["Clinician", "Administrator"]) */
   roles?: string[];
+  /** System permission level (patient, staff, admin, superadmin) */
+  system_permissions?: string;
 };
 
 /**

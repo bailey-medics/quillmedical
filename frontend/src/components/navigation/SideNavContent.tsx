@@ -37,8 +37,14 @@ export default function SideNavContent({
   showIcons = false,
   fontSize = 20,
 }: Props) {
-  const { logout } = useAuth();
+  const { logout, state } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user has admin or superadmin permissions
+  const hasAdminAccess =
+    state.status === "authenticated" &&
+    (state.user.system_permissions === "admin" ||
+      state.user.system_permissions === "superadmin");
 
   const navLinkStyles = {
     root: { fontSize: `${fontSize}px` },
@@ -74,6 +80,17 @@ export default function SideNavContent({
         }}
         leftSection={showIcons ? <NavIcon name="settings" /> : undefined}
       />
+      {hasAdminAccess && (
+        <NavLink
+          label="Admin"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/admin");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="adjustments" /> : undefined}
+        />
+      )}
       <NavLink
         label="Logout"
         styles={navLinkStyles}
