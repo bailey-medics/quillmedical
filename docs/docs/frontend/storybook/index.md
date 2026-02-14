@@ -66,7 +66,11 @@ The project includes **25 component story files** across various UI categories:
 
 ### Patient Management
 
-- **PatientsList** - Patient list with demographics
+- **PatientsList** - Patient list with demographics and loading states
+
+### State Messages
+
+- **StateMessage** - System state message component for database initialization and empty states
 
 ### Clinical Features
 
@@ -88,6 +92,43 @@ The project includes **25 component story files** across various UI categories:
 ### Notifications
 
 - **EnableNotificationsButton** - Push notification subscription button
+
+## Notable Stories
+
+### Loading States & FHIR Initialization
+
+The **PatientsList** component includes comprehensive loading state stories demonstrating the application's behavior during FHIR server initialization:
+
+#### AnimatedLoadingSequence
+
+A 30-second animated story showing the complete startup flow:
+
+1. **Health check phase** (0-5s): System checks if FHIR server is ready
+2. **Database initialising** (5-10s): Shows "Database is initialising" message with clock icon (blue alert)
+3. **Fetching patients** (10-15s): Skeleton loading UI with animated pulse effect
+4. **Patient list loaded** (15-30s): Displays mock patient data
+
+This story provides visual documentation of expected UX during system startup and helps validate that loading states are visually distinct and user-friendly.
+
+- **File**: `frontend/src/components/patients/PatientsList.stories.tsx`
+- **Story**: `AnimatedLoadingSequence`
+- **Purpose**: Visual regression testing, UX documentation, startup flow validation
+
+#### StateMessage Component
+
+The **StateMessage** component provides consistent system state messaging across the application:
+
+- **Database Initialising**: Blue alert with `IconClock`, message: "Patient data is being retrieved from the database. This may take a moment..."
+  - Used when FHIR server is starting up or search indexes are building
+  - Prevents showing "failed to load" errors during startup window
+  - Linked to Hazard-0046 (Backend starts before FHIR ready) mitigation
+
+- **No Patients**: Gray alert with `IconUserOff`, message: "There are currently no patients in the system. New patients can be added by administrators."
+  - Used when FHIR server is ready but patient list is genuinely empty
+  - Visually distinct from initialization state (different color and icon)
+  - Linked to Hazard-0019 (FHIR health check false negative) mitigation
+
+**Implementation**: The StateMessage component is used by PatientsList based on the `fhirAvailable` prop, which is determined by frontend health polling and conservative readiness tracking.
 
 ## Running Storybook
 

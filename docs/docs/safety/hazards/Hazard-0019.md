@@ -94,11 +94,37 @@ Clinical Risk Management
 
 ### Design controls (manufacturer)
 
-- Implement retry logic in startup health check: attempt FHIR query every 5 seconds for up to 120 seconds before logging failure. Log "Waiting for FHIR server... attempt 3/24" progress messages.
-- Add runtime health monitoring: periodic FHIR health checks every 60 seconds during operation. Update health status indicator in backend /health endpoint. Allow frontend to display system status to users.
-- Use Docker Compose depends_on with condition: service_healthy for backend -> fhir dependency. Backend container only starts after FHIR healthcheck passes, eliminating race condition.
-- Add circuit breaker pattern: if FHIR health check fails, switch to degraded mode. Display warning banner in UI: "Patient demographics temporarily unavailable - using cached data" until health restored.
-- Implement graceful degradation: if FHIR unavailable at startup, backend continues running but returns 503 Service Unavailable for patient endpoints with retry-after header, rather than crashing.
+#### Implemented Controls ✓
+
+- **Frontend health polling** ✓: Frontend polls `/api/health` endpoint every 5 seconds until FHIR becomes available. Uses `isFhirReady` state to trigger patient data fetch only after FHIR is confirmed ready. Eliminates false negatives from startup race conditions.
+  - Implementation: [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx) lines 242-295
+  - Pattern: `useEffect` with `setInterval` polling, clears interval once `isFhirReady=true`
+
+- **Runtime health monitoring** ✓: Backend provides `/api/health` endpoint that checks FHIR availability on every request. Frontend polls this endpoint during initialization and can recheck if patient fetch fails.
+  - Implementation: [backend/app/main.py](../../backend/app/main.py) lines 256-286
+  - Pattern: `check_fhir_health()` called by `/health` endpoint, returns `{services: {fhir: {available: bool}}}`
+
+- **Actual data access health check** ✓: Backend tests `/Patient?_count=1` instead of just `/metadata` to verify FHIR can actually serve patient data (not just respond to metadata queries). HAPI FHIR returns 200 OK on metadata before search indexes ready, but returns empty array on Patient queries until fully initialized.
+  - Implementation: [backend/app/main.py](../../backend/app/main.py) lines 110-139
+  - Pattern: `httpx.get(f"{FHIR_SERVER_URL}/Patient?_count=1")`, treats 200 as ready regardless of result count
+
+- **UI state messaging** ✓: Frontend displays "Database is initialising" message (blue alert with clock icon) when FHIR not ready, vs "No patients" message (gray alert with user-off icon) when FHIR ready but empty. StateMessage component provides consistent visual distinction.
+  - Implementation: [frontend/src/components/state-message/StateMessage.tsx](../../frontend/src/components/state-message/StateMessage.tsx)
+  - Used by: [frontend/src/components/patients/PatientsList.tsx](../../frontend/src/components/patients/PatientsList.tsx) based on `fhirAvailable` prop
+
+- **Conservative readiness tracking** ✓: Frontend uses `useRef` to track if patients have ever loaded with data. Prevents briefly showing "No patients" on navigation when FHIR is actually ready. Only marks FHIR unavailable if patient array empty AND never previously loaded data.
+  - Implementation: [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx) lines 216-227
+  - Pattern: `hasLoadedPatientsWithData.current` ref, set true when `patients.length > 0`
+
+#### Planned Controls (Not Yet Implemented)
+
+- Startup retry logic with exponential backoff: Backend retries FHIR connection during startup with progressive delays. Status: Planned.
+
+- Docker Compose depends_on with health checks: Use `condition: service_healthy` to prevent backend starting before FHIR ready. Status: Planned.
+
+- Circuit breaker pattern for FHIR unavailability: Switch to degraded mode with cached data after multiple failures. Status: Planned.
+
+- Graceful degradation with 503 responses: Return proper HTTP status codes when FHIR unavailable. Status: Planned.
 
 ### Testing controls (manufacturer)
 
@@ -122,16 +148,32 @@ Clinical Risk Management
 
 ## Residual hazard risk assessment
 
-TBC — awaiting initial controls implementation.
+**Partially mitigated (January 2025)**:
+
+- Frontend health polling eliminates race condition on startup - clinicians see "Database initialising" message instead of error logs
+- Actual data access testing (`/Patient?_count=1`) prevents false positives from metadata-only checks
+- Conservative loading prevents briefly showing "No patients" during navigation
+- Residual risk: Backend still starts before FHIR ready (logs warnings), Docker orchestration not yet enforcing startup order
+- Residual risk: No circuit breaker for prolonged FHIR outages (no graceful degradation with cached data)
+
+**Next steps for full mitigation**:
+1. Add Docker Compose `depends_on: service_healthy` to enforce startup order
+2. Implement circuit breaker pattern for prolonged FHIR unavailability
+3. Add exponential backoff retry logic to backend startup
 
 ---
 
 ## Hazard status
 
-Draft from LLM
+Partially mitigated (frontend controls implemented, backend orchestration controls pending)
 
 ---
 
 ## Code associated with hazard
 
-- backend/app/main.py:158-186
+- [backend/app/main.py](../../backend/app/main.py):110-139 - `check_fhir_health()` tests actual patient data
+- [backend/app/main.py](../../backend/app/main.py):256-286 - `/health` endpoint for runtime monitoring
+- [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx):242-295 - Health polling useEffect
+- [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx):170-235 - Patient fetch with conservative readiness tracking
+- [frontend/src/components/state-message/StateMessage.tsx](../../frontend/src/components/state-message/StateMessage.tsx) - UI state messaging component
+- [frontend/src/components/patients/PatientsList.tsx](../../frontend/src/components/patients/PatientsList.tsx) - Patient list with fhirAvailable prop
