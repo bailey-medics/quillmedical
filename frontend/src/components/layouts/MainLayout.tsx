@@ -10,9 +10,11 @@ import type { Patient } from "@/domains/patient";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
+import Footer from "@components/footer/Footer";
 import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { useAuth } from "@/auth/AuthContext";
 
 /**
  * MainLayout Props
@@ -46,6 +48,15 @@ export default function MainLayout({
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const { state } = useAuth();
+
+  // Prepare footer text based on auth state
+  const footerText =
+    state.status === "authenticated"
+      ? `Logged in: ${state.user.username}`
+      : undefined;
+
+  const footerLoading = state.status === "loading";
 
   const DRAWER_W = 260;
 
@@ -104,18 +115,25 @@ export default function MainLayout({
               <SideNav showSearch={false} showIcons={true} />
             </Box>
           )}
-          <Box component="main" flex={1} style={{ overflowY: "auto" }} p="md">
-            {isLoading ? (
-              <Stack gap="md">
-                <Skeleton height={50} radius="md" />
-                <Skeleton height={200} radius="md" />
-                <Skeleton height={150} radius="md" />
-                <Skeleton height={100} radius="md" />
-              </Stack>
-            ) : (
-              children
-            )}
-          </Box>
+          <Flex direction="column" flex={1} style={{ height: "100%" }}>
+            <Box component="main" flex={1} style={{ overflowY: "auto" }} p="md">
+              {isLoading ? (
+                <Stack gap="md">
+                  <Skeleton height={50} radius="md" />
+                  <Skeleton height={200} radius="md" />
+                  <Skeleton height={150} radius="md" />
+                  <Skeleton height={100} radius="md" />
+                </Stack>
+              ) : (
+                children
+              )}
+            </Box>
+            <Footer
+              text={footerText}
+              loading={footerLoading}
+              size={isSm ? "md" : "lg"}
+            />
+          </Flex>
         </Flex>
       </Flex>
     </Flex>

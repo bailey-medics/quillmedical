@@ -328,7 +328,19 @@
     "urlsafe",
     "wordmark",
     "Yubi",
-    "zxcvbn"
+    "zxcvbn",
+    "adipiscing",
+    "aliqua",
+    "amet",
+    "dolor",
+    "dolore",
+    "eiusmod",
+    "elit",
+    "incididunt",
+    "ipsum",
+    "labore",
+    "lorem",
+    "tempor"
   ],
   "ignoreWords": ["Exampletown", "behavior"]
 }

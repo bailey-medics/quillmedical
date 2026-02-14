@@ -19,6 +19,8 @@ import { api } from "../lib/api";
 export type User = {
   /** User database ID */
   id: string;
+  /** Username */
+  username: string;
   /** User email address */
   email: string;
   /** User display name (optional) */
@@ -56,7 +58,7 @@ type Ctx = {
   reload: () => Promise<void>;
 };
 
-const AuthContext = createContext<Ctx | undefined>(undefined);
+export const AuthContext = createContext<Ctx | undefined>(undefined);
 
 /**
  * Auth Provider
