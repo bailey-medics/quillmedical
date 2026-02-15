@@ -246,7 +246,7 @@ jobs:
 
           git push origin main
 
-      - name: Extract commit subject
+      - name: Extract commit info
         id: commit
         run: |
           COMMIT_SUBJECT=$(git log -1 --pretty=%s)
@@ -255,13 +255,17 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Get short SHA (first 7 characters)
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
             {
-              "text": "✅ Branch `${{ github.ref_name }}` passed all tests and merged to main"
+              "text": "✅ Tests passed and merged to main (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -272,7 +276,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Branch `${{ github.ref_name }}` failed to merge to main"
+              "text": "❌ Merge to main failed (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

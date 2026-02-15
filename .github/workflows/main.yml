@@ -145,6 +145,10 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Get short SHA (first 7 characters) of the merge commit
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
           # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
           SOURCE_BRANCH=""
           if [[ "$COMMIT_SUBJECT" =~ Merge\ branch\ \'([^']+)\'\ into ]]; then
@@ -158,7 +162,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Main documentation build succeeded${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
+              "text": "✅ Main documentation build succeeded (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -169,7 +173,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Main documentation build failed${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
+              "text": "❌ Main documentation build failed (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -201,6 +205,10 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Get short SHA (first 7 characters) of the merge commit
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
           # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
           SOURCE_BRANCH=""
           if [[ "$COMMIT_SUBJECT" =~ Merge\ branch\ \'([^']+)\'\ into ]]; then
@@ -214,7 +222,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Deployed to GitHub Pages${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
+              "text": "✅ Deployed to GitHub Pages (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -225,7 +233,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Deploy to GitHub Pages failed${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
+              "text": "❌ Deploy to GitHub Pages failed (✨ ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
