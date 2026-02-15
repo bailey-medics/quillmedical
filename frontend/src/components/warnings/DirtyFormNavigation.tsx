@@ -8,6 +8,7 @@
  */
 
 import { Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { IconAlertCircle } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
 
 /**
@@ -62,11 +63,12 @@ export default function DirtyFormNavigation({
       title="Unsaved Changes"
       centered
     >
-      <Stack gap="md">
-        <Text>
+      <Stack gap="md" align="center">
+        <IconAlertCircle size={48} color="var(--mantine-color-red-6)" />
+        <Text ta="center">
           You have unsaved changes. Are you sure you want to leave this page?
         </Text>
-        <Group justify="flex-end">
+        <Group justify="flex-end" style={{ width: "100%" }}>
           <Button variant="default" onClick={() => blocker.reset?.()}>
             Stay on Page
           </Button>
