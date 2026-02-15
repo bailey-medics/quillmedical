@@ -95,9 +95,9 @@ vi.mock("@components/footer/Footer", () => ({
 const mockPatient: Patient = {
   id: "1",
   name: "John Doe",
-  nhi: "ABC1234",
-  dateOfBirth: new Date("1980-01-01"),
-  gender: "male",
+  nationalNumber: "ABC1234",
+  dob: "1980-01-01",
+  sex: "male",
 };
 
 // Mock auth context
@@ -292,7 +292,7 @@ describe("MainLayout", () => {
     });
 
     it("shows loading state in footer when auth is loading", () => {
-      mockAuthContext.state = { status: "loading" };
+      mockAuthContext.state = { status: "loading", user: null };
 
       renderWithMantine(
         <MainLayout patient={null}>

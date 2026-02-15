@@ -46,6 +46,7 @@ export function MockAuthProvider({
 }) {
   const defaultUser: User = {
     id: "1",
+    username: "mark.bailey",
     email: "mark.bailey@example.com",
     name: "Mark Bailey",
     roles: ["Clinician"],
