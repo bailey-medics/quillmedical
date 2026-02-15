@@ -89,8 +89,7 @@ describe("NewPatientPage", () => {
       // Select sex
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.type(
         screen.getByPlaceholderText(/national number/i),
@@ -118,8 +117,7 @@ describe("NewPatientPage", () => {
 
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.type(
         screen.getByPlaceholderText(/national number/i),
@@ -288,8 +286,7 @@ describe("NewPatientPage", () => {
 
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.type(
         screen.getByPlaceholderText(/national number/i),
@@ -337,8 +334,7 @@ describe("NewPatientPage", () => {
 
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.type(
         screen.getByPlaceholderText(/national number/i),
@@ -413,8 +409,7 @@ describe("NewPatientPage", () => {
 
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.type(
         screen.getByPlaceholderText(/national number/i),
@@ -467,13 +462,7 @@ describe("NewPatientPage", () => {
 
       const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
-      await user.keyboard("{ArrowDown}");
-      await user.keyboard("{Enter}");
-
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(sexSelect, "Female{Enter}");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
