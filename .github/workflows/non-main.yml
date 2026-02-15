@@ -259,8 +259,8 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          # Get commit author
-          AUTHOR=$(git log -1 --pretty=%an)
+          # Get commit author from the branch that was merged (second parent of merge commit)
+          AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
 
       - name: Notify Slack on Success
