@@ -11,6 +11,33 @@ The platform is designed for clinical reliability, security, and compliance with
 
 ---
 
+## Tech Stack
+
+### Frontend
+
+- **React 19** – Modern UI framework for building interactive interfaces
+- **TypeScript** – Type-safe JavaScript for reliable code
+- **Mantine UI** – comprehensive component library for React applications
+- **Tabler Icons** – Beautiful open-source icon set via [@tabler/icons-react](https://tabler.io/icons)
+- **React Router** – Client-side routing and navigation
+- **Vite** – Fast build tool and development server
+- **Vitest** – Unit testing framework
+- **Storybook** – Component development and documentation
+
+### Backend
+
+- **FastAPI** – Modern Python web framework
+- **SQLAlchemy** – Database ORM and query builder
+- **PostgreSQL** – Relational database
+- **Alembic** – Database migration tool
+
+### Healthcare Standards
+
+- **FHIR R4** – Patient demographics and healthcare data exchange
+- **OpenEHR** – Clinical document modeling and storage
+
+---
+
 ## How It Works
 
 Quill Medical is built from several connected components:

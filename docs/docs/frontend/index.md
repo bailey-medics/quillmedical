@@ -113,6 +113,14 @@ Built using current web standards for
 - Reliable performance
 - Future-proof architecture
 
+#### Technology Stack
+
+- **React 19** with TypeScript for type-safe, maintainable code
+- **Mantine UI** for accessible, customizable components
+- **Tabler Icons** for consistent iconography throughout the application
+- **React Router** for seamless client-side navigation
+- **Vite** for rapid development and optimized production builds
+
 ### Healthcare Standards Integration
 
 - Seamlessly connects to healthcare data systems
