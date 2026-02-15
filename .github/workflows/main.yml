@@ -151,16 +151,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Main documentation and push to github-pages succeeded",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Main documentation and push to github-pages succeeded*"
-                  }
-                }
-              ]
+              "text": "✅ Main documentation build succeeded",
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -171,16 +162,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Branch `${{ github.ref_name }}` build failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Build failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
+              "text": "❌ Main documentation build failed"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -218,16 +200,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Branch `${{ github.ref_name }}` deployed to GitHub Pages",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Deploy succeeded*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\n*Author:* ${{ github.actor }}"
-                  }
-                }
-              ]
+              "text": "✅ Branch deployed to GitHub Pages",
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -238,16 +211,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Branch `${{ github.ref_name }}` deploy failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Deploy failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
+              "text": "❌ Branch deploy failed",
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
