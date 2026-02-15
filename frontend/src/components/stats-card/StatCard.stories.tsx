@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { StatCard } from "./StatCard";
 
 const meta = {
-  title: "Components/StatCard",
+  title: "StatCards/StatCard",
   component: StatCard,
   parameters: {
     layout: "centered",

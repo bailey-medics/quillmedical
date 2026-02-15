@@ -313,7 +313,6 @@ export default function Home() {
   return (
     <Stack
       align="center"
-      justify="center"
       style={{ minHeight: "70dvh", padding: "2rem", margin: "0 auto" }}
     >
       <PatientsList
