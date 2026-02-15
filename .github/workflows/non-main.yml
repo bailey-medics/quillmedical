@@ -169,6 +169,35 @@ jobs:
         working-directory: frontend
         run: yarn install --immutable
 
+      - name: Cache Playwright browsers
+        if: matrix.task == 'storybook:test:ci'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Cache Storybook build artifacts
+        if: matrix.task == 'storybook:build' || matrix.task == 'storybook:test:ci'
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-
+
+      - name: Cache ESLint
+        if: matrix.task == 'eslint'
+        uses: actions/cache@v4
+        with:
+          path: frontend/.eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-
+
       - name: Install Playwright browsers (for storybook tests)
         if: matrix.task == 'storybook:test:ci'
         working-directory: frontend
