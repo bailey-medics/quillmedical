@@ -26,6 +26,8 @@ export interface StepConfig {
   content: (props: StepContentProps) => ReactNode;
   /** Optional validation function - returns true if step is valid */
   validate?: () => boolean | Promise<boolean>;
+  /** Optional custom label for the Next button (e.g., "Add Patient", "Create User") */
+  nextButtonLabel?: string;
 }
 
 /**
@@ -134,7 +136,11 @@ export default function MultiStepForm({
               Back
             </Button>
           )}
-          {!isLastStep && <Button onClick={nextStep}>Next</Button>}
+          {!isLastStep && (
+            <Button onClick={nextStep}>
+              {currentStepConfig.nextButtonLabel || "Next"}
+            </Button>
+          )}
         </Group>
       </Group>
     </Stack>

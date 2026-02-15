@@ -26,12 +26,13 @@ import {
   Paper,
 } from "@mantine/core";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useBlocker } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
 } from "@/components/multi-step-form/MultiStepForm";
+import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
 import type {
   BaseProfessionId,
   CompetencyId,
@@ -376,6 +377,7 @@ export default function NewUserPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dirty, setDirty] = useState(false);
 
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
@@ -388,7 +390,20 @@ export default function NewUserPage() {
     systemPermissions: "staff",
   });
 
+  // Block navigation when form is dirty and not yet submitted
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty && !success && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // Wrapper to set form data and mark as dirty
+  function updateFormData(newData: UserFormData) {
+    setFormData(newData);
+    setDirty(true);
+  }
+
   function handleCancel() {
+    setDirty(false); // Allow navigation
     navigate("/admin");
   }
 
@@ -436,10 +451,12 @@ export default function NewUserPage() {
       });
 
       setSuccess(true);
+      setDirty(false); // Clear dirty flag on successful submission
       setActiveStep(3); // Move to confirmation step
     } catch (error) {
       console.error("Failed to create user:", error);
       setSuccess(false);
+      setDirty(false); // Clear dirty flag even on error (user can retry from admin)
       setActiveStep(3); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
@@ -454,7 +471,7 @@ export default function NewUserPage() {
         <Step1BasicDetails
           {...props}
           formData={formData}
-          setFormData={setFormData}
+          setFormData={updateFormData}
           errors={errors}
         />
       ),
@@ -467,7 +484,7 @@ export default function NewUserPage() {
         <Step2Competencies
           {...props}
           formData={formData}
-          setFormData={setFormData}
+          setFormData={updateFormData}
         />
       ),
     },
@@ -478,7 +495,7 @@ export default function NewUserPage() {
         <Step3Permissions
           {...props}
           formData={formData}
-          setFormData={setFormData}
+          setFormData={updateFormData}
         />
       ),
     },
@@ -499,16 +516,23 @@ export default function NewUserPage() {
   }
 
   return (
-    <Box p="xl" maw={900} mx="auto">
-      <Title order={1} mb="xl">
-        Create New User
-      </Title>
-      <MultiStepForm
-        steps={steps}
-        onCancel={handleCancel}
-        activeStep={activeStep}
-        onStepChange={handleStepChange}
+    <>
+      <Box p="xl" maw={900} mx="auto">
+        <Title order={1} mb="xl">
+          Create New User
+        </Title>
+        <MultiStepForm
+          steps={steps}
+          onCancel={handleCancel}
+          activeStep={activeStep}
+          onStepChange={handleStepChange}
+        />
+      </Box>
+
+      <DirtyFormNavigation
+        blocker={blocker}
+        onProceed={() => setDirty(false)}
       />
-    </Box>
+    </>
   );
 }

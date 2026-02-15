@@ -31,6 +31,7 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useBlocker: () => ({ state: "unblocked" }),
   };
 });
 
@@ -170,9 +171,7 @@ describe("NewPatientPage", () => {
       });
 
       // Try to submit without filling fields
-      await user.click(
-        screen.getByRole("button", { name: /create patient & user account/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(screen.getByText("Email is required")).toBeInTheDocument();
@@ -201,9 +200,7 @@ describe("NewPatientPage", () => {
 
       await user.type(screen.getByLabelText(/email/i), "invalid-email");
 
-      await user.click(
-        screen.getByRole("button", { name: /create patient & user account/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(screen.getByText("Invalid email format")).toBeInTheDocument();
@@ -230,9 +227,7 @@ describe("NewPatientPage", () => {
 
       await user.type(screen.getByLabelText(/initial password/i), "short");
 
-      await user.click(
-        screen.getByRole("button", { name: /create patient & user account/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(
@@ -287,18 +282,16 @@ describe("NewPatientPage", () => {
       await waitFor(() => {
         expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
       });
-      await user.click(
-        screen.getByRole("button", { name: /create patient$/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(mockPost).toHaveBeenCalledWith(
           "/patients",
           expect.objectContaining({
-            first_name: "Jane",
-            last_name: "Smith",
-            date_of_birth: "1980-05-12",
-            national_number: "1234567890",
+            given_name: "Jane",
+            family_name: "Smith",
+            birth_date: "1980-05-12",
+            nhs_number: "1234567890",
           }),
         );
       });
@@ -350,16 +343,14 @@ describe("NewPatientPage", () => {
         "password123",
       );
 
-      await user.click(
-        screen.getByRole("button", { name: /create patient & user account/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(mockPost).toHaveBeenCalledWith(
           "/patients",
           expect.objectContaining({
-            first_name: "Jane",
-            last_name: "Smith",
+            given_name: "Jane",
+            family_name: "Smith",
           }),
         );
       });
@@ -404,9 +395,7 @@ describe("NewPatientPage", () => {
         expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /create patient$/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(
@@ -454,9 +443,7 @@ describe("NewPatientPage", () => {
         expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /create patient$/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(

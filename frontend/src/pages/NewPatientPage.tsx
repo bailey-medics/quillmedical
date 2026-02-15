@@ -23,12 +23,13 @@ import {
   Divider,
 } from "@mantine/core";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useBlocker } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
 } from "@/components/multi-step-form/MultiStepForm";
+import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
 import { api } from "@/lib/api";
 
 /**
@@ -174,8 +175,7 @@ function Step2UserAccount({
   formData,
   setFormData,
   errors,
-  nextStep,
-}: Pick<StepContentProps, "nextStep"> & {
+}: {
   formData: PatientFormData;
   setFormData: (data: PatientFormData) => void;
   errors: Record<string, string>;
@@ -244,12 +244,6 @@ function Step2UserAccount({
           />
         </>
       )}
-
-      <Button onClick={nextStep} fullWidth size="lg" mt="lg">
-        {formData.createUserAccount
-          ? "Create Patient & User Account"
-          : "Create Patient"}
-      </Button>
     </Stack>
   );
 }
@@ -313,6 +307,7 @@ export default function NewPatientPage() {
   const [success, setSuccess] = useState(false);
   const [patientId, setPatientId] = useState<string>();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dirty, setDirty] = useState(false);
 
   const [formData, setFormData] = useState<PatientFormData>({
     firstName: "",
@@ -324,7 +319,20 @@ export default function NewPatientPage() {
     createUserAccount: false,
   });
 
+  // Block navigation when form is dirty and not yet submitted
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty && !success && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // Wrapper to set form data and mark as dirty
+  function updateFormData(newData: PatientFormData) {
+    setFormData(newData);
+    setDirty(true);
+  }
+
   function handleCancel() {
+    setDirty(false); // Allow navigation
     navigate("/admin");
   }
 
@@ -414,10 +422,12 @@ export default function NewPatientPage() {
       }
 
       setSuccess(true);
+      setDirty(false); // Clear dirty flag on successful submission
       setActiveStep(2); // Move to confirmation step
     } catch (error) {
       console.error("Failed to create patient:", error);
       setSuccess(false);
+      setDirty(false); // Clear dirty flag even on error (user can retry from admin)
       setActiveStep(2); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
@@ -432,7 +442,7 @@ export default function NewPatientPage() {
         <Step1Demographics
           {...props}
           formData={formData}
-          setFormData={setFormData}
+          setFormData={updateFormData}
           errors={errors}
         />
       ),
@@ -445,11 +455,12 @@ export default function NewPatientPage() {
         <Step2UserAccount
           {...props}
           formData={formData}
-          setFormData={setFormData}
+          setFormData={updateFormData}
           errors={errors}
         />
       ),
       validate: validateStep2,
+      nextButtonLabel: "Add Patient",
     },
     {
       label: "Confirmation",
@@ -470,16 +481,23 @@ export default function NewPatientPage() {
   }
 
   return (
-    <Box p="xl" maw={900} mx="auto">
-      <Title order={1} mb="xl">
-        Create New Patient
-      </Title>
-      <MultiStepForm
-        steps={steps}
-        onCancel={handleCancel}
-        activeStep={activeStep}
-        onStepChange={handleStepChange}
+    <>
+      <Box p="xl" maw={900} mx="auto">
+        <Title order={1} mb="xl">
+          Create New Patient
+        </Title>
+        <MultiStepForm
+          steps={steps}
+          onCancel={handleCancel}
+          activeStep={activeStep}
+          onStepChange={handleStepChange}
+        />
+      </Box>
+
+      <DirtyFormNavigation
+        blocker={blocker}
+        onProceed={() => setDirty(false)}
       />
-    </Box>
+    </>
   );
 }
