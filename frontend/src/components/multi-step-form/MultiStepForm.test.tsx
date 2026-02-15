@@ -46,13 +46,6 @@ describe("MultiStepForm", () => {
       expect(screen.getByText("Step 3")).toBeInTheDocument();
     });
 
-    it("renders step descriptions", () => {
-      renderWithMantine(
-        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
-      );
-      expect(screen.getByText("First step")).toBeInTheDocument();
-    });
-
     it("renders first step content by default", () => {
       renderWithMantine(
         <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,

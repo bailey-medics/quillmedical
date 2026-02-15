@@ -132,7 +132,6 @@ export default function MultiStepForm({
           <Stepper.Step
             key={index}
             label={step.label}
-            description={step.description}
             allowStepSelect={index <= highestAccessibleStep}
           />
         ))}
