@@ -2,8 +2,8 @@ import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import type { Preview } from "@storybook/react";
-import { MemoryRouter } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import React, { useEffect } from "react";
 
 // Mock the API to prevent real backend calls in Storybook
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,47 +36,42 @@ import React, { useEffect, useState } from "react";
 // Import real AuthProvider after mocking fetch
 import { AuthProvider, useAuth } from "../src/auth/AuthContext";
 
-// Wrapper to ensure auth loads before rendering stories
+// Wrapper to ensure auth is available (renders immediately, auth loads in background)
 // eslint-disable-next-line react-refresh/only-export-components
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { state } = useAuth();
-  const [minDelayPassed, setMinDelayPassed] = useState(false);
 
   useEffect(() => {
     console.log("[AuthWrapper] Auth state:", state.status);
-    // Minimum delay to ensure auth has time to initialize
-    const timer = setTimeout(() => setMinDelayPassed(true), 50);
-    return () => clearTimeout(timer);
   }, [state.status]);
 
-  // Wait for both: minimum delay passed AND auth is authenticated or unauthenticated (not loading)
-  if (!minDelayPassed || state.status === "loading") {
-    console.log(
-      "[AuthWrapper] Waiting... minDelayPassed:",
-      minDelayPassed,
-      "status:",
-      state.status,
-    );
-    return null;
-  }
-
-  console.log("[AuthWrapper] Ready! Status:", state.status);
+  // Always render immediately - don't block on auth loading
+  console.log("[AuthWrapper] Rendering (auth status:", state.status + ")");
   return <>{children}</>;
 }
 
 const decorators = [
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Story: any) => (
-    <AuthProvider>
-      <MantineProvider defaultColorScheme="light">
-        <MemoryRouter>
-          <AuthWrapper>
-            <div style={{ padding: 0 }}>{Story()}</div>
-          </AuthWrapper>
-        </MemoryRouter>
-      </MantineProvider>
-    </AuthProvider>
-  ),
+  (Story: any) => {
+    // Create a memory router with a single route for the story
+    // This supports useBlocker and other data router features
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <AuthProvider>
+            <MantineProvider defaultColorScheme="light">
+              <AuthWrapper>
+                <div style={{ padding: 0 }}>{Story()}</div>
+              </AuthWrapper>
+            </MantineProvider>
+          </AuthProvider>
+        ),
+      },
+    ]);
+
+    return <RouterProvider router={router} />;
+  },
 ];
 
 const preview: Preview = {
