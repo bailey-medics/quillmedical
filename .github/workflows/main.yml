@@ -162,7 +162,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Main documentation build succeeded (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "✅ Main documentation build succeeded (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -173,7 +173,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Main documentation build failed (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "❌ Main documentation build failed (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -222,7 +222,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Deployed to GitHub Pages (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "✅ Deployed to GitHub Pages (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -233,7 +233,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Deploy to GitHub Pages failed (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "❌ Deploy to GitHub Pages failed (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

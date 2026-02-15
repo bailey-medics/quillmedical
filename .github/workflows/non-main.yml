@@ -265,7 +265,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Tests passed and merged to main (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "✅ Tests passed and merged to main (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -276,7 +276,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Merge to main failed (✨ ${{ steps.commit.outputs.short_sha }})"
+              "text": "❌ Merge to main failed (🔗 ${{ steps.commit.outputs.short_sha }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
