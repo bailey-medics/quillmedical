@@ -246,6 +246,15 @@ jobs:
 
           git push origin main
 
+      - name: Extract commit subject
+        id: commit
+        run: |
+          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
+          # Escape for JSON: replace quotes and newlines
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
+          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
@@ -258,7 +267,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Merge to Main Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Merge to Main Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
@@ -278,7 +287,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Merge to Main Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    "text": "*❌ Merge to Main Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]

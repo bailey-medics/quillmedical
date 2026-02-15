@@ -136,6 +136,15 @@ jobs:
         with:
           path: site
 
+      - name: Extract commit subject
+        id: commit
+        run: |
+          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
+          # Escape for JSON: replace quotes and newlines
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
+          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
@@ -148,7 +157,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Build Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Build Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
@@ -168,7 +177,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Build Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    "text": "*❌ Build Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]
@@ -187,9 +196,21 @@ jobs:
       pages: write
       id-token: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Extract commit subject
+        id: commit
+        run: |
+          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
+          # Escape for JSON: replace quotes and newlines
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
+          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
+          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
       - name: Notify Slack on Success
         if: success()
@@ -203,7 +224,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Deploy Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\n*Author:* ${{ github.actor }}"
+                    \"text\": \"*✅ Deploy Succeeded*\\n*Repo:* ${{ github.repository }}\\n*Branch:* `${{ github.ref_name }}`\\n*Commit:* ${{ steps.commit.outputs.subject }}\\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\\n*Author:* ${{ github.actor }}\"
                   }
                 }
               ]
@@ -223,7 +244,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Deploy Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    \"text\": \"*❌ Deploy Failed*\\n*Repo:* ${{ github.repository }}\\n*Branch:* `${{ github.ref_name }}`\\n*Commit:* ${{ steps.commit.outputs.subject }}\\n*Author:* ${{ github.actor }}\\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>\"
                   }
                 }
               ]
