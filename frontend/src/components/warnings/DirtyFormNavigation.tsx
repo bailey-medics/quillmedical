@@ -60,10 +60,16 @@ export default function DirtyFormNavigation({
     <Modal
       opened={blocker.state === "blocked"}
       onClose={() => blocker.reset?.()}
-      title="Unsaved Changes"
       centered
+      withCloseButton={false}
+      radius="md"
+      styles={{
+        content: {
+          border: "1px solid rgba(0, 0, 0, 0.1)",
+        },
+      }}
     >
-      <Stack gap="md" align="center">
+      <Stack gap="md" align="center" pt="xl">
         <IconAlertTriangle size={48} />
         <Text ta="center">
           You have unsaved changes. Are you sure you want to leave this page?

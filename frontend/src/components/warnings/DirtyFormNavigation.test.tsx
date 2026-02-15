@@ -29,7 +29,6 @@ describe("DirtyFormNavigation", () => {
 
     renderWithMantine(<DirtyFormNavigation blocker={blocker} />);
 
-    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
     expect(
       screen.getByText(
         "You have unsaved changes. Are you sure you want to leave this page?",
@@ -53,7 +52,11 @@ describe("DirtyFormNavigation", () => {
 
     renderWithMantine(<DirtyFormNavigation blocker={blocker} />);
 
-    expect(screen.queryByText("Unsaved Changes")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "You have unsaved changes. Are you sure you want to leave this page?",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("calls blocker.reset when Stay on Page is clicked", async () => {
@@ -120,7 +123,11 @@ describe("DirtyFormNavigation", () => {
 
     renderWithMantine(<DirtyFormNavigation blocker={blocker} />);
 
-    expect(screen.getByText("Unsaved Changes")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You have unsaved changes. Are you sure you want to leave this page?",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("handles onProceed callback being undefined", async () => {
