@@ -163,17 +163,30 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
-          # Get SHA from the branch that was merged (second parent of merge commit)
-          # This matches the SHA shown in non-main workflow
-          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
-          echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+          # Check if this is a merge commit (has second parent)
+          if git rev-parse --verify --quiet HEAD^2 > /dev/null 2>&1; then
+            # Get SHA from the branch that was merged (second parent of merge commit)
+            # This matches the SHA shown in non-main workflow
+            BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
+            echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
 
-          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+            SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
+            echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          # Get commit author from the merged branch
-          AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+            # Get commit author from the merged branch
+            AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
+            echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          else
+            # Not a merge commit, use current commit
+            BRANCH_SHA="${GITHUB_SHA}"
+            echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+
+            SHORT_SHA="${GITHUB_SHA:0:7}"
+            echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+            AUTHOR=$(git log -1 --pretty=%an)
+            echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          fi
 
           # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
           SOURCE_BRANCH=""
