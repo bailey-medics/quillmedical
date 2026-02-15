@@ -48,10 +48,33 @@ jobs:
           corepack prepare yarn@4.10.3 --activate
           yarn --version
 
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.yarn/cache
+            frontend/.yarn/install-state.gz
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-docs-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-docs-
+            ${{ runner.os }}-yarn4-
+
       - name: Install frontend deps
         working-directory: frontend
         run: |
           yarn install --frozen-lockfile
+
+      - name: Cache Storybook & Vite build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+            frontend/storybook-static
+          key: ${{ runner.os }}-storybook-build-${{ hashFiles('frontend/src/**/*.{ts,tsx,js,jsx,json}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-build-
 
       - name: Generate JSON from YAML for TypeScript types
         working-directory: frontend
@@ -101,10 +124,22 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-docs-py3.13-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-docs-py3.13-
+            ${{ runner.os }}-poetry-
+
       - name: Install project docs deps via Poetry
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade poetry
+          poetry config virtualenvs.in-project true
           cd backend
           poetry install --no-interaction --no-ansi --with dev
 
