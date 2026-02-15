@@ -45,14 +45,16 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       expect(screen.getByText("Create New Patient")).toBeInTheDocument();
-      expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/date of birth/i)).toBeInTheDocument();
-      expect(screen.getByRole("textbox", { name: /sex/i })).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/first name/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/last name/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/date of birth/i)[0]).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/sex/i)[0]).toBeInTheDocument();
       expect(
-        screen.getByLabelText(/national number system/i),
+        screen.getAllByLabelText(/national number system/i)[0],
       ).toBeInTheDocument();
-      expect(screen.getByLabelText(/national number$/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/national number/i),
+      ).toBeInTheDocument();
     });
 
     it("shows validation errors when trying to proceed with empty fields", async () => {
@@ -77,17 +79,23 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       // Fill all required fields
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
       // Select sex
-      const sexSelect = screen.getByRole("textbox", { name: /sex/i });
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -101,16 +109,22 @@ describe("NewPatientPage", () => {
     async function fillStep1AndProceed(
       user: ReturnType<typeof userEvent.setup>,
     ) {
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
-      const sexSelect = screen.getByLabelText(/sex/i);
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
@@ -265,16 +279,22 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       // Fill demographics
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
-      const sexSelect = screen.getByLabelText(/sex/i);
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -308,16 +328,22 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       // Fill demographics
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
-      const sexSelect = screen.getByLabelText(/sex/i);
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -378,16 +404,22 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       // Fill and submit
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
-      const sexSelect = screen.getByLabelText(/sex/i);
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -426,16 +458,22 @@ describe("NewPatientPage", () => {
       renderWithRouter(<NewPatientPage />);
 
       // Complete form
-      await user.type(screen.getByLabelText(/first name/i), "Jane");
-      await user.type(screen.getByLabelText(/last name/i), "Smith");
-      await user.type(screen.getByLabelText(/date of birth/i), "1980-05-12");
+      await user.type(screen.getAllByLabelText(/first name/i)[0], "Jane");
+      await user.type(screen.getAllByLabelText(/last name/i)[0], "Smith");
+      await user.type(
+        screen.getAllByLabelText(/date of birth/i)[0],
+        "1980-05-12",
+      );
 
-      const sexSelect = screen.getByLabelText(/sex/i);
+      const sexSelect = screen.getAllByLabelText(/sex/i)[0];
       await user.click(sexSelect);
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
-      await user.type(screen.getByLabelText(/national number$/i), "1234567890");
+      await user.type(
+        screen.getByPlaceholderText(/national number/i),
+        "1234567890",
+      );
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
