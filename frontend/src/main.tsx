@@ -27,6 +27,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
+import AdminPage from "./pages/AdminPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
@@ -80,6 +81,7 @@ const router = createBrowserRouter(
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
+        { path: "/admin", element: <AdminPage /> },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),

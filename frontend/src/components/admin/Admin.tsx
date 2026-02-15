@@ -17,6 +17,7 @@ import {
   Modal,
   MultiSelect,
   Select,
+  SimpleGrid,
   Skeleton,
   Stack,
   Text,
@@ -284,7 +285,7 @@ export default function Admin({
         </Card>
       </Group>
 
-      <Group align="stretch" grow>
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconUserPlus size={24} />}
           title="Add User"
@@ -301,9 +302,9 @@ export default function Admin({
           buttonUrl="#"
           onClick={() => setAddPatientModalOpen(true)}
         />
-      </Group>
+      </SimpleGrid>
 
-      <Group align="stretch" grow>
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconLink size={24} />}
           title="Link User to Patient"
@@ -322,7 +323,7 @@ export default function Admin({
             onClick={() => setPermissionsModalOpen(true)}
           />
         )}
-      </Group>
+      </SimpleGrid>
 
       {/* Add User Modal */}
       <Modal
