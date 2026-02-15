@@ -261,16 +261,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Branch `${{ github.ref_name }}` passed all tests and merged to main",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Branch merged to main*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
-                  }
-                }
-              ]
+              "text": "✅ Branch `${{ github.ref_name }}` passed all tests and merged to main"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -281,16 +272,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Branch `${{ github.ref_name }}` failed to merge to main",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Merge to main failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
+              "text": "❌ Branch `${{ github.ref_name }}` failed to merge to main"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
