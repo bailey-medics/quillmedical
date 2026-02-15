@@ -224,7 +224,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    \"text\": \"*✅ Deploy Succeeded*\\n*Repo:* ${{ github.repository }}\\n*Branch:* `${{ github.ref_name }}`\\n*Commit:* ${{ steps.commit.outputs.subject }}\\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\\n*Author:* ${{ github.actor }}\"
+                    "text": "*✅ Deploy Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
@@ -244,7 +244,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    \"text\": \"*❌ Deploy Failed*\\n*Repo:* ${{ github.repository }}\\n*Branch:* `${{ github.ref_name }}`\\n*Commit:* ${{ steps.commit.outputs.subject }}\\n*Author:* ${{ github.actor }}\\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>\"
+                    "text": "*❌ Deploy Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]
