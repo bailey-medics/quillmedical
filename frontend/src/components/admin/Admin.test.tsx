@@ -113,6 +113,32 @@ describe("Admin", () => {
       ).toBeInTheDocument();
     });
 
+    it("renders Edit User card", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+      expect(
+        screen.getByRole("heading", { name: "Edit User" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Update user details, competencies, and permissions"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Edit User/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("renders Edit Patient card", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+      expect(
+        screen.getByRole("heading", { name: "Edit Patient" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Modify patient demographics and information"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Edit Patient/i }),
+      ).toBeInTheDocument();
+    });
+
     it("renders Link User to Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Link User to Patient")).toBeInTheDocument();

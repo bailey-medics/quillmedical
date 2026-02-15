@@ -20,7 +20,13 @@ import {
   Stack,
   TextInput,
 } from "@mantine/core";
-import { IconUserPlus, IconLink, IconShieldCheck } from "@tabler/icons-react";
+import {
+  IconUserPlus,
+  IconLink,
+  IconShieldCheck,
+  IconUserEdit,
+  IconEdit,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
 import StatCard from "@/components/stats-card";
@@ -204,6 +210,23 @@ export default function Admin({
           subtitle="Register a new patient record with demographics"
           buttonLabel="Add New Patient"
           buttonUrl="/admin/patients/new"
+        />
+      </SimpleGrid>
+
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <ActionCard
+          icon={<IconUserEdit size={24} />}
+          title="Edit User"
+          subtitle="Update user details, competencies, and permissions"
+          buttonLabel="Edit User"
+          buttonUrl="#"
+        />
+        <ActionCard
+          icon={<IconEdit size={24} />}
+          title="Edit Patient"
+          subtitle="Modify patient demographics and information"
+          buttonLabel="Edit Patient"
+          buttonUrl="#"
         />
       </SimpleGrid>
 
