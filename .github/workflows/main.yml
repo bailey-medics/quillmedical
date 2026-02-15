@@ -229,13 +229,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "✅ Build succeeded and deployed to GitHub Pages"
+            text: "✅ Main documentation build succeeded and deployed to GitHub Pages"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *✅ Build succeeded and deployed to GitHub Pages*
+                    *✅ Main documentation build succeeded and deployed to GitHub Pages*
 
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
@@ -248,13 +248,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Deploy to GitHub Pages failed"
+            text: "❌ Main documentation build failed"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *❌ Deploy to GitHub Pages failed*
+                    *❌ Main documentation build failed*
 
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>

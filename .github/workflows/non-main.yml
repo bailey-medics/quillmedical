@@ -270,13 +270,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "✅ Tests passed and merged to main"
+            text: "✅ Non-main tests passed and merged to main"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *✅ Tests passed and merged to main*
+                    *✅ Non-main tests passed and merged to main*
 
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
@@ -289,13 +289,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Merge to main failed"
+            text: "❌ Non-main tests and merge failed"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *❌ Merge to main failed*
+                    *❌ Non-main tests and merge failed*
 
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
