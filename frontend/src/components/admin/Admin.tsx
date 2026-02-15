@@ -27,11 +27,13 @@ import {
 import { IconUserPlus, IconLink, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
-import type { CompetencyId, BaseProfessionId } from "@/types/cbac";
+import type {
+  CompetencyId,
+  BaseProfessionId,
+  SystemPermission,
+} from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
-
-type SystemPermission = "patient" | "staff" | "admin" | "superadmin";
 
 /**
  * User Form Data
