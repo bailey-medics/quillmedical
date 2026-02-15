@@ -165,7 +165,7 @@ function Step2Competencies({
   const profession = formData.baseProfession
     ? getBaseProfessionDetails(formData.baseProfession)
     : null;
-  const baseCompetencyIds = profession?.competencies || [];
+  const baseCompetencyIds = profession?.base_competencies || [];
 
   return (
     <Stack gap="md">

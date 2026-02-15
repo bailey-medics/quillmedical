@@ -1,9 +1,11 @@
 # Mantine Select + JSDOM Testing Issue - Detailed Description
 
 ## Problem Summary
+
 Mantine Select components don't properly open their dropdowns in JSDOM test environment, causing all interactions with dropdown options to fail. The dropdowns remain `display: none` even after user interaction events.
 
 ## Environment
+
 - **Testing Framework**: Vitest 3.2.4
 - **Test Environment**: JSDOM (happy-dom would have same issue)
 - **Testing Library**: @testing-library/react + @testing-library/user-event
@@ -12,6 +14,7 @@ Mantine Select components don't properly open their dropdowns in JSDOM test envi
 - **Component**: `<Select>` from @mantine/core
 
 ## The Component Being Tested
+
 ```tsx
 // In NewPatientPage.tsx
 <Select
@@ -20,7 +23,7 @@ Mantine Select components don't properly open their dropdowns in JSDOM test envi
   data={[
     { value: "male", label: "Male" },
     { value: "female", label: "Female" },
-    { value: "other", label: "Other" }
+    { value: "other", label: "Other" },
   ]}
   required
   value={formData.sex}
@@ -32,21 +35,25 @@ Mantine Select components don't properly open their dropdowns in JSDOM test envi
 ```
 
 ## What Happens in Tests
+
 When tests try to interact with the Select component:
 
 1. **The element is found successfully**:
+
 ```tsx
 const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 // ✅ This works - element is found
 ```
 
 2. **Click events are dispatched**:
+
 ```tsx
 await user.click(sexSelect);
 // ✅ Event fires, no errors
 ```
 
 3. **But the dropdown never opens**:
+
 ```tsx
 // DOM inspection shows dropdown exists but stays hidden:
 <div
@@ -56,6 +63,7 @@ await user.click(sexSelect);
 ```
 
 4. **Options cannot be found**:
+
 ```tsx
 await waitFor(() => {
   expect(screen.getByRole("option", { name: /female/i })).toBeInTheDocument();
@@ -67,6 +75,7 @@ await waitFor(() => {
 ## Approaches Attempted (All Failed)
 
 ### Attempt 1: Keyboard Navigation
+
 ```tsx
 const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 await user.click(sexSelect);
@@ -77,6 +86,7 @@ await user.keyboard("{Enter}");
 ```
 
 ### Attempt 2: Click Dropdown Options
+
 ```tsx
 await user.click(sexSelect);
 await waitFor(() => {
@@ -87,6 +97,7 @@ await user.click(screen.getByRole("option", { name: /female/i }));
 ```
 
 ### Attempt 3: fireEvent.change()
+
 ```tsx
 const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 fireEvent.change(sexSelect, { target: { value: "female" } });
@@ -95,6 +106,7 @@ fireEvent.change(sexSelect, { target: { value: "female" } });
 ```
 
 ### Attempt 4: Type to Filter
+
 ```tsx
 await user.click(sexSelect);
 await user.type(sexSelect, "Female{Enter}");
@@ -104,6 +116,7 @@ await user.type(sexSelect, "Female{Enter}");
 ## Technical Details
 
 ### Mantine Select DOM Structure
+
 ```html
 <!-- Portal rendered dropdown (always in DOM but hidden) -->
 <div data-mantine-shared-portal-node="true">
@@ -123,12 +136,14 @@ await user.type(sexSelect, "Female{Enter}");
 ```
 
 ### JSDOM Limitations
+
 1. **No layout engine**: Can't calculate positions for popover/portal positioning
 2. **No scrollIntoView**: `scrollIntoView()` is not implemented
 3. **No getComputedStyle for dynamic styles**: Mantine uses JS to calculate dropdown positions
 4. **Event handling differences**: Some synthetic events don't propagate the same way
 
 ### Specific Error from Mantine
+
 ```
 TypeError: items[index]?.scrollIntoView is not a function
  ❯ Timeout._onTimeout node_modules/@mantine/core/src/components/Combobox/use-combobox/use-combobox.ts:257:25
@@ -139,10 +154,14 @@ This is thrown by Mantine's internal Combobox logic when keyboard navigation is 
 ## What DOES Work
 
 ### NewUserPage Tests (15/15 passing)
+
 These tests verify Select fields **exist** but don't actually interact with them:
+
 ```tsx
 // ✅ This works
-expect(screen.getAllByLabelText(/system permission level/i)[0]).toBeInTheDocument();
+expect(
+  screen.getAllByLabelText(/system permission level/i)[0],
+).toBeInTheDocument();
 
 // ❌ This would fail
 await user.click(screen.getAllByLabelText(/system permission level/i)[0]);
@@ -150,12 +169,15 @@ await user.click(screen.getAllByLabelText(/system permission level/i)[0]);
 ```
 
 ### NewPatientPage Tests (3/14 passing)
+
 Only tests that don't require Select interaction pass:
+
 - ✅ Renders form fields (just checks they exist)
 - ✅ Shows validation errors (doesn't interact with Select)
 - ✅ Cancel button navigation (doesn't use Select)
 
 ## Production vs Test Behavior
+
 - **In Browser**: Everything works perfectly - Mantine Select opens, options are clickable, selection works
 - **In JSDOM Tests**: Dropdown never opens, making 11/14 tests fail
 
@@ -171,12 +193,16 @@ Only tests that don't require Select interaction pass:
 ## Comparison with Working Tests
 
 **NewUserPage Select** (doesn't fail because we never interact with dropdown):
+
 ```tsx
 // We only check existence, not interaction
-expect(screen.getAllByLabelText(/system permission level/i)[0]).toBeInTheDocument();
+expect(
+  screen.getAllByLabelText(/system permission level/i)[0],
+).toBeInTheDocument();
 ```
 
 **NewPatientPage Sex Select** (fails because we need to select a value):
+
 ```tsx
 // This is required to advance the form
 const sexSelect = screen.getAllByLabelText(/sex/i)[0];
@@ -185,6 +211,7 @@ const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 ```
 
 ## Desired Test Behavior
+
 ```tsx
 // What we want to achieve:
 const sexSelect = screen.getAllByLabelText(/sex/i)[0];
@@ -193,12 +220,14 @@ const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 ```
 
 ## Additional Context
+
 - 20 other tests in the suite have scrollIntoView errors but still pass
 - This specific issue blocks form progression in tests
 - The form is multi-step - can't proceed without selecting Sex
 - Same issue would affect any Mantine Select/Combobox in tests
 
 ## Test File Location
+
 - **File**: `frontend/src/pages/NewPatientPage.test.tsx`
 - **Component**: `frontend/src/pages/NewPatientPage.tsx`
 - **Current Status**: 3/14 tests passing, 11 skipped (JSDOM limitation)
@@ -211,6 +240,7 @@ const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 **Decision**: Skip 11 tests that require Mantine Select dropdown interaction
 
 **Rationale**:
+
 1. **Fundamental JSDOM Limitation**: JSDOM lacks layout engine, preventing dropdown positioning/rendering
 2. **Official Mantine Pattern Failed**: Claude.ai's "official" pattern (`getByRole("textbox")` + `getByRole("option")`) doesn't work with Mantine v8.3.1
 3. **Multiple Approaches Attempted**:
@@ -223,21 +253,25 @@ const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 5. **Time Investment**: Multiple attempts across sessions with no success
 
 **Implementation**:
+
 - Added scrollIntoView mock to setup.ts
 - Added env="test" to MantineProvider wrappers
 - Attempted getByRole pattern from Mantine docs
 - Skipped 11 failing tests with clear TODOs referencing this document
 
 **Test Results**:
+
 - ✅ 3 tests passing (no dropdown interaction required)
 - ⏭️ 11 tests skipped (require Sex field selection)
 
 **Passing Tests**:
+
 1. "renders step 1 with all required fields" - just checks elements exist
 2. "shows validation errors when trying to proceed with empty fields" - validations without selections
 3. "navigates back to admin when cancel is clicked" - navigation only
 
 **Skipped Tests** (all require Sex dropdown selection):
+
 1. "proceeds to step 2 when validation passes"
 2. "renders user account option checkbox"
 3. "shows user account fields when checkbox is enabled"
@@ -251,16 +285,19 @@ const sexSelect = screen.getAllByLabelText(/sex/i)[0];
 11. "navigates back to admin from confirmation"
 
 **Alternative Testing Strategy**:
+
 - These tests **MUST** be implemented as E2E tests using **Playwright** or **Cypress**
 - E2E tests run in real browsers with full layout/rendering capabilities
 - This is the recommended approach for complex UI interactions per Mantine docs
 
 **Files Modified**:
+
 - `frontend/src/test/setup.ts` - Added scrollIntoView mock
 - `frontend/src/test/test-utils.tsx` - Added env="test" to MantineProvider
 - `frontend/src/pages/NewPatientPage.test.tsx` - Added file-level comment documenting limitation, skipped 11 tests with TODOs
 
 **Commit Message**:
+
 ```
 test: skip NewPatientPage tests requiring Mantine Select due to JSDOM limitation
 
@@ -283,6 +320,7 @@ See temp.md for full analysis and decision rationale.
 ```
 
 ## Future Work
+
 - Implement E2E test suite with Playwright
 - Add NewPatientPage full workflow E2E tests
 - Consider upgrading Mantine if newer versions have better test support
