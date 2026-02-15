@@ -275,7 +275,12 @@ jobs:
               - type: "section"
                 text:
                   type: "mrkdwn"
-                  text: "*✅ Tests passed and merged to main*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  text: |
+                    *✅ Tests passed and merged to main*
+
+                    Author: ${{ steps.commit.outputs.author }}
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
 
       - name: Notify Slack on Failure
         if: failure()
@@ -289,4 +294,9 @@ jobs:
               - type: "section"
                 text:
                   type: "mrkdwn"
-                  text: "*❌ Merge to main failed*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                  text: |
+                    *❌ Merge to main failed*
+
+                    Author: ${{ steps.commit.outputs.author }}
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>
