@@ -217,8 +217,8 @@ export const RealExamples: Story = {
         size="lg"
         mb="lg"
       />
-      <PageHeader title="Create New User" size="lg" mb="lg" />
-      <PageHeader title="Create New Patient" size="lg" mb={0} />
+      <PageHeader title="Create new user" size="lg" mb="lg" />
+      <PageHeader title="Create new patient" size="lg" mb={0} />
     </Box>
   ),
 };

@@ -40,11 +40,11 @@ describe("NewUserPage", () => {
     vi.clearAllMocks();
   });
 
-  describe("Step 1: Basic Details", () => {
+  describe("Step 1: Basic details", () => {
     it("renders step 1 with all required fields", () => {
       renderWithRouter(<NewUserPage />);
 
-      expect(screen.getByText("Create New User")).toBeInTheDocument();
+      expect(screen.getByText("Create new user")).toBeInTheDocument();
       expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
     });
@@ -168,7 +168,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
       expect(
@@ -198,7 +198,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
 
@@ -206,7 +206,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("heading", { name: "Basic Details" }),
+          screen.getByRole("heading", { name: "Basic details" }),
         ).toBeInTheDocument();
       });
     });
@@ -219,7 +219,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
 
@@ -227,7 +227,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("System Permissions & Review"),
+          screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
     });
@@ -259,7 +259,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
 
@@ -274,7 +274,7 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("System Permissions & Review"),
+          screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
       expect(
@@ -331,7 +331,7 @@ describe("NewUserPage", () => {
       // Skip step 2
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
@@ -339,7 +339,7 @@ describe("NewUserPage", () => {
       // Step 3 - submit
       await waitFor(() => {
         expect(
-          screen.getByText("System Permissions & Review"),
+          screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -386,20 +386,20 @@ describe("NewUserPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
-          screen.getByText("System Permissions & Review"),
+          screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("User Created Successfully"),
+          screen.getByText("User created successfully"),
         ).toBeInTheDocument();
       });
     });
@@ -444,20 +444,20 @@ describe("NewUserPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
-          screen.getByText("Competency Configuration"),
+          screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
-          screen.getByText("System Permissions & Review"),
+          screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("User Created Successfully"),
+          screen.getByText("User created successfully"),
         ).toBeInTheDocument();
       });
 

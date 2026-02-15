@@ -54,8 +54,8 @@ export const MultipleCards: Story = {
   },
   render: () => (
     <div style={{ display: "flex", gap: "1rem", minWidth: "400px" }}>
-      <StatCard title="Total Users" value={42} />
-      <StatCard title="Total Patients" value={128} />
+      <StatCard title="Total users" value={42} />
+      <StatCard title="Total patients" value={128} />
     </div>
   ),
 };
@@ -70,8 +70,8 @@ export const MixedLoading: Story = {
   },
   render: () => (
     <div style={{ display: "flex", gap: "1rem", minWidth: "400px" }}>
-      <StatCard title="Total Users" value={42} loading />
-      <StatCard title="Total Patients" value={128} />
+      <StatCard title="Total users" value={42} loading />
+      <StatCard title="Total patients" value={128} />
     </div>
   ),
 };

@@ -77,13 +77,13 @@ function Step1BasicDetails({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Basic Details</Title>
+      <Title order={3}>Basic details</Title>
       <Text size="sm" c="dimmed">
         Enter the user's basic information and select their base profession.
       </Text>
 
       <TextInput
-        label="Full Name"
+        label="Full name"
         placeholder="Dr Jane Smith"
         required
         value={formData.name}
@@ -117,7 +117,7 @@ function Step1BasicDetails({
       />
 
       <TextInput
-        label="Initial Password"
+        label="Initial password"
         placeholder="Must be at least 8 characters"
         required
         type="password"
@@ -129,7 +129,7 @@ function Step1BasicDetails({
       />
 
       <Select
-        label="Base Profession"
+        label="Base profession"
         placeholder="Select base profession"
         data={professionOptions}
         required
@@ -170,7 +170,7 @@ function Step2Competencies({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Competency Configuration</Title>
+      <Title order={3}>Competency configuration</Title>
       <Text size="sm" c="dimmed">
         Configure additional or removed competencies for this user.
       </Text>
@@ -187,7 +187,7 @@ function Step2Competencies({
       )}
 
       <MultiSelect
-        label="Additional Competencies"
+        label="Additional competencies"
         description="Add competencies beyond the base profession"
         placeholder="Select additional competencies"
         data={competencyOptions}
@@ -203,7 +203,7 @@ function Step2Competencies({
       />
 
       <MultiSelect
-        label="Removed Competencies"
+        label="Removed competencies"
         description="Remove competencies from the base profession"
         placeholder="Select competencies to remove"
         data={competencyOptions.filter((c) =>
@@ -245,13 +245,13 @@ function Step3Permissions({
 
   return (
     <Stack gap="md">
-      <Title order={3}>System Permissions & Review</Title>
+      <Title order={3}>System permissions & review</Title>
       <Text size="sm" c="dimmed">
         Set system permissions and review the user details.
       </Text>
 
       <Select
-        label="System Permission Level"
+        label="System permission level"
         data={permissionOptions}
         value={formData.systemPermissions}
         onChange={(value) =>
@@ -337,7 +337,7 @@ function Step4Confirmation({
       {success ? (
         <>
           <IconCheck size={64} color="green" />
-          <Title order={2}>User Created Successfully</Title>
+          <Title order={2}>User created successfully</Title>
           <Text size="sm" c="dimmed" ta="center">
             The new user has been created and can now log in to the system.
           </Text>
@@ -348,7 +348,7 @@ function Step4Confirmation({
       ) : (
         <>
           <IconAlertCircle size={64} color="red" />
-          <Title order={2}>Failed to Create User</Title>
+          <Title order={2}>Failed to create user</Title>
           <Text size="sm" c="dimmed" ta="center">
             There was an error creating the user. Please try again.
           </Text>
@@ -516,7 +516,7 @@ export default function NewUserPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <PageHeader title="Create New User" size="lg" />
+        <PageHeader title="Create new user" size="lg" />
         <MultiStepForm
           steps={steps}
           onCancel={handleCancel}

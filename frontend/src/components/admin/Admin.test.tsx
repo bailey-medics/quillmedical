@@ -58,7 +58,7 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
       );
-      expect(screen.getByText("Total Users")).toBeInTheDocument();
+      expect(screen.getByText("Total users")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
@@ -66,7 +66,7 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin userPermissions="superadmin" existingPatients={mockPatients} />,
       );
-      expect(screen.getByText("Total Patients")).toBeInTheDocument();
+      expect(screen.getByText("Total patients")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
@@ -91,64 +91,64 @@ describe("Admin", () => {
   describe("Action cards", () => {
     it("renders Add User card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Add User")).toBeInTheDocument();
+      expect(screen.getByText("Add user")).toBeInTheDocument();
       expect(
         screen.getByText(
           "Create a new user account with competencies and permissions",
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Add New User/i }),
+        screen.getByRole("link", { name: /Add new user/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Add Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Add Patient")).toBeInTheDocument();
+      expect(screen.getByText("Add patient")).toBeInTheDocument();
       expect(
         screen.getByText("Register a new patient record with demographics"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Add New Patient/i }),
+        screen.getByRole("link", { name: /Add new patient/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Edit User card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(
-        screen.getByRole("heading", { name: "Edit User" }),
+        screen.getByRole("heading", { name: "Edit user" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Update user details, competencies, and permissions"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Edit User/i }),
+        screen.getByRole("link", { name: /Edit user/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Edit Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(
-        screen.getByRole("heading", { name: "Edit Patient" }),
+        screen.getByRole("heading", { name: "Edit patient" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Modify patient demographics and information"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Edit Patient/i }),
+        screen.getByRole("link", { name: /Edit patient/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Link User to Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(
-        screen.getByRole("heading", { name: "Link User and Patient" }),
+        screen.getByRole("heading", { name: "Link user and patient" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Associate a user account with a patient record"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Create Link/i }),
+        screen.getByRole("button", { name: /Create link/i }),
       ).toBeInTheDocument();
     });
   });
@@ -156,34 +156,34 @@ describe("Admin", () => {
   describe("Change System Permissions visibility", () => {
     it("shows Change System Permissions card for superadmin", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Change System Permissions")).toBeInTheDocument();
+      expect(screen.getByText("Change system permissions")).toBeInTheDocument();
       expect(
         screen.getByText(
           "View and edit user competencies and system permissions",
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Change Permissions/i }),
+        screen.getByRole("button", { name: /Change permissions/i }),
       ).toBeInTheDocument();
     });
 
     it("does not show Change System Permissions card for admin", () => {
       renderWithRouter(<Admin userPermissions="admin" />);
       expect(
-        screen.queryByText("Change System Permissions"),
+        screen.queryByText("Change system permissions"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /Change Permissions/i }),
+        screen.queryByRole("button", { name: /Change permissions/i }),
       ).not.toBeInTheDocument();
     });
 
     it("does not show Change System Permissions card for staff", () => {
       renderWithRouter(<Admin userPermissions="staff" />);
       expect(
-        screen.queryByText("Change System Permissions"),
+        screen.queryByText("Change system permissions"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /Change Permissions/i }),
+        screen.queryByRole("button", { name: /Change permissions/i }),
       ).not.toBeInTheDocument();
     });
   });
@@ -462,7 +462,7 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Manage User Permissions")).toBeInTheDocument();
+        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
       });
     });
 
@@ -477,7 +477,7 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Manage User Permissions")).toBeInTheDocument();
+        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
       });
 
       const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
@@ -485,7 +485,7 @@ describe("Admin", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Manage User Permissions"),
+          screen.queryByText("Manage user permissions"),
         ).not.toBeInTheDocument();
       });
     });

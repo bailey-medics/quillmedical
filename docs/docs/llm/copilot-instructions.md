@@ -33,6 +33,13 @@ just create-user    # Interactive user creation
 - **British English** for all docs, comments, UI text, and code identifiers where appropriate
 - Exceptions: External APIs, libraries, CSS properties, HTTP headers
 
+### UI Text Casing
+
+- **Sentence case** for all UI titles, labels, buttons, and headings
+- Format: "This is sentence case" (first word capitalized, rest lowercase unless proper nouns)
+- Examples: "Add new user", "Create patient record", "System settings"
+- Exceptions: Product names, acronyms, proper nouns retain their casing
+
 ### Backend (FastAPI)
 
 - **mypy --strict**: All functions require explicit type annotations

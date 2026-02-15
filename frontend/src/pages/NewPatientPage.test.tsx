@@ -48,7 +48,7 @@ describe("NewPatientPage", () => {
     it("renders step 1 with all required fields", () => {
       renderWithRouter(<NewPatientPage />);
 
-      expect(screen.getByText("Create New Patient")).toBeInTheDocument();
+      expect(screen.getByText("Create new patient")).toBeInTheDocument();
       expect(screen.getAllByLabelText(/first name/i)[0]).toBeInTheDocument();
       expect(screen.getAllByLabelText(/last name/i)[0]).toBeInTheDocument();
       expect(screen.getAllByLabelText(/date of birth/i)[0]).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("NewPatientPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
     });
   });
@@ -147,7 +147,7 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
       expect(
         screen.getByLabelText(/create user account for patient portal access/i),
@@ -162,7 +162,7 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       // Enable checkbox
@@ -185,7 +185,7 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       // Enable checkbox
@@ -215,7 +215,7 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       await user.click(
@@ -243,7 +243,7 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       await user.click(
@@ -273,13 +273,13 @@ describe("NewPatientPage", () => {
       await fillStep1AndProceed(user);
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole("button", { name: /back/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Patient Demographics")).toBeInTheDocument();
+        expect(screen.getByText("Patient demographics")).toBeInTheDocument();
       });
     });
   });
@@ -315,7 +315,7 @@ describe("NewPatientPage", () => {
 
       // Skip user account creation
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /add patient/i }));
 
@@ -363,7 +363,7 @@ describe("NewPatientPage", () => {
 
       // Enable user account
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
       await user.click(
         screen.getByLabelText(/create user account for patient portal access/i),
@@ -437,14 +437,14 @@ describe("NewPatientPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("Patient Created Successfully"),
+          screen.getByText("Patient created successfully"),
         ).toBeInTheDocument();
       });
       expect(screen.getByText(/patient id: patient-123/i)).toBeInTheDocument();
@@ -490,14 +490,14 @@ describe("NewPatientPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("User Account (Optional)")).toBeInTheDocument();
+        expect(screen.getByText("User account (optional)")).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole("button", { name: /add patient/i }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("Patient Created Successfully"),
+          screen.getByText("Patient created successfully"),
         ).toBeInTheDocument();
       });
 

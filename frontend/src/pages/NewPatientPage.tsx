@@ -84,14 +84,14 @@ function Step1Demographics({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Patient Demographics</Title>
+      <Title order={3}>Patient demographics</Title>
       <Text size="sm" c="dimmed">
         Enter the patient's demographic information for their FHIR record.
       </Text>
 
       <Group grow>
         <TextInput
-          label="First Name"
+          label="First name"
           placeholder="Jane"
           required
           value={formData.firstName}
@@ -102,7 +102,7 @@ function Step1Demographics({
         />
 
         <TextInput
-          label="Last Name"
+          label="Last name"
           placeholder="Smith"
           required
           value={formData.lastName}
@@ -115,7 +115,7 @@ function Step1Demographics({
 
       <Group grow>
         <TextInput
-          label="Date of Birth"
+          label="Date of birth"
           placeholder="YYYY-MM-DD"
           required
           type="date"
@@ -140,7 +140,7 @@ function Step1Demographics({
       </Group>
 
       <Select
-        label="National Number System"
+        label="National number system"
         placeholder="Select national number system"
         data={nationalNumberSystemOptions}
         required
@@ -156,7 +156,7 @@ function Step1Demographics({
       />
 
       <TextInput
-        label="National Number"
+        label="National number"
         placeholder="1234567890"
         required
         value={formData.nationalNumber}
@@ -183,7 +183,7 @@ function Step2UserAccount({
 }) {
   return (
     <Stack gap="md">
-      <Title order={3}>User Account (Optional)</Title>
+      <Title order={3}>User account (optional)</Title>
       <Text size="sm" c="dimmed">
         Create a user account for this patient to enable portal access.
       </Text>
@@ -233,7 +233,7 @@ function Step2UserAccount({
           />
 
           <TextInput
-            label="Initial Password"
+            label="Initial password"
             placeholder="Must be at least 8 characters"
             required
             type="password"
@@ -265,7 +265,7 @@ function Step3Confirmation({
       {success ? (
         <>
           <IconCheck size={64} color="green" />
-          <Title order={2}>Patient Created Successfully</Title>
+          <Title order={2}>Patient created successfully</Title>
           <Text size="sm" c="dimmed" ta="center">
             The new patient record has been created in the FHIR system.
           </Text>
@@ -281,7 +281,7 @@ function Step3Confirmation({
       ) : (
         <>
           <IconAlertCircle size={64} color="red" />
-          <Title order={2}>Failed to Create Patient</Title>
+          <Title order={2}>Failed to create patient</Title>
           <Text size="sm" c="dimmed" ta="center">
             There was an error creating the patient record. Please try again.
           </Text>
@@ -484,7 +484,7 @@ export default function NewPatientPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <PageHeader title="Create New Patient" size="lg" />
+        <PageHeader title="Create new patient" size="lg" />
         <MultiStepForm
           steps={steps}
           onCancel={handleCancel}

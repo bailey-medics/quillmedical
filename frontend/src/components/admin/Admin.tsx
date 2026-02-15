@@ -184,12 +184,12 @@ export default function Admin({
 
       <Group grow>
         <StatCard
-          title="Total Users"
+          title="Total users"
           value={existingUsers.length}
           loading={loading}
         />
         <StatCard
-          title="Total Patients"
+          title="Total patients"
           value={existingPatients.length}
           loading={loading}
         />
@@ -198,16 +198,16 @@ export default function Admin({
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconUserPlus size={24} />}
-          title="Add User"
+          title="Add user"
           subtitle="Create a new user account with competencies and permissions"
-          buttonLabel="Add New User"
+          buttonLabel="Add new user"
           buttonUrl="/admin/users/new"
         />
         <ActionCard
           icon={<IconUserPlus size={24} />}
-          title="Add Patient"
+          title="Add patient"
           subtitle="Register a new patient record with demographics"
-          buttonLabel="Add New Patient"
+          buttonLabel="Add new patient"
           buttonUrl="/admin/patients/new"
         />
       </SimpleGrid>
@@ -215,16 +215,16 @@ export default function Admin({
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconUserEdit size={24} />}
-          title="Edit User"
+          title="Edit user"
           subtitle="Update user details, competencies, and permissions"
-          buttonLabel="Edit User"
+          buttonLabel="Edit user"
           buttonUrl="#"
         />
         <ActionCard
           icon={<IconUserEdit size={24} />}
-          title="Edit Patient"
+          title="Edit patient"
           subtitle="Modify patient demographics and information"
-          buttonLabel="Edit Patient"
+          buttonLabel="Edit patient"
           buttonUrl="#"
         />
       </SimpleGrid>
@@ -232,18 +232,18 @@ export default function Admin({
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconLink size={24} />}
-          title="Link User and Patient"
+          title="Link user and patient"
           subtitle="Associate a user account with a patient record"
-          buttonLabel="Create Link"
+          buttonLabel="Create link"
           buttonUrl="#"
           onClick={() => setLinkModalOpen(true)}
         />
         {isSuperAdmin && (
           <ActionCard
             icon={<IconShieldCheck size={24} />}
-            title="Change System Permissions"
+            title="Change system permissions"
             subtitle="View and edit user competencies and system permissions"
-            buttonLabel="Change Permissions"
+            buttonLabel="Change permissions"
             buttonUrl="#"
             onClick={() => setPermissionsModalOpen(true)}
           />
@@ -254,14 +254,14 @@ export default function Admin({
       <Modal
         opened={linkModalOpen}
         onClose={() => setLinkModalOpen(false)}
-        title="Link User to Patient"
+        title="Link user to patient"
         size="md"
         transitionProps={{ duration: 0 }}
         withinPortal={false}
       >
         <Stack gap="md">
           <Select
-            label="Select User"
+            label="Select user"
             placeholder="Choose user"
             data={existingUsers.map((u) => ({
               value: u.id,
@@ -273,7 +273,7 @@ export default function Admin({
             required
           />
           <Select
-            label="Select Patient"
+            label="Select patient"
             placeholder="Choose patient"
             data={existingPatients.map((p) => ({
               value: p.id,
@@ -290,7 +290,7 @@ export default function Admin({
             <Button variant="subtle" onClick={() => setLinkModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleLinkUserPatient}>Create Link</Button>
+            <Button onClick={handleLinkUserPatient}>Create link</Button>
           </Group>
         </Stack>
       </Modal>
@@ -299,14 +299,14 @@ export default function Admin({
       <Modal
         opened={permissionsModalOpen}
         onClose={() => setPermissionsModalOpen(false)}
-        title="Manage User Permissions"
+        title="Manage user permissions"
         size="lg"
         transitionProps={{ duration: 0 }}
         withinPortal={false}
       >
         <Stack gap="md">
           <Select
-            label="Select User"
+            label="Select user"
             placeholder="Choose user to manage"
             data={existingUsers.map((u) => ({
               value: u.id,
@@ -329,7 +329,7 @@ export default function Admin({
               />
               <TextInput label="Email" value={permissionsForm.email} disabled />
               <Select
-                label="Base Profession"
+                label="Base profession"
                 placeholder="Select profession"
                 data={professionOptions}
                 value={permissionsForm.baseProfession}
@@ -343,7 +343,7 @@ export default function Admin({
                 disabled={!isSuperAdmin}
               />
               <MultiSelect
-                label="Additional Competencies"
+                label="Additional competencies"
                 placeholder="Select competencies"
                 data={competencyOptions}
                 value={permissionsForm.additionalCompetencies}
@@ -357,7 +357,7 @@ export default function Admin({
                 disabled={!isSuperAdmin}
               />
               <MultiSelect
-                label="Removed Competencies"
+                label="Removed competencies"
                 placeholder="Select competencies to remove"
                 data={competencyOptions}
                 value={permissionsForm.removedCompetencies}
@@ -371,7 +371,7 @@ export default function Admin({
                 disabled={!isSuperAdmin}
               />
               <Select
-                label="System Permissions"
+                label="System permissions"
                 placeholder="Select permission level"
                 data={systemPermissionOptions}
                 value={permissionsForm.systemPermissions}
@@ -401,7 +401,7 @@ export default function Admin({
             </Button>
             {isSuperAdmin && (
               <Button onClick={handleUpdatePermissions}>
-                Update Permissions
+                Update permissions
               </Button>
             )}
           </Group>
