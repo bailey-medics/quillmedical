@@ -197,7 +197,6 @@ describe("Admin", () => {
     });
 
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > AddUserFlow story
     it.skip("calls onAddUser when form submitted", async () => {
       const user = userEvent.setup();
       const onAddUser = vi.fn();
@@ -328,7 +327,6 @@ describe("Admin", () => {
 
   describe("Link User to Patient Modal", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > LinkUserPatientFlow story
     it.skip("opens Link modal when button clicked", async () => {
       const user = userEvent.setup();
       renderWithMantine(
@@ -347,7 +345,6 @@ describe("Admin", () => {
     });
 
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > CloseLinkModal story
     it.skip("closes Link modal when cancel clicked", async () => {
       const user = userEvent.setup();
       renderWithMantine(
@@ -377,7 +374,6 @@ describe("Admin", () => {
     });
 
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > LinkUserPatientFlow story
     it.skip("displays existing users and patients in selects", async () => {
       const user = userEvent.setup();
       renderWithMantine(
@@ -451,7 +447,6 @@ describe("Admin", () => {
 
   describe("Callbacks", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > CallbackDataTypes story
     it.skip("calls callbacks with correct data types", async () => {
       const user = userEvent.setup();
       const onAddUser = vi.fn();
@@ -549,7 +544,6 @@ describe("Admin", () => {
 
   describe("Form reset", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
-    // NOTE: This functionality is tested in Admin.stories.tsx > ResetFormAfterSubmission story
     it.skip("resets user form after successful submission", async () => {
       const user = userEvent.setup();
       const onAddUser = vi.fn();
