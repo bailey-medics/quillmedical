@@ -136,26 +136,6 @@ jobs:
         with:
           path: site
 
-      - name: Extract commit info
-        id: commit
-        run: |
-          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
-          # Escape for JSON: replace quotes and newlines
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
-          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
-
-          # Get short SHA (first 7 characters) of the merge commit
-          SHORT_SHA="${GITHUB_SHA:0:7}"
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-
-          # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
-          SOURCE_BRANCH=""
-          if [[ "$COMMIT_SUBJECT" =~ ^Merge\ branch\ \'([a-zA-Z0-9/_.-]+)\'\ into\ main$ ]]; then
-            SOURCE_BRANCH="${BASH_REMATCH[1]}"
-          fi
-          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
-
   deploy:
     name: Deploy to GitHub Pages
     needs: build
@@ -187,6 +167,10 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
+          # Get commit author
+          AUTHOR=$(git log -1 --pretty=%an)
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+
           # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
           SOURCE_BRANCH=""
           if [[ "$COMMIT_SUBJECT" =~ ^Merge\ branch\ \'([a-zA-Z0-9/_.-]+)\'\ into\ main$ ]]; then
@@ -198,7 +182,7 @@ jobs:
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: '{"text":"*✅ Build succeeded and deployed to GitHub Pages*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}'
+          payload: '{"text":"*✅ Build succeeded and deployed to GitHub Pages*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -206,6 +190,6 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: '{"text":"*❌ Deploy to GitHub Pages failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}'
+          payload: '{"text":"*❌ Deploy to GitHub Pages failed*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

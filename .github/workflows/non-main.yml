@@ -259,11 +259,15 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
+          # Get commit author
+          AUTHOR=$(git log -1 --pretty=%an)
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: '{"text":"*✅ Tests passed and merged to main*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}'
+          payload: '{"text":"*✅ Tests passed and merged to main*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -271,6 +275,6 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: '{"text":"*❌ Merge to main failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}'
+          payload: '{"text":"*❌ Merge to main failed*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
