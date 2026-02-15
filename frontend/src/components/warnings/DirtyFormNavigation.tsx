@@ -7,8 +7,8 @@
  * @module DirtyFormNavigation
  */
 
-import { Button, Group, Modal, Stack, Text } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { Button, Group, Modal, Stack, Text, Title } from "@mantine/core";
+import { IconAlertSquare } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
 
 /**
@@ -60,11 +60,12 @@ export default function DirtyFormNavigation({
     <Modal
       opened={blocker.state === "blocked"}
       onClose={() => blocker.reset?.()}
-      title="Unsaved Changes"
       centered
+      withCloseButton={false}
     >
       <Stack gap="md" align="center">
-        <IconAlertCircle size={48} color="var(--mantine-color-red-6)" />
+        <IconAlertSquare size={48} stroke={1.5} />
+        <Title order={3}>Unsaved Changes</Title>
         <Text ta="center">
           You have unsaved changes. Are you sure you want to leave this page?
         </Text>
