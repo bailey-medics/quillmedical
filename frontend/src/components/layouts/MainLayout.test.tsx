@@ -320,7 +320,9 @@ describe("MainLayout", () => {
       mockAuthContext.state = {
         status: "authenticated",
         user: {
+          id: "1",
           username: "doctor@example.com",
+          email: "doctor@example.com",
           system_permissions: "staff",
         },
       };
