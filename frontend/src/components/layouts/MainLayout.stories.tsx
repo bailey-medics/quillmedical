@@ -46,7 +46,3 @@ export const NoPatient: Story = {
 export const WithPatient: Story = {
   args: { patient: demoPatientsList[0], isLoading: false },
 };
-
-export const Loading: Story = {
-  args: { patient: null, isLoading: true },
-};

@@ -26,7 +26,6 @@ import {
   UnstyledButton,
   useMantineTheme,
   Skeleton,
-  Stack,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -69,8 +68,8 @@ export default function PatientsList({
 
   if (isLoading) {
     return (
-      <Stack gap="md" style={{ width: "100%", maxWidth: 600 }}>
-        {[1, 2, 3].map((i) => (
+      <div style={{ width: "100%" }}>
+        {Array.from({ length: 10 }, (_, i) => (
           <Group key={i} align="center" style={{ width: "100%", padding: 8 }}>
             <Skeleton circle height={isSm ? 40 : 60} />
             <div style={{ flex: 1 }}>
@@ -79,7 +78,7 @@ export default function PatientsList({
             </div>
           </Group>
         ))}
-      </Stack>
+      </div>
     );
   }
 
@@ -94,7 +93,7 @@ export default function PatientsList({
   }
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       {patients.map((p) => {
         // Split patient name into given and family names
         const nameParts = p.name?.split(" ") || [];

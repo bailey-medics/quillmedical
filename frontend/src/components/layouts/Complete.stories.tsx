@@ -4,14 +4,12 @@
  * Demonstrates complete page layouts with all components integrated:
  * - Messaging interface within main layout
  * - Patient demographics display
- * - Patient list with navigation
  * - Letter viewing with markdown rendering
  * - Real-world application page examples
  */
 import MarkdownView from "@/components/markdown/MarkdownView";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import DemographicsDetailed from "@/components/demographics/DemographicsDetailed";
-import PatientsList from "@/components/patients/PatientsList";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
@@ -27,15 +25,6 @@ const meta: Meta<typeof MainLayout> = {
 
 export default meta;
 type Story = StoryObj<typeof MainLayout>;
-
-export const WithPatientList: Story = {
-  args: { patient: null, isLoading: false },
-  render: (args) => (
-    <MainLayout {...args}>
-      <PatientsList patients={demoPatientsList} />
-    </MainLayout>
-  ),
-};
 
 export const WithPatientDemographics: Story = {
   args: { patient: demoPatientsList[0], isLoading: false },
