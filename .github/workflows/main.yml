@@ -151,13 +151,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Build succeeded: ${{ github.repository }}",
+              "text": "✅ Main documentation and push to github-pages succeeded",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Build Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Main documentation and push to github-pages succeeded*"
                   }
                 }
               ]
