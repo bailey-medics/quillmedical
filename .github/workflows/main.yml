@@ -190,7 +190,12 @@ jobs:
               - type: "section"
                 text:
                   type: "mrkdwn"
-                  text: "*✅ Build succeeded and deployed to GitHub Pages*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  text: |
+                    *✅ Build succeeded and deployed to GitHub Pages*
+
+                    Author: ${{ steps.commit.outputs.author }}
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
 
       - name: Notify Slack on Failure
         if: failure()
@@ -204,4 +209,9 @@ jobs:
               - type: "section"
                 text:
                   type: "mrkdwn"
-                  text: "*❌ Deploy to GitHub Pages failed*\n\n👤 ${{ steps.commit.outputs.author }}\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>\n🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                  text: |
+                    *❌ Deploy to GitHub Pages failed*
+
+                    Author: ${{ steps.commit.outputs.author }}
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>
