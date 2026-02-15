@@ -13,8 +13,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build -o ../docs/docs/code/storybook",
+    "storybook": "npm run generate:types && storybook dev -p 6006",
+    "storybook:build": "npm run generate:types && storybook build -o ../docs/docs/code/storybook",
     "storybook:test": "test-storybook",
     "storybook:test:ci": "concurrently -k -s first -n \"SB,TEST\" -c \"magenta,blue\" \"yarn storybook --no-open --quiet --ci\" \"wait-on tcp:127.0.0.1:6006 && yarn storybook:test\"",
     "docs:build": "typedoc",
@@ -27,9 +27,9 @@
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
     "typecheck:all": "tsc --project tsconfig.check.json --noEmit",
-    "unit-test": "vitest --environment jsdom",
-    "unit-test:run": "vitest --environment jsdom --run --watch=false",
-    "unit-test:coverage": "vitest --environment jsdom --coverage"
+    "unit-test": "npm run generate:types && vitest --environment jsdom",
+    "unit-test:run": "npm run generate:types && vitest --environment jsdom --run --watch=false",
+    "unit-test:coverage": "npm run generate:types && vitest --environment jsdom --coverage"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
