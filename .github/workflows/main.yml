@@ -160,21 +160,7 @@ jobs:
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload-delimiter: '###'
-          payload: ###
-            {
-              "text": "✅ Build succeeded",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Build succeeded*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
-            ###
+          payload: '{"text":"✅ Build succeeded","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ Build succeeded*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -182,21 +168,7 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload-delimiter: '###'
-          payload: ###
-            {
-              "text": "❌ Build failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Build failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
-            }
-            ###
+          payload: '{"text":"❌ Build failed","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ Build failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -242,21 +214,7 @@ jobs:
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload-delimiter: '###'
-          payload: ###
-            {
-              "text": "✅ Deployed to GitHub Pages",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Deployed to GitHub Pages*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
-            ###
+          payload: '{"text":"✅ Deployed to GitHub Pages","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ Deployed to GitHub Pages*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -264,20 +222,6 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload-delimiter: '###'
-          payload: ###
-            {
-              "text": "❌ Deploy to GitHub Pages failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Deploy to GitHub Pages failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
-            }
-            ###
+          payload: '{"text":"❌ Deploy to GitHub Pages failed","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ Deploy to GitHub Pages failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
