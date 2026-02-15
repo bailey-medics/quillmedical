@@ -69,7 +69,7 @@ export const BasicThreeSteps: Story = {
         description: "Confirm details",
         content: () => (
           <Stack gap="md">
-            <Text weight={600}>Review Your Information</Text>
+            <Text fw={600}>Review Your Information</Text>
             <Text>Name: John Doe</Text>
             <Text>Email: john@example.com</Text>
             <Text>Role: Developer</Text>
@@ -148,7 +148,7 @@ export const WithValidation: Story = {
         content: () => (
           <Stack gap="md" align="center">
             <IconCheck size={48} color="green" />
-            <Text size="lg" weight={600}>
+            <Text size="lg" fw={600}>
               Form Submitted Successfully!
             </Text>
             <Text>Name: {name}</Text>
@@ -161,6 +161,7 @@ export const WithValidation: Story = {
     return <MultiStepForm {...args} steps={steps} />;
   },
   args: {
+    steps: [],
     onCancel: fn(),
   },
 };
@@ -180,7 +181,7 @@ export const CustomButtonLabels: Story = {
         nextButtonLabel: "Get Started",
         content: () => (
           <Stack gap="md">
-            <Text size="lg" weight={600}>
+            <Text size="lg" fw={600}>
               Welcome to the Setup Wizard
             </Text>
             <Text>Click "Get Started" to begin the setup process.</Text>
@@ -204,7 +205,7 @@ export const CustomButtonLabels: Story = {
         content: () => (
           <Stack gap="md" align="center">
             <IconCheck size={48} color="green" />
-            <Text size="lg" weight={600}>
+            <Text size="lg" fw={600}>
               Setup Complete!
             </Text>
           </Stack>
@@ -228,7 +229,7 @@ export const SingleStep: Story = {
         description: "One and done",
         content: () => (
           <Stack gap="md">
-            <Text size="lg" weight={600}>
+            <Text size="lg" fw={600}>
               Single Step Form
             </Text>
             <Text>This form only has one step.</Text>
@@ -387,6 +388,7 @@ export const ControlledMode: Story = {
     );
   },
   args: {
+    steps: [],
     onCancel: fn(),
   },
 };
