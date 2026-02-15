@@ -112,6 +112,26 @@ jobs:
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
+      - name: Notify Slack on Python checks failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "❌ Non-main python ${{ matrix.task }} checks failed"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |
+                    *❌ Non-main python ${{ matrix.task }} checks failed*
+
+                    *Branch:* ${{ github.ref_name }}
+                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+                    *Author:* ${{ github.actor }}
+                    *Job:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Action Run>
+
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
     runs-on: ubuntu-latest
@@ -167,6 +187,26 @@ jobs:
             "storybook:build") yarn storybook:build ;;
             "storybook:test:ci") yarn storybook:test:ci ;;
           esac
+
+      - name: Notify Slack on TypeScript checks failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "❌ Non-main TypeScript ${{ matrix.task }} checks failed"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |
+                    *❌ Non-main TypeScript ${{ matrix.task }} checks failed*
+
+                    *Branch:* ${{ github.ref_name }}
+                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+                    *Author:* ${{ github.actor }}
+                    *Job:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Action Run>
 
   # ---------- Frontend security (Semgrep) ----------
   frontend_security:

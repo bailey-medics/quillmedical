@@ -14,6 +14,9 @@ afterEach(() => {
   cleanup();
 });
 
+// Mock scrollIntoView (required for Mantine Select/Combobox)
+window.HTMLElement.prototype.scrollIntoView = () => {};
+
 // Mock window.matchMedia (used by Mantine components)
 Object.defineProperty(window, "matchMedia", {
   writable: true,

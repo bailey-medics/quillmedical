@@ -519,6 +519,117 @@ def register(
     return {"detail": "created"}
 
 
+class AdminUserCreateIn(BaseModel):
+    """Admin User Creation Request.
+
+    Request model for administrators to create new users with full CBAC settings.
+    Requires admin or superadmin system permissions.
+
+    Attributes:
+        name: User's full name (stored as username if username not provided).
+        username: Unique username for login.
+        email: Unique email address.
+        password: Plain text password (will be hashed).
+        base_profession: Base profession template (e.g., "consultant", "patient").
+        additional_competencies: Extra competencies beyond base profession.
+        removed_competencies: Competencies to remove from base profession.
+        system_permissions: System permission level (patient, staff, admin, superadmin).
+    """
+
+    name: str
+    username: str | None = None
+    email: str
+    password: str
+    base_profession: str = "patient"
+    additional_competencies: list[str] = []
+    removed_competencies: list[str] = []
+    system_permissions: str = "patient"
+
+
+@router.post("/users")
+def create_user_with_cbac(
+    payload: AdminUserCreateIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Admin User Creation with CBAC.
+
+    Creates a new user account with full CBAC (Competency-Based Access Control)
+    settings including base profession, competencies, and system permissions.
+    Only accessible to users with admin or superadmin system permissions.
+
+    Validation Rules:
+    - Email and password must not be empty
+    - Password must be at least 8 characters long
+    - Username must be unique across all users
+    - Email must be unique across all users
+    - Requesting user must have admin or superadmin permissions
+
+    Args:
+        payload: User creation data with CBAC settings.
+        current_user: Currently authenticated user (must be admin/superadmin).
+        db: Database session for user creation.
+
+    Returns:
+        dict: Success response with new user ID and username.
+
+    Raises:
+        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 400 if validation fails or constraints violated.
+    """
+    # Check authorization
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required to create users",
+        )
+
+    # Validation
+    email = payload.email.strip()
+    password = payload.password
+    username = (
+        payload.username or payload.name.strip().replace(" ", "").lower()
+    )
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters"
+        )
+
+    # Check uniqueness
+    existing = db.scalar(select(User).where(User.username == username))
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    # Create user
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(password),
+        base_profession=payload.base_profession,
+        additional_competencies=payload.additional_competencies,
+        removed_competencies=payload.removed_competencies,
+        system_permissions=payload.system_permissions,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "detail": "created",
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    }
+
+
 class TotpSetupOut(BaseModel):
     """TOTP Setup Response.
 

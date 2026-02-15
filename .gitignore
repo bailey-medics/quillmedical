@@ -12,3 +12,5 @@ frontend/src/generated/
 
 # Generated JSON from YAML
 *.generated.json
+
+prompt-output.md
