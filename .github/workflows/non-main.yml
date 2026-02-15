@@ -127,10 +127,9 @@ jobs:
                   text: |
                     *❌ Non-main python ${{ matrix.task }} checks failed*
 
-                    *Branch:* ${{ github.ref_name }}
-                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
                     *Author:* ${{ github.actor }}
-                    *Job:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Action Run>
+                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
@@ -203,10 +202,9 @@ jobs:
                   text: |
                     *❌ Non-main TypeScript ${{ matrix.task }} checks failed*
 
-                    *Branch:* ${{ github.ref_name }}
-                    *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
                     *Author:* ${{ github.actor }}
-                    *Job:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Action Run>
+                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
 
   # ---------- Frontend security (Semgrep) ----------
   frontend_security:
