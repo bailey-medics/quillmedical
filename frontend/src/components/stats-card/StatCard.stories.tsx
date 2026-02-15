@@ -48,6 +48,10 @@ export const Loading: Story = {
  * Multiple stat cards in a group layout
  */
 export const MultipleCards: Story = {
+  args: {
+    title: "Total Records",
+    value: 42,
+  },
   render: () => (
     <div style={{ display: "flex", gap: "1rem", minWidth: "400px" }}>
       <StatCard title="Total Users" value={42} />
@@ -60,6 +64,10 @@ export const MultipleCards: Story = {
  * Mixed loading states
  */
 export const MixedLoading: Story = {
+  args: {
+    title: "Total Records",
+    value: 42,
+  },
   render: () => (
     <div style={{ display: "flex", gap: "1rem", minWidth: "400px" }}>
       <StatCard title="Total Users" value={42} loading />

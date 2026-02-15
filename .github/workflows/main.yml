@@ -136,6 +136,26 @@ jobs:
         with:
           path: site
 
+      - name: Notify Slack on Build Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "❌ Main documentation build failed"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: |
+                    *❌ Main documentation build failed*
+
+                    *Commit:* ${{ github.event.head_commit.message }}
+                    *Author:* ${{ github.actor }}
+                    *Main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
   deploy:
     name: Deploy to GitHub Pages
     needs: build
@@ -237,6 +257,7 @@ jobs:
                   text: |
                     *✅ Main documentation build succeeded and deployed to GitHub Pages*
 
+                    *Commit:* ${{ steps.commit.outputs.subject }}
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
@@ -256,6 +277,7 @@ jobs:
                   text: |
                     *❌ Main documentation build failed*
 
+                    *Commit:* ${{ steps.commit.outputs.subject }}
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
