@@ -318,10 +318,6 @@ function Step3Permissions({
           )}
         </Stack>
       </Paper>
-
-      <Button onClick={nextStep} fullWidth size="lg" mt="lg">
-        Create User
-      </Button>
     </Stack>
   );
 }
@@ -498,6 +494,7 @@ export default function NewUserPage() {
           setFormData={updateFormData}
         />
       ),
+      nextButtonLabel: "Create User",
     },
     {
       label: "Confirmation",
