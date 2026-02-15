@@ -263,19 +263,7 @@ jobs:
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: |
-            {
-              "text": "✅ Tests passed and merged to main",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Tests passed and merged to main*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+          payload: '{"text":"✅ Tests passed and merged to main","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*✅ Tests passed and merged to main*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -283,18 +271,6 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: |
-            {
-              "text": "❌ Merge to main failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Merge to main failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
-                  }
-                }
-              ]
-            }
+          payload: '{"text":"❌ Merge to main failed","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"*❌ Merge to main failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"}}]}'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
