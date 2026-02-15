@@ -14,7 +14,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build -o ../docs/docs/code/storybook",
+    "storybook:build": "npm run generate:types && storybook build -o ../docs/docs/code/storybook",
     "storybook:test": "test-storybook",
     "storybook:test:ci": "concurrently -k -s first -n \"SB,TEST\" -c \"magenta,blue\" \"yarn storybook --no-open --quiet --ci\" \"wait-on tcp:127.0.0.1:6006 && yarn storybook:test\"",
     "docs:build": "typedoc",
