@@ -261,13 +261,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Testing passed and pushed to main",
+              "text": "✅ Branch `${{ github.ref_name }}` passed all tests and merged to main",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Testing passed and pushed to main*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Branch merged to main*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
@@ -281,13 +281,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Merge to main failed: ${{ github.repository }}",
+              "text": "❌ Branch `${{ github.ref_name }}` failed to merge to main",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Merge to Main Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    "text": "*❌ Merge to main failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]

@@ -171,13 +171,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Build failed: ${{ github.repository }}",
+              "text": "❌ Branch `${{ github.ref_name }}` build failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Build Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    "text": "*❌ Build failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]
@@ -218,13 +218,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Deploy succeeded: ${{ github.repository }}",
+              "text": "✅ Branch `${{ github.ref_name }}` deployed to GitHub Pages",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Deploy Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Deploy succeeded*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Pages URL:* ${{ steps.deployment.outputs.page_url }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
@@ -238,13 +238,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Deploy failed: ${{ github.repository }}",
+              "text": "❌ Branch `${{ github.ref_name }}` deploy failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Deploy Failed*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                    "text": "*❌ Deploy failed*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
                   }
                 }
               ]
