@@ -114,10 +114,9 @@ export default function AdminPage() {
   }, [state.status, userPermissions]);
 
   // TODO: Wire up actual API callbacks for:
-  // - onAddUser
-  // - onAddPatient
   // - onLinkUserPatient
   // - onUpdatePermissions
+  // Note: User and patient creation now handled by dedicated pages (/admin/users/new, /admin/patients/new)
 
   return (
     <Container size="lg" pt="xl">

@@ -15,8 +15,6 @@ const meta = {
     layout: "padded",
   },
   args: {
-    onAddUser: () => console.log("User added"),
-    onAddPatient: () => console.log("Patient added"),
     onLinkUserPatient: () => console.log("User-patient link created"),
     onUpdatePermissions: () => console.log("Permissions updated"),
   },

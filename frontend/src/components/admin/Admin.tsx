@@ -35,29 +35,6 @@ import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 
 /**
- * User Form Data
- */
-interface UserFormData {
-  name: string;
-  email: string;
-  username: string;
-  baseProfession: BaseProfessionId | "";
-  additionalCompetencies: CompetencyId[];
-  systemPermissions: SystemPermission;
-}
-
-/**
- * Patient Form Data
- */
-interface PatientFormData {
-  firstName: string;
-  lastName: string;
-  dob: string;
-  nationalNumber: string;
-  localTrustNumber: string;
-}
-
-/**
  * User-Patient Link Form Data
  */
 interface LinkFormData {
@@ -83,10 +60,6 @@ interface AdminProps {
   userPermissions: SystemPermission;
   /** Loading state for statistics */
   loading?: boolean;
-  /** Callback when user is added */
-  onAddUser?: (user: UserFormData) => void;
-  /** Callback when patient is added */
-  onAddPatient?: (patient: PatientFormData) => void;
   /** Callback when user-patient link is created */
   onLinkUserPatient?: (link: LinkFormData) => void;
   /** Callback when user permissions are updated */
@@ -100,37 +73,16 @@ interface AdminProps {
 export default function Admin({
   userPermissions,
   loading = false,
-  onAddUser,
-  onAddPatient,
   onLinkUserPatient,
   onUpdatePermissions,
   existingUsers = [],
   existingPatients = [],
 }: AdminProps) {
   // Modal states
-  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
-  const [addPatientModalOpen, setAddPatientModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
 
   // Form states
-  const [userForm, setUserForm] = useState<UserFormData>({
-    name: "",
-    email: "",
-    username: "",
-    baseProfession: "",
-    additionalCompetencies: [],
-    systemPermissions: "staff",
-  });
-
-  const [patientForm, setPatientForm] = useState<PatientFormData>({
-    firstName: "",
-    lastName: "",
-    dob: "",
-    nationalNumber: "",
-    localTrustNumber: "",
-  });
-
   const [linkForm, setLinkForm] = useState<LinkFormData>({
     userId: "",
     patientId: "",
@@ -167,37 +119,6 @@ export default function Admin({
   ];
 
   // Handlers
-  const handleAddUser = () => {
-    if (onAddUser) {
-      onAddUser(userForm);
-    }
-    setAddUserModalOpen(false);
-    // Reset form
-    setUserForm({
-      name: "",
-      email: "",
-      username: "",
-      baseProfession: "",
-      additionalCompetencies: [],
-      systemPermissions: "staff",
-    });
-  };
-
-  const handleAddPatient = () => {
-    if (onAddPatient) {
-      onAddPatient(patientForm);
-    }
-    setAddPatientModalOpen(false);
-    // Reset form
-    setPatientForm({
-      firstName: "",
-      lastName: "",
-      dob: "",
-      nationalNumber: "",
-      localTrustNumber: "",
-    });
-  };
-
   const handleLinkUserPatient = () => {
     if (onLinkUserPatient) {
       onLinkUserPatient(linkForm);
@@ -274,16 +195,14 @@ export default function Admin({
           title="Add User"
           subtitle="Create a new user account with competencies and permissions"
           buttonLabel="Add New User"
-          buttonUrl="#"
-          onClick={() => setAddUserModalOpen(true)}
+          buttonUrl="/admin/users/new"
         />
         <ActionCard
           icon={<IconUserPlus size={24} />}
           title="Add Patient"
           subtitle="Register a new patient record with demographics"
           buttonLabel="Add New Patient"
-          buttonUrl="#"
-          onClick={() => setAddPatientModalOpen(true)}
+          buttonUrl="/admin/patients/new"
         />
       </SimpleGrid>
 
@@ -307,162 +226,6 @@ export default function Admin({
           />
         )}
       </SimpleGrid>
-
-      {/* Add User Modal */}
-      <Modal
-        opened={addUserModalOpen}
-        onClose={() => setAddUserModalOpen(false)}
-        title="Add New User"
-        size="lg"
-        transitionProps={{ duration: 0 }}
-        withinPortal={false}
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Full Name"
-            placeholder="John Doe"
-            required
-            value={userForm.name}
-            onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-          />
-          <TextInput
-            label="Username"
-            placeholder="johndoe"
-            required
-            value={userForm.username}
-            onChange={(e) =>
-              setUserForm({ ...userForm, username: e.target.value })
-            }
-          />
-          <TextInput
-            label="Email"
-            placeholder="john.doe@example.com"
-            type="email"
-            required
-            value={userForm.email}
-            onChange={(e) =>
-              setUserForm({ ...userForm, email: e.target.value })
-            }
-          />
-          <Select
-            label="Base Profession"
-            placeholder="Select profession"
-            data={professionOptions}
-            value={userForm.baseProfession}
-            onChange={(val) =>
-              setUserForm({
-                ...userForm,
-                baseProfession: val as BaseProfessionId,
-              })
-            }
-            searchable
-          />
-          <MultiSelect
-            label="Additional Competencies"
-            placeholder="Select competencies"
-            data={competencyOptions}
-            value={userForm.additionalCompetencies}
-            onChange={(val) =>
-              setUserForm({
-                ...userForm,
-                additionalCompetencies: val as CompetencyId[],
-              })
-            }
-            searchable
-          />
-          <Select
-            label="System Permissions"
-            placeholder="Select permission level"
-            data={systemPermissionOptions}
-            value={userForm.systemPermissions}
-            onChange={(val) =>
-              setUserForm({
-                ...userForm,
-                systemPermissions: val as SystemPermission,
-              })
-            }
-            required
-          />
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={() => setAddUserModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddUser}>Add User</Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      {/* Add Patient Modal */}
-      <Modal
-        opened={addPatientModalOpen}
-        onClose={() => setAddPatientModalOpen(false)}
-        title="Add New Patient"
-        size="lg"
-        transitionProps={{ duration: 0 }}
-        withinPortal={false}
-      >
-        <Stack gap="md">
-          <TextInput
-            label="First Name"
-            placeholder="John"
-            required
-            value={patientForm.firstName}
-            onChange={(e) =>
-              setPatientForm({ ...patientForm, firstName: e.target.value })
-            }
-          />
-          <TextInput
-            label="Last Name"
-            placeholder="Doe"
-            required
-            value={patientForm.lastName}
-            onChange={(e) =>
-              setPatientForm({ ...patientForm, lastName: e.target.value })
-            }
-          />
-          <TextInput
-            label="Date of Birth"
-            placeholder="YYYY-MM-DD"
-            type="date"
-            required
-            value={patientForm.dob}
-            onChange={(e) =>
-              setPatientForm({ ...patientForm, dob: e.target.value })
-            }
-          />
-          <TextInput
-            label="National Number"
-            placeholder="NHS Number, Medicare Number, etc."
-            value={patientForm.nationalNumber}
-            onChange={(e) =>
-              setPatientForm({
-                ...patientForm,
-                nationalNumber: e.target.value,
-              })
-            }
-          />
-          <TextInput
-            label="Local Trust Number"
-            placeholder="Hospital/Trust ID"
-            value={patientForm.localTrustNumber}
-            onChange={(e) =>
-              setPatientForm({
-                ...patientForm,
-                localTrustNumber: e.target.value,
-              })
-            }
-          />
-          <Group justify="flex-end" mt="md">
-            <Button
-              variant="subtle"
-              onClick={() => setAddPatientModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddPatient}>Add Patient</Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       {/* Link User to Patient Modal */}
       <Modal

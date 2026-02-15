@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@/test/test-utils";
+import { renderWithRouter } from "@/test/test-utils";
 import Admin from "./Admin";
 
 const mockUsers = [
@@ -26,36 +26,36 @@ const mockPatients = [
 describe("Admin", () => {
   describe("Basic rendering", () => {
     it("renders administration title", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Administration")).toBeInTheDocument();
     });
 
     it("renders description text", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(
         screen.getByText("Manage users, patients, and system permissions"),
       ).toBeInTheDocument();
     });
 
     it("renders permission badge for superadmin", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("SUPERADMIN")).toBeInTheDocument();
     });
 
     it("renders permission badge for admin", () => {
-      renderWithMantine(<Admin userPermissions="admin" />);
+      renderWithRouter(<Admin userPermissions="admin" />);
       expect(screen.getByText("ADMIN")).toBeInTheDocument();
     });
 
     it("renders permission badge for staff", () => {
-      renderWithMantine(<Admin userPermissions="staff" />);
+      renderWithRouter(<Admin userPermissions="staff" />);
       expect(screen.getByText("STAFF")).toBeInTheDocument();
     });
   });
 
   describe("Statistics display", () => {
     it("displays total users count", () => {
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
       );
       expect(screen.getByText("Total Users")).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("Admin", () => {
     });
 
     it("displays total patients count", () => {
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingPatients={mockPatients} />,
       );
       expect(screen.getByText("Total Patients")).toBeInTheDocument();
@@ -71,12 +71,12 @@ describe("Admin", () => {
     });
 
     it("displays zero counts when no data", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getAllByText("0")).toHaveLength(2);
     });
 
     it("shows skeleton loaders when loading", () => {
-      renderWithMantine(
+      renderWithRouter(
         <Admin
           userPermissions="superadmin"
           loading={true}
@@ -90,7 +90,7 @@ describe("Admin", () => {
 
   describe("Action cards", () => {
     it("renders Add User card", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Add User")).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -98,23 +98,23 @@ describe("Admin", () => {
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Add New User/i }),
+        screen.getByRole("link", { name: /Add New User/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Add Patient card", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Add Patient")).toBeInTheDocument();
       expect(
         screen.getByText("Register a new patient record with demographics"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Add New Patient/i }),
+        screen.getByRole("link", { name: /Add New Patient/i }),
       ).toBeInTheDocument();
     });
 
     it("renders Link User to Patient card", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Link User to Patient")).toBeInTheDocument();
       expect(
         screen.getByText("Associate a user account with a patient record"),
@@ -127,7 +127,7 @@ describe("Admin", () => {
 
   describe("Change System Permissions visibility", () => {
     it("shows Change System Permissions card for superadmin", () => {
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("Change System Permissions")).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -140,7 +140,7 @@ describe("Admin", () => {
     });
 
     it("does not show Change System Permissions card for admin", () => {
-      renderWithMantine(<Admin userPermissions="admin" />);
+      renderWithRouter(<Admin userPermissions="admin" />);
       expect(
         screen.queryByText("Change System Permissions"),
       ).not.toBeInTheDocument();
@@ -150,7 +150,7 @@ describe("Admin", () => {
     });
 
     it("does not show Change System Permissions card for staff", () => {
-      renderWithMantine(<Admin userPermissions="staff" />);
+      renderWithRouter(<Admin userPermissions="staff" />);
       expect(
         screen.queryByText("Change System Permissions"),
       ).not.toBeInTheDocument();
@@ -160,10 +160,22 @@ describe("Admin", () => {
     });
   });
 
-  describe("Add User Modal", () => {
+  describe("Add User Navigation", () => {
+    it("has correct link to create new user page", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+
+      const addUserButton = screen.getByRole("link", {
+        name: /Add New User/i,
+      });
+      expect(addUserButton).toHaveAttribute("href", "/admin/users/new");
+    });
+  });
+
+  // Modal tests are now obsolete - modals replaced with dedicated pages
+  describe.skip("Add User Modal (Obsolete)", () => {
     it("opens Add User modal when button clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -176,7 +188,7 @@ describe("Admin", () => {
 
     it("closes Add User modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -199,10 +211,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("calls onAddUser when form submitted", async () => {
       const user = userEvent.setup();
-      const onAddUser = vi.fn();
-      renderWithMantine(
-        <Admin userPermissions="superadmin" onAddUser={onAddUser} />,
-      );
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
@@ -233,22 +242,34 @@ describe("Admin", () => {
       await user.click(addButtons[addButtons.length - 1]);
 
       await waitFor(() => {
-        expect(onAddUser).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: "New User",
-            email: "new.user@hospital.com",
-            username: "newuser",
-            systemPermissions: "staff",
-          }),
-        );
+        // expect(onAddUser).toHaveBeenCalledWith(
+        //   expect.objectContaining({
+        //     name: "New User",
+        //     email: "new.user@hospital.com",
+        //     username: "newuser",
+        //     systemPermissions: "staff",
+        //   }),
+        // );
       });
     });
   });
 
-  describe("Add Patient Modal", () => {
+  describe("Add Patient Navigation", () => {
+    it("has correct link to create new patient page", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+
+      const addPatientButton = screen.getByRole("link", {
+        name: /Add New Patient/i,
+      });
+      expect(addPatientButton).toHaveAttribute("href", "/admin/patients/new");
+    });
+  });
+
+  // Modal tests are now obsolete - modals replaced with dedicated pages
+  describe.skip("Add Patient Modal (Obsolete)", () => {
     it("opens Add Patient modal when button clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -263,7 +284,7 @@ describe("Admin", () => {
 
     it("closes Add Patient modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -287,10 +308,7 @@ describe("Admin", () => {
 
     it("calls onAddPatient when form submitted", async () => {
       const user = userEvent.setup();
-      const onAddPatient = vi.fn();
-      renderWithMantine(
-        <Admin userPermissions="superadmin" onAddPatient={onAddPatient} />,
-      );
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(
         screen.getByRole("button", { name: /Add New Patient/i }),
@@ -314,13 +332,13 @@ describe("Admin", () => {
       await user.click(addButtons[addButtons.length - 1]);
 
       await waitFor(() => {
-        expect(onAddPatient).toHaveBeenCalledWith(
-          expect.objectContaining({
-            firstName: "Alice",
-            lastName: "Smith",
-            dob: "1990-05-15",
-          }),
-        );
+        // expect(onAddPatient).toHaveBeenCalledWith(
+        //   expect.objectContaining({
+        //     firstName: "Alice",
+        //     lastName: "Smith",
+        //     dob: "1990-05-15",
+        //   }),
+        // );
       });
     });
   });
@@ -329,7 +347,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("opens Link modal when button clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(
+      renderWithRouter(
         <Admin
           userPermissions="superadmin"
           existingUsers={mockUsers}
@@ -347,7 +365,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("closes Link modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(
+      renderWithRouter(
         <Admin
           userPermissions="superadmin"
           existingUsers={mockUsers}
@@ -376,7 +394,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("displays existing users and patients in selects", async () => {
       const user = userEvent.setup();
-      renderWithMantine(
+      renderWithRouter(
         <Admin
           userPermissions="superadmin"
           existingUsers={mockUsers}
@@ -407,7 +425,7 @@ describe("Admin", () => {
   describe("Change Permissions Modal", () => {
     it("opens Change Permissions modal for superadmin", async () => {
       const user = userEvent.setup();
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
       );
 
@@ -422,7 +440,7 @@ describe("Admin", () => {
 
     it("closes Change Permissions modal when cancel clicked", async () => {
       const user = userEvent.setup();
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
       );
 
@@ -449,16 +467,12 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("calls callbacks with correct data types", async () => {
       const user = userEvent.setup();
-      const onAddUser = vi.fn();
-      const onAddPatient = vi.fn();
       const onLinkUserPatient = vi.fn();
       const onUpdatePermissions = vi.fn();
 
-      renderWithMantine(
+      renderWithRouter(
         <Admin
           userPermissions="superadmin"
-          onAddUser={onAddUser}
-          onAddPatient={onAddPatient}
           onLinkUserPatient={onLinkUserPatient}
           onUpdatePermissions={onUpdatePermissions}
           existingUsers={mockUsers}
@@ -491,14 +505,14 @@ describe("Admin", () => {
       await user.click(addUserButtons[addUserButtons.length - 1]);
 
       await waitFor(() => {
-        expect(onAddUser).toHaveBeenCalled();
+        // expect(onAddUser).toHaveBeenCalled();
       });
     });
   });
 
   describe("Edge cases", () => {
     it("handles empty users array", () => {
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={[]} />,
       );
       const zeros = screen.getAllByText("0");
@@ -506,16 +520,17 @@ describe("Admin", () => {
     });
 
     it("handles empty patients array", () => {
-      renderWithMantine(
+      renderWithRouter(
         <Admin userPermissions="superadmin" existingPatients={[]} />,
       );
       const zeros = screen.getAllByText("0");
       expect(zeros.length).toBeGreaterThan(0);
     });
 
-    it("handles undefined callbacks gracefully", async () => {
+    // Test is obsolete - modal callbacks replaced with navigation to dedicated pages
+    it.skip("handles undefined callbacks gracefully", async () => {
       const user = userEvent.setup();
-      renderWithMantine(<Admin userPermissions="superadmin" />);
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
@@ -537,7 +552,7 @@ describe("Admin", () => {
     });
 
     it("renders with patient permission level", () => {
-      renderWithMantine(<Admin userPermissions="patient" />);
+      renderWithRouter(<Admin userPermissions="patient" />);
       expect(screen.getByText("PATIENT")).toBeInTheDocument();
     });
   });
@@ -546,10 +561,7 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("resets user form after successful submission", async () => {
       const user = userEvent.setup();
-      const onAddUser = vi.fn();
-      renderWithMantine(
-        <Admin userPermissions="superadmin" onAddUser={onAddUser} />,
-      );
+      renderWithRouter(<Admin userPermissions="superadmin" />);
 
       // Open modal and fill form
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
@@ -576,7 +588,7 @@ describe("Admin", () => {
       await user.click(addButtons[addButtons.length - 1]);
 
       await waitFor(() => {
-        expect(onAddUser).toHaveBeenCalled();
+        // expect(onAddUser).toHaveBeenCalled();
       });
 
       // Modal should close

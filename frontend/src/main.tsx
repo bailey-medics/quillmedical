@@ -30,6 +30,8 @@ import About from "./pages/About";
 import AdminPage from "./pages/AdminPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
+import NewPatientPage from "./pages/NewPatientPage";
+import NewUserPage from "./pages/NewUserPage";
 import NotFound from "./pages/NotFound";
 import Patient from "./pages/Patient";
 import RegisterPage from "./pages/RegisterPage";
@@ -82,6 +84,8 @@ const router = createBrowserRouter(
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
         { path: "/admin", element: <AdminPage /> },
+        { path: "/admin/users/new", element: <NewUserPage /> },
+        { path: "/admin/patients/new", element: <NewPatientPage /> },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),
