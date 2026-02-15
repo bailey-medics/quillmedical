@@ -127,6 +127,7 @@ jobs:
                   text: |
                     *❌ Non-main python ${{ matrix.task }} checks failed*
 
+                    *Commit:* ${{ github.event.head_commit.message }}
                     *Author:* ${{ github.actor }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
@@ -202,6 +203,7 @@ jobs:
                   text: |
                     *❌ Non-main TypeScript ${{ matrix.task }} checks failed*
 
+                    *Commit:* ${{ github.event.head_commit.message }}
                     *Author:* ${{ github.actor }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
@@ -316,6 +318,7 @@ jobs:
                   text: |
                     *✅ Non-main tests passed and merged to main*
 
+                    *Commit:* ${{ steps.commit.outputs.subject }}
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
@@ -335,6 +338,7 @@ jobs:
                   text: |
                     *❌ Non-main tests and merge failed*
 
+                    *Commit:* ${{ steps.commit.outputs.subject }}
                     *Author:* ${{ steps.commit.outputs.author }}
                     *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
