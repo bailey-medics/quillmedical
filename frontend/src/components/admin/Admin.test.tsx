@@ -141,7 +141,9 @@ describe("Admin", () => {
 
     it("renders Link User to Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Link User to Patient")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Link User and Patient" }),
+      ).toBeInTheDocument();
       expect(
         screen.getByText("Associate a user account with a patient record"),
       ).toBeInTheDocument();

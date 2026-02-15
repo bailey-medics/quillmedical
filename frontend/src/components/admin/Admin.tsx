@@ -25,7 +25,6 @@ import {
   IconLink,
   IconShieldCheck,
   IconUserEdit,
-  IconEdit,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
@@ -222,7 +221,7 @@ export default function Admin({
           buttonUrl="#"
         />
         <ActionCard
-          icon={<IconEdit size={24} />}
+          icon={<IconUserEdit size={24} />}
           title="Edit Patient"
           subtitle="Modify patient demographics and information"
           buttonLabel="Edit Patient"
@@ -233,7 +232,7 @@ export default function Admin({
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <ActionCard
           icon={<IconLink size={24} />}
-          title="Link User to Patient"
+          title="Link User and Patient"
           subtitle="Associate a user account with a patient record"
           buttonLabel="Create Link"
           buttonUrl="#"
