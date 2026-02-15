@@ -136,7 +136,7 @@ jobs:
         with:
           path: site
 
-      - name: Extract commit subject
+      - name: Extract commit info
         id: commit
         run: |
           COMMIT_SUBJECT=$(git log -1 --pretty=%s)
@@ -145,13 +145,20 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
+          SOURCE_BRANCH=""
+          if [[ "$COMMIT_SUBJECT" =~ Merge\ branch\ \'([^']+)\'\ into ]]; then
+            SOURCE_BRANCH="${BASH_REMATCH[1]}"
+          fi
+          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
             {
-              "text": "✅ Main documentation build succeeded",
+              "text": "✅ Main documentation build succeeded${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -162,7 +169,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Main documentation build failed"
+              "text": "❌ Main documentation build failed${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -185,7 +192,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Extract commit subject
+      - name: Extract commit info
         id: commit
         run: |
           COMMIT_SUBJECT=$(git log -1 --pretty=%s)
@@ -194,13 +201,20 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
+          SOURCE_BRANCH=""
+          if [[ "$COMMIT_SUBJECT" =~ Merge\ branch\ \'([^']+)\'\ into ]]; then
+            SOURCE_BRANCH="${BASH_REMATCH[1]}"
+          fi
+          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
+
       - name: Notify Slack on Success
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
             {
-              "text": "✅ Branch deployed to GitHub Pages",
+              "text": "✅ Deployed to GitHub Pages${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -211,7 +225,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ Branch deploy failed",
+              "text": "❌ Deploy to GitHub Pages failed${{ steps.commit.outputs.source_branch && format(' (from `{0}`)', steps.commit.outputs.source_branch) || '' }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
