@@ -163,12 +163,16 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
-          # Get short SHA (first 7 characters) of the merge commit
-          SHORT_SHA="${GITHUB_SHA:0:7}"
+          # Get SHA from the branch that was merged (second parent of merge commit)
+          # This matches the SHA shown in non-main workflow
+          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
+          echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+
+          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          # Get commit author
-          AUTHOR=$(git log -1 --pretty=%an)
+          # Get commit author from the merged branch
+          AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
 
           # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
@@ -194,7 +198,7 @@ jobs:
                     *✅ Build succeeded and deployed to GitHub Pages*
 
                     Author: ${{ steps.commit.outputs.author }}
-                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
 
       - name: Notify Slack on Failure
@@ -213,5 +217,5 @@ jobs:
                     *❌ Deploy to GitHub Pages failed*
 
                     Author: ${{ steps.commit.outputs.author }}
-                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}>
+                    🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
                     🔗 <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>
