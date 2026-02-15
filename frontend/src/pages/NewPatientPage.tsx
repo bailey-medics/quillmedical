@@ -17,7 +17,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Title,
   Alert,
   Checkbox,
   Divider,
@@ -30,6 +29,7 @@ import MultiStepForm, {
   type StepContentProps,
 } from "@/components/multi-step-form/MultiStepForm";
 import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
+import PageHeader from "@/components/page-header/PageHeader";
 import { api } from "@/lib/api";
 
 /**
@@ -483,9 +483,7 @@ export default function NewPatientPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <Title order={1} mb="xl">
-          Create New Patient
-        </Title>
+        <PageHeader title="Create New Patient" size="lg" />
         <MultiStepForm
           steps={steps}
           onCancel={handleCancel}

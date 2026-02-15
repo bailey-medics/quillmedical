@@ -18,14 +18,13 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Text,
   TextInput,
-  Title,
 } from "@mantine/core";
 import { IconUserPlus, IconLink, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
 import StatCard from "@/components/stats-card";
+import PageHeader from "@/components/page-header/PageHeader";
 import type {
   CompetencyId,
   BaseProfessionId,
@@ -157,10 +156,12 @@ export default function Admin({
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="center">
-        <div>
-          <Title order={1}>Administration</Title>
-          <Text c="dimmed">Manage users, patients, and system permissions</Text>
-        </div>
+        <PageHeader
+          title="Administration"
+          description="Manage users, patients, and system permissions"
+          size="lg"
+          mb={0}
+        />
         <Badge
           size="lg"
           variant="filled"
