@@ -261,13 +261,13 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ Merge to main succeeded: ${{ github.repository }}",
+              "text": "✅ Testing passed and pushed to main",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Merge to Main Succeeded*\n*Repo:* ${{ github.repository }}\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
+                    "text": "*✅ Testing passed and pushed to main*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ github.actor }}"
                   }
                 }
               ]
