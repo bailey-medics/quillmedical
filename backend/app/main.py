@@ -734,6 +734,49 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
     }
 
 
+@router.get("/users")
+def list_users(
+    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+) -> dict[str, Any]:
+    """List All Users.
+
+    Retrieves all user accounts from the authentication database. Returns
+    user ID, username, and email for each user. Used by admin interface
+    to display user count and populate user selection dropdowns.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Response with key:
+            - users: Array of user objects with id, username, email
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 500 if database query fails.
+    """
+    # Check permissions
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    try:
+        users = db.execute(select(User)).scalars().unique().all()
+        return {
+            "users": [
+                {"id": user.id, "username": user.username, "email": user.email}
+                for user in users
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.post("/auth/refresh")
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
