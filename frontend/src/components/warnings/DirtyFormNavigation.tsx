@@ -8,7 +8,7 @@
  */
 
 import { Button, Group, Modal, Stack, Text, Title } from "@mantine/core";
-import { IconAlertSquare } from "@tabler/icons-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
 
 /**
@@ -64,7 +64,7 @@ export default function DirtyFormNavigation({
       withCloseButton={false}
     >
       <Stack gap="md" align="center">
-        <IconAlertSquare size={48} stroke={1.5} />
+        <IconAlertCircle size={48} stroke={2.5} />
         <Title order={3}>Unsaved Changes</Title>
         <Text ta="center">
           You have unsaved changes. Are you sure you want to leave this page?
