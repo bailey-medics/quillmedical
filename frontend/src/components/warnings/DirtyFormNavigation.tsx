@@ -8,7 +8,7 @@
  */
 
 import { Button, Group, Modal, Stack, Text } from "@mantine/core";
-import { IconAlertTriangleFilled } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
 
 /**
@@ -64,7 +64,7 @@ export default function DirtyFormNavigation({
       centered
     >
       <Stack gap="md" align="center">
-        <IconAlertTriangleFilled size={48} />
+        <IconAlertTriangle size={48} />
         <Text ta="center">
           You have unsaved changes. Are you sure you want to leave this page?
         </Text>
