@@ -12,13 +12,11 @@
 import {
   Badge,
   Button,
-  Card,
   Group,
   Modal,
   MultiSelect,
   Select,
   SimpleGrid,
-  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -27,6 +25,7 @@ import {
 import { IconUserPlus, IconLink, IconShieldCheck } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
+import StatCard from "@/components/stats-card";
 import type {
   CompetencyId,
   BaseProfessionId,
@@ -257,34 +256,16 @@ export default function Admin({
       </Group>
 
       <Group grow>
-        <Card withBorder>
-          <Stack gap="xs">
-            <Text size="sm" c="dimmed">
-              Total Users
-            </Text>
-            {loading ? (
-              <Skeleton height={32} width={32} />
-            ) : (
-              <Text size="xl" fw={700}>
-                {existingUsers.length}
-              </Text>
-            )}
-          </Stack>
-        </Card>
-        <Card withBorder>
-          <Stack gap="xs">
-            <Text size="sm" c="dimmed">
-              Total Patients
-            </Text>
-            {loading ? (
-              <Skeleton height={32} width={32} />
-            ) : (
-              <Text size="xl" fw={700}>
-                {existingPatients.length}
-              </Text>
-            )}
-          </Stack>
-        </Card>
+        <StatCard
+          title="Total Users"
+          value={existingUsers.length}
+          loading={loading}
+        />
+        <StatCard
+          title="Total Patients"
+          value={existingPatients.length}
+          loading={loading}
+        />
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
