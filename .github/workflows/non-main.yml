@@ -265,7 +265,16 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ ${{ steps.commit.outputs.short_sha }} - Tests passed and merged to main"
+              "text": "✅ Tests passed and merged to main",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Tests passed and merged to main*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -276,7 +285,16 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ ${{ steps.commit.outputs.short_sha }} - Merge to main failed"
+              "text": "❌ Merge to main failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Merge to main failed*\n🔗 <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ steps.commit.outputs.short_sha }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Failed Run>"
+                  }
+                }
+              ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
