@@ -289,17 +289,22 @@ jobs:
       - name: Extract commit info
         id: commit
         run: |
-          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
+          # Get commit subject from the branch that was merged (second parent of merge commit)
+          COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s)
           # Escape for JSON: replace quotes and newlines
           COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Get SHA from the branch that was merged (second parent of merge commit)
+          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
+          echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+
           # Get short SHA (first 7 characters)
-          SHORT_SHA="${GITHUB_SHA:0:7}"
+          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          # Get commit author from the branch that was merged (second parent of merge commit)
+          # Get commit author from the branch that was merged
           AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
 
