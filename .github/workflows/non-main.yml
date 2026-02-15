@@ -263,7 +263,8 @@ jobs:
         if: success()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: |
+          payload-delimiter: '###'
+          payload: ###
             {
               "text": "✅ Tests passed and merged to main",
               "blocks": [
@@ -276,6 +277,7 @@ jobs:
                 }
               ]
             }
+            ###
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -283,7 +285,8 @@ jobs:
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          payload: |
+          payload-delimiter: '###'
+          payload: ###
             {
               "text": "❌ Merge to main failed",
               "blocks": [
@@ -296,5 +299,6 @@ jobs:
                 }
               ]
             }
+            ###
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
