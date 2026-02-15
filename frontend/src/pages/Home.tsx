@@ -311,10 +311,7 @@ export default function Home() {
   }, [isFhirReady]);
 
   return (
-    <Stack
-      align="center"
-      style={{ minHeight: "70dvh", padding: "2rem", margin: "0 auto" }}
-    >
+    <Stack align="center" style={{ minHeight: "70dvh", margin: "0 auto" }}>
       <PatientsList
         patients={patients ?? []}
         isLoading={isLoading}
