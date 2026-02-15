@@ -25,7 +25,7 @@ interface AllProvidersOptions extends Omit<RenderOptions, "wrapper"> {
  * Wrapper with Mantine Provider
  */
 function MantineWrapper({ children }: { children: ReactNode }) {
-  return <MantineProvider>{children}</MantineProvider>;
+  return <MantineProvider env="test">{children}</MantineProvider>;
 }
 
 /**
@@ -34,7 +34,7 @@ function MantineWrapper({ children }: { children: ReactNode }) {
 function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
   return (
     <BrowserRouter>
-      <MantineProvider>{children}</MantineProvider>
+      <MantineProvider env="test">{children}</MantineProvider>
     </BrowserRouter>
   );
 }

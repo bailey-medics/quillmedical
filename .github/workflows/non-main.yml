@@ -119,13 +119,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Python ${{ matrix.task }} checks failed"
+            text: "❌ Non-main python ${{ matrix.task }} checks failed"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *❌ Python ${{ matrix.task }} checks failed*
+                    *❌ Non-main python ${{ matrix.task }} checks failed*
 
                     *Branch:* ${{ github.ref_name }}
                     *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
@@ -195,13 +195,13 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ TypeScript ${{ matrix.task }} checks failed"
+            text: "❌ Non-main TypeScript ${{ matrix.task }} checks failed"
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
                   text: |
-                    *❌ TypeScript ${{ matrix.task }} checks failed*
+                    *❌ Non-main TypeScript ${{ matrix.task }} checks failed*
 
                     *Branch:* ${{ github.ref_name }}
                     *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
