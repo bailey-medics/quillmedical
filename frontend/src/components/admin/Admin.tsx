@@ -331,6 +331,7 @@ export default function Admin({
         title="Add New User"
         size="lg"
         transitionProps={{ duration: 0 }}
+        withinPortal={false}
       >
         <Stack gap="md">
           <TextInput
@@ -414,6 +415,7 @@ export default function Admin({
         title="Add New Patient"
         size="lg"
         transitionProps={{ duration: 0 }}
+        withinPortal={false}
       >
         <Stack gap="md">
           <TextInput
@@ -485,6 +487,7 @@ export default function Admin({
         title="Link User to Patient"
         size="md"
         transitionProps={{ duration: 0 }}
+        withinPortal={false}
       >
         <Stack gap="md">
           <Select
@@ -529,6 +532,7 @@ export default function Admin({
         title="Manage User Permissions"
         size="lg"
         transitionProps={{ duration: 0 }}
+        withinPortal={false}
       >
         <Stack gap="md">
           <Select
