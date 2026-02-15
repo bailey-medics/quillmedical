@@ -149,12 +149,12 @@ export default function Admin({
   // Prepare select data
   const competencyOptions = competenciesData.competencies.map((c) => ({
     value: c.id,
-    label: c.name,
+    label: c.display_name,
   }));
 
   const professionOptions = baseProfessionsData.base_professions.map((p) => ({
     value: p.id,
-    label: p.name,
+    label: p.display_name,
   }));
 
   const systemPermissionOptions = [
@@ -330,6 +330,7 @@ export default function Admin({
         onClose={() => setAddUserModalOpen(false)}
         title="Add New User"
         size="lg"
+        transitionProps={{ duration: 0 }}
       >
         <Stack gap="md">
           <TextInput
@@ -412,6 +413,7 @@ export default function Admin({
         onClose={() => setAddPatientModalOpen(false)}
         title="Add New Patient"
         size="lg"
+        transitionProps={{ duration: 0 }}
       >
         <Stack gap="md">
           <TextInput
@@ -482,6 +484,7 @@ export default function Admin({
         onClose={() => setLinkModalOpen(false)}
         title="Link User to Patient"
         size="md"
+        transitionProps={{ duration: 0 }}
       >
         <Stack gap="md">
           <Select
@@ -525,6 +528,7 @@ export default function Admin({
         onClose={() => setPermissionsModalOpen(false)}
         title="Manage User Permissions"
         size="lg"
+        transitionProps={{ duration: 0 }}
       >
         <Stack gap="md">
           <Select

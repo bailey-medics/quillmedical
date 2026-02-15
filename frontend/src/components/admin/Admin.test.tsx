@@ -168,7 +168,9 @@ describe("Admin", () => {
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -179,14 +181,18 @@ describe("Admin", () => {
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
 
       const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
       await user.click(cancelButtons[0]);
 
       await waitFor(() => {
-        expect(screen.queryByText("Add New User")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /Add New User/i }),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -200,7 +206,9 @@ describe("Admin", () => {
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
 
       // Fill form fields
@@ -238,7 +246,9 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Add New Patient")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New Patient/i }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -251,14 +261,18 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Add New Patient")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New Patient/i }),
+        ).toBeInTheDocument();
       });
 
       const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
       await user.click(cancelButtons[0]);
 
       await waitFor(() => {
-        expect(screen.queryByText("Add New Patient")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /Add New Patient/i }),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -274,7 +288,9 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Add New Patient")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New Patient/i }),
+        ).toBeInTheDocument();
       });
 
       // Fill form fields
@@ -331,7 +347,9 @@ describe("Admin", () => {
       await user.click(screen.getByRole("button", { name: /Create Link/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Link User to Patient")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Link User to Patient/i }),
+        ).toBeInTheDocument();
       });
 
       const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
@@ -339,7 +357,7 @@ describe("Admin", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Link User to Patient"),
+          screen.queryByRole("heading", { name: /Add New Patient/i }),
         ).not.toBeInTheDocument();
       });
     });
@@ -429,7 +447,9 @@ describe("Admin", () => {
       // Test Add User callback
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
       await user.type(screen.getByLabelText(/Full Name/i), "Test User");
       await user.type(screen.getByLabelText(/^Email$/i), "test@test.com");
@@ -468,7 +488,9 @@ describe("Admin", () => {
 
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
 
       // Should not throw error even without callback
@@ -477,7 +499,9 @@ describe("Admin", () => {
 
       // Modal should close after submission
       await waitFor(() => {
-        expect(screen.queryByText("Add New User")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /Add New User/i }),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -498,7 +522,9 @@ describe("Admin", () => {
       // Open modal and fill form
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
 
       await user.type(screen.getByLabelText(/Full Name/i), "Test User");
@@ -515,13 +541,17 @@ describe("Admin", () => {
 
       // Modal should close
       await waitFor(() => {
-        expect(screen.queryByText("Add New User")).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /Add New User/i }),
+        ).not.toBeInTheDocument();
       });
 
       // Open modal again and check form is reset
       await user.click(screen.getByRole("button", { name: /Add New User/i }));
       await waitFor(() => {
-        expect(screen.getByText("Add New User")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /Add New User/i }),
+        ).toBeInTheDocument();
       });
 
       const nameInput = screen.getByLabelText(/Full Name/i) as HTMLInputElement;
