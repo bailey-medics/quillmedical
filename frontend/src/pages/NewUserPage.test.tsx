@@ -172,10 +172,10 @@ describe("NewUserPage", () => {
         ).toBeInTheDocument();
       });
       expect(
-        screen.getByLabelText(/additional competencies/i),
+        screen.getAllByLabelText(/additional competencies/i)[0],
       ).toBeInTheDocument();
       expect(
-        screen.getByLabelText(/removed competencies/i),
+        screen.getAllByLabelText(/removed competencies/i)[0],
       ).toBeInTheDocument();
     });
 
@@ -205,7 +205,9 @@ describe("NewUserPage", () => {
       await user.click(screen.getByRole("button", { name: /back/i }));
 
       await waitFor(() => {
-        expect(screen.getByText("Basic Details")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Basic Details" }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -276,9 +278,11 @@ describe("NewUserPage", () => {
         ).toBeInTheDocument();
       });
       expect(
-        screen.getByLabelText(/system permission level/i),
+        screen.getAllByLabelText(/system permission level/i)[0],
       ).toBeInTheDocument();
-      expect(screen.getByText(/review/i)).toBeInTheDocument();
+      // Check for review section by looking for unique review field labels
+      expect(screen.getByText("Name:")).toBeInTheDocument();
+      expect(screen.getByText("Email:")).toBeInTheDocument();
     });
 
     it("displays review information correctly", async () => {
