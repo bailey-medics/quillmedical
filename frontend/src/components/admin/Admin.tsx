@@ -615,7 +615,7 @@ export default function Admin({
               />
 
               {!isSuperAdmin && (
-                <Text size="sm" c="dimmed" italic>
+                <Text size="sm" c="dimmed" fs="italic">
                   Only super admins can modify user permissions
                 </Text>
               )}
