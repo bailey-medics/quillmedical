@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import MainLayout from "./MainLayout";
 import type { Patient } from "@/domains/patient";
+import type { User } from "@/auth/AuthContext";
 
 // Mock child components
 vi.mock("@components/drawers/NavigationDrawer", () => ({
@@ -101,11 +102,23 @@ const mockPatient: Patient = {
 };
 
 // Mock auth context
-const mockAuthContext = {
+type AuthState =
+  | { status: "loading"; user: null }
+  | { status: "unauthenticated"; user: null }
+  | { status: "authenticated"; user: User };
+
+const mockAuthContext: {
+  state: AuthState;
+  login: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
+  refreshAuth: ReturnType<typeof vi.fn>;
+} = {
   state: {
-    status: "authenticated" as const,
+    status: "authenticated",
     user: {
+      id: "1",
       username: "doctor@example.com",
+      email: "doctor@example.com",
       system_permissions: "staff",
     },
   },
