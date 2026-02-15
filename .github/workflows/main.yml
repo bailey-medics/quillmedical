@@ -149,6 +149,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to access merge parents
 
       - name: Deploy
         id: deployment
@@ -163,8 +165,16 @@ jobs:
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
+          # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
+          SOURCE_BRANCH=""
+          if [[ "$COMMIT_SUBJECT" =~ ^Merge\ branch\ \'([a-zA-Z0-9/_.-]+)\'\ into\ main$ ]]; then
+            SOURCE_BRANCH="${BASH_REMATCH[1]}"
+          fi
+          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
+
           # Check if this is a merge commit (has second parent)
           if git rev-parse --verify --quiet HEAD^2 > /dev/null 2>&1; then
+            echo "Detected merge commit, using HEAD^2"
             # Get SHA from the branch that was merged (second parent of merge commit)
             # This matches the SHA shown in non-main workflow
             BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
@@ -176,7 +186,31 @@ jobs:
             # Get commit author from the merged branch
             AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
             echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          elif [ -n "$SOURCE_BRANCH" ]; then
+            echo "Merge commit detected but HEAD^2 not available, trying to fetch branch: $SOURCE_BRANCH"
+            # Try to get info from the source branch if we can extract it
+            if git fetch origin "$SOURCE_BRANCH" 2>/dev/null; then
+              BRANCH_SHA=$(git log "origin/$SOURCE_BRANCH" -1 --pretty=%H)
+              echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+
+              SHORT_SHA=$(git log "origin/$SOURCE_BRANCH" -1 --pretty=%h)
+              echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+              AUTHOR=$(git log "origin/$SOURCE_BRANCH" -1 --pretty=%an)
+              echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+            else
+              echo "Could not fetch branch, falling back to current commit"
+              BRANCH_SHA="${GITHUB_SHA}"
+              echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+
+              SHORT_SHA="${GITHUB_SHA:0:7}"
+              echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+              AUTHOR=$(git log -1 --pretty=%an)
+              echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+            fi
           else
+            echo "Not a merge commit, using current commit"
             # Not a merge commit, use current commit
             BRANCH_SHA="${GITHUB_SHA}"
             echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
@@ -187,13 +221,6 @@ jobs:
             AUTHOR=$(git log -1 --pretty=%an)
             echo "author=$AUTHOR" >> $GITHUB_OUTPUT
           fi
-
-          # Extract source branch from merge commit like "Merge branch 'mark-15-02-26' into main"
-          SOURCE_BRANCH=""
-          if [[ "$COMMIT_SUBJECT" =~ ^Merge\ branch\ \'([a-zA-Z0-9/_.-]+)\'\ into\ main$ ]]; then
-            SOURCE_BRANCH="${BASH_REMATCH[1]}"
-          fi
-          echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
 
       - name: Notify Slack on Success
         if: success()
