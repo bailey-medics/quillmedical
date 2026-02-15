@@ -27,9 +27,9 @@
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
     "typecheck:all": "tsc --project tsconfig.check.json --noEmit",
-    "unit-test": "vitest --environment jsdom",
-    "unit-test:run": "vitest --environment jsdom --run --watch=false",
-    "unit-test:coverage": "vitest --environment jsdom --coverage"
+    "unit-test": "npm run generate:types && vitest --environment jsdom",
+    "unit-test:run": "npm run generate:types && vitest --environment jsdom --run --watch=false",
+    "unit-test:coverage": "npm run generate:types && vitest --environment jsdom --coverage"
   },
   "dependencies": {
     "@mantine/core": "^8.3.1",
