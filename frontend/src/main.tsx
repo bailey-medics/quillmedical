@@ -31,6 +31,9 @@ import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/AdminPatientsPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
+import ViewAllUsersPage from "./pages/admin/ViewAllUsersPage";
+import EditUserPage from "./pages/admin/EditUserPage";
+import DeactivateUserPage from "./pages/admin/DeactivateUserPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -89,6 +92,9 @@ const router = createBrowserRouter(
         { path: "/admin", element: <AdminPage /> },
         { path: "/admin/users", element: <AdminUsersPage /> },
         { path: "/admin/users/new", element: <NewUserPage /> },
+        { path: "/admin/users/list", element: <ViewAllUsersPage /> },
+        { path: "/admin/users/edit", element: <EditUserPage /> },
+        { path: "/admin/users/deactivate", element: <DeactivateUserPage /> },
         { path: "/admin/patients", element: <AdminPatientsPage /> },
         { path: "/admin/patients/new", element: <NewPatientPage /> },
         { path: "/admin/permissions", element: <AdminPermissionsPage /> },

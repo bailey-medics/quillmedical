@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
             title="Show all users"
             subtitle="View and search all registered user accounts"
             buttonLabel="View all users"
-            buttonUrl="#"
+            buttonUrl="/admin/users/list"
           />
           <ActionCard
             icon={<IconUserPlus size={24} />}
@@ -58,14 +58,14 @@ export default function AdminUsersPage() {
             title="Edit user"
             subtitle="Update user details, competencies, and permissions"
             buttonLabel="Edit user"
-            buttonUrl="#"
+            buttonUrl="/admin/users/edit"
           />
           <ActionCard
             icon={<IconUserMinus size={24} />}
-            title="Inactivate user"
+            title="Deactivate user"
             subtitle="Deactivate a user account and revoke access"
-            buttonLabel="Inactivate user"
-            buttonUrl="#"
+            buttonLabel="Deactivate user"
+            buttonUrl="/admin/users/deactivate"
           />
         </SimpleGrid>
       </Stack>
