@@ -6,7 +6,12 @@
  */
 
 import { Container, SimpleGrid, Stack } from "@mantine/core";
-import { IconUserPlus, IconUserEdit } from "@tabler/icons-react";
+import {
+  IconUserPlus,
+  IconUserEdit,
+  IconUsers,
+  IconUserMinus,
+} from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header/PageHeader";
 
@@ -32,17 +37,34 @@ export default function AdminUsersPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
+            icon={<IconUsers size={24} />}
+            title="Show all users"
+            subtitle="View and search all registered user accounts"
+            buttonLabel="View all users"
+            buttonUrl="#"
+          />
+          <ActionCard
             icon={<IconUserPlus size={24} />}
             title="Add user"
             subtitle="Create a new user account with competencies and permissions"
             buttonLabel="Add new user"
             buttonUrl="/admin/users/new"
           />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
             icon={<IconUserEdit size={24} />}
             title="Edit user"
             subtitle="Update user details, competencies, and permissions"
             buttonLabel="Edit user"
+            buttonUrl="#"
+          />
+          <ActionCard
+            icon={<IconUserMinus size={24} />}
+            title="Inactivate user"
+            subtitle="Deactivate a user account and revoke access"
+            buttonLabel="Inactivate user"
             buttonUrl="#"
           />
         </SimpleGrid>

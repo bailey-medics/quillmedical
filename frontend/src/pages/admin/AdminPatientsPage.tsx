@@ -6,7 +6,13 @@
  */
 
 import { Container, SimpleGrid, Stack } from "@mantine/core";
-import { IconUserPlus, IconUserEdit, IconLink } from "@tabler/icons-react";
+import {
+  IconUserPlus,
+  IconUserEdit,
+  IconLink,
+  IconUsers,
+  IconUserMinus,
+} from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header/PageHeader";
 import { useState } from "react";
@@ -132,12 +138,22 @@ export default function AdminPatientsPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
+            icon={<IconUsers size={24} />}
+            title="Show all patients"
+            subtitle="View and search all registered patient records"
+            buttonLabel="View all patients"
+            buttonUrl="#"
+          />
+          <ActionCard
             icon={<IconUserPlus size={24} />}
             title="Add patient"
             subtitle="Register a new patient record with demographics"
             buttonLabel="Add new patient"
             buttonUrl="/admin/patients/new"
           />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
             icon={<IconUserEdit size={24} />}
             title="Edit patient"
@@ -145,9 +161,6 @@ export default function AdminPatientsPage() {
             buttonLabel="Edit patient"
             buttonUrl="#"
           />
-        </SimpleGrid>
-
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
             icon={<IconLink size={24} />}
             title="Link user and patient"
@@ -155,6 +168,16 @@ export default function AdminPatientsPage() {
             buttonLabel="Create link"
             buttonUrl="#"
             onClick={() => setLinkModalOpen(true)}
+          />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <ActionCard
+            icon={<IconUserMinus size={24} />}
+            title="Inactivate patient"
+            subtitle="Deactivate a patient record and restrict access"
+            buttonLabel="Inactivate patient"
+            buttonUrl="#"
           />
         </SimpleGrid>
 

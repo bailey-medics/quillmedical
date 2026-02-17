@@ -104,9 +104,9 @@ const itemWithChildren: NavItem = {
   href: "/patients",
   icon: "user",
   children: [
-    { label: "All Patients", href: "/patients/all" },
-    { label: "New Patient", href: "/patients/new" },
-    { label: "Recent", href: "/patients/recent" },
+    { label: "All Patients", href: "/patients/all", icon: "user" },
+    { label: "New Patient", href: "/patients/new", icon: "user" },
+    { label: "Recent", href: "/patients/recent", icon: "user" },
   ],
 };
 
@@ -115,16 +115,25 @@ const itemWithNestedChildren: NavItem = {
   href: "/settings",
   icon: "settings",
   children: [
-    { label: "Profile", href: "/settings/profile" },
+    { label: "Profile", href: "/settings/profile", icon: "user" },
     {
       label: "Security",
       href: "/settings/security",
+      icon: "settings",
       children: [
-        { label: "Password", href: "/settings/security/password" },
-        { label: "Two-Factor", href: "/settings/security/2fa" },
+        {
+          label: "Password",
+          href: "/settings/security/password",
+          icon: "settings",
+        },
+        {
+          label: "Two-Factor",
+          href: "/settings/security/2fa",
+          icon: "settings",
+        },
       ],
     },
-    { label: "Preferences", href: "/settings/preferences" },
+    { label: "Preferences", href: "/settings/preferences", icon: "settings" },
   ],
 };
 
@@ -144,8 +153,8 @@ const multipleItems: NavItem[] = [
     href: "/documents",
     icon: "file",
     children: [
-      { label: "Templates", href: "/documents/templates" },
-      { label: "Archive", href: "/documents/archive" },
+      { label: "Templates", href: "/documents/templates", icon: "file" },
+      { label: "Archive", href: "/documents/archive", icon: "file" },
     ],
   },
   {
@@ -153,8 +162,8 @@ const multipleItems: NavItem[] = [
     href: "/settings",
     icon: "settings",
     children: [
-      { label: "Profile", href: "/settings/profile" },
-      { label: "Security", href: "/settings/security" },
+      { label: "Profile", href: "/settings/profile", icon: "user" },
+      { label: "Security", href: "/settings/security", icon: "settings" },
     ],
   },
 ];
