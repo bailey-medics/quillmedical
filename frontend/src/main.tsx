@@ -95,6 +95,7 @@ const router = createBrowserRouter(
         { path: "/admin/users/list", element: <ViewAllUsersPage /> },
         { path: "/admin/users/edit", element: <EditUserPage /> },
         { path: "/admin/users/deactivate", element: <DeactivateUserPage /> },
+        { path: "/admin/users/:id/edit", element: <NewUserPage /> },
         { path: "/admin/patients", element: <AdminPatientsPage /> },
         { path: "/admin/patients/new", element: <NewPatientPage /> },
         { path: "/admin/permissions", element: <AdminPermissionsPage /> },
