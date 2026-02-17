@@ -63,10 +63,10 @@ describe("QuillLogo Component", () => {
   });
 
   describe("Defaults", () => {
-    it("uses default height of 128", () => {
+    it("uses default height of 8rem", () => {
       const { container } = renderWithMantine(<QuillLogo />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "128");
+      expect(img).toHaveAttribute("height", "8rem");
     });
   });
 });

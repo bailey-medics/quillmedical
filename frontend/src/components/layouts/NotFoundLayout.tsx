@@ -23,12 +23,12 @@ export default function NotFoundLayout() {
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
 
   return (
-    <Container style={{ padding: 24, textAlign: "center" }}>
+    <Container style={{ padding: "1.5rem", textAlign: "center" }}>
       <Title order={2}>404 — Page not found</Title>
-      <Text c="dimmed" size="md" style={{ marginTop: 12 }}>
+      <Text c="dimmed" size="md" style={{ marginTop: "0.75rem" }}>
         The page you requested does not exist.
       </Text>
-      <Button component="a" href={base} style={{ marginTop: 20 }}>
+      <Button component="a" href={base} style={{ marginTop: "1.25rem" }}>
         Go to home
       </Button>
     </Container>

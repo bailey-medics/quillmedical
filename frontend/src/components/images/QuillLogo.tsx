@@ -15,7 +15,7 @@ import React from "react";
 type Props = {
   /** Alt text for accessibility (default: "Quill") */
   alt?: string;
-  /** Logo height (default: 128px) */
+  /** Logo height in rem (default: 8) */
   height?: number | string;
   /** CSS class name */
   className?: string;
@@ -34,7 +34,7 @@ type Props = {
  */
 export default function QuillLogo({
   alt = "Quill",
-  height = 128,
+  height = 8,
   className,
   style,
 }: Props) {

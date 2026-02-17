@@ -286,10 +286,10 @@ describe("EnableNotificationsButton Component", () => {
   });
 
   describe("Button styling", () => {
-    it("has max-width of 150px", () => {
+    it("has max-width of 9.375rem", () => {
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
-      expect(button).toHaveStyle({ maxWidth: "150px" });
+      expect(button).toHaveStyle({ maxWidth: "9.375rem" });
     });
 
     it("has 100% width", () => {

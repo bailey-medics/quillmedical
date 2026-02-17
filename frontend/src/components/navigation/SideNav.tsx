@@ -35,7 +35,7 @@ export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
     <nav
       role="navigation"
       aria-label="Primary"
-      style={{ minWidth: 100, height: "100%", paddingRight: 14 }}
+      style={{ minWidth: "6.25rem", height: "100%", paddingRight: "0.875rem" }}
     >
       <Stack p="sm" gap="xs">
         {showSearch && (
@@ -45,7 +45,7 @@ export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
               placeholder="Search…"
               rightSectionPointerEvents="none"
               rightSection={<IconSearch size={16} />}
-              style={{ paddingRight: 15 }}
+              style={{ paddingRight: "0.9375rem" }}
             />
             <Divider my="xs" />
           </>

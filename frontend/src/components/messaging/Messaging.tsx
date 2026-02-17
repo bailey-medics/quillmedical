@@ -147,7 +147,7 @@ export default function Messaging({
                           <div
                             style={{
                               background: "#BBDEFB",
-                              padding: "8px 12px",
+                              padding: "0.5rem 0.75rem",
                               borderRadius: 12,
                               boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
                               wordBreak: "break-word",
@@ -223,7 +223,7 @@ export default function Messaging({
                           <div
                             style={{
                               background: "#FFF3E0",
-                              padding: "8px 12px",
+                              padding: "0.5rem 0.75rem",
                               borderRadius: 12,
                               boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
                               wordBreak: "break-word",

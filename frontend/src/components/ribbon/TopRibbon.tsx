@@ -28,8 +28,8 @@ type Props = {
   navOpen?: boolean;
   /** Whether to use narrow/mobile layout */
   isNarrow?: boolean;
-  /** Font size for patient details (default: 16) */
-  fontSize?: number;
+  /** Font size for patient details (default: "1.25rem") */
+  fontSize?: string;
 };
 
 /**
@@ -43,7 +43,7 @@ function RibbonSkeleton() {
   );
 }
 
-function patientDetailsLong(patient: Patient, fontSize: number) {
+function patientDetailsLong(patient: Patient, fontSize: string) {
   return (
     <>
       <Text fw={700} size="sm" style={{ fontSize }}>
@@ -76,7 +76,7 @@ function patientDetailsLong(patient: Patient, fontSize: number) {
   );
 }
 
-function patientDetailsShort(patient: Patient, fontSize: number) {
+function patientDetailsShort(patient: Patient, fontSize: string) {
   return (
     <>
       <Text fw={700} size="sm" style={{ fontSize }}>
@@ -111,7 +111,7 @@ export default function TopRibbon({
   isLoading,
   navOpen = false,
   isNarrow = false,
-  fontSize = 20,
+  fontSize = "1.25rem",
 }: Props) {
   const showBrand = isLoading || !patient || (patient && !isNarrow);
   return (

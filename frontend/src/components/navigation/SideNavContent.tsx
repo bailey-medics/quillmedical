@@ -21,7 +21,7 @@ type Props = {
   onNavigate?: () => void;
   /** Whether to display icons next to labels */
   showIcons?: boolean;
-  /** Font size for navigation labels (default: 20px) */
+  /** Font size for navigation labels (default: 1.25rem) */
   fontSize?: number;
 };
 
@@ -37,7 +37,7 @@ type Props = {
 export default function SideNavContent({
   onNavigate,
   showIcons = false,
-  fontSize = 20,
+  fontSize = 1.25,
 }: Props) {
   const { logout, state } = useAuth();
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ export default function SideNavContent({
       state.user.system_permissions === "superadmin");
 
   const navLinkStyles = {
-    root: { fontSize: `${fontSize}px` },
-    label: { fontSize: `${fontSize}px` },
+    root: { fontSize: `${fontSize}rem` },
+    label: { fontSize: `${fontSize}rem` },
   };
 
   // Admin navigation structure with children

@@ -51,7 +51,7 @@ type Props = {
   showIcons?: boolean;
   /** Nesting level for indentation (internal use) */
   level?: number;
-  /** Base font size in pixels (default: 20) */
+  /** Base font size in rem (default: 1.25) */
   baseFontSize?: number;
 };
 
@@ -99,7 +99,7 @@ export default function NestedNavLink({
   onNavigate,
   showIcons = false,
   level = 0,
-  baseFontSize = 20,
+  baseFontSize = 1.25,
 }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -125,10 +125,10 @@ export default function NestedNavLink({
   const navLinkStyles = {
     root: {
       paddingLeft: totalPaddingLeft ? `${totalPaddingLeft}rem` : undefined,
-      fontSize: `${fontSize}px`,
+      fontSize: `${fontSize}rem`,
     },
     label: {
-      fontSize: `${fontSize}px`,
+      fontSize: `${fontSize}rem`,
     },
   };
 

@@ -15,7 +15,7 @@ import quillName from "/quill-name.png";
 type Props = {
   /** Alt text for accessibility (default: "Quill Medical") */
   alt?: string;
-  /** Logo height (default: 24px) */
+  /** Logo height in rem (default: 1.5) */
   height?: number | string;
   /** CSS class name */
   className?: string;
@@ -26,7 +26,7 @@ type Props = {
 /**
  * Quill Name
  *
- * Displays "Quill Medical" text logo. Standard height is 24px for
+ * Displays "Quill Medical" text logo. Standard height is 1.5rem for
  * navigation bars.
  *
  * @param props - Component props
@@ -34,9 +34,9 @@ type Props = {
  */
 export default function QuillName({
   alt = "Quill Medical",
-  height = 24,
+  height = 1.5,
   className,
-  style = { marginRight: 8 },
+  style = { marginRight: "0.5rem" },
 }: Props) {
   return (
     <Image

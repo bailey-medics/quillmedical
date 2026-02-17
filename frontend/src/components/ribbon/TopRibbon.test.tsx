@@ -211,11 +211,11 @@ describe("TopRibbon Component", () => {
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
           isLoading={false}
-          fontSize={18}
+          fontSize="1.125rem"
         />,
       );
       const nameElement = screen.getByText("John Smith");
-      expect(nameElement).toHaveStyle({ fontSize: "18px" });
+      expect(nameElement).toHaveStyle({ fontSize: "1.125rem" });
     });
   });
 

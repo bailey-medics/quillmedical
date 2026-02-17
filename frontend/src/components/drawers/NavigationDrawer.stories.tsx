@@ -45,7 +45,7 @@ const meta: Meta<typeof NavigationDrawer> = {
                 borderBottom: "1px solid #e5e7eb",
                 display: "flex",
                 alignItems: "center",
-                padding: "0 16px",
+                padding: "0 1rem",
                 zIndex: 10,
               }}
             >
@@ -70,12 +70,12 @@ const meta: Meta<typeof NavigationDrawer> = {
   ],
   argTypes: {
     opened: { control: "boolean" },
-    width: { control: "number" },
+    width: { control: "text" },
     topOffset: { control: "number" },
   },
   args: {
     opened: false,
-    width: 260,
+    width: "16.25rem",
     topOffset: 0,
   },
 };
