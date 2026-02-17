@@ -21,9 +21,11 @@ import {
   Alert,
   Checkbox,
   Divider,
+  Loader,
+  Center,
 } from "@mantine/core";
-import { useState } from "react";
-import { useNavigate, useBlocker } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import MultiStepForm, {
   type StepConfig,
@@ -252,22 +254,33 @@ function Step2UserAccount({
 /**
  * Step 3: Confirmation
  */
+/**
+ * Step 3: Confirmation
+ */
 function Step3Confirmation({
   success,
   patientId,
   onCancel,
+  isEditMode = false,
 }: StepContentProps & {
   success: boolean;
   patientId?: string;
+  isEditMode?: boolean;
 }) {
   return (
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
           <IconCheck size={64} color="green" />
-          <Title order={2}>Patient created successfully</Title>
+          <Title order={2}>
+            {isEditMode
+              ? "Patient updated successfully"
+              : "Patient created successfully"}
+          </Title>
           <Text size="sm" c="dimmed" ta="center">
-            The new patient record has been created in the FHIR system.
+            {isEditMode
+              ? "The patient record has been updated in the FHIR system."
+              : "The new patient record has been created in the FHIR system."}
           </Text>
           {patientId && (
             <Text size="sm" c="dimmed" ta="center">
@@ -281,9 +294,15 @@ function Step3Confirmation({
       ) : (
         <>
           <IconAlertCircle size={64} color="red" />
-          <Title order={2}>Failed to create patient</Title>
+          <Title order={2}>
+            {isEditMode
+              ? "Failed to update patient"
+              : "Failed to create patient"}
+          </Title>
           <Text size="sm" c="dimmed" ta="center">
-            There was an error creating the patient record. Please try again.
+            {isEditMode
+              ? "There was an error updating the patient record. Please try again."
+              : "There was an error creating the patient record. Please try again."}
           </Text>
           <Button onClick={onCancel} mt="lg">
             Return to Admin
@@ -297,18 +316,26 @@ function Step3Confirmation({
 /**
  * New Patient Page Component
  *
- * Multi-step form for creating new patient records with optional user accounts.
+ * Multi-step form for creating or editing patient records with optional user accounts.
+ * Supports two modes:
+ * - Create mode: /admin/patients/new - Creates a new patient
+ * - Edit mode: /admin/patients/:id/edit - Edits an existing patient
  *
- * @returns New patient creation page
+ * @returns New/edit patient page
  */
 export default function NewPatientPage() {
   const navigate = useNavigate();
+  const { id: patientId } = useParams<{ id: string }>();
+  const isEditMode = Boolean(patientId);
+
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [patientId, setPatientId] = useState<string>();
+  const [createdPatientId, setCreatedPatientId] = useState<string>();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(isEditMode);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<PatientFormData>({
     firstName: "",
@@ -319,6 +346,55 @@ export default function NewPatientPage() {
     nationalNumberSystem: "https://fhir.nhs.uk/Id/nhs-number",
     createUserAccount: false,
   });
+
+  // Fetch patient data in edit mode
+  useEffect(() => {
+    if (!isEditMode || !patientId) return;
+
+    async function fetchPatient() {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/patients/${patientId}`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch patient data");
+        }
+
+        const patient = await response.json();
+
+        // Pre-fill form with patient data (FHIR format)
+        const firstName = patient.name?.[0]?.given?.[0] || "";
+        const lastName = patient.name?.[0]?.family || "";
+
+        setFormData({
+          firstName,
+          lastName,
+          dob: patient.birthDate || "",
+          sex: patient.gender || "",
+          nationalNumber:
+            patient.identifier?.find(
+              (id: { system?: string; value?: string }) =>
+                id.system === "https://fhir.nhs.uk/Id/nhs-number",
+            )?.value || "",
+          nationalNumberSystem: "https://fhir.nhs.uk/Id/nhs-number",
+          createUserAccount: false, // Don't show user creation in edit mode
+        });
+      } catch (error) {
+        console.error("Failed to fetch patient:", error);
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load patient data",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPatient();
+  }, [isEditMode, patientId]);
 
   // Block navigation when form is dirty and not yet submitted
   const blocker = useBlocker(
@@ -396,85 +472,138 @@ export default function NewPatientPage() {
 
     setSubmitting(true);
     try {
-      // Create patient - using FHIR field names expected by backend
-      const patientResponse = await api.post<{ id: string }>("/patients", {
+      const payload = {
         given_name: formData.firstName,
         family_name: formData.lastName,
         birth_date: formData.dob,
         gender: formData.sex,
         nhs_number: formData.nationalNumber,
-        // Note: Backend only supports NHS number currently, not national_number_system
-      });
+      };
 
-      const newPatientId = patientResponse.id;
-      setPatientId(newPatientId);
+      let newPatientId: string;
 
-      // Create user account if requested
-      if (formData.createUserAccount) {
-        await api.post("/auth/register", {
-          username: formData.userUsername,
-          email: formData.userEmail,
-          password: formData.userPassword,
-        });
+      if (isEditMode && patientId) {
+        // Edit mode: PATCH existing patient
+        await api.patch(`/patients/${patientId}`, payload);
+        newPatientId = patientId;
+      } else {
+        // Create mode: POST new patient
+        const patientResponse = await api.post<{ id: string }>(
+          "/patients",
+          payload,
+        );
+        newPatientId = patientResponse.id;
 
-        // TODO: Link user to patient and set system_permissions to "patient"
-        // Note: Backend /auth/register creates basic user without roles
-        // Will need additional endpoint to set base_profession and link to patient
+        // Create user account if requested (only in create mode)
+        if (formData.createUserAccount) {
+          await api.post("/auth/register", {
+            username: formData.userUsername,
+            email: formData.userEmail,
+            password: formData.userPassword,
+          });
+
+          // TODO: Link user to patient and set system_permissions to "patient"
+          // Note: Backend /auth/register creates basic user without roles
+          // Will need additional endpoint to set base_profession and link to patient
+        }
       }
 
+      setCreatedPatientId(newPatientId);
       setSuccess(true);
       setDirty(false); // Clear dirty flag on successful submission
-      setActiveStep(2); // Move to confirmation step
+      setActiveStep(isEditMode ? 1 : 2); // Edit mode: skip user account step
     } catch (error) {
-      console.error("Failed to create patient:", error);
+      console.error(
+        `Failed to ${isEditMode ? "update" : "create"} patient:`,
+        error,
+      );
       setSuccess(false);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
-      setActiveStep(2); // Move to confirmation step even on error
+      setActiveStep(isEditMode ? 1 : 2); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
     }
   }
 
-  const steps: StepConfig[] = [
-    {
-      label: "Demographics",
-      description: "Patient information",
-      content: (props) => (
-        <Step1Demographics
-          {...props}
-          formData={formData}
-          setFormData={updateFormData}
-          errors={errors}
-        />
-      ),
-      validate: validateStep1,
-    },
-    {
-      label: "User Account",
-      description: "Optional portal access",
-      content: (props) => (
-        <Step2UserAccount
-          {...props}
-          formData={formData}
-          setFormData={updateFormData}
-          errors={errors}
-        />
-      ),
-      validate: validateStep2,
-      nextButtonLabel: "Add Patient",
-    },
-    {
-      label: "Confirmation",
-      description: "Patient created",
-      content: (props) => (
-        <Step3Confirmation {...props} success={success} patientId={patientId} />
-      ),
-    },
-  ];
+  const steps: StepConfig[] = isEditMode
+    ? [
+        // Edit mode: Only demographics and confirmation
+        {
+          label: "Demographics",
+          description: "Patient information",
+          content: (props) => (
+            <Step1Demographics
+              {...props}
+              formData={formData}
+              setFormData={updateFormData}
+              errors={errors}
+            />
+          ),
+          validate: validateStep1,
+          nextButtonLabel: "Update Patient",
+        },
+        {
+          label: "Confirmation",
+          description: "Patient updated",
+          content: (props) => (
+            <Step3Confirmation
+              {...props}
+              success={success}
+              patientId={createdPatientId}
+              isEditMode={isEditMode}
+            />
+          ),
+        },
+      ]
+    : [
+        // Create mode: Demographics, user account, and confirmation
+        {
+          label: "Demographics",
+          description: "Patient information",
+          content: (props) => (
+            <Step1Demographics
+              {...props}
+              formData={formData}
+              setFormData={updateFormData}
+              errors={errors}
+            />
+          ),
+          validate: validateStep1,
+        },
+        {
+          label: "User Account",
+          description: "Optional portal access",
+          content: (props) => (
+            <Step2UserAccount
+              {...props}
+              formData={formData}
+              setFormData={updateFormData}
+              errors={errors}
+            />
+          ),
+          validate: validateStep2,
+          nextButtonLabel: "Add Patient",
+        },
+        {
+          label: "Confirmation",
+          description: "Patient created",
+          content: (props) => (
+            <Step3Confirmation
+              {...props}
+              success={success}
+              patientId={createdPatientId}
+              isEditMode={isEditMode}
+            />
+          ),
+        },
+      ];
 
-  // Intercept step 1 -> 2 transition to submit form
+  // Intercept step transition to submit form
   function handleStepChange(newStep: number) {
-    if (activeStep === 1 && newStep === 2) {
+    const lastFormStep = isEditMode ? 0 : 1;
+    const confirmationStep = isEditMode ? 1 : 2;
+
+    if (activeStep === lastFormStep && newStep === confirmationStep) {
       handleSubmit();
     } else {
       setActiveStep(newStep);
@@ -484,13 +613,38 @@ export default function NewPatientPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <PageHeader title="Create new patient" size="lg" />
-        <MultiStepForm
-          steps={steps}
-          onCancel={handleCancel}
-          activeStep={activeStep}
-          onStepChange={handleStepChange}
+        <PageHeader
+          title={isEditMode ? "Edit patient" : "Create new patient"}
+          size="lg"
         />
+
+        {loading ? (
+          <Center py="xl">
+            <Stack align="center" gap="md">
+              <Loader size="lg" />
+              <Text c="dimmed">Loading patient data...</Text>
+            </Stack>
+          </Center>
+        ) : loadError ? (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Error loading patient"
+            color="red"
+            mt="md"
+          >
+            {loadError}
+            <Button onClick={() => navigate("/admin")} variant="light" mt="md">
+              Return to Admin
+            </Button>
+          </Alert>
+        ) : (
+          <MultiStepForm
+            steps={steps}
+            onCancel={handleCancel}
+            activeStep={activeStep}
+            onStepChange={handleStepChange}
+          />
+        )}
       </Box>
 
       <DirtyFormNavigation

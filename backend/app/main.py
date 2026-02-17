@@ -1474,6 +1474,128 @@ def create_patient_in_fhir(
         ) from e
 
 
+@router.get("/patients/{patient_id}")
+def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
+    """Get Single Patient from FHIR.
+
+    Retrieves a specific patient's demographics from the FHIR server by ID.
+    Returns the complete FHIR R4 Patient resource including name, birth date,
+    gender, and identifiers. Used by the admin interface when editing patient
+    records.
+
+    Args:
+        patient_id: FHIR Patient resource ID to retrieve.
+        u: Currently authenticated user (any role can view patients).
+
+    Returns:
+        dict: Complete FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR server communication fails.
+    """
+    try:
+        patient = read_fhir_patient(patient_id)
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        # Mypy type narrowing: patient is now guaranteed to be dict[str, Any]
+        assert patient is not None
+        return patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve patient: {e}"
+        ) from e
+
+
+@router.patch("/patients/{patient_id}")
+def update_patient(
+    patient_id: str,
+    data: FHIRPatientCreateIn,
+    u: User = DEP_CURRENT_USER,
+) -> dict[str, Any]:
+    """Update Patient in FHIR.
+
+    Updates an existing patient's demographics in the FHIR server. Accepts
+    the same fields as patient creation (name, birth_date, gender, identifiers).
+    Used by the admin interface when editing patient records.
+
+    Args:
+        patient_id: FHIR Patient resource ID to update.
+        data: Updated patient demographics.
+        u: Currently authenticated user (any role can update patients).
+
+    Returns:
+        dict: Complete updated FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR update operation fails.
+    """
+    try:
+        # Read existing patient to verify it exists
+        existing = read_fhir_patient(patient_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Build update dict with provided fields
+        updates: dict[str, Any] = {}
+
+        # Update name
+        if data.given_name or data.family_name:
+            updates["name"] = [
+                {
+                    "use": "official",
+                    "given": [data.given_name] if data.given_name else [],
+                    "family": data.family_name if data.family_name else "",
+                }
+            ]
+
+        # Update birth date
+        if data.birth_date:
+            updates["birthDate"] = data.birth_date
+
+        # Update gender
+        if data.gender:
+            updates["gender"] = data.gender
+
+        # Update identifiers (NHS number, MRN)
+        identifiers = []
+        if data.nhs_number:
+            identifiers.append(
+                {
+                    "system": "https://fhir.nhs.uk/Id/nhs-number",
+                    "value": data.nhs_number,
+                }
+            )
+        if data.mrn:
+            identifiers.append(
+                {
+                    "system": "http://hospital.example.org/mrn",
+                    "value": data.mrn,
+                }
+            )
+        if identifiers:
+            updates["identifier"] = identifiers
+
+        # Perform update
+        updated_patient = update_fhir_patient(patient_id, updates)
+        if not updated_patient:
+            raise HTTPException(
+                status_code=500, detail="Failed to update patient"
+            )
+        # Mypy type narrowing: updated_patient is now guaranteed to be dict[str, Any]
+        assert updated_patient is not None
+        return updated_patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update patient: {e}"
+        ) from e
+
+
 # ==========================================================================
 # CBAC (Competency-Based Access Control) Routes
 # ==========================================================================

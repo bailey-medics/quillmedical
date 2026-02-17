@@ -142,7 +142,7 @@ export default function AdminPatientsPage() {
             title="Show all patients"
             subtitle="View and search all registered patient records"
             buttonLabel="View all patients"
-            buttonUrl="#"
+            buttonUrl="/admin/patients/list"
           />
           <ActionCard
             icon={<IconUserPlus size={24} />}
@@ -159,7 +159,7 @@ export default function AdminPatientsPage() {
             title="Edit patient"
             subtitle="Modify patient demographics and information"
             buttonLabel="Edit patient"
-            buttonUrl="#"
+            buttonUrl="/admin/patients/edit"
           />
           <ActionCard
             icon={<IconLink size={24} />}
@@ -174,10 +174,10 @@ export default function AdminPatientsPage() {
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
             icon={<IconUserMinus size={24} />}
-            title="Inactivate patient"
+            title="Deactivate patient"
             subtitle="Deactivate a patient record and restrict access"
-            buttonLabel="Inactivate patient"
-            buttonUrl="#"
+            buttonLabel="Deactivate patient"
+            buttonUrl="/admin/patients/deactivate"
           />
         </SimpleGrid>
 
