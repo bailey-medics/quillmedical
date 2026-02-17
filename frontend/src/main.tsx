@@ -28,6 +28,9 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import AdminPage from "./pages/AdminPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminPatientsPage from "./pages/admin/AdminPatientsPage";
+import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -84,8 +87,11 @@ const router = createBrowserRouter(
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
         { path: "/admin", element: <AdminPage /> },
+        { path: "/admin/users", element: <AdminUsersPage /> },
         { path: "/admin/users/new", element: <NewUserPage /> },
+        { path: "/admin/patients", element: <AdminPatientsPage /> },
         { path: "/admin/patients/new", element: <NewPatientPage /> },
+        { path: "/admin/permissions", element: <AdminPermissionsPage /> },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),

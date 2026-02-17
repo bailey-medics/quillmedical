@@ -1,0 +1,52 @@
+/**
+ * Admin Users Page
+ *
+ * User management interface for administrators.
+ * Provides actions for creating and editing user accounts.
+ */
+
+import { Container, SimpleGrid, Stack } from "@mantine/core";
+import { IconUserPlus, IconUserEdit } from "@tabler/icons-react";
+import ActionCard from "@/components/action-card";
+import PageHeader from "@/components/page-header/PageHeader";
+
+/**
+ * Admin Users Page
+ *
+ * Interface for managing user accounts with options to:
+ * - Create new users
+ * - Edit existing users
+ *
+ * @returns Admin users page component
+ */
+export default function AdminUsersPage() {
+  return (
+    <Container size="lg" pt="xl">
+      <Stack gap="lg">
+        <PageHeader
+          title="User management"
+          description="Create and manage user accounts"
+          size="lg"
+          mb={0}
+        />
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <ActionCard
+            icon={<IconUserPlus size={24} />}
+            title="Add user"
+            subtitle="Create a new user account with competencies and permissions"
+            buttonLabel="Add new user"
+            buttonUrl="/admin/users/new"
+          />
+          <ActionCard
+            icon={<IconUserEdit size={24} />}
+            title="Edit user"
+            subtitle="Update user details, competencies, and permissions"
+            buttonLabel="Edit user"
+            buttonUrl="#"
+          />
+        </SimpleGrid>
+      </Stack>
+    </Container>
+  );
+}
