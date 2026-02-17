@@ -118,8 +118,8 @@ export default function NestedNavLink({
 
   // Calculate indentation for child items
   // When showIcons is true, add extra padding to account for icon width
-  // Icon (ThemeIcon size="lg") is ~40px = 2.5rem, reduced by 30% = 2.1rem
-  const iconOffset = showIcons ? 2.1 : 0;
+  // Icon (ThemeIcon size="lg") is ~40px = 2.5rem, reduced to 1.5rem for better alignment
+  const iconOffset = showIcons ? 1.5 : 0;
   const levelIndent = level * 1.5;
   const totalPaddingLeft = level > 0 ? iconOffset + levelIndent : undefined;
 
