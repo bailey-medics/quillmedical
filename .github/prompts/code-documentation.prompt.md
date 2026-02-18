@@ -1,11 +1,11 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.6 (copilot)
-name: test
-description: Code documentation
+model: Claude Sonnet 4.5
+name: in-code-documentation
+description: In code documentation
 ---
 
-# Code documentation
+# In code documentation
 
 ## Review all code
 

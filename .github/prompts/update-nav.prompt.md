@@ -1,3 +1,10 @@
+---
+agent: "agent"
+model: Claude Sonnet 4.5
+name: update-nav
+description: Update navigation
+---
+
 # Update navigation
 
 Please can you:

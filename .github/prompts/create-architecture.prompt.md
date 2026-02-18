@@ -1,3 +1,10 @@
+---
+agent: "agent"
+model: Claude Sonnet 4.5
+name: create-architecture
+description: Create architecture documentation
+---
+
 # Create Architecture Documentation
 
 ## Task

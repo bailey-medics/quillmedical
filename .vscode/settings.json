@@ -24,5 +24,7 @@
 
   "terminal.integrated.tabs.enableAnimation": true,
   "terminal.integrated.tabs.description": "${sequence}",
-  "terminal.integrated.tabs.title": "${process}"
+  "terminal.integrated.tabs.title": "${process}",
+
+  "github.copilot.chat.prompts.enabled": true
 }

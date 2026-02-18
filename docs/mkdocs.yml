@@ -51,22 +51,8 @@ nav:
       - Accessibility: frontend/accessibility.md
       - Storybook: frontend/storybook/index.md
       - Test Infrastructure: frontend/test-infrastructure-setup.md
-  - LLM:
-      - Copilot Instructions: llm/copilot-instructions.md
-      - Architecture: llm/architecture.md
-      - Roadmap: llm/roadmap.md
-      - Specs: llm/specs.md
-      - Prompts:
-          - Overview: llm/prompts/index.md
-          - Code Documentation: llm/prompts/code-documentation.md
-          - Commit & Push: llm/prompts/commit-push.md
-          - Create Architecture: llm/prompts/create-architecture.md
-          - Create Docs: llm/prompts/create-docs-docs.md
-          - Create Roadmap: llm/prompts/create-roadmap.md
-          - Create Spec: llm/prompts/create-spec.md
-          - FastAPI Docs: llm/prompts/fast-api-docs.md
-          - Strong Typing & Defensive Programming: llm/prompts/strong-static-typing-defensive-programming.md
-          - Update Navigation: llm/prompts/update-nav.md
+  - Authorization:
+      - CBAC (Competency-Based Access Control): cbac.md
   - Code Documentation:
       - Frontend TypeDoc: code/frontend/README.md
       - Storybook: code/storybook/index.html
@@ -143,8 +129,6 @@ nav:
           - Hazard-0045: safety/hazards/Hazard-0045.md
           - Hazard-0046: safety/hazards/Hazard-0046.md
           - Hazard-0047: safety/hazards/Hazard-0047.md
-  - Authorization:
-      - CBAC (Competency-Based Access Control): cbac.md
 
 
 plugins:
