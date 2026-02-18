@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        task: [eslint, prettier, stylelint, typecheck, "unit-test:run", "storybook:build", "storybook:test:ci"]
+        task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build", "storybook:test:ci"]
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
