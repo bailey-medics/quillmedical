@@ -174,7 +174,6 @@ export const SpecialCharacters: Story = {
  * Visual comparison of all size variants
  */
 export const AllSizes: Story = {
-  args: {},
   render: () => (
     <Box>
       <PageHeader
@@ -203,7 +202,6 @@ export const AllSizes: Story = {
  * Examples from actual pages in the application
  */
 export const RealExamples: Story = {
-  args: {},
   render: () => (
     <Box>
       <PageHeader
