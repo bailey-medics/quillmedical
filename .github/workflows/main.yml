@@ -178,18 +178,18 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Main documentation build failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Main documentation build failed*
-
-                    *Commit:* ${{ github.event.head_commit.message }}
-                    *Author:* ${{ github.actor }}
-                    *Main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+            {
+              "text": "❌ Main documentation build failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Main documentation build failed*\n\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}\n*Main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
 
   deploy:
     name: Deploy to GitHub Pages
@@ -284,18 +284,18 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "✅ Main documentation build succeeded and deployed to GitHub Pages"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *✅ Main documentation build succeeded and deployed to GitHub Pages*
-
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+            {
+              "text": "✅ Main documentation build succeeded and deployed to GitHub Pages",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Main documentation build succeeded and deployed to GitHub Pages*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>"
+                  }
+                }
+              ]
+            }
 
       - name: Notify Slack on Failure
         if: failure()
@@ -304,15 +304,15 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Main documentation build failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Main documentation build failed*
-
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+            {
+              "text": "❌ Main documentation build failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Main documentation build failed*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>"
+                  }
+                }
+              ]
+            }
