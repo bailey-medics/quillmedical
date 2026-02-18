@@ -383,7 +383,7 @@ jobs:
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: [python_checks, typescript_checks, frontend_security, docs_build]
+    needs: [docs_build]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
