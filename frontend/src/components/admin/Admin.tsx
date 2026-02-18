@@ -17,8 +17,10 @@ import type { SystemPermission } from "@/types/cbac";
 interface AdminProps {
   /** Current user's system permissions */
   userPermissions: SystemPermission;
-  /** Loading state for statistics */
-  loading?: boolean;
+  /** Loading state for users statistics */
+  usersLoading?: boolean;
+  /** Loading state for patients statistics */
+  patientsLoading?: boolean;
   /** Existing users for statistics */
   existingUsers?: Array<{ id: string; username: string; email: string }>;
   /** Existing patients for statistics */
@@ -27,7 +29,8 @@ interface AdminProps {
 
 export default function Admin({
   userPermissions,
-  loading = false,
+  usersLoading = false,
+  patientsLoading = false,
   existingUsers = [],
   existingPatients = [],
 }: AdminProps) {
@@ -59,12 +62,12 @@ export default function Admin({
         <StatCard
           title="Total users"
           value={existingUsers.length}
-          loading={loading}
+          loading={usersLoading}
         />
         <StatCard
           title="Total patients"
           value={existingPatients.length}
-          loading={loading}
+          loading={patientsLoading}
         />
       </Group>
     </Stack>

@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header/PageHeader";
+import StateMessage from "@/components/state-message/StateMessage";
 import { useState } from "react";
 import { Modal, Select, Button, Group } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
@@ -39,6 +40,14 @@ interface ApiPatient {
 }
 
 /**
+ * Patients API Response (including FHIR readiness flag)
+ */
+interface PatientsApiResponse {
+  patients: ApiPatient[];
+  fhir_ready: boolean;
+}
+
+/**
  * Admin Patients Page
  *
  * Interface for managing patient records with options to:
@@ -57,6 +66,7 @@ export default function AdminPatientsPage() {
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>(
     [],
   );
+  const [patientsLoading, setPatientsLoading] = useState(true);
   const [linkForm, setLinkForm] = useState<{
     userId: string;
     patientId: string;
@@ -64,6 +74,55 @@ export default function AdminPatientsPage() {
     userId: "",
     patientId: "",
   });
+
+  // Check FHIR readiness on page load
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkFhirReady() {
+      if (
+        state.status !== "authenticated" ||
+        !state.user.system_permissions ||
+        !["admin", "superadmin"].includes(state.user.system_permissions)
+      ) {
+        setPatientsLoading(false);
+        return;
+      }
+
+      try {
+        const patientsResponse =
+          await api.get<PatientsApiResponse>("/patients");
+
+        if (!cancelled) {
+          // Check if FHIR is ready
+          if (patientsResponse.fhir_ready) {
+            setPatientsLoading(false);
+          } else {
+            // FHIR not ready yet, retry after 2 seconds
+            setTimeout(() => {
+              if (!cancelled) {
+                checkFhirReady();
+              }
+            }, 2000);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check FHIR readiness:", error);
+        // On error, retry after 5 seconds
+        setTimeout(() => {
+          if (!cancelled) {
+            checkFhirReady();
+          }
+        }, 5000);
+      }
+    }
+
+    checkFhirReady();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, state.user]);
 
   // Fetch users and patients for the link modal
   useEffect(() => {
@@ -136,50 +195,56 @@ export default function AdminPatientsPage() {
           mb={0}
         />
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <ActionCard
-            icon={<IconUsers size={24} />}
-            title="Show all patients"
-            subtitle="View and search all registered patient records"
-            buttonLabel="View all patients"
-            buttonUrl="/admin/patients/list"
-          />
-          <ActionCard
-            icon={<IconUserPlus size={24} />}
-            title="Add patient"
-            subtitle="Register a new patient record with demographics"
-            buttonLabel="Add new patient"
-            buttonUrl="/admin/patients/new"
-          />
-        </SimpleGrid>
+        {patientsLoading ? (
+          <StateMessage type="database-initialising" />
+        ) : (
+          <>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <ActionCard
+                icon={<IconUsers size={24} />}
+                title="Show all patients"
+                subtitle="View and search all registered patient records"
+                buttonLabel="View all patients"
+                buttonUrl="/admin/patients/list"
+              />
+              <ActionCard
+                icon={<IconUserPlus size={24} />}
+                title="Add patient"
+                subtitle="Register a new patient record with demographics"
+                buttonLabel="Add new patient"
+                buttonUrl="/admin/patients/new"
+              />
+            </SimpleGrid>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <ActionCard
-            icon={<IconUserEdit size={24} />}
-            title="Edit patient"
-            subtitle="Modify patient demographics and information"
-            buttonLabel="Edit patient"
-            buttonUrl="/admin/patients/edit"
-          />
-          <ActionCard
-            icon={<IconLink size={24} />}
-            title="Link user and patient"
-            subtitle="Associate a user account with a patient record"
-            buttonLabel="Create link"
-            buttonUrl="#"
-            onClick={() => setLinkModalOpen(true)}
-          />
-        </SimpleGrid>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <ActionCard
+                icon={<IconUserEdit size={24} />}
+                title="Edit patient"
+                subtitle="Modify patient demographics and information"
+                buttonLabel="Edit patient"
+                buttonUrl="/admin/patients/edit"
+              />
+              <ActionCard
+                icon={<IconLink size={24} />}
+                title="Link user and patient"
+                subtitle="Associate a user account with a patient record"
+                buttonLabel="Create link"
+                buttonUrl="#"
+                onClick={() => setLinkModalOpen(true)}
+              />
+            </SimpleGrid>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <ActionCard
-            icon={<IconUserMinus size={24} />}
-            title="Deactivate patient"
-            subtitle="Deactivate a patient record and restrict access"
-            buttonLabel="Deactivate patient"
-            buttonUrl="/admin/patients/deactivate"
-          />
-        </SimpleGrid>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <ActionCard
+                icon={<IconUserMinus size={24} />}
+                title="Deactivate patient"
+                subtitle="Deactivate a patient record and restrict access"
+                buttonLabel="Deactivate patient"
+                buttonUrl="/admin/patients/deactivate"
+              />
+            </SimpleGrid>
+          </>
+        )}
 
         {/* Link User to Patient Modal */}
         <Modal

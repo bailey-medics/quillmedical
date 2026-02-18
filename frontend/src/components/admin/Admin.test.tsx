@@ -79,10 +79,27 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin
           userPermissions="superadmin"
-          loading={true}
+          usersLoading={true}
+          patientsLoading={true}
           existingUsers={mockUsers}
         />,
       );
+      const skeletons = document.querySelectorAll(".mantine-Skeleton-root");
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
+
+    it("shows skeleton loader only for patients when FHIR is initializing", () => {
+      renderWithRouter(
+        <Admin
+          userPermissions="superadmin"
+          usersLoading={false}
+          patientsLoading={true}
+          existingUsers={mockUsers}
+          existingPatients={[]}
+        />,
+      );
+      // Should show Total Users value (3) but Total Patients as loading
+      expect(screen.getByText("3")).toBeInTheDocument();
       const skeletons = document.querySelectorAll(".mantine-Skeleton-root");
       expect(skeletons.length).toBeGreaterThan(0);
     });
