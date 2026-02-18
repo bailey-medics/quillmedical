@@ -1,3 +1,10 @@
+---
+agent: "agent"
+model: Claude Sonnet 4.6 (copilot)
+name: test
+description: Code documentation
+---
+
 # Code documentation
 
 ## Review all code
