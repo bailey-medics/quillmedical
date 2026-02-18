@@ -5,7 +5,7 @@
  * patient management, linking, and permission management.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
@@ -517,14 +517,9 @@ describe("Admin", () => {
     // TODO: Fix - form fields don't render in test environment (Mantine Modal + Portal issue)
     it.skip("calls callbacks with correct data types", async () => {
       const user = userEvent.setup();
-      const onLinkUserPatient = vi.fn();
-      const onUpdatePermissions = vi.fn();
-
       renderWithRouter(
         <Admin
           userPermissions="superadmin"
-          onLinkUserPatient={onLinkUserPatient}
-          onUpdatePermissions={onUpdatePermissions}
           existingUsers={mockUsers}
           existingPatients={mockPatients}
         />,

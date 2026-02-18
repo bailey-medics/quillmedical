@@ -94,7 +94,7 @@ export default function MainLayout({
           opened={opened}
           onClose={close}
           topOffset={0}
-          width={DRAWER_W}
+          width={`${DRAWER_W}px`}
         >
           <div style={{ width: DRAWER_W }}>
             <SideNav showSearch={isSm} onNavigate={close} />
