@@ -259,121 +259,121 @@ jobs:
           SEMGREP_NO_VERSION_CHECK: "1"
         run: semgrep --config .semgrep.yml --error
 
-
-  # ---------- Merge to main (only on push, never from main) ----------
-  merge-to-main:
-    runs-on: ubuntu-latest
-    name: Merge branch into main
-    needs: [python_checks, typescript_checks, frontend_security]
-    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge branch into main and push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Ensure we have latest main locally
-          git fetch origin main:main || git fetch origin refs/heads/main:main
-
-          # Source branch name from the push event
-          BRANCH_NAME="${GITHUB_REF_NAME:-}"
-          BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
-
-          if [ -z "$BRANCH_NAME" ]; then
-            echo "ERROR: Cannot determine source branch." >&2
-            exit 1
-          fi
-
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "Not merging main into main. Exiting."
-            exit 0
-          fi
-
-          echo "Merging '$BRANCH_NAME' into main"
-          git checkout main
-
-          # Ensure the source branch exists locally
-          if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
-            echo "Fetching branch '$BRANCH_NAME' from origin"
-            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
-          fi
-
-          # Attempt merge; on conflict, abort and fail
-          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
-            echo "Merge succeeded"
-          else
-            echo "Merge conflict. Aborting."
-            git merge --abort || true
-            exit 1
-          fi
-
-          git push origin main
-
-      - name: Extract commit info
-        id: commit
-        run: |
-          # Get commit subject from the branch that was merged (second parent of merge commit)
-          COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s)
-          # Escape for JSON: replace quotes and newlines
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
-          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
-
-          # Get SHA from the branch that was merged (second parent of merge commit)
-          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
-          echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
-
-          # Get short SHA (first 7 characters)
-          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-
-          # Get commit author from the branch that was merged
-          AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
-
-      - name: Notify Slack on Success
-        if: success()
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: "✅ Non-main tests passed and merged to main"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *✅ Non-main tests passed and merged to main*
-
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
-
-      - name: Notify Slack on Failure
-        if: failure()
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: "❌ Non-main tests and merge failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Non-main tests and merge failed*
-
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+  # ---------- Merge to main (disabled while working solo) ----------
+  # To re-enable: uncomment this job and ensure github-actions[bot] can bypass branch protection
+  # merge-to-main:
+  #   runs-on: ubuntu-latest
+  #   name: Merge branch into main
+  #   needs: [python_checks, typescript_checks, frontend_security]
+  #   if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with: { fetch-depth: 0 }
+  #
+  #     - name: Configure git
+  #       run: |
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  #
+  #     - name: Merge branch into main and push
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       run: |
+  #         # Ensure we have latest main locally
+  #         git fetch origin main:main || git fetch origin refs/heads/main:main
+  #
+  #         # Source branch name from the push event
+  #         BRANCH_NAME="${GITHUB_REF_NAME:-}"
+  #         BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
+  #
+  #         if [ -z "$BRANCH_NAME" ]; then
+  #           echo "ERROR: Cannot determine source branch." >&2
+  #           exit 1
+  #         fi
+  #
+  #         if [ "$BRANCH_NAME" = "main" ]; then
+  #           echo "Not merging main into main. Exiting."
+  #           exit 0
+  #         fi
+  #
+  #         echo "Merging '$BRANCH_NAME' into main"
+  #         git checkout main
+  #
+  #         # Ensure the source branch exists locally
+  #         if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
+  #           echo "Fetching branch '$BRANCH_NAME' from origin"
+  #           git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
+  #         fi
+  #
+  #         # Attempt merge; on conflict, abort and fail
+  #         if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
+  #           echo "Merge succeeded"
+  #         else
+  #           echo "Merge conflict. Aborting."
+  #           git merge --abort || true
+  #           exit 1
+  #         fi
+  #
+  #         git push origin main
+  #
+  #     - name: Extract commit info
+  #       id: commit
+  #       run: |
+  #         # Get commit subject from the branch that was merged (second parent of merge commit)
+  #         COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s)
+  #         # Escape for JSON: replace quotes and newlines
+  #         COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
+  #         COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
+  #         echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
+  #
+  #         # Get SHA from the branch that was merged (second parent of merge commit)
+  #         BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
+  #         echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
+  #
+  #         # Get short SHA (first 7 characters)
+  #         SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
+  #         echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+  #
+  #         # Get commit author from the branch that was merged
+  #         AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
+  #         echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+  #
+  #     - name: Notify Slack on Success
+  #       if: success()
+  #       uses: slackapi/slack-github-action@v2.1.1
+  #       with:
+  #         webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         webhook-type: incoming-webhook
+  #         payload: |
+  #           text: "✅ Non-main tests passed and merged to main"
+  #           blocks:
+  #             - type: "section"
+  #               text:
+  #                 type: "mrkdwn"
+  #                 text: |
+  #                   *✅ Non-main tests passed and merged to main*
+  #
+  #                   *Commit:* ${{ steps.commit.outputs.subject }}
+  #                   *Author:* ${{ steps.commit.outputs.author }}
+  #                   *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
+  #                   *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+  #
+  #     - name: Notify Slack on Failure
+  #       if: failure()
+  #       uses: slackapi/slack-github-action@v2.1.1
+  #       with:
+  #         webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         webhook-type: incoming-webhook
+  #         payload: |
+  #           text: "❌ Non-main tests and merge failed"
+  #           blocks:
+  #             - type: "section"
+  #               text:
+  #                 type: "mrkdwn"
+  #                 text: |
+  #                   *❌ Non-main tests and merge failed*
+  #
+  #                   *Commit:* ${{ steps.commit.outputs.subject }}
+  #                   *Author:* ${{ steps.commit.outputs.author }}
+  #                   *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
+  #                   *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
