@@ -1,6 +1,5 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.5
 name: commit-push
 description: Commit and push code
 ---

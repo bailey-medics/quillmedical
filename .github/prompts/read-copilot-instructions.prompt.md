@@ -1,6 +1,5 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.5
 name: read-copilot-instructions
 description: Read Copilot instructions
 ---

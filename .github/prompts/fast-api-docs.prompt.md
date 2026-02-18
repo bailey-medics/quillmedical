@@ -1,6 +1,5 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.5
 name: fast-api-docs
 description: Generate FastAPI Code Documentation
 ---

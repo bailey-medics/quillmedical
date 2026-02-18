@@ -1,6 +1,5 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.5
 name: update-nav
 description: Update navigation
 ---

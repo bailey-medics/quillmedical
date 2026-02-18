@@ -1,6 +1,5 @@
 ---
 agent: "agent"
-model: Claude Sonnet 4.5
 name: strong-static-typing-defensive-programming
 description: Strong static typing and defensive programming
 ---
