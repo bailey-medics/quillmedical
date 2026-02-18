@@ -1,4 +1,4 @@
-# Workflow for non-main branches with automated merge to main after checks pass
+# Workflow for non-main branches: runs checks and auto-merges to main after passing
 name: Non-main branch workflows
 
 on:
