@@ -6,7 +6,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "@storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "@storybook/test";
 import MultiStepForm, { type StepConfig } from "./MultiStepForm";
 import { useState } from "react";
 import { TextInput, Stack, Text, Button, Group, Alert } from "@mantine/core";
@@ -450,18 +450,18 @@ export const TestNavigateThroughSteps: Story = {
     await userEvent.click(nextButton1);
 
     // Should be on step 2
-    await expect(
-      canvas.getByText("Select your preferences"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    );
 
     // Navigate to step 3
     const nextButton2 = canvas.getByRole("button", { name: /Next/i });
     await userEvent.click(nextButton2);
 
     // Should be on step 3
-    await expect(
-      canvas.getByText("Review Your Information"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+    );
 
     // Should not have Next button on last step
     await expect(
@@ -473,9 +473,9 @@ export const TestNavigateThroughSteps: Story = {
     await userEvent.click(backButton);
 
     // Should be on step 2 again
-    await expect(
-      canvas.getByText("Select your preferences"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    );
   },
 };
 
