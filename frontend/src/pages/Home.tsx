@@ -9,6 +9,7 @@
 import PatientsList from "@/components/patients/PatientsList";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
+import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import { Stack } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
@@ -284,7 +285,7 @@ export default function Home() {
       if (!isFhirReady) {
         checkHealth();
       }
-    }, 5000);
+    }, FHIR_POLLING_TIME);
 
     return () => {
       cancelled = true;
@@ -306,7 +307,7 @@ export default function Home() {
 
     const interval = setInterval(() => {
       fetchPatients();
-    }, 30000);
+    }, FHIR_REFRESH_TIME);
     return () => clearInterval(interval);
   }, [isFhirReady]);
 

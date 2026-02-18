@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Modal, Select, Button, Group } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
+import { FHIR_POLLING_TIME } from "@/lib/constants";
 import { useEffect } from "react";
 
 /**
@@ -98,22 +99,22 @@ export default function AdminPatientsPage() {
           if (patientsResponse.fhir_ready) {
             setPatientsLoading(false);
           } else {
-            // FHIR not ready yet, retry after 2 seconds
+            // FHIR not ready yet, retry
             setTimeout(() => {
               if (!cancelled) {
                 checkFhirReady();
               }
-            }, 2000);
+            }, FHIR_POLLING_TIME);
           }
         }
       } catch (error) {
         console.error("Failed to check FHIR readiness:", error);
-        // On error, retry after 5 seconds
+        // On error, retry
         setTimeout(() => {
           if (!cancelled) {
             checkFhirReady();
           }
-        }, 5000);
+        }, FHIR_POLLING_TIME);
       }
     }
 

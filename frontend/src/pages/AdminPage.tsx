@@ -9,6 +9,7 @@ import { Container } from "@mantine/core";
 import Admin from "@/components/admin/Admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
+import { FHIR_POLLING_TIME } from "@/lib/constants";
 import type { SystemPermission } from "@/types/cbac";
 import { useEffect, useState } from "react";
 
@@ -140,12 +141,12 @@ export default function AdminPage() {
             );
             setPatientsLoading(false);
           } else {
-            // FHIR not ready yet, keep loading and retry after 2 seconds
+            // FHIR not ready yet, keep loading and retry
             setTimeout(() => {
               if (!cancelled) {
                 fetchPatients();
               }
-            }, 2000);
+            }, FHIR_POLLING_TIME);
           }
         }
       } catch (error) {
@@ -155,7 +156,7 @@ export default function AdminPage() {
           if (!cancelled) {
             fetchPatients();
           }
-        }, 5000);
+        }, FHIR_POLLING_TIME);
       }
     }
 
