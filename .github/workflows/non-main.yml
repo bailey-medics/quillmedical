@@ -260,11 +260,130 @@ jobs:
         run: semgrep --config .semgrep.yml --error
 
 
+  # ---------- Build docs (validate docs build before merging) ----------
+  docs_build:
+    runs-on: ubuntu-latest
+    name: Build documentation
+    timeout-minutes: 20
+    needs: [python_checks, typescript_checks, frontend_security]
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      # ---------- Frontend docs (Node + Yarn) ----------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Enable Corepack & pin Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.10.3 --activate
+          yarn --version
+
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.yarn/cache
+            frontend/.yarn/install-state.gz
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-docs-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-docs-
+            ${{ runner.os }}-yarn4-
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Cache Storybook & Vite build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+            frontend/storybook-static
+          key: ${{ runner.os }}-storybook-build-${{ hashFiles('frontend/src/**/*.{ts,tsx,js,jsx,json}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-build-
+
+      - name: Generate JSON from YAML for TypeScript types
+        working-directory: frontend
+        run: yarn generate:types
+
+      - name: Build Storybook static site
+        working-directory: frontend
+        run: yarn storybook:build
+
+      - name: Build frontend docs
+        working-directory: frontend
+        run: yarn docs:build
+
+      # ---------- Backend docs (Python + Poetry + MkDocs) ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-docs-py3.13-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-docs-py3.13-
+            ${{ runner.os }}-poetry-
+
+      - name: Install project docs deps via Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade poetry
+          poetry config virtualenvs.in-project true
+          cd backend
+          poetry install --no-interaction --no-ansi --with dev
+
+      - name: Export OpenAPI JSON for docs
+        working-directory: backend
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Copy prompts to docs for MkDocs
+        run: |
+          mkdir -p docs/docs/llm/prompts
+          cp -r .github/prompts/* docs/docs/llm/prompts/
+
+      - name: Build MkDocs site into /site
+        run: |
+          cd backend
+          poetry run mkdocs build -f ../docs/mkdocs.yml -d ../site
+
+      - name: Notify Slack on docs build failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Non-main docs build failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Non-main docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+
   # ---------- Merge to main (only on push, never from main) ----------
   merge-to-main:
     runs-on: ubuntu-latest
     name: Merge branch into main
-    needs: [python_checks, typescript_checks, frontend_security]
+    needs: [python_checks, typescript_checks, frontend_security, docs_build]
     if: github.event_name == 'push' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
