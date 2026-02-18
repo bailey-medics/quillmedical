@@ -539,13 +539,18 @@ export const TestClickCompletedSteps: Story = {
     // Navigate to step 2
     await userEvent.click(canvas.getByRole("button", { name: /Next/i }));
 
+    // Wait for step 2 to render
+    await waitFor(() =>
+      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    );
+
     // Navigate to step 3
     await userEvent.click(canvas.getByRole("button", { name: /Next/i }));
 
-    // Should be on step 3
-    await expect(
-      canvas.getByText("Review Your Information"),
-    ).toBeInTheDocument();
+    // Should be on step  3
+    await waitFor(() =>
+      expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+    );
 
     // Click back on step 1 via stepper
     const step1 = canvas.getByText("Personal Info").closest("button");
@@ -554,8 +559,10 @@ export const TestClickCompletedSteps: Story = {
     }
 
     // Should be back on step 1
-    await expect(
-      canvas.getByText("Enter your personal information"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        canvas.getByText("Enter your personal information"),
+      ).toBeInTheDocument(),
+    );
   },
 };
