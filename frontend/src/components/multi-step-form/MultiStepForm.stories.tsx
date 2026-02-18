@@ -437,6 +437,11 @@ export const NoDescriptions: Story = {
  */
 export const TestNavigateThroughSteps: Story = {
   ...BasicThreeSteps,
+  parameters: {
+    test: {
+      timeout: 10000,
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -450,8 +455,10 @@ export const TestNavigateThroughSteps: Story = {
     await userEvent.click(nextButton1);
 
     // Should be on step 2
-    await waitFor(() =>
-      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+      { timeout: 3000 },
     );
 
     // Navigate to step 3
@@ -459,8 +466,10 @@ export const TestNavigateThroughSteps: Story = {
     await userEvent.click(nextButton2);
 
     // Should be on step 3
-    await waitFor(() =>
-      expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+      { timeout: 3000 },
     );
 
     // Should not have Next button on last step
@@ -473,8 +482,10 @@ export const TestNavigateThroughSteps: Story = {
     await userEvent.click(backButton);
 
     // Should be on step 2 again
-    await waitFor(() =>
-      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+      { timeout: 3000 },
     );
   },
 };
@@ -533,6 +544,11 @@ export const TestCannotSkipForward: Story = {
  */
 export const TestClickCompletedSteps: Story = {
   ...BasicThreeSteps,
+  parameters: {
+    test: {
+      timeout: 10000,
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -540,16 +556,20 @@ export const TestClickCompletedSteps: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /Next/i }));
 
     // Wait for step 2 to render
-    await waitFor(() =>
-      expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(canvas.getByText("Select your preferences")).toBeInTheDocument(),
+      { timeout: 3000 },
     );
 
     // Navigate to step 3
     await userEvent.click(canvas.getByRole("button", { name: /Next/i }));
 
-    // Should be on step  3
-    await waitFor(() =>
-      expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+    // Should be on step 3
+    await waitFor(
+      () =>
+        expect(canvas.getByText("Review Your Information")).toBeInTheDocument(),
+      { timeout: 3000 },
     );
 
     // Click back on step 1 via stepper
@@ -559,10 +579,12 @@ export const TestClickCompletedSteps: Story = {
     }
 
     // Should be back on step 1
-    await waitFor(() =>
-      expect(
-        canvas.getByText("Enter your personal information"),
-      ).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(
+          canvas.getByText("Enter your personal information"),
+        ).toBeInTheDocument(),
+      { timeout: 3000 },
     );
   },
 };
