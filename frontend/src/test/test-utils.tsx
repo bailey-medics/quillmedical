@@ -10,7 +10,7 @@
 import { render } from "@testing-library/react";
 import type { RenderOptions } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
 
 /**
@@ -19,6 +19,8 @@ import type { ReactElement, ReactNode } from "react";
 interface AllProvidersOptions extends Omit<RenderOptions, "wrapper"> {
   /** Initial route for React Router */
   initialRoute?: string;
+  /** Route path pattern (e.g., "/admin/patients/:patientId") for route params */
+  routePath?: string;
 }
 
 /**
@@ -61,15 +63,39 @@ export function renderWithMantine(
  * Use this for testing components that use routing (Link, useNavigate)
  * and Mantine UI components.
  *
+ * If you need to test route parameters, provide both `routePath` and `initialRoute`:
  * @example
+ * // For a route with params like "/admin/patients/:patientId"
+ * const { getByRole } = renderWithRouter(<PatientPage />, {
+ *   routePath: "/admin/patients/:patientId",
+ *   initialRoute: "/admin/patients/patient-123"
+ * });
+ *
+ * @example
+ * // For simple routes without params
  * const { getByRole } = renderWithRouter(<LoginPage />);
  */
 export function renderWithRouter(
   ui: ReactElement,
   options?: AllProvidersOptions,
 ) {
-  const { initialRoute, ...renderOptions } = options ?? {};
+  const { initialRoute, routePath, ...renderOptions } = options ?? {};
 
+  // If a routePath is provided, use MemoryRouter with Routes to support params
+  if (routePath) {
+    const Wrapper = ({ children }: { children: ReactNode }) => (
+      <MemoryRouter initialEntries={[initialRoute || "/"]}>
+        <MantineProvider env="test">
+          <Routes>
+            <Route path={routePath} element={children} />
+          </Routes>
+        </MantineProvider>
+      </MemoryRouter>
+    );
+    return render(ui, { wrapper: Wrapper, ...renderOptions });
+  }
+
+  // Otherwise use BrowserRouter for simple routes
   if (initialRoute) {
     window.history.pushState({}, "Test page", initialRoute);
   }

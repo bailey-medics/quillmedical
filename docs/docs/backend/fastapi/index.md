@@ -168,6 +168,75 @@ def update_demographics(...):
     pass
 ```
 
+#### Permission-Based Access Control
+
+##### Defence-in-depth architecture
+
+The backend implements a multi-layered permission system:
+
+1. **Authentication layer**: JWT token validation
+2. **Permission layer**: Role/permission checks
+3. **Resource layer**: Ownership and assignment validation
+4. **Audit layer**: All access attempts logged
+
+##### Permission hierarchy
+
+```python
+SYSTEM_PERMISSIONS = {
+    "patient": 0,      # Lowest privileges
+    "staff": 1,        # Clinical staff
+    "admin": 2,        # Administrators
+    "superadmin": 3    # Highest privileges
+}
+```
+
+##### Usage in endpoints
+
+```python
+# Require minimum permission level
+@router.get("/admin/users")
+def list_users(
+    user: User = Depends(get_current_user)
+):
+    if user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(403, "Insufficient permissions")
+    # ... list users
+
+# Multiple permission checks
+@router.post("/patients/{id}/letters")
+def create_letter(
+    patient_id: str,
+    letter: LetterIn,
+    user: User = Depends(get_current_user)
+):
+    # Permission check
+    if not has_permission(user, "create_letter"):
+        raise HTTPException(403)
+
+    # Assignment check
+    if not is_assigned_to_patient(user, patient_id):
+        raise HTTPException(403, "Not assigned to patient")
+
+    # ... create letter
+```
+
+##### Security principles
+
+- **Source of truth**: Backend always validates permissions
+- **No trust**: Never trust client-side permission state
+- **Fail-safe**: Default deny, explicit grants required
+- **Consistent errors**: Generic 403 messages prevent information disclosure
+- **Audit logging**: All permission checks logged for compliance
+
+##### Integration with frontend
+
+The backend permission system works with frontend route guards:
+
+- Backend: Enforces access rules (security)
+- Frontend: Hides inaccessible features (UX)
+- Both: Use same permission hierarchy
+- Defence in depth: Multiple validation layers
+
 ### Dependency Injection
 
 FastAPI's dependency injection provides:

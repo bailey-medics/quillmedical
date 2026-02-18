@@ -77,6 +77,23 @@ The codebase uses automated tools to maintain consistent formatting and catch co
 - Secure session management with automatic expiry
 - User permissions control who can access what data
 
+### Permission-Based Access Control
+
+Quill Medical uses a defence-in-depth security architecture:
+
+- **Backend validation** – All permissions checked server-side (source of truth)
+- **Frontend protection** – Hides inaccessible features for better user experience
+- **Tiered security** – Different user types receive appropriate error responses
+- **Permission hierarchy** – Patient → Staff → Admin → Superadmin
+- **Fail-safe defaults** – Access denied unless explicitly granted
+
+This approach ensures:
+
+- Patients cannot access administrative features
+- Staff can only access assigned patients
+- Admins have appropriate oversight capabilities
+- All access attempts are logged for compliance
+
 ### Database Management
 
 - Changes to database structure are tracked and versioned

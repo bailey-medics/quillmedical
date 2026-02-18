@@ -51,6 +51,7 @@ import TotpSetup from "./pages/TotpSetup";
 import { AuthProvider } from "./auth/AuthContext";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
+import RequirePermission from "./auth/RequirePermission";
 import LoginPage from "./pages/LoginPage";
 
 // Use Vite's BASE_URL so the client router knows it's served under `/app/`.
@@ -93,24 +94,126 @@ const router = createBrowserRouter(
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
-        { path: "/admin", element: <AdminPage /> },
-        { path: "/admin/users", element: <AdminUsersPage /> },
-        { path: "/admin/users/new", element: <NewUserPage /> },
-        { path: "/admin/users/list", element: <ViewAllUsersPage /> },
-        { path: "/admin/users/edit", element: <EditUserPage /> },
-        { path: "/admin/users/deactivate", element: <DeactivateUserPage /> },
-        { path: "/admin/users/:id/edit", element: <NewUserPage /> },
-        { path: "/admin/patients", element: <AdminPatientsPage /> },
-        { path: "/admin/patients/new", element: <NewPatientPage /> },
-        { path: "/admin/patients/list", element: <ViewAllPatientsPage /> },
-        { path: "/admin/patients/:patientId", element: <PatientAdminPage /> },
-        { path: "/admin/patients/edit", element: <EditPatientPage /> },
+        {
+          path: "/admin",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users",
+          element: (
+            <RequirePermission level="admin">
+              <AdminUsersPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/new",
+          element: (
+            <RequirePermission level="admin">
+              <NewUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/list",
+          element: (
+            <RequirePermission level="admin">
+              <ViewAllUsersPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/deactivate",
+          element: (
+            <RequirePermission level="admin">
+              <DeactivateUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/:id/edit",
+          element: (
+            <RequirePermission level="admin">
+              <NewUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPatientsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/new",
+          element: (
+            <RequirePermission level="admin">
+              <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/list",
+          element: (
+            <RequirePermission level="admin">
+              <ViewAllPatientsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId",
+          element: (
+            <RequirePermission level="admin">
+              <PatientAdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditPatientPage />
+            </RequirePermission>
+          ),
+        },
         {
           path: "/admin/patients/deactivate",
-          element: <DeactivatePatientPage />,
+          element: (
+            <RequirePermission level="admin">
+              <DeactivatePatientPage />
+            </RequirePermission>
+          ),
         },
-        { path: "/admin/patients/:id/edit", element: <NewPatientPage /> },
-        { path: "/admin/permissions", element: <AdminPermissionsPage /> },
+        {
+          path: "/admin/patients/:id/edit",
+          element: (
+            <RequirePermission level="admin">
+              <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/permissions",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPermissionsPage />
+            </RequirePermission>
+          ),
+        },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),

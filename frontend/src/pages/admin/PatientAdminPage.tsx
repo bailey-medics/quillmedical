@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Container,
   Stack,
@@ -22,7 +22,6 @@ import {
 import { IconPencil, IconAlertCircle, IconUser } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header/PageHeader";
 import { api } from "@/lib/api";
-import { useAuth } from "@/auth/AuthContext";
 
 /**
  * Patient FHIR Resource (simplified)
@@ -58,24 +57,11 @@ interface LinkedUser {
  */
 export default function PatientAdminPage() {
   const { patientId } = useParams<{ patientId: string }>();
-  const navigate = useNavigate();
-  const { state } = useAuth();
   const [patient, setPatient] = useState<PatientResource | null>(null);
   // TODO: Wire up setLinkedUser when backend endpoint exists for fetching linked user
   const [linkedUser] = useState<LinkedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Check admin permissions
-  useEffect(() => {
-    if (
-      state.status === "authenticated" &&
-      state.user.system_permissions !== "admin" &&
-      state.user.system_permissions !== "superadmin"
-    ) {
-      navigate("/");
-    }
-  }, [state, navigate]);
 
   useEffect(() => {
     async function fetchPatientData() {

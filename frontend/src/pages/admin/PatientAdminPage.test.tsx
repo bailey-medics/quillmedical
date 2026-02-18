@@ -42,54 +42,20 @@ const mockUsers: Record<string, User> = {
 describe("PatientAdminPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
 
-  describe("Permission checking", () => {
-    it("redirects non-admin users to home", async () => {
-      const navigate = vi.fn();
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.staff,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-
-      // Mock useNavigate
-      vi.mock("react-router-dom", async () => {
-        const actual = await vi.importActual("react-router-dom");
-        return {
-          ...actual,
-          useNavigate: () => navigate,
-          useParams: () => ({ patientId: "patient-123" }),
-        };
-      });
-
-      renderWithRouter(<PatientAdminPage />, {
-        initialRoute: "/admin/patients/patient-123",
-      });
-
-      await waitFor(() => {
-        expect(navigate).toHaveBeenCalledWith("/");
-      });
+    // Mock auth context to return admin user (permission checking is done by RequirePermission HOC)
+    vi.spyOn(authContext, "useAuth").mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: mockUsers.admin,
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+      reload: vi.fn(),
     });
   });
 
   describe("Patient details display", () => {
-    beforeEach(() => {
-      vi.spyOn(authContext, "useAuth").mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: mockUsers.admin,
-        },
-        login: vi.fn(),
-        logout: vi.fn(),
-        reload: vi.fn(),
-      });
-    });
-
     it("displays patient name from API", async () => {
       const mockPatient = {
         id: "patient-123",
@@ -101,11 +67,13 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
       await waitFor(() => {
-        expect(screen.getByText("John Doe")).toBeInTheDocument();
+        const names = screen.getAllByText("John Doe");
+        expect(names.length).toBe(2); // Appears in title and details
       });
     });
 
@@ -120,6 +88,7 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
@@ -139,11 +108,12 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Other")).toBeInTheDocument();
+        expect(screen.getByText("other")).toBeInTheDocument();
       });
     });
 
@@ -164,6 +134,7 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
@@ -184,6 +155,7 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-456",
       });
 
@@ -217,6 +189,7 @@ describe("PatientAdminPage", () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
@@ -247,6 +220,7 @@ describe("PatientAdminPage", () => {
       );
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
@@ -275,6 +249,7 @@ describe("PatientAdminPage", () => {
       );
 
       renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
         initialRoute: "/admin/patients/patient-123",
       });
 
