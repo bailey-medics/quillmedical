@@ -2,10 +2,11 @@
  * View All Patients Page
  *
  * Displays all registered patient records in a table format.
- * Allows administrators to view patient demographics.
+ * Allows administrators to view patient demographics and navigate to patient admin pages.
  */
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Stack,
@@ -29,10 +30,12 @@ interface Patient {
  * View All Patients Page
  *
  * Fetches and displays all patient records from the FHIR server.
+ * Clicking on a patient navigates to their admin page.
  *
  * @returns View all patients page component
  */
 export default function ViewAllPatientsPage() {
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +115,11 @@ export default function ViewAllPatientsPage() {
             </Table.Thead>
             <Table.Tbody>
               {patients.map((patient) => (
-                <Table.Tr key={patient.id}>
+                <Table.Tr
+                  key={patient.id}
+                  onClick={() => navigate(`/admin/patients/${patient.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
                   <Table.Td>
                     <Text fw={500}>{formatName(patient.name)}</Text>
                   </Table.Td>
