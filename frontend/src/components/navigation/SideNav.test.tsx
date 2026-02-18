@@ -128,10 +128,10 @@ describe("SideNav Component", () => {
   });
 
   describe("Layout styling", () => {
-    it("has minimum width of 100px", () => {
+    it("has minimum width of 6.25rem", () => {
       const { container } = renderWithAuth(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
-      expect(nav).toHaveStyle({ minWidth: "100px" });
+      expect(nav).toHaveStyle({ minWidth: "6.25rem" });
     });
 
     it("has 100% height", () => {
@@ -143,7 +143,7 @@ describe("SideNav Component", () => {
     it("has right padding", () => {
       const { container } = renderWithAuth(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
-      expect(nav).toHaveStyle({ paddingRight: "14px" });
+      expect(nav).toHaveStyle({ paddingRight: "0.875rem" });
     });
   });
 });

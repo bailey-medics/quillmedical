@@ -12,7 +12,7 @@
 
 import { Button, Group, Paper, Stack, Stepper } from "@mantine/core";
 import { useState, type ReactNode } from "react";
-import { IconChevronLeft } from "@tabler/icons-react";
+import { IconChevronLeft, IconCheck } from "@tabler/icons-react";
 
 /**
  * Individual step configuration
@@ -72,6 +72,7 @@ export default function MultiStepForm({
   onStepChange,
 }: Props) {
   const [internalStep, setInternalStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   // Use controlled step if provided, otherwise use internal state
   const activeStep = controlledStep ?? internalStep;
@@ -81,6 +82,12 @@ export default function MultiStepForm({
   const isLastStep = activeStep === steps.length - 1;
   const currentStepConfig = steps[activeStep];
 
+  // Calculate the highest step that can be accessed (current or any completed step)
+  const highestAccessibleStep = Math.max(
+    activeStep,
+    ...Array.from(completedSteps),
+  );
+
   async function nextStep() {
     // Run validation if provided
     if (currentStepConfig.validate) {
@@ -89,6 +96,8 @@ export default function MultiStepForm({
     }
 
     if (!isLastStep) {
+      // Mark current step as completed
+      setCompletedSteps((prev) => new Set(prev).add(activeStep));
       setActiveStep(activeStep + 1);
     }
   }
@@ -96,6 +105,13 @@ export default function MultiStepForm({
   function prevStep() {
     if (!isFirstStep) {
       setActiveStep(activeStep - 1);
+    }
+  }
+
+  function handleStepClick(stepIndex: number) {
+    // Only allow clicking on completed steps or steps up to the highest accessible step
+    if (stepIndex <= highestAccessibleStep) {
+      setActiveStep(stepIndex);
     }
   }
 
@@ -107,12 +123,16 @@ export default function MultiStepForm({
 
   return (
     <Stack gap="lg">
-      <Stepper active={activeStep} onStepClick={setActiveStep}>
+      <Stepper
+        active={activeStep}
+        onStepClick={handleStepClick}
+        completedIcon={<IconCheck size={18} />}
+      >
         {steps.map((step, index) => (
           <Stepper.Step
             key={index}
             label={step.label}
-            description={step.description}
+            allowStepSelect={index <= highestAccessibleStep}
           />
         ))}
       </Stepper>

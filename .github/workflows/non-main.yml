@@ -119,18 +119,18 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Non-main python ${{ matrix.task }} checks failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Non-main python ${{ matrix.task }} checks failed*
-
-                    *Commit:* ${{ github.event.head_commit.message }}
-                    *Author:* ${{ github.actor }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+            {
+              "text": "❌ Non-main python ${{ matrix.task }} checks failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Non-main python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
@@ -224,18 +224,18 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Non-main TypeScript ${{ matrix.task }} checks failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Non-main TypeScript ${{ matrix.task }} checks failed*
-
-                    *Commit:* ${{ github.event.head_commit.message }}
-                    *Author:* ${{ github.actor }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+            {
+              "text": "❌ Non-main TypeScript ${{ matrix.task }} checks failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Non-main TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
 
   # ---------- Frontend security (Semgrep) ----------
   frontend_security:

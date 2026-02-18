@@ -52,7 +52,13 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
 const decorators = [
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Story: any) => {
+  (Story: any, context: any) => {
+    // Allow stories to opt out of the default router wrapper
+    // by setting parameters.disableDefaultRouter = true
+    if (context.parameters.disableDefaultRouter) {
+      return <Story />;
+    }
+
     // Create a memory router with a single route for the story
     // This supports useBlocker and other data router features
     const router = createMemoryRouter([

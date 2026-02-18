@@ -100,7 +100,7 @@ describe("NotFoundLayout Component", () => {
       const containerElement = container.querySelector(
         ".mantine-Container-root",
       );
-      expect(containerElement).toHaveStyle({ padding: "24px" });
+      expect(containerElement).toHaveStyle({ padding: "1.5rem" });
     });
   });
 
@@ -126,7 +126,7 @@ describe("NotFoundLayout Component", () => {
     it("renders button with margin top", () => {
       const { container } = renderWithMantine(<NotFoundLayout />);
       const button = container.querySelector("a.mantine-Button-root");
-      expect(button).toHaveStyle({ marginTop: "20px" });
+      expect(button).toHaveStyle({ marginTop: "1.25rem" });
     });
   });
 

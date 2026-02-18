@@ -207,7 +207,7 @@ export default function MessagingTriagePayment({
         flexDirection: "column",
       }}
     >
-      <Box style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+      <Box style={{ padding: "0.75rem", borderBottom: "1px solid #eee" }}>
         <Box
           style={{
             display: "flex",
@@ -220,11 +220,11 @@ export default function MessagingTriagePayment({
         </Box>
       </Box>
 
-      <Box style={{ flex: 1, padding: 12 }}>
+      <Box style={{ flex: 1, padding: "0.75rem" }}>
         <Messaging messages={messages} currentUserId={patientId} />
       </Box>
 
-      <Box style={{ padding: 12, borderTop: "1px solid #eee" }}>
+      <Box style={{ padding: "0.75rem", borderTop: "1px solid #eee" }}>
         <Box style={{ marginBottom: 8 }}>
           <Group gap="xs">
             <Button

@@ -1,4 +1,10 @@
-# Create Implementation Roadmap
+---
+agent: "agent"
+name: create-roadmap
+description: Create an implementation roadmap
+---
+
+# Create an implementation roadmap
 
 ## Task
 

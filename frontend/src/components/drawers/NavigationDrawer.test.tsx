@@ -85,24 +85,25 @@ describe("NavigationDrawer Component", () => {
   });
 
   describe("Width customization", () => {
-    it("uses default width of 260px", () => {
+    it("uses default width of 16.25rem", () => {
       const { container } = renderWithMantine(
         <NavigationDrawer opened={true} onClose={vi.fn()}>
           <div>Content</div>
         </NavigationDrawer>,
       );
       const paper = container.querySelector("#app-navbar");
-      expect(paper).toHaveStyle({ width: "260px" });
+      expect(paper).toHaveStyle({ width: "16.25rem" });
     });
 
     it("accepts custom width", () => {
+      const customWidth = "18.75rem";
       const { container } = renderWithMantine(
-        <NavigationDrawer opened={true} onClose={vi.fn()} width={300}>
+        <NavigationDrawer opened={true} onClose={vi.fn()} width={customWidth}>
           <div>Content</div>
         </NavigationDrawer>,
       );
       const paper = container.querySelector("#app-navbar");
-      expect(paper).toHaveStyle({ width: "300px" });
+      expect(paper).toHaveStyle({ width: customWidth });
     });
   });
 

@@ -1,3 +1,9 @@
+---
+agent: "agent"
+name: update-docs-docs
+description: Review and update documentation to match the codebase
+---
+
 # Review and update documentation to match the codebase
 
 1. Read all code including Python, Typescript, Storybook stories and components

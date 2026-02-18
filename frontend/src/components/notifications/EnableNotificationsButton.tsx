@@ -56,7 +56,7 @@ export default function EnableNotificationsButton() {
       onClick={enable}
       disabled={state === "busy" || state === "ok"}
       style={{
-        maxWidth: "150px",
+        maxWidth: "9.375rem",
         width: "100%", // make it shrink nicely on small screens
         padding: "0.5rem 1rem", // optional: keep it comfy
       }}

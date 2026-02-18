@@ -546,6 +546,33 @@ class AdminUserCreateIn(BaseModel):
     system_permissions: str = "patient"
 
 
+class AdminUserUpdateIn(BaseModel):
+    """Admin User Update Input Schema.
+
+    Pydantic model for updating existing user accounts via admin endpoints.
+    All fields are optional - only provided fields will be updated.
+
+    Attributes:
+        name: Full name (optional).
+        username: Unique username (optional).
+        email: Email address (optional).
+        password: New password (optional, only if changing).
+        base_profession: Base profession ID (optional).
+        additional_competencies: Competencies to add (optional).
+        removed_competencies: Competencies to remove (optional).
+        system_permissions: System permission level (optional).
+    """
+
+    name: str | None = None
+    username: str | None = None
+    email: str | None = None
+    password: str | None = None
+    base_profession: str | None = None
+    additional_competencies: list[str] | None = None
+    removed_competencies: list[str] | None = None
+    system_permissions: str | None = None
+
+
 @router.post("/users")
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
@@ -624,6 +651,114 @@ def create_user_with_cbac(
 
     return {
         "detail": "created",
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    }
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: int,
+    payload: AdminUserUpdateIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Update User Account.
+
+    Updates an existing user account with new CBAC settings and/or credentials.
+    Only provided fields will be updated - omitted fields remain unchanged.
+    Password is only updated if provided (optional for security).
+
+    Requires admin or superadmin system permissions.
+
+    Validation Rules:
+    - Only updates fields that are provided (not None)
+    - Email must be unique if being changed
+    - Username must be unique if being changed
+    - Password must be at least 8 characters if being changed
+    - Requesting user must have admin or superadmin permissions
+
+    Args:
+        user_id: ID of the user to update.
+        payload: User update data (all fields optional).
+        current_user: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Success response with updated user details.
+
+    Raises:
+        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 404 if user not found.
+        HTTPException: 400 if validation fails or constraints violated.
+    """
+    # Check authorization
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required to update users",
+        )
+
+    # Fetch user
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate and update username
+    if payload.username is not None:
+        username = payload.username.strip()
+        if username != user.username:
+            existing = db.scalar(select(User).where(User.username == username))
+            if existing:
+                raise HTTPException(
+                    status_code=400, detail="Username already exists"
+                )
+            user.username = username
+
+    # Validate and update email
+    if payload.email is not None:
+        email = payload.email.strip()
+        if email != user.email:
+            if not email:
+                raise HTTPException(
+                    status_code=400, detail="Email is required"
+                )
+            existing = db.scalar(select(User).where(User.email == email))
+            if existing:
+                raise HTTPException(
+                    status_code=400, detail="Email already exists"
+                )
+            user.email = email
+
+    # Update password if provided
+    if payload.password is not None and payload.password:
+        if len(payload.password) < 8:
+            raise HTTPException(
+                status_code=400,
+                detail="Password must be at least 8 characters",
+            )
+        user.password_hash = hash_password(payload.password)
+
+    # Update CBAC fields if provided
+    if payload.base_profession is not None:
+        user.base_profession = payload.base_profession
+
+    if payload.additional_competencies is not None:
+        user.additional_competencies = payload.additional_competencies
+
+    if payload.removed_competencies is not None:
+        user.removed_competencies = payload.removed_competencies
+
+    if payload.system_permissions is not None:
+        user.system_permissions = payload.system_permissions
+
+    # Commit changes
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "detail": "updated",
         "id": user.id,
         "username": user.username,
         "email": user.email,
@@ -886,6 +1021,64 @@ def list_users(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/users/{user_id}")
+def get_user(
+    user_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Get User Details.
+
+    Retrieves detailed information about a specific user including their
+    CBAC settings (base profession, competencies) and system permissions.
+    Used by the admin interface when editing user accounts.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        user_id: ID of the user to retrieve.
+        current_user: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: User details with keys:
+            - id: User ID
+            - username: Username
+            - email: Email address
+            - name: Full name (currently same as username)
+            - base_profession: Base profession ID
+            - additional_competencies: Array of additional competency IDs
+            - removed_competencies: Array of removed competency IDs
+            - system_permissions: System permission level
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if user not found.
+    """
+    # Check permissions
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    # Fetch user
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "name": user.username,  # TODO: Add name field to User model
+        "base_profession": user.base_profession,
+        "additional_competencies": user.additional_competencies or [],
+        "removed_competencies": user.removed_competencies or [],
+        "system_permissions": user.system_permissions,
+    }
 
 
 @router.post("/auth/refresh")
@@ -1278,6 +1471,128 @@ def create_patient_in_fhir(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create FHIR patient: {e}"
+        ) from e
+
+
+@router.get("/patients/{patient_id}")
+def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
+    """Get Single Patient from FHIR.
+
+    Retrieves a specific patient's demographics from the FHIR server by ID.
+    Returns the complete FHIR R4 Patient resource including name, birth date,
+    gender, and identifiers. Used by the admin interface when editing patient
+    records.
+
+    Args:
+        patient_id: FHIR Patient resource ID to retrieve.
+        u: Currently authenticated user (any role can view patients).
+
+    Returns:
+        dict: Complete FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR server communication fails.
+    """
+    try:
+        patient = read_fhir_patient(patient_id)
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        # Mypy type narrowing: patient is now guaranteed to be dict[str, Any]
+        assert patient is not None
+        return patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve patient: {e}"
+        ) from e
+
+
+@router.patch("/patients/{patient_id}")
+def update_patient(
+    patient_id: str,
+    data: FHIRPatientCreateIn,
+    u: User = DEP_CURRENT_USER,
+) -> dict[str, Any]:
+    """Update Patient in FHIR.
+
+    Updates an existing patient's demographics in the FHIR server. Accepts
+    the same fields as patient creation (name, birth_date, gender, identifiers).
+    Used by the admin interface when editing patient records.
+
+    Args:
+        patient_id: FHIR Patient resource ID to update.
+        data: Updated patient demographics.
+        u: Currently authenticated user (any role can update patients).
+
+    Returns:
+        dict: Complete updated FHIR Patient resource.
+
+    Raises:
+        HTTPException: 404 if patient not found in FHIR server.
+        HTTPException: 500 if FHIR update operation fails.
+    """
+    try:
+        # Read existing patient to verify it exists
+        existing = read_fhir_patient(patient_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Build update dict with provided fields
+        updates: dict[str, Any] = {}
+
+        # Update name
+        if data.given_name or data.family_name:
+            updates["name"] = [
+                {
+                    "use": "official",
+                    "given": [data.given_name] if data.given_name else [],
+                    "family": data.family_name if data.family_name else "",
+                }
+            ]
+
+        # Update birth date
+        if data.birth_date:
+            updates["birthDate"] = data.birth_date
+
+        # Update gender
+        if data.gender:
+            updates["gender"] = data.gender
+
+        # Update identifiers (NHS number, MRN)
+        identifiers = []
+        if data.nhs_number:
+            identifiers.append(
+                {
+                    "system": "https://fhir.nhs.uk/Id/nhs-number",
+                    "value": data.nhs_number,
+                }
+            )
+        if data.mrn:
+            identifiers.append(
+                {
+                    "system": "http://hospital.example.org/mrn",
+                    "value": data.mrn,
+                }
+            )
+        if identifiers:
+            updates["identifier"] = identifiers
+
+        # Perform update
+        updated_patient = update_fhir_patient(patient_id, updates)
+        if not updated_patient:
+            raise HTTPException(
+                status_code=500, detail="Failed to update patient"
+            )
+        # Mypy type narrowing: updated_patient is now guaranteed to be dict[str, Any]
+        assert updated_patient is not None
+        return updated_patient
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update patient: {e}"
         ) from e
 
 

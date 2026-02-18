@@ -1,3 +1,9 @@
+---
+agent: "agent"
+name: update-nav
+description: Update navigation
+---
+
 # Update navigation
 
 Please can you:

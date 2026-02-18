@@ -1,3 +1,9 @@
+---
+agent: "agent"
+name: create-architecture
+description: Create architecture documentation
+---
+
 # Create Architecture Documentation
 
 ## Task

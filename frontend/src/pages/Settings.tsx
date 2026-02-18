@@ -1,6 +1,7 @@
 import { Button, Card, Group, Stack, Switch, Text, Title } from "@mantine/core";
 import { useState } from "react";
 import EnableNotificationsButton from "@/components/notifications/EnableNotificationsButton";
+import PageHeader from "@/components/page-header/PageHeader";
 
 /**
  * Settings page component.
@@ -25,7 +26,7 @@ export default function Settings() {
 
   return (
     <Stack style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
-      <Title order={2}>Settings</Title>
+      <PageHeader title="Settings" size="md" />
       <Card shadow="sm">
         <EnableNotificationsButton />
       </Card>

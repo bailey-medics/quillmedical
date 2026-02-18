@@ -1,4 +1,10 @@
-# Code documentation
+---
+agent: "agent"
+name: in-code-documentation
+description: In code documentation
+---
+
+# In code documentation
 
 ## Review all code
 

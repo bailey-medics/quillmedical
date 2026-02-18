@@ -3,6 +3,7 @@
  *
  * Renders the actual navigation links and items for the side navigation.
  * Includes Home, Settings, About, and Logout links with optional icons.
+ * Admin section uses NestedNavLink for hierarchical navigation.
  * Separated from SideNav to allow reuse in drawer/desktop contexts.
  */
 
@@ -10,6 +11,7 @@ import { NavLink, Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import NavIcon from "../icons/NavIcon";
+import NestedNavLink, { type NavItem } from "./NestedNavLink";
 
 /**
  * SideNavContent Props
@@ -19,7 +21,7 @@ type Props = {
   onNavigate?: () => void;
   /** Whether to display icons next to labels */
   showIcons?: boolean;
-  /** Font size for navigation labels (default: 20px) */
+  /** Font size for navigation labels (default: 1.25rem) */
   fontSize?: number;
 };
 
@@ -35,7 +37,7 @@ type Props = {
 export default function SideNavContent({
   onNavigate,
   showIcons = false,
-  fontSize = 20,
+  fontSize = 1.25,
 }: Props) {
   const { logout, state } = useAuth();
   const navigate = useNavigate();
@@ -47,8 +49,32 @@ export default function SideNavContent({
       state.user.system_permissions === "superadmin");
 
   const navLinkStyles = {
-    root: { fontSize: `${fontSize}px` },
-    label: { fontSize: `${fontSize}px` },
+    root: { fontSize: `${fontSize}rem` },
+    label: { fontSize: `${fontSize}rem` },
+  };
+
+  // Admin navigation structure with children
+  const adminNavItem: NavItem = {
+    label: "Admin",
+    href: "/admin",
+    icon: showIcons ? "adjustments" : undefined,
+    children: [
+      {
+        label: "Users",
+        href: "/admin/users",
+        icon: showIcons ? "user" : undefined,
+      },
+      {
+        label: "Patients",
+        href: "/admin/patients",
+        icon: showIcons ? "file" : undefined,
+      },
+      {
+        label: "Permissions",
+        href: "/admin/permissions",
+        icon: showIcons ? "settings" : undefined,
+      },
+    ],
   };
 
   return (
@@ -81,14 +107,11 @@ export default function SideNavContent({
         leftSection={showIcons ? <NavIcon name="settings" /> : undefined}
       />
       {hasAdminAccess && (
-        <NavLink
-          label="Admin"
-          styles={navLinkStyles}
-          onClick={() => {
-            navigate("/admin");
-            if (onNavigate) onNavigate();
-          }}
-          leftSection={showIcons ? <NavIcon name="adjustments" /> : undefined}
+        <NestedNavLink
+          item={adminNavItem}
+          onNavigate={onNavigate}
+          showIcons={showIcons}
+          baseFontSize={fontSize}
         />
       )}
       <NavLink

@@ -9,6 +9,7 @@ import { Container } from "@mantine/core";
 import Admin from "@/components/admin/Admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
+import { FHIR_POLLING_TIME } from "@/lib/constants";
 import type { SystemPermission } from "@/types/cbac";
 import { useEffect, useState } from "react";
 
@@ -30,6 +31,14 @@ interface ApiPatient {
 }
 
 /**
+ * Patients API Response (including FHIR readiness flag)
+ */
+interface PatientsApiResponse {
+  patients: ApiPatient[];
+  fhir_ready: boolean;
+}
+
+/**
  * Admin Page
  *
  * Wraps the Admin component and provides it with user permissions from
@@ -45,7 +54,8 @@ export default function AdminPage() {
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>(
     [],
   );
-  const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [patientsLoading, setPatientsLoading] = useState(true);
 
   // Extract system permissions from auth state
   const userPermissions: SystemPermission =
@@ -53,28 +63,23 @@ export default function AdminPage() {
       ? (state.user.system_permissions as SystemPermission)
       : "patient";
 
-  // Fetch users and patients
+  // Fetch users (loads immediately)
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchData() {
+    async function fetchUsers() {
       // Only fetch if user is authenticated and has admin permissions
       if (
         state.status !== "authenticated" ||
         !["admin", "superadmin"].includes(userPermissions)
       ) {
-        setLoading(false);
+        setUsersLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
-
-        // Fetch users and patients in parallel
-        const [usersResponse, patientsResponse] = await Promise.all([
-          api.get<{ users: ApiUser[] }>("/users"),
-          api.get<{ patients: ApiPatient[] }>("/patients"),
-        ]);
+        setUsersLoading(true);
+        const usersResponse = await api.get<{ users: ApiUser[] }>("/users");
 
         if (!cancelled) {
           setUsers(
@@ -84,29 +89,78 @@ export default function AdminPage() {
               email: u.email,
             })),
           );
-
-          setPatients(
-            patientsResponse.patients.map((p) => {
-              const name = p.name?.[0];
-              const givenName = name?.given?.[0] || "";
-              const familyName = name?.family || "";
-              return {
-                id: p.id,
-                name: `${givenName} ${familyName}`.trim() || "Unknown",
-              };
-            }),
-          );
         }
       } catch (error) {
-        console.error("Failed to fetch admin data:", error);
+        console.error("Failed to fetch users:", error);
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setUsersLoading(false);
         }
       }
     }
 
-    fetchData();
+    fetchUsers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, userPermissions]);
+
+  // Fetch patients (waits for FHIR to be ready)
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchPatients() {
+      // Only fetch if user is authenticated and has admin permissions
+      if (
+        state.status !== "authenticated" ||
+        !["admin", "superadmin"].includes(userPermissions)
+      ) {
+        setPatientsLoading(false);
+        return;
+      }
+
+      try {
+        setPatientsLoading(true);
+        const patientsResponse =
+          await api.get<PatientsApiResponse>("/patients");
+
+        if (!cancelled) {
+          // Check if FHIR is ready
+          if (patientsResponse.fhir_ready) {
+            setPatients(
+              patientsResponse.patients.map((p) => {
+                const name = p.name?.[0];
+                const givenName = name?.given?.[0] || "";
+                const familyName = name?.family || "";
+                return {
+                  id: p.id,
+                  name: `${givenName} ${familyName}`.trim() || "Unknown",
+                };
+              }),
+            );
+            setPatientsLoading(false);
+          } else {
+            // FHIR not ready yet, keep loading and retry
+            setTimeout(() => {
+              if (!cancelled) {
+                fetchPatients();
+              }
+            }, FHIR_POLLING_TIME);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch patients:", error);
+        // On error, stop loading after a delay and retry
+        setTimeout(() => {
+          if (!cancelled) {
+            fetchPatients();
+          }
+        }, FHIR_POLLING_TIME);
+      }
+    }
+
+    fetchPatients();
 
     return () => {
       cancelled = true;
@@ -124,7 +178,8 @@ export default function AdminPage() {
         userPermissions={userPermissions}
         existingUsers={users}
         existingPatients={patients}
-        loading={loading}
+        usersLoading={usersLoading}
+        patientsLoading={patientsLoading}
       />
     </Container>
   );

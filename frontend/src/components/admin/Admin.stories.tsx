@@ -14,10 +14,6 @@ const meta = {
   parameters: {
     layout: "padded",
   },
-  args: {
-    onLinkUserPatient: () => console.log("User-patient link created"),
-    onUpdatePermissions: () => console.log("Permissions updated"),
-  },
 } satisfies Meta<typeof Admin>;
 
 export default meta;
@@ -79,8 +75,25 @@ export const AdminView: Story = {
 export const LoadingState: Story = {
   args: {
     userPermissions: "superadmin",
-    loading: true,
+    usersLoading: true,
+    patientsLoading: true,
     existingUsers: sampleUsers,
     existingPatients: samplePatients,
+  },
+};
+
+/**
+ * Patients Loading State
+ *
+ * Shows the admin interface while FHIR is initializing.
+ * Users loaded immediately, but patients still loading.
+ */
+export const PatientsLoadingState: Story = {
+  args: {
+    userPermissions: "superadmin",
+    usersLoading: false,
+    patientsLoading: true,
+    existingUsers: sampleUsers,
+    existingPatients: [],
   },
 };

@@ -24,15 +24,18 @@ import {
   Badge,
   Divider,
   Paper,
+  Loader,
+  Center,
 } from "@mantine/core";
-import { useState } from "react";
-import { useNavigate, useBlocker } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
 } from "@/components/multi-step-form/MultiStepForm";
 import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
+import PageHeader from "@/components/page-header/PageHeader";
 import type {
   BaseProfessionId,
   CompetencyId,
@@ -64,10 +67,12 @@ function Step1BasicDetails({
   formData,
   setFormData,
   errors,
+  isEditMode = false,
 }: Omit<StepContentProps, "nextStep" | "prevStep" | "onCancel"> & {
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
   errors: Record<string, string>;
+  isEditMode?: boolean;
 }) {
   const professionOptions = baseProfessionsData.base_professions.map((p) => ({
     value: p.id,
@@ -76,13 +81,13 @@ function Step1BasicDetails({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Basic Details</Title>
+      <Title order={3}>Basic details</Title>
       <Text size="sm" c="dimmed">
         Enter the user's basic information and select their base profession.
       </Text>
 
       <TextInput
-        label="Full Name"
+        label="Full name"
         placeholder="Dr Jane Smith"
         required
         value={formData.name}
@@ -116,19 +121,28 @@ function Step1BasicDetails({
       />
 
       <TextInput
-        label="Initial Password"
-        placeholder="Must be at least 8 characters"
-        required
+        label={isEditMode ? "New password (optional)" : "Initial password"}
+        placeholder={
+          isEditMode
+            ? "Leave blank to keep current password"
+            : "Must be at least 8 characters"
+        }
+        required={!isEditMode}
         type="password"
         value={formData.password}
         onChange={(e) =>
           setFormData({ ...formData, password: e.currentTarget.value })
         }
         error={errors.password}
+        description={
+          isEditMode
+            ? "Only enter a new password if you want to change it"
+            : undefined
+        }
       />
 
       <Select
-        label="Base Profession"
+        label="Base profession"
         placeholder="Select base profession"
         data={professionOptions}
         required
@@ -169,7 +183,7 @@ function Step2Competencies({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Competency Configuration</Title>
+      <Title order={3}>Competency configuration</Title>
       <Text size="sm" c="dimmed">
         Configure additional or removed competencies for this user.
       </Text>
@@ -186,7 +200,7 @@ function Step2Competencies({
       )}
 
       <MultiSelect
-        label="Additional Competencies"
+        label="Additional competencies"
         description="Add competencies beyond the base profession"
         placeholder="Select additional competencies"
         data={competencyOptions}
@@ -202,7 +216,7 @@ function Step2Competencies({
       />
 
       <MultiSelect
-        label="Removed Competencies"
+        label="Removed competencies"
         description="Remove competencies from the base profession"
         placeholder="Select competencies to remove"
         data={competencyOptions.filter((c) =>
@@ -244,13 +258,13 @@ function Step3Permissions({
 
   return (
     <Stack gap="md">
-      <Title order={3}>System Permissions & Review</Title>
+      <Title order={3}>System permissions & review</Title>
       <Text size="sm" c="dimmed">
         Set system permissions and review the user details.
       </Text>
 
       <Select
-        label="System Permission Level"
+        label="System permission level"
         data={permissionOptions}
         value={formData.systemPermissions}
         onChange={(value) =>
@@ -328,17 +342,25 @@ function Step3Permissions({
 function Step4Confirmation({
   success,
   onCancel,
+  isEditMode = false,
 }: StepContentProps & {
   success: boolean;
+  isEditMode?: boolean;
 }) {
   return (
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
           <IconCheck size={64} color="green" />
-          <Title order={2}>User Created Successfully</Title>
+          <Title order={2}>
+            {isEditMode
+              ? "User updated successfully"
+              : "User created successfully"}
+          </Title>
           <Text size="sm" c="dimmed" ta="center">
-            The new user has been created and can now log in to the system.
+            {isEditMode
+              ? "The user's details have been updated."
+              : "The new user has been created and can now log in to the system."}
           </Text>
           <Button onClick={onCancel} mt="lg">
             Return to Admin
@@ -347,9 +369,13 @@ function Step4Confirmation({
       ) : (
         <>
           <IconAlertCircle size={64} color="red" />
-          <Title order={2}>Failed to Create User</Title>
+          <Title order={2}>
+            {isEditMode ? "Failed to update user" : "Failed to create user"}
+          </Title>
           <Text size="sm" c="dimmed" ta="center">
-            There was an error creating the user. Please try again.
+            {isEditMode
+              ? "There was an error updating the user. Please try again."
+              : "There was an error creating the user. Please try again."}
           </Text>
           <Button onClick={onCancel} mt="lg">
             Return to Admin
@@ -363,17 +389,25 @@ function Step4Confirmation({
 /**
  * New User Page Component
  *
- * Multi-step form for creating new users with competencies and permissions.
+ * Multi-step form for creating or editing users with competencies and permissions.
+ * Supports two modes:
+ * - Create mode: /admin/users/new - Creates a new user
+ * - Edit mode: /admin/users/:id/edit - Edits an existing user
  *
- * @returns New user creation page
+ * @returns New/edit user page
  */
 export default function NewUserPage() {
   const navigate = useNavigate();
+  const { id: userId } = useParams<{ id: string }>();
+  const isEditMode = Boolean(userId);
+
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(isEditMode);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
@@ -385,6 +419,48 @@ export default function NewUserPage() {
     removedCompetencies: [],
     systemPermissions: "staff",
   });
+
+  // Fetch user data in edit mode
+  useEffect(() => {
+    if (!isEditMode || !userId) return;
+
+    async function fetchUser() {
+      try {
+        setLoading(true);
+        // TODO: Backend needs to implement GET /api/users/:id endpoint
+        const response = await fetch(`/api/users/${userId}`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const data = await response.json();
+
+        // Pre-fill form with user data
+        setFormData({
+          name: data.name || "",
+          email: data.email || "",
+          username: data.username || "",
+          password: "", // Don't pre-fill password for security
+          baseProfession: data.base_profession || "",
+          additionalCompetencies: data.additional_competencies || [],
+          removedCompetencies: data.removed_competencies || [],
+          systemPermissions: data.system_permissions || "staff",
+        });
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        setLoadError(
+          error instanceof Error ? error.message : "Failed to load user data",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, [isEditMode, userId]);
 
   // Block navigation when form is dirty and not yet submitted
   const blocker = useBlocker(
@@ -417,11 +493,22 @@ export default function NewUserPage() {
     if (!formData.username.trim()) {
       newErrors.username = "Username is required";
     }
-    if (!formData.password.trim()) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+
+    // Password validation
+    if (isEditMode) {
+      // In edit mode, password is optional (only validate if provided)
+      if (formData.password && formData.password.length < 8) {
+        newErrors.password = "Password must be at least 8 characters";
+      }
+    } else {
+      // In create mode, password is required
+      if (!formData.password.trim()) {
+        newErrors.password = "Password is required";
+      } else if (formData.password.length < 8) {
+        newErrors.password = "Password must be at least 8 characters";
+      }
     }
+
     if (!formData.baseProfession) {
       newErrors.baseProfession = "Base profession is required";
     }
@@ -435,22 +522,46 @@ export default function NewUserPage() {
 
     setSubmitting(true);
     try {
-      await api.post("/users", {
+      const payload: {
+        name: string;
+        email: string;
+        username: string;
+        base_profession: BaseProfessionId | "";
+        additional_competencies: CompetencyId[];
+        removed_competencies: CompetencyId[];
+        system_permissions: SystemPermission;
+        password?: string;
+      } = {
         name: formData.name,
         email: formData.email,
         username: formData.username,
-        password: formData.password,
         base_profession: formData.baseProfession,
         additional_competencies: formData.additionalCompetencies,
         removed_competencies: formData.removedCompetencies,
         system_permissions: formData.systemPermissions,
-      });
+      };
+
+      // Only include password if provided (required for create, optional for edit)
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+
+      if (isEditMode && userId) {
+        // Edit mode: PATCH existing user
+        await api.patch(`/users/${userId}`, payload);
+      } else {
+        // Create mode: POST new user
+        await api.post("/users", payload);
+      }
 
       setSuccess(true);
       setDirty(false); // Clear dirty flag on successful submission
       setActiveStep(3); // Move to confirmation step
     } catch (error) {
-      console.error("Failed to create user:", error);
+      console.error(
+        `Failed to ${isEditMode ? "update" : "create"} user:`,
+        error,
+      );
       setSuccess(false);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
       setActiveStep(3); // Move to confirmation step even on error
@@ -469,6 +580,7 @@ export default function NewUserPage() {
           formData={formData}
           setFormData={updateFormData}
           errors={errors}
+          isEditMode={isEditMode}
         />
       ),
       validate: validateStep1,
@@ -494,12 +606,18 @@ export default function NewUserPage() {
           setFormData={updateFormData}
         />
       ),
-      nextButtonLabel: "Create User",
+      nextButtonLabel: isEditMode ? "Update User" : "Create User",
     },
     {
       label: "Confirmation",
-      description: "User created",
-      content: (props) => <Step4Confirmation {...props} success={success} />,
+      description: isEditMode ? "User updated" : "User created",
+      content: (props) => (
+        <Step4Confirmation
+          {...props}
+          success={success}
+          isEditMode={isEditMode}
+        />
+      ),
     },
   ];
 
@@ -515,15 +633,38 @@ export default function NewUserPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <Title order={1} mb="xl">
-          Create New User
-        </Title>
-        <MultiStepForm
-          steps={steps}
-          onCancel={handleCancel}
-          activeStep={activeStep}
-          onStepChange={handleStepChange}
+        <PageHeader
+          title={isEditMode ? "Edit user" : "Create new user"}
+          size="lg"
         />
+
+        {loading ? (
+          <Center py="xl">
+            <Stack align="center" gap="md">
+              <Loader size="lg" />
+              <Text c="dimmed">Loading user data...</Text>
+            </Stack>
+          </Center>
+        ) : loadError ? (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Error loading user"
+            color="red"
+            mt="md"
+          >
+            {loadError}
+            <Button onClick={() => navigate("/admin")} variant="light" mt="md">
+              Return to Admin
+            </Button>
+          </Alert>
+        ) : (
+          <MultiStepForm
+            steps={steps}
+            onCancel={handleCancel}
+            activeStep={activeStep}
+            onStepChange={handleStepChange}
+          />
+        )}
       </Box>
 
       <DirtyFormNavigation

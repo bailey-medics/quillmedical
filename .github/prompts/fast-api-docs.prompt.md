@@ -1,3 +1,9 @@
+---
+agent: "agent"
+name: fast-api-docs
+description: Generate FastAPI Code Documentation
+---
+
 # Generate FastAPI Code Documentation
 
 Please can you:

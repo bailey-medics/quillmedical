@@ -17,8 +17,8 @@ type Props = {
   opened: boolean;
   /** Callback when user closes drawer (clicks overlay or navigates) */
   onClose: () => void;
-  /** Width of the drawer panel in pixels (default: 260) */
-  width?: number;
+  /** Width of the drawer panel (default: "16.25rem") */
+  width?: string;
   /** Offset from top to account for header height (default: 0) */
   topOffset?: number;
   /** Navigation content to render inside drawer */
@@ -40,7 +40,7 @@ type Props = {
 export default function NavigationDrawer({
   opened,
   onClose,
-  width = 260,
+  width = "16.25rem",
   topOffset = 0,
   children,
 }: Props) {

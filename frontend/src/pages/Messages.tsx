@@ -7,6 +7,7 @@
  */
 
 import MessagesList from "@/components/messaging/MessagesList";
+import PageHeader from "@/components/page-header/PageHeader";
 // import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
   Card,
@@ -14,9 +15,7 @@ import {
   Group,
   Select,
   Stack,
-  Text,
   TextInput,
-  Title,
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -207,14 +206,11 @@ export default function Messages() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <div>
-          <Title order={2} mb="xs">
-            Messages
-          </Title>
-          <Text c="dimmed" size="sm">
-            View and manage all patient conversations
-          </Text>
-        </div>
+        <PageHeader
+          title="Messages"
+          description="View and manage all patient conversations"
+          size="md"
+        />
 
         {/* Filters and Search */}
         <Card shadow="sm" padding="md" radius="md" withBorder>

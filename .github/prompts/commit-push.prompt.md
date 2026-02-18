@@ -1,3 +1,9 @@
+---
+agent: "agent"
+name: commit-push
+description: Commit and push code
+---
+
 # Commit and push code
 
 1. Only do the below for `non-main` branches

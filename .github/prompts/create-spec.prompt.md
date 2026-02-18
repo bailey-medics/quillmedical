@@ -1,4 +1,10 @@
-# Create Technical Specification
+---
+agent: "agent"
+name: create-spec
+description: Create technical specification
+---
+
+# Create technical specification
 
 ## Task
 

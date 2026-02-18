@@ -1,4 +1,10 @@
-# Here's a concise, powerful prompt for VS Code Copilot
+---
+agent: "agent"
+name: strong-static-typing-defensive-programming
+description: Strong static typing and defensive programming
+---
+
+# Strong static typing and defensive programming
 
 ## Codebase Refactoring Task: Type Safety & Defensive Programming
 

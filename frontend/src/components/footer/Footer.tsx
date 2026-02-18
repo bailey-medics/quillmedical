@@ -16,11 +16,11 @@ interface FooterProps {
   size?: "sm" | "md" | "lg";
 }
 
-// Font size mapping
+// Font size mapping (in rem)
 const SIZE_MAP = {
-  sm: 14,
-  md: 16,
-  lg: 20,
+  sm: "0.875rem",
+  md: "1rem",
+  lg: "1.25rem",
 };
 
 /**
@@ -57,14 +57,14 @@ export default function Footer({
         zIndex: 100,
         borderTop: `1px solid ${theme.colors.gray[2]}`,
         flexShrink: 0,
-        padding: "8px 16px",
+        padding: "0.5rem 1rem",
       }}
     >
       <Box style={{ display: "flex", justifyContent: "flex-end" }}>
         {loading ? (
           <Skeleton height={fontSize} width="40%" radius="sm" />
         ) : (
-          <Text size={`${fontSize}px`} c="gray.7">
+          <Text size={fontSize} c="gray.7">
             {text}
           </Text>
         )}

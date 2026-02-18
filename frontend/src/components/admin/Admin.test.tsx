@@ -58,7 +58,7 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
       );
-      expect(screen.getByText("Total Users")).toBeInTheDocument();
+      expect(screen.getByText("Total users")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
@@ -66,7 +66,7 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin userPermissions="superadmin" existingPatients={mockPatients} />,
       );
-      expect(screen.getByText("Total Patients")).toBeInTheDocument();
+      expect(screen.getByText("Total patients")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
@@ -79,89 +79,137 @@ describe("Admin", () => {
       renderWithRouter(
         <Admin
           userPermissions="superadmin"
-          loading={true}
+          usersLoading={true}
+          patientsLoading={true}
           existingUsers={mockUsers}
         />,
       );
       const skeletons = document.querySelectorAll(".mantine-Skeleton-root");
       expect(skeletons.length).toBeGreaterThan(0);
     });
+
+    it("shows skeleton loader only for patients when FHIR is initializing", () => {
+      renderWithRouter(
+        <Admin
+          userPermissions="superadmin"
+          usersLoading={false}
+          patientsLoading={true}
+          existingUsers={mockUsers}
+          existingPatients={[]}
+        />,
+      );
+      // Should show Total Users value (3) but Total Patients as loading
+      expect(screen.getByText("3")).toBeInTheDocument();
+      const skeletons = document.querySelectorAll(".mantine-Skeleton-root");
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
   });
 
   describe("Action cards", () => {
-    it("renders Add User card", () => {
+    // NOTE: Action cards have been moved to separate admin child pages
+    it.skip("renders Add User card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Add User")).toBeInTheDocument();
+      expect(screen.getByText("Add user")).toBeInTheDocument();
       expect(
         screen.getByText(
           "Create a new user account with competencies and permissions",
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Add New User/i }),
+        screen.getByRole("link", { name: /Add new user/i }),
       ).toBeInTheDocument();
     });
 
-    it("renders Add Patient card", () => {
+    it.skip("renders Add Patient card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Add Patient")).toBeInTheDocument();
+      expect(screen.getByText("Add patient")).toBeInTheDocument();
       expect(
         screen.getByText("Register a new patient record with demographics"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: /Add New Patient/i }),
+        screen.getByRole("link", { name: /Add new patient/i }),
       ).toBeInTheDocument();
     });
 
-    it("renders Link User to Patient card", () => {
+    it.skip("renders Edit User card", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Link User to Patient")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Edit user" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Update user details, competencies, and permissions"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Edit user/i }),
+      ).toBeInTheDocument();
+    });
+
+    it.skip("renders Edit Patient card", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+      expect(
+        screen.getByRole("heading", { name: "Edit patient" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Modify patient demographics and information"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Edit patient/i }),
+      ).toBeInTheDocument();
+    });
+
+    it.skip("renders Link User to Patient card", () => {
+      renderWithRouter(<Admin userPermissions="superadmin" />);
+      expect(
+        screen.getByRole("heading", { name: "Link user and patient" }),
+      ).toBeInTheDocument();
       expect(
         screen.getByText("Associate a user account with a patient record"),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Create Link/i }),
+        screen.getByRole("button", { name: /Create link/i }),
       ).toBeInTheDocument();
     });
   });
 
   describe("Change System Permissions visibility", () => {
-    it("shows Change System Permissions card for superadmin", () => {
+    // NOTE: Change System Permissions has been moved to AdminPermissionsPage
+    it.skip("shows Change System Permissions card for superadmin", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Change System Permissions")).toBeInTheDocument();
+      expect(screen.getByText("Change system permissions")).toBeInTheDocument();
       expect(
         screen.getByText(
           "View and edit user competencies and system permissions",
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Change Permissions/i }),
+        screen.getByRole("button", { name: /Change permissions/i }),
       ).toBeInTheDocument();
     });
 
-    it("does not show Change System Permissions card for admin", () => {
+    it.skip("does not show Change System Permissions card for admin", () => {
       renderWithRouter(<Admin userPermissions="admin" />);
       expect(
-        screen.queryByText("Change System Permissions"),
+        screen.queryByText("Change system permissions"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /Change Permissions/i }),
+        screen.queryByRole("button", { name: /Change permissions/i }),
       ).not.toBeInTheDocument();
     });
 
-    it("does not show Change System Permissions card for staff", () => {
+    it.skip("does not show Change System Permissions card for staff", () => {
       renderWithRouter(<Admin userPermissions="staff" />);
       expect(
-        screen.queryByText("Change System Permissions"),
+        screen.queryByText("Change system permissions"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /Change Permissions/i }),
+        screen.queryByRole("button", { name: /Change permissions/i }),
       ).not.toBeInTheDocument();
     });
   });
 
   describe("Add User Navigation", () => {
-    it("has correct link to create new user page", () => {
+    // NOTE: Add User functionality is now on AdminUsersPage
+    it.skip("has correct link to create new user page", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
 
       const addUserButton = screen.getByRole("link", {
@@ -255,7 +303,8 @@ describe("Admin", () => {
   });
 
   describe("Add Patient Navigation", () => {
-    it("has correct link to create new patient page", () => {
+    // NOTE: Add Patient functionality is now on AdminPatientsPage
+    it.skip("has correct link to create new patient page", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
 
       const addPatientButton = screen.getByRole("link", {
@@ -423,7 +472,8 @@ describe("Admin", () => {
   });
 
   describe("Change Permissions Modal", () => {
-    it("opens Change Permissions modal for superadmin", async () => {
+    // NOTE: Change Permissions modal has been moved to AdminPermissionsPage
+    it.skip("opens Change Permissions modal for superadmin", async () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
@@ -434,11 +484,11 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Manage User Permissions")).toBeInTheDocument();
+        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
       });
     });
 
-    it("closes Change Permissions modal when cancel clicked", async () => {
+    it.skip("closes Change Permissions modal when cancel clicked", async () => {
       const user = userEvent.setup();
       renderWithRouter(
         <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
@@ -449,7 +499,7 @@ describe("Admin", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Manage User Permissions")).toBeInTheDocument();
+        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
       });
 
       const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
@@ -457,7 +507,7 @@ describe("Admin", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Manage User Permissions"),
+          screen.queryByText("Manage user permissions"),
         ).not.toBeInTheDocument();
       });
     });
