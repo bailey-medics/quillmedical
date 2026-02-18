@@ -153,7 +153,7 @@ jobs:
       - name: Copy prompts to docs for MkDocs
         run: |
           mkdir -p docs/docs/llm/prompts
-          cp -r prompts/* docs/docs/llm/prompts/
+          cp -r .github/prompts/* docs/docs/llm/prompts/
 
       - name: Build MkDocs site into /site
         run: |
