@@ -117,7 +117,9 @@ export default function PatientsList({
               <Demographics patient={p} />
               <div>
                 {p.onQuill ? (
-                  <Text style={{ fontSize: 12, color: "teal" }}>On Quill</Text>
+                  <Text size="xs" c="teal">
+                    On Quill
+                  </Text>
                 ) : null}
               </div>
             </Group>
