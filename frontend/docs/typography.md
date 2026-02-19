@@ -10,10 +10,10 @@ The application uses a **4-size responsive typography system** to maintain consi
 
 | Size        | Mobile (Base)     | Desktop (≥768px)   | Usage                                                    |
 | ----------- | ----------------- | ------------------ | -------------------------------------------------------- |
-| `xs` / `sm` | `0.875rem` (14px) | `1rem` (16px)      | Captions, hints, metadata, secondary information, badges |
-| `md`        | `1rem` (16px)     | `1.1875rem` (19px) | Body text, default text size, form labels                |
-| `lg`        | `1.25rem` (20px)  | `1.5rem` (24px)    | Subheadings, section titles, card titles                 |
 | `xl`        | `1.625rem` (26px) | `2rem` (32px)      | Page headings, primary titles, hero text                 |
+| `lg`        | `1.25rem` (20px)  | `1.5rem` (24px)    | Subheadings, section titles, card titles                 |
+| `md`        | `1rem` (16px)     | `1.1875rem` (19px) | Body text, default text size, form labels                |
+| `xs` / `sm` | `0.875rem` (14px) | `1rem` (16px)      | Captions, hints, metadata, secondary information, badges |
 
 **Note:** `xs` and `sm` are intentionally the same size to reduce complexity while maintaining Mantine's API.
 
@@ -204,11 +204,11 @@ The typography system is configured in [`src/theme.ts`](../src/theme.ts):
 ```typescript
 export const theme = createTheme({
   fontSizes: {
-    xs: "0.875rem", // 14px mobile → 16px desktop
-    sm: "0.875rem", // 14px mobile → 16px desktop
-    md: "1rem", // 16px mobile → 19px desktop (NHS standard)
-    lg: "1.25rem", // 20px mobile → 24px desktop
     xl: "1.625rem", // 26px mobile → 32px desktop
+    lg: "1.25rem", // 20px mobile → 24px desktop
+    md: "1rem", // 16px mobile → 19px desktop (NHS standard)
+    sm: "0.875rem", // 14px mobile → 16px desktop
+    xs: "0.875rem", // 14px mobile → 16px desktop
   },
   // ... other theme settings
 });
