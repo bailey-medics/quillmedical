@@ -12,6 +12,7 @@ import type { RenderOptions } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
+import { theme } from "@/theme";
 
 /**
  * Render options with all providers
@@ -27,7 +28,11 @@ interface AllProvidersOptions extends Omit<RenderOptions, "wrapper"> {
  * Wrapper with Mantine Provider
  */
 function MantineWrapper({ children }: { children: ReactNode }) {
-  return <MantineProvider env="test">{children}</MantineProvider>;
+  return (
+    <MantineProvider theme={theme} env="test">
+      {children}
+    </MantineProvider>
+  );
 }
 
 /**
@@ -36,7 +41,9 @@ function MantineWrapper({ children }: { children: ReactNode }) {
 function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
   return (
     <BrowserRouter>
-      <MantineProvider env="test">{children}</MantineProvider>
+      <MantineProvider theme={theme} env="test">
+        {children}
+      </MantineProvider>
     </BrowserRouter>
   );
 }
@@ -85,7 +92,7 @@ export function renderWithRouter(
   if (routePath) {
     const Wrapper = ({ children }: { children: ReactNode }) => (
       <MemoryRouter initialEntries={[initialRoute || "/"]}>
-        <MantineProvider env="test">
+        <MantineProvider theme={theme} env="test">
           <Routes>
             <Route path={routePath} element={children} />
           </Routes>

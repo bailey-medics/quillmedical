@@ -24,6 +24,7 @@ import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { theme } from "./theme";
 
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
@@ -255,7 +256,7 @@ const router = createBrowserRouter(
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider defaultColorScheme="light">
+  <MantineProvider theme={theme}>
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>
