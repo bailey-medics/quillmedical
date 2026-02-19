@@ -1,298 +1,195 @@
 /**
  * Admin Patients Page
  *
- * Patient management interface for administrators.
- * Provides actions for creating, editing patients and linking users to patients.
+ * Displays all registered patient records in a table format.
+ * Allows administrators to view patient demographics and navigate to patient admin pages.
+ * Includes an "Add patient" button to create new patient records.
  */
 
-import { Container, SimpleGrid, Stack } from "@mantine/core";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  IconUserPlus,
-  IconUserEdit,
-  IconLink,
-  IconUsers,
-  IconUserMinus,
-} from "@tabler/icons-react";
-import ActionCard from "@/components/action-card";
+  Container,
+  Stack,
+  Table,
+  Text,
+  Skeleton,
+  Center,
+  Alert,
+  Button,
+  Group,
+  Badge,
+} from "@mantine/core";
+import { IconAlertCircle, IconUserPlus } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header/PageHeader";
 import StateMessage from "@/components/state-message/StateMessage";
-import { useState } from "react";
-import { Modal, Select, Button, Group } from "@mantine/core";
-import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
-import { useEffect } from "react";
 
-/**
- * API User Response
- */
-interface ApiUser {
-  id: number;
-  username: string;
-  email: string;
-}
-
-/**
- * API Patient Response (FHIR Patient)
- */
-interface ApiPatient {
+interface Patient {
   id: string;
   name: Array<{ given?: string[]; family?: string }>;
+  birthDate?: string;
+  gender?: string;
+  is_active?: boolean;
 }
 
-/**
- * Patients API Response (including FHIR readiness flag)
- */
 interface PatientsApiResponse {
-  patients: ApiPatient[];
+  patients: Patient[];
   fhir_ready: boolean;
 }
 
 /**
  * Admin Patients Page
  *
- * Interface for managing patient records with options to:
- * - Create new patients
- * - Edit existing patients
- * - Link users to patients
+ * Main patient management interface showing all patient records.
+ * Clicking on a patient navigates to their admin page.
+ * Polls the API until FHIR is ready during initialisation.
  *
  * @returns Admin patients page component
  */
 export default function AdminPatientsPage() {
-  const { state } = useAuth();
-  const [linkModalOpen, setLinkModalOpen] = useState(false);
-  const [users, setUsers] = useState<
-    Array<{ id: string; username: string; email: string }>
-  >([]);
-  const [patients, setPatients] = useState<Array<{ id: string; name: string }>>(
-    [],
-  );
-  const [patientsLoading, setPatientsLoading] = useState(true);
-  const [linkForm, setLinkForm] = useState<{
-    userId: string;
-    patientId: string;
-  }>({
-    userId: "",
-    patientId: "",
-  });
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fhirReady, setFhirReady] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check FHIR readiness on page load
   useEffect(() => {
     let cancelled = false;
 
-    async function checkFhirReady() {
-      if (
-        state.status !== "authenticated" ||
-        !state.user.system_permissions ||
-        !["admin", "superadmin"].includes(state.user.system_permissions)
-      ) {
-        setPatientsLoading(false);
-        return;
-      }
-
+    async function fetchPatients() {
       try {
-        const patientsResponse =
-          await api.get<PatientsApiResponse>("/patients");
+        // Include inactive patients for admin view
+        const data = await api.get<PatientsApiResponse>(
+          "/patients?include_inactive=true",
+        );
 
-        if (!cancelled) {
-          // Check if FHIR is ready
-          if (patientsResponse.fhir_ready) {
-            setPatientsLoading(false);
-          } else {
-            // FHIR not ready yet, retry
-            setTimeout(() => {
-              if (!cancelled) {
-                checkFhirReady();
-              }
-            }, FHIR_POLLING_TIME);
-          }
+        if (cancelled) return;
+
+        // Always stop loading after first response
+        setLoading(false);
+
+        // Check if FHIR is ready
+        if (data.fhir_ready) {
+          setPatients(data.patients || []);
+          setFhirReady(true);
+        } else {
+          // FHIR not ready yet, show "database initialising" and retry
+          setFhirReady(false);
+          setTimeout(() => {
+            if (!cancelled) {
+              fetchPatients();
+            }
+          }, FHIR_POLLING_TIME);
         }
-      } catch (error) {
-        console.error("Failed to check FHIR readiness:", error);
-        // On error, retry
-        setTimeout(() => {
-          if (!cancelled) {
-            checkFhirReady();
-          }
-        }, FHIR_POLLING_TIME);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Unknown error");
+        setLoading(false);
       }
     }
 
-    checkFhirReady();
+    fetchPatients();
 
     return () => {
       cancelled = true;
     };
-  }, [state.status, state.user]);
+  }, []);
 
-  // Fetch users and patients for the link modal
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchData() {
-      if (
-        state.status !== "authenticated" ||
-        !state.user.system_permissions ||
-        !["admin", "superadmin"].includes(state.user.system_permissions)
-      ) {
-        return;
-      }
-
-      try {
-        const [usersResponse, patientsResponse] = await Promise.all([
-          api.get<{ users: ApiUser[] }>("/users"),
-          api.get<{ patients: ApiPatient[] }>("/patients"),
-        ]);
-
-        if (!cancelled) {
-          setUsers(
-            usersResponse.users.map((u) => ({
-              id: String(u.id),
-              username: u.username,
-              email: u.email,
-            })),
-          );
-
-          setPatients(
-            patientsResponse.patients.map((p) => {
-              const name = p.name?.[0];
-              const givenName = name?.given?.[0] || "";
-              const familyName = name?.family || "";
-              return {
-                id: p.id,
-                name: `${givenName} ${familyName}`.trim() || "Unknown",
-              };
-            }),
-          );
-        }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      }
-    }
-
-    if (linkModalOpen) {
-      fetchData();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [linkModalOpen, state]);
-
-  const handleLinkUserPatient = () => {
-    // TODO: Wire up actual API callback
-    console.log("Link user to patient:", linkForm);
-    setLinkModalOpen(false);
-    setLinkForm({ userId: "", patientId: "" });
+  const formatName = (
+    nameArray: Array<{ given?: string[]; family?: string }>,
+  ) => {
+    if (!nameArray || nameArray.length === 0) return "Unknown";
+    const name = nameArray[0];
+    const givenName = name.given?.[0] || "";
+    const familyName = name.family || "";
+    return `${givenName} ${familyName}`.trim() || "Unknown";
   };
 
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Patient management"
-          description="Create and manage patient records"
-          size="lg"
-          mb={0}
-        />
+        <Group justify="space-between" align="flex-start">
+          <PageHeader
+            title="Patient management"
+            description="View and manage all patient records"
+            size="lg"
+            mb={0}
+          />
+          <Button
+            leftSection={<IconUserPlus size={16} />}
+            onClick={() => navigate("/admin/patients/new")}
+          >
+            Add patient
+          </Button>
+        </Group>
 
-        {patientsLoading ? (
-          <StateMessage type="database-initialising" />
-        ) : (
-          <>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <ActionCard
-                icon={<IconUsers size={24} />}
-                title="Show all patients"
-                subtitle="View and search all registered patient records"
-                buttonLabel="View all patients"
-                buttonUrl="/admin/patients/list"
-              />
-              <ActionCard
-                icon={<IconUserPlus size={24} />}
-                title="Add patient"
-                subtitle="Register a new patient record with demographics"
-                buttonLabel="Add new patient"
-                buttonUrl="/admin/patients/new"
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <ActionCard
-                icon={<IconUserEdit size={24} />}
-                title="Edit patient"
-                subtitle="Modify patient demographics and information"
-                buttonLabel="Edit patient"
-                buttonUrl="/admin/patients/edit"
-              />
-              <ActionCard
-                icon={<IconLink size={24} />}
-                title="Link user and patient"
-                subtitle="Associate a user account with a patient record"
-                buttonLabel="Create link"
-                buttonUrl="#"
-                onClick={() => setLinkModalOpen(true)}
-              />
-            </SimpleGrid>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <ActionCard
-                icon={<IconUserMinus size={24} />}
-                title="Deactivate patient"
-                subtitle="Deactivate a patient record and restrict access"
-                buttonLabel="Deactivate patient"
-                buttonUrl="/admin/patients/deactivate"
-              />
-            </SimpleGrid>
-          </>
-        )}
-
-        {/* Link User to Patient Modal */}
-        <Modal
-          opened={linkModalOpen}
-          onClose={() => setLinkModalOpen(false)}
-          title="Link user to patient"
-          size="md"
-          transitionProps={{ duration: 0 }}
-          withinPortal={false}
-        >
-          <Stack gap="md">
-            <Select
-              label="Select user"
-              placeholder="Choose user"
-              data={users.map((u) => ({
-                value: u.id,
-                label: `${u.username} (${u.email})`,
-              }))}
-              value={linkForm.userId}
-              onChange={(val) =>
-                setLinkForm({ ...linkForm, userId: val || "" })
-              }
-              searchable
-              required
-            />
-            <Select
-              label="Select patient"
-              placeholder="Choose patient"
-              data={patients.map((p) => ({
-                value: p.id,
-                label: p.name,
-              }))}
-              value={linkForm.patientId}
-              onChange={(val) =>
-                setLinkForm({ ...linkForm, patientId: val || "" })
-              }
-              searchable
-              required
-            />
-            <Group justify="flex-end" mt="md">
-              <Button variant="subtle" onClick={() => setLinkModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleLinkUserPatient}>Create link</Button>
-            </Group>
+        {error ? (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Error loading patients"
+            color="red"
+          >
+            {error}
+          </Alert>
+        ) : loading ? (
+          <Stack gap="xs">
+            <Skeleton height={50} />
+            <Skeleton height={50} />
+            <Skeleton height={50} />
+            <Skeleton height={50} />
           </Stack>
-        </Modal>
+        ) : fhirReady === false ? (
+          <Center p="xl">
+            <StateMessage type="database-initialising" />
+          </Center>
+        ) : patients.length === 0 ? (
+          <Center p="xl">
+            <StateMessage type="no-patients" />
+          </Center>
+        ) : (
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Birth date</Table.Th>
+                <Table.Th>Gender</Table.Th>
+                <Table.Th>Patient ID</Table.Th>
+                <Table.Th>Status</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {patients.map((patient) => (
+                <Table.Tr
+                  key={patient.id}
+                  onClick={() => navigate(`/admin/patients/${patient.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Table.Td>
+                    <Text fw={500}>{formatName(patient.name)}</Text>
+                  </Table.Td>
+                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
+                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {patient.id}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge
+                      color={patient.is_active !== false ? "green" : "red"}
+                      variant="light"
+                      size="sm"
+                    >
+                      {patient.is_active !== false ? "Active" : "Deactivated"}
+                    </Badge>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
       </Stack>
     </Container>
   );

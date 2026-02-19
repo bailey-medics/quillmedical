@@ -40,6 +40,8 @@ import type {
   BaseProfessionId,
   CompetencyId,
   SystemPermission,
+  Competency,
+  BaseProfession,
 } from "@/types/cbac";
 import { getBaseProfessionDetails } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
@@ -74,10 +76,12 @@ function Step1BasicDetails({
   errors: Record<string, string>;
   isEditMode?: boolean;
 }) {
-  const professionOptions = baseProfessionsData.base_professions.map((p) => ({
-    value: p.id,
-    label: p.display_name,
-  }));
+  const professionOptions = baseProfessionsData.base_professions.map(
+    (p: BaseProfession) => ({
+      value: p.id,
+      label: p.display_name,
+    }),
+  );
 
   return (
     <Stack gap="md">
@@ -170,10 +174,12 @@ function Step2Competencies({
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
 }) {
-  const competencyOptions = competenciesData.competencies.map((c) => ({
-    value: c.id,
-    label: c.display_name,
-  }));
+  const competencyOptions = competenciesData.competencies.map(
+    (c: Competency) => ({
+      value: c.id,
+      label: c.display_name,
+    }),
+  );
 
   // Get base profession competencies
   const profession = formData.baseProfession
@@ -219,7 +225,7 @@ function Step2Competencies({
         label="Removed competencies"
         description="Remove competencies from the base profession"
         placeholder="Select competencies to remove"
-        data={competencyOptions.filter((c) =>
+        data={competencyOptions.filter((c: { value: string; label: string }) =>
           baseCompetencyIds.includes(c.value as CompetencyId),
         )}
         value={formData.removedCompetencies}
@@ -308,8 +314,9 @@ function Step3Permissions({
               <Group gap="xs">
                 {formData.additionalCompetencies.map((id) => (
                   <Badge key={id} variant="light" color="blue">
-                    {competenciesData.competencies.find((c) => c.id === id)
-                      ?.display_name || id}
+                    {competenciesData.competencies.find(
+                      (c: Competency) => c.id === id,
+                    )?.display_name || id}
                   </Badge>
                 ))}
               </Group>
@@ -323,8 +330,9 @@ function Step3Permissions({
               <Group gap="xs">
                 {formData.removedCompetencies.map((id) => (
                   <Badge key={id} variant="light" color="red">
-                    {competenciesData.competencies.find((c) => c.id === id)
-                      ?.display_name || id}
+                    {competenciesData.competencies.find(
+                      (c: Competency) => c.id === id,
+                    )?.display_name || id}
                   </Badge>
                 ))}
               </Group>

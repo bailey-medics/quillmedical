@@ -1,4 +1,5 @@
 import { MantineProvider } from "@mantine/core";
+import { theme } from "@/theme";
 /**
  * MarkdownView Component Stories
  *
@@ -45,7 +46,7 @@ const sample = sampleLines.join("\n");
 
 export const RenderedMarkdown: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ maxWidth: 720 }}>
         <MarkdownView source={sample} />
       </div>
@@ -55,7 +56,7 @@ export const RenderedMarkdown: Story = {
 
 export const Markdown: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ maxWidth: 720 }}>
         <pre
           style={{
@@ -74,7 +75,7 @@ export const Markdown: Story = {
 
 export const Loading: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ maxWidth: 720 }}>
         <MarkdownView source={sample} isLoading />
       </div>

@@ -24,6 +24,8 @@ import type {
   CompetencyId,
   BaseProfessionId,
   SystemPermission,
+  Competency,
+  BaseProfession,
 } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
@@ -137,15 +139,19 @@ export default function AdminPermissionsPage() {
     setPermissionsModalOpen(false);
   };
 
-  const competencyOptions = competenciesData.competencies.map((c) => ({
-    value: c.id,
-    label: c.display_name,
-  }));
+  const competencyOptions = competenciesData.competencies.map(
+    (c: Competency) => ({
+      value: c.id,
+      label: c.display_name,
+    }),
+  );
 
-  const professionOptions = baseProfessionsData.base_professions.map((p) => ({
-    value: p.id,
-    label: p.display_name,
-  }));
+  const professionOptions = baseProfessionsData.base_professions.map(
+    (p: BaseProfession) => ({
+      value: p.id,
+      label: p.display_name,
+    }),
+  );
 
   const systemPermissionOptions = [
     { value: "patient", label: "Patient" },

@@ -58,6 +58,130 @@ Even if someone obtains your password, they cannot access your account without y
 
 Prevents unauthorized access if you step away from your device without logging out.
 
+### Permission-Based Access Control
+
+#### Architecture overview
+
+Quill Medical implements a defence-in-depth security architecture for access control, with multiple layers of protection:
+
+##### Backend (source of truth)
+
+- All permissions validated server-side
+- Every API request verified
+- No trust of client-side state
+- Enforcement of role-based access rules
+
+##### Frontend (user experience)
+
+- Hides inaccessible features from UI
+- Prevents confusion and failed requests
+- Clear navigation based on permissions
+- Graceful handling of unauthorized access
+
+#### Permission levels
+
+The system uses a hierarchical permission model:
+
+1. **Patient** (lowest privileges)
+   - Access to own health information
+   - View assigned clinical letters
+   - Message assigned clinicians
+   - Update own contact details
+
+2. **Staff**
+   - All patient privileges
+   - Access to assigned patient records
+   - Create clinical letters
+   - Messaging capabilities
+
+3. **Admin**
+   - All staff privileges
+   - User management
+   - Patient administration
+   - System configuration
+
+4. **Superadmin** (highest privileges)
+   - All admin privileges
+   - Full system access
+   - Security settings
+   - Audit log access
+
+#### Tiered security approach
+
+Different user types receive different experiences when attempting unauthorized access:
+
+##### Patients
+
+- Show 404 "Not found" page
+- No indication that feature exists
+- Prevents information disclosure
+- Security through obscurity for patient-facing features
+
+##### Staff and administrators
+
+- May show redirect to login or permission error
+- Indicates system functionality exists
+- Allows understanding of available features
+- Supports privilege escalation requests
+
+#### Implementation
+
+The permission system uses the `RequirePermission` component to protect routes:
+
+```tsx
+<RequirePermission level="admin">
+  <AdminDashboard />
+</RequirePermission>
+```
+
+##### Behaviour
+
+- Checks user's permission level on route access
+- Compares against required permission level
+- Shows loading state during authentication check
+- Redirects or shows 404 based on user type
+
+##### Security features
+
+- No premature rendering of protected content
+- Automatic redirect for unauthenticated users
+- Permission checks on every route navigation
+- Consistent enforcement across application
+
+#### Defence in depth
+
+The permission system follows security best practices:
+
+##### Multiple validation layers
+
+1. Frontend route guards (UX)
+2. Backend API authentication (enforcement)
+3. Database-level access controls (data protection)
+4. Audit logging (accountability)
+
+##### Fail-safe defaults
+
+- Deny access by default
+- Explicit permission grants required
+- No implicit privilege escalation
+- Conservative error handling
+
+##### Information disclosure prevention
+
+- Patient users see minimal error information
+- No enumeration of existing features
+- Generic error messages prevent probing
+- Consistent response times
+
+#### Compliance
+
+This architecture supports regulatory requirements:
+
+- **ISO 27001**: Access control and authentication
+- **NHS Digital**: Role-based access control (RBAC)
+- **GDPR**: Principle of least privilege
+- **Clinical safety**: DCB0129/0160 access controls
+
 ---
 
 ## Data Protection

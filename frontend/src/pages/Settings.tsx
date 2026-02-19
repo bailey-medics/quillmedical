@@ -26,7 +26,7 @@ export default function Settings() {
 
   return (
     <Stack style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
-      <PageHeader title="Settings" size="md" />
+      <PageHeader title="Settings" size="lg" />
       <Card shadow="sm">
         <EnableNotificationsButton />
       </Card>

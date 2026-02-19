@@ -1,10 +1,10 @@
 /**
- * Deactivate Patient Page
+ * Activate Patient Page
  *
- * Allows administrators to deactivate patient records.
+ * Allows administrators to activate deactivated patient records.
  * Can be accessed in two ways:
- * 1. With patient ID in route params: /admin/patients/:patientId/deactivate
- * 2. Without patient ID: /admin/patients/deactivate (shows patient selection list)
+ * 1. With patient ID in route params: /admin/patients/:patientId/activate
+ * 2. Without patient ID: /admin/patients/activate (shows patient selection list)
  */
 
 import { useEffect, useState } from "react";
@@ -22,7 +22,7 @@ import {
   Paper,
   Group,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import { IconAlertCircle, IconUserCheck } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header/PageHeader";
 import { api } from "@/lib/api";
@@ -39,14 +39,14 @@ interface LocationState {
 }
 
 /**
- * Deactivate Patient Page
+ * Activate Patient Page
  *
- * Displays deactivation confirmation if patient ID provided in route/state,
- * otherwise shows a list of patients to select for deactivation.
+ * Displays activation confirmation if patient ID provided in route/state,
+ * otherwise shows a list of deactivated patients to select for activation.
  *
- * @returns Deactivate patient page component
+ * @returns Activate patient page component
  */
-export default function DeactivatePatientPage() {
+export default function ActivatePatientPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ export default function DeactivatePatientPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [deactivating, setDeactivating] = useState(false);
+  const [activating, setActivating] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -77,8 +77,8 @@ export default function DeactivatePatientPage() {
           const patientData = await response.json();
           setSpecificPatient(patientData);
         } else if (!patientId) {
-          // No patient ID, fetch all patients for selection
-          const response = await fetch("/api/patients", {
+          // No patient ID, fetch deactivated patients for selection
+          const response = await fetch("/api/patients?include_inactive=true", {
             credentials: "include",
           });
 
@@ -87,7 +87,11 @@ export default function DeactivatePatientPage() {
           }
 
           const data = await response.json();
-          setPatients(data.patients || []);
+          // Filter for only deactivated patients
+          const deactivatedPatients = (data.patients || []).filter(
+            (p: Patient & { is_active?: boolean }) => p.is_active === false,
+          );
+          setPatients(deactivatedPatients);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -109,21 +113,21 @@ export default function DeactivatePatientPage() {
     return `${givenName} ${familyName}`.trim() || "Unknown";
   };
 
-  const handleDeactivateClick = (patient: Patient) => {
+  const handleActivateClick = (patient: Patient) => {
     setSelectedPatient(patient);
   };
 
-  const handleDeactivateConfirm = async () => {
-    const patientToDeactivate = specificPatient || selectedPatient;
-    if (!patientToDeactivate) return;
+  const handleActivateConfirm = async () => {
+    const patientToActivate = specificPatient || selectedPatient;
+    if (!patientToActivate) return;
 
-    setDeactivating(true);
+    setActivating(true);
     try {
-      await api.post(`/patients/${patientToDeactivate.id}/deactivate`);
+      await api.post(`/patients/${patientToActivate.id}/activate`);
 
       notifications.show({
-        title: "Patient deactivated",
-        message: `${formatName(patientToDeactivate.name)} has been deactivated successfully`,
+        title: "Patient activated",
+        message: `${formatName(patientToActivate.name)} has been activated successfully`,
         color: "green",
       });
 
@@ -135,24 +139,24 @@ export default function DeactivatePatientPage() {
       }
     } catch (err) {
       notifications.show({
-        title: "Deactivation failed",
+        title: "Activation failed",
         message:
-          err instanceof Error ? err.message : "Failed to deactivate patient",
+          err instanceof Error ? err.message : "Failed to activate patient",
         color: "red",
       });
     } finally {
-      setDeactivating(false);
+      setActivating(false);
     }
   };
 
-  // If we have a specific patient (from route params or state), show the deactivation confirmation
+  // If we have a specific patient (from route params or state), show the activation confirmation
   if (specificPatient) {
     return (
       <Container size="lg" pt="xl">
         <Stack gap="lg">
           <PageHeader
-            title={`Deactivate ${formatName(specificPatient.name)}`}
-            description="Confirm deactivation of this patient record"
+            title={`Activate ${formatName(specificPatient.name)}`}
+            description="Confirm activation of this patient record"
             size="lg"
             mb={0}
           />
@@ -172,11 +176,11 @@ export default function DeactivatePatientPage() {
               <Stack gap="md">
                 <Alert
                   icon={<IconAlertCircle size={16} />}
-                  title="Warning"
-                  color="orange"
+                  title="Confirmation"
+                  color="blue"
                 >
-                  You are about to deactivate this patient record. This will
-                  restrict access to their records.
+                  You are about to activate this patient record. This will
+                  restore access to their records.
                 </Alert>
 
                 <Stack gap="xs">
@@ -200,29 +204,33 @@ export default function DeactivatePatientPage() {
                   )}
                   <Group>
                     <Text fw={500}>Patient ID:</Text>
-                    <Text ff="monospace" size="sm">
-                      {specificPatient.id}
-                    </Text>
+                    <Text ff="monospace">{specificPatient.id}</Text>
                   </Group>
                 </Stack>
 
-                <Stack gap="sm" mt="md">
+                <Group justify="flex-end">
                   <Button
-                    color="red"
-                    onClick={handleDeactivateConfirm}
-                    loading={deactivating}
-                    leftSection={<IconUserMinus size={18} />}
-                  >
-                    Confirm deactivation
-                  </Button>
-                  <Button
-                    variant="light"
-                    onClick={() => window.history.back()}
-                    disabled={deactivating}
+                    variant="subtle"
+                    onClick={() => {
+                      if (patientId) {
+                        navigate(`/admin/patients/${patientId}`);
+                      } else {
+                        navigate("/admin/patients");
+                      }
+                    }}
+                    disabled={activating}
                   >
                     Cancel
                   </Button>
-                </Stack>
+                  <Button
+                    color="green"
+                    leftSection={<IconUserCheck size={16} />}
+                    onClick={handleActivateConfirm}
+                    loading={activating}
+                  >
+                    Activate patient
+                  </Button>
+                </Group>
               </Stack>
             </Paper>
           )}
@@ -231,21 +239,19 @@ export default function DeactivatePatientPage() {
     );
   }
 
-  // Otherwise, show the patient selection list
+  // Otherwise, show patient selection list
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
         <PageHeader
-          title="Deactivate patient"
-          description="Select a patient to deactivate their record and restrict access"
+          title="Activate patient"
+          description="Select a deactivated patient to activate"
           size="lg"
           mb={0}
         />
 
         {loading ? (
           <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
             <Skeleton height={50} />
             <Skeleton height={50} />
             <Skeleton height={50} />
@@ -259,83 +265,80 @@ export default function DeactivatePatientPage() {
             {error}
           </Alert>
         ) : patients.length === 0 ? (
-          <Center p="xl">
-            <Text c="dimmed">No patients found</Text>
+          <Center h={300}>
+            <Stack align="center" gap="xs">
+              <IconUserCheck size={48} color="gray" />
+              <Text c="dimmed">No deactivated patients found</Text>
+            </Stack>
           </Center>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Birth Date</Table.Th>
-                <Table.Th>Gender</Table.Th>
-                <Table.Th style={{ width: "150px", textAlign: "right" }}>
-                  Action
-                </Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {patients.map((patient) => (
-                <Table.Tr key={patient.id}>
-                  <Table.Td>
-                    <Text fw={500}>{formatName(patient.name)}</Text>
-                  </Table.Td>
-                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
-                  <Table.Td style={{ textAlign: "right" }}>
-                    <Button
-                      variant="light"
-                      color="red"
-                      size="xs"
-                      leftSection={<IconUserMinus size={16} />}
-                      onClick={() => handleDeactivateClick(patient)}
-                    >
-                      Deactivate
-                    </Button>
-                  </Table.Td>
+          <>
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Name</Table.Th>
+                  <Table.Th>Birth date</Table.Th>
+                  <Table.Th>Gender</Table.Th>
+                  <Table.Th>Patient ID</Table.Th>
+                  <Table.Th>Actions</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
+              </Table.Thead>
+              <Table.Tbody>
+                {patients.map((patient) => (
+                  <Table.Tr key={patient.id}>
+                    <Table.Td>{formatName(patient.name)}</Table.Td>
+                    <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
+                    <Table.Td style={{ textTransform: "capitalize" }}>
+                      {patient.gender || "N/A"}
+                    </Table.Td>
+                    <Table.Td ff="monospace">{patient.id}</Table.Td>
+                    <Table.Td>
+                      <Button
+                        size="xs"
+                        color="green"
+                        variant="light"
+                        onClick={() => handleActivateClick(patient)}
+                      >
+                        Activate
+                      </Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
 
-        <Modal
-          opened={selectedPatient !== null}
-          onClose={() => setSelectedPatient(null)}
-          title="Confirm deactivation"
-          centered
-        >
-          <Stack gap="md">
-            <Text>
-              Are you sure you want to deactivate patient{" "}
-              <strong>
-                {selectedPatient ? formatName(selectedPatient.name) : ""}
-              </strong>
-              ?
-            </Text>
-            <Text size="sm" c="dimmed">
-              This will restrict access to their records. This action can be
-              reversed later.
-            </Text>
-            <Stack gap="sm">
-              <Button
-                color="red"
-                onClick={handleDeactivateConfirm}
-                loading={deactivating}
-                leftSection={<IconUserMinus size={18} />}
-              >
-                Deactivate patient
-              </Button>
-              <Button
-                variant="light"
-                onClick={() => setSelectedPatient(null)}
-                disabled={deactivating}
-              >
-                Cancel
-              </Button>
-            </Stack>
-          </Stack>
-        </Modal>
+            <Modal
+              opened={!!selectedPatient}
+              onClose={() => setSelectedPatient(null)}
+              title="Confirm activation"
+            >
+              {selectedPatient && (
+                <Stack gap="md">
+                  <Text>
+                    Are you sure you want to activate{" "}
+                    <strong>{formatName(selectedPatient.name)}</strong>?
+                  </Text>
+                  <Group justify="flex-end">
+                    <Button
+                      variant="subtle"
+                      onClick={() => setSelectedPatient(null)}
+                      disabled={activating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      color="green"
+                      onClick={handleActivateConfirm}
+                      loading={activating}
+                    >
+                      Confirm
+                    </Button>
+                  </Group>
+                </Stack>
+              )}
+            </Modal>
+          </>
+        )}
       </Stack>
     </Container>
   );

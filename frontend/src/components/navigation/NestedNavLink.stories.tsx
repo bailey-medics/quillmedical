@@ -19,6 +19,7 @@ import {
 } from "react-router-dom";
 import React from "react";
 import { MantineProvider } from "@mantine/core";
+import { theme } from "@/theme";
 
 /**
  * Simple page component that shows the current route
@@ -66,7 +67,7 @@ function withNavigation(initialPath: string) {
     );
 
     return (
-      <MantineProvider>
+      <MantineProvider theme={theme}>
         <RouterProvider router={router} />
       </MantineProvider>
     );
@@ -394,7 +395,7 @@ export const CompleteMenuExample: Story = {
       );
 
       return (
-        <MantineProvider>
+        <MantineProvider theme={theme}>
           <RouterProvider router={router} />
         </MantineProvider>
       );

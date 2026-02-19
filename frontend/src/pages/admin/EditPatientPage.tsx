@@ -1,12 +1,14 @@
 /**
  * Edit Patient Page
  *
- * Allows administrators to select and edit patient records.
- * Displays a list of patients to choose from for editing.
+ * Allows administrators to edit patient records.
+ * Can be accessed in two ways:
+ * 1. With patient ID in route params: /admin/patients/:patientId/edit
+ * 2. Without patient ID: /admin/patients/edit (shows patient selection list)
  */
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Container,
   Stack,
@@ -16,6 +18,8 @@ import {
   Center,
   Alert,
   ActionIcon,
+  Paper,
+  Title,
 } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header/PageHeader";
@@ -27,33 +31,59 @@ interface Patient {
   gender?: string;
 }
 
+interface LocationState {
+  patient?: Patient;
+}
+
 /**
  * Edit Patient Page
  *
- * Displays all patients with edit action buttons.
- * Navigates to patient edit form when edit icon is clicked.
+ * Displays patient edit form if patient ID provided in route/state,
+ * otherwise shows a list of patients to select for editing.
  *
  * @returns Edit patient page component
  */
 export default function EditPatientPage() {
   const navigate = useNavigate();
+  const { patientId } = useParams<{ patientId: string }>();
+  const location = useLocation();
+  const locationState = location.state as LocationState | null;
+
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
+    locationState?.patient || null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPatients() {
+    async function fetchData() {
       try {
-        const response = await fetch("/api/patients", {
-          credentials: "include",
-        });
+        // If we have a patient ID but no patient data, fetch it
+        if (patientId && !selectedPatient) {
+          const response = await fetch(`/api/patients/${patientId}`, {
+            credentials: "include",
+          });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch patients");
+          if (!response.ok) {
+            throw new Error("Failed to fetch patient");
+          }
+
+          const patientData = await response.json();
+          setSelectedPatient(patientData);
+        } else if (!patientId) {
+          // No patient ID, fetch all patients for selection
+          const response = await fetch("/api/patients", {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch patients");
+          }
+
+          const data = await response.json();
+          setPatients(data.patients || []);
         }
-
-        const data = await response.json();
-        setPatients(data.patients || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -61,8 +91,8 @@ export default function EditPatientPage() {
       }
     }
 
-    fetchPatients();
-  }, []);
+    fetchData();
+  }, [patientId, selectedPatient]);
 
   const formatName = (
     nameArray: Array<{ given?: string[]; family?: string }>,
@@ -74,10 +104,50 @@ export default function EditPatientPage() {
     return `${givenName} ${familyName}`.trim() || "Unknown";
   };
 
-  const handleEditPatient = (patientId: string) => {
-    navigate(`/admin/patients/${patientId}/edit`);
+  const handleEditPatient = (id: string) => {
+    navigate(`/admin/patients/${id}/edit`);
   };
 
+  // If we have a selected patient (from route params or state), show the edit form
+  if (selectedPatient) {
+    return (
+      <Container size="lg" pt="xl">
+        <Stack gap="lg">
+          <PageHeader
+            title={`Edit ${formatName(selectedPatient.name)}`}
+            description="Modify patient demographics and information"
+            size="lg"
+            mb={0}
+          />
+
+          {loading ? (
+            <Skeleton height={400} />
+          ) : error ? (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Error loading patient"
+              color="red"
+            >
+              {error}
+            </Alert>
+          ) : (
+            <Paper shadow="sm" p="md" withBorder>
+              <Title order={3} size="h4" mb="md">
+                TODO: Patient Edit Form
+              </Title>
+              <Text c="dimmed">
+                Patient edit functionality is not yet implemented. This page
+                will contain a form to edit patient demographics including name,
+                birth date, gender, and identifiers.
+              </Text>
+            </Paper>
+          )}
+        </Stack>
+      </Container>
+    );
+  }
+
+  // Otherwise, show the patient selection list
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">

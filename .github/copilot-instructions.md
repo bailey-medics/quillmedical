@@ -57,6 +57,11 @@ just create-user    # Interactive user creation
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
+- **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
+  - Import: `const theme = useMantineTheme();` from `@mantine/core`
+  - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`
+  - Standard breakpoint: `sm = "48em"` (768px) - matches navigation drawer toggle
+  - Use in all components that need responsive layout/sizing decisions
 
 ### Healthcare
 

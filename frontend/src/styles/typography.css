@@ -1,0 +1,108 @@
+/**
+ * Responsive Typography
+ *
+ * Implements responsive font scaling for accessibility:
+ * - Smaller fonts on mobile for space efficiency
+ * - Larger fonts on desktop for improved readability
+ * - Uses 48em (768px) breakpoint to match theme.breakpoints.sm
+ */
+
+/* Base (mobile) font sizes - already defined in theme.ts */
+
+/* Responsive scaling for tablet and desktop */
+@media (width >= 48em) {
+  /* 768px and up - matches theme.breakpoints.sm */
+
+  /* Override Mantine font sizes with larger desktop values */
+  :root {
+    /* Small text: 14px → 16px */
+    --mantine-font-size-xs: 1rem;
+    --mantine-font-size-sm: 1rem;
+
+    /* Body text: 16px → 19px (accessible standard) */
+    --mantine-font-size-md: 1.1875rem;
+
+    /* Subheadings: 20px → 24px */
+    --mantine-font-size-lg: 1.5rem;
+
+    /* Page headings: 26px → 32px */
+    --mantine-font-size-xl: 2rem;
+  }
+
+  /* Heading-specific responsive scaling */
+  h1,
+  .mantine-Title-root[data-order="1"] {
+    font-size: 2rem; /* 32px */
+    line-height: 1.3;
+  }
+
+  h2,
+  .mantine-Title-root[data-order="2"] {
+    font-size: 1.75rem; /* 28px */
+    line-height: 1.35;
+  }
+
+  h3,
+  .mantine-Title-root[data-order="3"] {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1.4;
+  }
+
+  h4,
+  .mantine-Title-root[data-order="4"] {
+    font-size: 1.1875rem; /* 19px - matches body */
+    line-height: 1.5;
+  }
+
+  h5,
+  .mantine-Title-root[data-order="5"] {
+    font-size: 1rem; /* 16px */
+    line-height: 1.55;
+  }
+
+  h6,
+  .mantine-Title-root[data-order="6"] {
+    font-size: 1rem; /* 16px */
+    line-height: 1.55;
+  }
+}
+
+/**
+ * Accessibility: Ensure text remains readable at all sizes
+ * Minimum font size should never go below 14px for body content
+ */
+body {
+  font-size: 1rem; /* 16px mobile, 19px desktop via CSS var */
+  line-height: 1.6;
+}
+
+/**
+ * Lead paragraphs - larger text for introductory content
+ * 20px mobile → 26px desktop for improved readability
+ */
+.lead-text {
+  font-size: 1.25rem; /* 20px mobile */
+  line-height: 1.5;
+}
+
+@media (width >= 48em) {
+  /* matches theme.breakpoints.sm */
+  .lead-text {
+    font-size: 1.625rem; /* 26px desktop */
+    line-height: 1.4;
+  }
+}
+
+/**
+ * Small text - 14px mobile, 16px desktop
+ * Already handled by sm/xs font size variables above
+ */
+
+/**
+ * Ensure consistent text alignment (accessibility)
+ * Left-align text for screen magnifier and assistive technology users
+ */
+p,
+.mantine-Text-root {
+  text-align: left;
+}

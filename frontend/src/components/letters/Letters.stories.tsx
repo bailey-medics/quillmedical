@@ -1,5 +1,6 @@
 import { sampleLetters } from "@/demo-data/letters/demoLetters";
 import { MantineProvider } from "@mantine/core";
+import { theme } from "@/theme";
 /**
  * Letters Component Stories
  *
@@ -25,7 +26,7 @@ type Story = StoryObj<typeof Letters>;
 
 export const Default: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ width: 480 }}>
         <Letters letters={sampleLetters} onOpen={(id) => alert(`open ${id}`)} />
       </div>
@@ -35,7 +36,7 @@ export const Default: Story = {
 
 export const Empty: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ width: 480 }}>
         <Letters letters={[]} />
       </div>
@@ -45,7 +46,7 @@ export const Empty: Story = {
 
 export const Loading: Story = {
   render: () => (
-    <MantineProvider>
+    <MantineProvider theme={theme}>
       <div style={{ width: 480 }}>
         <Letters isLoading />
       </div>

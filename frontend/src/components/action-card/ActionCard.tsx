@@ -27,6 +27,8 @@ interface ActionCardProps {
 /**
  * ActionCard displays a clickable card with an icon, title, description,
  * and action button. Used for dashboard quick actions and admin tasks.
+ *
+ * Max-width is constrained to 25rem (400px) for consistent sizing.
  */
 export default function ActionCard({
   icon,
@@ -37,7 +39,7 @@ export default function ActionCard({
   onClick,
 }: ActionCardProps) {
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <Card shadow="sm" padding="lg" radius="md" withBorder maw="25rem">
       <Stack gap="md">
         <Group>
           {icon}

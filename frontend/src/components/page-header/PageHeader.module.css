@@ -1,0 +1,23 @@
+/**
+ * PageHeader Component Styles
+ *
+ * Responsive typography for page headers
+ * Uses theme.breakpoints.sm (48em / 768px) to match main layout breakpoint
+ */
+
+.lgTitle {
+  /* lg size: 36px mobile → 56px desktop */
+  font-size: 2.25rem !important; /* 36px mobile */
+}
+
+@media (width >= 48em) {
+  /* 768px and up - matches theme.breakpoints.sm */
+  .lgTitle {
+    font-size: 3.5rem !important; /* 56px desktop */
+  }
+}
+
+.mdTitle {
+  /* md size: uses h2 size (24px → 28px) */
+  font-size: var(--mantine-h2-font-size) !important;
+}

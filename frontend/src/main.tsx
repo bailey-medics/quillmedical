@@ -20,10 +20,12 @@
 // src/main.tsx
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "./styles/typography.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { theme } from "./theme";
 
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
@@ -35,8 +37,10 @@ import ViewAllUsersPage from "./pages/admin/ViewAllUsersPage";
 import EditUserPage from "./pages/admin/EditUserPage";
 import DeactivateUserPage from "./pages/admin/DeactivateUserPage";
 import ViewAllPatientsPage from "./pages/admin/ViewAllPatientsPage";
+import PatientAdminPage from "./pages/admin/PatientAdminPage";
 import EditPatientPage from "./pages/admin/EditPatientPage";
 import DeactivatePatientPage from "./pages/admin/DeactivatePatientPage";
+import ActivatePatientPage from "./pages/admin/ActivatePatientPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -50,6 +54,7 @@ import TotpSetup from "./pages/TotpSetup";
 import { AuthProvider } from "./auth/AuthContext";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
+import RequirePermission from "./auth/RequirePermission";
 import LoginPage from "./pages/LoginPage";
 
 // Use Vite's BASE_URL so the client router knows it's served under `/app/`.
@@ -92,23 +97,150 @@ const router = createBrowserRouter(
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
-        { path: "/admin", element: <AdminPage /> },
-        { path: "/admin/users", element: <AdminUsersPage /> },
-        { path: "/admin/users/new", element: <NewUserPage /> },
-        { path: "/admin/users/list", element: <ViewAllUsersPage /> },
-        { path: "/admin/users/edit", element: <EditUserPage /> },
-        { path: "/admin/users/deactivate", element: <DeactivateUserPage /> },
-        { path: "/admin/users/:id/edit", element: <NewUserPage /> },
-        { path: "/admin/patients", element: <AdminPatientsPage /> },
-        { path: "/admin/patients/new", element: <NewPatientPage /> },
-        { path: "/admin/patients/list", element: <ViewAllPatientsPage /> },
-        { path: "/admin/patients/edit", element: <EditPatientPage /> },
+        {
+          path: "/admin",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users",
+          element: (
+            <RequirePermission level="admin">
+              <AdminUsersPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/new",
+          element: (
+            <RequirePermission level="admin">
+              <NewUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/list",
+          element: (
+            <RequirePermission level="admin">
+              <ViewAllUsersPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/deactivate",
+          element: (
+            <RequirePermission level="admin">
+              <DeactivateUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/:id/edit",
+          element: (
+            <RequirePermission level="admin">
+              <NewUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPatientsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/new",
+          element: (
+            <RequirePermission level="admin">
+              <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/list",
+          element: (
+            <RequirePermission level="admin">
+              <ViewAllPatientsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId",
+          element: (
+            <RequirePermission level="admin">
+              <PatientAdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId/deactivate",
+          element: (
+            <RequirePermission level="admin">
+              <DeactivatePatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId/activate",
+          element: (
+            <RequirePermission level="admin">
+              <ActivatePatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditPatientPage />
+            </RequirePermission>
+          ),
+        },
         {
           path: "/admin/patients/deactivate",
-          element: <DeactivatePatientPage />,
+          element: (
+            <RequirePermission level="admin">
+              <DeactivatePatientPage />
+            </RequirePermission>
+          ),
         },
-        { path: "/admin/patients/:id/edit", element: <NewPatientPage /> },
-        { path: "/admin/permissions", element: <AdminPermissionsPage /> },
+        {
+          path: "/admin/patients/:id/edit",
+          element: (
+            <RequirePermission level="admin">
+              <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/permissions",
+          element: (
+            <RequirePermission level="admin">
+              <AdminPermissionsPage />
+            </RequirePermission>
+          ),
+        },
         {
           path: "/settings",
           element: import("./pages/Settings").then((m) => <m.default />),
@@ -125,7 +257,7 @@ const router = createBrowserRouter(
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider defaultColorScheme="light">
+  <MantineProvider theme={theme}>
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>

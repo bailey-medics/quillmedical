@@ -26,7 +26,7 @@
     "stylelint": "stylelint \"*/*.{scss,css}\" --allow-empty-input",
     "style:fix": "stylelint \"*/*.{scss,css}\" --fix --allow-empty-input",
     "typecheck": "tsc --noEmit",
-    "typecheck:all": "tsc --project tsconfig.check.json --noEmit",
+    "typecheck:all": "npm run generate:types && tsc --project tsconfig.check.json --noEmit",
     "unit-test": "npm run generate:types && vitest --environment jsdom",
     "unit-test:run": "npm run generate:types && vitest --environment jsdom --run --watch=false",
     "unit-test:coverage": "npm run generate:types && vitest --environment jsdom --coverage"
