@@ -6,7 +6,7 @@
  * Provides action cards for editing and deactivating patients.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import {
   Container,
@@ -70,7 +70,12 @@ interface LinkedUser {
 export default function PatientAdminPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  const { setPatient } = useOutletContext<LayoutCtx>();
+  const context = useOutletContext<LayoutCtx | null>();
+  // Provide no-op fallback for tests/contexts without outlet
+  const setPatient = useMemo(
+    () => context?.setPatient ?? (() => {}),
+    [context],
+  );
   const [patient, setLocalPatient] = useState<PatientResource | null>(null);
   const [isActive, setIsActive] = useState<boolean>(true);
   // TODO: Wire up setLinkedUser when backend endpoint exists for fetching linked user
