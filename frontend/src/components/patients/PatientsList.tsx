@@ -20,9 +20,14 @@ import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import Demographics from "@/components/demographics/Demographics";
 import StateMessage from "@/components/state-message/StateMessage";
-import { Group, Text, UnstyledButton, Skeleton } from "@mantine/core";
+import {
+  Group,
+  Text,
+  UnstyledButton,
+  Skeleton,
+  useMantineTheme,
+} from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { SM_BREAKPOINT } from "@/lib/constants";
 
 /**
  * PatientsList Props
@@ -57,7 +62,8 @@ export default function PatientsList({
   fhirAvailable = false,
   onSelect,
 }: Props) {
-  const isSm = useMediaQuery(`(max-width: ${SM_BREAKPOINT})`);
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const avatarSize = isSm ? "sm" : "lg";
 
   if (isLoading) {

@@ -1,19 +1,17 @@
 /**
- * Responsive Typography - NHS-Aligned
+ * Responsive Typography
  *
- * Implements responsive font scaling to match NHS design system:
+ * Implements responsive font scaling for accessibility:
  * - Smaller fonts on mobile for space efficiency
  * - Larger fonts on desktop for improved readability
  * - Uses SM_BREAKPOINT (48em / 768px) to match main layout breakpoint
- *
- * Reference: https://service-manual.nhs.uk/design-system/styles/typography
  */
 
 /* Base (mobile) font sizes - already defined in theme.ts */
 
 /* Responsive scaling for tablet and desktop */
 @media (width >= 48em) {
-  /* 768px and up - matches SM_BREAKPOINT */
+  /* 768px and up - matches theme.breakpoints.sm */
 
   /* Override Mantine font sizes with larger desktop values */
   :root {
@@ -21,7 +19,7 @@
     --mantine-font-size-xs: 1rem;
     --mantine-font-size-sm: 1rem;
 
-    /* Body text: 16px → 19px (NHS standard) */
+    /* Body text: 16px → 19px (accessible standard) */
     --mantine-font-size-md: 1.1875rem;
 
     /* Subheadings: 20px → 24px */
@@ -79,32 +77,30 @@ body {
 }
 
 /**
- * Lead paragraphs - NHS uses 26px on desktop
- * Add class for introductory/lead content
+ * Lead paragraphs - larger text for introductory content
+ * 20px mobile → 26px desktop for improved readability
  */
-.lead-text,
-.nhsuk-body-l {
+.lead-text {
   font-size: 1.25rem; /* 20px mobile */
   line-height: 1.5;
 }
 
 @media (width >= 48em) {
-  /* matches SM_BREAKPOINT */
-  .lead-text,
-  .nhsuk-body-l {
-    font-size: 1.625rem; /* 26px desktop - NHS standard */
+  /* matches theme.breakpoints.sm */
+  .lead-text {
+    font-size: 1.625rem; /* 26px desktop */
     line-height: 1.4;
   }
 }
 
 /**
- * Small text - NHS uses 14px mobile, 16px desktop
+ * Small text - 14px mobile, 16px desktop
  * Already handled by sm/xs font size variables above
  */
 
 /**
  * Ensure consistent text alignment (accessibility)
- * NHS design system: left-align for screen magnifier users
+ * Left-align text for screen magnifier and assistive technology users
  */
 p,
 .mantine-Text-root {

@@ -9,9 +9,8 @@
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
-import { Group, Skeleton, Text } from "@mantine/core";
+import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { SM_BREAKPOINT } from "@/lib/constants";
 
 /**
  * DemographicsDetailed Props
@@ -48,7 +47,8 @@ export default function DemographicsDetailed({
   isCompact = false,
   avatarSrc = null,
 }: Props) {
-  const isSm = useMediaQuery(`(max-width: ${SM_BREAKPOINT})`);
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const avatarSize = isSm ? "sm" : "lg";
   const skeletonAvatarSize = isSm ? 36 : 48;
   const nameFontSize = isCompact ? 14 : 16;

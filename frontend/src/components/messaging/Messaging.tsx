@@ -13,11 +13,11 @@ import {
   Skeleton,
   Text,
   Textarea,
+  useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
-import { SM_BREAKPOINT } from "@/lib/constants";
 
 /**
  * Message
@@ -53,7 +53,8 @@ export default function Messaging({
 }: Props) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
-  const isSm = useMediaQuery(`(max-width: ${SM_BREAKPOINT})`);
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const avatarSize = isSm ? "sm" : "md";
   const avatarSizePixels = isSm ? 32 : 48;
 

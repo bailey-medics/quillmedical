@@ -1,6 +1,6 @@
 # Typography System
 
-This document describes the standardised typography system for Quill Medical, aligned with NHS design system accessibility standards.
+This document describes the standardised typography system for Quill Medical, designed for accessibility and readability in clinical applications.
 
 ## Font Size System
 
@@ -11,20 +11,19 @@ The application uses a **4-size responsive typography system** to maintain consi
 | Size        | Mobile (Base)     | Desktop (≥768px)   | Usage                                                    |
 | ----------- | ----------------- | ------------------ | -------------------------------------------------------- |
 | `xs` / `sm` | `0.875rem` (14px) | `1rem` (16px)      | Captions, hints, metadata, secondary information, badges |
-| `md`        | `1rem` (16px)     | `1.1875rem` (19px) | Body text, default text size, form labels (NHS standard) |
+| `md`        | `1rem` (16px)     | `1.1875rem` (19px) | Body text, default text size, form labels                |
 | `lg`        | `1.25rem` (20px)  | `1.5rem` (24px)    | Subheadings, section titles, card titles                 |
 | `xl`        | `1.625rem` (26px) | `2rem` (32px)      | Page headings, primary titles, hero text                 |
 
 **Note:** `xs` and `sm` are intentionally the same size to reduce complexity while maintaining Mantine's API.
 
-### NHS Design System Alignment
+### Design Principles
 
-This typography system follows [NHS design system guidelines](https://service-manual.nhs.uk/design-system/styles/typography):
+This typography system follows healthcare accessibility best practices:
 
 - **Default body text: 19px on desktop** (not 16px) for improved readability
 - **Responsive scaling**: Smaller on mobile (space efficiency), larger on desktop (accessibility)
 - **Mobile-first approach**: Base sizes optimized for small screens
-- **Tested with users**: Including those with dyslexia and color blindness
 - **Generous line heights**: Improved readability for clinical content
 
 ### Responsive Breakpoint
@@ -260,4 +259,3 @@ Example: Body text (`<Text size="md">`) will be 16px on mobile and 19px on deskt
 - [`src/components/page-header/PageHeader.tsx`](../src/components/page-header/PageHeader.tsx) - Page header sizes
 - [`src/stories/Typography.stories.tsx`](../src/stories/Typography.stories.tsx) - Visual examples
 - [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md) - Coding conventions
-- [NHS Typography Guidelines](https://service-manual.nhs.uk/design-system/styles/typography) - Reference standards

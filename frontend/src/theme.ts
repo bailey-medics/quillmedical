@@ -4,16 +4,16 @@
  * Centralized theme for consistent typography and styling across the app.
  * All font sizes, spacing, and other design tokens should be defined here.
  *
- * Font Size System (4 sizes - NHS-aligned, responsive):
+ * Font Size System (4 sizes - responsive, accessibility-focused):
  * - xs/sm: 0.875rem (14px) → 1rem (16px) - Small text, captions, metadata
- * - md:    1rem (16px) → 1.1875rem (19px) - Body text (NHS standard)
+ * - md:    1rem (16px) → 1.1875rem (19px) - Body text (accessible standard)
  * - lg:    1.25rem (20px) → 1.5rem (24px) - Subheadings, section titles
  * - xl:    1.625rem (26px) → 2rem (32px)  - Page headings, primary titles
  *
  * Responsive behavior:
  * - Mobile first (base sizes)
  * - Scales up on tablet/desktop (min-width: 48em / 768px)
- * - Matches NHS design system accessibility standards
+ * - Designed for healthcare accessibility standards
  *
  * Usage:
  * ```tsx
@@ -28,10 +28,10 @@ import { createTheme } from "@mantine/core";
 
 export const theme = createTheme({
   /**
-   * Font sizes - NHS-inspired responsive sizing
+   * Font sizes - responsive sizing for healthcare accessibility
    *
    * Base sizes (mobile): Smaller for limited screen space
-   * Desktop sizes: Larger for improved readability (matches NHS standards)
+   * Desktop sizes: Larger for improved readability
    *
    * Note: xs and sm share the same size to reduce complexity.
    * Responsive scaling handled via CSS custom properties.
@@ -39,7 +39,7 @@ export const theme = createTheme({
   fontSizes: {
     xs: "0.875rem", // 14px mobile → 16px desktop (via CSS)
     sm: "0.875rem", // 14px mobile → 16px desktop (same as xs)
-    md: "1rem", // 16px mobile → 19px desktop (NHS body standard)
+    md: "1rem", // 16px mobile → 19px desktop (accessible standard)
     lg: "1.25rem", // 20px mobile → 24px desktop
     xl: "1.625rem", // 26px mobile → 32px desktop
   },
@@ -51,7 +51,7 @@ export const theme = createTheme({
   fontSizeMd: "1rem",
 
   /**
-   * Heading sizes - Responsive, NHS-aligned
+   * Heading sizes - Responsive, accessibility-aligned
    * Maps h1-h6 to our font size system with appropriate line heights
    */
   headings: {
@@ -72,7 +72,7 @@ export const theme = createTheme({
 
   /**
    * Line heights for better readability
-   * NHS recommends generous line spacing for accessibility
+   * Generous line spacing improves accessibility for healthcare content
    */
   lineHeights: {
     xs: "1.5",
@@ -84,7 +84,7 @@ export const theme = createTheme({
 
   /**
    * Breakpoints - for responsive typography
-   * Matches Mantine defaults, aligned with NHS mobile-first approach
+   * Matches Mantine defaults, with mobile-first approach
    */
   breakpoints: {
     xs: "36em", // 576px

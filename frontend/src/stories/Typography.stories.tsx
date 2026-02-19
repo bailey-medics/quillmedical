@@ -2,14 +2,13 @@
  * Typography System Stories
  *
  * Visual showcase of the 4-size responsive typography system used throughout Quill Medical.
- * Aligned with NHS design system accessibility standards for improved readability.
+ * Designed for accessibility and readability in healthcare applications.
  *
  * Font sizes scale responsively:
  * - Mobile (< 768px): Smaller sizes for space efficiency
  * - Desktop (≥ 768px): Larger sizes for improved readability
  *
  * See frontend/docs/typography.md for complete documentation.
- * Reference: https://service-manual.nhs.uk/design-system/styles/typography
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

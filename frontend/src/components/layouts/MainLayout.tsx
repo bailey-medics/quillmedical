@@ -15,7 +15,6 @@ import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useAuth } from "@/auth/AuthContext";
-import { SM_BREAKPOINT } from "@/lib/constants";
 
 /**
  * MainLayout Props
@@ -48,7 +47,7 @@ export default function MainLayout({
 }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
-  const isSm = useMediaQuery(`(max-width: ${SM_BREAKPOINT})`);
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const { state } = useAuth();
 
   // Prepare footer text based on auth state
