@@ -30,3 +30,22 @@ export const FHIR_POLLING_TIME = 5000;
  * @default 30000 (30 seconds)
  */
 export const FHIR_REFRESH_TIME = 30000;
+
+/**
+ * Responsive Layout Breakpoint
+ *
+ * Main breakpoint for switching between mobile and desktop layouts.
+ * Below this width: Mobile layout with navigation drawer (hamburger menu)
+ * Above this width: Desktop layout with side navigation panel
+ *
+ * Value: 48em = 768px
+ *
+ * This breakpoint is used throughout the application for:
+ * - Side navigation visibility
+ * - Responsive typography scaling
+ * - Component layout adjustments
+ * - Grid column changes
+ *
+ * @constant
+ */
+export const SM_BREAKPOINT = "48em"; // 768px - Small/Medium screen breakpoint

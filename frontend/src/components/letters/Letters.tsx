@@ -6,10 +6,11 @@
  * for mobile/desktop viewing.
  */
 
-import { Skeleton, Text, Title, useMantineTheme } from "@mantine/core";
+import { Skeleton, Text, Title } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
+import { SM_BREAKPOINT } from "@/lib/constants";
 
 /**
  * Letter
@@ -65,8 +66,7 @@ export default function Letters({
   onOpen,
   children,
 }: Props) {
-  const theme = useMantineTheme();
-  const isSm = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`);
+  const isSm = useMediaQuery(`(min-width: ${SM_BREAKPOINT})`);
   const avatarSize = isSm ? "lg" : "sm";
 
   if (isLoading) {

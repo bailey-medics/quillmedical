@@ -1,21 +1,35 @@
 # Typography System
 
-This document describes the standardised typography system for Quill Medical.
+This document describes the standardised typography system for Quill Medical, aligned with NHS design system accessibility standards.
 
 ## Font Size System
 
-The application uses a **4-size typography system** to maintain consistency and improve readability. All font sizes are defined in [`src/theme.ts`](../src/theme.ts).
+The application uses a **4-size responsive typography system** to maintain consistency and improve readability. All font sizes are defined in [`src/theme.ts`](../src/theme.ts) and scale responsively via [`src/styles/typography.css`](../src/styles/typography.css).
 
-### The 4 Standard Sizes
+### The 4 Standard Sizes (Responsive)
 
-| Size        | Value      | Pixels | Usage                                                    |
-| ----------- | ---------- | ------ | -------------------------------------------------------- |
-| `xs` / `sm` | `0.875rem` | 14px   | Captions, hints, metadata, secondary information, badges |
-| `md`        | `1rem`     | 16px   | Body text, default text size, form labels                |
-| `lg`        | `1.25rem`  | 20px   | Subheadings, section titles, card titles                 |
-| `xl`        | `1.75rem`  | 28px   | Page headings, primary titles, hero text                 |
+| Size        | Mobile (Base)     | Desktop (≥768px)   | Usage                                                    |
+| ----------- | ----------------- | ------------------ | -------------------------------------------------------- |
+| `xs` / `sm` | `0.875rem` (14px) | `1rem` (16px)      | Captions, hints, metadata, secondary information, badges |
+| `md`        | `1rem` (16px)     | `1.1875rem` (19px) | Body text, default text size, form labels (NHS standard) |
+| `lg`        | `1.25rem` (20px)  | `1.5rem` (24px)    | Subheadings, section titles, card titles                 |
+| `xl`        | `1.625rem` (26px) | `2rem` (32px)      | Page headings, primary titles, hero text                 |
 
 **Note:** `xs` and `sm` are intentionally the same size to reduce complexity while maintaining Mantine's API.
+
+### NHS Design System Alignment
+
+This typography system follows [NHS design system guidelines](https://service-manual.nhs.uk/design-system/styles/typography):
+
+- **Default body text: 19px on desktop** (not 16px) for improved readability
+- **Responsive scaling**: Smaller on mobile (space efficiency), larger on desktop (accessibility)
+- **Mobile-first approach**: Base sizes optimized for small screens
+- **Tested with users**: Including those with dyslexia and color blindness
+- **Generous line heights**: Improved readability for clinical content
+
+### Responsive Breakpoint
+
+Font sizes scale up at **768px (48em)** to provide optimal readability on tablet and desktop devices while remaining efficient on mobile.
 
 ## Usage Guidelines
 
@@ -191,29 +205,59 @@ The typography system is configured in [`src/theme.ts`](../src/theme.ts):
 ```typescript
 export const theme = createTheme({
   fontSizes: {
-    xs: "0.875rem", // 14px
-    sm: "0.875rem", // 14px
-    md: "1rem", // 16px
-    lg: "1.25rem", // 20px
-    xl: "1.75rem", // 28px
+    xs: "0.875rem", // 14px mobile → 16px desktop
+    sm: "0.875rem", // 14px mobile → 16px desktop
+    md: "1rem", // 16px mobile → 19px desktop (NHS standard)
+    lg: "1.25rem", // 20px mobile → 24px desktop
+    xl: "1.625rem", // 26px mobile → 32px desktop
   },
   // ... other theme settings
 });
 ```
 
+Responsive scaling is implemented in [`src/styles/typography.css`](../src/styles/typography.css) using CSS custom properties that override Mantine's default font sizes at the 768px breakpoint.
+
 This theme is applied to all MantineProvider instances throughout the application.
 
 ## Benefits of This System
 
-1. **Consistency** - Uniform typography across all pages and components
-2. **Accessibility** - Predictable text sizes improve readability
-3. **Maintainability** - Easy to adjust app-wide typography from one place
-4. **Performance** - Fewer font sizes mean better browser rendering
-5. **Design speed** - Clear guidelines speed up development
-6. **Clinical safety** - Consistent typography reduces misreading risk
+1. **Accessibility** - Aligned with NHS design system standards, tested with users with dyslexia and color blindness
+2. **Responsive** - Optimal readability on all devices: efficient on mobile, comfortable on desktop
+3. **Consistency** - Uniform typography across all pages and components
+4. **NHS Compliance** - 19px default body text on desktop matches NHS recommendations
+5. **Maintainability** - Easy to adjust app-wide typography from central theme
+6. **Performance** - Fewer font sizes mean better browser rendering
+7. **Design speed** - Clear guidelines speed up development
+8. **Clinical safety** - Consistent, readable typography reduces misreading risk
+
+## Accessibility Features
+
+Following NHS design system best practices:
+
+- **Larger default text**: 19px body text on desktop (not 16px) for improved readability
+- **Generous line heights**: 1.5-1.6 for comfortable reading
+- **Left-aligned text**: Helps users with screen magnifiers
+- **Responsive scaling**: Adapts to device capabilities
+- **Tested with users**: Including those with visual impairments and cognitive differences
+
+## Testing Responsive Behavior
+
+To verify responsive font scaling:
+
+1. Open application in browser (desktop view)
+2. Use browser DevTools to view computed styles
+3. Resize browser window below 768px width
+4. Observe font sizes scale down for mobile efficiency
+5. Expand window above 768px
+6. Observe font sizes scale up for desktop readability
+
+Example: Body text (`<Text size="md">`) will be 16px on mobile and 19px on desktop.
 
 ## Related Files
 
-- [`src/theme.ts`](../src/theme.ts) - Theme configuration
+- [`src/theme.ts`](../src/theme.ts) - Theme configuration (base sizes)
+- [`src/styles/typography.css`](../src/styles/typography.css) - Responsive scaling implementation
 - [`src/components/page-header/PageHeader.tsx`](../src/components/page-header/PageHeader.tsx) - Page header sizes
+- [`src/stories/Typography.stories.tsx`](../src/stories/Typography.stories.tsx) - Visual examples
 - [`.github/copilot-instructions.md`](../../.github/copilot-instructions.md) - Coding conventions
+- [NHS Typography Guidelines](https://service-manual.nhs.uk/design-system/styles/typography) - Reference standards

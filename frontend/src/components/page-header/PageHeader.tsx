@@ -14,6 +14,7 @@
  */
 
 import { Box, Text, Title } from "@mantine/core";
+import classes from "./PageHeader.module.css";
 
 /**
  * PageHeader Props
@@ -74,18 +75,12 @@ export default function PageHeader({
       <Title
         order={order}
         mb={description ? "xs" : undefined}
-        // Make lg headers responsive: use h2 size on mobile, h1 on desktop
-        styles={
+        className={
           size === "lg"
-            ? {
-                root: {
-                  fontSize: "var(--mantine-h2-font-size)",
-                  "@media (min-width: 48em)": {
-                    fontSize: "var(--mantine-h1-font-size)",
-                  },
-                },
-              }
-            : undefined
+            ? classes.lgTitle
+            : size === "md"
+              ? classes.mdTitle
+              : undefined
         }
       >
         {title}

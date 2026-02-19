@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import {
   Container,
   Stack,
@@ -30,6 +30,8 @@ import {
 import PageHeader from "@/components/page-header/PageHeader";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
+import type { Patient } from "@/domains/patient";
+import type { LayoutCtx } from "@/RootLayout";
 
 /**
  * Patient FHIR Resource (simplified)
@@ -68,7 +70,8 @@ interface LinkedUser {
 export default function PatientAdminPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  const [patient, setPatient] = useState<PatientResource | null>(null);
+  const { setPatient } = useOutletContext<LayoutCtx>();
+  const [patient, setLocalPatient] = useState<PatientResource | null>(null);
   const [isActive, setIsActive] = useState<boolean>(true);
   // TODO: Wire up setLinkedUser when backend endpoint exists for fetching linked user
   const [linkedUser] = useState<LinkedUser | null>(null);
@@ -88,7 +91,7 @@ export default function PatientAdminPage() {
         const patientData = await api.get<PatientResource>(
           `/patients/${patientId}`,
         );
-        setPatient(patientData);
+        setLocalPatient(patientData);
 
         // Fetch patient metadata (including activation status)
         const metadata = await api.get<{
@@ -97,18 +100,83 @@ export default function PatientAdminPage() {
         }>(`/patients/${patientId}/metadata`);
         setIsActive(metadata.is_active);
 
+        // Transform patient data for ribbon display
+        // Extract name from FHIR structure
+        let displayName = patientData.id;
+        if (patientData.name && patientData.name.length > 0) {
+          const primaryName = patientData.name[0];
+          const givenNames = primaryName.given || [];
+          const familyName = primaryName.family || "";
+          const nameParts = [...givenNames, familyName].filter(Boolean);
+          if (nameParts.length > 0) {
+            displayName = nameParts.join(" ");
+          }
+        }
+
+        // Extract national health identifier from identifiers
+        let nationalNumber: string | undefined;
+        let nationalNumberSystem: string | undefined;
+        if (patientData.identifier && patientData.identifier.length > 0) {
+          // Try to find a national health identifier
+          const nationalIdentifier = patientData.identifier.find(
+            (identifier) =>
+              identifier.system === "https://fhir.nhs.uk/Id/nhs-number" ||
+              identifier.system ===
+                "http://ns.electronichealth.net.au/id/medicare-number" ||
+              identifier.system?.includes("/national") ||
+              identifier.system?.includes("/health-id"),
+          );
+          if (nationalIdentifier) {
+            nationalNumber = nationalIdentifier.value;
+            nationalNumberSystem = nationalIdentifier.system;
+          }
+        }
+
+        // Calculate age from birthDate
+        let age: number | undefined;
+        if (patientData.birthDate) {
+          const birthDate = new Date(patientData.birthDate);
+          const today = new Date();
+          age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          if (
+            monthDiff < 0 ||
+            (monthDiff === 0 && today.getDate() < birthDate.getDate())
+          ) {
+            age--;
+          }
+        }
+
+        // Update ribbon with patient details
+        const ribbonPatient: Patient = {
+          id: patientData.id,
+          name: displayName,
+          dob: patientData.birthDate ?? undefined,
+          age: age,
+          sex: patientData.gender ?? undefined,
+          nationalNumber: nationalNumber,
+          nationalNumberSystem: nationalNumberSystem,
+        };
+        setPatient(ribbonPatient);
+
         // TODO: Fetch linked user when backend endpoint exists
         // const linkedUserData = await api.get<LinkedUser | null>(`/patients/${patientId}/linked-user`);
         // setLinkedUser(linkedUserData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
+        setPatient(null);
       } finally {
         setLoading(false);
       }
     }
 
     fetchPatientData();
-  }, [patientId]);
+
+    // Clean up: remove patient from ribbon when unmounting
+    return () => {
+      setPatient(null);
+    };
+  }, [patientId, setPatient]);
 
   const formatName = (
     nameArray: Array<{ given?: string[]; family?: string }> | undefined,

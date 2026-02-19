@@ -1,8 +1,15 @@
 /**
  * Typography System Stories
  *
- * Visual showcase of the 4-size typography system used throughout Quill Medical.
+ * Visual showcase of the 4-size responsive typography system used throughout Quill Medical.
+ * Aligned with NHS design system accessibility standards for improved readability.
+ *
+ * Font sizes scale responsively:
+ * - Mobile (< 768px): Smaller sizes for space efficiency
+ * - Desktop (≥ 768px): Larger sizes for improved readability
+ *
  * See frontend/docs/typography.md for complete documentation.
+ * Reference: https://service-manual.nhs.uk/design-system/styles/typography
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -17,7 +24,7 @@ import {
 } from "@mantine/core";
 
 const meta = {
-  title: "Design System/Typography",
+  title: "Typography/Typography",
   parameters: {
     layout: "padded",
     docs: {
@@ -43,8 +50,9 @@ export const FontSizeSystem: Story = {
           Font Size System
         </Title>
         <Text c="dimmed" mb="lg">
-          Quill Medical uses 4 standardised font sizes. All sizes are defined in
-          the central theme configuration.
+          Quill Medical uses 4 standardised responsive font sizes, aligned with
+          NHS design system accessibility standards. Sizes scale up on
+          tablet/desktop (≥768px) for improved readability.
         </Text>
       </div>
 
@@ -56,12 +64,12 @@ export const FontSizeSystem: Story = {
                 xs / sm
               </Text>
               <Text c="dimmed" size="sm">
-                — 0.875rem (14px)
+                — 14px mobile → 16px desktop
               </Text>
             </Group>
             <Text size="xs">
               This is extra small text used for captions, hints, metadata, and
-              secondary information.
+              secondary information. Grows to 16px on larger screens.
             </Text>
           </div>
 
@@ -73,12 +81,13 @@ export const FontSizeSystem: Story = {
                 md
               </Text>
               <Text c="dimmed" size="sm">
-                — 1rem (16px) — Default
+                — 16px mobile → 19px desktop — Default (NHS Standard)
               </Text>
             </Group>
             <Text size="md">
-              This is medium text, the default size for body content, form
-              labels, and regular paragraph text.
+              This is medium text, the default size for body content. Scales to
+              19px on desktop following NHS design system standards for improved
+              readability.
             </Text>
           </div>
 
@@ -90,12 +99,12 @@ export const FontSizeSystem: Story = {
                 lg
               </Text>
               <Text c="dimmed" size="sm">
-                — 1.25rem (20px)
+                — 20px mobile → 24px desktop
               </Text>
             </Group>
             <Text size="lg">
               This is large text used for subheadings, section titles, and card
-              titles.
+              titles. Scales to 24px on larger displays.
             </Text>
           </div>
 
@@ -107,11 +116,12 @@ export const FontSizeSystem: Story = {
                 xl
               </Text>
               <Text c="dimmed" size="sm">
-                — 1.75rem (28px)
+                — 26px mobile → 32px desktop
               </Text>
             </Group>
             <Text size="xl">
               This is extra large text for page headings and primary titles.
+              Scales to 32px on desktop for prominence.
             </Text>
           </div>
         </Stack>
@@ -131,32 +141,32 @@ export const Headings: Story = {
           Headings
         </Title>
         <Text c="dimmed" mb="lg">
-          Heading sizes are automatically mapped from h1-h6 to the font size
-          system.
+          Heading sizes are automatically mapped and scale responsively with the
+          font size system for optimal readability on all devices.
         </Text>
       </div>
 
       <Stack gap="md">
         <div>
-          <Title order={1}>h1 — Page Heading (1.75rem / 28px)</Title>
+          <Title order={1}>h1 — Page Heading (26px → 32px)</Title>
           <Text size="sm" c="dimmed">
-            Used for main page titles
+            Used for main page titles, scales to 32px on desktop
           </Text>
         </div>
 
         <Divider />
 
         <div>
-          <Title order={2}>h2 — Section Heading (1.5rem / 24px)</Title>
+          <Title order={2}>h2 — Section Heading (24px → 28px)</Title>
           <Text size="sm" c="dimmed">
-            Used for major sections
+            Used for major sections, responsive sizing
           </Text>
         </div>
 
         <Divider />
 
         <div>
-          <Title order={3}>h3 — Subsection Heading (1.25rem / 20px)</Title>
+          <Title order={3}>h3 — Subsection Heading (20px → 24px)</Title>
           <Text size="sm" c="dimmed">
             Used for subsections and card titles
           </Text>
@@ -165,27 +175,27 @@ export const Headings: Story = {
         <Divider />
 
         <div>
-          <Title order={4}>h4 — Minor Heading (1rem / 16px)</Title>
+          <Title order={4}>h4 — Minor Heading (16px → 19px)</Title>
           <Text size="sm" c="dimmed">
-            Used for small section headers
+            Used for small section headers, matches body text size on desktop
           </Text>
         </div>
 
         <Divider />
 
         <div>
-          <Title order={5}>h5 — Smallest Heading (0.875rem / 14px)</Title>
+          <Title order={5}>h5 — Smallest Heading (14px → 16px)</Title>
           <Text size="sm" c="dimmed">
-            Rarely used, same size as small text
+            Rarely used, matches small text size
           </Text>
         </div>
 
         <Divider />
 
         <div>
-          <Title order={6}>h6 — Minimal Heading (0.875rem / 14px)</Title>
+          <Title order={6}>h6 — Minimal Heading (14px → 16px)</Title>
           <Text size="sm" c="dimmed">
-            Rarely used, same size as small text
+            Rarely used, matches small text size
           </Text>
         </div>
       </Stack>
@@ -204,7 +214,8 @@ export const UseCases: Story = {
           Common Use Cases
         </Title>
         <Text c="dimmed" mb="lg">
-          Examples of where each font size should be used in the application.
+          Examples of where each responsive font size should be used in the
+          application.
         </Text>
       </div>
 
@@ -212,6 +223,7 @@ export const UseCases: Story = {
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Size</Table.Th>
+            <Table.Th>Responsive Values</Table.Th>
             <Table.Th>Use For</Table.Th>
             <Table.Th>Example</Table.Th>
           </Table.Tr>
@@ -221,6 +233,11 @@ export const UseCases: Story = {
             <Table.Td>
               <Text fw={600} size="sm">
                 xs / sm
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm" c="dimmed">
+                14px → 16px
               </Text>
             </Table.Td>
             <Table.Td>
@@ -243,8 +260,14 @@ export const UseCases: Story = {
               </Text>
             </Table.Td>
             <Table.Td>
+              <Text size="sm" c="dimmed">
+                16px → 19px
+              </Text>
+            </Table.Td>
+            <Table.Td>
               <Text size="sm">
                 Body text, form labels, descriptions, card content, default text
+                (NHS standard)
               </Text>
             </Table.Td>
             <Table.Td>
@@ -256,6 +279,11 @@ export const UseCases: Story = {
             <Table.Td>
               <Text fw={600} size="sm">
                 lg
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm" c="dimmed">
+                20px → 24px
               </Text>
             </Table.Td>
             <Table.Td>
@@ -274,6 +302,11 @@ export const UseCases: Story = {
             <Table.Td>
               <Text fw={600} size="sm">
                 xl
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm" c="dimmed">
+                26px → 32px
               </Text>
             </Table.Td>
             <Table.Td>
@@ -302,7 +335,8 @@ export const SizeComparison: Story = {
           Size Comparison
         </Title>
         <Text c="dimmed" mb="lg">
-          Visual comparison of all font sizes with different weights.
+          Visual comparison of all font sizes with different weights. Resize
+          your browser to see responsive scaling at 768px breakpoint.
         </Text>
       </div>
 
@@ -310,7 +344,7 @@ export const SizeComparison: Story = {
         <Stack gap="lg">
           <div>
             <Text size="sm" c="dimmed" mb="xs">
-              xs / sm (0.875rem)
+              xs / sm (14px mobile → 16px desktop)
             </Text>
             <Group gap="md">
               <Text size="xs" fw={400}>
@@ -330,7 +364,7 @@ export const SizeComparison: Story = {
 
           <div>
             <Text size="sm" c="dimmed" mb="xs">
-              md (1rem) — Default
+              md (16px mobile → 19px desktop — NHS Default)
             </Text>
             <Group gap="md">
               <Text size="md" fw={400}>
@@ -350,7 +384,7 @@ export const SizeComparison: Story = {
 
           <div>
             <Text size="sm" c="dimmed" mb="xs">
-              lg (1.25rem)
+              lg (20px mobile → 24px desktop)
             </Text>
             <Group gap="md">
               <Text size="lg" fw={400}>
@@ -370,7 +404,7 @@ export const SizeComparison: Story = {
 
           <div>
             <Text size="sm" c="dimmed" mb="xs">
-              xl (1.75rem)
+              xl (26px mobile → 32px desktop)
             </Text>
             <Group gap="md">
               <Text size="xl" fw={400}>
@@ -404,7 +438,9 @@ export const RealWorldExample: Story = {
           Real-World Example
         </Title>
         <Text c="dimmed" mb="lg">
-          Typography system in a realistic application context.
+          Typography system in a realistic application context. Text scales
+          responsively for optimal readability on all devices following NHS
+          accessibility standards.
         </Text>
       </div>
 

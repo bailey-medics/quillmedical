@@ -210,7 +210,7 @@ export default function Messages() {
         <PageHeader
           title="Messages"
           description="View and manage all patient conversations"
-          size="md"
+          size="lg"
         />
 
         {/* Filters and Search */}
