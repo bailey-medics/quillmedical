@@ -4,7 +4,9 @@ dist/
 
 # Generated files - DO NOT COMMIT
 # Backend uses YAML directly, only frontend needs generated JSON
-src/generated/
+# Ignore JSON files but keep type declarations
+src/generated/*.json
+!src/generated/*.d.ts
 
 # Generated JSON from YAML
 *.generated.json
