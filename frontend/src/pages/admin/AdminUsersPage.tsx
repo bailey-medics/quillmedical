@@ -14,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header/PageHeader";
+import Icon from "@/components/icons/Icon";
 
 /**
  * Admin Users Page
@@ -37,14 +38,14 @@ export default function AdminUsersPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
-            icon={<IconUsers size={24} />}
+            icon={<Icon icon={<IconUsers />} size="lg" />}
             title="Show all users"
             subtitle="View and search all registered user accounts"
             buttonLabel="View all users"
             buttonUrl="/admin/users/list"
           />
           <ActionCard
-            icon={<IconUserPlus size={24} />}
+            icon={<Icon icon={<IconUserPlus />} size="lg" />}
             title="Add user"
             subtitle="Create a new user account with competencies and permissions"
             buttonLabel="Add new user"
@@ -54,14 +55,14 @@ export default function AdminUsersPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
-            icon={<IconUserEdit size={24} />}
+            icon={<Icon icon={<IconUserEdit />} size="lg" />}
             title="Edit user"
             subtitle="Update user details, competencies, and permissions"
             buttonLabel="Edit user"
             buttonUrl="/admin/users/edit"
           />
           <ActionCard
-            icon={<IconUserMinus size={24} />}
+            icon={<Icon icon={<IconUserMinus />} size="lg" />}
             title="Deactivate user"
             subtitle="Deactivate a user account and revoke access"
             buttonLabel="Deactivate user"

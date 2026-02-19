@@ -15,7 +15,6 @@ import {
   Group,
   Text,
   Title,
-  ActionIcon,
   Skeleton,
   Alert,
   Badge,
@@ -28,6 +27,8 @@ import {
   IconUserCheck,
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header/PageHeader";
+import Icon from "@/components/icons/Icon";
+import IconButton from "@/components/icon-button";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
 import type { Patient } from "@/domains/patient";
@@ -231,7 +232,7 @@ export default function PatientAdminPage() {
     return (
       <Container size="lg" pt="xl">
         <Alert
-          icon={<IconAlertCircle size={16} />}
+          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading patient"
           color="red"
         >
@@ -260,20 +261,20 @@ export default function PatientAdminPage() {
             <Title order={3} size="h4">
               Linked user account
             </Title>
-            <ActionIcon
+            <IconButton
+              icon={<IconPencil />}
+              size="md"
               variant="subtle"
               color="blue"
               onClick={handleEditLink}
               aria-label="Edit linked user"
-            >
-              <IconPencil size={18} />
-            </ActionIcon>
+            />
           </Group>
 
           {linkedUser ? (
             <Stack gap="xs">
               <Group gap="xs">
-                <IconUser size={16} />
+                <Icon icon={<IconUser />} size="lg" />
                 <Text fw={500}>{linkedUser.username}</Text>
               </Group>
               <Text size="sm" c="dimmed">
@@ -284,7 +285,10 @@ export default function PatientAdminPage() {
               </Badge>
             </Stack>
           ) : (
-            <Alert icon={<IconAlertCircle size={16} />} color="gray">
+            <Alert
+              icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+              color="gray"
+            >
               No user account linked to this patient
             </Alert>
           )}
@@ -300,7 +304,9 @@ export default function PatientAdminPage() {
               <Badge color={isActive ? "green" : "red"} variant="light">
                 {isActive ? "Active" : "Deactivated"}
               </Badge>
-              <ActionIcon
+              <IconButton
+                icon={<IconPencil />}
+                size="md"
                 variant="subtle"
                 aria-label="Edit patient details"
                 onClick={() => {
@@ -308,9 +314,7 @@ export default function PatientAdminPage() {
                     state: { patient },
                   });
                 }}
-              >
-                <IconPencil size={18} />
-              </ActionIcon>
+              />
             </Group>
           </Group>
 
@@ -371,7 +375,7 @@ export default function PatientAdminPage() {
           </Title>
           {isActive ? (
             <ActionCard
-              icon={<IconUserMinus size={24} />}
+              icon={<Icon icon={<IconUserMinus />} size="lg" />}
               title="Deactivate patient"
               subtitle="Deactivate this patient record"
               buttonLabel="Deactivate patient"
@@ -385,7 +389,7 @@ export default function PatientAdminPage() {
             />
           ) : (
             <ActionCard
-              icon={<IconUserCheck size={24} />}
+              icon={<Icon icon={<IconUserCheck />} size="lg" />}
               title="Activate patient"
               subtitle="Reactivate this patient record"
               buttonLabel="Activate patient"

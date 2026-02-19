@@ -36,7 +36,7 @@ export default function Settings() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader title="Settings" size="lg" />
+        <PageHeader title="Settings" size="lg" mb={0} />
         <Card shadow="sm">
           <EnableNotificationsButton />
         </Card>
