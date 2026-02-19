@@ -51,7 +51,7 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
-from app.models import User
+from app.models import PatientMetadata, User
 from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.schemas.auth import LoginIn, RegisterIn
@@ -1184,33 +1184,62 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
 
 
 @router.get("/patients")
-def list_patients(u: User = DEP_CURRENT_USER) -> dict[str, Any]:
+def list_patients(
+    include_inactive: bool = False,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
     """List All Patients from FHIR.
 
     Retrieves all patient demographics from the FHIR server. Returns FHIR R4
     Patient resources including name, date of birth, gender, identifiers (NHS
-    number), and contact information. Used by frontend to display patient list
-    and search functionality.
+    number), and contact information. Each patient includes activation status
+    from the patient_metadata table.
+
+    By default, only active patients are returned. Admin and superadmin users
+    can set include_inactive=true to see deactivated patients.
 
     Also includes FHIR readiness status to prevent race conditions where
     health check succeeds but patient query fails during FHIR initialization.
 
     Args:
-        u: Currently authenticated user (any role can view patients).
+        include_inactive: If true, include deactivated patients (admin only).
+        u: Currently authenticated user.
+        db: Database session.
 
     Returns:
         dict: Response with keys:
-            - patients: Array of FHIR Patient resources
+            - patients: Array of FHIR Patient resources with is_active field
             - fhir_ready: Boolean indicating if FHIR is fully initialized
 
     Raises:
         HTTPException: 500 if FHIR server communication fails.
     """
     try:
+        # Fetch all patients from FHIR
         patients = list_fhir_patients()
-        # If we successfully got patients, FHIR is ready
-        # This is more reliable than separate health checks
-        return {"patients": patients, "fhir_ready": True}
+
+        # Fetch all patient metadata from database
+        stmt = select(PatientMetadata)
+        metadata_records = db.execute(stmt).scalars().all()
+        metadata_map = {m.patient_id: m.is_active for m in metadata_records}
+
+        # Enrich patients with activation status
+        enriched_patients = []
+        for patient in patients:
+            patient_id = patient.get("id")
+            if patient_id is None:
+                continue
+            is_active = metadata_map.get(patient_id, True)  # Default to active
+
+            # Filter based on activation status and user permissions
+            is_admin = u.system_permissions in ["admin", "superadmin"]
+            if is_active or (include_inactive and is_admin):
+                # Add is_active field to patient resource
+                patient["is_active"] = is_active
+                enriched_patients.append(patient)
+
+        return {"patients": enriched_patients, "fhir_ready": True}
     except Exception:
         # If patient query fails, FHIR might still be loading
         # Return empty list with fhir_ready=False instead of 500 error
@@ -1594,6 +1623,174 @@ def update_patient(
         raise HTTPException(
             status_code=500, detail=f"Failed to update patient: {e}"
         ) from e
+
+
+@router.get("/patients/{patient_id}/metadata")
+def get_patient_metadata(
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Get Patient Metadata.
+
+    Returns application-specific metadata for a patient, including activation
+    status. If no metadata record exists, returns default values (is_active=True).
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        u: Currently authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: Patient metadata with keys:
+            - patient_id: FHIR Patient resource ID
+            - is_active: Whether patient is active in the system
+    """
+    stmt = select(PatientMetadata).where(
+        PatientMetadata.patient_id == patient_id
+    )
+    metadata = db.execute(stmt).scalar_one_or_none()
+
+    if metadata:
+        return {
+            "patient_id": metadata.patient_id,
+            "is_active": metadata.is_active,
+        }
+    else:
+        # No metadata record means patient is active by default
+        return {
+            "patient_id": patient_id,
+            "is_active": True,
+        }
+
+
+@router.post("/patients/{patient_id}/deactivate")
+def deactivate_patient(
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Deactivate Patient Record.
+
+    Marks a patient as inactive in the system. Deactivated patients are hidden
+    from clinical views but remain visible in admin pages with a deactivated flag.
+    Requires admin or superadmin system permissions.
+
+    Args:
+        patient_id: FHIR Patient resource ID to deactivate.
+        u: Currently authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with keys:
+            - patient_id: The deactivated patient ID
+            - is_active: False
+            - message: Success message
+
+    Raises:
+        HTTPException: 403 if user lacks admin permissions.
+        HTTPException: 404 if patient not found in FHIR.
+    """
+    # Check permissions
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permission required to deactivate patients",
+        )
+
+    # Verify patient exists in FHIR
+    patient = read_fhir_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Get or create metadata record
+    stmt = select(PatientMetadata).where(
+        PatientMetadata.patient_id == patient_id
+    )
+    metadata = db.execute(stmt).scalar_one_or_none()
+
+    if metadata:
+        # Update existing record
+        metadata.is_active = False
+    else:
+        # Create new metadata record
+        metadata = PatientMetadata(
+            patient_id=patient_id,
+            is_active=False,
+        )
+        db.add(metadata)
+
+    db.commit()
+
+    return {
+        "patient_id": patient_id,
+        "is_active": False,
+        "message": "Patient deactivated successfully",
+    }
+
+
+@router.post("/patients/{patient_id}/activate")
+def activate_patient(
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Activate Patient Record.
+
+    Reactivates a previously deactivated patient, making them visible in all
+    views again. Requires admin or superadmin system permissions.
+
+    Args:
+        patient_id: FHIR Patient resource ID to activate.
+        u: Currently authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with keys:
+            - patient_id: The activated patient ID
+            - is_active: True
+            - message: Success message
+
+    Raises:
+        HTTPException: 403 if user lacks admin permissions.
+        HTTPException: 404 if patient not found in FHIR.
+    """
+    # Check permissions
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permission required to activate patients",
+        )
+
+    # Verify patient exists in FHIR
+    patient = read_fhir_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Get or create metadata record
+    stmt = select(PatientMetadata).where(
+        PatientMetadata.patient_id == patient_id
+    )
+    metadata = db.execute(stmt).scalar_one_or_none()
+
+    if metadata:
+        # Update existing record
+        metadata.is_active = True
+    else:
+        # Create new metadata record (already active by default)
+        metadata = PatientMetadata(
+            patient_id=patient_id,
+            is_active=True,
+        )
+        db.add(metadata)
+
+    db.commit()
+
+    return {
+        "patient_id": patient_id,
+        "is_active": True,
+        "message": "Patient activated successfully",
+    }
 
 
 # ==========================================================================

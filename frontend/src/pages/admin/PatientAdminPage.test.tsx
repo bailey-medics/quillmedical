@@ -10,12 +10,24 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import PatientAdminPage from "./PatientAdminPage";
 import * as authContext from "@/auth/AuthContext";
 import type { User } from "@/auth/AuthContext";
 import * as apiLib from "@/lib/api";
+
+// Mock navigate function
+const mockNavigate = vi.fn();
+
+// Mock react-router-dom
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // Mock users with different permission levels
 const mockUsers: Record<string, User> = {
@@ -42,6 +54,7 @@ const mockUsers: Record<string, User> = {
 describe("PatientAdminPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
 
     // Mock auth context to return admin user (permission checking is done by RequirePermission HOC)
     vi.spyOn(authContext, "useAuth").mockReturnValue({
@@ -255,6 +268,172 @@ describe("PatientAdminPage", () => {
 
       const skeletons = document.querySelectorAll(".mantine-Skeleton-root");
       expect(skeletons.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Action cards", () => {
+    beforeEach(() => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: mockUsers.admin,
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+    });
+
+    it("displays edit patient action card", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+      };
+
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        const editCards = screen.getAllByText("Edit patient");
+        expect(editCards.length).toBeGreaterThan(0);
+        expect(
+          screen.getByText("Modify patient demographics and information"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("displays deactivate patient action card", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+      };
+
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: true }); // Second call for metadata
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        const deactivateCards = screen.getAllByText("Deactivate patient");
+        expect(deactivateCards.length).toBeGreaterThan(0);
+        expect(
+          screen.getByText("Deactivate this patient record"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("displays activate patient action card when patient is inactive", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+      };
+
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: false }); // Second call for metadata
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        const activateCards = screen.getAllByText("Activate patient");
+        expect(activateCards.length).toBeGreaterThan(0);
+        expect(
+          screen.getByText("Reactivate this patient record"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("navigates to patient-specific edit page when edit card clicked", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+      };
+
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        const patientNames = screen.getAllByText("John Doe");
+        expect(patientNames.length).toBeGreaterThan(0);
+      });
+
+      const editButtons = screen.getAllByRole("button", {
+        name: /edit patient/i,
+      });
+      const editButton = editButtons[editButtons.length - 1]; // Get the action card button
+
+      fireEvent.click(editButton);
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/patients/patient-123/edit",
+        expect.objectContaining({
+          state: expect.objectContaining({
+            patient: mockPatient,
+          }),
+        }),
+      );
+    });
+
+    it("navigates to patient-specific deactivate page when deactivate card clicked", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+      };
+
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: true }); // Second call for metadata
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        const patientNames = screen.getAllByText("John Doe");
+        expect(patientNames.length).toBeGreaterThan(0);
+      });
+
+      const deactivateButtons = screen.getAllByRole("button", {
+        name: /deactivate patient/i,
+      });
+      const deactivateButton = deactivateButtons[deactivateButtons.length - 1]; // Get the action card button
+
+      fireEvent.click(deactivateButton);
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/patients/patient-123/deactivate",
+        expect.objectContaining({
+          state: expect.objectContaining({
+            patient: mockPatient,
+          }),
+        }),
+      );
     });
   });
 });

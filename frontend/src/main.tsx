@@ -183,6 +183,22 @@ const router = createBrowserRouter(
           ),
         },
         {
+          path: "/admin/patients/:patientId/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId/deactivate",
+          element: (
+            <RequirePermission level="admin">
+              <DeactivatePatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
           path: "/admin/patients/edit",
           element: (
             <RequirePermission level="admin">

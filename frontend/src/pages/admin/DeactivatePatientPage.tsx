@@ -1,11 +1,14 @@
 /**
  * Deactivate Patient Page
  *
- * Allows administrators to select and deactivate patient records.
- * Displays a list of patients to choose from for deactivation.
+ * Allows administrators to deactivate patient records.
+ * Can be accessed in two ways:
+ * 1. With patient ID in route params: /admin/patients/:patientId/deactivate
+ * 2. Without patient ID: /admin/patients/deactivate (shows patient selection list)
  */
 
 import { useEffect, useState } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   Container,
   Stack,
@@ -16,9 +19,13 @@ import {
   Center,
   Alert,
   Modal,
+  Paper,
+  Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header/PageHeader";
+import { api } from "@/lib/api";
 
 interface Patient {
   id: string;
@@ -27,34 +34,61 @@ interface Patient {
   gender?: string;
 }
 
+interface LocationState {
+  patient?: Patient;
+}
+
 /**
  * Deactivate Patient Page
  *
- * Displays all patients and allows selecting one to deactivate.
- * Shows a confirmation modal before deactivating.
+ * Displays deactivation confirmation if patient ID provided in route/state,
+ * otherwise shows a list of patients to select for deactivation.
  *
  * @returns Deactivate patient page component
  */
 export default function DeactivatePatientPage() {
+  const { patientId } = useParams<{ patientId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as LocationState | null;
+
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [specificPatient, setSpecificPatient] = useState<Patient | null>(
+    locationState?.patient || null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
   useEffect(() => {
-    async function fetchPatients() {
+    async function fetchData() {
       try {
-        const response = await fetch("/api/patients", {
-          credentials: "include",
-        });
+        // If we have a patient ID but no patient data, fetch it
+        if (patientId && !specificPatient) {
+          const response = await fetch(`/api/patients/${patientId}`, {
+            credentials: "include",
+          });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch patients");
+          if (!response.ok) {
+            throw new Error("Failed to fetch patient");
+          }
+
+          const patientData = await response.json();
+          setSpecificPatient(patientData);
+        } else if (!patientId) {
+          // No patient ID, fetch all patients for selection
+          const response = await fetch("/api/patients", {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch patients");
+          }
+
+          const data = await response.json();
+          setPatients(data.patients || []);
         }
-
-        const data = await response.json();
-        setPatients(data.patients || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -62,8 +96,8 @@ export default function DeactivatePatientPage() {
       }
     }
 
-    fetchPatients();
-  }, []);
+    fetchData();
+  }, [patientId, specificPatient]);
 
   const formatName = (
     nameArray: Array<{ given?: string[]; family?: string }>,
@@ -80,34 +114,124 @@ export default function DeactivatePatientPage() {
   };
 
   const handleDeactivateConfirm = async () => {
-    if (!selectedPatient) return;
+    const patientToDeactivate = specificPatient || selectedPatient;
+    if (!patientToDeactivate) return;
 
     setDeactivating(true);
     try {
-      // TODO: Implement API call to deactivate patient
-      // const response = await fetch(`/api/patients/${selectedPatient.id}/deactivate`, {
-      //   method: 'POST',
-      //   credentials: 'include',
-      // });
-      // if (!response.ok) throw new Error('Failed to deactivate patient');
+      await api.post(`/patients/${patientToDeactivate.id}/deactivate`);
 
-      // For now, just close the modal and show success
-      alert(
-        `Patient ${formatName(selectedPatient.name)} would be deactivated (API not yet implemented)`,
-      );
+      notifications.show({
+        title: "Patient deactivated",
+        message: `${formatName(patientToDeactivate.name)} has been deactivated successfully`,
+        color: "green",
+      });
 
-      setSelectedPatient(null);
-      // Refresh patient list
-      // fetchPatients();
+      // Navigate back to patient admin page or patients list
+      if (patientId) {
+        navigate(`/admin/patients/${patientId}`);
+      } else {
+        navigate("/admin/patients");
+      }
     } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "Failed to deactivate patient",
-      );
+      notifications.show({
+        title: "Deactivation failed",
+        message:
+          err instanceof Error ? err.message : "Failed to deactivate patient",
+        color: "red",
+      });
     } finally {
       setDeactivating(false);
     }
   };
 
+  // If we have a specific patient (from route params or state), show the deactivation confirmation
+  if (specificPatient) {
+    return (
+      <Container size="lg" pt="xl">
+        <Stack gap="lg">
+          <PageHeader
+            title={`Deactivate ${formatName(specificPatient.name)}`}
+            description="Confirm deactivation of this patient record"
+            size="lg"
+            mb={0}
+          />
+
+          {loading ? (
+            <Skeleton height={300} />
+          ) : error ? (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Error loading patient"
+              color="red"
+            >
+              {error}
+            </Alert>
+          ) : (
+            <Paper shadow="sm" p="md" withBorder>
+              <Stack gap="md">
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  title="Warning"
+                  color="orange"
+                >
+                  You are about to deactivate this patient record. This will
+                  restrict access to their records.
+                </Alert>
+
+                <Stack gap="xs">
+                  <Group>
+                    <Text fw={500}>Name:</Text>
+                    <Text>{formatName(specificPatient.name)}</Text>
+                  </Group>
+                  {specificPatient.birthDate && (
+                    <Group>
+                      <Text fw={500}>Birth date:</Text>
+                      <Text>{specificPatient.birthDate}</Text>
+                    </Group>
+                  )}
+                  {specificPatient.gender && (
+                    <Group>
+                      <Text fw={500}>Gender:</Text>
+                      <Text style={{ textTransform: "capitalize" }}>
+                        {specificPatient.gender}
+                      </Text>
+                    </Group>
+                  )}
+                  <Group>
+                    <Text fw={500}>Patient ID:</Text>
+                    <Text ff="monospace" size="sm">
+                      {specificPatient.id}
+                    </Text>
+                  </Group>
+                </Stack>
+
+                <Stack gap="sm" mt="md">
+                  <Button
+                    color="red"
+                    onClick={handleDeactivateConfirm}
+                    loading={deactivating}
+                    leftSection={<IconUserMinus size={18} />}
+                  >
+                    Confirm deactivation
+                  </Button>
+                  <Button
+                    variant="light"
+                    onClick={() => window.history.back()}
+                    disabled={deactivating}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
+      </Container>
+    );
+  }
+
+  // Otherwise, show the patient selection list
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">

@@ -8,6 +8,7 @@ The schema includes:
 - User: User accounts with credentials and TOTP settings
 - Role: Role definitions for RBAC
 - user_role: Many-to-many association table linking users to roles
+- PatientMetadata: Application-specific patient metadata (activation status, etc.)
 """
 
 from __future__ import annotations
@@ -132,3 +133,29 @@ class User(Base):
             additional_competencies=self.additional_competencies,
             removed_competencies=self.removed_competencies,
         )
+
+
+class PatientMetadata(Base):
+    """Application-specific metadata for patients.
+
+    This table stores metadata about patients that is specific to the Quill Medical
+    application, separate from clinical data stored in FHIR. The patient_id field
+    links to the FHIR Patient resource ID.
+
+    Attributes:
+        id: Primary key.
+        patient_id: FHIR Patient resource ID (unique).
+        is_active: Whether the patient is active in the system.
+                   Deactivated patients are hidden from clinical views but
+                   visible in admin pages.
+    """
+
+    __tablename__ = "patient_metadata"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    patient_id: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False
+    )
