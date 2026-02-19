@@ -4,7 +4,7 @@
  * Implements responsive font scaling for accessibility:
  * - Smaller fonts on mobile for space efficiency
  * - Larger fonts on desktop for improved readability
- * - Uses SM_BREAKPOINT (48em / 768px) to match main layout breakpoint
+ * - Uses 48em (768px) breakpoint to match theme.breakpoints.sm
  */
 
 /* Base (mobile) font sizes - already defined in theme.ts */

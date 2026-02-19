@@ -45,12 +45,6 @@ export const theme = createTheme({
   },
 
   /**
-   * Default font size for body text
-   * Responsive: 16px mobile → 19px desktop
-   */
-  fontSizeMd: "1rem",
-
-  /**
    * Heading sizes - Responsive, accessibility-aligned
    * Maps h1-h6 to our font size system with appropriate line heights
    */
@@ -63,23 +57,6 @@ export const theme = createTheme({
       h5: { fontSize: "0.875rem", lineHeight: "1.55" }, // 14px → 16px (sm)
       h6: { fontSize: "0.875rem", lineHeight: "1.55" }, // 14px → 16px (sm)
     },
-  },
-
-  /**
-   * Default color scheme
-   */
-  defaultColorScheme: "light",
-
-  /**
-   * Line heights for better readability
-   * Generous line spacing improves accessibility for healthcare content
-   */
-  lineHeights: {
-    xs: "1.5",
-    sm: "1.5",
-    md: "1.6",
-    lg: "1.4",
-    xl: "1.3",
   },
 
   /**
