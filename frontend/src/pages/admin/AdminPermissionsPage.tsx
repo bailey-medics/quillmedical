@@ -5,7 +5,7 @@
  * Provides actions for managing user competencies and system permissions.
  */
 
-import { Container, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Container, SimpleGrid, Stack, Text, Box } from "@mantine/core";
 import { IconShieldCheck } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header/PageHeader";
@@ -170,16 +170,18 @@ export default function AdminPermissionsPage() {
           </Text>
         )}
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <ActionCard
-            icon={<IconShieldCheck size={24} />}
-            title="Change system permissions"
-            subtitle="View and edit user competencies and system permissions"
-            buttonLabel="Change permissions"
-            buttonUrl="#"
-            onClick={() => isSuperAdmin && setPermissionsModalOpen(true)}
-          />
-        </SimpleGrid>
+        <Box maw="52rem">
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <ActionCard
+              icon={<IconShieldCheck size={24} />}
+              title="Change system permissions"
+              subtitle="View and edit user competencies and system permissions"
+              buttonLabel="Change permissions"
+              buttonUrl="#"
+              onClick={() => isSuperAdmin && setPermissionsModalOpen(true)}
+            />
+          </SimpleGrid>
+        </Box>
 
         {/* Manage Permissions Modal */}
         <Modal

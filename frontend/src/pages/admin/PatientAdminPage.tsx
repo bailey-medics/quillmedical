@@ -19,6 +19,7 @@ import {
   Skeleton,
   Alert,
   Badge,
+  Box,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -296,35 +297,37 @@ export default function PatientAdminPage() {
           <Title order={3} size="h4">
             Patient actions
           </Title>
-          {isActive ? (
-            <ActionCard
-              icon={<IconUserMinus size={24} />}
-              title="Deactivate patient"
-              subtitle="Deactivate this patient record"
-              buttonLabel="Deactivate patient"
-              buttonUrl={`/admin/patients/${patientId}/deactivate`}
-              onClick={() => {
-                // Navigate to deactivate page for this specific patient
-                navigate(`/admin/patients/${patientId}/deactivate`, {
-                  state: { patient },
-                });
-              }}
-            />
-          ) : (
-            <ActionCard
-              icon={<IconUserCheck size={24} />}
-              title="Activate patient"
-              subtitle="Reactivate this patient record"
-              buttonLabel="Activate patient"
-              buttonUrl={`/admin/patients/${patientId}/activate`}
-              onClick={() => {
-                // Navigate to activate page for this specific patient
-                navigate(`/admin/patients/${patientId}/activate`, {
-                  state: { patient },
-                });
-              }}
-            />
-          )}
+          <Box maw="25rem">
+            {isActive ? (
+              <ActionCard
+                icon={<IconUserMinus size={24} />}
+                title="Deactivate patient"
+                subtitle="Deactivate this patient record"
+                buttonLabel="Deactivate patient"
+                buttonUrl={`/admin/patients/${patientId}/deactivate`}
+                onClick={() => {
+                  // Navigate to deactivate page for this specific patient
+                  navigate(`/admin/patients/${patientId}/deactivate`, {
+                    state: { patient },
+                  });
+                }}
+              />
+            ) : (
+              <ActionCard
+                icon={<IconUserCheck size={24} />}
+                title="Activate patient"
+                subtitle="Reactivate this patient record"
+                buttonLabel="Activate patient"
+                buttonUrl={`/admin/patients/${patientId}/activate`}
+                onClick={() => {
+                  // Navigate to activate page for this specific patient
+                  navigate(`/admin/patients/${patientId}/activate`, {
+                    state: { patient },
+                  });
+                }}
+              />
+            )}
+          </Box>
         </Stack>
       </Stack>
     </Container>
