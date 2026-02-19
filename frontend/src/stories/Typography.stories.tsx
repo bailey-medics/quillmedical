@@ -60,15 +60,32 @@ export const FontSizeSystem: Story = {
           <div>
             <Group gap="xs" mb="xs">
               <Text fw={600} size="sm">
-                xs / sm
+                xl
               </Text>
               <Text c="dimmed" size="sm">
-                — 14px mobile → 16px desktop
+                — 26px mobile → 32px desktop
               </Text>
             </Group>
-            <Text size="xs">
-              This is extra small text used for captions, hints, metadata, and
-              secondary information. Grows to 16px on larger screens.
+            <Text size="xl">
+              This is extra large text for page headings and primary titles.
+              Scales to 32px on desktop for prominence.
+            </Text>
+          </div>
+
+          <Divider />
+
+          <div>
+            <Group gap="xs" mb="xs">
+              <Text fw={600} size="sm">
+                lg
+              </Text>
+              <Text c="dimmed" size="sm">
+                — 20px mobile → 24px desktop
+              </Text>
+            </Group>
+            <Text size="lg">
+              This is large text used for subheadings, section titles, and card
+              titles. Scales to 24px on larger displays.
             </Text>
           </div>
 
@@ -95,32 +112,15 @@ export const FontSizeSystem: Story = {
           <div>
             <Group gap="xs" mb="xs">
               <Text fw={600} size="sm">
-                lg
+                xs / sm
               </Text>
               <Text c="dimmed" size="sm">
-                — 20px mobile → 24px desktop
+                — 14px mobile → 16px desktop
               </Text>
             </Group>
-            <Text size="lg">
-              This is large text used for subheadings, section titles, and card
-              titles. Scales to 24px on larger displays.
-            </Text>
-          </div>
-
-          <Divider />
-
-          <div>
-            <Group gap="xs" mb="xs">
-              <Text fw={600} size="sm">
-                xl
-              </Text>
-              <Text c="dimmed" size="sm">
-                — 26px mobile → 32px desktop
-              </Text>
-            </Group>
-            <Text size="xl">
-              This is extra large text for page headings and primary titles.
-              Scales to 32px on desktop for prominence.
+            <Text size="xs">
+              This is extra small text used for captions, hints, metadata, and
+              secondary information. Grows to 16px on larger screens.
             </Text>
           </div>
         </Stack>
