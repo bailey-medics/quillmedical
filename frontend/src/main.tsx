@@ -38,6 +38,7 @@ import ViewAllPatientsPage from "./pages/admin/ViewAllPatientsPage";
 import PatientAdminPage from "./pages/admin/PatientAdminPage";
 import EditPatientPage from "./pages/admin/EditPatientPage";
 import DeactivatePatientPage from "./pages/admin/DeactivatePatientPage";
+import ActivatePatientPage from "./pages/admin/ActivatePatientPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -195,6 +196,14 @@ const router = createBrowserRouter(
           element: (
             <RequirePermission level="admin">
               <DeactivatePatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/patients/:patientId/activate",
+          element: (
+            <RequirePermission level="admin">
+              <ActivatePatientPage />
             </RequirePermission>
           ),
         },

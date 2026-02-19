@@ -19,13 +19,11 @@ import {
   Skeleton,
   Alert,
   Badge,
-  SimpleGrid,
 } from "@mantine/core";
 import {
   IconPencil,
   IconAlertCircle,
   IconUser,
-  IconUserEdit,
   IconUserMinus,
   IconUserCheck,
 } from "@tabler/icons-react";
@@ -225,9 +223,22 @@ export default function PatientAdminPage() {
             <Title order={3} size="h4">
               Patient details
             </Title>
-            <Badge color={isActive ? "green" : "red"} variant="light">
-              {isActive ? "Active" : "Deactivated"}
-            </Badge>
+            <Group gap="xs">
+              <Badge color={isActive ? "green" : "red"} variant="light">
+                {isActive ? "Active" : "Deactivated"}
+              </Badge>
+              <ActionIcon
+                variant="subtle"
+                aria-label="Edit patient details"
+                onClick={() => {
+                  navigate(`/admin/patients/${patientId}/edit`, {
+                    state: { patient },
+                  });
+                }}
+              >
+                <IconPencil size={18} />
+              </ActionIcon>
+            </Group>
           </Group>
 
           <Stack gap="md">
@@ -271,7 +282,7 @@ export default function PatientAdminPage() {
 
             <Group justify="space-between">
               <Text c="dimmed" size="sm">
-                Patient ID
+                Patient system ID
               </Text>
               <Text fw={500} ff="monospace" size="sm">
                 {patient.id}
@@ -285,53 +296,35 @@ export default function PatientAdminPage() {
           <Title order={3} size="h4">
             Patient actions
           </Title>
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          {isActive ? (
             <ActionCard
-              icon={<IconUserEdit size={24} />}
-              title="Edit patient"
-              subtitle="Modify patient demographics and information"
-              buttonLabel="Edit patient"
-              buttonUrl={`/admin/patients/${patientId}/edit`}
+              icon={<IconUserMinus size={24} />}
+              title="Deactivate patient"
+              subtitle="Deactivate this patient record"
+              buttonLabel="Deactivate patient"
+              buttonUrl={`/admin/patients/${patientId}/deactivate`}
               onClick={() => {
-                // Navigate to edit page for this specific patient
-                navigate(`/admin/patients/${patientId}/edit`, {
+                // Navigate to deactivate page for this specific patient
+                navigate(`/admin/patients/${patientId}/deactivate`, {
                   state: { patient },
                 });
               }}
             />
-            {isActive ? (
-              <ActionCard
-                icon={<IconUserMinus size={24} />}
-                title="Deactivate patient"
-                subtitle="Deactivate this patient record"
-                buttonLabel="Deactivate patient"
-                buttonUrl={`/admin/patients/${patientId}/deactivate`}
-                onClick={() => {
-                  // Navigate to deactivate page for this specific patient
-                  navigate(`/admin/patients/${patientId}/deactivate`, {
-                    state: { patient },
-                  });
-                }}
-              />
-            ) : (
-              <ActionCard
-                icon={<IconUserCheck size={24} />}
-                title="Activate patient"
-                subtitle="Reactivate this patient record"
-                buttonLabel="Activate patient"
-                buttonUrl={`/admin/patients/${patientId}/activate`}
-                onClick={async () => {
-                  try {
-                    await api.post(`/patients/${patientId}/activate`);
-                    // Refresh the page to show updated status
-                    window.location.reload();
-                  } catch (err) {
-                    console.error("Failed to activate patient:", err);
-                  }
-                }}
-              />
-            )}
-          </SimpleGrid>
+          ) : (
+            <ActionCard
+              icon={<IconUserCheck size={24} />}
+              title="Activate patient"
+              subtitle="Reactivate this patient record"
+              buttonLabel="Activate patient"
+              buttonUrl={`/admin/patients/${patientId}/activate`}
+              onClick={() => {
+                // Navigate to activate page for this specific patient
+                navigate(`/admin/patients/${patientId}/activate`, {
+                  state: { patient },
+                });
+              }}
+            />
+          )}
         </Stack>
       </Stack>
     </Container>

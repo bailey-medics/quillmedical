@@ -284,30 +284,6 @@ describe("PatientAdminPage", () => {
       });
     });
 
-    it("displays edit patient action card", async () => {
-      const mockPatient = {
-        id: "patient-123",
-        name: [{ given: ["John"], family: "Doe" }],
-        birthDate: "1980-05-15",
-        gender: "male",
-      };
-
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
-
-      renderWithRouter(<PatientAdminPage />, {
-        routePath: "/admin/patients/:patientId",
-        initialRoute: "/admin/patients/patient-123",
-      });
-
-      await waitFor(() => {
-        const editCards = screen.getAllByText("Edit patient");
-        expect(editCards.length).toBeGreaterThan(0);
-        expect(
-          screen.getByText("Modify patient demographics and information"),
-        ).toBeInTheDocument();
-      });
-    });
-
     it("displays deactivate patient action card", async () => {
       const mockPatient = {
         id: "patient-123",
@@ -360,7 +336,7 @@ describe("PatientAdminPage", () => {
       });
     });
 
-    it("navigates to patient-specific edit page when edit card clicked", async () => {
+    it("navigates to patient-specific edit page when edit icon clicked", async () => {
       const mockPatient = {
         id: "patient-123",
         name: [{ given: ["John"], family: "Doe" }],
@@ -368,7 +344,9 @@ describe("PatientAdminPage", () => {
         gender: "male",
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockPatient);
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: true }); // Second call for metadata
 
       renderWithRouter(<PatientAdminPage />, {
         routePath: "/admin/patients/:patientId",
@@ -380,10 +358,9 @@ describe("PatientAdminPage", () => {
         expect(patientNames.length).toBeGreaterThan(0);
       });
 
-      const editButtons = screen.getAllByRole("button", {
-        name: /edit patient/i,
+      const editButton = screen.getByRole("button", {
+        name: /edit patient details/i,
       });
-      const editButton = editButtons[editButtons.length - 1]; // Get the action card button
 
       fireEvent.click(editButton);
 
