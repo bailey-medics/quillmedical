@@ -14,6 +14,7 @@ import {
   IconCalendar,
   IconChartBar,
 } from "@tabler/icons-react";
+import { Container } from "@mantine/core";
 
 const meta = {
   title: "ActionCard/ActionCard",
@@ -21,6 +22,13 @@ const meta = {
   parameters: {
     layout: "padded",
   },
+  decorators: [
+    (Story) => (
+      <Container size="lg">
+        <Story />
+      </Container>
+    ),
+  ],
   argTypes: {
     icon: {
       control: false,

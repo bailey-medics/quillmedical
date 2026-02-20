@@ -44,7 +44,7 @@ export default function Admin({
           mb={0}
         />
         <Badge
-          size="lg"
+          size="xl"
           variant="filled"
           color={
             userPermissions === "superadmin"

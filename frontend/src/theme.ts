@@ -24,7 +24,7 @@
  * ```
  */
 
-import { createTheme } from "@mantine/core";
+import { Badge, createTheme } from "@mantine/core";
 
 export const theme = createTheme({
   /**
@@ -69,5 +69,32 @@ export const theme = createTheme({
     md: "62em", // 992px
     lg: "75em", // 1200px
     xl: "88em", // 1408px
+  },
+
+  /**
+   * Component customizations
+   */
+  components: {
+    Badge: Badge.extend({
+      defaultProps: {
+        size: "lg", // Match font size system lg standard
+        radius: "sm", // Subtle rounded corners
+      },
+      vars: (theme, props) => {
+        // Custom xl size: 50% bigger than lg
+        // lg = 20px mobile → 24px desktop
+        // xl = 30px mobile → 36px desktop
+        if (props.size === "xl") {
+          return {
+            root: {
+              "--badge-height": "2.25rem", // 36px desktop
+              "--badge-fz": "1.875rem", // 30px mobile, scales to 36px
+              "--badge-padding-x": "1.25rem",
+            },
+          };
+        }
+        return { root: {} };
+      },
+    }),
   },
 });
