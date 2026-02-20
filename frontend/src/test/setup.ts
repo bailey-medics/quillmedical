@@ -8,10 +8,18 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { act } from "react";
 
 // Cleanup after each test automatically
-afterEach(() => {
+afterEach(async () => {
+  // Cleanup React components
   cleanup();
+
+  // Flush pending timers and promises to prevent "window is not defined" errors
+  // This ensures Mantine transitions and animations complete before test teardown
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 });
 
 // Mock scrollIntoView (required for Mantine Select/Combobox)
