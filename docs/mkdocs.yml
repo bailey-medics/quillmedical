@@ -53,6 +53,8 @@ nav:
       - Test Infrastructure: frontend/test-infrastructure-setup.md
   - Authorization:
       - CBAC (Competency-Based Access Control): cbac.md
+  - CI/CD:
+      - Pipeline overview: cicd/index.md
   - Code Documentation:
       - Frontend TypeDoc: code/frontend/README.md
       - Storybook: code/storybook/index.html
