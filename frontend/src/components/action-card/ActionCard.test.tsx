@@ -14,7 +14,7 @@ import { IconUserPlus, IconSettings } from "@tabler/icons-react";
 
 describe("ActionCard", () => {
   const defaultProps = {
-    icon: <IconUserPlus size={24} data-testid="test-icon" />,
+    icon: <IconUserPlus data-testid="test-icon" />,
     title: "Test Action",
     subtitle: "This is a test action card",
     buttonLabel: "Click Me",
@@ -109,7 +109,7 @@ describe("ActionCard", () => {
       renderWithRouter(
         <ActionCard
           {...defaultProps}
-          icon={<IconSettings size={24} data-testid="settings-icon" />}
+          icon={<IconSettings data-testid="settings-icon" />}
         />,
       );
       expect(screen.getByTestId("settings-icon")).toBeInTheDocument();

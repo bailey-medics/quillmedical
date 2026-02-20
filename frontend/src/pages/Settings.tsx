@@ -10,7 +10,6 @@ import {
 import { IconBell, IconUser } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
-import Icon from "@/components/icons";
 import PageHeader from "@/components/page-header";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
@@ -107,7 +106,7 @@ export default function Settings() {
         <PageHeader title="Settings" size="lg" mb={0} />
 
         <ActionCard
-          icon={<Icon icon={<IconBell />} size="lg" />}
+          icon={<IconBell />}
           title="Notifications"
           subtitle="Enable push notifications to stay updated"
           buttonLabel={getNotificationButtonLabel()}
@@ -157,7 +156,7 @@ export default function Settings() {
         </Card>
 
         <ActionCard
-          icon={<Icon icon={<IconUser />} size="lg" />}
+          icon={<IconUser />}
           title="Account"
           subtitle="Email: you@example.com"
           buttonLabel="Change password"

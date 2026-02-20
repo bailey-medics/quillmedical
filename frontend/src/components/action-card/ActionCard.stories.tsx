@@ -36,10 +36,11 @@ type Story = StoryObj<typeof meta>;
  * Default ActionCard
  *
  * Basic action card with icon, title, subtitle, and button.
+ * Icons default to "lg" size (48px desktop, 32px mobile).
  */
 export const Default: Story = {
   args: {
-    icon: <IconUserPlus size={24} />,
+    icon: <IconUserPlus />,
     title: "Add User",
     subtitle: "Create a new user account with competencies and permissions",
     buttonLabel: "Add New User",
@@ -55,7 +56,7 @@ export const Default: Story = {
  */
 export const WithOnClick: Story = {
   args: {
-    icon: <IconSettings size={24} />,
+    icon: <IconSettings />,
     title: "Configure Settings",
     subtitle: "Adjust application settings and preferences",
     buttonLabel: "Open Settings",
@@ -71,7 +72,7 @@ export const WithOnClick: Story = {
  */
 export const DocumentAction: Story = {
   args: {
-    icon: <IconFileText size={24} />,
+    icon: <IconFileText />,
     title: "Create Document",
     subtitle: "Generate a new clinical document or letter",
     buttonLabel: "New Document",
@@ -86,7 +87,7 @@ export const DocumentAction: Story = {
  */
 export const CommunicationAction: Story = {
   args: {
-    icon: <IconMail size={24} />,
+    icon: <IconMail />,
     title: "Send Message",
     subtitle: "Send a secure message to a patient or colleague",
     buttonLabel: "Compose Message",
@@ -101,7 +102,7 @@ export const CommunicationAction: Story = {
  */
 export const SchedulingAction: Story = {
   args: {
-    icon: <IconCalendar size={24} />,
+    icon: <IconCalendar />,
     title: "Schedule Appointment",
     subtitle: "Book a new appointment for a patient",
     buttonLabel: "New Appointment",
@@ -116,7 +117,7 @@ export const SchedulingAction: Story = {
  */
 export const AnalyticsAction: Story = {
   args: {
-    icon: <IconChartBar size={24} />,
+    icon: <IconChartBar />,
     title: "View Reports",
     subtitle: "Access analytics and performance metrics",
     buttonLabel: "Open Dashboard",
@@ -131,7 +132,7 @@ export const AnalyticsAction: Story = {
  */
 export const LongContent: Story = {
   args: {
-    icon: <IconUserPlus size={24} />,
+    icon: <IconUserPlus />,
     title: "Add User Account with Extended Permissions",
     subtitle:
       "Create a new user account with customizable competencies, system permissions, and role-based access control settings for your organization",
