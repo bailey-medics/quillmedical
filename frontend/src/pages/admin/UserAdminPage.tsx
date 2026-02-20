@@ -114,7 +114,7 @@ export default function UserAdminPage() {
 
   return (
     <Container size="lg" py="xl">
-      \n{" "}
+      {" "}
       <Stack gap="lg">
         <PageHeader
           title={`User: ${user.username}`}
