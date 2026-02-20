@@ -86,7 +86,7 @@ export default function PageHeader({
         {title}
       </Title>
       {description && (
-        <Text c="dimmed" size="md">
+        <Text c="dimmed" size="lg">
           {description}
         </Text>
       )}
