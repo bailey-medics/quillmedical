@@ -17,7 +17,7 @@ import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
 
 const meta = {
-  title: "Layout/Page Layout Consistency",
+  title: "Layouts/Page Layout Consistency",
   parameters: {
     layout: "fullscreen",
     docs: {

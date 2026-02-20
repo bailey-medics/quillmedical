@@ -2,7 +2,7 @@
  * Quill Logo Component Stories
  *
  * Demonstrates the Quill Medical logo SVG component:
- * - Default size (128px height)
+ * - Default size (5px height for Storybook)
  * - Customizable height
  * - Accessible alt text
  * - Maintains aspect ratio
@@ -13,6 +13,9 @@ import QuillLogo from "./QuillLogo";
 const meta: Meta<typeof QuillLogo> = {
   title: "Images/QuillLogo",
   component: QuillLogo,
+  parameters: {
+    layout: "padded",
+  },
   tags: ["autodocs"],
   argTypes: {
     height: { control: "number" },
@@ -26,11 +29,11 @@ type Story = StoryObj<typeof QuillLogo>;
 
 /**
  * Default Quill Medical logo.
- * Standard size (128px height) suitable for headers and branding.
+ * Standard size (5px height) suitable for Storybook display.
  */
 export const Default: Story = {
   args: {
-    height: 128,
+    height: 5,
     alt: "Quill",
   },
 };

@@ -10,10 +10,10 @@ import { fn } from "@storybook/test";
 import AddButton from "./AddButton";
 
 const meta: Meta<typeof AddButton> = {
-  title: "Components/Button/AddButton",
+  title: "Button/AddButton",
   component: AddButton,
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
   tags: ["autodocs"],
   args: {

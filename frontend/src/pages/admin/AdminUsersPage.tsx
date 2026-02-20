@@ -8,20 +8,10 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Table,
-  Text,
-  Skeleton,
-  Center,
-  Alert,
-  Group,
-} from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { Container, Stack, Text, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import AddButton from "@/components/button/AddButton";
+import AdminTable, { type Column } from "@/components/tables/AdminTable";
 import { api } from "@/lib/api";
 
 interface User {
@@ -63,6 +53,29 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, []);
 
+  const columns: Column<User>[] = [
+    {
+      header: "Username",
+      render: (user) => (
+        <Text fw={500} size="lg">
+          {user.username}
+        </Text>
+      ),
+    },
+    {
+      header: "Email",
+      render: (user) => <Text size="lg">{user.email}</Text>,
+    },
+    {
+      header: "User ID",
+      render: (user) => (
+        <Text size="lg" c="dimmed">
+          {user.id}
+        </Text>
+      ),
+    },
+  ];
+
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
@@ -79,55 +92,15 @@ export default function AdminUsersPage() {
           />
         </Group>
 
-        {error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error loading users"
-            color="red"
-          >
-            {error}
-          </Alert>
-        ) : loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : users.length === 0 ? (
-          <Center p="xl">
-            <Text c="dimmed">No users found</Text>
-          </Center>
-        ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Username</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th>User ID</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {users.map((user) => (
-                <Table.Tr
-                  key={user.id}
-                  onClick={() => navigate(`/admin/users/${user.id}`)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Table.Td>
-                    <Text fw={500}>{user.username}</Text>
-                  </Table.Td>
-                  <Table.Td>{user.email}</Table.Td>
-                  <Table.Td>
-                    <Text size="lg" c="dimmed">
-                      {user.id}
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
+        <AdminTable
+          data={users}
+          columns={columns}
+          onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
+          getRowKey={(user) => user.id}
+          loading={loading}
+          error={error}
+          emptyMessage="No users found"
+        />
       </Stack>
     </Container>
   );

@@ -53,12 +53,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
       <Text fw={700} size="lg">
         {patient.name}
       </Text>
-      <Text
-        style={{
-          fontSize: 14,
-          color: "#4a5568",
-        }}
-      >
+      <Text size="lg" c="dimmed">
         {patient.dob && <FormattedDate date={patient.dob} span inherit />}
         {patient.age !== undefined ? `    ${patient.age}` : ""}
         {patient.sex ? ` ${patient.sex}` : ""}

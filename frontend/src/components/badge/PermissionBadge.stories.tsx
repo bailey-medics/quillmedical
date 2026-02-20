@@ -10,7 +10,7 @@ import { Stack, Group, Text, Container } from "@mantine/core";
 import PermissionBadge from "./PermissionBadge";
 
 const meta: Meta<typeof PermissionBadge> = {
-  title: "Components/Badge/PermissionBadge",
+  title: "Badge/PermissionBadge",
   component: PermissionBadge,
   parameters: {
     layout: "centered",

@@ -5,7 +5,7 @@
  * Shows a skeleton loader when in loading state.
  */
 
-import { Card, Skeleton, Stack, Text } from "@mantine/core";
+import { Card, Skeleton, Stack, Text, Box } from "@mantine/core";
 
 export interface StatCardProps {
   /** Title/label for the statistic */
@@ -32,13 +32,15 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
         <Text size="lg" c="dimmed">
           {title}
         </Text>
-        {loading ? (
-          <Skeleton height={32} width={60} />
-        ) : (
-          <Text size="xl" fw={700}>
-            {value}
-          </Text>
-        )}
+        <Box style={{ height: 38 }}>
+          {loading ? (
+            <Skeleton height={38} width={60} />
+          ) : (
+            <Text size="xl" fw={700} lh={1}>
+              {value}
+            </Text>
+          )}
+        </Box>
       </Stack>
     </Card>
   );

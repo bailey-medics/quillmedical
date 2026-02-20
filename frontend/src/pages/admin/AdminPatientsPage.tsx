@@ -8,21 +8,14 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Table,
-  Text,
-  Skeleton,
-  Center,
-  Alert,
-  Group,
-  Badge,
-} from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { Container, Stack, Text, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import StateMessage from "@/components/state-message";
 import AddButton from "@/components/button/AddButton";
+import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import NationalNumber from "@/components/demographics/NationalNumber";
+import FormattedDate from "@/components/date/Date";
+import ActiveStatus from "@/components/badge/ActiveStatus";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
 
@@ -32,6 +25,7 @@ interface Patient {
   birthDate?: string;
   gender?: string;
   is_active?: boolean;
+  identifier?: Array<{ system?: string; value?: string }>;
 }
 
 interface PatientsApiResponse {
@@ -107,6 +101,61 @@ export default function AdminPatientsPage() {
     return `${givenName} ${familyName}`.trim() || "Unknown";
   };
 
+  const columns: Column<Patient>[] = [
+    {
+      header: "Name",
+      render: (patient) => (
+        <Text fw={500} size="lg">
+          {formatName(patient.name)}
+        </Text>
+      ),
+    },
+    {
+      header: "Birth date",
+      render: (patient) =>
+        patient.birthDate ? (
+          <FormattedDate date={patient.birthDate} locale="en-GB" size="lg" />
+        ) : (
+          <Text size="lg">N/A</Text>
+        ),
+    },
+    {
+      header: "Gender",
+      render: (patient) => <Text size="lg">{patient.gender || "N/A"}</Text>,
+    },
+    {
+      header: "NHS number",
+      render: (patient) => {
+        const nhsIdentifier = patient.identifier?.find(
+          (id) =>
+            id.system === "https://fhir.nhs.uk/Id/nhs-number" &&
+            id.value !== "",
+        );
+        if (!nhsIdentifier) {
+          return (
+            <Text size="lg" c="dimmed">
+              N/A
+            </Text>
+          );
+        }
+        return (
+          <Text size="lg" c="dimmed">
+            <NationalNumber
+              nationalNumber={nhsIdentifier.value!}
+              nationalNumberSystem={nhsIdentifier.system}
+            />
+          </Text>
+        );
+      },
+    },
+    {
+      header: "Status",
+      render: (patient) => (
+        <ActiveStatus active={patient.is_active !== false} />
+      ),
+    },
+  ];
+
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
@@ -123,70 +172,21 @@ export default function AdminPatientsPage() {
           />
         </Group>
 
-        {error ? (
-          <Alert
-            icon={<IconAlertCircle size={16} />}
-            title="Error loading patients"
-            color="red"
-          >
-            {error}
-          </Alert>
-        ) : loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : fhirReady === false ? (
+        {fhirReady === false ? (
           <Center p="xl">
             <StateMessage type="database-initialising" />
           </Center>
-        ) : patients.length === 0 ? (
-          <Center p="xl">
-            <StateMessage type="no-patients" />
-          </Center>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Birth date</Table.Th>
-                <Table.Th>Gender</Table.Th>
-                <Table.Th>Patient ID</Table.Th>
-                <Table.Th>Status</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {patients.map((patient) => (
-                <Table.Tr
-                  key={patient.id}
-                  onClick={() => navigate(`/admin/patients/${patient.id}`)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Table.Td>
-                    <Text fw={500}>{formatName(patient.name)}</Text>
-                  </Table.Td>
-                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
-                  <Table.Td>
-                    <Text size="lg" c="dimmed">
-                      {patient.id}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge
-                      color={patient.is_active !== false ? "green" : "red"}
-                      variant="light"
-                      size="sm"
-                    >
-                      {patient.is_active !== false ? "Active" : "Deactivated"}
-                    </Badge>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <AdminTable
+            data={patients}
+            columns={columns}
+            onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
+            getRowKey={(patient) => patient.id}
+            loading={loading}
+            error={error}
+            emptyMessage="No patients found"
+            breakpoint="md"
+          />
         )}
       </Stack>
     </Container>
