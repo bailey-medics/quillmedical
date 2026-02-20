@@ -38,7 +38,7 @@ interface IconProps {
 const desktopSizeMap: Record<IconSize, number> = {
   sm: 20,
   md: 28,
-  lg: 40,
+  lg: 48,
 };
 
 /** Mobile size map (<768px) */

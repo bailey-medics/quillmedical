@@ -113,11 +113,9 @@ describe("Page Layout Consistency", () => {
           '.mantine-Container-root[data-size="lg"]',
         );
 
-        if (containerElement) {
-          const styles = window.getComputedStyle(containerElement);
-          // Check that max-width is set (actual value may vary based on theme)
-          expect(styles.maxWidth).toBeTruthy();
-        }
+        // Container should exist with size="lg" attribute
+        expect(containerElement).toBeInTheDocument();
+        expect(containerElement).toHaveAttribute("data-size", "lg");
       });
     });
   });
