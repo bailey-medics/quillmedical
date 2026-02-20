@@ -90,7 +90,7 @@ function Step1Demographics({
   return (
     <Stack gap="md">
       <Title order={3}>Patient demographics</Title>
-      <Text size="sm" c="dimmed">
+      <Text size="lg" c="dimmed">
         Enter the patient's demographic information for their FHIR record.
       </Text>
 
@@ -189,7 +189,7 @@ function Step2UserAccount({
   return (
     <Stack gap="md">
       <Title order={3}>User account (optional)</Title>
-      <Text size="sm" c="dimmed">
+      <Text size="lg" c="dimmed">
         Create a user account for this patient to enable portal access.
       </Text>
 
@@ -209,7 +209,7 @@ function Step2UserAccount({
           <Divider my="sm" />
 
           <Alert variant="light" color="blue">
-            <Text size="sm">
+            <Text size="lg">
               Patient will be able to log in and access their health records.
             </Text>
           </Alert>
@@ -280,13 +280,13 @@ function Step3Confirmation({
               ? "Patient updated successfully"
               : "Patient created successfully"}
           </Title>
-          <Text size="sm" c="dimmed" ta="center">
+          <Text size="lg" c="dimmed" ta="center">
             {isEditMode
               ? "The patient record has been updated in the FHIR system."
               : "The new patient record has been created in the FHIR system."}
           </Text>
           {patientId && (
-            <Text size="sm" c="dimmed" ta="center">
+            <Text size="lg" c="dimmed" ta="center">
               Patient ID: {patientId}
             </Text>
           )}
@@ -302,7 +302,7 @@ function Step3Confirmation({
               ? "Failed to update patient"
               : "Failed to create patient"}
           </Title>
-          <Text size="sm" c="dimmed" ta="center">
+          <Text size="lg" c="dimmed" ta="center">
             {isEditMode
               ? "There was an error updating the patient record. Please try again."
               : "There was an error creating the patient record. Please try again."}

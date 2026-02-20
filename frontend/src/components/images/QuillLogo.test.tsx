@@ -36,13 +36,13 @@ describe("QuillLogo Component", () => {
     it("applies custom height", () => {
       const { container } = renderWithMantine(<QuillLogo height={256} />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "256");
+      expect(img).toHaveStyle({ height: "256rem" });
     });
 
     it("accepts string height value", () => {
       const { container } = renderWithMantine(<QuillLogo height="200px" />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "200px");
+      expect(img).toHaveStyle({ height: "200px" });
     });
 
     it("applies custom className", () => {
@@ -63,10 +63,10 @@ describe("QuillLogo Component", () => {
   });
 
   describe("Defaults", () => {
-    it("uses default height of 8", () => {
+    it("uses default height of 8rem", () => {
       const { container } = renderWithMantine(<QuillLogo />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "8");
+      expect(img).toHaveStyle({ height: "8rem" });
     });
   });
 });

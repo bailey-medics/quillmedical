@@ -36,13 +36,13 @@ describe("QuillName Component", () => {
     it("applies custom height", () => {
       const { container } = renderWithMantine(<QuillName height={48} />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "48");
+      expect(img).toHaveStyle({ height: "48rem" });
     });
 
     it("accepts string height value", () => {
       const { container } = renderWithMantine(<QuillName height="32px" />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "32px");
+      expect(img).toHaveStyle({ height: "32px" });
     });
 
     it("applies custom className", () => {
@@ -63,10 +63,10 @@ describe("QuillName Component", () => {
   });
 
   describe("Defaults", () => {
-    it("uses default height of 1.5", () => {
+    it("uses default height of 1.5rem", () => {
       const { container } = renderWithMantine(<QuillName />);
       const img = container.querySelector("img");
-      expect(img).toHaveAttribute("height", "1.5");
+      expect(img).toHaveStyle({ height: "1.5rem" });
     });
 
     it("uses default marginRight of 0.5rem", () => {

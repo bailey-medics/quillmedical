@@ -171,7 +171,7 @@ export default function DeactivateUserPage() {
               Are you sure you want to deactivate user{" "}
               <strong>{selectedUser?.username}</strong>?
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text size="lg" c="dimmed">
               This will revoke their access to the system. This action can be
               reversed later.
             </Text>

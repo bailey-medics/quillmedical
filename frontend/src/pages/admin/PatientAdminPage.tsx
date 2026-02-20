@@ -282,7 +282,7 @@ export default function PatientAdminPage() {
                 <Icon icon={<IconUser />} size="lg" />
                 <Text fw={500}>{linkedUser.username}</Text>
               </Group>
-              <Text size="sm" c="dimmed">
+              <Text size="lg" c="dimmed">
                 {linkedUser.email}
               </Text>
               <Badge color="green" variant="light" size="sm" w="fit-content">
@@ -325,7 +325,7 @@ export default function PatientAdminPage() {
 
           <Stack gap="md">
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">
+              <Text c="dimmed" size="lg">
                 Full name
               </Text>
               <Text fw={500}>{patientName}</Text>
@@ -333,7 +333,7 @@ export default function PatientAdminPage() {
 
             {patient.birthDate && (
               <Group justify="space-between">
-                <Text c="dimmed" size="sm">
+                <Text c="dimmed" size="lg">
                   Date of birth
                 </Text>
                 <Text fw={500}>{patient.birthDate}</Text>
@@ -342,7 +342,7 @@ export default function PatientAdminPage() {
 
             {patient.gender && (
               <Group justify="space-between">
-                <Text c="dimmed" size="sm">
+                <Text c="dimmed" size="lg">
                   Gender
                 </Text>
                 <Text fw={500} style={{ textTransform: "capitalize" }}>
@@ -353,7 +353,7 @@ export default function PatientAdminPage() {
 
             {nationalId && (
               <Group justify="space-between">
-                <Text c="dimmed" size="sm">
+                <Text c="dimmed" size="lg">
                   {nationalId.label}
                 </Text>
                 <Text fw={500} ff="monospace">
@@ -363,10 +363,10 @@ export default function PatientAdminPage() {
             )}
 
             <Group justify="space-between">
-              <Text c="dimmed" size="sm">
+              <Text c="dimmed" size="lg">
                 Patient system ID
               </Text>
-              <Text fw={500} ff="monospace" size="sm">
+              <Text fw={500} ff="monospace" size="lg">
                 {patient.id}
               </Text>
             </Group>

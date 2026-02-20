@@ -137,7 +137,7 @@ export default function Settings() {
           >
             <div>
               <Text fw={700}>Two-factor authentication (TOTP)</Text>
-              <Text size="sm" color="dimmed">
+              <Text size="lg" color="dimmed">
                 Use an authenticator app to add a second factor to your account.
               </Text>
             </div>

@@ -56,7 +56,7 @@ export default function ActionCard({
           <Icon icon={icon} size={iconSize} />
           <Title order={3}>{title}</Title>
         </Group>
-        <Text size="sm" c="dimmed">
+        <Text size="lg" c="dimmed">
           {subtitle}
         </Text>
         {onClick ? (

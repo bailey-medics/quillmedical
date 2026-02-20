@@ -42,7 +42,7 @@ export default function StateMessage({ type }: Props) {
           root: { maxWidth: 600 },
         }}
       >
-        <Text size="sm">There are currently no patients in the system.</Text>
+        <Text size="lg">There are currently no patients in the system.</Text>
       </Alert>
     );
   }
@@ -58,7 +58,7 @@ export default function StateMessage({ type }: Props) {
         root: { maxWidth: 600 },
       }}
     >
-      <Text size="sm">
+      <Text size="lg">
         Patient data is being retrieved. This may take a few moments. The
         patient list will appear automatically once available.
       </Text>
