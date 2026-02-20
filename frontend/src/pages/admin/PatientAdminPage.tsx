@@ -328,7 +328,9 @@ export default function PatientAdminPage() {
               <Text c="dimmed" size="lg">
                 Full name
               </Text>
-              <Text fw={500}>{patientName}</Text>
+              <Text fw={500} size="lg">
+                {patientName}
+              </Text>
             </Group>
 
             {patient.birthDate && (
@@ -336,7 +338,9 @@ export default function PatientAdminPage() {
                 <Text c="dimmed" size="lg">
                   Date of birth
                 </Text>
-                <Text fw={500}>{patient.birthDate}</Text>
+                <Text fw={500} size="lg">
+                  {patient.birthDate}
+                </Text>
               </Group>
             )}
 
@@ -345,7 +349,11 @@ export default function PatientAdminPage() {
                 <Text c="dimmed" size="lg">
                   Gender
                 </Text>
-                <Text fw={500} style={{ textTransform: "capitalize" }}>
+                <Text
+                  fw={500}
+                  size="lg"
+                  style={{ textTransform: "capitalize" }}
+                >
                   {patient.gender}
                 </Text>
               </Group>
@@ -356,7 +364,7 @@ export default function PatientAdminPage() {
                 <Text c="dimmed" size="lg">
                   {nationalId.label}
                 </Text>
-                <Text fw={500} ff="monospace">
+                <Text fw={500} ff="monospace" size="lg">
                   {nationalId.value}
                 </Text>
               </Group>
