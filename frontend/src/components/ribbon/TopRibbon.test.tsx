@@ -8,6 +8,8 @@ import type { Patient } from "@/domains/patient";
 const mockPatient: Patient = {
   id: "1",
   name: "John Smith",
+  givenName: "John",
+  familyName: "Smith",
   dob: "1980-09-15",
   age: 43,
   sex: "male",
@@ -90,6 +92,36 @@ describe("TopRibbon Component", () => {
         />,
       );
       expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
+    });
+
+    it("renders ProfilePic skeleton when loading on wide screen", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={null}
+          isLoading={true}
+          isNarrow={false}
+        />,
+      );
+      // Should have multiple skeletons (ProfilePic circle + text bar)
+      const skeletons = container.querySelectorAll('[class*="Skeleton"]');
+      expect(skeletons.length).toBeGreaterThan(1);
+    });
+
+    it("does not render ProfilePic skeleton when loading on narrow screen", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={null}
+          isLoading={true}
+          isNarrow={true}
+        />,
+      );
+      // Should have only one skeleton (text bar, no ProfilePic circle)
+      const skeletons = container.querySelectorAll('[class*="Skeleton"]');
+      expect(skeletons.length).toBe(1);
     });
   });
 
@@ -297,6 +329,71 @@ describe("TopRibbon Component", () => {
         />,
       );
       expect(screen.queryByText(/NHS/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("ProfilePic", () => {
+    it("renders ProfilePic in non-narrow mode", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={mockPatient}
+          isLoading={false}
+          isNarrow={false}
+        />,
+      );
+      // Check for Avatar component (ProfilePic renders an Avatar)
+      const avatar = container.querySelector('[class*="Avatar"]');
+      expect(avatar).toBeInTheDocument();
+    });
+
+    it("renders ProfilePic with initials in non-narrow mode", () => {
+      const onBurgerClick = vi.fn();
+      renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={mockPatient}
+          isLoading={false}
+          isNarrow={false}
+        />,
+      );
+      // Check for initials "JS" from John Smith
+      expect(screen.getByText("JS")).toBeInTheDocument();
+    });
+
+    it("does not render ProfilePic in narrow mode", () => {
+      const onBurgerClick = vi.fn();
+      renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={mockPatient}
+          isLoading={false}
+          isNarrow={true}
+        />,
+      );
+      // Check that initials are not present
+      expect(screen.queryByText("JS")).not.toBeInTheDocument();
+    });
+
+    it("handles patient without givenName and familyName", () => {
+      const onBurgerClick = vi.fn();
+      const patientNoNames = {
+        ...mockPatient,
+        givenName: undefined,
+        familyName: undefined,
+      };
+      const { container } = renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={patientNoNames}
+          isLoading={false}
+          isNarrow={false}
+        />,
+      );
+      // Should still render Avatar (ProfilePic handles missing names)
+      const avatar = container.querySelector('[class*="Avatar"]');
+      expect(avatar).toBeInTheDocument();
     });
   });
 });

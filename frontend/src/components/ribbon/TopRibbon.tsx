@@ -10,6 +10,7 @@ import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
 import SearchField from "@/components/search";
 import QuillName from "@components/images/QuillName";
+import ProfilePic from "@components/profile-pic/ProfilePic";
 import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";
 import classes from "./TopRibbon.module.scss";
@@ -35,9 +36,10 @@ type Props = {
 /**
  * Skeleton placeholder shown while patient data loads
  */
-function RibbonSkeleton() {
+function RibbonSkeleton({ isNarrow = false }: { isNarrow?: boolean }) {
   return (
-    <Group gap="xs" wrap="nowrap" w="100%">
+    <Group gap="md" wrap="nowrap" w="100%" align="center">
+      {!isNarrow && <Skeleton circle h={48} w={48} />}
       <Skeleton h={30} radius="sm" style={{ flex: 1 }} />
     </Group>
   );
@@ -45,34 +47,42 @@ function RibbonSkeleton() {
 
 function patientDetailsLong(patient: Patient, fontSize: string) {
   return (
-    <>
-      <Text fw={700} size="sm" style={{ fontSize }}>
-        {patient.name}
-      </Text>
-      {patient.dob && (
-        <Text size="sm" style={{ fontSize }}>
-          DOB: {patient.dob}
+    <Group gap="md" wrap="nowrap" align="center">
+      <ProfilePic
+        givenName={patient.givenName}
+        familyName={patient.familyName}
+        gradientIndex={patient.gradientIndex}
+        size="md"
+      />
+      <Group gap="sm" wrap="nowrap">
+        <Text fw={700} size="sm" style={{ fontSize }}>
+          {patient.name}
         </Text>
-      )}
-      {typeof patient.age === "number" && (
-        <Text size="sm" style={{ fontSize }}>
-          Age: {patient.age}
-        </Text>
-      )}
-      {patient.sex && (
-        <Text size="sm" style={{ fontSize }}>
-          Sex: {patient.sex}
-        </Text>
-      )}
-      {patient.nationalNumber && (
-        <Text size="sm" style={{ fontSize }}>
-          <NationalNumber
-            nationalNumber={patient.nationalNumber}
-            nationalNumberSystem={patient.nationalNumberSystem}
-          />
-        </Text>
-      )}
-    </>
+        {patient.dob && (
+          <Text size="sm" style={{ fontSize }}>
+            DOB: {patient.dob}
+          </Text>
+        )}
+        {typeof patient.age === "number" && (
+          <Text size="sm" style={{ fontSize }}>
+            Age: {patient.age}
+          </Text>
+        )}
+        {patient.sex && (
+          <Text size="sm" style={{ fontSize }}>
+            Sex: {patient.sex}
+          </Text>
+        )}
+        {patient.nationalNumber && (
+          <Text size="sm" style={{ fontSize }}>
+            <NationalNumber
+              nationalNumber={patient.nationalNumber}
+              nationalNumberSystem={patient.nationalNumberSystem}
+            />
+          </Text>
+        )}
+      </Group>
+    </Group>
   );
 }
 
@@ -142,7 +152,7 @@ export default function TopRibbon({
         {/* middle: patient info */}
         <div className={classes.middle}>
           {isLoading ? (
-            <RibbonSkeleton />
+            <RibbonSkeleton isNarrow={isNarrow} />
           ) : patient ? (
             <>
               {isNarrow

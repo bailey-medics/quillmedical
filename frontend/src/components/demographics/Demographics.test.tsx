@@ -7,6 +7,8 @@ import type { Patient } from "@/domains/patient";
 const mockPatient: Patient = {
   id: "1",
   name: "John Smith",
+  givenName: "John",
+  familyName: "Smith",
   dob: "1980-09-15",
   age: 43,
   sex: "male",

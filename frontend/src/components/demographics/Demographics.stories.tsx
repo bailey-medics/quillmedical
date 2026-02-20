@@ -27,6 +27,8 @@ type Story = StoryObj<typeof meta>;
 const basePatient: Patient = {
   id: "1",
   name: "John Smith",
+  givenName: "John",
+  familyName: "Smith",
   dob: "1985-03-15",
   age: 38,
   sex: "Male",
