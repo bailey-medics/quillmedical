@@ -105,15 +105,15 @@ export default function DemographicsDetailed({
         </Text>
         {(patient.address || patient.telephone || patient.mobile) && (
           <div style={{ marginTop: 6 }}>
-            {patient.address && <Text size="xs">{patient.address}</Text>}
+            {patient.address && <Text size="lg">{patient.address}</Text>}
             {patient.telephone && (
-              <Text size="xs">Tel: {patient.telephone}</Text>
+              <Text size="lg">Tel: {patient.telephone}</Text>
             )}
-            {patient.mobile && <Text size="xs">Mobile: {patient.mobile}</Text>}
+            {patient.mobile && <Text size="lg">Mobile: {patient.mobile}</Text>}
           </div>
         )}
         {patient.onQuill !== undefined && (
-          <Text size="xs" style={{ marginTop: 6 }}>
+          <Text size="lg" style={{ marginTop: 6 }}>
             {patient.onQuill ? "On Quill app" : "Not on Quill"}
           </Text>
         )}
@@ -121,10 +121,10 @@ export default function DemographicsDetailed({
           (patient.nextOfKin.name || patient.nextOfKin.phone) && (
             <div style={{ marginTop: 6 }}>
               {patient.nextOfKin.name && (
-                <Text size="xs">Next of kin: {patient.nextOfKin.name}</Text>
+                <Text size="lg">Next of kin: {patient.nextOfKin.name}</Text>
               )}
               {patient.nextOfKin.phone && (
-                <Text size="xs">
+                <Text size="lg">
                   Next of kin tel: {patient.nextOfKin.phone}
                 </Text>
               )}

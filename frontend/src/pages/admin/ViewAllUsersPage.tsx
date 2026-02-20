@@ -107,7 +107,7 @@ export default function ViewAllUsersPage() {
                   </Table.Td>
                   <Table.Td>{user.email}</Table.Td>
                   <Table.Td>
-                    <Text size="sm" c="dimmed">
+                    <Text size="lg" c="dimmed">
                       {user.id}
                     </Text>
                   </Table.Td>

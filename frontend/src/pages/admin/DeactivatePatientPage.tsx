@@ -200,7 +200,7 @@ export default function DeactivatePatientPage() {
                   )}
                   <Group>
                     <Text fw={500}>Patient ID:</Text>
-                    <Text ff="monospace" size="sm">
+                    <Text ff="monospace" size="lg">
                       {specificPatient.id}
                     </Text>
                   </Group>
@@ -313,7 +313,7 @@ export default function DeactivatePatientPage() {
               </strong>
               ?
             </Text>
-            <Text size="sm" c="dimmed">
+            <Text size="lg" c="dimmed">
               This will restrict access to their records. This action can be
               reversed later.
             </Text>

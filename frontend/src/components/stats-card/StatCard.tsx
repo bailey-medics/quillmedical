@@ -29,7 +29,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
   return (
     <Card withBorder>
       <Stack gap="xs">
-        <Text size="sm" c="dimmed">
+        <Text size="lg" c="dimmed">
           {title}
         </Text>
         {loading ? (

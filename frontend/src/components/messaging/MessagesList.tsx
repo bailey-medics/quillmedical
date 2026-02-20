@@ -110,7 +110,7 @@ export default function MessagesList({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
                   <Group gap="xs">
-                    <Text fw={700} size="sm">
+                    <Text fw={700} size="lg">
                       {conv.patientName}
                     </Text>
                     <Badge
@@ -121,18 +121,18 @@ export default function MessagesList({
                       {conv.status}
                     </Badge>
                   </Group>
-                  <Text size="xs" c="dimmed">
+                  <Text size="lg" c="dimmed">
                     {formatTime(conv.lastMessageTime)}
                   </Text>
                 </Group>
 
-                <Text size="sm" c="dimmed" lineClamp={2} mb="xs">
+                <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
                   {conv.lastMessage}
                 </Text>
 
                 <Group justify="space-between">
                   {conv.assignedTo && (
-                    <Text size="xs" c="dimmed">
+                    <Text size="lg" c="dimmed">
                       Assigned to: {conv.assignedTo}
                     </Text>
                   )}

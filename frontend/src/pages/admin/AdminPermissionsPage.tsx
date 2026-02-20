@@ -281,7 +281,7 @@ export default function AdminPermissionsPage() {
                 />
 
                 {!isSuperAdmin && (
-                  <Text size="sm" c="dimmed" fs="italic">
+                  <Text size="lg" c="dimmed" fs="italic">
                     Only super admins can modify user permissions
                   </Text>
                 )}

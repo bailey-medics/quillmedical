@@ -55,26 +55,26 @@ function patientDetailsLong(patient: Patient, fontSize: string) {
         size="md"
       />
       <Group gap="sm" wrap="nowrap">
-        <Text fw={700} size="sm" style={{ fontSize }}>
+        <Text fw={700} size="lg" style={{ fontSize }}>
           {patient.name}
         </Text>
         {patient.dob && (
-          <Text size="sm" style={{ fontSize }}>
+          <Text size="lg" style={{ fontSize }}>
             DOB: {patient.dob}
           </Text>
         )}
         {typeof patient.age === "number" && (
-          <Text size="sm" style={{ fontSize }}>
+          <Text size="lg" style={{ fontSize }}>
             Age: {patient.age}
           </Text>
         )}
         {patient.sex && (
-          <Text size="sm" style={{ fontSize }}>
+          <Text size="lg" style={{ fontSize }}>
             Sex: {patient.sex}
           </Text>
         )}
         {patient.nationalNumber && (
-          <Text size="sm" style={{ fontSize }}>
+          <Text size="lg" style={{ fontSize }}>
             <NationalNumber
               nationalNumber={patient.nationalNumber}
               nationalNumberSystem={patient.nationalNumberSystem}
@@ -89,22 +89,22 @@ function patientDetailsLong(patient: Patient, fontSize: string) {
 function patientDetailsShort(patient: Patient, fontSize: string) {
   return (
     <>
-      <Text fw={700} size="sm" style={{ fontSize }}>
+      <Text fw={700} size="lg" style={{ fontSize }}>
         {patient.name}
       </Text>
       {patient.dob && (
-        <Text size="sm" style={{ fontSize }}>
+        <Text size="lg" style={{ fontSize }}>
           {patient.dob}
         </Text>
       )}
       {typeof patient.age === "number" && (
-        <Text size="sm" style={{ fontSize }}>
+        <Text size="lg" style={{ fontSize }}>
           {" "}
           {patient.age} {patient.sex}
         </Text>
       )}
       {patient.nationalNumber && (
-        <Text size="sm" style={{ fontSize }}>
+        <Text size="lg" style={{ fontSize }}>
           <NationalNumber
             nationalNumber={patient.nationalNumber}
             nationalNumberSystem={patient.nationalNumberSystem}
@@ -129,8 +129,8 @@ export default function TopRibbon({
       {/* This inner div is the query container */}
       <div className={classes.cq}>
         {/* left */}
-        <div className={classes.left}>
-          {isNarrow && (
+        {isNarrow && (
+          <div className={classes.left}>
             <ActionIcon
               variant="subtle"
               onClick={onBurgerClick}
@@ -141,8 +141,8 @@ export default function TopRibbon({
             >
               <IconMenu2 />
             </ActionIcon>
-          )}
-        </div>
+          </div>
+        )}
 
         {showBrand && (
           <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
@@ -162,7 +162,11 @@ export default function TopRibbon({
           ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}
-        <div className={classes.right}>{!isNarrow && <SearchField />}</div>
+        {!isNarrow && (
+          <div className={classes.right}>
+            <SearchField />
+          </div>
+        )}
       </div>
     </>
   );

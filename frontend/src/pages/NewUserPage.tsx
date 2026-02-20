@@ -89,7 +89,7 @@ function Step1BasicDetails({
   return (
     <Stack gap="md">
       <Title order={3}>Basic details</Title>
-      <Text size="sm" c="dimmed">
+      <Text size="lg" c="dimmed">
         Enter the user's basic information and select their base profession.
       </Text>
 
@@ -193,16 +193,16 @@ function Step2Competencies({
   return (
     <Stack gap="md">
       <Title order={3}>Competency configuration</Title>
-      <Text size="sm" c="dimmed">
+      <Text size="lg" c="dimmed">
         Configure additional or removed competencies for this user.
       </Text>
 
       {profession && (
         <Alert variant="light" color="blue">
-          <Text size="sm" fw={500}>
+          <Text size="lg" fw={500}>
             Base Profession: {profession.display_name}
           </Text>
-          <Text size="sm" c="dimmed" mt={4}>
+          <Text size="lg" c="dimmed" mt={4}>
             Default competencies: {baseCompetencyIds.length} included
           </Text>
         </Alert>
@@ -268,7 +268,7 @@ function Step3Permissions({
   return (
     <Stack gap="md">
       <Title order={3}>System permissions & review</Title>
-      <Text size="sm" c="dimmed">
+      <Text size="lg" c="dimmed">
         Set system permissions and review the user details.
       </Text>
 
@@ -368,7 +368,7 @@ function Step4Confirmation({
               ? "User updated successfully"
               : "User created successfully"}
           </Title>
-          <Text size="sm" c="dimmed" ta="center">
+          <Text size="lg" c="dimmed" ta="center">
             {isEditMode
               ? "The user's details have been updated."
               : "The new user has been created and can now log in to the system."}
@@ -383,7 +383,7 @@ function Step4Confirmation({
           <Title order={2}>
             {isEditMode ? "Failed to update user" : "Failed to create user"}
           </Title>
-          <Text size="sm" c="dimmed" ta="center">
+          <Text size="lg" c="dimmed" ta="center">
             {isEditMode
               ? "There was an error updating the user. Please try again."
               : "There was an error creating the user. Please try again."}

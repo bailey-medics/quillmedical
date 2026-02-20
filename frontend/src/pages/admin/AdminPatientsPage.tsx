@@ -172,7 +172,7 @@ export default function AdminPatientsPage() {
                   <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
                   <Table.Td>{patient.gender || "N/A"}</Table.Td>
                   <Table.Td>
-                    <Text size="sm" c="dimmed">
+                    <Text size="lg" c="dimmed">
                       {patient.id}
                     </Text>
                   </Table.Td>

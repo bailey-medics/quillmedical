@@ -64,21 +64,21 @@ export const WithPatientNarrow: Story = {
 /** Loading state — shows skeleton + Quill mark (narrow screen) */
 export const LoadingNarrow: Story = {
   args: {
+    onBurgerClick: () => {},
     patient: null,
     isLoading: true,
     navOpen: false,
     isNarrow: true,
   },
-  render: (args) => <TopRibbon {...args} />,
 };
 
 /** Loading state — shows skeleton with ProfilePic + Quill mark (wide screen) */
 export const LoadingWide: Story = {
   args: {
+    onBurgerClick: () => {},
     patient: null,
     isLoading: true,
     navOpen: false,
     isNarrow: false,
   },
-  render: (args) => <TopRibbon {...args} />,
 };

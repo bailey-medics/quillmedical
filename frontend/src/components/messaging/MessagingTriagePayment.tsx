@@ -247,7 +247,7 @@ export default function MessagingTriagePayment({
             </Button>
           </Group>
         </Box>
-        <Text size="xs" color="dimmed" mb={6}>
+        <Text size="lg" color="dimmed" mb={6}>
           Sending as: {role}
         </Text>
 

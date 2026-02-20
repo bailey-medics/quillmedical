@@ -59,15 +59,24 @@ export default function Image({
   const imgProps =
     alt === "" ? { "aria-hidden": true, role: "img", alt: "" } : { alt };
 
+  // Convert numeric height/width to rem units in style
+  const imgStyle = {
+    ...style,
+    ...(height !== undefined && {
+      height: typeof height === "number" ? `${height}rem` : height,
+    }),
+    ...(width !== undefined && {
+      width: typeof width === "number" ? `${width}rem` : width,
+    }),
+  };
+
   return (
     <img
       src={resolvedSrc}
       {...imgProps}
-      width={width}
-      height={height}
       loading={loading}
       className={className}
-      style={style}
+      style={imgStyle}
     />
   );
 }

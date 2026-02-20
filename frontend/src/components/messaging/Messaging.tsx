@@ -153,7 +153,7 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="sm">{m.text}</Text>
+                            <Text size="lg">{m.text}</Text>
                           </div>
                           <ProfilePic
                             src={m.avatar}
@@ -165,7 +165,7 @@ export default function Messaging({
                         </div>
                         {m.timestamp && (
                           <Text
-                            size="xs"
+                            size="lg"
                             color="dimmed"
                             style={{
                               marginTop: 4,
@@ -196,7 +196,7 @@ export default function Messaging({
                       >
                         {m.senderName && (
                           <Text
-                            size="xs"
+                            size="lg"
                             color="dimmed"
                             style={{
                               marginBottom: 2,
@@ -229,12 +229,12 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="sm">{m.text}</Text>
+                            <Text size="lg">{m.text}</Text>
                           </div>
                         </div>
                         {m.timestamp && (
                           <Text
-                            size="xs"
+                            size="lg"
                             color="dimmed"
                             style={{
                               marginTop: 4,

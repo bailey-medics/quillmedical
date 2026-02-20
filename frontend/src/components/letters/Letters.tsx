@@ -126,13 +126,13 @@ export default function Letters({
             <div style={{ flex: 1, marginLeft: 12 }}>
               <Text fw={600}>{l.subject}</Text>
               {l.snippet && (
-                <Text size="sm" color="dimmed">
+                <Text size="lg" color="dimmed">
                   {l.snippet}
                 </Text>
               )}
             </div>
             {l.date && (
-              <Text size="xs" color="dimmed">
+              <Text size="lg" color="dimmed">
                 {new Date(l.date).toLocaleDateString()}
               </Text>
             )}
