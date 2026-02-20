@@ -7,12 +7,21 @@ import {
   Switch,
   Text,
 } from "@mantine/core";
-import { IconUser } from "@tabler/icons-react";
+import { IconBell, IconUser } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
 import Icon from "@/components/icons";
-import EnableNotificationsButton from "@/components/notifications";
 import PageHeader from "@/components/page-header";
+
+// Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
+function b64ToUint8Array(base64: string) {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
 
 /**
  * Settings page component.
@@ -34,14 +43,78 @@ export default function Settings() {
    * Used to show a loading state on the Save button.
    */
   const [saving, setSaving] = useState(false);
+  /**
+   * Tracks the state of push notification enabling
+   */
+  const [notificationState, setNotificationState] = useState<
+    "idle" | "busy" | "ok" | "denied" | "err"
+  >("idle");
+
+  async function enableNotifications() {
+    try {
+      // 1) Ask the user
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setNotificationState("denied");
+        return;
+      }
+
+      setNotificationState("busy");
+
+      // 2) Wait for the service worker
+      const reg = await navigator.serviceWorker.ready;
+
+      // 3) Subscribe with your public VAPID key
+      const vapid = import.meta.env.VITE_VAPID_PUBLIC as string;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToUint8Array(vapid),
+      });
+
+      // 4) Send subscription to your backend for storage
+      const res = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+      if (!res.ok) throw new Error("Subscribe API failed");
+
+      setNotificationState("ok");
+    } catch (e) {
+      console.error(e);
+      setNotificationState("err");
+    }
+  }
+
+  const getNotificationButtonLabel = () => {
+    switch (notificationState) {
+      case "ok":
+        return "Notifications enabled";
+      case "busy":
+        return "Enabling…";
+      case "denied":
+        return "Permission denied";
+      case "err":
+        return "Error — try again";
+      default:
+        return "Enable notifications";
+    }
+  };
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <PageHeader title="Settings" size="lg" mb={0} />
-        <Card shadow="sm">
-          <EnableNotificationsButton />
-        </Card>
+
+        <ActionCard
+          icon={<Icon icon={<IconBell />} size="lg" />}
+          title="Notifications"
+          subtitle="Enable push notifications to stay updated"
+          buttonLabel={getNotificationButtonLabel()}
+          onClick={enableNotifications}
+          disabled={notificationState === "busy" || notificationState === "ok"}
+        />
+
         <Card shadow="sm">
           <div
             style={{
