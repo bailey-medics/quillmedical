@@ -3,6 +3,7 @@ import {
   Card,
   Container,
   Group,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -105,14 +106,26 @@ export default function Settings() {
       <Stack gap="lg">
         <PageHeader title="Settings" size="lg" mb={0} />
 
-        <ActionCard
-          icon={<IconBell />}
-          title="Notifications"
-          subtitle="Enable push notifications to stay updated"
-          buttonLabel={getNotificationButtonLabel()}
-          onClick={enableNotifications}
-          disabled={notificationState === "busy" || notificationState === "ok"}
-        />
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <ActionCard
+            icon={<IconBell />}
+            title="Notifications"
+            subtitle="Enable push notifications to stay updated"
+            buttonLabel={getNotificationButtonLabel()}
+            onClick={enableNotifications}
+            disabled={
+              notificationState === "busy" || notificationState === "ok"
+            }
+          />
+
+          <ActionCard
+            icon={<IconUser />}
+            title="Account"
+            subtitle="Email: you@example.com"
+            buttonLabel="Change password"
+            buttonUrl="/settings/password"
+          />
+        </SimpleGrid>
 
         <Card shadow="sm">
           <div
@@ -154,14 +167,6 @@ export default function Settings() {
             </Button>
           </Group>
         </Card>
-
-        <ActionCard
-          icon={<IconUser />}
-          title="Account"
-          subtitle="Email: you@example.com"
-          buttonLabel="Change password"
-          buttonUrl="/settings/password"
-        />
       </Stack>
     </Container>
   );
