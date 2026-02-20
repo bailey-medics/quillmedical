@@ -16,12 +16,12 @@ import {
   Skeleton,
   Center,
   Alert,
-  Button,
   Group,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserPlus } from "@tabler/icons-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
+import AddButton from "@/components/button/AddButton";
 import { api } from "@/lib/api";
 
 interface User {
@@ -66,19 +66,17 @@ export default function AdminUsersPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <Group justify="space-between" align="flex-start">
+        <Group justify="space-between" align="flex-end">
           <PageHeader
             title="User management"
             description="View and manage all user accounts"
             size="lg"
             mb={0}
           />
-          <Button
-            leftSection={<Icon icon={<IconUserPlus />} size="sm" />}
+          <AddButton
+            label="Add user"
             onClick={() => navigate("/admin/users/new")}
-          >
-            Add user
-          </Button>
+          />
         </Group>
 
         {error ? (

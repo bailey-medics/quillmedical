@@ -129,10 +129,7 @@ export default function UserAdminPage() {
               <Title order={2} size="lg">
                 Account information
               </Title>
-              <PermissionBadge
-                permission={user.system_permissions}
-                variant="light"
-              />
+              <PermissionBadge permission={user.system_permissions} />
             </Group>
 
             <Stack gap="xs">

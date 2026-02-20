@@ -16,13 +16,13 @@ import {
   Skeleton,
   Center,
   Alert,
-  Button,
   Group,
   Badge,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserPlus } from "@tabler/icons-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import StateMessage from "@/components/state-message";
+import AddButton from "@/components/button/AddButton";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
 
@@ -110,19 +110,17 @@ export default function AdminPatientsPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <Group justify="space-between" align="flex-start">
+        <Group justify="space-between" align="flex-end">
           <PageHeader
             title="Patient management"
             description="View and manage all patient records"
             size="lg"
             mb={0}
           />
-          <Button
-            leftSection={<IconUserPlus size={16} />}
+          <AddButton
+            label="Add patient"
             onClick={() => navigate("/admin/patients/new")}
-          >
-            Add patient
-          </Button>
+          />
         </Group>
 
         {error ? (

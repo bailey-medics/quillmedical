@@ -65,6 +65,7 @@ export default function ActionCard({
             variant="light"
             fullWidth
             disabled={disabled}
+            size="lg"
           >
             {buttonLabel}
           </Button>
@@ -75,6 +76,7 @@ export default function ActionCard({
             variant="light"
             fullWidth
             disabled={disabled}
+            size="lg"
           >
             {buttonLabel}
           </Button>
