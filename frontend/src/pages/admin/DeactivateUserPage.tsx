@@ -18,7 +18,7 @@ import {
   Modal,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 
 interface User {
   id: string;

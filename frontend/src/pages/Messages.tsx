@@ -6,8 +6,8 @@
  * defaulting to most recent messages first.
  */
 
-import MessagesList from "@/components/messaging/MessagesList";
-import PageHeader from "@/components/page-header/PageHeader";
+import MessagesList from "@/components/messaging";
+import PageHeader from "@/components/page-header";
 // import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
   Card,

@@ -9,7 +9,7 @@
 import { Skeleton, Text, Title, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import ProfilePic from "@/components/profile-pic/ProfilePic";
+import ProfilePic from "@/components/profile-pic";
 
 /**
  * Letter

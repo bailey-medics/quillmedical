@@ -6,7 +6,7 @@
  * of message types (sent/received, text/attachments).
  */
 
-import type { Message } from "@/components/messaging/Messaging";
+import type { Message } from "@/components/messaging";
 
 /**
  * Helper to produce reproducible demo timestamps.

@@ -7,9 +7,9 @@
  * - Letter viewing with markdown rendering
  * - Real-world application page examples
  */
-import MarkdownView from "@/components/markdown/MarkdownView";
-import Messaging, { type Message } from "@/components/messaging/Messaging";
-import DemographicsDetailed from "@/components/demographics/DemographicsDetailed";
+import MarkdownView from "@/components/markdown";
+import { Messaging, type Message } from "@/components/messaging";
+import { DemographicsDetailed } from "@/components/demographics";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";

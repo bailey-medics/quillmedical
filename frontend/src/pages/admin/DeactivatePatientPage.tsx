@@ -24,7 +24,7 @@ import {
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 
 interface Patient {

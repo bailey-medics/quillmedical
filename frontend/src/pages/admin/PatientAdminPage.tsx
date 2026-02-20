@@ -26,9 +26,9 @@ import {
   IconUserMinus,
   IconUserCheck,
 } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
-import Icon from "@/components/icons/Icon";
-import IconButton from "@/components/icon-button";
+import PageHeader from "@/components/page-header";
+import Icon from "@/components/icons";
+import { IconButton } from "@/components/icons";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
 import type { Patient } from "@/domains/patient";

@@ -9,7 +9,7 @@
 import type { ReactElement, MouseEventHandler } from "react";
 import { ActionIcon } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
-import Icon, { type IconSize } from "@/components/icons/Icon";
+import Icon, { type IconSize } from "./Icon";
 
 /**
  * Size map for ActionIcon container (needs padding around icon)

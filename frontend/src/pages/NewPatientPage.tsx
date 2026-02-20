@@ -9,6 +9,9 @@
  * @module NewPatientPage
  */
 
+/* eslint-disable no-restricted-syntax */
+// Multi-step form uses Box with maw instead of Container for custom max-width
+
 import {
   Box,
   Button,
@@ -30,9 +33,9 @@ import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
-} from "@/components/multi-step-form/MultiStepForm";
-import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
-import PageHeader from "@/components/page-header/PageHeader";
+} from "@/components/multi-step-form";
+import DirtyFormNavigation from "@/components/warnings";
+import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 
 /**

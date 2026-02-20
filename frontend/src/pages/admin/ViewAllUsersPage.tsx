@@ -16,7 +16,7 @@ import {
   Alert,
 } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 
 interface User {
   id: string;

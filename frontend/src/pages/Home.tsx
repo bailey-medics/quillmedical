@@ -6,7 +6,7 @@
  * type, and displays them in a card-based list view.
  */
 
-import PatientsList from "@/components/patients/PatientsList";
+import PatientsList from "@/components/patients";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";

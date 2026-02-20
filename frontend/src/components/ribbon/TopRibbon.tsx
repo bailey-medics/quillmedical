@@ -8,7 +8,7 @@
 
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
-import SearchField from "@/components/search/SearchFields";
+import SearchField from "@/components/search";
 import QuillName from "@components/images/QuillName";
 import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";

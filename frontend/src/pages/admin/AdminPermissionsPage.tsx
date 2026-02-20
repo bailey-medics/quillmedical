@@ -8,8 +8,8 @@
 import { Container, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconShieldCheck } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
-import PageHeader from "@/components/page-header/PageHeader";
-import Icon from "@/components/icons/Icon";
+import PageHeader from "@/components/page-header";
+import Icon from "@/components/icons";
 import { useState, useEffect } from "react";
 import {
   Modal,

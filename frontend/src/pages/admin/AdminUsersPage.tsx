@@ -20,8 +20,8 @@ import {
   Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserPlus } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
-import Icon from "@/components/icons/Icon";
+import PageHeader from "@/components/page-header";
+import Icon from "@/components/icons";
 import { api } from "@/lib/api";
 
 interface User {

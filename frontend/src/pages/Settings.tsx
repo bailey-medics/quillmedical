@@ -6,11 +6,13 @@ import {
   Stack,
   Switch,
   Text,
-  Title,
 } from "@mantine/core";
+import { IconUser } from "@tabler/icons-react";
 import { useState } from "react";
-import EnableNotificationsButton from "@/components/notifications/EnableNotificationsButton";
-import PageHeader from "@/components/page-header/PageHeader";
+import ActionCard from "@/components/action-card";
+import Icon from "@/components/icons";
+import EnableNotificationsButton from "@/components/notifications";
+import PageHeader from "@/components/page-header";
 
 /**
  * Settings page component.
@@ -81,14 +83,13 @@ export default function Settings() {
           </Group>
         </Card>
 
-        <Card shadow="sm">
-          <Title order={4}>Account</Title>
-          <Text size="sm" color="dimmed">
-            Email: you@example.com
-          </Text>
-          <div style={{ height: 12 }} />
-          <Button variant="outline">Change password</Button>
-        </Card>
+        <ActionCard
+          icon={<Icon icon={<IconUser />} size="lg" />}
+          title="Account"
+          subtitle="Email: you@example.com"
+          buttonLabel="Change password"
+          buttonUrl="/settings/password"
+        />
       </Stack>
     </Container>
   );

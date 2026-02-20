@@ -17,9 +17,9 @@
  */
 
 import type { Patient } from "@/domains/patient";
-import ProfilePic from "@/components/profile-pic/ProfilePic";
-import Demographics from "@/components/demographics/Demographics";
-import StateMessage from "@/components/state-message/StateMessage";
+import ProfilePic from "@/components/profile-pic";
+import Demographics from "@/components/demographics";
+import StateMessage from "@/components/state-message";
 import {
   Group,
   Text,

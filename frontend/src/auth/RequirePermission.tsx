@@ -15,7 +15,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import type { ReactNode } from "react";
 import type { SystemPermission } from "@/types/cbac";
-import NotFoundLayout from "@/components/layouts/NotFoundLayout";
+import { NotFoundLayout } from "@/components/layouts";
 
 /**
  * Permission hierarchy levels

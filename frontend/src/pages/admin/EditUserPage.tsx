@@ -18,7 +18,7 @@ import {
   ActionIcon,
 } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 
 interface User {
   id: string;
