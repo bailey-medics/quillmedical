@@ -9,14 +9,16 @@
  * - /admin/permissions - Permissions management
  */
 
-import { Badge, Group, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import StatCard from "@/components/stats-card";
 import PageHeader from "@/components/page-header";
-import type { SystemPermission } from "@/types/cbac";
+import PermissionBadge, {
+  type UserPermission,
+} from "@/components/badge/PermissionBadge";
 
 interface AdminProps {
   /** Current user's system permissions */
-  userPermissions: SystemPermission;
+  userPermissions: UserPermission;
   /** Loading state for users statistics */
   usersLoading?: boolean;
   /** Loading state for patients statistics */
@@ -43,19 +45,7 @@ export default function Admin({
           size="lg"
           mb={0}
         />
-        <Badge
-          size="xl"
-          variant="filled"
-          color={
-            userPermissions === "superadmin"
-              ? "green"
-              : userPermissions === "admin"
-                ? "blue"
-                : "gray"
-          }
-        >
-          {userPermissions.toUpperCase()}
-        </Badge>
+        <PermissionBadge permission={userPermissions} />
       </Group>
 
       <Group grow>

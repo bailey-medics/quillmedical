@@ -9,6 +9,7 @@
 import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
 import { api } from "@/lib/api";
+import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import { Card, Container, Stack, Text, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
@@ -40,6 +41,18 @@ type FhirIdentifier = {
 };
 
 /**
+ * FHIR Extension
+ *
+ * FHIR R4 Extension structure for custom data elements.
+ */
+type FhirExtension = {
+  url?: string;
+  valueInteger?: number;
+  valueString?: string;
+  extension?: FhirExtension[];
+};
+
+/**
  * FHIR Patient
  *
  * FHIR R4 Patient resource structure returned from backend.
@@ -57,6 +70,8 @@ type FhirPatient = {
   gender?: string;
   /** Array of patient identifiers (NHS number, MRN, etc.) */
   identifier?: FhirIdentifier[];
+  /** Array of FHIR extensions */
+  extension?: FhirExtension[];
 };
 
 /**
@@ -158,6 +173,9 @@ export default function Patient() {
           }
         }
 
+        // Extract avatar gradient index from FHIR extension
+        const gradientIndex = extractAvatarGradientIndex(fhirPatient);
+
         const mappedPatient: Patient = {
           id: fhirPatient.id,
           name: displayName,
@@ -168,6 +186,7 @@ export default function Patient() {
           sex: fhirPatient.gender ?? undefined,
           nationalNumber: nationalNumber,
           nationalNumberSystem: nationalNumberSystem,
+          gradientIndex: gradientIndex,
           onQuill: true,
         };
 

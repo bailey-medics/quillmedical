@@ -8,6 +8,7 @@
 
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
+import FormattedDate from "@/components/date/Date";
 import SearchField from "@/components/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
@@ -59,8 +60,8 @@ function patientDetailsLong(patient: Patient, fontSize: string) {
           {patient.name}
         </Text>
         {patient.dob && (
-          <Text size="lg" style={{ fontSize }}>
-            DOB: {patient.dob}
+          <Text size="lg" style={{ fontSize }} component="span">
+            DOB: <FormattedDate date={patient.dob} component="span" />
           </Text>
         )}
         {typeof patient.age === "number" && (
@@ -94,7 +95,7 @@ function patientDetailsShort(patient: Patient, fontSize: string) {
       </Text>
       {patient.dob && (
         <Text size="lg" style={{ fontSize }}>
-          {patient.dob}
+          <FormattedDate date={patient.dob} component="span" />
         </Text>
       )}
       {typeof patient.age === "number" && (

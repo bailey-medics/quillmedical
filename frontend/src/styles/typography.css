@@ -106,3 +106,24 @@ p,
 .mantine-Text-root {
   text-align: left;
 }
+
+/**
+ * Responsive Badge sizing
+ * xl badges: desktop size by default, 30% smaller on mobile
+ * Height is 10% taller than calculated to provide extra vertical padding
+ */
+.mantine-Badge-root[data-size="xl"] {
+  /* Mobile: 30% smaller than desktop */
+  --badge-height: 1.7325rem !important; /* 27.72px (10% taller than 25.2px) */
+  --badge-fz: 1.3125rem !important; /* 21px (70% of 30px) */
+  --badge-padding-x: 0.875rem !important; /* Proportionally smaller padding */
+}
+
+@media (width >= 48em) {
+  /* 768px and up - full desktop size */
+  .mantine-Badge-root[data-size="xl"] {
+    --badge-height: 2.475rem !important; /* 39.6px (10% taller than 36px) */
+    --badge-fz: 1.875rem !important; /* 30px */
+    --badge-padding-x: 1.25rem !important;
+  }
+}

@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 /**
  * Default Badge
  *
- * Shows the default themed badge (size="lg" by default).
+ * Shows the default themed badge (size="lg", radius="xl" for pill shape).
  */
 export const Default: Story = {
   args: {
@@ -33,10 +33,11 @@ export const Default: Story = {
  * All Sizes
  *
  * Demonstrates all badge sizes including custom xl (50% larger than lg).
+ * xl size is responsive: 30% smaller on mobile (<768px), full size on desktop.
  * - xs/sm: Small badges for compact displays
  * - md: Medium badges
  * - lg: Default large badges (theme default)
- * - xl: Extra large badges (custom: 50% bigger than lg, 30px mobile → 36px desktop)
+ * - xl: Extra large badges (21px mobile → 30px desktop)
  */
 export const AllSizes: Story = {
   render: () => (
@@ -57,6 +58,8 @@ export const AllSizes: Story = {
  *
  * Demonstrates the permission badge styling used on the admin page.
  * Extra large size (xl) with filled variant and color coding.
+ * Responsive: 21px font on mobile, 30px font on desktop (≥768px).
+ * Height is 10% taller than calculated to provide extra vertical padding.
  */
 export const PermissionBadges: Story = {
   render: () => (

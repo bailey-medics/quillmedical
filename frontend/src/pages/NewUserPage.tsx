@@ -33,6 +33,7 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import PermissionBadge from "@/components/badge/PermissionBadge";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -307,7 +308,11 @@ function Step3Permissions({
           </Group>
           <Group justify="space-between">
             <Text fw={500}>System Permissions:</Text>
-            <Badge>{formData.systemPermissions}</Badge>
+            <PermissionBadge
+              permission={formData.systemPermissions}
+              size="md"
+              variant="light"
+            />
           </Group>
           {formData.additionalCompetencies.length > 0 && (
             <Box>

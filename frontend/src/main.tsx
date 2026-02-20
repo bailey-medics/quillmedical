@@ -34,6 +34,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/AdminPatientsPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import ViewAllUsersPage from "./pages/admin/ViewAllUsersPage";
+import UserAdminPage from "./pages/admin/UserAdminPage";
 import EditUserPage from "./pages/admin/EditUserPage";
 import DeactivateUserPage from "./pages/admin/DeactivateUserPage";
 import ViewAllPatientsPage from "./pages/admin/ViewAllPatientsPage";
@@ -142,6 +143,14 @@ const router = createBrowserRouter(
           element: (
             <RequirePermission level="admin">
               <DeactivateUserPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/users/:id",
+          element: (
+            <RequirePermission level="admin">
+              <UserAdminPage />
             </RequirePermission>
           ),
         },

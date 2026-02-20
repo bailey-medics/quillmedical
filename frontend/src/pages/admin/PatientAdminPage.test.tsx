@@ -9,6 +9,7 @@
  * - Permission checking
  */
 
+/* eslint-disable no-restricted-syntax */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
@@ -411,6 +412,86 @@ describe("PatientAdminPage", () => {
           }),
         }),
       );
+    });
+  });
+
+  describe("Gradient index extraction", () => {
+    it("extracts gradientIndex from FHIR extension", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["John"], family: "Doe" }],
+        birthDate: "1980-05-15",
+        gender: "male",
+        extension: [
+          {
+            url: "urn:quillmedical:avatar-gradient",
+            valueInteger: 12,
+          },
+        ],
+      };
+
+      const mockSetPatient = vi.fn();
+
+      // Mock outlet context with setPatient
+      vi.spyOn(
+        await import("react-router-dom"),
+        "useOutletContext",
+      ).mockReturnValue({
+        setPatient: mockSetPatient,
+      });
+
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: true }); // Second call for metadata
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        expect(mockSetPatient).toHaveBeenCalledWith(
+          expect.objectContaining({
+            gradientIndex: 12,
+          }),
+        );
+      });
+    });
+
+    it("handles missing gradient extension gracefully", async () => {
+      const mockPatient = {
+        id: "patient-123",
+        name: [{ given: ["Jane"], family: "Smith" }],
+        birthDate: "1990-08-25",
+        gender: "female",
+      };
+
+      const mockSetPatient = vi.fn();
+
+      // Mock outlet context with setPatient
+      vi.spyOn(
+        await import("react-router-dom"),
+        "useOutletContext",
+      ).mockReturnValue({
+        setPatient: mockSetPatient,
+      });
+
+      vi.spyOn(apiLib.api, "get")
+        .mockResolvedValueOnce(mockPatient) // First call for patient data
+        .mockResolvedValueOnce({ is_active: true }); // Second call for metadata
+
+      renderWithRouter(<PatientAdminPage />, {
+        routePath: "/admin/patients/:patientId",
+        initialRoute: "/admin/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        expect(mockSetPatient).toHaveBeenCalledWith(
+          expect.objectContaining({
+            gradientIndex: undefined,
+          }),
+        );
+      });
     });
   });
 });

@@ -13,6 +13,7 @@ import {
   Stack,
   Paper,
   Group,
+  SimpleGrid,
   Text,
   Title,
   Skeleton,
@@ -31,8 +32,19 @@ import Icon from "@/components/icons";
 import { IconButton } from "@/components/icons";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
+import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
+
+/**
+ * FHIR Extension
+ */
+interface FhirExtension {
+  url?: string;
+  valueInteger?: number;
+  valueString?: string;
+  extension?: FhirExtension[];
+}
 
 /**
  * Patient FHIR Resource (simplified)
@@ -46,6 +58,8 @@ interface PatientResource {
     system?: string;
     value?: string;
   }>;
+  extension?: FhirExtension[];
+  [key: string]: unknown;
 }
 
 /**
@@ -156,6 +170,9 @@ export default function PatientAdminPage() {
           }
         }
 
+        // Extract avatar gradient index from FHIR extension
+        const gradientIndex = extractAvatarGradientIndex(patientData);
+
         // Update ribbon with patient details
         const ribbonPatient: Patient = {
           id: patientData.id,
@@ -167,6 +184,7 @@ export default function PatientAdminPage() {
           sex: patientData.gender ?? undefined,
           nationalNumber: nationalNumber,
           nationalNumberSystem: nationalNumberSystem,
+          gradientIndex: gradientIndex,
         };
         setPatient(ribbonPatient);
 
@@ -386,35 +404,37 @@ export default function PatientAdminPage() {
           <Title order={3} size="h4">
             Patient actions
           </Title>
-          {isActive ? (
-            <ActionCard
-              icon={<IconUserMinus />}
-              title="Deactivate patient"
-              subtitle="Deactivate this patient record"
-              buttonLabel="Deactivate patient"
-              buttonUrl={`/admin/patients/${patientId}/deactivate`}
-              onClick={() => {
-                // Navigate to deactivate page for this specific patient
-                navigate(`/admin/patients/${patientId}/deactivate`, {
-                  state: { patient },
-                });
-              }}
-            />
-          ) : (
-            <ActionCard
-              icon={<IconUserCheck />}
-              title="Activate patient"
-              subtitle="Reactivate this patient record"
-              buttonLabel="Activate patient"
-              buttonUrl={`/admin/patients/${patientId}/activate`}
-              onClick={() => {
-                // Navigate to activate page for this specific patient
-                navigate(`/admin/patients/${patientId}/activate`, {
-                  state: { patient },
-                });
-              }}
-            />
-          )}
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            {isActive ? (
+              <ActionCard
+                icon={<IconUserMinus />}
+                title="Deactivate patient"
+                subtitle="Deactivate this patient record"
+                buttonLabel="Deactivate patient"
+                buttonUrl={`/admin/patients/${patientId}/deactivate`}
+                onClick={() => {
+                  // Navigate to deactivate page for this specific patient
+                  navigate(`/admin/patients/${patientId}/deactivate`, {
+                    state: { patient },
+                  });
+                }}
+              />
+            ) : (
+              <ActionCard
+                icon={<IconUserCheck />}
+                title="Activate patient"
+                subtitle="Reactivate this patient record"
+                buttonLabel="Activate patient"
+                buttonUrl={`/admin/patients/${patientId}/activate`}
+                onClick={() => {
+                  // Navigate to activate page for this specific patient
+                  navigate(`/admin/patients/${patientId}/activate`, {
+                    state: { patient },
+                  });
+                }}
+              />
+            )}
+          </SimpleGrid>
         </Stack>
       </Stack>
     </Container>

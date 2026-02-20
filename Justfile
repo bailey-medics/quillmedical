@@ -103,6 +103,15 @@ enter-frontend:
     docker exec -it quill_frontend /bin/sh
 
 
+alias fu := frontend-update
+# Update frontend dependencies with yarn up
+frontend-update:
+    #!/usr/bin/env bash
+    {{initialise}} "frontend-update"
+    cd frontend
+    yarn up
+
+
 alias h32 := hex-32
 # Generate a random 32 character hex string
 hex-32:
