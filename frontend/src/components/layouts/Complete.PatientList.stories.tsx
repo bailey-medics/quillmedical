@@ -7,9 +7,9 @@
  * - No patients available
  * - Loading skeleton state
  */
-import PatientsList from "@/components/patients/PatientsList";
+import PatientsList from "@/components/patients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import MainLayout from "./MainLayout";
+import { MainLayout } from "@/components/layouts";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof MainLayout> = {

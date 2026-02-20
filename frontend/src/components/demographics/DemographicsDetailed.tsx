@@ -8,7 +8,7 @@
 
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
-import ProfilePic from "@/components/profile-pic/ProfilePic";
+import ProfilePic from "@/components/profile-pic";
 import { Group, Skeleton, Text, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 

@@ -17,7 +17,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
-import ProfilePic from "@/components/profile-pic/ProfilePic";
+import ProfilePic from "@/components/profile-pic";
 
 /**
  * Message

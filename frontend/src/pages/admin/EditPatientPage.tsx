@@ -22,7 +22,7 @@ import {
   Title,
 } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 
 interface Patient {
   id: string;

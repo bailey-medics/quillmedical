@@ -5,7 +5,7 @@
  * Provides realistic letter data with various subjects, authors, and dates.
  */
 
-import type { Letter } from "@/components/letters/Letters";
+import type { Letter } from "@/components/letters";
 
 /** Array of sample clinical letters for demo purposes */
 export const sampleLetters: Letter[] = [

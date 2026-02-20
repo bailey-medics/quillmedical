@@ -8,7 +8,7 @@
 
 import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/demographics/NationalNumber";
-import FormattedDate from "@/components/date/Date";
+import FormattedDate from "@/components/date";
 import { Skeleton, Text } from "@mantine/core";
 
 /**

@@ -6,7 +6,10 @@
  * login and displays contextual error messages for common failure cases.
  */
 
-import QuillLogo from "@/components/images/QuillLogo";
+/* eslint-disable no-restricted-syntax */
+// Login page uses Paper with maw instead of Container for centered layout
+
+import { QuillLogo } from "@/components/images";
 import {
   Anchor,
   Button,

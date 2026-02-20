@@ -11,7 +11,7 @@
 
 import { Badge, Group, Stack } from "@mantine/core";
 import StatCard from "@/components/stats-card";
-import PageHeader from "@/components/page-header/PageHeader";
+import PageHeader from "@/components/page-header";
 import type { SystemPermission } from "@/types/cbac";
 
 interface AdminProps {

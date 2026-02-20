@@ -6,7 +6,7 @@
  */
 
 import { Container } from "@mantine/core";
-import Admin from "@/components/admin/Admin";
+import Admin from "@/components/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";

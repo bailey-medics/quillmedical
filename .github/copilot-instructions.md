@@ -57,6 +57,11 @@ just create-user    # Interactive user creation
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
+- **Page Layout**: ALWAYS wrap page content in `<Container size="lg">` for consistent max-width (1140px)
+  - Standard pattern: `<Container size="lg" py="xl"><Stack gap="lg">...</Stack></Container>`
+  - Ensures consistent content width across all pages
+  - Works correctly in Storybook for visual testing
+  - Example: Messages, Settings, all Admin pages
 - **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
   - Import: `const theme = useMantineTheme();` from `@mantine/core`
   - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`

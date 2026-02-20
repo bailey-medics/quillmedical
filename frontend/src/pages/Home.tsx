@@ -6,12 +6,12 @@
  * type, and displays them in a card-based list view.
  */
 
-import PatientsList from "@/components/patients/PatientsList";
+import PatientsList from "@/components/patients";
 import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
-import { Stack } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -312,14 +312,16 @@ export default function Home() {
   }, [isFhirReady]);
 
   return (
-    <Stack align="center" style={{ minHeight: "70dvh", margin: "0 auto" }}>
-      <PatientsList
-        patients={patients ?? []}
-        isLoading={isLoading}
-        fhirAvailable={fhirAvailable}
-        onSelect={(patient) => navigate(`/patients/${patient.id}`)}
-      />
-      {error ? <div style={{ color: "red" }}>{error}</div> : null}
-    </Stack>
+    <Container size="lg" py="xl">
+      <Stack gap="lg">
+        <PatientsList
+          patients={patients ?? []}
+          isLoading={isLoading}
+          fhirAvailable={fhirAvailable}
+          onSelect={(patient) => navigate(`/patients/${patient.id}`)}
+        />
+        {error ? <div style={{ color: "red" }}>{error}</div> : null}
+      </Stack>
+    </Container>
   );
 }

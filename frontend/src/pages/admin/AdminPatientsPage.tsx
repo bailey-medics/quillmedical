@@ -21,8 +21,8 @@ import {
   Badge,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserPlus } from "@tabler/icons-react";
-import PageHeader from "@/components/page-header/PageHeader";
-import StateMessage from "@/components/state-message/StateMessage";
+import PageHeader from "@/components/page-header";
+import StateMessage from "@/components/state-message";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
 
