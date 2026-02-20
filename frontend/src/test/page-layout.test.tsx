@@ -39,6 +39,18 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      user: { id: "1", username: "testuser", email: "test@example.com" },
+      loading: false,
+    },
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));
+
 /**
  * Helper to render a page and check for Container with size="lg"
  */
