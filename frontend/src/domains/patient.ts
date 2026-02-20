@@ -20,6 +20,10 @@ export type Patient = {
   id: string;
   /** Full name (concatenated given + family names) */
   name: string;
+  /** Given name from FHIR Patient.name[0].given[0] */
+  givenName?: string;
+  /** Family name from FHIR Patient.name[0].family */
+  familyName?: string;
   /** Date of birth in YYYY-MM-DD format */
   dob?: string;
   /** Calculated age from date of birth */

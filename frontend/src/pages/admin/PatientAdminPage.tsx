@@ -109,10 +109,13 @@ export default function PatientAdminPage() {
         // Transform patient data for ribbon display
         // Extract name from FHIR structure
         let displayName = patientData.id;
+        let givenName: string | undefined;
+        let familyName: string | undefined;
         if (patientData.name && patientData.name.length > 0) {
           const primaryName = patientData.name[0];
           const givenNames = primaryName.given || [];
-          const familyName = primaryName.family || "";
+          familyName = primaryName.family || undefined;
+          givenName = givenNames[0] || undefined;
           const nameParts = [...givenNames, familyName].filter(Boolean);
           if (nameParts.length > 0) {
             displayName = nameParts.join(" ");
@@ -157,6 +160,8 @@ export default function PatientAdminPage() {
         const ribbonPatient: Patient = {
           id: patientData.id,
           name: displayName,
+          givenName: givenName,
+          familyName: familyName,
           dob: patientData.birthDate ?? undefined,
           age: age,
           sex: patientData.gender ?? undefined,

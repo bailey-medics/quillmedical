@@ -110,10 +110,13 @@ export default function Patient() {
 
         // Extract name from FHIR structure
         let displayName = fhirPatient.id;
+        let givenName: string | undefined;
+        let familyName: string | undefined;
         if (fhirPatient.name && fhirPatient.name.length > 0) {
           const primaryName = fhirPatient.name[0];
           const givenNames = primaryName.given || [];
-          const familyName = primaryName.family || "";
+          familyName = primaryName.family || undefined;
+          givenName = givenNames[0] || undefined;
           const nameParts = [...givenNames, familyName].filter(Boolean);
           if (nameParts.length > 0) {
             displayName = nameParts.join(" ");
@@ -158,6 +161,8 @@ export default function Patient() {
         const mappedPatient: Patient = {
           id: fhirPatient.id,
           name: displayName,
+          givenName: givenName,
+          familyName: familyName,
           dob: fhirPatient.birthDate ?? undefined,
           age: age,
           sex: fhirPatient.gender ?? undefined,

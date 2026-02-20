@@ -11,7 +11,6 @@ cd "$PROJECT_ROOT"
 
 # Colors for output
 RED='\033[0;31m'
-GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
@@ -95,7 +94,10 @@ run_workflow() {
   fi
 
   # Add flags for better output
+  # Use medium image (much smaller/faster than full-latest)
   act_cmd="$act_cmd --container-architecture linux/amd64"
+  act_cmd="$act_cmd -P ubuntu-latest=catthehacker/ubuntu:act-latest"
+  act_cmd="$act_cmd --verbose"
 
   echo -e "${BLUE}Command: $act_cmd${NC}"
   echo ""

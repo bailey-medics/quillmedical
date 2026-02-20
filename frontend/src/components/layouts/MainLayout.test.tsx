@@ -96,6 +96,8 @@ vi.mock("@components/footer/Footer", () => ({
 const mockPatient: Patient = {
   id: "1",
   name: "John Doe",
+  givenName: "John",
+  familyName: "Doe",
   nationalNumber: "ABC1234",
   dob: "1980-01-01",
   sex: "male",

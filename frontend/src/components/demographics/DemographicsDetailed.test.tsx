@@ -48,6 +48,8 @@ vi.mock("@/components/profile-pic/ProfilePic", () => ({
 const mockPatient: Patient = {
   id: "1",
   name: "John Doe",
+  givenName: "John",
+  familyName: "Doe",
   nationalNumber: "NHS1234567",
   dob: "01/01/1980",
   age: 44,
