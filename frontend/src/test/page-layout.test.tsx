@@ -11,6 +11,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
+import { MemoryRouter } from "react-router-dom";
 import { theme } from "@/theme";
 
 // Import all page components
@@ -56,9 +57,11 @@ vi.mock("@/auth/AuthContext", () => ({
  */
 function renderPageAndCheckContainer(PageComponent: React.ComponentType) {
   const { container } = render(
-    <MantineProvider theme={theme}>
-      <PageComponent />
-    </MantineProvider>,
+    <MemoryRouter>
+      <MantineProvider theme={theme}>
+        <PageComponent />
+      </MantineProvider>
+    </MemoryRouter>,
   );
 
   // Check for mantine-Container-root with data-size="lg"
@@ -116,9 +119,11 @@ describe("Page Layout Consistency", () => {
 
       pages.forEach((PageComponent) => {
         const { container } = render(
-          <MantineProvider theme={theme}>
-            <PageComponent />
-          </MantineProvider>,
+          <MemoryRouter>
+            <MantineProvider theme={theme}>
+              <PageComponent />
+            </MantineProvider>
+          </MemoryRouter>,
         );
 
         const containerElement = container.querySelector(
