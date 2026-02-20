@@ -6,6 +6,10 @@ set -e
 # Usage: ./scripts/run-ci-checks.sh [check_name]
 #   No args: Run all checks
 #   check_name: Run specific check (python-styling, python-unit, eslint, prettier, etc.)
+#
+# Note: For running actual GitHub Actions workflows in Docker containers, use:
+#   ./scripts/run-github-actions-locally.sh
+# That script uses 'act' to run the exact workflows defined in .github/workflows/
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

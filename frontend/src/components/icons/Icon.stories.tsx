@@ -57,42 +57,6 @@ export const Default: Story = {
 };
 
 /**
- * Small Icon (20px desktop, 16px mobile)
- *
- * Used in inputs, small buttons, and inline with text
- */
-export const Small: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "sm",
-  },
-};
-
-/**
- * Medium Icon (28px desktop, 20px mobile)
- *
- * Default size for general UI elements
- */
-export const Medium: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "md",
-  },
-};
-
-/**
- * Large Icon (48px desktop, 32px mobile)
- *
- * Used in action cards and prominent features
- */
-export const Large: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "lg",
-  },
-};
-
-/**
  * All Sizes Comparison
  *
  * Side-by-side comparison of all three size variants

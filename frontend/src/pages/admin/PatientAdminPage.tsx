@@ -375,7 +375,7 @@ export default function PatientAdminPage() {
           </Title>
           {isActive ? (
             <ActionCard
-              icon={<Icon icon={<IconUserMinus />} size="lg" />}
+              icon={<IconUserMinus />}
               title="Deactivate patient"
               subtitle="Deactivate this patient record"
               buttonLabel="Deactivate patient"
@@ -389,7 +389,7 @@ export default function PatientAdminPage() {
             />
           ) : (
             <ActionCard
-              icon={<Icon icon={<IconUserCheck />} size="lg" />}
+              icon={<IconUserCheck />}
               title="Activate patient"
               subtitle="Reactivate this patient record"
               buttonLabel="Activate patient"
