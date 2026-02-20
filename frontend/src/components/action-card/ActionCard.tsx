@@ -7,12 +7,12 @@
 
 import { Button, Card, Stack, Text, Title, Group } from "@mantine/core";
 import { Link } from "react-router-dom";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
-  icon: ReactNode;
+  icon: ReactElement;
   /** Icon size - defaults to lg (48px desktop, 32px mobile) */
   iconSize?: IconSize;
   /** Card title */
