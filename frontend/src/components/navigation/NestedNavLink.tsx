@@ -23,7 +23,8 @@ type IconName =
   | "bell"
   | "message"
   | "file"
-  | "adjustments";
+  | "adjustments"
+  | "building-community";
 
 /**
  * Navigation item configuration

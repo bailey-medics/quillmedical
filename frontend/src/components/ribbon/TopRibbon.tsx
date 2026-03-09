@@ -61,7 +61,7 @@ function patientDetailsLong(patient: Patient, fontSize: string) {
         </Text>
         {patient.dob && (
           <Text size="lg" style={{ fontSize }} component="span">
-            DOB: <FormattedDate date={patient.dob} component="span" />
+            DOB: <FormattedDate date={patient.dob} />
           </Text>
         )}
         {typeof patient.age === "number" && (
@@ -95,7 +95,7 @@ function patientDetailsShort(patient: Patient, fontSize: string) {
       </Text>
       {patient.dob && (
         <Text size="lg" style={{ fontSize }}>
-          <FormattedDate date={patient.dob} component="span" />
+          <FormattedDate date={patient.dob} />
         </Text>
       )}
       {typeof patient.age === "number" && (

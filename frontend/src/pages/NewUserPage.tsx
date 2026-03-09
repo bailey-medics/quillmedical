@@ -309,7 +309,9 @@ function Step3Permissions({
           <Group justify="space-between">
             <Text fw={500}>System Permissions:</Text>
             <PermissionBadge
-              permission={formData.systemPermissions}
+              permission={
+                formData.systemPermissions as "admin" | "superadmin" | "staff"
+              }
               size="md"
               variant="light"
             />
