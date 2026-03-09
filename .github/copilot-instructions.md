@@ -1,7 +1,5 @@
 # Copilot Instructions for Quill Medical
 
-See [specs.md](./specs.md), [roadmap.md](./roadmap.md) and [architecture.md](./architecture.md) for detailed context.
-
 ## Stack Overview
 
 - **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL auth DB
