@@ -80,9 +80,7 @@ export default function AdminOrganisationsPage() {
     },
     {
       header: "Created",
-      render: (org) => (
-        <FormattedDate date={org.created_at} locale="en-GB" size="lg" />
-      ),
+      render: (org) => <FormattedDate date={org.created_at} locale="en-GB" />,
     },
   ];
 

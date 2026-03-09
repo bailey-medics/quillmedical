@@ -2059,4 +2059,75 @@ def get_organization(
     }
 
 
+class CreateOrganizationIn(BaseModel):
+    """Request body for creating a new organisation."""
+
+    name: str
+    type: str
+    location: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+@router.post("/organizations")
+def create_organization(
+    body: CreateOrganizationIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Create Organisation.
+
+    Creates a new organisation in the database.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        body: Organisation details (name, type, optional location).
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Created organisation details.
+
+    Raises:
+        HTTPException: 400 if type is invalid.
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+    """
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    valid_types = [
+        "hospital_team",
+        "gp_practice",
+        "private_clinic",
+        "department",
+    ]
+    if body.type not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid organisation type. Must be one of: {', '.join(valid_types)}",
+        )
+
+    org = Organization(
+        name=body.name.strip(),
+        type=body.type,
+        location=body.location.strip() if body.location else None,
+    )
+    db.add(org)
+    db.commit()
+    db.refresh(org)
+
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+    }
+
+
 app.include_router(router)

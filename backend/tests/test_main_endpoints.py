@@ -298,3 +298,94 @@ class TestOrganizationEndpoints:
         assert len(data["staff_members"]) == 1
         assert data["staff_members"][0]["username"] == test_admin.username
         assert data["patient_count"] == 0
+
+    def test_create_organization_unauthenticated(
+        self, test_client: TestClient
+    ):
+        """Test creating organisation without authentication."""
+        response = test_client.post(
+            "/api/organizations",
+            json={"name": "Test Org", "type": "hospital_team"},
+        )
+        assert response.status_code == 401
+
+    def test_create_organization_forbidden(
+        self, authenticated_client: TestClient
+    ):
+        """Test creating organisation without admin permissions."""
+        response = authenticated_client.post(
+            "/api/organizations",
+            json={"name": "Test Org", "type": "hospital_team"},
+        )
+        assert response.status_code == 403
+
+    def test_create_organization_success(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test creating a new organisation."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={
+                "name": "New Hospital",
+                "type": "hospital_team",
+                "location": "London",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "New Hospital"
+        assert data["type"] == "hospital_team"
+        assert data["location"] == "London"
+        assert "id" in data
+        assert "created_at" in data
+
+    def test_create_organization_without_location(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test creating organisation without optional location."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={"name": "Remote Clinic", "type": "private_clinic"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Remote Clinic"
+        assert data["location"] is None
+
+    def test_create_organization_invalid_type(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test creating organisation with invalid type."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={"name": "Bad Org", "type": "invalid_type"},
+        )
+        assert response.status_code == 400
+        assert "Invalid organisation type" in response.json()["detail"]
+
+    def test_create_organization_missing_name(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test creating organisation without required name field."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={"type": "hospital_team"},
+        )
+        assert response.status_code == 422
+
+    def test_create_organization_strips_whitespace(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test that name and location are trimmed of whitespace."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={
+                "name": "  Spaced Hospital  ",
+                "type": "gp_practice",
+                "location": "  Manchester  ",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Spaced Hospital"
+        assert data["location"] == "Manchester"

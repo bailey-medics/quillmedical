@@ -104,24 +104,20 @@ export default function AdminPatientsPage() {
   const columns: Column<Patient>[] = [
     {
       header: "Name",
-      render: (patient) => (
-        <Text fw={500} size="lg">
-          {formatName(patient.name)}
-        </Text>
-      ),
+      render: (patient) => <Text fw={500}>{formatName(patient.name)}</Text>,
     },
     {
       header: "Birth date",
       render: (patient) =>
         patient.birthDate ? (
-          <FormattedDate date={patient.birthDate} locale="en-GB" size="lg" />
+          <FormattedDate date={patient.birthDate} locale="en-GB" />
         ) : (
-          <Text size="lg">N/A</Text>
+          "N/A"
         ),
     },
     {
       header: "Gender",
-      render: (patient) => <Text size="lg">{patient.gender || "N/A"}</Text>,
+      render: (patient) => patient.gender || "N/A",
     },
     {
       header: "NHS number",
@@ -132,14 +128,10 @@ export default function AdminPatientsPage() {
             id.value !== "",
         );
         if (!nhsIdentifier) {
-          return (
-            <Text size="lg" c="dimmed">
-              N/A
-            </Text>
-          );
+          return <Text c="dimmed">N/A</Text>;
         }
         return (
-          <Text size="lg" c="dimmed">
+          <Text c="dimmed">
             <NationalNumber
               nationalNumber={nhsIdentifier.value!}
               nationalNumberSystem={nhsIdentifier.system}
