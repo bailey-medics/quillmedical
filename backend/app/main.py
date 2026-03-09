@@ -51,7 +51,13 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
-from app.models import PatientMetadata, User
+from app.models import (
+    Organization,
+    PatientMetadata,
+    User,
+    organisation_patient_member,
+    organisation_staff_member,
+)
 from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.schemas.auth import LoginIn, RegisterIn
@@ -1909,6 +1915,148 @@ async def update_my_competencies(
         removed_competencies=user.removed_competencies or [],
         final_competencies=user.get_final_competencies(),
     )
+
+
+# ==========================================================================
+# ORGANIZATION ENDPOINTS
+# ==========================================================================
+
+
+@router.get("/organizations")
+def list_organizations(
+    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+) -> dict[str, Any]:
+    """List All Organizations.
+
+    Retrieves all organizations from the database. Returns basic information
+    for each organization. Used by admin interface to display organization
+    list and management options.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Response with key:
+            - organizations: Array of organization objects
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 500 if database query fails.
+    """
+    # Check permissions
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    try:
+        organizations = db.execute(select(Organization)).scalars().all()
+        return {
+            "organizations": [
+                {
+                    "id": org.id,
+                    "name": org.name,
+                    "type": org.type,
+                    "location": org.location,
+                    "created_at": org.created_at.isoformat(),
+                    "updated_at": org.updated_at.isoformat(),
+                }
+                for org in organizations
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/organizations/{org_id}")
+def get_organization(
+    org_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Get Organization Details.
+
+    Retrieves detailed information about a specific organization including
+    staff members and patient count.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        org_id: ID of the organization to retrieve.
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Organization details with staff and patient information.
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if organization not found.
+    """
+    # Check permissions
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    # Fetch organization
+    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Get staff members with primary status
+    from sqlalchemy import func
+
+    staff_query = (
+        select(
+            User.id,
+            User.username,
+            User.email,
+            organisation_staff_member.c.is_primary,
+        )
+        .join(
+            organisation_staff_member,
+            organisation_staff_member.c.user_id == User.id,
+        )
+        .where(organisation_staff_member.c.organisation_id == org_id)
+    )
+
+    staff_members = db.execute(staff_query).all()
+
+    # Get patient count
+    patient_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(organisation_patient_member)
+            .where(organisation_patient_member.c.organisation_id == org_id)
+        )
+        or 0
+    )
+
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+        "staff_count": len(staff_members),
+        "patient_count": patient_count,
+        "staff_members": [
+            {
+                "id": sm.id,
+                "username": sm.username,
+                "email": sm.email,
+                "is_primary": sm.is_primary or False,
+            }
+            for sm in staff_members
+        ],
+    }
 
 
 app.include_router(router)

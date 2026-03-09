@@ -28,6 +28,10 @@ theme:
 
 nav:
   - Home: index.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - Organisation: concepts/organisation.md
+      - CBAC (Competency-Based Access Control): concepts/cbac.md
   - Backend:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
@@ -51,8 +55,6 @@ nav:
       - Accessibility: frontend/accessibility.md
       - Storybook: frontend/storybook/index.md
       - Test Infrastructure: frontend/test-infrastructure-setup.md
-  - Authorization:
-      - CBAC (Competency-Based Access Control): cbac.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
   - Code Documentation:
@@ -130,6 +132,7 @@ nav:
           - Hazard-0044: safety/hazards/Hazard-0044.md
           - Hazard-0045: safety/hazards/Hazard-0045.md
           - Hazard-0046: safety/hazards/Hazard-0046.md
+          - Hazard-0047: safety/hazards/Hazard-0047.md
           - Hazard-0047: safety/hazards/Hazard-0047.md
 
 

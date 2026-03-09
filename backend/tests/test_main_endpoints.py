@@ -205,3 +205,96 @@ class TestLetterEndpoints:
             "/api/patients/patient123/letters/uid123"
         )
         assert response.status_code == 500
+
+
+class TestOrganizationEndpoints:
+    """Test organization endpoints."""
+
+    def test_get_organizations_unauthenticated(self, test_client: TestClient):
+        """Test getting organizations without authentication."""
+        response = test_client.get("/api/organizations")
+        assert response.status_code == 401
+
+    def test_get_organizations_forbidden(
+        self, authenticated_client: TestClient
+    ):
+        """Test getting organizations without admin permissions."""
+        response = authenticated_client.get("/api/organizations")
+        assert response.status_code == 403
+        assert "admin" in response.json()["detail"].lower()
+
+    def test_get_organizations_empty(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test getting organizations when none exist."""
+        response = authenticated_admin_client.get("/api/organizations")
+        assert response.status_code == 200
+        data = response.json()
+        assert "organizations" in data
+        assert data["organizations"] == []
+
+    def test_get_organizations_success(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test getting list of organizations."""
+        from app.models import Organization
+
+        # Create test organizations
+        org1 = Organization(
+            name="Test Hospital", type="hospital", location="London"
+        )
+        org2 = Organization(
+            name="Test Clinic", type="clinic", location="Manchester"
+        )
+        db_session.add_all([org1, org2])
+        db_session.commit()
+
+        response = authenticated_admin_client.get("/api/organizations")
+        assert response.status_code == 200
+        data = response.json()
+        assert "organizations" in data
+        assert len(data["organizations"]) == 2
+        assert data["organizations"][0]["name"] == "Test Hospital"
+        assert data["organizations"][0]["type"] == "hospital"
+        assert data["organizations"][1]["name"] == "Test Clinic"
+
+    def test_get_organization_by_id_not_found(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test getting organization that doesn't exist."""
+        response = authenticated_admin_client.get("/api/organizations/999")
+        assert response.status_code == 404
+
+    def test_get_organization_by_id_success(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test getting organization by ID with details."""
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        # Create organization
+        org = Organization(name="Test Practice", type="general_practice")
+        db_session.add(org)
+        db_session.commit()
+
+        # Add staff member
+        stmt = insert(organisation_staff_member).values(
+            organisation_id=org.id, user_id=test_admin.id, is_primary=True
+        )
+        db_session.execute(stmt)
+        db_session.commit()
+
+        response = authenticated_admin_client.get(
+            f"/api/organizations/{org.id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Test Practice"
+        assert data["type"] == "general_practice"
+        assert len(data["staff_members"]) == 1
+        assert data["staff_members"][0]["username"] == test_admin.username
+        assert data["patient_count"] == 0

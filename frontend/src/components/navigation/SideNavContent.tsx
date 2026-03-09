@@ -163,7 +163,15 @@ export default function SideNavContent({
     label: "Admin",
     href: "/admin",
     icon: showIcons ? "adjustments" : undefined,
-    children: [usersNavItem, patientsNavItem],
+    children: [
+      usersNavItem,
+      patientsNavItem,
+      {
+        label: "Organisations",
+        href: "/admin/organisations",
+        icon: showIcons ? "building-community" : undefined,
+      },
+    ],
   };
 
   return (

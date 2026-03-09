@@ -32,6 +32,7 @@ import About from "./pages/About";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/AdminPatientsPage";
+import AdminOrganisationsPage from "./pages/admin/AdminOrganisationsPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import ViewAllUsersPage from "./pages/admin/ViewAllUsersPage";
 import UserAdminPage from "./pages/admin/UserAdminPage";
@@ -42,6 +43,7 @@ import PatientAdminPage from "./pages/admin/PatientAdminPage";
 import EditPatientPage from "./pages/admin/EditPatientPage";
 import DeactivatePatientPage from "./pages/admin/DeactivatePatientPage";
 import ActivatePatientPage from "./pages/admin/ActivatePatientPage";
+import OrganisationAdminPage from "./pages/admin/OrganisationAdminPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -239,6 +241,22 @@ const router = createBrowserRouter(
           element: (
             <RequirePermission level="admin">
               <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations",
+          element: (
+            <RequirePermission level="admin">
+              <AdminOrganisationsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations/:id",
+          element: (
+            <RequirePermission level="admin">
+              <OrganisationAdminPage />
             </RequirePermission>
           ),
         },
