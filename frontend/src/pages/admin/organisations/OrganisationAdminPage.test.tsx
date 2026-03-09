@@ -65,6 +65,7 @@ describe("OrganisationAdminPage", () => {
         location: "London, UK",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
         staff_members: [],
         patient_count: 0,
       };
@@ -77,7 +78,9 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Test Hospital")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: "Test Hospital" }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -89,6 +92,7 @@ describe("OrganisationAdminPage", () => {
         location: "Manchester",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
         staff_members: [],
         patient_count: 0,
       };
@@ -101,7 +105,7 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("clinic")).toBeInTheDocument();
+        expect(screen.getByText("Clinic")).toBeInTheDocument();
       });
     });
 
@@ -129,7 +133,7 @@ describe("OrganisationAdminPage", () => {
       });
     });
 
-    it("displays N/A when location is null", async () => {
+    it("displays 'Not specified' when location is null", async () => {
       const mockOrganisation = {
         id: 1,
         name: "Test Org",
@@ -137,6 +141,7 @@ describe("OrganisationAdminPage", () => {
         location: null,
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
         staff_members: [],
         patient_count: 0,
       };
@@ -149,7 +154,7 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("N/A")).toBeInTheDocument();
+        expect(screen.getByText("Not specified")).toBeInTheDocument();
       });
     });
   });
@@ -163,9 +168,20 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 2,
         staff_members: [
-          { id: "1", username: "doctor1", email: "doctor1@test.com" },
-          { id: "2", username: "doctor2", email: "doctor2@test.com" },
+          {
+            id: 1,
+            username: "doctor1",
+            email: "doctor1@test.com",
+            is_primary: false,
+          },
+          {
+            id: 2,
+            username: "doctor2",
+            email: "doctor2@test.com",
+            is_primary: false,
+          },
         ],
         patient_count: 5,
       };
@@ -178,7 +194,8 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("2")).toBeInTheDocument(); // Staff count
+        const statsSection = screen.getByText("Statistics").closest("div");
+        expect(statsSection).toHaveTextContent("2");
       });
     });
 
@@ -321,6 +338,7 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
         staff_members: [],
         patient_count: 0,
       };
@@ -336,13 +354,9 @@ describe("OrganisationAdminPage", () => {
         expect(screen.getByText("Edit organisation")).toBeInTheDocument();
       });
 
-      const editCard = screen.getByText("Edit organisation").closest("div");
-      if (editCard) {
-        await user.click(editCard);
-        expect(mockNavigate).toHaveBeenCalledWith(
-          "/admin/organisations/1/edit",
-        );
-      }
+      const editButton = screen.getByRole("button", { name: "Edit" });
+      await user.click(editButton);
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1/edit");
     });
 
     it("navigates to manage staff page on manage button click", async () => {
@@ -354,6 +368,7 @@ describe("OrganisationAdminPage", () => {
         location: "London",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
         staff_members: [],
         patient_count: 0,
       };
@@ -369,13 +384,9 @@ describe("OrganisationAdminPage", () => {
         expect(screen.getByText("Manage staff")).toBeInTheDocument();
       });
 
-      const manageCard = screen.getByText("Manage staff").closest("div");
-      if (manageCard) {
-        await user.click(manageCard);
-        expect(mockNavigate).toHaveBeenCalledWith(
-          "/admin/organisations/1/staff",
-        );
-      }
+      const manageButton = screen.getByRole("button", { name: "Manage" });
+      await user.click(manageButton);
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1/staff");
     });
   });
 
@@ -396,7 +407,7 @@ describe("OrganisationAdminPage", () => {
   });
 
   describe("Error handling", () => {
-    it("handles 404 error", async () => {
+    it("displays error alert on failed API call", async () => {
       const mockError = new Error("Not found") as Error & {
         response: { status: number };
       };
@@ -410,15 +421,14 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations");
+        expect(
+          screen.getByText("Error loading organisation"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Not found")).toBeInTheDocument();
       });
     });
 
-    it("handles general API error", async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
+    it("displays generic error message when organisation not found", async () => {
       vi.spyOn(apiLib.api, "get").mockRejectedValue(new Error("API error"));
 
       renderWithRouter(<OrganisationAdminPage />, {
@@ -427,10 +437,11 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled();
+        expect(
+          screen.getByText("Error loading organisation"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("API error")).toBeInTheDocument();
       });
-
-      consoleErrorSpy.mockRestore();
     });
   });
 });
