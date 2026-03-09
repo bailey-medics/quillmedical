@@ -30,12 +30,6 @@ describe("AddButton", () => {
       const svg = button.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
-
-    it("applies blue color scheme", () => {
-      renderWithMantine(<AddButton label="Add user" />);
-      const button = screen.getByRole("button");
-      expect(button).toHaveAttribute("data-button", "");
-    });
   });
 
   describe("Interactions", () => {

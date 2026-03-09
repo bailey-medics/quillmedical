@@ -117,12 +117,11 @@ describe("Demographics Component", () => {
       expect(nameElement).toHaveStyle({ fontWeight: "700" });
     });
 
-    it("renders secondary info with correct font size", () => {
-      const { container } = renderWithMantine(
-        <Demographics patient={mockPatient} />,
-      );
-      const secondaryText = container.querySelector('[style*="font-size: 14"]');
-      expect(secondaryText).toBeInTheDocument();
+    it("renders patient details in secondary text", () => {
+      renderWithMantine(<Demographics patient={mockPatient} />);
+      // Check for patient details like age and NHS number
+      expect(screen.getByText(/45/)).toBeInTheDocument();
+      expect(screen.getByText(/NHS 123 456 7890/)).toBeInTheDocument();
     });
   });
 });

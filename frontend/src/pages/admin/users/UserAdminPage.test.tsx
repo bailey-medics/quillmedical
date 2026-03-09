@@ -287,7 +287,7 @@ describe("UserAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Update permissions")).toBeInTheDocument();
+        expect(screen.getByText("Edit user")).toBeInTheDocument();
       });
     });
 

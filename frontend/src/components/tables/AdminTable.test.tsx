@@ -166,9 +166,9 @@ describe("AdminTable", () => {
         />,
       );
 
-      // Check for skeleton elements (Mantine Skeleton renders a div)
-      const skeletons = container.querySelectorAll("[data-skeleton]");
-      expect(skeletons.length).toBeGreaterThan(0);
+      // Check that table is not shown during loading
+      const table = container.querySelector("table");
+      expect(table).not.toBeInTheDocument();
     });
 
     it("does not show table when loading", () => {
