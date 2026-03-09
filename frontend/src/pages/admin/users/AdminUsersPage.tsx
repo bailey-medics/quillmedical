@@ -56,23 +56,15 @@ export default function AdminUsersPage() {
   const columns: Column<User>[] = [
     {
       header: "Username",
-      render: (user) => (
-        <Text fw={500} size="lg">
-          {user.username}
-        </Text>
-      ),
+      render: (user) => <Text fw={500}>{user.username}</Text>,
     },
     {
       header: "Email",
-      render: (user) => <Text size="lg">{user.email}</Text>,
+      render: (user) => user.email,
     },
     {
       header: "User ID",
-      render: (user) => (
-        <Text size="lg" c="dimmed">
-          {user.id}
-        </Text>
-      ),
+      render: (user) => <Text c="dimmed">{user.id}</Text>,
     },
   ];
 

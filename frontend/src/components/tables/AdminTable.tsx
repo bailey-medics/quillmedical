@@ -162,7 +162,7 @@ export default function AdminTable<T>({
                   <Text size="xs" c="dimmed" fw={500} mb={4}>
                     {column.header}
                   </Text>
-                  <div>{column.render(row)}</div>
+                  <Text size="lg">{column.render(row)}</Text>
                   {index < columns.length - 1 && <Divider mt="sm" />}
                 </div>
               ))}
@@ -203,7 +203,9 @@ export default function AdminTable<T>({
                 key={index}
                 style={{ textAlign: column.align || "left" }}
               >
-                {column.render(row)}
+                <Text size="lg" component="span">
+                  {column.render(row)}
+                </Text>
               </Table.Td>
             ))}
           </Table.Tr>
