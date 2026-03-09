@@ -26,7 +26,6 @@ import {
   IconPencil,
   IconAlertCircle,
   IconUserMinus,
-  IconShieldCheck,
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
@@ -228,14 +227,6 @@ export default function UserAdminPage() {
               title="Edit user"
               subtitle="Modify user account and permissions"
               buttonLabel="Edit"
-            />
-
-            <ActionCard
-              icon={<IconShieldCheck />}
-              onClick={() => navigate(`/admin/users/edit`)}
-              title="Update permissions"
-              subtitle="Configure CBAC and system permissions"
-              buttonLabel="Configure"
             />
 
             <ActionCard

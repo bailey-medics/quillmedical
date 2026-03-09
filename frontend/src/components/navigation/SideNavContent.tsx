@@ -163,15 +163,7 @@ export default function SideNavContent({
     label: "Admin",
     href: "/admin",
     icon: showIcons ? "adjustments" : undefined,
-    children: [
-      usersNavItem,
-      patientsNavItem,
-      {
-        label: "Permissions",
-        href: "/admin/permissions",
-        icon: showIcons ? "settings" : undefined,
-      },
-    ],
+    children: [usersNavItem, patientsNavItem],
   };
 
   return (
