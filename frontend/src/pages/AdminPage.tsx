@@ -175,7 +175,7 @@ export default function AdminPage() {
   return (
     <Container size="lg" pt="xl">
       <Admin
-        userPermissions={userPermissions}
+        userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
         existingUsers={users}
         existingPatients={patients}
         usersLoading={usersLoading}

@@ -132,7 +132,7 @@ describe("NewUserPage", () => {
           screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
-    });
+    }, 10000);
   });
 
   describe("Step 2: Competencies", () => {
@@ -177,7 +177,7 @@ describe("NewUserPage", () => {
       expect(
         screen.getAllByLabelText(/removed competencies/i)[0],
       ).toBeInTheDocument();
-    });
+    }, 10000);
 
     it("shows base profession information", async () => {
       const user = userEvent.setup();

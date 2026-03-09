@@ -140,3 +140,32 @@ def authenticated_clinician_client(
     )
     assert response.status_code == 200
     return test_client
+
+
+@pytest.fixture
+def test_admin(db_session: Session) -> User:
+    """Create a test user with admin permissions."""
+    user = User(
+        username="testadmin",
+        email="admin@example.com",
+        password_hash=hash_password("AdminPassword123!"),
+        is_active=True,
+        system_permissions="admin",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def authenticated_admin_client(
+    test_client: TestClient, test_admin: User
+) -> TestClient:
+    """Create an authenticated test client with admin permissions."""
+    response = test_client.post(
+        "/api/auth/login",
+        json={"username": "testadmin", "password": "AdminPassword123!"},
+    )
+    assert response.status_code == 200
+    return test_client

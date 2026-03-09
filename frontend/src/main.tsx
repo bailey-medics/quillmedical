@@ -30,17 +30,20 @@ import { theme } from "./theme";
 import RootLayout from "./RootLayout";
 import About from "./pages/About";
 import AdminPage from "./pages/AdminPage";
-import AdminUsersPage from "./pages/admin/AdminUsersPage";
-import AdminPatientsPage from "./pages/admin/AdminPatientsPage";
+import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
+import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
+import AdminOrganisationsPage from "./pages/admin/organisations/AdminOrganisationsPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
-import ViewAllUsersPage from "./pages/admin/ViewAllUsersPage";
-import EditUserPage from "./pages/admin/EditUserPage";
-import DeactivateUserPage from "./pages/admin/DeactivateUserPage";
-import ViewAllPatientsPage from "./pages/admin/ViewAllPatientsPage";
-import PatientAdminPage from "./pages/admin/PatientAdminPage";
-import EditPatientPage from "./pages/admin/EditPatientPage";
-import DeactivatePatientPage from "./pages/admin/DeactivatePatientPage";
-import ActivatePatientPage from "./pages/admin/ActivatePatientPage";
+import ViewAllUsersPage from "./pages/admin/users/ViewAllUsersPage";
+import UserAdminPage from "./pages/admin/users/UserAdminPage";
+import EditUserPage from "./pages/admin/users/EditUserPage";
+import DeactivateUserPage from "./pages/admin/users/DeactivateUserPage";
+import ViewAllPatientsPage from "./pages/admin/patients/ViewAllPatientsPage";
+import PatientAdminPage from "./pages/admin/patients/PatientAdminPage";
+import EditPatientPage from "./pages/admin/patients/EditPatientPage";
+import DeactivatePatientPage from "./pages/admin/patients/DeactivatePatientPage";
+import ActivatePatientPage from "./pages/admin/patients/ActivatePatientPage";
+import OrganisationAdminPage from "./pages/admin/organisations/OrganisationAdminPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -146,6 +149,14 @@ const router = createBrowserRouter(
           ),
         },
         {
+          path: "/admin/users/:id",
+          element: (
+            <RequirePermission level="admin">
+              <UserAdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
           path: "/admin/users/:id/edit",
           element: (
             <RequirePermission level="admin">
@@ -230,6 +241,22 @@ const router = createBrowserRouter(
           element: (
             <RequirePermission level="admin">
               <NewPatientPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations",
+          element: (
+            <RequirePermission level="admin">
+              <AdminOrganisationsPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations/:id",
+          element: (
+            <RequirePermission level="admin">
+              <OrganisationAdminPage />
             </RequirePermission>
           ),
         },

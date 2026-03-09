@@ -596,9 +596,9 @@ describe("Admin", () => {
       });
     });
 
-    it("renders with patient permission level", () => {
-      renderWithRouter(<Admin userPermissions="patient" />);
-      expect(screen.getByText("PATIENT")).toBeInTheDocument();
+    it("renders with staff permission level", () => {
+      renderWithRouter(<Admin userPermissions="staff" />);
+      expect(screen.getByText("STAFF")).toBeInTheDocument();
     });
   });
 

@@ -256,3 +256,140 @@ class TestUserRoleRelationship:
         # This is because of lazy="joined" in the relationship
         assert len(user.roles) > 0
         assert user.roles[0].name == "Clinician"
+
+
+class TestOrganizationModel:
+    """Test Organization model."""
+
+    def test_create_organization(self, db_session: Session):
+        """Test creating an organization."""
+        from app.models import Organization
+
+        org = Organization(
+            name="Test Hospital",
+            type="hospital",
+            location="London, UK",
+        )
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+
+        assert org.id is not None
+        assert org.name == "Test Hospital"
+        assert org.type == "hospital"
+        assert org.location == "London, UK"
+        assert org.created_at is not None
+        assert org.updated_at is not None
+
+    def test_organization_staff_relationship(self, db_session: Session):
+        """Test organization staff member relationship."""
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(name="Test Clinic", type="clinic")
+        user = User(
+            username="doctor1",
+            email="doctor1@example.com",
+            password_hash=hash_password("password"),
+        )
+
+        db_session.add_all([org, user])
+        db_session.commit()
+
+        # Add user as staff member
+        from sqlalchemy import insert
+
+        stmt = insert(organisation_staff_member).values(
+            organisation_id=org.id, user_id=user.id, is_primary=True
+        )
+        db_session.execute(stmt)
+        db_session.commit()
+        db_session.refresh(org)
+
+        assert len(org.staff_members) == 1
+        assert org.staff_members[0].username == "doctor1"
+
+    def test_organization_patient_relationship(self, db_session: Session):
+        """Test organization patient member association table."""
+        from sqlalchemy import func, insert, select
+
+        from app.models import Organization, organisation_patient_member
+
+        org = Organization(name="Test Practice", type="general_practice")
+        db_session.add(org)
+        db_session.commit()
+
+        # Add patient IDs directly to the association table
+        stmt1 = insert(organisation_patient_member).values(
+            organisation_id=org.id,
+            patient_id="patient-123",
+            is_primary=True,
+        )
+        stmt2 = insert(organisation_patient_member).values(
+            organisation_id=org.id,
+            patient_id="patient-456",
+            is_primary=False,
+        )
+        db_session.execute(stmt1)
+        db_session.execute(stmt2)
+        db_session.commit()
+
+        # Count patients in organization
+        patient_count = db_session.scalar(
+            select(func.count())
+            .select_from(organisation_patient_member)
+            .where(organisation_patient_member.c.organisation_id == org.id)
+        )
+        assert patient_count == 2
+
+        # Verify primary flag
+        primary_patients = (
+            db_session.execute(
+                select(organisation_patient_member.c.patient_id)
+                .where(organisation_patient_member.c.organisation_id == org.id)
+                .where(organisation_patient_member.c.is_primary.is_(True))
+            )
+            .scalars()
+            .all()
+        )
+        assert len(primary_patients) == 1
+        assert "patient-123" in primary_patients
+
+    def test_organization_primary_flag(self, db_session: Session):
+        """Test is_primary flag on staff membership."""
+        from sqlalchemy import insert, select
+
+        from app.models import Organization, organisation_staff_member
+
+        org1 = Organization(name="Primary Clinic", type="clinic")
+        org2 = Organization(name="Secondary Clinic", type="clinic")
+        user = User(
+            username="doctor2",
+            email="doctor2@example.com",
+            password_hash=hash_password("password"),
+        )
+
+        db_session.add_all([org1, org2, user])
+        db_session.commit()
+
+        # Add to org1 as primary
+        stmt1 = insert(organisation_staff_member).values(
+            organisation_id=org1.id, user_id=user.id, is_primary=True
+        )
+        db_session.execute(stmt1)
+
+        # Add to org2 as non-primary
+        stmt2 = insert(organisation_staff_member).values(
+            organisation_id=org2.id, user_id=user.id, is_primary=False
+        )
+        db_session.execute(stmt2)
+        db_session.commit()
+
+        # Query primary membership
+        stmt = select(organisation_staff_member).where(
+            organisation_staff_member.c.user_id == user.id,
+            organisation_staff_member.c.is_primary == True,  # noqa: E712
+        )
+        result = db_session.execute(stmt).first()
+
+        assert result is not None
+        assert result.organisation_id == org1.id

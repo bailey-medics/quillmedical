@@ -181,7 +181,7 @@ export default function LoginPage() {
   return (
     <>
       <Stack align="center" justify="center" style={{ marginTop: "1.875rem" }}>
-        <QuillLogo height={128} />
+        <QuillLogo height={8} />
       </Stack>
 
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>

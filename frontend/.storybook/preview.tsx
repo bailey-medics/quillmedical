@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "../src/styles/typography.css";
 import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
