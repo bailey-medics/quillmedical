@@ -141,8 +141,8 @@ describe("AdminPatientsPage", () => {
       await waitFor(() => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
         expect(screen.getByText("Jane Smith")).toBeInTheDocument();
-        expect(screen.getByText("1980-05-15")).toBeInTheDocument();
-        expect(screen.getByText("1990-10-20")).toBeInTheDocument();
+        expect(screen.getByText("15/05/1980")).toBeInTheDocument();
+        expect(screen.getByText("20/10/1990")).toBeInTheDocument();
       });
     });
 
@@ -170,13 +170,19 @@ describe("AdminPatientsPage", () => {
       });
     });
 
-    it("displays patient IDs", async () => {
+    it("displays NHS number when available", async () => {
       const mockPatients = [
         {
           id: "patient-123",
           name: [{ given: ["Sarah"], family: "Williams" }],
           birthDate: "1975-12-05",
           gender: "female",
+          identifier: [
+            {
+              system: "https://fhir.nhs.uk/Id/nhs-number",
+              value: "1234567890",
+            },
+          ],
         },
       ];
 
@@ -190,7 +196,7 @@ describe("AdminPatientsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("patient-123")).toBeInTheDocument();
+        expect(screen.getByText("NHS 123 456 7890")).toBeInTheDocument();
       });
     });
   });
@@ -207,7 +213,7 @@ describe("AdminPatientsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("No patients to show")).toBeInTheDocument();
+        expect(screen.getByText("No patients found")).toBeInTheDocument();
       });
     });
 
@@ -287,7 +293,7 @@ describe("AdminPatientsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Error loading patients")).toBeInTheDocument();
+        expect(screen.getByText("Error loading data")).toBeInTheDocument();
         expect(
           screen.getByText("Failed to fetch patients"),
         ).toBeInTheDocument();
