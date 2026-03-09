@@ -4,7 +4,7 @@
  * Renders the actual navigation links and items for the side navigation.
  * Includes Home, Settings, About, and Logout links with optional icons.
  * Admin section uses NestedNavLink for hierarchical navigation.
- * Dynamically adds patient name as child when viewing patient admin page.
+ * Dynamically adds patient name and username as children when viewing patient/user admin pages.
  * Separated from SideNav to allow reuse in drawer/desktop contexts.
  */
 
@@ -46,6 +46,7 @@ export default function SideNavContent({
   const navigate = useNavigate();
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
 
   // Check if user has admin or superadmin permissions
   const hasAdminAccess =
@@ -58,6 +59,10 @@ export default function SideNavContent({
     /^\/admin\/patients\/([^/]+)$/,
   );
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
+
+  // Extract user ID from URL if on user admin page
+  const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
+  const userId = userIdMatch ? userIdMatch[1] : null;
 
   // Fetch patient name when on patient admin page
   useEffect(() => {
@@ -92,9 +97,50 @@ export default function SideNavContent({
     fetchPatientName();
   }, [patientId]);
 
+  // Fetch username when on user admin page
+  useEffect(() => {
+    async function fetchUsername() {
+      if (
+        !userId ||
+        userId === "new" ||
+        userId === "list" ||
+        userId === "edit" ||
+        userId === "deactivate"
+      ) {
+        setUsername(null);
+        return;
+      }
+
+      try {
+        const user = await api.get<{ username: string }>(`/users/${userId}`);
+        setUsername(user.username || "Unknown User");
+      } catch (error) {
+        console.error("Failed to fetch username:", error);
+        setUsername(null);
+      }
+    }
+
+    fetchUsername();
+  }, [userId]);
+
   const navLinkStyles = {
     root: { fontSize: `${fontSize}rem` },
     label: { fontSize: `${fontSize}rem` },
+  };
+
+  // Build Users nav item with optional username child
+  const usersNavItem: NavItem = {
+    label: "Users",
+    href: "/admin/users",
+    icon: showIcons ? "user" : undefined,
+    children: username
+      ? [
+          {
+            label: username,
+            href: `/admin/users/${userId}`,
+          },
+        ]
+      : undefined,
   };
 
   // Build Patients nav item with optional patient name child
@@ -118,11 +164,7 @@ export default function SideNavContent({
     href: "/admin",
     icon: showIcons ? "adjustments" : undefined,
     children: [
-      {
-        label: "Users",
-        href: "/admin/users",
-        icon: showIcons ? "user" : undefined,
-      },
+      usersNavItem,
       patientsNavItem,
       {
         label: "Permissions",

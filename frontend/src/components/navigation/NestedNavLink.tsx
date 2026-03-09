@@ -118,8 +118,8 @@ export default function NestedNavLink({
 
   // Calculate indentation for child items
   // Child items with icons don't need iconOffset since NavLink handles icon spacing
-  // Just use level-based indentation: 1.5rem per level
-  const levelIndent = level * 1.5;
+  // Base indentation: 2.25rem for level 1, 3rem per level for deeper levels
+  const levelIndent = level === 1 ? 2.25 : level * 3.0;
   const totalPaddingLeft = level > 0 ? levelIndent : undefined;
 
   const navLinkStyles = {
