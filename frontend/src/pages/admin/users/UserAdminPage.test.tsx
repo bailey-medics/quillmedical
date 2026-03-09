@@ -10,7 +10,6 @@
  * - Action cards
  */
 
-/* eslint-disable no-restricted-syntax */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";

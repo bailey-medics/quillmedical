@@ -12,8 +12,8 @@ import { Stack, Title, Text, Paper } from "@mantine/core";
 import Home from "@/pages/Home";
 import Messages from "@/pages/Messages";
 import Settings from "@/pages/Settings";
-import AdminPatientsPage from "@/pages/admin/AdminPatientsPage";
-import AdminUsersPage from "@/pages/admin/AdminUsersPage";
+import AdminPatientsPage from "@/pages/admin/patients/AdminPatientsPage";
+import AdminUsersPage from "@/pages/admin/users/AdminUsersPage";
 import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
 
 const meta = {
