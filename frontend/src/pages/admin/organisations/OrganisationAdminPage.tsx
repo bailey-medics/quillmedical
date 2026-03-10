@@ -20,12 +20,17 @@ import {
   Skeleton,
   Alert,
   Badge,
-  Table,
 } from "@mantine/core";
-import { IconPencil, IconAlertCircle, IconUsers } from "@tabler/icons-react";
+import {
+  IconPencil,
+  IconAlertCircle,
+  IconUserPlus,
+  IconHeartPlus,
+} from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
+import AdminTable, { type Column } from "@/components/tables/AdminTable";
 import { api } from "@/lib/api";
 
 /**
@@ -35,6 +40,14 @@ interface StaffMember {
   id: number;
   username: string;
   email: string;
+  is_primary: boolean;
+}
+
+/**
+ * Patient member in organisation
+ */
+interface PatientMember {
+  patient_id: string;
   is_primary: boolean;
 }
 
@@ -51,6 +64,7 @@ interface OrganizationDetails {
   staff_count: number;
   patient_count: number;
   staff_members: StaffMember[];
+  patient_members: PatientMember[];
 }
 
 /**
@@ -126,6 +140,33 @@ export default function OrganisationAdminPage() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
+
+  const staffColumns: Column<StaffMember>[] = [
+    { header: "Username", render: (member) => member.username },
+    { header: "Email", render: (member) => member.email },
+    {
+      header: "Primary",
+      render: (member) =>
+        member.is_primary ? (
+          <Badge color="blue" variant="light">
+            Primary
+          </Badge>
+        ) : null,
+    },
+  ];
+
+  const patientColumns: Column<PatientMember>[] = [
+    { header: "Patient ID", render: (patient) => patient.patient_id },
+    {
+      header: "Primary",
+      render: (patient) =>
+        patient.is_primary ? (
+          <Badge color="blue" variant="light">
+            Primary
+          </Badge>
+        ) : null,
+    },
+  ];
 
   return (
     <Container size="lg" py="xl">
@@ -207,48 +248,40 @@ export default function OrganisationAdminPage() {
         </Paper>
 
         {/* Staff Members */}
-        {org.staff_members.length > 0 && (
-          <Paper shadow="sm" p="lg" radius="md" withBorder>
-            <Stack gap="md">
-              <Title order={2} size="lg">
-                Staff members
-              </Title>
+        <Paper shadow="sm" p="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Title order={2} size="lg">
+              Staff members
+            </Title>
 
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Username</Table.Th>
-                    <Table.Th>Email</Table.Th>
-                    <Table.Th>Primary</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {org.staff_members.map((member) => (
-                    <Table.Tr
-                      key={member.id}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => navigate(`/admin/users/${member.id}`)}
-                    >
-                      <Table.Td>
-                        <Text fw={500}>{member.username}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text>{member.email}</Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {member.is_primary && (
-                          <Badge color="blue" variant="light">
-                            Primary
-                          </Badge>
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Stack>
-          </Paper>
-        )}
+            <AdminTable<StaffMember>
+              data={org.staff_members}
+              columns={staffColumns}
+              onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
+              getRowKey={(member) => member.id}
+              emptyMessage="No staff members assigned"
+            />
+          </Stack>
+        </Paper>
+
+        {/* Patient Members */}
+        <Paper shadow="sm" p="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Title order={2} size="lg">
+              Patients
+            </Title>
+
+            <AdminTable<PatientMember>
+              data={org.patient_members}
+              columns={patientColumns}
+              onRowClick={(patient) =>
+                navigate(`/admin/patients/${patient.patient_id}`)
+              }
+              getRowKey={(patient) => patient.patient_id}
+              emptyMessage="No patients assigned"
+            />
+          </Stack>
+        </Paper>
 
         {/* Action Cards */}
         <Stack gap="md">
@@ -266,11 +299,19 @@ export default function OrganisationAdminPage() {
             />
 
             <ActionCard
-              icon={<IconUsers />}
-              onClick={() => navigate(`/admin/organisations/${id}/staff`)}
-              title="Manage staff"
-              subtitle="Add or remove staff members"
-              buttonLabel="Manage"
+              icon={<IconUserPlus />}
+              onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
+              title="Add staff member"
+              subtitle="Add a user as a staff member"
+              buttonLabel="Add staff"
+            />
+
+            <ActionCard
+              icon={<IconHeartPlus />}
+              onClick={() => navigate(`/admin/organisations/${id}/add-patient`)}
+              title="Add patient"
+              subtitle="Add a patient to this organisation"
+              buttonLabel="Add patient"
             />
           </SimpleGrid>
         </Stack>

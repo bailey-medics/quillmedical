@@ -45,6 +45,9 @@ import DeactivatePatientPage from "./pages/admin/patients/DeactivatePatientPage"
 import ActivatePatientPage from "./pages/admin/patients/ActivatePatientPage";
 import OrganisationAdminPage from "./pages/admin/organisations/OrganisationAdminPage";
 import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisationPage";
+import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
+import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
+import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -266,6 +269,30 @@ const router = createBrowserRouter(
           element: (
             <RequirePermission level="admin">
               <OrganisationAdminPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations/:id/edit",
+          element: (
+            <RequirePermission level="admin">
+              <EditOrganisationPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations/:id/add-staff",
+          element: (
+            <RequirePermission level="admin">
+              <AddStaffToOrgPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: "/admin/organisations/:id/add-patient",
+          element: (
+            <RequirePermission level="admin">
+              <AddPatientToOrgPage />
             </RequirePermission>
           ),
         },

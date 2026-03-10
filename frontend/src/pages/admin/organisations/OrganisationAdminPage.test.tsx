@@ -67,6 +67,7 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -94,6 +95,7 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -118,6 +120,7 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -143,6 +146,7 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -183,6 +187,7 @@ describe("OrganisationAdminPage", () => {
             is_primary: false,
           },
         ],
+        patient_members: [],
         patient_count: 5,
       };
 
@@ -208,6 +213,7 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
+        patient_members: [],
         patient_count: 15,
       };
 
@@ -237,6 +243,7 @@ describe("OrganisationAdminPage", () => {
           { id: "1", username: "doctor1", email: "doctor1@test.com" },
           { id: "2", username: "nurse1", email: "nurse1@test.com" },
         ],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -264,6 +271,7 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -275,7 +283,65 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Staff members")).toBeInTheDocument();
+        expect(
+          screen.getByText("No staff members assigned"),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Patients table", () => {
+    it("displays patients in table", async () => {
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_members: [],
+        patient_members: [
+          { patient_id: "fhir-001", is_primary: false },
+          { patient_id: "fhir-002", is_primary: true },
+        ],
+        patient_count: 2,
+      };
+
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("fhir-001")).toBeInTheDocument();
+        expect(screen.getByText("fhir-002")).toBeInTheDocument();
+      });
+    });
+
+    it("shows message when no patients", async () => {
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Clinic",
+        type: "clinic",
+        location: "Manchester",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("No patients assigned")).toBeInTheDocument();
       });
     });
   });
@@ -290,6 +356,7 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -314,6 +381,7 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -325,7 +393,34 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Manage staff")).toBeInTheDocument();
+        expect(screen.getByText("Add staff member")).toBeInTheDocument();
+      });
+    });
+
+    it("displays add patient action card", async () => {
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByText("Add patient").length,
+        ).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -340,6 +435,7 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -370,6 +466,7 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_count: 0,
         staff_members: [],
+        patient_members: [],
         patient_count: 0,
       };
 
@@ -381,12 +478,14 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Manage staff")).toBeInTheDocument();
+        expect(screen.getByText("Add staff member")).toBeInTheDocument();
       });
 
-      const manageButton = screen.getByRole("button", { name: "Manage" });
+      const manageButton = screen.getByRole("button", { name: "Add staff" });
       await user.click(manageButton);
-      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1/staff");
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/1/add-staff",
+      );
     });
   });
 

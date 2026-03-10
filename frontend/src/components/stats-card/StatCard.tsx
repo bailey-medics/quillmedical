@@ -27,7 +27,7 @@ export interface StatCardProps {
  */
 export function StatCard({ title, value, loading = false }: StatCardProps) {
   return (
-    <Card withBorder>
+    <Card withBorder radius="md">
       <Stack gap="xs">
         <Text size="lg" c="dimmed">
           {title}

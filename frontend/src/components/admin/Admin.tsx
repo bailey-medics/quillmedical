@@ -9,7 +9,7 @@
  * - /admin/permissions - Permissions management
  */
 
-import { Group, Stack } from "@mantine/core";
+import { Group, SimpleGrid, Stack } from "@mantine/core";
 import StatCard from "@/components/stats-card";
 import PageHeader from "@/components/page-header";
 import PermissionBadge, {
@@ -23,18 +23,24 @@ interface AdminProps {
   usersLoading?: boolean;
   /** Loading state for patients statistics */
   patientsLoading?: boolean;
+  /** Loading state for organisations statistics */
+  organisationsLoading?: boolean;
   /** Existing users for statistics */
   existingUsers?: Array<{ id: string; username: string; email: string }>;
   /** Existing patients for statistics */
   existingPatients?: Array<{ id: string; name: string }>;
+  /** Number of organisations */
+  organisationCount?: number;
 }
 
 export default function Admin({
   userPermissions,
   usersLoading = false,
   patientsLoading = false,
+  organisationsLoading = false,
   existingUsers = [],
   existingPatients = [],
+  organisationCount = 0,
 }: AdminProps) {
   return (
     <Stack gap="lg">
@@ -48,7 +54,7 @@ export default function Admin({
         <PermissionBadge permission={userPermissions} />
       </Group>
 
-      <Group grow>
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <StatCard
           title="Total users"
           value={existingUsers.length}
@@ -59,7 +65,12 @@ export default function Admin({
           value={existingPatients.length}
           loading={patientsLoading}
         />
-      </Group>
+        <StatCard
+          title="Total organisations"
+          value={organisationCount}
+          loading={organisationsLoading}
+        />
+      </SimpleGrid>
     </Stack>
   );
 }

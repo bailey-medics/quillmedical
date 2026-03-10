@@ -70,9 +70,17 @@ describe("Admin", () => {
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
+    it("displays total organisations count", () => {
+      renderWithRouter(
+        <Admin userPermissions="superadmin" organisationCount={5} />,
+      );
+      expect(screen.getByText("Total organisations")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
+    });
+
     it("displays zero counts when no data", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getAllByText("0")).toHaveLength(2);
+      expect(screen.getAllByText("0")).toHaveLength(3);
     });
 
     it("shows skeleton loaders when loading", () => {

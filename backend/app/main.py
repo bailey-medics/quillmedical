@@ -2010,8 +2010,6 @@ def get_organization(
         raise HTTPException(status_code=404, detail="Organization not found")
 
     # Get staff members with primary status
-    from sqlalchemy import func
-
     staff_query = (
         select(
             User.id,
@@ -2028,15 +2026,13 @@ def get_organization(
 
     staff_members = db.execute(staff_query).all()
 
-    # Get patient count
-    patient_count = (
-        db.scalar(
-            select(func.count())
-            .select_from(organisation_patient_member)
-            .where(organisation_patient_member.c.organisation_id == org_id)
-        )
-        or 0
-    )
+    # Get patient members
+    patient_query = select(
+        organisation_patient_member.c.patient_id,
+        organisation_patient_member.c.is_primary,
+    ).where(organisation_patient_member.c.organisation_id == org_id)
+
+    patient_members = db.execute(patient_query).all()
 
     return {
         "id": org.id,
@@ -2046,7 +2042,7 @@ def get_organization(
         "created_at": org.created_at.isoformat(),
         "updated_at": org.updated_at.isoformat(),
         "staff_count": len(staff_members),
-        "patient_count": patient_count,
+        "patient_count": len(patient_members),
         "staff_members": [
             {
                 "id": sm.id,
@@ -2055,6 +2051,13 @@ def get_organization(
                 "is_primary": sm.is_primary or False,
             }
             for sm in staff_members
+        ],
+        "patient_members": [
+            {
+                "patient_id": pm.patient_id,
+                "is_primary": pm.is_primary or False,
+            }
+            for pm in patient_members
         ],
     }
 
@@ -2067,6 +2070,84 @@ class CreateOrganizationIn(BaseModel):
     location: str | None = None
 
     model_config = {"extra": "forbid"}
+
+
+class UpdateOrganizationIn(BaseModel):
+    """Request body for updating an organisation."""
+
+    name: str | None = None
+    type: str | None = None
+    location: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+@router.put("/organizations/{org_id}")
+def update_organization(
+    org_id: int,
+    body: UpdateOrganizationIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Update Organisation.
+
+    Updates an existing organisation's details.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        org_id: ID of the organisation to update.
+        body: Fields to update (name, type, location). Only provided fields are updated.
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Updated organisation details.
+
+    Raises:
+        HTTPException: 400 if type is invalid.
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if organisation not found.
+    """
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    valid_types = [
+        "hospital_team",
+        "gp_practice",
+        "private_clinic",
+        "department",
+    ]
+
+    if body.name is not None:
+        org.name = body.name.strip()
+    if body.type is not None:
+        if body.type not in valid_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid organisation type. Must be one of: {', '.join(valid_types)}",
+            )
+        org.type = body.type
+    if body.location is not None:
+        org.location = body.location.strip() or None
+
+    db.commit()
+    db.refresh(org)
+
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+    }
 
 
 @router.post("/organizations")
@@ -2127,6 +2208,157 @@ def create_organization(
         "location": org.location,
         "created_at": org.created_at.isoformat(),
         "updated_at": org.updated_at.isoformat(),
+    }
+
+
+class AddStaffIn(BaseModel):
+    """Request body for adding a staff member to an organisation."""
+
+    user_id: int
+
+    model_config = {"extra": "forbid"}
+
+
+@router.post("/organizations/{org_id}/staff")
+def add_staff_to_organization(
+    org_id: int,
+    body: AddStaffIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Add Staff Member to Organisation.
+
+    Adds an existing user as a staff member of an organisation.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        org_id: ID of the organisation.
+        body: Staff member details (user_id).
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with organisation and user IDs.
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if organisation or user not found.
+        HTTPException: 409 if user is already a staff member.
+    """
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    user = db.scalar(select(User).where(User.id == body.user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if already a member
+    existing = db.scalar(
+        select(organisation_staff_member).where(
+            organisation_staff_member.c.organisation_id == org_id,
+            organisation_staff_member.c.user_id == body.user_id,
+        )
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="User is already a staff member of this organisation",
+        )
+
+    db.execute(
+        organisation_staff_member.insert().values(
+            organisation_id=org_id,
+            user_id=body.user_id,
+            is_primary=False,
+        )
+    )
+    db.commit()
+
+    return {
+        "organisation_id": org_id,
+        "user_id": body.user_id,
+        "username": user.username,
+    }
+
+
+class AddPatientIn(BaseModel):
+    """Request body for adding a patient to an organisation."""
+
+    patient_id: str
+
+    model_config = {"extra": "forbid"}
+
+
+@router.post("/organizations/{org_id}/patients")
+def add_patient_to_organization(
+    org_id: int,
+    body: AddPatientIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Add Patient to Organisation.
+
+    Adds a patient to an organisation by their FHIR patient ID.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        org_id: ID of the organisation.
+        body: Patient details (patient_id).
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with organisation and patient IDs.
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if organisation not found.
+        HTTPException: 409 if patient is already a member.
+    """
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Check if already a member
+    existing = db.scalar(
+        select(organisation_patient_member).where(
+            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.patient_id == body.patient_id,
+        )
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="Patient is already a member of this organisation",
+        )
+
+    db.execute(
+        organisation_patient_member.insert().values(
+            organisation_id=org_id,
+            patient_id=body.patient_id,
+            is_primary=False,
+        )
+    )
+    db.commit()
+
+    return {
+        "organisation_id": org_id,
+        "patient_id": body.patient_id,
     }
 
 

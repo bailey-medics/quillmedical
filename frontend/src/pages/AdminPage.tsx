@@ -54,8 +54,10 @@ export default function AdminPage() {
   const [patients, setPatients] = useState<Array<{ id: string; name: string }>>(
     [],
   );
+  const [organisationCount, setOrganisationCount] = useState(0);
   const [usersLoading, setUsersLoading] = useState(true);
   const [patientsLoading, setPatientsLoading] = useState(true);
+  const [organisationsLoading, setOrganisationsLoading] = useState(true);
 
   // Extract system permissions from auth state
   const userPermissions: SystemPermission =
@@ -167,6 +169,44 @@ export default function AdminPage() {
     };
   }, [state.status, userPermissions]);
 
+  // Fetch organisations
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchOrganisations() {
+      if (
+        state.status !== "authenticated" ||
+        !["admin", "superadmin"].includes(userPermissions)
+      ) {
+        setOrganisationsLoading(false);
+        return;
+      }
+
+      try {
+        setOrganisationsLoading(true);
+        const response = await api.get<{
+          organizations: Array<{ id: number }>;
+        }>("/organizations");
+
+        if (!cancelled) {
+          setOrganisationCount(response.organizations.length);
+        }
+      } catch (error) {
+        console.error("Failed to fetch organisations:", error);
+      } finally {
+        if (!cancelled) {
+          setOrganisationsLoading(false);
+        }
+      }
+    }
+
+    fetchOrganisations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, userPermissions]);
+
   // TODO: Wire up actual API callbacks for:
   // - onLinkUserPatient
   // - onUpdatePermissions
@@ -180,6 +220,8 @@ export default function AdminPage() {
         existingPatients={patients}
         usersLoading={usersLoading}
         patientsLoading={patientsLoading}
+        organisationsLoading={organisationsLoading}
+        organisationCount={organisationCount}
       />
     </Container>
   );
