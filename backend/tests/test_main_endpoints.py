@@ -298,6 +298,7 @@ class TestOrganizationEndpoints:
         assert len(data["staff_members"]) == 1
         assert data["staff_members"][0]["username"] == test_admin.username
         assert data["patient_count"] == 0
+        assert data["patient_members"] == []
 
     def test_create_organization_unauthenticated(
         self, test_client: TestClient
@@ -389,3 +390,258 @@ class TestOrganizationEndpoints:
         data = response.json()
         assert data["name"] == "Spaced Hospital"
         assert data["location"] == "Manchester"
+
+    def test_update_organization_unauthenticated(
+        self, test_client: TestClient
+    ):
+        """Test updating organisation without authentication."""
+        response = test_client.put(
+            "/api/organizations/1", json={"name": "New Name"}
+        )
+        assert response.status_code == 401
+
+    def test_update_organization_forbidden(
+        self, authenticated_client: TestClient
+    ):
+        """Test updating organisation without admin permissions."""
+        response = authenticated_client.put(
+            "/api/organizations/1", json={"name": "New Name"}
+        )
+        assert response.status_code == 403
+
+    def test_update_organization_not_found(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test updating non-existent organisation."""
+        response = authenticated_admin_client.put(
+            "/api/organizations/999", json={"name": "New Name"}
+        )
+        assert response.status_code == 404
+
+    def test_update_organization_success(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test successfully updating an organisation."""
+        # Create an organisation first
+        create_response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={
+                "name": "Original Hospital",
+                "type": "hospital_team",
+                "location": "London",
+            },
+        )
+        org_id = create_response.json()["id"]
+
+        # Update it
+        response = authenticated_admin_client.put(
+            f"/api/organizations/{org_id}",
+            json={"name": "Updated Hospital", "location": "Manchester"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Hospital"
+        assert data["type"] == "hospital_team"
+        assert data["location"] == "Manchester"
+
+    def test_update_organization_invalid_type(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test updating organisation with invalid type."""
+        create_response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={"name": "Test Org", "type": "hospital_team"},
+        )
+        org_id = create_response.json()["id"]
+
+        response = authenticated_admin_client.put(
+            f"/api/organizations/{org_id}", json={"type": "invalid_type"}
+        )
+        assert response.status_code == 400
+
+    def test_update_organization_partial(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test partial update only changes specified fields."""
+        create_response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={
+                "name": "Test Hospital",
+                "type": "hospital_team",
+                "location": "London",
+            },
+        )
+        org_id = create_response.json()["id"]
+
+        response = authenticated_admin_client.put(
+            f"/api/organizations/{org_id}", json={"name": "New Name"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "New Name"
+        assert data["type"] == "hospital_team"
+        assert data["location"] == "London"
+
+    def test_add_staff_unauthenticated(self, test_client: TestClient):
+        """Test adding staff without authentication."""
+        response = test_client.post(
+            "/api/organizations/1/staff", json={"user_id": 1}
+        )
+        assert response.status_code == 401
+
+    def test_add_staff_forbidden(self, authenticated_client: TestClient):
+        """Test adding staff without admin permissions."""
+        response = authenticated_client.post(
+            "/api/organizations/1/staff", json={"user_id": 1}
+        )
+        assert response.status_code == 403
+
+    def test_add_staff_org_not_found(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test adding staff to non-existent organisation."""
+        response = authenticated_admin_client.post(
+            "/api/organizations/999/staff", json={"user_id": 1}
+        )
+        assert response.status_code == 404
+
+    def test_add_staff_user_not_found(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test adding non-existent user as staff."""
+        from app.models import Organization
+
+        org = Organization(name="Test Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/staff", json={"user_id": 9999}
+        )
+        assert response.status_code == 404
+        assert "User not found" in response.json()["detail"]
+
+    def test_add_staff_success(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test successfully adding a staff member."""
+        from app.models import Organization
+
+        org = Organization(name="Staff Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/staff",
+            json={"user_id": test_admin.id},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["organisation_id"] == org.id
+        assert data["user_id"] == test_admin.id
+        assert data["username"] == test_admin.username
+
+    def test_add_staff_duplicate(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test adding user who is already a staff member."""
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(name="Dup Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        stmt = insert(organisation_staff_member).values(
+            organisation_id=org.id,
+            user_id=test_admin.id,
+            is_primary=False,
+        )
+        db_session.execute(stmt)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/staff",
+            json={"user_id": test_admin.id},
+        )
+        assert response.status_code == 409
+        assert "already a staff member" in response.json()["detail"]
+
+    def test_add_patient_unauthenticated(self, test_client: TestClient):
+        """Test adding patient without authentication."""
+        response = test_client.post(
+            "/api/organizations/1/patients",
+            json={"patient_id": "fhir-123"},
+        )
+        assert response.status_code == 401
+
+    def test_add_patient_forbidden(self, authenticated_client: TestClient):
+        """Test adding patient without admin permissions."""
+        response = authenticated_client.post(
+            "/api/organizations/1/patients",
+            json={"patient_id": "fhir-123"},
+        )
+        assert response.status_code == 403
+
+    def test_add_patient_org_not_found(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test adding patient to non-existent organisation."""
+        response = authenticated_admin_client.post(
+            "/api/organizations/999/patients",
+            json={"patient_id": "fhir-123"},
+        )
+        assert response.status_code == 404
+
+    def test_add_patient_success(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test successfully adding a patient."""
+        from app.models import Organization
+
+        org = Organization(name="Patient Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/patients",
+            json={"patient_id": "fhir-456"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["organisation_id"] == org.id
+        assert data["patient_id"] == "fhir-456"
+
+    def test_add_patient_duplicate(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test adding patient who is already a member."""
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_patient_member
+
+        org = Organization(name="Dup Patient Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        stmt = insert(organisation_patient_member).values(
+            organisation_id=org.id,
+            patient_id="fhir-789",
+            is_primary=False,
+        )
+        db_session.execute(stmt)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/patients",
+            json={"patient_id": "fhir-789"},
+        )
+        assert response.status_code == 409
+        assert "already a member" in response.json()["detail"]
