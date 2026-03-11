@@ -50,6 +50,7 @@ import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
+import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
 import NewUserPage from "./pages/NewUserPage";
 import NotFound from "./pages/NotFound";
@@ -104,6 +105,7 @@ const router = createBrowserRouter(
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
         { path: "/messages", element: <Messages /> },
+        { path: "/messages/:conversationId", element: <MessageThread /> },
         {
           path: "/admin",
           element: (

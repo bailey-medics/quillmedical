@@ -20,7 +20,7 @@ import {
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom"; // TODO: Navigate to conversation detail
+import { useNavigate } from "react-router-dom";
 
 /**
  * Conversation
@@ -67,7 +67,7 @@ type StatusFilter = "all" | "new" | "active" | "resolved" | "closed";
  * <Route path="/messages" element={<Messages />} />
  */
 export default function Messages() {
-  // const navigate = useNavigate(); // TODO: Use when navigation to detail is implemented
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,9 +199,7 @@ export default function Messages() {
   });
 
   const handleConversationClick = (conversation: Conversation) => {
-    // TODO: Navigate to conversation detail page
-    // navigate(`/messages/${conversation.id}`);
-    console.log("Navigate to conversation:", conversation.id);
+    navigate(`/messages/${conversation.id}`);
   };
 
   return (

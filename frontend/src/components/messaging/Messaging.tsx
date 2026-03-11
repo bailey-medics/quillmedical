@@ -137,6 +137,18 @@ export default function Messaging({
                           alignItems: "flex-end",
                         }}
                       >
+                        {m.senderName && (
+                          <Text
+                            size="lg"
+                            color="dimmed"
+                            style={{
+                              marginBottom: 2,
+                              marginRight: avatarSizePixels + 8,
+                            }}
+                          >
+                            {m.senderName}
+                          </Text>
+                        )}
                         <div
                           style={{
                             display: "flex",
