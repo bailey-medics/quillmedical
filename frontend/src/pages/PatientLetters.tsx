@@ -31,7 +31,7 @@ const fakeLetters: ClinicalLetter[] = [
     id: "letter-1",
     title: "Gastroenterology outpatient clinic letter",
     date: "2026-03-19",
-    author: "Dr David Corbett",
+    author: "Dr Gareth Corbett",
     authorRole: "Consultant Gastroenterologist",
     status: "final",
     summary:

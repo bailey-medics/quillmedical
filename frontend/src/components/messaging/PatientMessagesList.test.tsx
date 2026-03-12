@@ -117,21 +117,6 @@ describe("PatientMessagesList", () => {
     });
   });
 
-  describe("Status badges", () => {
-    it("displays status badge for each conversation", () => {
-      renderWithMantine(
-        <PatientMessagesList
-          conversations={mockConversations}
-          onConversationClick={vi.fn()}
-        />,
-      );
-
-      expect(screen.getByText("active")).toBeInTheDocument();
-      expect(screen.getByText("resolved")).toBeInTheDocument();
-      expect(screen.getByText("new")).toBeInTheDocument();
-    });
-  });
-
   describe("Unread count", () => {
     it("displays unread badge when count > 0", () => {
       renderWithMantine(

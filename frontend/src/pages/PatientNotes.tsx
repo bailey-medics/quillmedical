@@ -31,7 +31,7 @@ const fakeNotes: ClinicalNote[] = [
     id: "note-1",
     title: "Gastro clinic consultation",
     date: "2026-03-19",
-    author: "Dr David Corbett",
+    author: "Dr Gareth Corbett",
     authorRole: "Consultant Gastroenterologist",
     category: "consultation",
     content:
@@ -41,7 +41,7 @@ const fakeNotes: ClinicalNote[] = [
     id: "note-2",
     title: "Telephone consultation — dietary guidance follow-up",
     date: "2026-03-20",
-    author: "Dr David Corbett",
+    author: "Dr Gareth Corbett",
     authorRole: "Consultant Gastroenterologist",
     category: "telephone",
     content:

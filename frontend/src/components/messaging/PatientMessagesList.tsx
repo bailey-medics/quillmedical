@@ -12,31 +12,22 @@ import {
   StackedProfileIcons,
   type StackedParticipant,
 } from "@/components/profile-pic";
-import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
+import {
+  Badge,
+  Card,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+  useMantineTheme,
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 type Props = {
   conversations: Conversation[];
   onConversationClick: (conversation: Conversation) => void;
   isLoading?: boolean;
 };
-
-/**
- * Get badge colour based on conversation status
- */
-function getStatusColour(status: Conversation["status"]): string {
-  switch (status) {
-    case "new":
-      return "blue";
-    case "active":
-      return "green";
-    case "resolved":
-      return "gray";
-    case "closed":
-      return "dark";
-    default:
-      return "gray";
-  }
-}
 
 /**
  * Format timestamp to relative time (e.g., "2 hours ago")
@@ -130,6 +121,10 @@ export default function PatientMessagesList({
   onConversationClick,
   isLoading,
 }: Props) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const iconSize = isMobile ? "sm" : "md";
+
   if (isLoading) {
     return (
       <Stack gap="sm">
@@ -163,7 +158,10 @@ export default function PatientMessagesList({
           >
             <Card shadow="sm" padding="md" radius="md" withBorder>
               <Group wrap="nowrap" align="flex-start">
-                <StackedProfileIcons participants={participants} size="sm" />
+                <StackedProfileIcons
+                  participants={participants}
+                  size={iconSize}
+                />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Group justify="space-between" mb="xs">
@@ -171,13 +169,11 @@ export default function PatientMessagesList({
                       <Text fw={700} size="lg">
                         {displayName}
                       </Text>
-                      <Badge
-                        size="xs"
-                        color={getStatusColour(conv.status)}
-                        variant="light"
-                      >
-                        {conv.status}
-                      </Badge>
+                      {conv.unreadCount > 0 && (
+                        <Badge size="lg" color="blue.4" variant="filled" circle>
+                          {conv.unreadCount}
+                        </Badge>
+                      )}
                     </Group>
                     <Text size="lg" c="dimmed">
                       {formatTime(conv.lastMessageTime)}
@@ -187,14 +183,6 @@ export default function PatientMessagesList({
                   <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
                     {conv.lastMessage}
                   </Text>
-
-                  {conv.unreadCount > 0 && (
-                    <Group justify="flex-end">
-                      <Badge size="sm" color="red" variant="filled" circle>
-                        {conv.unreadCount}
-                      </Badge>
-                    </Group>
-                  )}
                 </div>
               </Group>
             </Card>

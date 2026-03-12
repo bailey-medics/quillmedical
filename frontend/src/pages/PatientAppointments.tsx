@@ -35,7 +35,7 @@ const fakeAppointments: Appointment[] = [
     date: "2026-04-09",
     time: "10:00",
     location: "Riverside Health Centre, Room 4",
-    clinician: "Dr David Corbett",
+    clinician: "Dr Gareth Corbett",
     clinicianRole: "Consultant Gastroenterologist",
     status: "upcoming",
     notes:
@@ -47,7 +47,7 @@ const fakeAppointments: Appointment[] = [
     date: "2026-03-19",
     time: "10:30",
     location: "Riverside Health Centre, Room 4",
-    clinician: "Dr David Corbett",
+    clinician: "Dr Gareth Corbett",
     clinicianRole: "Consultant Gastroenterologist",
     status: "completed",
     notes:

@@ -9,7 +9,7 @@
 import type { Conversation } from "@/pages/Messages";
 import { PatientMessagesList } from "@/components/messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Card, Container, Stack, Text, Title } from "@mantine/core";
+import { Card, Container, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -70,6 +70,14 @@ function buildFakeConversations(
       ).toISOString(),
       unreadCount: 0,
       status: "closed",
+      assignedTo: "Lisa Taylor",
+      participants: [
+        {
+          displayName: "Lisa Taylor",
+          givenName: "Lisa",
+          familyName: "Taylor",
+        },
+      ],
     },
   ];
 }
@@ -79,14 +87,11 @@ export default function PatientMessages() {
   const navigate = useNavigate();
 
   const patientName = patient?.name ?? "Patient";
-  const patientFirstName = patient?.givenName ?? "Patient";
   const conversations = buildFakeConversations(patientName, id ?? "");
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Messages — {patientFirstName}</Title>
-
         {conversations.length === 0 ? (
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Text c="dimmed" ta="center">
