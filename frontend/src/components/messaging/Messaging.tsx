@@ -9,6 +9,7 @@
 import {
   Box,
   Button,
+  Group,
   ScrollArea,
   Skeleton,
   Text,
@@ -16,14 +17,32 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic";
+
+/** Renders **bold** markdown syntax as <strong> elements. */
+function renderBold(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
 
 /**
  * Message
  *
  * Represents a single message in a conversation thread.
  */
+export type MessageAction = {
+  label: string;
+  value: string;
+  variant?: "filled" | "outline" | "light";
+  color?: string;
+};
+
 export type Message = {
   id: string;
   senderId: string;
@@ -34,12 +53,14 @@ export type Message = {
   timestamp?: string; // ISO
   avatar?: string;
   gradientIndex?: number;
+  actions?: MessageAction[];
 };
 
 type Props = {
   messages: Message[];
   currentUserId: string;
   onSend?: (text: string) => void;
+  onAction?: (messageId: string, actionValue: string) => void;
   placeholder?: string;
   isLoading?: boolean;
 };
@@ -48,6 +69,7 @@ export default function Messaging({
   messages,
   currentUserId,
   onSend,
+  onAction,
   placeholder = "Type a message...",
   isLoading = false,
 }: Props) {
@@ -118,6 +140,10 @@ export default function Messaging({
             <>
               {messages.map((m) => {
                 const mine = m.senderId === currentUserId;
+                const displayName =
+                  m.senderName ||
+                  [m.givenName, m.familyName].filter(Boolean).join(" ") ||
+                  undefined;
                 return (
                   <div
                     key={m.id}
@@ -137,7 +163,7 @@ export default function Messaging({
                           alignItems: "flex-end",
                         }}
                       >
-                        {m.senderName && (
+                        {displayName && (
                           <Text
                             size="lg"
                             color="dimmed"
@@ -146,7 +172,7 @@ export default function Messaging({
                               marginRight: avatarSizePixels + 8,
                             }}
                           >
-                            {m.senderName}
+                            {displayName}
                           </Text>
                         )}
                         <div
@@ -165,7 +191,9 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="lg">{m.text}</Text>
+                            <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
+                              {renderBold(m.text)}
+                            </Text>
                           </div>
                           <ProfilePic
                             src={m.avatar}
@@ -196,6 +224,25 @@ export default function Messaging({
                             })}
                           </Text>
                         )}
+                        {m.actions && m.actions.length > 0 && (
+                          <Group
+                            gap="xs"
+                            mt={6}
+                            style={{ marginRight: avatarSizePixels + 8 }}
+                          >
+                            {m.actions.map((action) => (
+                              <Button
+                                key={action.value}
+                                size="xs"
+                                variant={action.variant ?? "light"}
+                                color={action.color}
+                                onClick={() => onAction?.(m.id, action.value)}
+                              >
+                                {action.label}
+                              </Button>
+                            ))}
+                          </Group>
+                        )}
                       </div>
                     ) : (
                       <div
@@ -206,7 +253,7 @@ export default function Messaging({
                           alignItems: "flex-start",
                         }}
                       >
-                        {m.senderName && (
+                        {displayName && (
                           <Text
                             size="lg"
                             color="dimmed"
@@ -215,7 +262,7 @@ export default function Messaging({
                               marginLeft: avatarSizePixels + 8,
                             }}
                           >
-                            {m.senderName}
+                            {displayName}
                           </Text>
                         )}
                         <div
@@ -241,7 +288,9 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="lg">{m.text}</Text>
+                            <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
+                              {renderBold(m.text)}
+                            </Text>
                           </div>
                         </div>
                         {m.timestamp && (
@@ -264,6 +313,25 @@ export default function Messaging({
                               hour12: false,
                             })}
                           </Text>
+                        )}
+                        {m.actions && m.actions.length > 0 && (
+                          <Group
+                            gap="xs"
+                            mt={6}
+                            style={{ marginLeft: avatarSizePixels + 8 }}
+                          >
+                            {m.actions.map((action) => (
+                              <Button
+                                key={action.value}
+                                size="xs"
+                                variant={action.variant ?? "light"}
+                                color={action.color}
+                                onClick={() => onAction?.(m.id, action.value)}
+                              >
+                                {action.label}
+                              </Button>
+                            ))}
+                          </Group>
                         )}
                       </div>
                     )}

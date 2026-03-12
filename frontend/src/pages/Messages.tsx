@@ -215,6 +215,7 @@ export default function Messages() {
         <Card shadow="sm" padding="md" radius="md" withBorder>
           <Group gap="md" grow>
             <TextInput
+              label="Search"
               placeholder="Search by patient name..."
               leftSection={<IconSearch size={16} />}
               value={searchQuery}

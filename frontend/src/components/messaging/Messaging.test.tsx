@@ -476,4 +476,72 @@ describe("Messaging", () => {
       expect(messageBox).toBeInTheDocument();
     });
   });
+
+  describe("Action buttons", () => {
+    const messageWithActions: Message[] = [
+      {
+        id: "action-msg",
+        senderId: "system",
+        senderName: "System",
+        text: "Your appointment is tomorrow.",
+        actions: [
+          {
+            label: "I'll attend",
+            value: "confirm",
+            variant: "filled",
+            color: "green",
+          },
+          {
+            label: "I can't make it",
+            value: "cancel",
+            variant: "outline",
+            color: "red",
+          },
+        ],
+      },
+    ];
+
+    it("renders action buttons on messages", () => {
+      renderWithMantine(
+        <Messaging messages={messageWithActions} currentUserId="user-1" />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "I'll attend" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "I can't make it" }),
+      ).toBeInTheDocument();
+    });
+
+    it("calls onAction when a button is clicked", async () => {
+      const user = userEvent.setup();
+      const mockOnAction = vi.fn();
+      renderWithMantine(
+        <Messaging
+          messages={messageWithActions}
+          currentUserId="user-1"
+          onAction={mockOnAction}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "I'll attend" }));
+
+      expect(mockOnAction).toHaveBeenCalledWith("action-msg", "confirm");
+    });
+
+    it("does not render buttons when message has no actions", () => {
+      const noActions: Message[] = [
+        { id: "plain", senderId: "other", text: "Just a message" },
+      ];
+      renderWithMantine(
+        <Messaging messages={noActions} currentUserId="user-1" />,
+      );
+
+      // Only the Send button should exist
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0]).toHaveTextContent("Send");
+    });
+  });
 });

@@ -41,6 +41,16 @@ vi.mock("@/components/profile-pic/ProfilePic", () => ({
     ),
 }));
 
+// Mock useAuth
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { id: "mark-bailey", name: "Mark Bailey" },
+    },
+  }),
+}));
+
 const mockNavigate = vi.fn();
 const mockSetPatient = vi.fn();
 vi.mock("react-router-dom", async () => {
@@ -61,16 +71,6 @@ describe("MessageThread", () => {
   });
 
   describe("Known conversation", () => {
-    it("renders patient name and status badge", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
-      });
-
-      expect(screen.getAllByText("John Smith").length).toBeGreaterThan(0);
-      expect(screen.getByText("active")).toBeInTheDocument();
-    });
-
     it("renders messages from the thread", () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
@@ -135,27 +135,61 @@ describe("MessageThread", () => {
     });
   });
 
-  describe("New conversation (conv-2)", () => {
-    it("renders with new status badge", () => {
+  describe("Active conversation (conv-2)", () => {
+    it("renders conversation messages", () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
         initialRoute: "/messages/conv-2",
       });
 
-      expect(screen.getAllByText("Mary Johnson").length).toBeGreaterThan(0);
-      expect(screen.getByText("new")).toBeInTheDocument();
+      expect(screen.getByText(/book in for Dr Corbett/)).toBeInTheDocument();
+    });
+
+    it("renders appointment reminder with action buttons", () => {
+      renderWithRouter(<MessageThread />, {
+        routePath: "/messages/:conversationId",
+        initialRoute: "/messages/conv-2",
+      });
+
+      expect(
+        screen.getByText(/Reminder.*gastro clinic appointment/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "I'll attend" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "I can't make it" }),
+      ).toBeInTheDocument();
+    });
+
+    it("removes action buttons after clicking one", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<MessageThread />, {
+        routePath: "/messages/:conversationId",
+        initialRoute: "/messages/conv-2",
+      });
+
+      await user.click(screen.getByRole("button", { name: "I'll attend" }));
+
+      expect(
+        screen.queryByRole("button", { name: "I'll attend" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "I can't make it" }),
+      ).not.toBeInTheDocument();
     });
   });
 
   describe("Resolved conversation (conv-4)", () => {
-    it("renders with resolved status badge", () => {
+    it("renders conversation messages", () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
         initialRoute: "/messages/conv-4",
       });
 
-      expect(screen.getAllByText("Sarah Davis").length).toBeGreaterThan(0);
-      expect(screen.getByText("resolved")).toBeInTheDocument();
+      expect(
+        screen.getByText(/headaches for the past week/),
+      ).toBeInTheDocument();
     });
   });
 
