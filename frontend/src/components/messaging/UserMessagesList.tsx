@@ -1,8 +1,9 @@
 /**
- * Messages List Component
+ * User Messages List Component
  *
- * Displays a list of patient conversations with preview information,
- * unread counts, and status indicators.
+ * Displays a list of patient conversations for a clinician/admin user,
+ * with preview information, unread counts, and status indicators.
+ * Shows the patient name for each conversation.
  */
 
 import type { Conversation } from "@/pages/Messages";
@@ -69,7 +70,7 @@ function formatTime(timestamp: string): string {
  * Renders a list of conversation cards with patient information,
  * last message preview, unread count, and status badge.
  */
-export default function MessagesList({
+export default function UserMessagesList({
   conversations,
   onConversationClick,
   isLoading,

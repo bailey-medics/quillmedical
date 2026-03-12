@@ -7,7 +7,7 @@
  */
 
 import type { Conversation } from "@/pages/Messages";
-import MessagesList from "@/components/messaging";
+import { PatientMessagesList } from "@/components/messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Card, Container, Stack, Text, Title } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +30,7 @@ function buildFakeConversations(
       unreadCount: 1,
       status: "active",
       assignedTo: "Dr Corbett",
+      participants: ["Dr Corbett", "Gemma"],
     },
     {
       id: "gp-referral",
@@ -43,6 +44,7 @@ function buildFakeConversations(
       unreadCount: 0,
       status: "resolved",
       assignedTo: "Dr Patel",
+      participants: ["Dr Patel"],
     },
     {
       id: "prescription-query",
@@ -79,7 +81,7 @@ export default function PatientMessages() {
             </Text>
           </Card>
         ) : (
-          <MessagesList
+          <PatientMessagesList
             conversations={conversations}
             onConversationClick={(conv) =>
               navigate(`/patients/${id}/messages/${conv.id}`)

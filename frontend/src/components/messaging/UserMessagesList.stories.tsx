@@ -1,7 +1,7 @@
 /**
- * MessagesList Component Stories
+ * UserMessagesList Component Stories
  *
- * Demonstrates the conversations list component:
+ * Demonstrates the conversations list component for clinician/admin users:
  * - List of patient conversations
  * - Unread message indicators
  * - Priority/status badges
@@ -9,18 +9,18 @@
  * - Loading and empty states
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import MessagesList from "./MessagesList";
+import UserMessagesList from "./UserMessagesList";
 import type { Conversation } from "@/pages/Messages";
 
-const meta: Meta<typeof MessagesList> = {
-  title: "Messaging/MessagesList",
-  component: MessagesList,
+const meta: Meta<typeof UserMessagesList> = {
+  title: "Messaging/UserMessagesList",
+  component: UserMessagesList,
   tags: ["autodocs"],
 };
 
 export default meta;
 
-type Story = StoryObj<typeof MessagesList>;
+type Story = StoryObj<typeof UserMessagesList>;
 
 const mockConversations: Conversation[] = [
   {

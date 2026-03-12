@@ -1,5 +1,5 @@
 /**
- * MessagesList Component Tests
+ * UserMessagesList Component Tests
  *
  * Tests for conversation list display including status badges,
  * unread counts, and time formatting.
@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
-import MessagesList from "./MessagesList";
+import UserMessagesList from "./UserMessagesList";
 import type { Conversation } from "@/pages/Messages";
 
 const mockConversations: Conversation[] = [
@@ -45,11 +45,11 @@ const mockConversations: Conversation[] = [
   },
 ];
 
-describe("MessagesList", () => {
+describe("UserMessagesList", () => {
   describe("Basic rendering", () => {
     it("renders list of conversations", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -62,7 +62,7 @@ describe("MessagesList", () => {
 
     it("renders empty list when no conversations", () => {
       const { container } = renderWithMantine(
-        <MessagesList conversations={[]} onConversationClick={vi.fn()} />,
+        <UserMessagesList conversations={[]} onConversationClick={vi.fn()} />,
       );
 
       expect(
@@ -72,7 +72,7 @@ describe("MessagesList", () => {
 
     it("displays patient avatars", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -85,7 +85,7 @@ describe("MessagesList", () => {
 
     it("uses first letter of patient name in avatar", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -101,7 +101,7 @@ describe("MessagesList", () => {
   describe("Message preview", () => {
     it("displays last message text", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -128,7 +128,7 @@ describe("MessagesList", () => {
       ];
 
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -143,7 +143,7 @@ describe("MessagesList", () => {
   describe("Status badges", () => {
     it("displays status badge for each conversation", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -163,7 +163,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -182,7 +182,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -200,7 +200,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -218,7 +218,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -231,7 +231,7 @@ describe("MessagesList", () => {
   describe("Unread count", () => {
     it("displays unread badge when count > 0", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -250,7 +250,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -269,7 +269,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -282,7 +282,7 @@ describe("MessagesList", () => {
   describe("Assigned to", () => {
     it("displays assigned clinician when present", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -301,7 +301,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -321,7 +321,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -339,7 +339,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -357,7 +357,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -375,7 +375,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -393,7 +393,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -413,7 +413,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -430,7 +430,7 @@ describe("MessagesList", () => {
       const onConversationClick = vi.fn();
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={onConversationClick}
         />,
@@ -446,7 +446,7 @@ describe("MessagesList", () => {
       const onConversationClick = vi.fn();
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={onConversationClick}
         />,
@@ -459,7 +459,7 @@ describe("MessagesList", () => {
 
     it("shows cursor pointer on hover", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -473,7 +473,7 @@ describe("MessagesList", () => {
   describe("Loading state", () => {
     it("displays skeleton loaders when loading", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={[]}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -487,7 +487,7 @@ describe("MessagesList", () => {
 
     it("shows 3 skeleton cards when loading", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={[]}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -501,7 +501,7 @@ describe("MessagesList", () => {
 
     it("hides actual conversations when loading", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -514,7 +514,7 @@ describe("MessagesList", () => {
 
     it("shows conversations when not loading", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
           isLoading={false}

@@ -6,7 +6,7 @@
  * defaulting to most recent messages first.
  */
 
-import MessagesList from "@/components/messaging";
+import { UserMessagesList } from "@/components/messaging";
 import PageHeader from "@/components/page-header";
 // import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
@@ -44,6 +44,8 @@ export type Conversation = {
   status: "new" | "active" | "resolved" | "closed";
   /** Assigned clinician name */
   assignedTo?: string;
+  /** All non-patient participants in this conversation */
+  participants?: string[];
 };
 
 type SortOption = "recent" | "unread" | "patient-name";
@@ -264,7 +266,7 @@ export default function Messages() {
             </Text>
           </Card>
         ) : (
-          <MessagesList
+          <UserMessagesList
             conversations={sortedConversations}
             onConversationClick={handleConversationClick}
           />

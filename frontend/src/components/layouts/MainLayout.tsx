@@ -121,7 +121,7 @@ export default function MainLayout({
           width={`${DRAWER_W}px`}
         >
           <div style={{ width: DRAWER_W }}>
-            <SideNav showSearch={isSm} onNavigate={close} />
+            <SideNav showSearch={isSm} onNavigate={close} patient={patient} />
           </div>
         </NavigationDrawer>
 
@@ -136,7 +136,7 @@ export default function MainLayout({
                 flexShrink: 0,
               }}
             >
-              <SideNav showSearch={false} showIcons={true} />
+              <SideNav showSearch={false} showIcons={true} patient={patient} />
             </Box>
           )}
           <Flex direction="column" flex={1} style={{ height: "100%" }}>

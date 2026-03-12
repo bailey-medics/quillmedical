@@ -1,0 +1,274 @@
+/**
+ * PatientMessagesList Component Tests
+ *
+ * Tests for patient-specific conversation list display.
+ * Verifies that clinician/staff names are shown instead of patient names.
+ */
+
+import { describe, it, expect, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderWithMantine } from "@/test/test-utils";
+import PatientMessagesList from "./PatientMessagesList";
+import type { Conversation } from "@/pages/Messages";
+
+const mockConversations: Conversation[] = [
+  {
+    id: "1",
+    patientId: "p1",
+    patientName: "Sarah Johnson",
+    lastMessage: "I've reviewed your case notes",
+    lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
+    unreadCount: 2,
+    status: "active",
+    assignedTo: "Dr Corbett",
+    participants: ["Dr Corbett", "Gemma"],
+  },
+  {
+    id: "2",
+    patientId: "p1",
+    patientName: "Sarah Johnson",
+    lastMessage: "Your referral has been processed",
+    lastMessageTime: new Date(Date.now() - 86400000).toISOString(),
+    unreadCount: 0,
+    status: "resolved",
+    assignedTo: "Dr Patel",
+    participants: ["Dr Patel"],
+  },
+  {
+    id: "3",
+    patientId: "p1",
+    patientName: "Sarah Johnson",
+    lastMessage: "Prescription sent to pharmacy",
+    lastMessageTime: new Date(Date.now() - 1800000).toISOString(),
+    unreadCount: 1,
+    status: "new",
+    assignedTo: undefined,
+  },
+];
+
+describe("PatientMessagesList", () => {
+  describe("Display names", () => {
+    it("shows participant names instead of patient name", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Dr Corbett, Gemma")).toBeInTheDocument();
+      expect(screen.getByText("Dr Patel")).toBeInTheDocument();
+    });
+
+    it("does not show patient name", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText("Sarah Johnson")).not.toBeInTheDocument();
+    });
+
+    it("shows 'Unassigned' when assignedTo is undefined", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    });
+
+    it("uses first letter of clinician name in avatar", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={[mockConversations[0]]}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("D")).toBeInTheDocument();
+    });
+
+    it("uses 'U' in avatar for unassigned conversations", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={[mockConversations[2]]}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("U")).toBeInTheDocument();
+    });
+  });
+
+  describe("Status badges", () => {
+    it("displays status badge for each conversation", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("active")).toBeInTheDocument();
+      expect(screen.getByText("resolved")).toBeInTheDocument();
+      expect(screen.getByText("new")).toBeInTheDocument();
+    });
+  });
+
+  describe("Unread count", () => {
+    it("displays unread badge when count > 0", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("2")).toBeInTheDocument();
+      expect(screen.getByText("1")).toBeInTheDocument();
+    });
+
+    it("hides unread badge when count is 0", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={[mockConversations[1]]}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      const zeroBadges = screen.queryAllByText("0");
+      expect(zeroBadges.length).toBe(0);
+    });
+  });
+
+  describe("Message preview", () => {
+    it("displays last message text", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByText("I've reviewed your case notes"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Your referral has been processed"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("No 'Assigned to' label", () => {
+    it("does not show 'Assigned to' text since the name is already the heading", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText(/Assigned to:/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Click interaction", () => {
+    it("calls onConversationClick when conversation is clicked", async () => {
+      const user = userEvent.setup();
+      const onConversationClick = vi.fn();
+
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={onConversationClick}
+        />,
+      );
+
+      await user.click(screen.getByText("Dr Corbett, Gemma"));
+      expect(onConversationClick).toHaveBeenCalledWith(mockConversations[0]);
+    });
+
+    it("calls onConversationClick with correct conversation", async () => {
+      const user = userEvent.setup();
+      const onConversationClick = vi.fn();
+
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={onConversationClick}
+        />,
+      );
+
+      await user.click(screen.getByText("Dr Patel"));
+      expect(onConversationClick).toHaveBeenCalledWith(mockConversations[1]);
+    });
+  });
+
+  describe("Loading state", () => {
+    it("shows skeleton cards when loading", () => {
+      const { container } = renderWithMantine(
+        <PatientMessagesList
+          conversations={[]}
+          onConversationClick={vi.fn()}
+          isLoading={true}
+        />,
+      );
+
+      const cards = container.querySelectorAll('[class*="Card"]');
+      expect(cards.length).toBe(3);
+    });
+
+    it("hides conversations when loading", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={mockConversations}
+          onConversationClick={vi.fn()}
+          isLoading={true}
+        />,
+      );
+
+      expect(screen.queryByText("Dr Corbett, Gemma")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Empty state", () => {
+    it("renders empty list when no conversations", () => {
+      const { container } = renderWithMantine(
+        <PatientMessagesList
+          conversations={[]}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(
+        container.querySelector('[class*="Card"]'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Time formatting", () => {
+    it("displays relative time for recent messages", () => {
+      renderWithMantine(
+        <PatientMessagesList
+          conversations={[
+            {
+              ...mockConversations[0],
+              lastMessageTime: new Date(
+                Date.now() - 2 * 60 * 60 * 1000,
+              ).toISOString(),
+            },
+          ]}
+          onConversationClick={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText(/hour.*ago/)).toBeInTheDocument();
+    });
+  });
+});

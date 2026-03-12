@@ -1,14 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import SideNav from "./SideNav";
 import { AuthProvider } from "@/auth/AuthContext";
+import type { Patient } from "@/domains/patient";
 
 // Wrapper function to provide auth context for SideNavContent
-function renderWithAuth(ui: React.ReactElement) {
-  return renderWithRouter(<AuthProvider>{ui}</AuthProvider>);
+function renderWithAuth(
+  ui: React.ReactElement,
+  options?: { initialRoute?: string },
+) {
+  return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
+    initialRoute: options?.initialRoute,
+  });
 }
+
+const mockPatient: Patient = {
+  id: "patient-123",
+  name: "John Smith",
+  givenName: "John",
+  familyName: "Smith",
+  dob: "1985-03-15",
+  sex: "male",
+};
 
 describe("SideNav Component", () => {
   describe("Basic rendering", () => {
@@ -144,6 +159,30 @@ describe("SideNav Component", () => {
       const { container } = renderWithAuth(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
       expect(nav).toHaveStyle({ paddingRight: "0.875rem" });
+    });
+  });
+
+  describe("Patient prop forwarding", () => {
+    it("passes patient to SideNavContent so patient name appears on patient pages", async () => {
+      renderWithAuth(<SideNav showSearch={false} patient={mockPatient} />, {
+        initialRoute: "/patients/patient-123/messages",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+      });
+    });
+
+    it("does not show patient name when patient prop is not provided", async () => {
+      renderWithAuth(<SideNav showSearch={false} />, {
+        initialRoute: "/patients/patient-123/messages",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Home")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
     });
   });
 });
