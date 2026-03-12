@@ -38,7 +38,9 @@ describe("PatientMessages", () => {
       initialRoute: "/patients/test-patient/messages",
     });
 
-    expect(screen.getByText("Dr Corbett, Gemma Corbett")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dr Gareth Corbett, Gemma Corbett"),
+    ).toBeInTheDocument();
   });
 
   it("renders conversation list", () => {

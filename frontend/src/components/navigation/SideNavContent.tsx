@@ -223,16 +223,24 @@ export default function SideNavContent({
 
       const subChildren: NavItem[] = [];
       if (segments.length > 1) {
-        // Message thread — show conversation ID as label
+        // Sub-page — show thread/letter with friendly label
         const threadId = segments.slice(1).join("/");
-        // Map known fake conversation IDs to friendly names
-        const threadLabels: Record<string, string> = {
-          "gastro-clinic": "Dr Corbett, Gemma",
-          "gp-referral": "Dr Patel",
-          "prescription-query": "Pharmacy",
+        // Map known fake IDs to friendly names
+        const threadLabels: Record<string, Record<string, string>> = {
+          messages: {
+            "gastro-clinic": "Dr Corbett, Gemma",
+            "gp-referral": "Dr Patel",
+            "prescription-query": "Pharmacy",
+          },
+          letters: {
+            "letter-1": "Gastro clinic letter",
+            "letter-2": "GP referral letter",
+            "letter-3": "Routine health review",
+          },
         };
+        const sectionLabels = threadLabels[topSegment] ?? {};
         subChildren.push({
-          label: threadLabels[threadId] ?? threadId,
+          label: sectionLabels[threadId] ?? threadId,
           href: `${patientHref}/${patientSubPath}`,
         });
       }
