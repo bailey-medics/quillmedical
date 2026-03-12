@@ -65,17 +65,6 @@ describe("PatientNotes", () => {
     expect(screen.getByText("observation")).toBeInTheDocument();
   });
 
-  it("renders back to patient button", () => {
-    renderWithRouter(<PatientNotes />, {
-      routePath: "/patients/:id/notes",
-      initialRoute: "/patients/test-patient/notes",
-    });
-
-    expect(
-      screen.getByRole("button", { name: /back to patient/i }),
-    ).toBeInTheDocument();
-  });
-
   it("renders note content with SOAP format", () => {
     renderWithRouter(<PatientNotes />, {
       routePath: "/patients/:id/notes",

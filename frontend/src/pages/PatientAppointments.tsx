@@ -8,7 +8,6 @@
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import {
   Badge,
-  Button,
   Card,
   Container,
   Group,
@@ -16,8 +15,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
 
 type Appointment = {
   id: string;
@@ -109,8 +106,7 @@ function getStatusColour(status: string): string {
 }
 
 export default function PatientAppointments() {
-  const { id, patient } = usePatientLoader();
-  const navigate = useNavigate();
+  const { patient } = usePatientLoader();
 
   const upcoming = fakeAppointments.filter((a) => a.status === "upcoming");
   const past = fakeAppointments.filter((a) => a.status !== "upcoming");
@@ -118,15 +114,6 @@ export default function PatientAppointments() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Button
-          variant="subtle"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={() => navigate(`/patients/${id}`)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          Back to patient
-        </Button>
-
         <Title order={2}>
           Appointments
           {patient?.givenName ? ` — ${patient.givenName}` : ""}

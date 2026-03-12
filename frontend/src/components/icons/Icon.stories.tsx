@@ -1,23 +1,15 @@
 /**
  * Icon Component Stories
  *
- * Demonstrates the Icon component with different sizes and icon types.
- * Shows the standard sizing conventions used throughout the application.
+ * Demonstrates the Icon component with all available icons used in the
+ * application, displayed in a 5-column grid with labels.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack, Group, Text, Card } from "@mantine/core";
-import {
-  IconPencil,
-  IconUserPlus,
-  IconSettings,
-  IconMail,
-  IconCalendar,
-  IconFileText,
-  IconChartBar,
-  IconSearch,
-} from "@tabler/icons-react";
+import { SimpleGrid, Stack, Text, Card } from "@mantine/core";
+import { IconPencil } from "@tabler/icons-react";
 import Icon from "./Icon";
+import appIcons from "./appIcons";
 
 /**
  * Icon component provides consistent sizing for Tabler icons.
@@ -47,19 +39,38 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Default Icon with medium size (28px desktop, 20px mobile)
+ * All available icons used in the application, displayed in a 5-column grid.
  */
 export const Default: Story = {
   args: {
     icon: <IconPencil />,
     size: "md",
   },
+  render: () => (
+    <SimpleGrid cols={5} spacing="lg" style={{ maxWidth: 700 }}>
+      {appIcons.map(({ name, icon }) => (
+        <Card
+          key={name}
+          shadow="xs"
+          padding="md"
+          radius="md"
+          withBorder
+          style={{ textAlign: "center" }}
+        >
+          <Stack gap="xs" align="center">
+            <Icon icon={icon} size="lg" />
+            <Text size="xs" c="dimmed">
+              {name}
+            </Text>
+          </Stack>
+        </Card>
+      ))}
+    </SimpleGrid>
+  ),
 };
 
 /**
- * All Sizes Comparison
- *
- * Side-by-side comparison of all three size variants
+ * All sizes comparison — sm, md, and lg side by side.
  */
 export const AllSizes: Story = {
   args: {
@@ -73,87 +84,50 @@ export const AllSizes: Story = {
           <Text size="sm" fw={700} mb="xs">
             Small (20px desktop, 16px mobile)
           </Text>
-          <Group gap="md">
-            <Icon icon={<IconPencil />} size="sm" />
-            <Icon icon={<IconUserPlus />} size="sm" />
-            <Icon icon={<IconSettings />} size="sm" />
-            <Icon icon={<IconMail />} size="sm" />
-            <Icon icon={<IconSearch />} size="sm" />
-          </Group>
+          <SimpleGrid cols={5} spacing="md">
+            {appIcons.slice(0, 10).map(({ name, icon }) => (
+              <Stack key={name} gap={4} align="center">
+                <Icon icon={icon} size="sm" />
+                <Text size="xs" c="dimmed">
+                  {name}
+                </Text>
+              </Stack>
+            ))}
+          </SimpleGrid>
         </div>
 
         <div>
           <Text size="sm" fw={700} mb="xs">
-            Medium (28px desktop, 20px mobile) - Default
+            Medium (28px desktop, 20px mobile) — default
           </Text>
-          <Group gap="md">
-            <Icon icon={<IconPencil />} size="md" />
-            <Icon icon={<IconUserPlus />} size="md" />
-            <Icon icon={<IconSettings />} size="md" />
-            <Icon icon={<IconMail />} size="md" />
-            <Icon icon={<IconSearch />} size="md" />
-          </Group>
+          <SimpleGrid cols={5} spacing="md">
+            {appIcons.slice(0, 10).map(({ name, icon }) => (
+              <Stack key={name} gap={4} align="center">
+                <Icon icon={icon} size="md" />
+                <Text size="xs" c="dimmed">
+                  {name}
+                </Text>
+              </Stack>
+            ))}
+          </SimpleGrid>
         </div>
 
         <div>
           <Text size="sm" fw={700} mb="xs">
             Large (48px desktop, 32px mobile)
           </Text>
-          <Group gap="md">
-            <Icon icon={<IconPencil />} size="lg" />
-            <Icon icon={<IconUserPlus />} size="lg" />
-            <Icon icon={<IconSettings />} size="lg" />
-            <Icon icon={<IconMail />} size="lg" />
-            <Icon icon={<IconSearch />} size="lg" />
-          </Group>
+          <SimpleGrid cols={5} spacing="md">
+            {appIcons.slice(0, 10).map(({ name, icon }) => (
+              <Stack key={name} gap={4} align="center">
+                <Icon icon={icon} size="lg" />
+                <Text size="xs" c="dimmed">
+                  {name}
+                </Text>
+              </Stack>
+            ))}
+          </SimpleGrid>
         </div>
       </Stack>
     </Card>
-  ),
-};
-
-/**
- * Various Icon Types
- *
- * Shows the Icon component works with any Tabler icon
- */
-export const VariousIcons: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "md",
-  },
-  render: () => (
-    <Group gap="md">
-      <Icon icon={<IconPencil />} />
-      <Icon icon={<IconUserPlus />} />
-      <Icon icon={<IconSettings />} />
-      <Icon icon={<IconMail />} />
-      <Icon icon={<IconCalendar />} />
-      <Icon icon={<IconFileText />} />
-      <Icon icon={<IconChartBar />} />
-      <Icon icon={<IconSearch />} />
-    </Group>
-  ),
-};
-
-/**
- * With Custom Styling
- *
- * Demonstrates applying custom className for additional styling
- */
-export const WithCustomClass: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "md",
-  },
-  render: () => (
-    <Group gap="md">
-      <Icon icon={<IconPencil />} size="lg" className="custom-icon" />
-      <style>{`
-        .custom-icon {
-          color: var(--mantine-color-blue-6);
-        }
-      `}</style>
-    </Group>
   ),
 };

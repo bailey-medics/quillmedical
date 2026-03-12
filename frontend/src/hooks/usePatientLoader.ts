@@ -161,8 +161,6 @@ export function usePatientLoader(): UsePatientLoaderResult {
 
     return () => {
       cancelled = true;
-      setPatient(null);
-      loadedIdRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- patient intentionally excluded to prevent infinite loop
   }, [id, setPatient]);

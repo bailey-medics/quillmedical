@@ -8,7 +8,6 @@
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import {
   Badge,
-  Button,
   Card,
   Container,
   Group,
@@ -16,8 +15,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
 
 type ClinicalLetter = {
   id: string;
@@ -76,21 +73,11 @@ function getStatusColour(status: string): string {
 }
 
 export default function PatientLetters() {
-  const { id, patient } = usePatientLoader();
-  const navigate = useNavigate();
+  const { patient } = usePatientLoader();
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Button
-          variant="subtle"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={() => navigate(`/patients/${id}`)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          Back to patient
-        </Button>
-
         <Title order={2}>
           Clinical letters
           {patient?.givenName ? ` — ${patient.givenName}` : ""}

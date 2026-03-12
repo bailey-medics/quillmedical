@@ -50,8 +50,15 @@ export default function ActionCard({
   disabled = false,
 }: ActionCardProps) {
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder maw="37.05rem">
-      <Stack gap="md">
+    <Card
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      withBorder
+      maw="37.05rem"
+      h="100%"
+    >
+      <Stack gap="md" h="100%">
         <Group>
           <Icon icon={icon} size={iconSize} />
           <Title order={3}>{title}</Title>
@@ -59,6 +66,12 @@ export default function ActionCard({
         <Text size="lg" c="dimmed">
           {subtitle}
         </Text>
+        <div
+          style={{
+            marginTop: "auto",
+            marginBottom: "calc(var(--mantine-spacing-md) * -0.5)",
+          }}
+        />
         {onClick ? (
           <Button
             onClick={onClick}

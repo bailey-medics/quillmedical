@@ -58,6 +58,7 @@ import Patient from "./pages/Patient";
 import PatientAppointments from "./pages/PatientAppointments";
 import PatientLetters from "./pages/PatientLetters";
 import PatientMessages from "./pages/PatientMessages";
+import PatientMessageThread from "./pages/PatientMessageThread";
 import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TotpSetup from "./pages/TotpSetup";
@@ -110,6 +111,10 @@ const router = createBrowserRouter(
         { path: "/patients/:id", element: <Patient /> },
         { path: "/patients/:id/letters", element: <PatientLetters /> },
         { path: "/patients/:id/messages", element: <PatientMessages /> },
+        {
+          path: "/patients/:id/messages/:conversationId",
+          element: <PatientMessageThread />,
+        },
         { path: "/patients/:id/notes", element: <PatientNotes /> },
         {
           path: "/patients/:id/appointments",

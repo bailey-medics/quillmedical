@@ -1,30 +1,14 @@
 /**
- * Patient Messages Page Tests
+ * Patient Messages List Page Tests
  */
 
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import PatientMessages from "./PatientMessages";
 
 vi.mock("@/lib/api", () => ({
   api: { get: vi.fn() },
-}));
-
-vi.mock("@/auth/AuthContext", () => ({
-  useAuth: () => ({
-    state: {
-      status: "authenticated",
-      user: { id: "mark-bailey", name: "Mark Bailey" },
-    },
-  }),
-}));
-
-vi.mock("@/components/profile-pic/ProfilePic", () => ({
-  default: ({ givenName }: { givenName?: string }) => (
-    <div data-testid="profile-pic">{givenName}</div>
-  ),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -48,59 +32,37 @@ vi.mock("react-router-dom", async () => {
 });
 
 describe("PatientMessages", () => {
-  it("renders messages with patient name", () => {
+  it("renders messages heading with patient name", () => {
+    renderWithRouter(<PatientMessages />, {
+      routePath: "/patients/:id/messages",
+      initialRoute: "/patients/test-patient/messages",
+    });
+
+    expect(screen.getByText("Messages — James")).toBeInTheDocument();
+  });
+
+  it("renders conversation list", () => {
     renderWithRouter(<PatientMessages />, {
       routePath: "/patients/:id/messages",
       initialRoute: "/patients/test-patient/messages",
     });
 
     expect(
-      screen.getByText(/I'd like to book in for Dr Corbett/),
+      screen.getByText(/referral to the gastroenterology clinic/),
     ).toBeInTheDocument();
-  });
-
-  it("renders Dr Corbett messages", () => {
-    renderWithRouter(<PatientMessages />, {
-      routePath: "/patients/:id/messages",
-      initialRoute: "/patients/test-patient/messages",
-    });
-
-    expect(screen.getByText(/personalised dietary guide/)).toBeInTheDocument();
-  });
-
-  it("renders action buttons on system message", () => {
-    renderWithRouter(<PatientMessages />, {
-      routePath: "/patients/:id/messages",
-      initialRoute: "/patients/test-patient/messages",
-    });
-
     expect(
-      screen.getByRole("button", { name: "I'll attend" }),
+      screen.getByText(/repeat prescription has been sent/),
     ).toBeInTheDocument();
   });
 
-  it("renders back to patient button", () => {
+  it("renders conversation status badges", () => {
     renderWithRouter(<PatientMessages />, {
       routePath: "/patients/:id/messages",
       initialRoute: "/patients/test-patient/messages",
     });
 
-    expect(
-      screen.getByRole("button", { name: /back to patient/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("allows sending a new message", async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<PatientMessages />, {
-      routePath: "/patients/:id/messages",
-      initialRoute: "/patients/test-patient/messages",
-    });
-
-    const input = screen.getByPlaceholderText("Type a message...");
-    await user.type(input, "Test message");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-
-    expect(screen.getByText("Test message")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
+    expect(screen.getByText("resolved")).toBeInTheDocument();
+    expect(screen.getByText("closed")).toBeInTheDocument();
   });
 });

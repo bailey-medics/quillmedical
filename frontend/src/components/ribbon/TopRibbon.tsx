@@ -32,6 +32,10 @@ type Props = {
   isNarrow?: boolean;
   /** Font size for patient details (default: "1.25rem") */
   fontSize?: string;
+  /** Callback when patient demographics are clicked */
+  onPatientClick?: () => void;
+  /** Callback when patient demographics are double-clicked */
+  onPatientDoubleClick?: () => void;
 };
 
 /**
@@ -123,6 +127,8 @@ export default function TopRibbon({
   navOpen = false,
   isNarrow = false,
   fontSize = "1.25rem",
+  onPatientClick,
+  onPatientDoubleClick,
 }: Props) {
   const showBrand = isLoading || !patient || (patient && !isNarrow);
   return (
@@ -155,11 +161,15 @@ export default function TopRibbon({
           {isLoading ? (
             <RibbonSkeleton isNarrow={isNarrow} />
           ) : patient ? (
-            <>
+            <div
+              onClick={onPatientClick}
+              onDoubleClick={onPatientDoubleClick}
+              style={{ cursor: "pointer" }}
+            >
               {isNarrow
                 ? patientDetailsShort(patient, fontSize)
                 : patientDetailsLong(patient, fontSize)}
-            </>
+            </div>
           ) : null}
         </div>
         {/* right: search — hidden by @container when narrow */}

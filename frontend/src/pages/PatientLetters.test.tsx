@@ -68,17 +68,6 @@ describe("PatientLetters", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders back to patient button", () => {
-    renderWithRouter(<PatientLetters />, {
-      routePath: "/patients/:id/letters",
-      initialRoute: "/patients/test-patient/letters",
-    });
-
-    expect(
-      screen.getByRole("button", { name: /back to patient/i }),
-    ).toBeInTheDocument();
-  });
-
   it("renders status badges", () => {
     renderWithRouter(<PatientLetters />, {
       routePath: "/patients/:id/letters",

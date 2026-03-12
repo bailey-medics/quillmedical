@@ -75,17 +75,6 @@ describe("PatientAppointments", () => {
     expect(completedBadges.length).toBe(4);
   });
 
-  it("renders back to patient button", () => {
-    renderWithRouter(<PatientAppointments />, {
-      routePath: "/patients/:id/appointments",
-      initialRoute: "/patients/test-patient/appointments",
-    });
-
-    expect(
-      screen.getByRole("button", { name: /back to patient/i }),
-    ).toBeInTheDocument();
-  });
-
   it("renders appointment locations", () => {
     renderWithRouter(<PatientAppointments />, {
       routePath: "/patients/:id/appointments",
