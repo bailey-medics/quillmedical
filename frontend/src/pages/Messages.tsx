@@ -45,7 +45,16 @@ export type Conversation = {
   /** Assigned clinician name */
   assignedTo?: string;
   /** All non-patient participants in this conversation */
-  participants?: string[];
+  participants?: Participant[];
+};
+
+export type Participant = {
+  /** Name shown in the conversation header (e.g. "Dr Corbett") */
+  displayName: string;
+  /** Given (first) name for initials and tooltip */
+  givenName: string;
+  /** Family (last) name for initials and tooltip */
+  familyName?: string;
 };
 
 type SortOption = "recent" | "unread" | "patient-name";

@@ -30,7 +30,18 @@ function buildFakeConversations(
       unreadCount: 1,
       status: "active",
       assignedTo: "Dr Corbett",
-      participants: ["Dr Corbett", "Gemma"],
+      participants: [
+        {
+          displayName: "Dr Corbett",
+          givenName: "Gareth",
+          familyName: "Corbett",
+        },
+        {
+          displayName: "Gemma Corbett",
+          givenName: "Gemma",
+          familyName: "Corbett",
+        },
+      ],
     },
     {
       id: "gp-referral",
@@ -44,7 +55,9 @@ function buildFakeConversations(
       unreadCount: 0,
       status: "resolved",
       assignedTo: "Dr Patel",
-      participants: ["Dr Patel"],
+      participants: [
+        { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
+      ],
     },
     {
       id: "prescription-query",

@@ -10,7 +10,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PatientMessagesList from "./PatientMessagesList";
-import type { Conversation } from "@/pages/Messages";
+import type { Conversation, Participant } from "@/pages/Messages";
 
 const meta: Meta<typeof PatientMessagesList> = {
   title: "Messaging/PatientMessagesList",
@@ -33,7 +33,14 @@ const mockConversations: Conversation[] = [
     unreadCount: 2,
     status: "active",
     assignedTo: "Dr Corbett",
-    participants: ["Dr Corbett", "Gemma"],
+    participants: [
+      { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
+      {
+        displayName: "Gemma Corbett",
+        givenName: "Gemma",
+        familyName: "Corbett",
+      },
+    ] satisfies Participant[],
   },
   {
     id: "2",
@@ -47,7 +54,9 @@ const mockConversations: Conversation[] = [
     unreadCount: 0,
     status: "resolved",
     assignedTo: "Dr Patel",
-    participants: ["Dr Patel"],
+    participants: [
+      { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
+    ] satisfies Participant[],
   },
   {
     id: "3",
@@ -61,7 +70,10 @@ const mockConversations: Conversation[] = [
     unreadCount: 0,
     status: "closed",
     assignedTo: "Pharmacy",
-    participants: ["Pharmacy", "Dr Corbett"],
+    participants: [
+      { displayName: "Pharmacy", givenName: "Pharmacy" },
+      { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
+    ] satisfies Participant[],
   },
   {
     id: "4",

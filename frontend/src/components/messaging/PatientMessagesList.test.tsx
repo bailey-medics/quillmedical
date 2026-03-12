@@ -10,7 +10,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import PatientMessagesList from "./PatientMessagesList";
-import type { Conversation } from "@/pages/Messages";
+import type { Conversation, Participant } from "@/pages/Messages";
 
 const mockConversations: Conversation[] = [
   {
@@ -22,7 +22,14 @@ const mockConversations: Conversation[] = [
     unreadCount: 2,
     status: "active",
     assignedTo: "Dr Corbett",
-    participants: ["Dr Corbett", "Gemma"],
+    participants: [
+      { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
+      {
+        displayName: "Gemma Corbett",
+        givenName: "Gemma",
+        familyName: "Corbett",
+      },
+    ] satisfies Participant[],
   },
   {
     id: "2",
@@ -33,7 +40,9 @@ const mockConversations: Conversation[] = [
     unreadCount: 0,
     status: "resolved",
     assignedTo: "Dr Patel",
-    participants: ["Dr Patel"],
+    participants: [
+      { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
+    ] satisfies Participant[],
   },
   {
     id: "3",
@@ -57,7 +66,7 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      expect(screen.getByText("Dr Corbett, Gemma")).toBeInTheDocument();
+      expect(screen.getByText("Dr Corbett, Gemma Corbett")).toBeInTheDocument();
       expect(screen.getByText("Dr Patel")).toBeInTheDocument();
     });
 
@@ -83,7 +92,7 @@ describe("PatientMessagesList", () => {
       expect(screen.getByText("Unassigned")).toBeInTheDocument();
     });
 
-    it("uses first letter of clinician name in avatar", () => {
+    it("shows participant initials in stacked profile icons", () => {
       renderWithMantine(
         <PatientMessagesList
           conversations={[mockConversations[0]]}
@@ -91,10 +100,12 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      expect(screen.getByText("D")).toBeInTheDocument();
+      // Both Gareth Corbett and Gemma Corbett have initials "GC"
+      const gcElements = screen.getAllByText("GC");
+      expect(gcElements).toHaveLength(2);
     });
 
-    it("uses 'U' in avatar for unassigned conversations", () => {
+    it("renders no profile icons for unassigned conversations", () => {
       renderWithMantine(
         <PatientMessagesList
           conversations={[mockConversations[2]]}
@@ -102,7 +113,7 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      expect(screen.getByText("U")).toBeInTheDocument();
+      expect(screen.queryByRole("group")).not.toBeInTheDocument();
     });
   });
 
@@ -190,7 +201,7 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      await user.click(screen.getByText("Dr Corbett, Gemma"));
+      await user.click(screen.getByText("Dr Corbett, Gemma Corbett"));
       expect(onConversationClick).toHaveBeenCalledWith(mockConversations[0]);
     });
 
@@ -233,7 +244,9 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      expect(screen.queryByText("Dr Corbett, Gemma")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Dr Corbett, Gemma Corbett"),
+      ).not.toBeInTheDocument();
     });
   });
 

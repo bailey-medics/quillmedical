@@ -7,16 +7,12 @@
  * context is already evident from the page.
  */
 
-import type { Conversation } from "@/pages/Messages";
+import type { Conversation, Participant } from "@/pages/Messages";
 import {
-  Avatar,
-  Badge,
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-} from "@mantine/core";
+  StackedProfileIcons,
+  type StackedParticipant,
+} from "@/components/profile-pic";
+import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 type Props = {
   conversations: Conversation[];
@@ -72,9 +68,54 @@ function formatTime(timestamp: string): string {
  */
 function getDisplayName(conv: Conversation): string {
   if (conv.participants && conv.participants.length > 0) {
-    return conv.participants.join(", ");
+    return conv.participants.map((p) => p.displayName).join(", ");
   }
   return conv.assignedTo ?? "Unassigned";
+}
+
+/**
+ * Deterministic gradient index from a name string (0-29).
+ */
+function nameToGradientIndex(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % 30;
+}
+
+/**
+ * Convert a Participant to a StackedParticipant for the profile icons.
+ */
+function toStackedParticipant(p: Participant): StackedParticipant {
+  const fullName = [p.givenName, p.familyName].filter(Boolean).join(" ");
+  return {
+    givenName: p.givenName,
+    familyName: p.familyName,
+    gradientIndex: nameToGradientIndex(fullName),
+  };
+}
+
+/**
+ * Build the participants array for the stacked icons.
+ */
+function buildParticipants(conv: Conversation): StackedParticipant[] {
+  if (conv.participants && conv.participants.length > 0) {
+    return conv.participants.map(toStackedParticipant);
+  }
+  if (conv.assignedTo) {
+    const parts = conv.assignedTo.trim().split(/\s+/);
+    const givenName = parts[0];
+    const familyName = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
+    return [
+      {
+        givenName,
+        familyName,
+        gradientIndex: nameToGradientIndex(conv.assignedTo),
+      },
+    ];
+  }
+  return [];
 }
 
 /**
@@ -112,6 +153,7 @@ export default function PatientMessagesList({
     <Stack gap="sm">
       {conversations.map((conv) => {
         const displayName = getDisplayName(conv);
+        const participants = buildParticipants(conv);
 
         return (
           <div
@@ -121,9 +163,7 @@ export default function PatientMessagesList({
           >
             <Card shadow="sm" padding="md" radius="md" withBorder>
               <Group wrap="nowrap" align="flex-start">
-                <Avatar size={50} radius="xl" color="violet">
-                  {displayName.charAt(0).toUpperCase()}
-                </Avatar>
+                <StackedProfileIcons participants={participants} size="sm" />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Group justify="space-between" mb="xs">
