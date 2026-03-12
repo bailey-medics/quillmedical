@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import NationalNumber from "./NationalNumber";
 
 const meta = {
-  title: "Demographics/NationalNumber",
+  title: "data/NationalNumber",
   component: NationalNumber,
   parameters: {
     layout: "padded",

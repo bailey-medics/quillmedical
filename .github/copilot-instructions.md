@@ -85,7 +85,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Avatars | ProfilePic | `components/profile-pic/` |
 | Badge | Badge, ActiveStatus, PermissionBadge | `components/badge/` |
 | Button | AddButton | `components/button/` |
-| Data | Date, NationalNumber | `components/date/`, `components/demographics/` |
+| Data | Date, NationalNumber | `components/data/` |
 | Demographics | Demographics, DemographicsDetailed | `components/demographics/` |
 | Drawers | NavigationDrawer | `components/drawers/` |
 | Footer | Footer | `components/footer/` |

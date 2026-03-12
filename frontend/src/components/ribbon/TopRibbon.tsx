@@ -7,8 +7,8 @@
  */
 
 import type { Patient } from "@/domains/patient";
-import NationalNumber from "@/components/demographics/NationalNumber";
-import FormattedDate from "@/components/date/Date";
+import NationalNumber from "@/components/data/NationalNumber";
+import FormattedDate from "@/components/data/Date";
 import SearchField from "@/components/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
