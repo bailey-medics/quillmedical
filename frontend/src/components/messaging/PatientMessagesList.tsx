@@ -9,7 +9,7 @@
 
 import type { Conversation, Participant } from "@/pages/Messages";
 import {
-  StackedProfileIcons,
+  StackedProfilePics,
   type StackedParticipant,
 } from "@/components/profile-pic";
 import {
@@ -158,7 +158,7 @@ export default function PatientMessagesList({
           >
             <Card shadow="sm" padding="md" radius="md" withBorder>
               <Group wrap="nowrap" align="flex-start">
-                <StackedProfileIcons
+                <StackedProfilePics
                   participants={participants}
                   size={iconSize}
                 />

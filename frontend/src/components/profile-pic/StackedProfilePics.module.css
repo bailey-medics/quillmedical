@@ -12,10 +12,22 @@
   margin-left: 0;
 }
 
+.loading .avatar {
+  transition: none;
+}
+
+.loading:hover .avatar {
+  margin-left: -10px;
+}
+
 .stack:hover .avatar {
   margin-left: 4px;
 }
 
 .stack:hover .avatar:first-child {
+  margin-left: 0;
+}
+
+.loading:hover .avatar:first-child {
   margin-left: 0;
 }

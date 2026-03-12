@@ -1,5 +1,5 @@
 /**
- * StackedProfileIcons Component Tests
+ * StackedProfilePics Component Tests
  *
  * Tests for overlapping participant avatar display.
  */
@@ -7,12 +7,12 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
-import StackedProfileIcons from "./StackedProfileIcons";
+import StackedProfilePics from "./StackedProfilePics";
 
-describe("StackedProfileIcons", () => {
+describe("StackedProfilePics", () => {
   it("renders initials for each participant", () => {
     renderWithMantine(
-      <StackedProfileIcons
+      <StackedProfilePics
         participants={[
           { givenName: "Alice", familyName: "Smith", gradientIndex: 0 },
           { givenName: "Bob", familyName: "Jones", gradientIndex: 3 },
@@ -26,7 +26,7 @@ describe("StackedProfileIcons", () => {
 
   it("renders nothing when participants is empty", () => {
     const { container } = renderWithMantine(
-      <StackedProfileIcons participants={[]} />,
+      <StackedProfilePics participants={[]} />,
     );
 
     expect(container.querySelector("[role='group']")).not.toBeInTheDocument();
@@ -34,7 +34,7 @@ describe("StackedProfileIcons", () => {
 
   it("renders a single participant", () => {
     renderWithMantine(
-      <StackedProfileIcons
+      <StackedProfilePics
         participants={[
           { givenName: "Dr", familyName: "Patel", gradientIndex: 8 },
         ]}
@@ -46,7 +46,7 @@ describe("StackedProfileIcons", () => {
 
   it("renders a group role for accessibility", () => {
     renderWithMantine(
-      <StackedProfileIcons
+      <StackedProfilePics
         participants={[
           { givenName: "Alice", familyName: "Smith", gradientIndex: 0 },
         ]}
@@ -58,7 +58,7 @@ describe("StackedProfileIcons", () => {
 
   it("shows tooltips with full names", () => {
     renderWithMantine(
-      <StackedProfileIcons
+      <StackedProfilePics
         participants={[
           { givenName: "Alice", familyName: "Smith", gradientIndex: 0 },
           { givenName: "Bob", familyName: "Jones", gradientIndex: 3 },
@@ -73,7 +73,7 @@ describe("StackedProfileIcons", () => {
 
   it("renders given-name-only participants", () => {
     renderWithMantine(
-      <StackedProfileIcons participants={[{ givenName: "Pharmacy" }]} />,
+      <StackedProfilePics participants={[{ givenName: "Pharmacy" }]} />,
     );
 
     expect(screen.getByText("PH")).toBeInTheDocument();

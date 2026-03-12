@@ -5,10 +5,10 @@
  * title, description, and call-to-action button.
  */
 
-import { Button, Card, Stack, Text, Title, Group } from "@mantine/core";
-import { Link } from "react-router-dom";
+import { Card, Stack, Text, Title, Group } from "@mantine/core";
 import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
+import ActionCardButton from "@/components/button/ActionCardButton";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
@@ -72,28 +72,12 @@ export default function ActionCard({
             marginBottom: "calc(var(--mantine-spacing-md) * -0.5)",
           }}
         />
-        {onClick ? (
-          <Button
-            onClick={onClick}
-            variant="light"
-            fullWidth
-            disabled={disabled}
-            size="lg"
-          >
-            {buttonLabel}
-          </Button>
-        ) : (
-          <Button
-            component={Link}
-            to={buttonUrl}
-            variant="light"
-            fullWidth
-            disabled={disabled}
-            size="lg"
-          >
-            {buttonLabel}
-          </Button>
-        )}
+        <ActionCardButton
+          label={buttonLabel}
+          url={buttonUrl}
+          onClick={onClick}
+          disabled={disabled}
+        />
       </Stack>
     </Card>
   );

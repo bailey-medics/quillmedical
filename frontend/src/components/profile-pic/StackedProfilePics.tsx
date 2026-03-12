@@ -5,7 +5,7 @@
  * On hover the stack fans out to reveal each participant clearly.
  *
  * @example
- * <StackedProfileIcons
+ * <StackedProfilePics
  *   participants={[
  *     { givenName: "Alice", familyName: "Smith", gradientIndex: 0 },
  *     { givenName: "Bob", familyName: "Jones", gradientIndex: 3 },
@@ -14,7 +14,7 @@
  */
 
 import ProfilePic from "./ProfilePic";
-import classes from "./StackedProfileIcons.module.css";
+import classes from "./StackedProfilePics.module.css";
 
 export type StackedParticipant = {
   /** Given (first) name */
@@ -32,16 +32,24 @@ type Props = {
   participants: StackedParticipant[];
   /** Avatar size passed through to ProfilePic */
   size?: "sm" | "md" | "lg";
+  /** Show loading skeletons instead of avatars */
+  isLoading?: boolean;
 };
 
-export default function StackedProfileIcons({
+export default function StackedProfilePics({
   participants,
-  size = "sm",
+  size = "md",
+  isLoading = false,
 }: Props) {
   if (participants.length === 0) return null;
 
   return (
-    <div className={classes.stack} role="group" aria-label="Participants">
+    <div
+      className={`${classes.stack}${isLoading ? ` ${classes.loading}` : ""}`}
+      role="group"
+      aria-label="Participants"
+    >
+      {" "}
       {participants.map((p, i) => (
         <div
           className={classes.avatar}
@@ -53,6 +61,7 @@ export default function StackedProfileIcons({
             gradientIndex={p.gradientIndex}
             src={p.src}
             size={size}
+            isLoading={isLoading}
           />
         </div>
       ))}

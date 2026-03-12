@@ -12,7 +12,7 @@
  * ```
  */
 
-import { Badge } from "@mantine/core";
+import { Badge, Skeleton } from "@mantine/core";
 import type { MantineSize } from "@mantine/core";
 
 export type UserPermission = "superadmin" | "admin" | "staff";
@@ -23,6 +23,8 @@ interface PermissionBadgeProps {
   size?: MantineSize;
   /** Badge variant - defaults to filled */
   variant?: "filled" | "light" | "outline" | "dot" | "default";
+  /** Show loading skeleton instead of badge */
+  isLoading?: boolean;
 }
 
 /**
@@ -50,11 +52,38 @@ const PERMISSION_COLORS: Record<UserPermission, string> = {
  *
  * Used on admin pages, user management interfaces, and permission displays.
  */
+const SKELETON_WIDTHS: Record<string, number> = {
+  xs: 55,
+  sm: 65,
+  md: 75,
+  lg: 80,
+  xl: 140,
+};
+
+const SKELETON_HEIGHTS: Record<string, number> = {
+  xs: 16,
+  sm: 19,
+  md: 21,
+  lg: 27,
+  xl: 40,
+};
+
 export default function PermissionBadge({
   permission,
   size = "xl",
   variant = "filled",
+  isLoading = false,
 }: PermissionBadgeProps) {
+  if (isLoading) {
+    return (
+      <Skeleton
+        width={SKELETON_WIDTHS[size] ?? 90}
+        height={SKELETON_HEIGHTS[size] ?? 36}
+        radius="xl"
+      />
+    );
+  }
+
   return (
     <Badge
       size={size}
