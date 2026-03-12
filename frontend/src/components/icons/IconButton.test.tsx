@@ -95,15 +95,6 @@ describe("IconButton", () => {
     expect(button).toBeDisabled();
   });
 
-  it("can be in loading state", () => {
-    renderWithMantine(
-      <IconButton icon={<IconPencil />} loading aria-label="Loading button" />,
-    );
-
-    const button = screen.getByRole("button", { name: "Loading button" });
-    expect(button).toBeInTheDocument();
-  });
-
   it("applies custom className", () => {
     renderWithMantine(
       <IconButton

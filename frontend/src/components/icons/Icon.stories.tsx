@@ -59,8 +59,17 @@ export const Default: Story = {
         >
           <Stack gap="xs" align="center">
             <Icon icon={icon} size="lg" />
-            <Text size="xs" c="dimmed">
-              {name}
+            <Text
+              size="xs"
+              c="dimmed"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {name.replace(/([A-Z])/g, " $1").trim()}
             </Text>
           </Stack>
         </Card>

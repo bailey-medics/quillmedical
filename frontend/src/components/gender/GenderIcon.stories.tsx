@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack, Text } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import GenderIcon from "./GenderIcon";
 
 const meta: Meta<typeof GenderIcon> = {
   title: "Gender/GenderIcon",
   component: GenderIcon,
+  parameters: {
+    layout: "padded",
+  },
   tags: ["autodocs"],
   argTypes: {
     gender: {
@@ -46,29 +49,23 @@ export const Unspecified: Story = {
 };
 
 /**
- * Male icon sizes (small, medium, large)
+ * All icons at small, medium, and large sizes.
  */
 export const Sizes: Story = {
   render: () => (
-    <Stack gap="lg" align="center">
-      <div style={{ textAlign: "center" }}>
-        <Text size="sm" c="dimmed" mb="xs">
-          Small (24px)
-        </Text>
-        <GenderIcon gender="male" size={24} />
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <Text size="sm" c="dimmed" mb="xs">
-          Medium (29px)
-        </Text>
-        <GenderIcon gender="male" size={29} />
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <Text size="sm" c="dimmed" mb="xs">
-          Large (38px)
-        </Text>
-        <GenderIcon gender="male" size={38} />
-      </div>
+    <Stack gap="lg">
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <div key={size}>
+          <Group gap="lg">
+            {(["male", "female", "unspecified"] as const).map((gender) => (
+              <GenderIcon key={gender} gender={gender} size={size} />
+            ))}
+          </Group>
+          <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+            {size === "lg" ? `${size} (default)` : size}
+          </div>
+        </div>
+      ))}
     </Stack>
   ),
 };

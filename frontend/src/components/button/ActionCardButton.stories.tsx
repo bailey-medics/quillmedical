@@ -6,19 +6,21 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "@storybook/test";
-import {
-  reactRouterParameters,
-  withRouter,
-} from "storybook-addon-remix-react-router";
+import { MemoryRouter } from "react-router-dom";
 import ActionCardButton from "./ActionCardButton";
 
 const meta: Meta<typeof ActionCardButton> = {
   title: "Button/ActionCardButton",
   component: ActionCardButton,
-  decorators: [withRouter],
+  decorators: [
+    (Story) => (
+      <MemoryRouter>
+        <Story />
+      </MemoryRouter>
+    ),
+  ],
   parameters: {
     layout: "padded",
-    reactRouter: reactRouterParameters({}),
   },
   tags: ["autodocs"],
 };

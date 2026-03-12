@@ -5,22 +5,15 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack, Group, Text } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import IconButton from "./IconButton";
-import {
-  IconPencil,
-  IconTrash,
-  IconCheck,
-  IconX,
-  IconSettings,
-  IconPlus,
-} from "@tabler/icons-react";
+import { IconPencil } from "@tabler/icons-react";
 
 const meta = {
   title: "Icons/IconButton",
   component: IconButton,
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof IconButton>;
@@ -28,9 +21,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const variants = [
+  "subtle",
+  "light",
+  "filled",
+  "outline",
+  "default",
+  "transparent",
+  "white",
+] as const;
+
 /**
- * Default IconButton with medium size.
- * Container: 44px, Icon: 28px (desktop), 20px (mobile <768px)
+ * All Mantine style variants.
  */
 export const Default: Story = {
   args: {
@@ -38,43 +40,6 @@ export const Default: Story = {
     "aria-label": "Edit",
   },
 };
-
-/**
- * Small size IconButton.
- * Container: 36px, Icon: 20px (desktop), 16px (mobile <768px)
- */
-export const Small: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "sm",
-    "aria-label": "Edit small",
-  },
-};
-
-/**
- * Medium size IconButton (default).
- * Container: 44px, Icon: 28px (desktop), 20px (mobile <768px)
- */
-export const Medium: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "md",
-    "aria-label": "Edit medium",
-  },
-};
-
-/**
- * Large size IconButton.
- * Container: 60px, Icon: 48px (desktop), 32px (mobile <768px)
- */
-export const Large: Story = {
-  args: {
-    icon: <IconPencil />,
-    size: "lg",
-    "aria-label": "Edit large",
-  },
-};
-
 /**
  * All three sizes shown side-by-side for comparison.
  * Resize browser below 768px to see mobile sizes.
@@ -82,128 +47,97 @@ export const Large: Story = {
 export const AllSizes: Story = {
   args: {
     icon: <IconPencil />,
-    size: "md",
-    "aria-label": "Example",
-  },
-  render: () => (
-    <Group gap="xl" align="center">
-      <Stack align="center" gap="xs">
-        <IconButton icon={<IconPencil />} size="sm" aria-label="Small" />
-        <Text size="xs" c="dimmed">
-          Small (36px)
-        </Text>
-      </Stack>
-      <Stack align="center" gap="xs">
-        <IconButton icon={<IconPencil />} size="md" aria-label="Medium" />
-        <Text size="xs" c="dimmed">
-          Medium (44px)
-        </Text>
-      </Stack>
-      <Stack align="center" gap="xs">
-        <IconButton icon={<IconPencil />} size="lg" aria-label="Large" />
-        <Text size="xs" c="dimmed">
-          Large (60px)
-        </Text>
-      </Stack>
-    </Group>
-  ),
-};
-
-/**
- * Various icon types with different variants and colors.
- */
-export const Variants: Story = {
-  args: {
-    icon: <IconPencil />,
     "aria-label": "Example",
   },
   render: () => (
     <Stack gap="lg">
-      <Group gap="md">
-        <IconButton
-          icon={<IconPencil />}
-          variant="subtle"
-          color="blue"
-          aria-label="Edit"
-        />
-        <IconButton
-          icon={<IconTrash />}
-          variant="light"
-          color="red"
-          aria-label="Delete"
-        />
-        <IconButton
-          icon={<IconCheck />}
-          variant="filled"
-          color="green"
-          aria-label="Confirm"
-        />
-        <IconButton
-          icon={<IconX />}
-          variant="outline"
-          color="gray"
-          aria-label="Cancel"
-        />
-      </Group>
-      <Group gap="md">
-        <IconButton
-          icon={<IconSettings />}
-          variant="default"
-          aria-label="Settings"
-        />
-        <IconButton
-          icon={<IconPlus />}
-          variant="transparent"
-          aria-label="Add"
-        />
-      </Group>
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <div key={size}>
+          <IconButton icon={<IconPencil />} size={size} aria-label={size} />
+          <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+            {size === "md" ? `${size} (default)` : size}
+          </div>
+        </div>
+      ))}
     </Stack>
   ),
 };
 
-/**
- * IconButton with disabled state.
- */
-export const Disabled: Story = {
-  args: {
-    icon: <IconPencil />,
-    disabled: true,
-    "aria-label": "Disabled edit",
-  },
-};
+const states = [
+  { label: "default", props: {}, className: "no-hover" },
+  { label: "hover", props: {}, className: "force-hover" },
+  { label: "active", props: {}, className: "force-active" },
+  { label: "focus-visible", props: {}, className: "force-focus" },
+  { label: "disabled", props: { disabled: true }, className: "no-hover" },
+] as const;
 
 /**
- * IconButton with loading state.
+ * Each variant as a row, showing all states.
  */
-export const Loading: Story = {
+export const VariantsAndStates: Story = {
   args: {
     icon: <IconPencil />,
-    loading: true,
-    "aria-label": "Loading",
+    "aria-label": "Example",
   },
-};
-
-/**
- * Interactive IconButton with click handler.
- * Click the button to see the action in the Actions panel.
- */
-export const Interactive: Story = {
-  args: {
-    icon: <IconPencil />,
-    variant: "subtle",
-    color: "blue",
-    onClick: () => alert("IconButton clicked!"),
-    "aria-label": "Edit (click me)",
-  },
-};
-
-/**
- * IconButton with custom styling.
- */
-export const WithCustomClass: Story = {
-  args: {
-    icon: <IconPencil />,
-    className: "custom-icon-button",
-    "aria-label": "Custom styled",
-  },
+  render: () => (
+    <>
+      <style>{`
+        .force-hover button {
+          background-color: var(--ai-hover, var(--mantine-primary-color-filled-hover)) !important;
+          color: var(--ai-hover-color, var(--ai-color)) !important;
+        }
+        .force-active button {
+          background-color: var(--ai-hover, var(--mantine-primary-color-filled-hover)) !important;
+          color: var(--ai-hover-color, var(--ai-color)) !important;
+          transform: translateY(1px);
+        }
+        .force-focus button {
+          outline: 2px solid var(--mantine-primary-color-filled) !important;
+          outline-offset: 2px;
+          pointer-events: none;
+        }
+        .no-hover button {
+          pointer-events: none;
+        }
+      `}</style>
+      <Stack gap="lg">
+        {variants.map((variant) => (
+          <div key={variant}>
+            <div
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 700,
+                marginBottom: "0.5rem",
+              }}
+            >
+              {variant}
+            </div>
+            <Group gap="xl">
+              {states.map(({ label, props, className }) => (
+                <div
+                  key={label}
+                  className={className}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <IconButton
+                    icon={<IconPencil />}
+                    variant={variant}
+                    aria-label={`${variant} ${label}`}
+                    {...props}
+                  />
+                  <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                    {label}
+                  </div>
+                </div>
+              ))}
+            </Group>
+          </div>
+        ))}
+      </Stack>
+    </>
+  ),
 };

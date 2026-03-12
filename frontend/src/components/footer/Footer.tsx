@@ -62,7 +62,7 @@ export default function Footer({
     >
       <Box style={{ display: "flex", justifyContent: "flex-end" }}>
         {loading ? (
-          <Skeleton height={fontSize} width="40%" radius="sm" />
+          <Skeleton height={fontSize} width="12rem" radius="sm" />
         ) : (
           <Text size={fontSize} c="gray.7">
             {text}

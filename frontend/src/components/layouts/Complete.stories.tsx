@@ -8,8 +8,12 @@
  * - Real-world application page examples
  */
 import MarkdownView from "@/components/markdown";
-import { Messaging, type Message } from "@/components/messaging";
-import { DemographicsDetailed } from "@/components/demographics";
+import {
+  Messaging,
+  UserMessagesList,
+  type Message,
+} from "@/components/messaging";
+import type { Conversation } from "@/pages/Messages";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
@@ -26,12 +30,50 @@ const meta: Meta<typeof MainLayout> = {
 export default meta;
 type Story = StoryObj<typeof MainLayout>;
 
-export const WithPatientDemographics: Story = {
+const mockConversations: Conversation[] = [
+  {
+    id: "1",
+    patientId: "p1",
+    patientName: "Sarah Johnson",
+    lastMessage:
+      "Thank you for the letter, I've received it and will review with my GP.",
+    lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    unreadCount: 2,
+    status: "new",
+    assignedTo: undefined,
+  },
+  {
+    id: "2",
+    patientId: "p2",
+    patientName: "Michael Brown",
+    lastMessage:
+      "I need a medical letter for my insurance claim. Can you help?",
+    lastMessageTime: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    unreadCount: 0,
+    status: "active",
+    assignedTo: "Dr. Smith",
+  },
+  {
+    id: "3",
+    patientId: "p3",
+    patientName: "Emily Wilson",
+    lastMessage: "Could you send me a copy of my recent consultation notes?",
+    lastMessageTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    unreadCount: 1,
+    status: "active",
+    assignedTo: "Dr. Jones",
+  },
+];
+
+export const WithPatientMessageList: Story = {
   args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <DemographicsDetailed patient={demoPatientsList[0]} />
+        <UserMessagesList
+          conversations={mockConversations}
+          onConversationClick={(conv) => console.log("Clicked:", conv.id)}
+        />
       </div>
     </MainLayout>
   ),
