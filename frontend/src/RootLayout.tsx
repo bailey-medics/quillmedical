@@ -50,7 +50,8 @@ export default function RootLayout() {
   // Clear patient context when navigating away from patient-specific routes
   useEffect(() => {
     const isPatientRoute = /^\/patients\/[^/]+/.test(location.pathname);
-    if (!isPatientRoute) {
+    const isMessageThread = /^\/messages\/[^/]+/.test(location.pathname);
+    if (!isPatientRoute && !isMessageThread) {
       setPatient(null);
     }
   }, [location.pathname]);

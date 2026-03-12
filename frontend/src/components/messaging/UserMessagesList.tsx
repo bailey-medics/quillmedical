@@ -7,15 +7,8 @@
  */
 
 import type { Conversation } from "@/pages/Messages";
-import {
-  Avatar,
-  Badge,
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-} from "@mantine/core";
+import ProfilePic from "@/components/profile-pic/ProfilePic";
+import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 type Props = {
   conversations: Conversation[];
@@ -104,9 +97,12 @@ export default function UserMessagesList({
         >
           <Card shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <Avatar size={50} radius="xl" color="blue">
-                {conv.patientName.charAt(0).toUpperCase()}
-              </Avatar>
+              <ProfilePic
+                givenName={conv.patientGivenName}
+                familyName={conv.patientFamilyName}
+                gradientIndex={conv.patientGradientIndex}
+                size="md"
+              />
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">

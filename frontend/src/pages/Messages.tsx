@@ -34,6 +34,12 @@ export type Conversation = {
   patientId: string;
   /** Patient name */
   patientName: string;
+  /** Patient given (first) name for profile pic initials */
+  patientGivenName: string;
+  /** Patient family (last) name for profile pic initials */
+  patientFamilyName: string;
+  /** Patient gradient index for profile pic colour */
+  patientGradientIndex: number;
   /** Last message preview */
   lastMessage: string;
   /** Last message timestamp (ISO 8601) */
@@ -101,6 +107,9 @@ export default function Messages() {
           id: "conv-1",
           patientId: "patient-1",
           patientName: "John Smith",
+          patientGivenName: "John",
+          patientFamilyName: "Smith",
+          patientGradientIndex: 2,
           lastMessage: "Thank you for your help with my prescription",
           lastMessageTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
           unreadCount: 2,
@@ -111,6 +120,9 @@ export default function Messages() {
           id: "conv-2",
           patientId: "patient-2",
           patientName: "Mary Johnson",
+          patientGivenName: "Mary",
+          patientFamilyName: "Johnson",
+          patientGradientIndex: 4,
           lastMessage: "I need to schedule a follow-up appointment",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 2,
@@ -122,6 +134,9 @@ export default function Messages() {
           id: "conv-3",
           patientId: "patient-3",
           patientName: "Robert Brown",
+          patientGivenName: "Robert",
+          patientFamilyName: "Brown",
+          patientGradientIndex: 9,
           lastMessage: "My test results came back, what should I do next?",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 5,
@@ -134,6 +149,9 @@ export default function Messages() {
           id: "conv-4",
           patientId: "patient-4",
           patientName: "Sarah Davis",
+          patientGivenName: "Sarah",
+          patientFamilyName: "Davis",
+          patientGradientIndex: 1,
           lastMessage: "Issue resolved, thank you",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 24,

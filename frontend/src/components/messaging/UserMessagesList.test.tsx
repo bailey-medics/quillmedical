@@ -17,6 +17,9 @@ const mockConversations: Conversation[] = [
     id: "1",
     patientId: "p1",
     patientName: "John Doe",
+    patientGivenName: "John",
+    patientFamilyName: "Doe",
+    patientGradientIndex: 2,
     lastMessage: "Hello, I need help with my prescription",
     lastMessageTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     unreadCount: 2,
@@ -27,6 +30,9 @@ const mockConversations: Conversation[] = [
     id: "2",
     patientId: "p2",
     patientName: "Jane Smith",
+    patientGivenName: "Jane",
+    patientFamilyName: "Smith",
+    patientGradientIndex: 4,
     lastMessage: "Thank you for your help",
     lastMessageTime: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     unreadCount: 0,
@@ -37,6 +43,9 @@ const mockConversations: Conversation[] = [
     id: "3",
     patientId: "p3",
     patientName: "Bob Johnson",
+    patientGivenName: "Bob",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 9,
     lastMessage: "When is my next appointment?",
     lastMessageTime: new Date(Date.now() - 1800000).toISOString(), // 30 min ago
     unreadCount: 5,
@@ -83,7 +92,7 @@ describe("UserMessagesList", () => {
       expect(avatars.length).toBeGreaterThan(0);
     });
 
-    it("uses first letter of patient name in avatar", () => {
+    it("uses patient initials in profile pic", () => {
       renderWithMantine(
         <UserMessagesList
           conversations={mockConversations}
@@ -91,10 +100,10 @@ describe("UserMessagesList", () => {
         />,
       );
 
-      // Use getAllByText for multiple "J" letters (John and Jane)
-      const jLetters = screen.getAllByText("J");
-      expect(jLetters.length).toBeGreaterThan(0);
-      expect(screen.getByText("B")).toBeInTheDocument(); // Bob
+      // ProfilePic renders two-letter initials (givenName + familyName)
+      expect(screen.getByText("JD")).toBeInTheDocument(); // John Doe
+      expect(screen.getByText("JS")).toBeInTheDocument(); // Jane Smith
+      expect(screen.getByText("BJ")).toBeInTheDocument(); // Bob Johnson
     });
   });
 
@@ -120,6 +129,9 @@ describe("UserMessagesList", () => {
           id: "1",
           patientId: "p1",
           patientName: "Test Patient",
+          patientGivenName: "Test",
+          patientFamilyName: "Patient",
+          patientGradientIndex: 0,
           lastMessage: longMessage,
           lastMessageTime: new Date().toISOString(),
           unreadCount: 0,
