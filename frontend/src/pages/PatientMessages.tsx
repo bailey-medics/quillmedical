@@ -32,7 +32,7 @@ function buildFakeConversations(
       assignedTo: "Dr Corbett",
       participants: [
         {
-          displayName: "Dr Corbett",
+          displayName: "Dr Gareth Corbett",
           givenName: "Gareth",
           familyName: "Corbett",
         },
@@ -48,7 +48,7 @@ function buildFakeConversations(
       patientId: patientId,
       patientName: patientName,
       lastMessage:
-        "Your referral to the gastroenterology clinic has been processed.",
+        "Your referral to the gastroenterology clinic has been processed. You should hear from them within the next few days. All the best.",
       lastMessageTime: new Date(
         Date.now() - 1000 * 60 * 60 * 24 * 14,
       ).toISOString(),
@@ -64,7 +64,7 @@ function buildFakeConversations(
       patientId: patientId,
       patientName: patientName,
       lastMessage:
-        "Your repeat prescription has been sent to your nominated pharmacy.",
+        "Your repeat prescription has been sent to your nominated pharmacy. You're all sorted! Let us know if you need anything else.",
       lastMessageTime: new Date(
         Date.now() - 1000 * 60 * 60 * 24 * 30,
       ).toISOString(),

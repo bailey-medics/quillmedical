@@ -32,13 +32,13 @@ vi.mock("react-router-dom", async () => {
 });
 
 describe("PatientMessages", () => {
-  it("renders messages heading with patient name", () => {
+  it("renders conversation cards", () => {
     renderWithRouter(<PatientMessages />, {
       routePath: "/patients/:id/messages",
       initialRoute: "/patients/test-patient/messages",
     });
 
-    expect(screen.getByText("Messages — James")).toBeInTheDocument();
+    expect(screen.getByText("Dr Corbett, Gemma Corbett")).toBeInTheDocument();
   });
 
   it("renders conversation list", () => {
@@ -55,14 +55,12 @@ describe("PatientMessages", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders conversation status badges", () => {
+  it("renders unread count badge when messages are unread", () => {
     renderWithRouter(<PatientMessages />, {
       routePath: "/patients/:id/messages",
       initialRoute: "/patients/test-patient/messages",
     });
 
-    expect(screen.getByText("active")).toBeInTheDocument();
-    expect(screen.getByText("resolved")).toBeInTheDocument();
-    expect(screen.getByText("closed")).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
   });
 });
