@@ -10,7 +10,7 @@ import { StateRow } from "@/stories/variants";
 import { Group, Text } from "@mantine/core";
 
 const CONTAINER_NOTE =
-  "Constrained to 18rem for display. In practice, the button is full-width and adapts to its parent container.";
+  "Constrained to 18rem width for display. In practice, the button is full-width and adapts to its parent container.";
 
 const CONTAINER_WIDTH = "18rem";
 
@@ -77,7 +77,7 @@ export const States: Story = {
         </StateRow>
         <StateRow
           label="active"
-          state="active"
+          state={["hover", "active"]}
           style={{ width: CONTAINER_WIDTH }}
         >
           <ActionCardButton label="View details" url="/example" />

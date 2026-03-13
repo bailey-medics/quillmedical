@@ -12,13 +12,14 @@ export default function BurgerButton({ navOpen, onClick }: BurgerButtonProps) {
   return (
     <ActionIcon
       variant="subtle"
+      size="lg"
       onClick={onClick}
       aria-controls="app-navbar"
       aria-label={navOpen ? "Close navigation" : "Open navigation"}
       aria-expanded={navOpen}
       style={{ color: "#290661" }}
     >
-      <IconMenu2 size={28} stroke={2.5} />
+      <IconMenu2 size={32} stroke={2.5} />
     </ActionIcon>
   );
 }

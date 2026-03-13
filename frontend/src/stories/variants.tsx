@@ -66,10 +66,12 @@ type PseudoState =
 type StateRowProps = {
   /** Label displayed below the row */
   label: string;
-  /** Pseudo-state to force on descendant elements */
-  state?: PseudoState;
+  /** Pseudo-state(s) to force on descendant elements */
+  state?: PseudoState | PseudoState[];
   /** Content to display */
   children: ReactNode;
+  /** Horizontal alignment. Default: "center" */
+  align?: "center" | "start";
   /** Additional styles for the wrapper div */
   style?: CSSProperties;
 };
@@ -82,15 +84,28 @@ type StateRowProps = {
  * Also sets `pointer-events: none` to prevent real browser interactions
  * from overriding the forced state.
  */
-export function StateRow({ label, state, children, style }: StateRowProps) {
+export function StateRow({
+  label,
+  state,
+  children,
+  align = "center",
+  style,
+}: StateRowProps) {
+  const states = state ? (Array.isArray(state) ? state : [state]) : [];
+  const className =
+    states.length > 0
+      ? states.map((s) => `pseudo-${s}-all`).join(" ")
+      : undefined;
+
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: align === "start" ? "flex-start" : "center",
+      }}
     >
-      <div
-        className={state ? `pseudo-${state}-all` : undefined}
-        style={{ pointerEvents: "none", ...style }}
-      >
+      <div className={className} style={{ pointerEvents: "none", ...style }}>
         {children}
       </div>
       <div style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>{label}</div>

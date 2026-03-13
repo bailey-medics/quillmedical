@@ -59,11 +59,11 @@ const iconMap = {
 
 // Map size to icon pixel dimensions
 const iconSizeMap: Record<IconSize, number> = {
-  xs: 12,
-  sm: 16,
-  md: 20,
-  lg: 28,
-  xl: 36,
+  xs: 10,
+  sm: 13,
+  md: 16,
+  lg: 22,
+  xl: 29,
 };
 
 /**

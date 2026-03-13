@@ -45,13 +45,13 @@ export const Sizes: Story = {
   render: () => (
     <VariantStack>
       {SIZES.map((size) => (
-        <VariantRow
+        <StateRow
           key={size}
           label={size === "md" ? "md (default)" : size}
-          horizontal={false}
+          align="start"
         >
           <IconButton icon={<IconPencil />} size={size} aria-label={size} />
-        </VariantRow>
+        </StateRow>
       ))}
     </VariantStack>
   ),
@@ -79,7 +79,10 @@ export const Variants: Story = {
   render: () => (
     <VariantStack>
       {VARIANTS.map((variant) => (
-        <VariantRow key={variant} label={variant}>
+        <VariantRow
+          key={variant}
+          label={variant === "filled" ? "filled (actual default)" : variant}
+        >
           <StateRow label="default">
             <IconButton
               icon={<IconPencil />}
@@ -94,7 +97,7 @@ export const Variants: Story = {
               aria-label="hover"
             />
           </StateRow>
-          <StateRow label="active" state="active">
+          <StateRow label="active" state={["hover", "active"]}>
             <IconButton
               icon={<IconPencil />}
               variant={variant}
