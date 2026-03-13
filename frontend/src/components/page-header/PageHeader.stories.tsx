@@ -178,20 +178,20 @@ export const AllSizes: Story = {
   render: () => (
     <Box>
       <PageHeader
-        title="Large Header"
-        description="This is a large header (size='lg')"
-        size="lg"
+        title="Small Header"
+        description="This is a small header (size='sm')"
+        size="sm"
       />
+
       <PageHeader
         title="Medium Header"
         description="This is a medium header (size='md')"
         size="md"
       />
       <PageHeader
-        title="Small Header"
-        description="This is a small header (size='sm')"
-        size="sm"
-        mb={0}
+        title="Large Header"
+        description="This is a large header (size='lg')"
+        size="lg"
       />
     </Box>
   ),
