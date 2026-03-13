@@ -17,11 +17,13 @@ const mockConversations: Conversation[] = [
     id: "1",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage: "I've reviewed your case notes",
     lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
     unreadCount: 2,
     status: "active",
-    assignedTo: "Dr Corbett",
     participants: [
       { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
       {
@@ -35,11 +37,13 @@ const mockConversations: Conversation[] = [
     id: "2",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage: "Your referral has been processed",
     lastMessageTime: new Date(Date.now() - 86400000).toISOString(),
     unreadCount: 0,
     status: "resolved",
-    assignedTo: "Dr Patel",
     participants: [
       { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
     ] satisfies Participant[],
@@ -48,11 +52,16 @@ const mockConversations: Conversation[] = [
     id: "3",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage: "Prescription sent to pharmacy",
     lastMessageTime: new Date(Date.now() - 1800000).toISOString(),
     unreadCount: 1,
     status: "new",
-    assignedTo: undefined,
+    participants: [
+      { displayName: "Lisa Taylor", givenName: "Lisa", familyName: "Taylor" },
+    ] satisfies Participant[],
   },
 ];
 
@@ -81,17 +90,6 @@ describe("PatientMessagesList", () => {
       expect(screen.queryByText("Sarah Johnson")).not.toBeInTheDocument();
     });
 
-    it("shows 'Unassigned' when assignedTo is undefined", () => {
-      renderWithMantine(
-        <PatientMessagesList
-          conversations={mockConversations}
-          onConversationClick={vi.fn()}
-        />,
-      );
-
-      expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    });
-
     it("shows participant initials in stacked profile icons", () => {
       renderWithMantine(
         <PatientMessagesList
@@ -105,7 +103,7 @@ describe("PatientMessagesList", () => {
       expect(gcElements).toHaveLength(2);
     });
 
-    it("renders no profile icons for unassigned conversations", () => {
+    it("renders profile icon from participants", () => {
       renderWithMantine(
         <PatientMessagesList
           conversations={[mockConversations[2]]}
@@ -113,7 +111,7 @@ describe("PatientMessagesList", () => {
         />,
       );
 
-      expect(screen.queryByRole("group")).not.toBeInTheDocument();
+      expect(screen.getByText("LT")).toBeInTheDocument();
     });
   });
 

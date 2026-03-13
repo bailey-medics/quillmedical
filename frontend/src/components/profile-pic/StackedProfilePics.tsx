@@ -14,7 +14,10 @@
  */
 
 import ProfilePic from "./ProfilePic";
+import { Skeleton } from "@mantine/core";
 import classes from "./StackedProfilePics.module.css";
+
+const SIZES = { sm: 32, md: 48, lg: 64 } as const;
 
 export type StackedParticipant = {
   /** Given (first) name */
@@ -41,15 +44,15 @@ export default function StackedProfilePics({
   size = "md",
   isLoading = false,
 }: Props) {
-  if (participants.length === 0) return null;
+  if (participants.length === 0 && !isLoading) return null;
+
+  if (isLoading) {
+    const skeletonSize = SIZES[size];
+    return <Skeleton circle height={skeletonSize} width={skeletonSize} />;
+  }
 
   return (
-    <div
-      className={`${classes.stack}${isLoading ? ` ${classes.loading}` : ""}`}
-      role="group"
-      aria-label="Participants"
-    >
-      {" "}
+    <div className={classes.stack} role="group" aria-label="Participants">
       {participants.map((p, i) => (
         <div
           className={classes.avatar}
@@ -61,7 +64,6 @@ export default function StackedProfilePics({
             gradientIndex={p.gradientIndex}
             src={p.src}
             size={size}
-            isLoading={isLoading}
           />
         </div>
       ))}

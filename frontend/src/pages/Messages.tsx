@@ -48,10 +48,8 @@ export type Conversation = {
   unreadCount: number;
   /** Conversation status */
   status: "new" | "active" | "resolved" | "closed";
-  /** Assigned clinician name */
-  assignedTo?: string;
-  /** All non-patient participants in this conversation */
-  participants?: Participant[];
+  /** All non-patient participants in this conversation (at least one required) */
+  participants: Participant[];
 };
 
 export type Participant = {
@@ -114,7 +112,13 @@ export default function Messages() {
           lastMessageTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
           unreadCount: 2,
           status: "active",
-          assignedTo: "Dr. Williams",
+          participants: [
+            {
+              displayName: "Dr Williams",
+              givenName: "David",
+              familyName: "Williams",
+            },
+          ],
         },
         {
           id: "conv-2",
@@ -129,6 +133,13 @@ export default function Messages() {
           ).toISOString(), // 2 hours ago
           unreadCount: 0,
           status: "new",
+          participants: [
+            {
+              displayName: "Dr Corbett",
+              givenName: "Gareth",
+              familyName: "Corbett",
+            },
+          ],
         },
         {
           id: "conv-3",
@@ -143,7 +154,13 @@ export default function Messages() {
           ).toISOString(), // 5 hours ago
           unreadCount: 1,
           status: "active",
-          assignedTo: "Dr. Smith",
+          participants: [
+            {
+              displayName: "Dr Smith",
+              givenName: "James",
+              familyName: "Smith",
+            },
+          ],
         },
         {
           id: "conv-4",
@@ -158,6 +175,13 @@ export default function Messages() {
           ).toISOString(), // 1 day ago
           unreadCount: 0,
           status: "resolved",
+          participants: [
+            {
+              displayName: "Dr Williams",
+              givenName: "David",
+              familyName: "Williams",
+            },
+          ],
         },
       ];
 

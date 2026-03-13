@@ -32,7 +32,13 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
     unreadCount: 2,
     status: "new",
-    assignedTo: undefined,
+    participants: [
+      {
+        displayName: "Dr Williams",
+        givenName: "David",
+        familyName: "Williams",
+      },
+    ],
   },
   {
     id: "2",
@@ -43,7 +49,9 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
     unreadCount: 0,
     status: "active",
-    assignedTo: "Dr. Smith",
+    participants: [
+      { displayName: "Dr Smith", givenName: "James", familyName: "Smith" },
+    ],
   },
   {
     id: "3",
@@ -53,7 +61,9 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
     unreadCount: 1,
     status: "active",
-    assignedTo: "Dr. Jones",
+    participants: [
+      { displayName: "Dr Jones", givenName: "Eleanor", familyName: "Jones" },
+    ],
   },
   {
     id: "4",
@@ -65,7 +75,9 @@ const mockConversations: Conversation[] = [
     ).toISOString(), // 3 days ago
     unreadCount: 0,
     status: "resolved",
-    assignedTo: "Dr. Smith",
+    participants: [
+      { displayName: "Dr Smith", givenName: "James", familyName: "Smith" },
+    ],
   },
   {
     id: "5",
@@ -77,7 +89,9 @@ const mockConversations: Conversation[] = [
     ).toISOString(), // 1 week ago
     unreadCount: 0,
     status: "closed",
-    assignedTo: "Dr. Jones",
+    participants: [
+      { displayName: "Dr Jones", givenName: "Eleanor", familyName: "Jones" },
+    ],
   },
 ];
 
@@ -168,7 +182,13 @@ export const LongPatientName: Story = {
         lastMessageTime: new Date().toISOString(),
         unreadCount: 5,
         status: "new",
-        assignedTo: "Dr. Elizabeth Smithson-Wellington",
+        participants: [
+          {
+            displayName: "Dr Elizabeth Smithson-Wellington",
+            givenName: "Elizabeth",
+            familyName: "Smithson-Wellington",
+          },
+        ],
       },
     ],
     onConversationClick: (conversation) => {

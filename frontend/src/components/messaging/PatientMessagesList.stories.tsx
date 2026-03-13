@@ -27,12 +27,14 @@ const mockConversations: Conversation[] = [
     id: "1",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage:
       "I've reviewed your case notes and endoscopy findings. Everything looks good.",
     lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     unreadCount: 2,
     status: "active",
-    assignedTo: "Dr Corbett",
     participants: [
       { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
       {
@@ -46,6 +48,9 @@ const mockConversations: Conversation[] = [
     id: "2",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage:
       "Your referral to the gastroenterology clinic has been processed.",
     lastMessageTime: new Date(
@@ -53,7 +58,6 @@ const mockConversations: Conversation[] = [
     ).toISOString(),
     unreadCount: 0,
     status: "resolved",
-    assignedTo: "Dr Patel",
     participants: [
       { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
     ] satisfies Participant[],
@@ -62,6 +66,9 @@ const mockConversations: Conversation[] = [
     id: "3",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage:
       "Your repeat prescription has been sent to your nominated pharmacy.",
     lastMessageTime: new Date(
@@ -69,7 +76,6 @@ const mockConversations: Conversation[] = [
     ).toISOString(),
     unreadCount: 0,
     status: "closed",
-    assignedTo: "Pharmacy",
     participants: [
       { displayName: "Pharmacy", givenName: "Pharmacy" },
       { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
@@ -79,11 +85,16 @@ const mockConversations: Conversation[] = [
     id: "4",
     patientId: "p1",
     patientName: "Sarah Johnson",
+    patientGivenName: "Sarah",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 3,
     lastMessage: "A new message has been received regarding your appointment.",
     lastMessageTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     unreadCount: 1,
     status: "new",
-    assignedTo: undefined,
+    participants: [
+      { displayName: "Dr Corbett", givenName: "Gareth", familyName: "Corbett" },
+    ],
   },
 ];
 
@@ -100,53 +111,6 @@ export const Loading: Story = {
   args: {
     conversations: [],
     isLoading: true,
-    onConversationClick: (conversation) => {
-      console.log("Clicked conversation:", conversation);
-    },
-  },
-};
-
-export const WithUnread: Story = {
-  args: {
-    conversations: mockConversations.filter((conv) => conv.unreadCount > 0),
-    onConversationClick: (conversation) => {
-      console.log("Clicked conversation:", conversation);
-    },
-  },
-};
-
-export const AllResolved: Story = {
-  args: {
-    conversations: mockConversations.filter(
-      (conv) => conv.status === "resolved" || conv.status === "closed",
-    ),
-    onConversationClick: (conversation) => {
-      console.log("Clicked conversation:", conversation);
-    },
-  },
-};
-
-export const Empty: Story = {
-  args: {
-    conversations: [],
-    onConversationClick: (conversation) => {
-      console.log("Clicked conversation:", conversation);
-    },
-  },
-};
-
-export const SingleConversation: Story = {
-  args: {
-    conversations: [mockConversations[0]],
-    onConversationClick: (conversation) => {
-      console.log("Clicked conversation:", conversation);
-    },
-  },
-};
-
-export const UnassignedConversation: Story = {
-  args: {
-    conversations: [mockConversations[3]],
     onConversationClick: (conversation) => {
       console.log("Clicked conversation:", conversation);
     },

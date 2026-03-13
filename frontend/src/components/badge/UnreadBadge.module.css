@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--mantine-color-blue-4);
+  color: white;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sm {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+
+.md {
+  min-width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.lg {
+  min-width: 26px;
+  height: 26px;
+  font-size: 15px;
+}
+
+.xl {
+  min-width: 32px;
+  height: 32px;
+  font-size: 18px;
+}

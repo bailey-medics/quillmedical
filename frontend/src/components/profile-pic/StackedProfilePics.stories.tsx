@@ -7,6 +7,7 @@
  * - Different sizes
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { VariantRow, VariantStack } from "@/stories/variants";
 import StackedProfilePics from "./StackedProfilePics";
 
 const meta: Meta<typeof StackedProfilePics> = {
@@ -37,32 +38,17 @@ const threeParticipants = [
 
 export const Sizes: Story = {
   render: () => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "2rem",
-      }}
-    >
-      <div>
+    <VariantStack>
+      <VariantRow label="Small (32px)" horizontal={false}>
         <StackedProfilePics participants={threeParticipants} size="sm" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Small (32px)
-        </div>
-      </div>
-      <div>
+      </VariantRow>
+      <VariantRow label="Medium (48px)" horizontal={false}>
         <StackedProfilePics participants={threeParticipants} size="md" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Medium (48px)
-        </div>
-      </div>
-      <div>
+      </VariantRow>
+      <VariantRow label="Large (64px)" horizontal={false}>
         <StackedProfilePics participants={threeParticipants} size="lg" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Large (64px)
-        </div>
-      </div>
-    </div>
+      </VariantRow>
+    </VariantStack>
   ),
 };
 

@@ -24,7 +24,9 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     unreadCount: 2,
     status: "new",
-    assignedTo: "Dr. Smith",
+    participants: [
+      { displayName: "Dr Smith", givenName: "James", familyName: "Smith" },
+    ],
   },
   {
     id: "2",
@@ -37,7 +39,9 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     unreadCount: 0,
     status: "resolved",
-    assignedTo: undefined,
+    participants: [
+      { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
+    ],
   },
   {
     id: "3",
@@ -50,7 +54,9 @@ const mockConversations: Conversation[] = [
     lastMessageTime: new Date(Date.now() - 1800000).toISOString(), // 30 min ago
     unreadCount: 5,
     status: "active",
-    assignedTo: "Dr. Jones",
+    participants: [
+      { displayName: "Dr Jones", givenName: "Eleanor", familyName: "Jones" },
+    ],
   },
 ];
 
@@ -136,6 +142,13 @@ describe("UserMessagesList", () => {
           lastMessageTime: new Date().toISOString(),
           unreadCount: 0,
           status: "new",
+          participants: [
+            {
+              displayName: "Dr Smith",
+              givenName: "James",
+              familyName: "Smith",
+            },
+          ],
         },
       ];
 
@@ -291,8 +304,8 @@ describe("UserMessagesList", () => {
     });
   });
 
-  describe("Assigned to", () => {
-    it("displays assigned clinician when present", () => {
+  describe("Participants", () => {
+    it("displays participant names", () => {
       renderWithMantine(
         <UserMessagesList
           conversations={mockConversations}
@@ -300,26 +313,9 @@ describe("UserMessagesList", () => {
         />,
       );
 
-      expect(screen.getByText("Assigned to: Dr. Smith")).toBeInTheDocument();
-      expect(screen.getByText("Assigned to: Dr. Jones")).toBeInTheDocument();
-    });
-
-    it("hides assignment when not assigned", () => {
-      const conversations: Conversation[] = [
-        {
-          ...mockConversations[0],
-          assignedTo: undefined,
-        },
-      ];
-
-      renderWithMantine(
-        <UserMessagesList
-          conversations={conversations}
-          onConversationClick={vi.fn()}
-        />,
-      );
-
-      expect(screen.queryByText(/Assigned to:/)).not.toBeInTheDocument();
+      expect(screen.getByText("Dr Smith")).toBeInTheDocument();
+      expect(screen.getByText("Dr Patel")).toBeInTheDocument();
+      expect(screen.getByText("Dr Jones")).toBeInTheDocument();
     });
   });
 

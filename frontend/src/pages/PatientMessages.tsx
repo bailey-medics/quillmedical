@@ -18,18 +18,23 @@ import { useNavigate } from "react-router-dom";
 function buildFakeConversations(
   patientName: string,
   patientId: string,
+  patientGivenName: string,
+  patientFamilyName: string,
+  patientGradientIndex: number,
 ): Conversation[] {
   return [
     {
       id: "gastro-clinic",
       patientId: patientId,
       patientName: patientName,
+      patientGivenName,
+      patientFamilyName,
+      patientGradientIndex,
       lastMessage:
         "Thank you, payment received. I've reviewed your case notes and endoscopy findings...",
       lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
       unreadCount: 1,
       status: "active",
-      assignedTo: "Dr Corbett",
       participants: [
         {
           displayName: "Dr Gareth Corbett",
@@ -47,6 +52,9 @@ function buildFakeConversations(
       id: "gp-referral",
       patientId: patientId,
       patientName: patientName,
+      patientGivenName,
+      patientFamilyName,
+      patientGradientIndex,
       lastMessage:
         "Your referral to the gastroenterology clinic has been processed. You should hear from them within the next few days. All the best.",
       lastMessageTime: new Date(
@@ -54,7 +62,6 @@ function buildFakeConversations(
       ).toISOString(),
       unreadCount: 0,
       status: "resolved",
-      assignedTo: "Dr Patel",
       participants: [
         { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
       ],
@@ -63,6 +70,9 @@ function buildFakeConversations(
       id: "prescription-query",
       patientId: patientId,
       patientName: patientName,
+      patientGivenName,
+      patientFamilyName,
+      patientGradientIndex,
       lastMessage:
         "Your repeat prescription has been sent to your nominated pharmacy. You're all sorted! Let us know if you need anything else.",
       lastMessageTime: new Date(
@@ -70,7 +80,6 @@ function buildFakeConversations(
       ).toISOString(),
       unreadCount: 0,
       status: "closed",
-      assignedTo: "Lisa Taylor",
       participants: [
         {
           displayName: "Lisa Taylor",
@@ -87,7 +96,13 @@ export default function PatientMessages() {
   const navigate = useNavigate();
 
   const patientName = patient?.name ?? "Patient";
-  const conversations = buildFakeConversations(patientName, id ?? "");
+  const conversations = buildFakeConversations(
+    patientName,
+    id ?? "",
+    patient?.givenName ?? "Patient",
+    patient?.familyName ?? "",
+    patient?.gradientIndex ?? 0,
+  );
 
   return (
     <Container size="lg" py="xl">
@@ -101,7 +116,7 @@ export default function PatientMessages() {
         ) : (
           <PatientMessagesList
             conversations={conversations}
-            onConversationClick={(conv) =>
+            onConversationClick={(conv: Conversation) =>
               navigate(`/patients/${id}/messages/${conv.id}`)
             }
           />

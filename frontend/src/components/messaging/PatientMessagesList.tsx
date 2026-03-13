@@ -12,8 +12,8 @@ import {
   StackedProfilePics,
   type StackedParticipant,
 } from "@/components/profile-pic";
+import UnreadBadge from "@/components/badge/UnreadBadge";
 import {
-  Badge,
   Card,
   Group,
   Skeleton,
@@ -54,14 +54,10 @@ function formatTime(timestamp: string): string {
 
 /**
  * Get the display name for a patient conversation card.
- * Shows all non-patient participants, falling back to assignedTo
- * for backward compatibility.
+ * Shows all non-patient participant names joined by comma.
  */
 function getDisplayName(conv: Conversation): string {
-  if (conv.participants && conv.participants.length > 0) {
-    return conv.participants.map((p) => p.displayName).join(", ");
-  }
-  return conv.assignedTo ?? "Unassigned";
+  return conv.participants.map((p) => p.displayName).join(", ");
 }
 
 /**
@@ -91,22 +87,7 @@ function toStackedParticipant(p: Participant): StackedParticipant {
  * Build the participants array for the stacked icons.
  */
 function buildParticipants(conv: Conversation): StackedParticipant[] {
-  if (conv.participants && conv.participants.length > 0) {
-    return conv.participants.map(toStackedParticipant);
-  }
-  if (conv.assignedTo) {
-    const parts = conv.assignedTo.trim().split(/\s+/);
-    const givenName = parts[0];
-    const familyName = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
-    return [
-      {
-        givenName,
-        familyName,
-        gradientIndex: nameToGradientIndex(conv.assignedTo),
-      },
-    ];
-  }
-  return [];
+  return conv.participants.map(toStackedParticipant);
 }
 
 /**
@@ -131,7 +112,7 @@ export default function PatientMessagesList({
         {[1, 2, 3].map((i) => (
           <Card key={i} shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <Skeleton height={50} circle />
+              <StackedProfilePics participants={[]} size={iconSize} isLoading />
               <div style={{ flex: 1 }}>
                 <Skeleton height={20} width="60%" mb="xs" />
                 <Skeleton height={16} width="100%" mb="xs" />
@@ -169,11 +150,7 @@ export default function PatientMessagesList({
                       <Text fw={700} size="lg">
                         {displayName}
                       </Text>
-                      {conv.unreadCount > 0 && (
-                        <Badge size="lg" color="blue.4" variant="filled" circle>
-                          {conv.unreadCount}
-                        </Badge>
-                      )}
+                      <UnreadBadge count={conv.unreadCount} />
                     </Group>
                     <Text size="lg" c="dimmed">
                       {formatTime(conv.lastMessageTime)}

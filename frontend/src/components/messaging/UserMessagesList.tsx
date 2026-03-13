@@ -8,6 +8,7 @@
 
 import type { Conversation } from "@/pages/Messages";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
+import UnreadBadge from "@/components/badge/UnreadBadge";
 import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 type Props = {
@@ -128,16 +129,10 @@ export default function UserMessagesList({
                 </Text>
 
                 <Group justify="space-between">
-                  {conv.assignedTo && (
-                    <Text size="lg" c="dimmed">
-                      Assigned to: {conv.assignedTo}
-                    </Text>
-                  )}
-                  {conv.unreadCount > 0 && (
-                    <Badge size="sm" color="red" variant="filled" circle>
-                      {conv.unreadCount}
-                    </Badge>
-                  )}
+                  <Text size="lg" c="dimmed">
+                    {conv.participants.map((p) => p.displayName).join(", ")}
+                  </Text>
+                  <UnreadBadge count={conv.unreadCount} size="sm" />
                 </Group>
               </div>
             </Group>

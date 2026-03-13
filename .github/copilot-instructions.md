@@ -109,6 +109,27 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.
 
+#### Variant display helpers
+
+When building "All sizes" or "All variants" stories that show rows of components with a label underneath, use the `VariantStack` and `VariantRow` helpers from `src/stories/variants.tsx`:
+
+```tsx
+import { VariantRow, VariantStack } from "@/stories/variants";
+
+<VariantStack>
+  <VariantRow label="sm">
+    <MyComponent size="sm" />
+  </VariantRow>
+  <VariantRow label="lg (default)">
+    <MyComponent size="lg" />
+  </VariantRow>
+</VariantStack>
+```
+
+- `VariantStack` wraps rows with consistent vertical spacing
+- `VariantRow` wraps children in a horizontal `Group` with a label underneath
+- Set `horizontal={false}` for single-item rows (e.g. loading skeletons)
+
 #### Icons
 
 All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.tsx` — when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
