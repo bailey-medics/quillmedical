@@ -7,8 +7,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import IconButton from "./IconButton";
 import { IconPencil } from "@tabler/icons-react";
+import type { IconSize } from "@/components/icons";
 import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
-import { Group } from "@mantine/core";
+
+const SIZES: IconSize[] = ["sm", "md", "lg"];
 
 const meta = {
   title: "Button/IconButton",
@@ -33,17 +35,16 @@ export const Default: Story = {
 };
 
 /**
- * All three sizes shown side-by-side for comparison.
- * Resize browser below 768px to see mobile sizes.
+ * All three sizes side-by-side.
  */
-export const AllSizes: Story = {
+export const Sizes: Story = {
   args: {
     icon: <IconPencil />,
-    "aria-label": "Example",
+    "aria-label": "Edit",
   },
   render: () => (
     <VariantStack>
-      {(["sm", "md", "lg"] as const).map((size) => (
+      {SIZES.map((size) => (
         <VariantRow
           key={size}
           label={size === "md" ? "md (default)" : size}
@@ -56,29 +57,67 @@ export const AllSizes: Story = {
   ),
 };
 
-/** All interaction states side-by-side. */
-export const States: Story = {
+const VARIANTS: Array<
+  | "filled"
+  | "light"
+  | "outline"
+  | "subtle"
+  | "transparent"
+  | "default"
+  | "white"
+> = ["filled", "light", "outline", "subtle", "transparent", "default", "white"];
+
+/**
+ * All Mantine variants with interaction states.
+ * Each row is a variant, columns show default → hover → active → focus → disabled.
+ */
+export const Variants: Story = {
   args: {
     icon: <IconPencil />,
     "aria-label": "Edit",
   },
   render: () => (
-    <Group gap="xl">
-      <StateRow label="default">
-        <IconButton icon={<IconPencil />} aria-label="default" />
-      </StateRow>
-      <StateRow label="hover" state="hover">
-        <IconButton icon={<IconPencil />} aria-label="hover" />
-      </StateRow>
-      <StateRow label="active" state="active">
-        <IconButton icon={<IconPencil />} aria-label="active" />
-      </StateRow>
-      <StateRow label="focus-visible" state="focus-visible">
-        <IconButton icon={<IconPencil />} aria-label="focus" />
-      </StateRow>
-      <StateRow label="disabled">
-        <IconButton icon={<IconPencil />} aria-label="disabled" disabled />
-      </StateRow>
-    </Group>
+    <VariantStack>
+      {VARIANTS.map((variant) => (
+        <VariantRow key={variant} label={variant}>
+          <StateRow label="default">
+            <IconButton
+              icon={<IconPencil />}
+              variant={variant}
+              aria-label="default"
+            />
+          </StateRow>
+          <StateRow label="hover" state="hover">
+            <IconButton
+              icon={<IconPencil />}
+              variant={variant}
+              aria-label="hover"
+            />
+          </StateRow>
+          <StateRow label="active" state="active">
+            <IconButton
+              icon={<IconPencil />}
+              variant={variant}
+              aria-label="active"
+            />
+          </StateRow>
+          <StateRow label="focus-visible" state="focus-visible">
+            <IconButton
+              icon={<IconPencil />}
+              variant={variant}
+              aria-label="focus"
+            />
+          </StateRow>
+          <StateRow label="disabled">
+            <IconButton
+              icon={<IconPencil />}
+              variant={variant}
+              aria-label="disabled"
+              disabled
+            />
+          </StateRow>
+        </VariantRow>
+      ))}
+    </VariantStack>
   ),
 };

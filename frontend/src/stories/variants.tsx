@@ -39,8 +39,16 @@ export function VariantRow({
 }: VariantRowProps) {
   return (
     <div>
+      <div
+        style={{
+          marginBottom: "0.5rem",
+          fontSize: "0.875rem",
+          fontWeight: 700,
+        }}
+      >
+        {label}
+      </div>
       {horizontal ? <Group gap="md">{children}</Group> : children}
-      <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>{label}</div>
     </div>
   );
 }
@@ -76,14 +84,17 @@ type StateRowProps = {
  */
 export function StateRow({ label, state, children, style }: StateRowProps) {
   return (
-    <VariantRow label={label} horizontal={false}>
+    <div
+      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+    >
       <div
         className={state ? `pseudo-${state}-all` : undefined}
         style={{ pointerEvents: "none", ...style }}
       >
         {children}
       </div>
-    </VariantRow>
+      <div style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>{label}</div>
+    </div>
   );
 }
 
