@@ -1,39 +1,45 @@
 /**
- * User Messages List Component
+ * Messages List Component
  *
- * Displays a list of patient conversations for a clinician/admin user,
- * with preview information, unread counts, and status indicators.
- * Shows the patient name for each conversation.
+ * Displays a list of message threads with profile icons, unread counts,
+ * and message previews. Automatically uses ProfilePic for single-participant
+ * threads and StackedProfilePics for multi-participant threads.
  */
 
-import type { Conversation } from "@/pages/Messages";
+import type { StackedParticipant } from "@/components/profile-pic";
+import { StackedProfilePics } from "@/components/profile-pic";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
-import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
+import {
+  Card,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+  useMantineTheme,
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
-type Props = {
-  conversations: Conversation[];
-  onConversationClick: (conversation: Conversation) => void;
-  isLoading?: boolean;
+export type MessageThread = {
+  /** Unique thread identifier */
+  id: string;
+  /** Display name shown as the card heading */
+  displayName: string;
+  /** Participants for profile icon display */
+  profiles: StackedParticipant[];
+  /** Last message preview */
+  lastMessage: string;
+  /** Last message timestamp (ISO 8601) */
+  lastMessageTime: string;
+  /** Number of unread messages */
+  unreadCount: number;
 };
 
-/**
- * Get badge color based on conversation status
- */
-function getStatusColor(status: Conversation["status"]): string {
-  switch (status) {
-    case "new":
-      return "blue";
-    case "active":
-      return "green";
-    case "resolved":
-      return "gray";
-    case "closed":
-      return "dark";
-    default:
-      return "gray";
-  }
-}
+type Props = {
+  threads: MessageThread[];
+  onThreadClick: (thread: MessageThread) => void;
+  isLoading?: boolean;
+};
 
 /**
  * Format timestamp to relative time (e.g., "2 hours ago")
@@ -58,24 +64,22 @@ function formatTime(timestamp: string): string {
   }
 }
 
-/**
- * Messages List
- *
- * Renders a list of conversation cards with patient information,
- * last message preview, unread count, and status badge.
- */
-export default function UserMessagesList({
-  conversations,
-  onConversationClick,
+export default function MessagesList({
+  threads,
+  onThreadClick,
   isLoading,
 }: Props) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const iconSize = isMobile ? "sm" : "md";
+
   if (isLoading) {
     return (
       <Stack gap="sm">
         {[1, 2, 3].map((i) => (
           <Card key={i} shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <Skeleton height={50} circle />
+              <Skeleton height={isMobile ? 32 : 48} circle />
               <div style={{ flex: 1 }}>
                 <Skeleton height={20} width="60%" mb="xs" />
                 <Skeleton height={16} width="100%" mb="xs" />
@@ -90,50 +94,44 @@ export default function UserMessagesList({
 
   return (
     <Stack gap="sm">
-      {conversations.map((conv) => (
+      {threads.map((thread) => (
         <div
-          key={conv.id}
-          onClick={() => onConversationClick(conv)}
+          key={thread.id}
+          onClick={() => onThreadClick(thread)}
           style={{ cursor: "pointer" }}
         >
           <Card shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <ProfilePic
-                givenName={conv.patientGivenName}
-                familyName={conv.patientFamilyName}
-                gradientIndex={conv.patientGradientIndex}
-                size="md"
-              />
+              {thread.profiles.length > 1 ? (
+                <StackedProfilePics
+                  participants={thread.profiles}
+                  size={iconSize}
+                />
+              ) : (
+                <ProfilePic
+                  givenName={thread.profiles[0]?.givenName}
+                  familyName={thread.profiles[0]?.familyName}
+                  gradientIndex={thread.profiles[0]?.gradientIndex}
+                  size={iconSize}
+                />
+              )}
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
                   <Group gap="xs">
                     <Text fw={700} size="lg">
-                      {conv.patientName}
+                      {thread.displayName}
                     </Text>
-                    <Badge
-                      size="xs"
-                      color={getStatusColor(conv.status)}
-                      variant="light"
-                    >
-                      {conv.status}
-                    </Badge>
+                    <UnreadBadge count={thread.unreadCount} />
                   </Group>
                   <Text size="lg" c="dimmed">
-                    {formatTime(conv.lastMessageTime)}
+                    {formatTime(thread.lastMessageTime)}
                   </Text>
                 </Group>
 
                 <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
-                  {conv.lastMessage}
+                  {thread.lastMessage}
                 </Text>
-
-                <Group justify="space-between">
-                  <Text size="lg" c="dimmed">
-                    {conv.participants.map((p) => p.displayName).join(", ")}
-                  </Text>
-                  <UnreadBadge count={conv.unreadCount} size="sm" />
-                </Group>
               </div>
             </Group>
           </Card>

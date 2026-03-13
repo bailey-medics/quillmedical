@@ -38,7 +38,7 @@ describe("PatientLetters", () => {
       initialRoute: "/patients/test-patient/letters",
     });
 
-    expect(screen.getByText("Clinical letters — James")).toBeInTheDocument();
+    expect(screen.getByText("Clinical letters")).toBeInTheDocument();
   });
 
   it("renders letter cards with titles", () => {

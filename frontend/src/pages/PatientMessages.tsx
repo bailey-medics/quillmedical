@@ -7,7 +7,7 @@
  */
 
 import type { Conversation } from "@/pages/Messages";
-import { PatientMessagesList } from "@/components/messaging";
+import { MessagesList, type MessageThread } from "@/components/messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Card, Container, Stack, Text } from "@mantine/core";
 import { useEffect } from "react";
@@ -124,10 +124,32 @@ export default function PatientMessages() {
             </Text>
           </Card>
         ) : (
-          <PatientMessagesList
-            conversations={conversations}
-            onConversationClick={(conv: Conversation) =>
-              navigate(`/patients/${id}/messages/${conv.id}`)
+          <MessagesList
+            threads={conversations.map((conv) => ({
+              id: conv.id,
+              displayName: conv.participants
+                .map((p) => p.displayName)
+                .join(", "),
+              profiles: conv.participants.map((p) => {
+                const fullName = [p.givenName, p.familyName]
+                  .filter(Boolean)
+                  .join(" ");
+                let hash = 0;
+                for (let i = 0; i < fullName.length; i++) {
+                  hash = ((hash << 5) - hash + fullName.charCodeAt(i)) | 0;
+                }
+                return {
+                  givenName: p.givenName,
+                  familyName: p.familyName,
+                  gradientIndex: Math.abs(hash) % 30,
+                };
+              }),
+              lastMessage: conv.lastMessage,
+              lastMessageTime: conv.lastMessageTime,
+              unreadCount: conv.unreadCount,
+            }))}
+            onThreadClick={(thread: MessageThread) =>
+              navigate(`/patients/${id}/messages/${thread.id}`)
             }
           />
         )}
