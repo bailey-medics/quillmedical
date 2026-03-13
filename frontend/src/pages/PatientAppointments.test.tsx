@@ -26,6 +26,7 @@ vi.mock("react-router-dom", async () => {
         familyName: "Green",
       },
       setPatient: vi.fn(),
+      setPatientNav: vi.fn(),
     }),
   };
 });

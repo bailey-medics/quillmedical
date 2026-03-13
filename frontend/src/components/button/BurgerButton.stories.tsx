@@ -1,32 +1,32 @@
 /**
- * AddButton Storybook Stories
+ * BurgerButton Storybook Stories
  *
- * Demonstrates the AddButton component with real pseudo states.
+ * Demonstrates the BurgerButton component with real pseudo states.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "@storybook/test";
-import AddButton from "./AddButton";
+import BurgerButton from "./BurgerButton";
 import { StateRow } from "@/stories/variants";
 import { Group } from "@mantine/core";
 
-const meta: Meta<typeof AddButton> = {
-  title: "Button/AddButton",
-  component: AddButton,
+const meta: Meta<typeof BurgerButton> = {
+  title: "Button/BurgerButton",
+  component: BurgerButton,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   args: {
-    label: "Add user",
+    navOpen: false,
     onClick: fn(),
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof AddButton>;
+type Story = StoryObj<typeof BurgerButton>;
 
-/** Default interactive AddButton. */
+/** Default closed state. */
 export const Default: Story = {};
 
 /** All interaction states side-by-side. */
@@ -34,19 +34,16 @@ export const States: Story = {
   render: () => (
     <Group gap="xl">
       <StateRow label="default">
-        <AddButton label="Add user" />
+        <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
       <StateRow label="hover" state="hover">
-        <AddButton label="Add user" />
+        <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
       <StateRow label="active" state="active">
-        <AddButton label="Add user" />
+        <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
       <StateRow label="focus-visible" state="focus-visible">
-        <AddButton label="Add user" />
-      </StateRow>
-      <StateRow label="disabled">
-        <AddButton label="Add user" disabled />
+        <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
     </Group>
   ),

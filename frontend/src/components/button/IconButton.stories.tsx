@@ -7,7 +7,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import IconButton from "./IconButton";
 import { IconPencil } from "@tabler/icons-react";
-import { VariantRow, VariantStack, ButtonStateGrid } from "@/stories/variants";
+import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
+import { Group } from "@mantine/core";
 
 const meta = {
   title: "Button/IconButton",
@@ -20,16 +21,6 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-const variants = [
-  "subtle",
-  "light",
-  "filled",
-  "outline",
-  "default",
-  "transparent",
-  "white",
-] as const;
 
 /**
  * Default IconButton with all Mantine style variants.
@@ -65,34 +56,29 @@ export const AllSizes: Story = {
   ),
 };
 
-/**
- * Each variant as a row, showing all interaction states.
- */
-export const VariantsAndStates: Story = {
+/** All interaction states side-by-side. */
+export const States: Story = {
   args: {
     icon: <IconPencil />,
-    "aria-label": "Example",
+    "aria-label": "Edit",
   },
   render: () => (
-    <ButtonStateGrid
-      variants={variants}
-      renderButton={(variant, stateProps) => (
-        <IconButton
-          icon={<IconPencil />}
-          variant={
-            variant as
-              | "subtle"
-              | "light"
-              | "filled"
-              | "outline"
-              | "default"
-              | "transparent"
-              | "white"
-          }
-          aria-label={variant}
-          {...stateProps}
-        />
-      )}
-    />
+    <Group gap="xl">
+      <StateRow label="default">
+        <IconButton icon={<IconPencil />} aria-label="default" />
+      </StateRow>
+      <StateRow label="hover" state="hover">
+        <IconButton icon={<IconPencil />} aria-label="hover" />
+      </StateRow>
+      <StateRow label="active" state="active">
+        <IconButton icon={<IconPencil />} aria-label="active" />
+      </StateRow>
+      <StateRow label="focus-visible" state="focus-visible">
+        <IconButton icon={<IconPencil />} aria-label="focus" />
+      </StateRow>
+      <StateRow label="disabled">
+        <IconButton icon={<IconPencil />} aria-label="disabled" disabled />
+      </StateRow>
+    </Group>
   ),
 };

@@ -17,9 +17,8 @@
  * ```
  */
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Stack, Group } from "@mantine/core";
-import { BUTTON_STATES, buttonStateCss } from "./button-states";
 
 type VariantRowProps = {
   /** Label displayed below the row */
@@ -46,6 +45,48 @@ export function VariantRow({
   );
 }
 
+type PseudoState =
+  | "hover"
+  | "active"
+  | "focus"
+  | "focus-visible"
+  | "focus-within"
+  | "visited"
+  | "link"
+  | "target";
+
+type StateRowProps = {
+  /** Label displayed below the row */
+  label: string;
+  /** Pseudo-state to force on descendant elements */
+  state?: PseudoState;
+  /** Content to display */
+  children: ReactNode;
+  /** Additional styles for the wrapper div */
+  style?: CSSProperties;
+};
+
+/**
+ * A labelled row for displaying a forced pseudo-state.
+ *
+ * Applies `pseudo-{state}-all` class so `storybook-addon-pseudo-states`
+ * rewritten CSS activates the state on descendant elements.
+ * Also sets `pointer-events: none` to prevent real browser interactions
+ * from overriding the forced state.
+ */
+export function StateRow({ label, state, children, style }: StateRowProps) {
+  return (
+    <VariantRow label={label} horizontal={false}>
+      <div
+        className={state ? `pseudo-${state}-all` : undefined}
+        style={{ pointerEvents: "none", ...style }}
+      >
+        {children}
+      </div>
+    </VariantRow>
+  );
+}
+
 type VariantStackProps = {
   /** VariantRow elements */
   children: ReactNode;
@@ -56,80 +97,4 @@ type VariantStackProps = {
  */
 export function VariantStack({ children }: VariantStackProps) {
   return <Stack gap="xl">{children}</Stack>;
-}
-
-type ButtonStateGridProps = {
-  /** List of variant names to show as rows */
-  variants: readonly string[];
-  /** Render a button for a given variant and state.
-   *  `stateProps` contains `{ disabled: true }` for the disabled state. */
-  renderButton: (
-    variant: string,
-    stateProps: Record<string, unknown>,
-  ) => ReactNode;
-};
-
-/**
- * Grid showing every variant × interaction state for button-like components.
- *
- * Renders one row per variant, with columns for: default, hover, active,
- * focus-visible, and disabled. Includes CSS to simulate each state.
- *
- * @example
- * ```tsx
- * <ButtonStateGrid
- *   variants={["subtle", "filled", "outline"]}
- *   renderButton={(variant, stateProps) => (
- *     <IconButton
- *       icon={<IconPencil />}
- *       variant={variant}
- *       aria-label={variant}
- *       {...stateProps}
- *     />
- *   )}
- * />
- * ```
- */
-export function ButtonStateGrid({
-  variants,
-  renderButton,
-}: ButtonStateGridProps) {
-  return (
-    <>
-      <style>{buttonStateCss}</style>
-      <Stack gap="lg">
-        {variants.map((variant) => (
-          <div key={variant}>
-            <div
-              style={{
-                fontSize: "0.875rem",
-                fontWeight: 700,
-                marginBottom: "0.5rem",
-              }}
-            >
-              {variant}
-            </div>
-            <Group gap="xl">
-              {BUTTON_STATES.map(({ label, props, className }) => (
-                <div
-                  key={label}
-                  className={className}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
-                  {renderButton(variant, props)}
-                  <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                    {label}
-                  </div>
-                </div>
-              ))}
-            </Group>
-          </div>
-        ))}
-      </Stack>
-    </>
-  );
 }

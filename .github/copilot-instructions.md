@@ -3,7 +3,7 @@
 ## Stack Overview
 
 - **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL auth DB
-- **Frontend**: React 19 + TypeScript + Vite + Mantine UI at `/app/`
+- **Frontend**: React 19 + TypeScript + Vite + Mantine UI at `/app/` (Yarn 4, **never use npm**)
 - **Healthcare**: HAPI FHIR (demographics), EHRbase (clinical letters)
 - **Infrastructure**: Docker Compose, Caddy reverse proxy
 

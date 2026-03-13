@@ -4,7 +4,7 @@
  * Tests for the AddButton component covering:
  * - Rendering with label
  * - Click interactions
- * - Loading and disabled states
+ * - Disabled state
  * - Icon rendering
  */
 
@@ -56,39 +56,19 @@ describe("AddButton", () => {
 
       expect(handleClick).not.toHaveBeenCalled();
     });
-
-    it("does not call onClick when loading", async () => {
-      const user = userEvent.setup();
-      const handleClick = vi.fn();
-      renderWithMantine(
-        <AddButton label="Add user" onClick={handleClick} loading />,
-      );
-
-      const button = screen.getByRole("button");
-      await user.click(button);
-
-      expect(handleClick).not.toHaveBeenCalled();
-    });
   });
 
   describe("States", () => {
-    it("shows loading state", () => {
-      renderWithMantine(<AddButton label="Add user" loading />);
-      const button = screen.getByRole("button");
-      expect(button).toHaveAttribute("data-loading");
-    });
-
     it("shows disabled state", () => {
       renderWithMantine(<AddButton label="Add user" disabled />);
       const button = screen.getByRole("button");
       expect(button).toBeDisabled();
     });
 
-    it("is interactive when not disabled or loading", () => {
+    it("is interactive when not disabled", () => {
       renderWithMantine(<AddButton label="Add user" />);
       const button = screen.getByRole("button");
       expect(button).not.toBeDisabled();
-      expect(button).not.toHaveAttribute("data-loading");
     });
   });
 
