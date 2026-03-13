@@ -15,11 +15,18 @@ import {
   IconBook,
   IconMail,
 } from "@tabler/icons-react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Patient() {
-  const { id, error } = usePatientLoader();
+  const { id, patient, error, setPatientNav } = usePatientLoader();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (patient && id) {
+      setPatientNav([{ label: patient.name, href: `/patients/${id}` }]);
+    }
+  }, [patient, id, setPatientNav]);
 
   if (error) {
     return (

@@ -4,10 +4,11 @@
  * Demonstrates the side navigation component with various configurations:
  * - Search field visibility
  * - Icon display options
- * - Navigation item variations
+ * - Patient navigation hierarchy
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import SideNav from "./SideNav";
+import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta = {
   title: "Navigation/SideNav",
@@ -17,34 +18,57 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const patient = demoPatientsList[0];
+const patientHref = `/patients/${patient.id}`;
+
 /**
- * Navigation with search field at the top.
- * Default configuration showing all navigation items with search enabled.
+ * Default navigation with icons.
+ */
+export const Default: Story = {
+  args: { showSearch: false, showIcons: true },
+};
+
+/**
+ * Navigation with search field and icons (mobile drawer style).
  */
 export const WithSearch: Story = {
-  args: { showSearch: true },
-};
-
-/**
- * Navigation without search field.
- * Compact version showing only navigation items.
- */
-export const WithoutSearch: Story = {
-  args: { showSearch: false },
-};
-
-/**
- * Navigation with search field and icons.
- * Enhanced version showing icons next to each navigation item.
- */
-export const WithSearchIcons: Story = {
   args: { showSearch: true, showIcons: true },
 };
 
 /**
- * Navigation without search but with icons.
- * Compact version with visual icon indicators for each item.
+ * Patient message thread — three-level nesting: patient → Messages → thread.
  */
-export const WithoutSearchIcons: Story = {
-  args: { showSearch: false, showIcons: true },
+export const PatientMessageThread: Story = {
+  args: {
+    showSearch: false,
+    showIcons: true,
+    patientNav: [
+      { label: patient.name, href: patientHref },
+      { label: "Messages", href: `${patientHref}/messages` },
+      {
+        label: "Dr Corbett, Gemma",
+        href: `${patientHref}/messages/gastro-clinic`,
+      },
+    ],
+  },
+  parameters: { routerPath: `${patientHref}/messages/gastro-clinic` },
+};
+
+/**
+ * Patient message thread — three-level nesting: patient → Messages → thread.
+ */
+export const PatientMessageThreadWithSearch: Story = {
+  args: {
+    showSearch: true,
+    showIcons: true,
+    patientNav: [
+      { label: patient.name, href: patientHref },
+      { label: "Messages", href: `${patientHref}/messages` },
+      {
+        label: "Dr Corbett, Gemma",
+        href: `${patientHref}/messages/gastro-clinic`,
+      },
+    ],
+  },
+  parameters: { routerPath: `${patientHref}/messages/gastro-clinic` },
 };

@@ -16,6 +16,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 function getStatusColour(status: string): string {
@@ -32,9 +33,18 @@ function getStatusColour(status: string): string {
 }
 
 export default function PatientLetters() {
-  const { patient } = usePatientLoader();
+  const { patient, setPatientNav } = usePatientLoader();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (patient && id) {
+      setPatientNav([
+        { label: patient.name, href: `/patients/${id}` },
+        { label: "Clinical letters", href: `/patients/${id}/letters` },
+      ]);
+    }
+  }, [patient, id, setPatientNav]);
 
   return (
     <Container size="lg" py="xl">

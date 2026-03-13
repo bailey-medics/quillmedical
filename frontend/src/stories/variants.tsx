@@ -17,7 +17,7 @@
  * ```
  */
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Stack, Group } from "@mantine/core";
 
 type VariantRowProps = {
@@ -42,6 +42,48 @@ export function VariantRow({
       {horizontal ? <Group gap="md">{children}</Group> : children}
       <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>{label}</div>
     </div>
+  );
+}
+
+type PseudoState =
+  | "hover"
+  | "active"
+  | "focus"
+  | "focus-visible"
+  | "focus-within"
+  | "visited"
+  | "link"
+  | "target";
+
+type StateRowProps = {
+  /** Label displayed below the row */
+  label: string;
+  /** Pseudo-state to force on descendant elements */
+  state?: PseudoState;
+  /** Content to display */
+  children: ReactNode;
+  /** Additional styles for the wrapper div */
+  style?: CSSProperties;
+};
+
+/**
+ * A labelled row for displaying a forced pseudo-state.
+ *
+ * Applies `pseudo-{state}-all` class so `storybook-addon-pseudo-states`
+ * rewritten CSS activates the state on descendant elements.
+ * Also sets `pointer-events: none` to prevent real browser interactions
+ * from overriding the forced state.
+ */
+export function StateRow({ label, state, children, style }: StateRowProps) {
+  return (
+    <VariantRow label={label} horizontal={false}>
+      <div
+        className={state ? `pseudo-${state}-all` : undefined}
+        style={{ pointerEvents: "none", ...style }}
+      >
+        {children}
+      </div>
+    </VariantRow>
   );
 }
 

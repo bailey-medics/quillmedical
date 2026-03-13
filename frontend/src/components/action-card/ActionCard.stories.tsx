@@ -13,7 +13,7 @@ import {
   IconBook,
   IconCalendarWeek,
 } from "@tabler/icons-react";
-import { Container, SimpleGrid } from "@mantine/core";
+import { SimpleGrid } from "@mantine/core";
 
 const meta = {
   title: "ActionCard/ActionCard",
@@ -21,13 +21,6 @@ const meta = {
   parameters: {
     layout: "padded",
   },
-  decorators: [
-    (Story) => (
-      <Container size="lg">
-        <Story />
-      </Container>
-    ),
-  ],
   argTypes: {
     icon: {
       control: false,

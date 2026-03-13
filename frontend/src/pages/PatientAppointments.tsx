@@ -15,6 +15,8 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 type Appointment = {
   id: string;
@@ -106,7 +108,17 @@ function getStatusColour(status: string): string {
 }
 
 export default function PatientAppointments() {
-  const { patient } = usePatientLoader();
+  const { patient, setPatientNav } = usePatientLoader();
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    if (patient && id) {
+      setPatientNav([
+        { label: patient.name, href: `/patients/${id}` },
+        { label: "Appointments", href: `/patients/${id}/appointments` },
+      ]);
+    }
+  }, [patient, id, setPatientNav]);
 
   const upcoming = fakeAppointments.filter((a) => a.status === "upcoming");
   const past = fakeAppointments.filter((a) => a.status !== "upcoming");

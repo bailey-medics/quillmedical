@@ -5,20 +5,18 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "@storybook/test";
-import { MemoryRouter } from "react-router-dom";
 import ActionCardButton from "./ActionCardButton";
+import { StateRow } from "@/stories/variants";
+import { Group, Text } from "@mantine/core";
+
+const CONTAINER_NOTE =
+  "Constrained to 18rem for display. In practice, the button is full-width and adapts to its parent container.";
+
+const CONTAINER_WIDTH = "18rem";
 
 const meta: Meta<typeof ActionCardButton> = {
   title: "Button/ActionCardButton",
   component: ActionCardButton,
-  decorators: [
-    (Story) => (
-      <MemoryRouter>
-        <Story />
-      </MemoryRouter>
-    ),
-  ],
   parameters: {
     layout: "padded",
   },
@@ -30,31 +28,74 @@ type Story = StoryObj<typeof ActionCardButton>;
 
 /**
  * Default ActionCardButton rendered as a link.
+ *
+ * Constrained to 18rem here for display purposes.
+ * In practice, the button is full-width and adapts to its parent container.
  */
 export const Default: Story = {
   args: {
     label: "View details",
     url: "/example",
   },
+  decorators: [
+    (Story) => (
+      <div>
+        <div style={{ width: "18rem" }}>
+          <Story />
+        </div>
+        <Text size="sm" c="dimmed" mt="md">
+          {CONTAINER_NOTE}
+        </Text>
+      </div>
+    ),
+  ],
 };
 
 /**
- * ActionCardButton with an onClick handler instead of a URL.
+ * All interaction states side-by-side.
+ *
+ * Constrained to 18rem here for display purposes.
+ * In practice, the button is full-width and adapts to its parent container.
  */
-export const WithOnClick: Story = {
+export const States: Story = {
   args: {
-    label: "Create record",
-    onClick: fn(),
-  },
-};
-
-/**
- * Disabled state.
- */
-export const Disabled: Story = {
-  args: {
-    label: "Unavailable",
+    label: "View details",
     url: "/example",
-    disabled: true,
   },
+  render: () => (
+    <>
+      <Group gap="xl">
+        <StateRow label="default" style={{ width: CONTAINER_WIDTH }}>
+          <ActionCardButton label="View details" url="/example" />
+        </StateRow>
+        <StateRow
+          label="hover"
+          state="hover"
+          style={{ width: CONTAINER_WIDTH }}
+        >
+          <ActionCardButton label="View details" url="/example" />
+        </StateRow>
+        <StateRow
+          label="active"
+          state="active"
+          style={{ width: CONTAINER_WIDTH }}
+        >
+          <ActionCardButton label="View details" url="/example" />
+        </StateRow>
+        <StateRow
+          label="focus-visible"
+          state="focus-visible"
+          style={{ width: CONTAINER_WIDTH }}
+        >
+          <ActionCardButton label="View details" url="/example" />
+        </StateRow>
+        <StateRow label="disabled" style={{ width: CONTAINER_WIDTH }}>
+          <ActionCardButton label="View details" url="/example" disabled />
+        </StateRow>
+      </Group>
+      <Text size="sm" c="dimmed" mt="md">
+        {CONTAINER_NOTE}
+      </Text>
+    </>
+  ),
 };

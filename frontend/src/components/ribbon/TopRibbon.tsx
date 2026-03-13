@@ -12,8 +12,8 @@ import FormattedDate from "@/components/data/Date";
 import SearchField from "@/components/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
-import { ActionIcon, Group, Skeleton, Text } from "@mantine/core";
-import { IconMenu2 } from "@tabler/icons-react";
+import { Group, Skeleton, Text } from "@mantine/core";
+import BurgerButton from "@/components/button/BurgerButton";
 import classes from "./TopRibbon.module.scss";
 
 /**
@@ -93,30 +93,29 @@ function patientDetailsLong(patient: Patient, fontSize: string) {
 
 function patientDetailsShort(patient: Patient, fontSize: string) {
   return (
-    <>
-      <Text fw={700} size="lg" style={{ fontSize }}>
+    <Group gap="sm" wrap="wrap" align="center" justify="center">
+      <Text fw={700} size="lg" style={{ fontSize }} component="span">
         {patient.name}
       </Text>
       {patient.dob && (
-        <Text size="lg" style={{ fontSize }}>
+        <Text size="lg" style={{ fontSize }} component="span">
           <FormattedDate date={patient.dob} />
         </Text>
       )}
       {typeof patient.age === "number" && (
-        <Text size="lg" style={{ fontSize }}>
-          {" "}
+        <Text size="lg" style={{ fontSize }} component="span">
           {patient.age} {patient.sex}
         </Text>
       )}
       {patient.nationalNumber && (
-        <Text size="lg" style={{ fontSize }}>
+        <Text size="lg" style={{ fontSize }} component="span">
           <NationalNumber
             nationalNumber={patient.nationalNumber}
             nationalNumberSystem={patient.nationalNumberSystem}
           />
         </Text>
       )}
-    </>
+    </Group>
   );
 }
 
@@ -138,16 +137,7 @@ export default function TopRibbon({
         {/* left */}
         {isNarrow && (
           <div className={classes.left}>
-            <ActionIcon
-              variant="subtle"
-              onClick={onBurgerClick}
-              aria-controls="app-navbar"
-              aria-label={navOpen ? "Close navigation" : "Open navigation"}
-              aria-expanded={navOpen}
-              style={{ color: "#290661" }}
-            >
-              <IconMenu2 />
-            </ActionIcon>
+            <BurgerButton navOpen={navOpen} onClick={onBurgerClick} />
           </div>
         )}
 

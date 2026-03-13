@@ -29,7 +29,7 @@ import {
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
-import { IconButton } from "@/components/icons";
+import IconButton from "@/components/button/IconButton";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";

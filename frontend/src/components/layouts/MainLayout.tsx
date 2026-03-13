@@ -7,6 +7,7 @@
  */
 
 import type { Patient } from "@/domains/patient";
+import type { NavItem } from "@components/navigation/NestedNavLink";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
@@ -26,6 +27,8 @@ type Props = {
   patient: Patient | null;
   /** Whether patient data is loading */
   isLoading?: boolean;
+  /** Patient navigation breadcrumbs for the side nav (flat array) */
+  patientNav?: NavItem[];
   /** Page content to render in main area */
   children?: ReactNode;
 };
@@ -45,6 +48,7 @@ type Props = {
 export default function MainLayout({
   patient,
   isLoading = false,
+  patientNav,
   children,
 }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
@@ -113,7 +117,7 @@ export default function MainLayout({
         />
       </Box>
 
-      <Flex flex={1} style={{ overflow: "hidden" }}>
+      <Flex flex={1} style={{ overflow: "hidden", position: "relative" }}>
         <NavigationDrawer
           opened={opened}
           onClose={close}
@@ -121,7 +125,12 @@ export default function MainLayout({
           width={`${DRAWER_W}px`}
         >
           <div style={{ width: DRAWER_W }}>
-            <SideNav showSearch={isSm} onNavigate={close} patient={patient} />
+            <SideNav
+              showSearch={isSm}
+              showIcons
+              onNavigate={close}
+              patientNav={patientNav}
+            />
           </div>
         </NavigationDrawer>
 
@@ -136,7 +145,11 @@ export default function MainLayout({
                 flexShrink: 0,
               }}
             >
-              <SideNav showSearch={false} showIcons={true} patient={patient} />
+              <SideNav
+                showSearch={false}
+                showIcons={true}
+                patientNav={patientNav}
+              />
             </Box>
           )}
           <Flex direction="column" flex={1} style={{ height: "100%" }}>

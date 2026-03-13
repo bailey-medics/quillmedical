@@ -43,6 +43,7 @@ vi.mock("react-router-dom", async () => {
         gradientIndex: 8,
       },
       setPatient: vi.fn(),
+      setPatientNav: vi.fn(),
     }),
   };
 });

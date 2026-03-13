@@ -22,8 +22,6 @@ interface AddButtonProps {
   label: string;
   /** Click handler */
   onClick?: () => void;
-  /** Loading state */
-  loading?: boolean;
   /** Disabled state */
   disabled?: boolean;
 }
@@ -36,14 +34,13 @@ interface AddButtonProps {
  * - Large font size for text
  * - Medium-sized plus icon
  * - Blue color scheme (consistent across all add actions)
- * - Loading and disabled states
+ * - Disabled state
  *
  * Used for creating new users, patients, and other resources.
  */
 export default function AddButton({
   label,
   onClick,
-  loading = false,
   disabled = false,
 }: AddButtonProps) {
   const theme = useMantineTheme();
@@ -55,7 +52,6 @@ export default function AddButton({
       onClick={onClick}
       size={isMobile ? "md" : "lg"}
       color="blue"
-      loading={loading}
       disabled={disabled}
       styles={{
         label: {
