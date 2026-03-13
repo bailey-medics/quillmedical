@@ -39,7 +39,7 @@ export const States: Story = {
       <StateRow label="hover" state="hover">
         <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
-      <StateRow label="active" state="active">
+      <StateRow label="active" state={["hover", "active"]}>
         <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>
       <StateRow label="focus-visible" state="focus-visible">

@@ -59,8 +59,8 @@ describe("NavIcon Component", () => {
         <NavIcon name="home" size="xs" />,
       );
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "12");
-      expect(svg).toHaveAttribute("height", "12");
+      expect(svg).toHaveAttribute("width", "10");
+      expect(svg).toHaveAttribute("height", "10");
     });
 
     it("renders with sm size", () => {
@@ -68,8 +68,8 @@ describe("NavIcon Component", () => {
         <NavIcon name="home" size="sm" />,
       );
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "16");
-      expect(svg).toHaveAttribute("height", "16");
+      expect(svg).toHaveAttribute("width", "13");
+      expect(svg).toHaveAttribute("height", "13");
     });
 
     it("renders with md size", () => {
@@ -77,15 +77,15 @@ describe("NavIcon Component", () => {
         <NavIcon name="home" size="md" />,
       );
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "20");
-      expect(svg).toHaveAttribute("height", "20");
+      expect(svg).toHaveAttribute("width", "16");
+      expect(svg).toHaveAttribute("height", "16");
     });
 
     it("renders with lg size (default)", () => {
       const { container } = renderWithMantine(<NavIcon name="home" />);
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "28");
-      expect(svg).toHaveAttribute("height", "28");
+      expect(svg).toHaveAttribute("width", "22");
+      expect(svg).toHaveAttribute("height", "22");
     });
 
     it("renders with xl size", () => {
@@ -93,8 +93,8 @@ describe("NavIcon Component", () => {
         <NavIcon name="home" size="xl" />,
       );
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "36");
-      expect(svg).toHaveAttribute("height", "36");
+      expect(svg).toHaveAttribute("width", "29");
+      expect(svg).toHaveAttribute("height", "29");
     });
   });
 
@@ -151,11 +151,11 @@ describe("NavIcon Component", () => {
   describe("All size presets", () => {
     const sizes = ["xs", "sm", "md", "lg", "xl"] as const;
     const expectedSizes = {
-      xs: "12",
-      sm: "16",
-      md: "20",
-      lg: "28",
-      xl: "36",
+      xs: "10",
+      sm: "13",
+      md: "16",
+      lg: "22",
+      xl: "29",
     };
 
     sizes.forEach((size) => {

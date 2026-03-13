@@ -25,7 +25,7 @@ export default function NotFoundLayout() {
   return (
     <Container style={{ padding: "1.5rem", textAlign: "center" }}>
       <Title order={2}>404 — Page not found</Title>
-      <Text c="dimmed" size="md" style={{ marginTop: "0.75rem" }}>
+      <Text c="dimmed" size="md" ta="center" style={{ marginTop: "0.75rem" }}>
         The page you requested does not exist.
       </Text>
       <Button component="a" href={base} style={{ marginTop: "1.25rem" }}>

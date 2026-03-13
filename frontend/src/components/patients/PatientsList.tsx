@@ -73,8 +73,8 @@ export default function PatientsList({
           <Group key={i} align="center" style={{ width: "100%", padding: 8 }}>
             <Skeleton circle height={isSm ? 40 : 60} />
             <div style={{ flex: 1 }}>
-              <Skeleton height={20} width="60%" mb={8} />
-              <Skeleton height={16} width="40%" />
+              <Skeleton height={20} width="10rem" mb={8} />
+              <Skeleton height={20} width="23rem" />
             </div>
           </Group>
         ))}

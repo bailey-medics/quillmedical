@@ -6,7 +6,7 @@
  * defaulting to most recent messages first.
  */
 
-import { UserMessagesList } from "@/components/messaging";
+import { MessagesList, type MessageThread } from "@/components/messaging";
 import PageHeader from "@/components/page-header";
 // import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
@@ -251,10 +251,6 @@ export default function Messages() {
     }
   });
 
-  const handleConversationClick = (conversation: Conversation) => {
-    navigate(`/messages/${conversation.id}`);
-  };
-
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
@@ -317,9 +313,24 @@ export default function Messages() {
             </Text>
           </Card>
         ) : (
-          <UserMessagesList
-            conversations={sortedConversations}
-            onConversationClick={handleConversationClick}
+          <MessagesList
+            threads={sortedConversations.map((conv) => ({
+              id: conv.id,
+              displayName: conv.patientName,
+              profiles: [
+                {
+                  givenName: conv.patientGivenName,
+                  familyName: conv.patientFamilyName,
+                  gradientIndex: conv.patientGradientIndex,
+                },
+              ],
+              lastMessage: conv.lastMessage,
+              lastMessageTime: conv.lastMessageTime,
+              unreadCount: conv.unreadCount,
+            }))}
+            onThreadClick={(thread: MessageThread) =>
+              navigate(`/messages/${thread.id}`)
+            }
           />
         )}
       </Stack>

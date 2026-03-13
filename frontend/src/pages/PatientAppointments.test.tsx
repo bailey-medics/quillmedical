@@ -38,7 +38,7 @@ describe("PatientAppointments", () => {
       initialRoute: "/patients/test-patient/appointments",
     });
 
-    expect(screen.getByText("Appointments — James")).toBeInTheDocument();
+    expect(screen.getByText("Appointments")).toBeInTheDocument();
   });
 
   it("renders upcoming section", () => {

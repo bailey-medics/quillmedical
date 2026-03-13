@@ -39,7 +39,7 @@ export const States: Story = {
       <StateRow label="hover" state="hover">
         <AddButton label="Add user" />
       </StateRow>
-      <StateRow label="active" state="active">
+      <StateRow label="active" state={["hover", "active"]}>
         <AddButton label="Add user" />
       </StateRow>
       <StateRow label="focus-visible" state="focus-visible">

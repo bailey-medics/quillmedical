@@ -10,10 +10,10 @@
 import MarkdownView from "@/components/markdown";
 import {
   Messaging,
-  PatientMessagesList,
+  MessagesList,
   type Message,
+  type MessageThread,
 } from "@/components/messaging";
-import type { Conversation } from "@/pages/Messages";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
@@ -30,57 +30,36 @@ const meta: Meta<typeof MainLayout> = {
 export default meta;
 type Story = StoryObj<typeof MainLayout>;
 
-const mockConversations: Conversation[] = [
+const mockThreads: MessageThread[] = [
   {
     id: "1",
-    patientId: "p1",
-    patientName: "Sarah Johnson",
-    patientGivenName: "Sarah",
-    patientFamilyName: "Johnson",
-    patientGradientIndex: 3,
+    displayName: "Dr Williams",
+    profiles: [
+      { givenName: "David", familyName: "Williams", gradientIndex: 5 },
+    ],
     lastMessage:
       "Thank you for the letter, I've received it and will review with my GP.",
     lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     unreadCount: 2,
-    status: "new",
-    participants: [
-      {
-        displayName: "Dr Williams",
-        givenName: "David",
-        familyName: "Williams",
-      },
-    ],
   },
   {
     id: "2",
-    patientId: "p2",
-    patientName: "Michael Brown",
-    patientGivenName: "Michael",
-    patientFamilyName: "Brown",
-    patientGradientIndex: 7,
+    displayName: "Dr Smith",
+    profiles: [{ givenName: "James", familyName: "Smith", gradientIndex: 9 }],
     lastMessage:
       "I need a medical letter for my insurance claim. Can you help?",
     lastMessageTime: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     unreadCount: 0,
-    status: "active",
-    participants: [
-      { displayName: "Dr Smith", givenName: "James", familyName: "Smith" },
-    ],
   },
   {
     id: "3",
-    patientId: "p3",
-    patientName: "Emily Wilson",
-    patientGivenName: "Emily",
-    patientFamilyName: "Wilson",
-    patientGradientIndex: 12,
+    displayName: "Dr Jones",
+    profiles: [
+      { givenName: "Eleanor", familyName: "Jones", gradientIndex: 12 },
+    ],
     lastMessage: "Could you send me a copy of my recent consultation notes?",
     lastMessageTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     unreadCount: 1,
-    status: "active",
-    participants: [
-      { displayName: "Dr Jones", givenName: "Eleanor", familyName: "Jones" },
-    ],
   },
 ];
 
@@ -103,9 +82,9 @@ export const WithPatientMessageList: Story = {
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <PatientMessagesList
-          conversations={mockConversations}
-          onConversationClick={(conv) => console.log("Clicked:", conv.id)}
+        <MessagesList
+          threads={mockThreads}
+          onThreadClick={(thread) => console.log("Clicked:", thread.id)}
         />
       </div>
     </MainLayout>

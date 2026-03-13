@@ -58,6 +58,10 @@ export default function SideNavContent({
     (state.user.system_permissions === "admin" ||
       state.user.system_permissions === "superadmin");
 
+  // Don't render nav while auth is loading to avoid layout flicker
+  // (Admin link appears after auth resolves, shifting Logout down)
+  const isLoading = state.status === "loading";
+
   // Extract patient ID from URL if on patient admin page
   const patientIdMatch = location.pathname.match(
     /^\/admin\/patients\/([^/]+)$/,
@@ -207,6 +211,10 @@ export default function SideNavContent({
       current = { ...current, icon: "user" };
     }
     patientNavItem = current;
+  }
+
+  if (isLoading) {
+    return null;
   }
 
   return (

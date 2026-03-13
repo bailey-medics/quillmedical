@@ -11,6 +11,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useState } from "react";
+import { Text } from "@mantine/core";
 import PatientsList from "./PatientsList";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
@@ -30,14 +31,6 @@ export const Default: Story = {
   },
 };
 
-export const Loading: Story = {
-  args: {
-    patients: [],
-    isLoading: true,
-    fhirAvailable: false,
-  },
-};
-
 export const DatabaseInitialising: Story = {
   args: {
     patients: [],
@@ -51,6 +44,14 @@ export const NoPatients: Story = {
     patients: [],
     isLoading: false,
     fhirAvailable: true,
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    patients: [],
+    isLoading: true,
+    fhirAvailable: false,
   },
 };
 
@@ -88,38 +89,65 @@ export const AnimatedLoadingSequence: Story = {
       } else if (state === "fetching") {
         scheduleNextState("loaded", 5000);
       } else if (state === "loaded") {
-        scheduleNextState("health-check", 15000);
+        scheduleNextState("health-check", 5000);
       }
 
       return () => clearTimeout(timeoutId);
     }, [state]);
 
+    const labels: Record<typeof state, string> = {
+      "health-check": "1/4 — Health check loading (5s)",
+      "db-init": "2/4 — Database initialising (5s)",
+      fetching: "3/4 — Fetching patients (5s)",
+      loaded: "4/4 — Patients loaded (5s)",
+    };
+
     // Render appropriate state
     if (state === "health-check") {
       return (
-        <PatientsList patients={[]} isLoading={true} fhirAvailable={false} />
+        <>
+          <Text size="sm" c="dimmed" mb="md">
+            {labels[state]}
+          </Text>
+          <PatientsList patients={[]} isLoading={true} fhirAvailable={false} />
+        </>
       );
     }
 
     if (state === "db-init") {
       return (
-        <PatientsList patients={[]} isLoading={false} fhirAvailable={false} />
+        <>
+          <Text size="sm" c="dimmed" mb="md">
+            {labels[state]}
+          </Text>
+          <PatientsList patients={[]} isLoading={false} fhirAvailable={false} />
+        </>
       );
     }
 
     if (state === "fetching") {
       return (
-        <PatientsList patients={[]} isLoading={true} fhirAvailable={true} />
+        <>
+          <Text size="sm" c="dimmed" mb="md">
+            {labels[state]}
+          </Text>
+          <PatientsList patients={[]} isLoading={true} fhirAvailable={true} />
+        </>
       );
     }
 
     // state === "loaded"
     return (
-      <PatientsList
-        patients={demoPatientsList}
-        isLoading={false}
-        fhirAvailable={true}
-      />
+      <>
+        <Text size="sm" c="dimmed" mb="md">
+          {labels[state]}
+        </Text>
+        <PatientsList
+          patients={demoPatientsList}
+          isLoading={false}
+          fhirAvailable={true}
+        />
+      </>
     );
   },
 };

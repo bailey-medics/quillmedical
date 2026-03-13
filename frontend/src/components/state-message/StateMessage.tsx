@@ -34,12 +34,14 @@ export default function StateMessage({ type }: Props) {
   if (type === "no-patients") {
     return (
       <Alert
-        icon={<IconUserOff size={20} />}
+        icon={<IconUserOff size={48} />}
         title="No patients to show"
         color="gray"
         variant="light"
         styles={{
           root: { maxWidth: 600 },
+          icon: { width: 48, height: 48 },
+          title: { fontSize: "var(--mantine-h2-font-size)" },
         }}
       >
         <Text size="lg">There are currently no patients in the system.</Text>
@@ -50,12 +52,14 @@ export default function StateMessage({ type }: Props) {
   // type === "database-initialising"
   return (
     <Alert
-      icon={<IconClock size={20} />}
+      icon={<IconClock size={48} />}
       title="Database is initialising"
       color="blue"
       variant="light"
       styles={{
         root: { maxWidth: 600 },
+        icon: { width: 48, height: 48 },
+        title: { fontSize: "var(--mantine-h2-font-size)" },
       }}
     >
       <Text size="lg">
