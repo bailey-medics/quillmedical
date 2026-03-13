@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ProfilePic from "./ProfilePic";
 
 const meta: Meta<typeof ProfilePic> = {
-  title: "Avatars/ProfilePic",
+  title: "ProfilePic/Single",
   component: ProfilePic,
   tags: ["autodocs"],
 };
@@ -12,78 +12,11 @@ export default meta;
 type Story = StoryObj<typeof ProfilePic>;
 
 /**
- * Default: Generic person icon with gradient backgrounds
- * Icon is black, background uses gradient from top-left to bottom-right at 45 degrees
- * Hover for 1 second to see patient name tooltip
- */
-export const Generic: Story = {
-  render: () => (
-    <div
-      style={{
-        display: "flex",
-        gap: "1rem",
-        flexWrap: "wrap",
-        alignItems: "flex-start",
-      }}
-    >
-      <ProfilePic
-        givenName="Alice"
-        familyName="Anderson"
-        gradientIndex={0}
-        showGeneric
-      />
-      <ProfilePic
-        givenName="Bob"
-        familyName="Brown"
-        gradientIndex={1}
-        showGeneric
-      />
-      <ProfilePic
-        givenName="Charlie"
-        familyName="Davis"
-        gradientIndex={2}
-        showGeneric
-      />
-      <ProfilePic
-        givenName="Diana"
-        familyName="Evans"
-        gradientIndex={3}
-        showGeneric
-      />
-      <ProfilePic
-        givenName="Frank"
-        familyName="Green"
-        gradientIndex={4}
-        showGeneric
-      />
-      <ProfilePic
-        givenName="Grace"
-        familyName="Hill"
-        gradientIndex={5}
-        showGeneric
-      />
-    </div>
-  ),
-};
-
-/**
- * Real picture of a person
- */
-export const RealPicture: Story = {
-  args: {
-    givenName: "Sarah",
-    familyName: "Johnson",
-    gradientIndex: 3,
-    src: "https://i.pravatar.cc/150?img=45",
-  },
-};
-
-/**
  * Two-letter initials with vibrant gradient backgrounds
  * Initials are extracted from given + family name: "Alice" + "Anderson" → "AA"
  * Gradients flow from top-left to bottom-right at 45 degrees
  */
-export const Initials: Story = {
+export const Default: Story = {
   render: () => (
     <div
       style={{
@@ -244,18 +177,6 @@ export const Initials: Story = {
         </div>
       </div>
 
-      {/* Row 6 */}
-      <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
-          <ProfilePic
-            givenName="High"
-            familyName="Index Value"
-            gradientIndex={30}
-          />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>30</div>
-        </div>
-      </div>
-
       {/* Numbers below avatars indicate gradient index values (0-29) */}
       <div
         style={{
@@ -269,6 +190,73 @@ export const Initials: Story = {
       </div>
     </div>
   ),
+};
+
+/**
+ * Generic person icon with gradient backgrounds
+ * Icon is black, background uses gradient from top-left to bottom-right at 45 degrees
+ * Hover for 1 second to see patient name tooltip
+ */
+export const Generic: Story = {
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        gap: "1rem",
+        flexWrap: "wrap",
+        alignItems: "flex-start",
+      }}
+    >
+      <ProfilePic
+        givenName="Alice"
+        familyName="Anderson"
+        gradientIndex={0}
+        showGeneric
+      />
+      <ProfilePic
+        givenName="Bob"
+        familyName="Brown"
+        gradientIndex={1}
+        showGeneric
+      />
+      <ProfilePic
+        givenName="Charlie"
+        familyName="Davis"
+        gradientIndex={2}
+        showGeneric
+      />
+      <ProfilePic
+        givenName="Diana"
+        familyName="Evans"
+        gradientIndex={3}
+        showGeneric
+      />
+      <ProfilePic
+        givenName="Frank"
+        familyName="Green"
+        gradientIndex={4}
+        showGeneric
+      />
+      <ProfilePic
+        givenName="Grace"
+        familyName="Hill"
+        gradientIndex={5}
+        showGeneric
+      />
+    </div>
+  ),
+};
+
+/**
+ * Real picture of a person
+ */
+export const RealPicture: Story = {
+  args: {
+    givenName: "Sarah",
+    familyName: "Johnson",
+    gradientIndex: 3,
+    src: "https://i.pravatar.cc/150?img=45",
+  },
 };
 
 /**
@@ -432,39 +420,6 @@ export const Sizes: Story = {
           </div>
         </div>
       </div>
-
-      {/* Loading States */}
-      <div>
-        <div style={{ marginBottom: "1rem", fontWeight: "bold" }}>
-          Loading States
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "2rem",
-            alignItems: "flex-end",
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <ProfilePic isLoading size="sm" />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Small (32px)
-            </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <ProfilePic isLoading size="md" />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Medium (48px)
-            </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <ProfilePic isLoading size="lg" />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Large (64px)
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   ),
 };
@@ -474,5 +429,32 @@ export const Sizes: Story = {
  * Shows circular skeleton while data is being fetched
  */
 export const Loading: Story = {
-  render: () => <ProfilePic isLoading />,
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        gap: "2rem",
+        alignItems: "flex-end",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <ProfilePic isLoading size="sm" />
+        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
+          Small (32px)
+        </div>
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <ProfilePic isLoading size="md" />
+        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
+          Medium (48px)
+        </div>
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <ProfilePic isLoading size="lg" />
+        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
+          Large (64px)
+        </div>
+      </div>
+    </div>
+  ),
 };

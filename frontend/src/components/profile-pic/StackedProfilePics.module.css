@@ -1,0 +1,21 @@
+.stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.avatar {
+  transition: margin-left 0.3s ease;
+  margin-left: -10px;
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+.stack:hover .avatar {
+  margin-left: 4px;
+}
+
+.stack:hover .avatar:first-child {
+  margin-left: 0;
+}

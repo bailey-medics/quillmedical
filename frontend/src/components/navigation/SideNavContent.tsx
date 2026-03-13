@@ -8,11 +8,12 @@
  * Separated from SideNav to allow reuse in drawer/desktop contexts.
  */
 
-import { NavLink, Stack } from "@mantine/core";
+import { NavLink, Divider, Stack } from "@mantine/core";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { api } from "@/lib/api";
+import type { Patient } from "@/domains/patient";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 
@@ -26,6 +27,8 @@ type Props = {
   showIcons?: boolean;
   /** Font size for navigation labels (default: 1.25rem) */
   fontSize?: number;
+  /** Currently selected patient (for patient-specific nav) */
+  patient?: Patient | null;
 };
 
 /**
@@ -41,6 +44,7 @@ export default function SideNavContent({
   onNavigate,
   showIcons = false,
   fontSize = 1.25,
+  patient,
 }: Props) {
   const { logout, state } = useAuth();
   const navigate = useNavigate();
@@ -59,6 +63,21 @@ export default function SideNavContent({
     /^\/admin\/patients\/([^/]+)$/,
   );
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
+
+  // Extract conversation ID from URL if on messages thread page
+  const conversationIdMatch = location.pathname.match(/^\/messages\/([^/]+)$/);
+  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+
+  // TODO: Replace with API call when backend implements conversations
+  const conversationPatientNames: Record<string, string> = {
+    "conv-1": "John Smith",
+    "conv-2": "Mary Johnson",
+    "conv-3": "Robert Brown",
+    "conv-4": "Sarah Davis",
+  };
+  const conversationPatientName = conversationId
+    ? (conversationPatientNames[conversationId] ?? conversationId)
+    : null;
 
   // Extract user ID from URL if on user admin page
   const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
@@ -174,8 +193,86 @@ export default function SideNavContent({
     ],
   };
 
+  // Detect patient-specific pages (/patients/:id/...)
+  const patientPageMatch = location.pathname.match(
+    /^\/patients\/([^/]+)(?:\/(.+))?$/,
+  );
+  const isPatientPage = !!patientPageMatch;
+  const patientSubPath = patientPageMatch?.[2] ?? null;
+
+  // Map sub-paths to display labels
+  const subPageLabels: Record<string, string> = {
+    letters: "Clinical letters",
+    messages: "Messages",
+    notes: "Clinical notes",
+    appointments: "Appointments",
+  };
+
+  // Build patient nav item when on a patient page
+  let patientNavItem: NavItem | null = null;
+  if (isPatientPage && patient) {
+    const patientHref = `/patients/${patient.id}`;
+    const children: NavItem[] = [];
+
+    if (patientSubPath) {
+      // e.g. "messages/gastro-clinic" → topSegment = "messages", rest = "gastro-clinic"
+      const segments = patientSubPath.split("/");
+      const topSegment = segments[0];
+      const subLabel = subPageLabels[topSegment] ?? topSegment;
+      const subHref = `${patientHref}/${topSegment}`;
+
+      const subChildren: NavItem[] = [];
+      if (segments.length > 1) {
+        // Sub-page — show thread/letter with friendly label
+        const threadId = segments.slice(1).join("/");
+        // Map known fake IDs to friendly names
+        const threadLabels: Record<string, Record<string, string>> = {
+          messages: {
+            "gastro-clinic": "Dr Corbett, Gemma",
+            "gp-referral": "Dr Patel",
+            "prescription-query": "Pharmacy",
+          },
+          letters: {
+            "letter-1": "Gastro clinic letter",
+            "letter-2": "GP referral letter",
+            "letter-3": "Routine health review",
+          },
+        };
+        const sectionLabels = threadLabels[topSegment] ?? {};
+        subChildren.push({
+          label: sectionLabels[threadId] ?? threadId,
+          href: `${patientHref}/${patientSubPath}`,
+        });
+      }
+
+      children.push({
+        label: subLabel,
+        href: subHref,
+        children: subChildren.length > 0 ? subChildren : undefined,
+      });
+    }
+
+    patientNavItem = {
+      label: patient.name,
+      href: patientHref,
+      icon: showIcons ? "user" : undefined,
+      children: children.length > 0 ? children : undefined,
+    };
+  }
+
   return (
     <Stack gap={0}>
+      {patientNavItem && (
+        <>
+          <NestedNavLink
+            item={patientNavItem}
+            onNavigate={onNavigate}
+            showIcons={showIcons}
+            baseFontSize={fontSize}
+          />
+          <Divider my="xs" />
+        </>
+      )}
       <NavLink
         label="Home"
         styles={navLinkStyles}
@@ -185,15 +282,34 @@ export default function SideNavContent({
         }}
         leftSection={showIcons ? <NavIcon name="home" /> : undefined}
       />
-      <NavLink
-        label="Messages"
-        styles={navLinkStyles}
-        onClick={() => {
-          navigate("/messages");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="message" /> : undefined}
-      />
+      {conversationId ? (
+        <NestedNavLink
+          item={{
+            label: "Messages",
+            href: "/messages",
+            icon: showIcons ? "message" : undefined,
+            children: [
+              {
+                label: conversationPatientName ?? conversationId,
+                href: `/messages/${conversationId}`,
+              },
+            ],
+          }}
+          onNavigate={onNavigate}
+          showIcons={showIcons}
+          baseFontSize={fontSize}
+        />
+      ) : (
+        <NavLink
+          label="Messages"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/messages");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+        />
+      )}
       <NavLink
         label="Settings"
         styles={navLinkStyles}

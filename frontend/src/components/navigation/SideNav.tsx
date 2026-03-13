@@ -7,6 +7,7 @@
 
 import { Divider, Stack, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
+import type { Patient } from "@/domains/patient";
 import SideNavContent from "./SideNavContent";
 
 /**
@@ -19,6 +20,8 @@ type Props = {
   onNavigate?: () => void;
   /** Whether to show icons next to navigation labels */
   showIcons?: boolean;
+  /** Currently selected patient (for patient-specific nav) */
+  patient?: Patient | null;
 };
 
 /**
@@ -30,7 +33,12 @@ type Props = {
  * @param props - Component props
  * @returns Side navigation panel
  */
-export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
+export default function SideNav({
+  showSearch,
+  onNavigate,
+  showIcons,
+  patient,
+}: Props) {
   return (
     <nav
       role="navigation"
@@ -50,7 +58,11 @@ export default function SideNav({ showSearch, onNavigate, showIcons }: Props) {
             <Divider my="xs" />
           </>
         )}
-        <SideNavContent onNavigate={onNavigate} showIcons={showIcons} />
+        <SideNavContent
+          onNavigate={onNavigate}
+          showIcons={showIcons}
+          patient={patient}
+        />
       </Stack>
     </nav>
   );

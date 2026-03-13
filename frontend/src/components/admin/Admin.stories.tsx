@@ -70,13 +70,14 @@ export const AdminView: Story = {
  * Loading State
  *
  * Shows the admin interface while statistics are loading.
- * The Total Users and Total Patients counts show skeleton loaders.
+ * The Total Users, Total Patients, and Total Organisations counts show skeleton loaders.
  */
 export const LoadingState: Story = {
   args: {
     userPermissions: "superadmin",
     usersLoading: true,
     patientsLoading: true,
+    organisationsLoading: true,
     existingUsers: sampleUsers,
     existingPatients: samplePatients,
   },

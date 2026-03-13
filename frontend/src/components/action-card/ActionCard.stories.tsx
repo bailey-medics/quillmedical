@@ -6,8 +6,14 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import ActionCard from "./ActionCard";
-import { IconUserPlus } from "@tabler/icons-react";
-import { Container } from "@mantine/core";
+import {
+  IconUserPlus,
+  IconMail,
+  IconMessage,
+  IconBook,
+  IconCalendarWeek,
+} from "@tabler/icons-react";
+import { Container, SimpleGrid } from "@mantine/core";
 
 const meta = {
   title: "ActionCard/ActionCard",
@@ -63,4 +69,52 @@ export const LongContent: Story = {
     buttonLabel: "Create New User Account",
     buttonUrl: "/admin/users/new",
   },
+};
+
+/**
+ * Patient page
+ *
+ * The four action cards shown on the patient detail page, arranged
+ * in a responsive 2-column grid matching the live layout.
+ */
+export const PatientPage: Story = {
+  args: {
+    icon: <IconMail />,
+    title: "Clinical letters",
+    subtitle: "View referral letters, clinic letters, and discharge summaries",
+    buttonLabel: "View letters",
+    buttonUrl: "/patients/1/letters",
+  },
+  render: () => (
+    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+      <ActionCard
+        icon={<IconMail />}
+        title="Clinical letters"
+        subtitle="View referral letters, clinic letters, and discharge summaries"
+        buttonLabel="View letters"
+        buttonUrl="/patients/1/letters"
+      />
+      <ActionCard
+        icon={<IconMessage />}
+        title="Messaging"
+        subtitle="Send and receive secure messages with the care team"
+        buttonLabel="Open messages"
+        buttonUrl="/patients/1/messages"
+      />
+      <ActionCard
+        icon={<IconBook />}
+        title="Clinical notes"
+        subtitle="View consultation notes, observations, and clinical records"
+        buttonLabel="View notes"
+        buttonUrl="/patients/1/notes"
+      />
+      <ActionCard
+        icon={<IconCalendarWeek />}
+        title="Appointments"
+        subtitle="View upcoming and past appointment history"
+        buttonLabel="View appointments"
+        buttonUrl="/patients/1/appointments"
+      />
+    </SimpleGrid>
+  ),
 };

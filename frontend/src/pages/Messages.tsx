@@ -6,7 +6,7 @@
  * defaulting to most recent messages first.
  */
 
-import MessagesList from "@/components/messaging";
+import { UserMessagesList } from "@/components/messaging";
 import PageHeader from "@/components/page-header";
 // import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
@@ -20,7 +20,7 @@ import {
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom"; // TODO: Navigate to conversation detail
+import { useNavigate } from "react-router-dom";
 
 /**
  * Conversation
@@ -34,6 +34,12 @@ export type Conversation = {
   patientId: string;
   /** Patient name */
   patientName: string;
+  /** Patient given (first) name for profile pic initials */
+  patientGivenName: string;
+  /** Patient family (last) name for profile pic initials */
+  patientFamilyName: string;
+  /** Patient gradient index for profile pic colour */
+  patientGradientIndex: number;
   /** Last message preview */
   lastMessage: string;
   /** Last message timestamp (ISO 8601) */
@@ -42,8 +48,17 @@ export type Conversation = {
   unreadCount: number;
   /** Conversation status */
   status: "new" | "active" | "resolved" | "closed";
-  /** Assigned clinician name */
-  assignedTo?: string;
+  /** All non-patient participants in this conversation (at least one required) */
+  participants: Participant[];
+};
+
+export type Participant = {
+  /** Name shown in the conversation header (e.g. "Dr Corbett") */
+  displayName: string;
+  /** Given (first) name for initials and tooltip */
+  givenName: string;
+  /** Family (last) name for initials and tooltip */
+  familyName?: string;
 };
 
 type SortOption = "recent" | "unread" | "patient-name";
@@ -67,7 +82,7 @@ type StatusFilter = "all" | "new" | "active" | "resolved" | "closed";
  * <Route path="/messages" element={<Messages />} />
  */
 export default function Messages() {
-  // const navigate = useNavigate(); // TODO: Use when navigation to detail is implemented
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,45 +105,83 @@ export default function Messages() {
           id: "conv-1",
           patientId: "patient-1",
           patientName: "John Smith",
+          patientGivenName: "John",
+          patientFamilyName: "Smith",
+          patientGradientIndex: 2,
           lastMessage: "Thank you for your help with my prescription",
           lastMessageTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
           unreadCount: 2,
           status: "active",
-          assignedTo: "Dr. Williams",
+          participants: [
+            {
+              displayName: "Dr Williams",
+              givenName: "David",
+              familyName: "Williams",
+            },
+          ],
         },
         {
           id: "conv-2",
           patientId: "patient-2",
           patientName: "Mary Johnson",
+          patientGivenName: "Mary",
+          patientFamilyName: "Johnson",
+          patientGradientIndex: 4,
           lastMessage: "I need to schedule a follow-up appointment",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 2,
           ).toISOString(), // 2 hours ago
           unreadCount: 0,
           status: "new",
+          participants: [
+            {
+              displayName: "Dr Corbett",
+              givenName: "Gareth",
+              familyName: "Corbett",
+            },
+          ],
         },
         {
           id: "conv-3",
           patientId: "patient-3",
           patientName: "Robert Brown",
+          patientGivenName: "Robert",
+          patientFamilyName: "Brown",
+          patientGradientIndex: 9,
           lastMessage: "My test results came back, what should I do next?",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 5,
           ).toISOString(), // 5 hours ago
           unreadCount: 1,
           status: "active",
-          assignedTo: "Dr. Smith",
+          participants: [
+            {
+              displayName: "Dr Smith",
+              givenName: "James",
+              familyName: "Smith",
+            },
+          ],
         },
         {
           id: "conv-4",
           patientId: "patient-4",
           patientName: "Sarah Davis",
+          patientGivenName: "Sarah",
+          patientFamilyName: "Davis",
+          patientGradientIndex: 1,
           lastMessage: "Issue resolved, thank you",
           lastMessageTime: new Date(
             Date.now() - 1000 * 60 * 60 * 24,
           ).toISOString(), // 1 day ago
           unreadCount: 0,
           status: "resolved",
+          participants: [
+            {
+              displayName: "Dr Williams",
+              givenName: "David",
+              familyName: "Williams",
+            },
+          ],
         },
       ];
 
@@ -199,9 +252,7 @@ export default function Messages() {
   });
 
   const handleConversationClick = (conversation: Conversation) => {
-    // TODO: Navigate to conversation detail page
-    // navigate(`/messages/${conversation.id}`);
-    console.log("Navigate to conversation:", conversation.id);
+    navigate(`/messages/${conversation.id}`);
   };
 
   return (
@@ -217,6 +268,7 @@ export default function Messages() {
         <Card shadow="sm" padding="md" radius="md" withBorder>
           <Group gap="md" grow>
             <TextInput
+              label="Search"
               placeholder="Search by patient name..."
               leftSection={<IconSearch size={16} />}
               value={searchQuery}
@@ -265,7 +317,7 @@ export default function Messages() {
             </Text>
           </Card>
         ) : (
-          <MessagesList
+          <UserMessagesList
             conversations={sortedConversations}
             onConversationClick={handleConversationClick}
           />

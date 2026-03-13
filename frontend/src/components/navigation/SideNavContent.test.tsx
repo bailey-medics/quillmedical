@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import SideNavContent from "./SideNavContent";
 import { AuthProvider } from "@/auth/AuthContext";
 import type { User } from "@/auth/AuthContext";
+import type { Patient } from "@/domains/patient";
 
 // Mock users with different permission levels
 const mockUsers: Record<string, User> = {
@@ -38,9 +39,19 @@ const mockUsers: Record<string, User> = {
   },
 };
 
+const mockPatient: Patient = {
+  id: "patient-123",
+  name: "John Smith",
+  givenName: "John",
+  familyName: "Smith",
+  dob: "1985-03-15",
+  sex: "male",
+};
+
 function renderWithAuth(
   ui: React.ReactElement,
   userType: keyof typeof mockUsers = "staff",
+  options?: { initialRoute?: string },
 ) {
   const mockUser = mockUsers[userType];
 
@@ -66,7 +77,9 @@ function renderWithAuth(
     } as Response);
   }) as typeof global.fetch;
 
-  return renderWithRouter(<AuthProvider>{ui}</AuthProvider>);
+  return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
+    initialRoute: options?.initialRoute,
+  });
 }
 
 describe("SideNavContent Component", () => {
@@ -272,6 +285,131 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Admin")).toBeInTheDocument();
         expect(screen.getByText("Logout")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Patient navigation", () => {
+    it("does not show patient nav when not on a patient page", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Home")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
+    });
+
+    it("shows patient name when on a patient page", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+      });
+    });
+
+    it("does not show patient nav when patient is null on patient page", async () => {
+      renderWithAuth(<SideNavContent patient={null} />, "staff", {
+        initialRoute: "/patients/patient-123",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Home")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
+    });
+
+    it("shows sub-page label for messages", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123/messages",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+        // "Messages" appears both as patient sub-page and main nav link
+        const messagesLinks = screen.getAllByText("Messages");
+        expect(messagesLinks.length).toBe(2);
+      });
+    });
+
+    it("shows sub-page label for letters", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123/letters",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+        expect(screen.getByText("Clinical letters")).toBeInTheDocument();
+      });
+    });
+
+    it("shows sub-page label for notes", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123/notes",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+        expect(screen.getByText("Clinical notes")).toBeInTheDocument();
+      });
+    });
+
+    it("shows sub-page label for appointments", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123/appointments",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+        expect(screen.getByText("Appointments")).toBeInTheDocument();
+      });
+    });
+
+    it("shows thread label for known conversation", async () => {
+      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+        initialRoute: "/patients/patient-123/messages/gastro-clinic",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+        // "Messages" appears both as patient sub-page and main nav link
+        const messagesLinks = screen.getAllByText("Messages");
+        expect(messagesLinks.length).toBe(2);
+        expect(screen.getByText("Dr Corbett, Gemma")).toBeInTheDocument();
+      });
+    });
+
+    it("shows user icon when showIcons is true", async () => {
+      const { container } = renderWithAuth(
+        <SideNavContent patient={mockPatient} showIcons />,
+        "staff",
+        { initialRoute: "/patients/patient-123" },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+      });
+
+      // Should have at least one ThemeIcon for the patient nav
+      const icons = container.querySelectorAll(".mantine-ThemeIcon-root");
+      expect(icons.length).toBeGreaterThan(0);
+    });
+
+    it("renders divider between patient nav and main nav", async () => {
+      const { container } = renderWithAuth(
+        <SideNavContent patient={mockPatient} />,
+        "staff",
+        { initialRoute: "/patients/patient-123" },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+      });
+
+      const divider = container.querySelector('[role="separator"]');
+      expect(divider).toBeInTheDocument();
     });
   });
 });

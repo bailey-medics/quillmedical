@@ -66,6 +66,74 @@ just create-user    # Interactive user creation
   - Standard breakpoint: `sm = "48em"` (768px) - matches navigation drawer toggle
   - Use in all components that need responsive layout/sizing decisions
 
+### Component reuse hierarchy (Storybook-first)
+
+When building UI, follow this priority order:
+
+1. **Reuse existing Storybook components** — always check the catalogue below first
+2. **Compose new components from existing ones** — combine Storybook components together
+3. **Build from scratch** — only when no existing component fits; create a new component with `.stories.tsx` and `.test.tsx`
+
+All reusable UI must live in `frontend/src/components/` with Storybook stories. Pages consume components; pages do not contain reusable UI inline.
+
+#### Storybook component catalogue
+
+| Category | Component | Path |
+|---|---|---|
+| ActionCard | ActionCard | `components/action-card/` |
+| Admin | Admin | `components/admin/` |
+| Avatars | ProfilePic | `components/profile-pic/` |
+| Badge | Badge, ActiveStatus, PermissionBadge | `components/badge/` |
+| Button | AddButton | `components/button/` |
+| Data | Date, NationalNumber | `components/data/` |
+| Demographics | Demographics | `components/demographics/` |
+| Drawers | NavigationDrawer | `components/drawers/` |
+| Footer | Footer | `components/footer/` |
+| Gender | Gender, GenderIcon | `components/gender/` |
+| Icons | Icon, IconButton, NavIcon | `components/icons/` |
+| Images | QuillLogo, QuillName | `components/images/` |
+| Layouts | MainLayout, NotFoundLayout, Complete, Complete.PatientList | `components/layouts/` |
+| Letters | Letters, LetterView | `components/letters/` |
+| Markdown | MarkdownView | `components/markdown/` |
+| Messaging | Messaging, MessagesList, MessagingTriagePayment | `components/messaging/` |
+| MultiStepForm | MultiStepForm | `components/multi-step-form/` |
+| Navigation | SideNav, NestedNavLink | `components/navigation/` |
+| PageHeader | PageHeader | `components/page-header/` |
+| Patients | PatientsList | `components/patients/` |
+| Ribbon | TopRibbon | `components/ribbon/` |
+| Search | SearchField | `components/search/` |
+| StateMessages | StateMessage | `components/state-message/` |
+| StatCards | StatCard | `components/stats-card/` |
+| Tables | AdminTable | `components/tables/` |
+| Warnings | DirtyFormNavigation | `components/warnings/` |
+
+**Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.
+
+#### Variant display helpers
+
+When building "All sizes" or "All variants" stories that show rows of components with a label underneath, use the `VariantStack` and `VariantRow` helpers from `src/stories/variants.tsx`:
+
+```tsx
+import { VariantRow, VariantStack } from "@/stories/variants";
+
+<VariantStack>
+  <VariantRow label="sm">
+    <MyComponent size="sm" />
+  </VariantRow>
+  <VariantRow label="lg (default)">
+    <MyComponent size="lg" />
+  </VariantRow>
+</VariantStack>
+```
+
+- `VariantStack` wraps rows with consistent vertical spacing
+- `VariantRow` wraps children in a horizontal `Group` with a label underneath
+- Set `horizontal={false}` for single-item rows (e.g. loading skeletons)
+
+#### Icons
+
+All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.tsx` — when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
+
 ### Healthcare
 
 - **FHIR**: `fhirclient` library (`backend/app/fhir_client.py`) for patient demographics

@@ -12,7 +12,7 @@ import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import AdminTable, { type Column } from "@/components/tables/AdminTable";
-import FormattedDate from "@/components/date/Date";
+import FormattedDate from "@/components/data/Date";
 import { api } from "@/lib/api";
 
 interface Organization {

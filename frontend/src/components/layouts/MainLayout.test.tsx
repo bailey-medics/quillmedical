@@ -93,6 +93,10 @@ vi.mock("@components/footer/Footer", () => ({
   ),
 }));
 
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => vi.fn(),
+}));
+
 const mockPatient: Patient = {
   id: "1",
   name: "John Doe",

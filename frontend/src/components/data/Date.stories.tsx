@@ -160,34 +160,3 @@ export const Comparison: Story = {
     );
   },
 };
-
-/**
- * Edge cases: invalid dates, empty strings
- */
-export const EdgeCases: Story = {
-  render: () => (
-    <Stack gap="md">
-      <div>
-        <Text size="sm" c="dimmed">
-          Invalid date string:
-        </Text>
-        <FormattedDate date="not-a-date" />
-      </div>
-      <div>
-        <Text size="sm" c="dimmed">
-          Empty string:
-        </Text>
-        <FormattedDate date="" />
-        <Text size="xs" c="dimmed">
-          (renders nothing)
-        </Text>
-      </div>
-      <div>
-        <Text size="sm" c="dimmed">
-          Valid date with styling:
-        </Text>
-        <FormattedDate date="1980-09-15" fw={700} c="blue" size="lg" />
-      </div>
-    </Stack>
-  ),
-};

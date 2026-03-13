@@ -50,10 +50,17 @@ import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
+import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
 import NewUserPage from "./pages/NewUserPage";
 import NotFound from "./pages/NotFound";
 import Patient from "./pages/Patient";
+import PatientAppointments from "./pages/PatientAppointments";
+import PatientLetters from "./pages/PatientLetters";
+import PatientLetterView from "./pages/PatientLetterView";
+import PatientMessages from "./pages/PatientMessages";
+import PatientMessageThread from "./pages/PatientMessageThread";
+import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TotpSetup from "./pages/TotpSetup";
 
@@ -103,7 +110,23 @@ const router = createBrowserRouter(
       children: [
         { path: "/", element: <Home /> },
         { path: "/patients/:id", element: <Patient /> },
+        { path: "/patients/:id/letters", element: <PatientLetters /> },
+        {
+          path: "/patients/:id/letters/:letterId",
+          element: <PatientLetterView />,
+        },
+        { path: "/patients/:id/messages", element: <PatientMessages /> },
+        {
+          path: "/patients/:id/messages/:conversationId",
+          element: <PatientMessageThread />,
+        },
+        { path: "/patients/:id/notes", element: <PatientNotes /> },
+        {
+          path: "/patients/:id/appointments",
+          element: <PatientAppointments />,
+        },
         { path: "/messages", element: <Messages /> },
+        { path: "/messages/:conversationId", element: <MessageThread /> },
         {
           path: "/admin",
           element: (

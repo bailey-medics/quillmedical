@@ -14,7 +14,9 @@ import Footer from "@components/footer/Footer";
 import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { useCallback, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 /**
  * MainLayout Props
@@ -49,6 +51,8 @@ export default function MainLayout({
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const { state } = useAuth();
+  const navigate = useNavigate();
+  const mainRef = useRef<HTMLDivElement>(null);
 
   // Prepare footer text based on auth state
   const footerText =
@@ -57,6 +61,24 @@ export default function MainLayout({
       : undefined;
 
   const footerLoading = state.status === "loading";
+
+  const handlePatientClick = useCallback(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    main.scrollTo({ top: 0, behavior: "smooth" });
+    // Also scroll any nested scrollable containers (e.g. Mantine ScrollArea in Messaging)
+    main.querySelectorAll<HTMLElement>("*").forEach((el) => {
+      if (el.scrollTop > 0) {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  }, []);
+
+  const handlePatientDoubleClick = useCallback(() => {
+    if (patient) {
+      navigate(`/patients/${patient.id}`);
+    }
+  }, [patient, navigate]);
 
   const DRAWER_W = 260;
 
@@ -86,6 +108,8 @@ export default function MainLayout({
           patient={patient}
           navOpen={opened}
           isNarrow={isSm}
+          onPatientClick={handlePatientClick}
+          onPatientDoubleClick={handlePatientDoubleClick}
         />
       </Box>
 
@@ -97,7 +121,7 @@ export default function MainLayout({
           width={`${DRAWER_W}px`}
         >
           <div style={{ width: DRAWER_W }}>
-            <SideNav showSearch={isSm} onNavigate={close} />
+            <SideNav showSearch={isSm} onNavigate={close} patient={patient} />
           </div>
         </NavigationDrawer>
 
@@ -112,11 +136,17 @@ export default function MainLayout({
                 flexShrink: 0,
               }}
             >
-              <SideNav showSearch={false} showIcons={true} />
+              <SideNav showSearch={false} showIcons={true} patient={patient} />
             </Box>
           )}
           <Flex direction="column" flex={1} style={{ height: "100%" }}>
-            <Box component="main" flex={1} style={{ overflowY: "auto" }} p="md">
+            <Box
+              component="main"
+              ref={mainRef}
+              flex={1}
+              style={{ overflowY: "auto" }}
+              p="md"
+            >
               {isLoading ? (
                 <Stack gap="md">
                   <Skeleton height={50} radius="md" />

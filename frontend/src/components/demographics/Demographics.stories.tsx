@@ -42,55 +42,6 @@ export const Default: Story = {
   },
 };
 
-export const WithAllDetails: Story = {
-  args: {
-    patient: {
-      ...basePatient,
-      name: "Sarah Elizabeth Johnson",
-      dob: "1992-07-22",
-      age: 31,
-      sex: "Female",
-      nationalNumber: "9876543210",
-      nationalNumberSystem:
-        "http://ns.electronichealth.net.au/id/medicare-number",
-    },
-  },
-};
-
-export const MinimalDetails: Story = {
-  args: {
-    patient: {
-      id: "2",
-      name: "Jane Doe",
-    },
-  },
-};
-
-export const WithoutAge: Story = {
-  args: {
-    patient: {
-      id: "3",
-      name: "Michael Brown",
-      dob: "1978-11-30",
-      sex: "Male",
-      nationalNumber: "5555555555",
-      nationalNumberSystem: "https://fhir.nhs.uk/Id/nhs-number",
-    },
-  },
-};
-
-export const WithoutNationalNumber: Story = {
-  args: {
-    patient: {
-      id: "4",
-      name: "Emily Davis",
-      dob: "2000-01-01",
-      age: 26,
-      sex: "Female",
-    },
-  },
-};
-
 export const LongName: Story = {
   args: {
     patient: {

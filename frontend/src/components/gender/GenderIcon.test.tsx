@@ -65,11 +65,11 @@ describe("GenderIcon Component", () => {
   describe("Icon props", () => {
     it("accepts custom size", () => {
       const { container } = renderWithMantine(
-        <GenderIcon gender="male" size={48} />,
+        <GenderIcon gender="male" size="lg" />,
       );
       const svg = container.querySelector("svg");
-      expect(svg).toHaveAttribute("width", "48");
-      expect(svg).toHaveAttribute("height", "48");
+      expect(svg).toHaveAttribute("width", "38");
+      expect(svg).toHaveAttribute("height", "38");
     });
 
     it("applies custom color", () => {

@@ -81,9 +81,17 @@ export default function FormattedDate({
       dateObj,
     );
 
-    return <Text {...textProps}>{formattedDate}</Text>;
+    return (
+      <Text component="span" {...textProps}>
+        {formattedDate}
+      </Text>
+    );
   } catch (error) {
     console.error("Error formatting date:", error);
-    return <Text {...textProps}>Invalid date</Text>;
+    return (
+      <Text component="span" {...textProps}>
+        Invalid date
+      </Text>
+    );
   }
 }

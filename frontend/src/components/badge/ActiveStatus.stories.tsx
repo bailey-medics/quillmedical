@@ -5,7 +5,8 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack, Group, Text } from "@mantine/core";
+import { Group } from "@mantine/core";
+import { VariantRow, VariantStack } from "@/stories/variants";
 import ActiveStatus from "./ActiveStatus";
 
 const meta: Meta<typeof ActiveStatus> = {
@@ -32,25 +33,13 @@ export default meta;
 type Story = StoryObj<typeof ActiveStatus>;
 
 /**
- * Default States
- *
  * Shows both active and deactivated states with default medium size.
  */
-export const DefaultStates: Story = {
+export const Default: Story = {
   render: () => (
     <Group gap="md">
-      <div>
-        <Text size="xs" c="dimmed" mb={4}>
-          Active
-        </Text>
-        <ActiveStatus active={true} />
-      </div>
-      <div>
-        <Text size="xs" c="dimmed" mb={4}>
-          Deactivated
-        </Text>
-        <ActiveStatus active={false} />
-      </div>
+      <ActiveStatus active={true} />
+      <ActiveStatus active={false} />
     </Group>
   ),
 };
@@ -62,70 +51,13 @@ export const DefaultStates: Story = {
  */
 export const AllSizes: Story = {
   render: () => (
-    <Stack gap="lg">
-      <div>
-        <Text size="sm" fw={500} mb="xs">
-          Active status - all sizes
-        </Text>
-        <Group gap="md">
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              sm
-            </Text>
-            <ActiveStatus active={true} size="sm" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              md (default)
-            </Text>
-            <ActiveStatus active={true} size="md" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              lg
-            </Text>
-            <ActiveStatus active={true} size="lg" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              xl
-            </Text>
-            <ActiveStatus active={true} size="xl" />
-          </div>
-        </Group>
-      </div>
-
-      <div>
-        <Text size="sm" fw={500} mb="xs">
-          Deactivated status - all sizes
-        </Text>
-        <Group gap="md">
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              sm
-            </Text>
-            <ActiveStatus active={false} size="sm" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              md (default)
-            </Text>
-            <ActiveStatus active={false} size="md" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              lg
-            </Text>
-            <ActiveStatus active={false} size="lg" />
-          </div>
-          <div>
-            <Text size="xs" c="dimmed" mb={4}>
-              xl
-            </Text>
-            <ActiveStatus active={false} size="xl" />
-          </div>
-        </Group>
-      </div>
-    </Stack>
+    <VariantStack>
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
+        <VariantRow key={size} label={size === "md" ? "md (default)" : size}>
+          <ActiveStatus active={true} size={size} />
+          <ActiveStatus active={false} size={size} />
+        </VariantRow>
+      ))}
+    </VariantStack>
   ),
 };

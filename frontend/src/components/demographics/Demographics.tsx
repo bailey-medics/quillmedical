@@ -7,8 +7,8 @@
  */
 
 import type { Patient } from "@/domains/patient";
-import NationalNumber from "@/components/demographics/NationalNumber";
-import FormattedDate from "@/components/date";
+import NationalNumber from "@/components/data/NationalNumber";
+import FormattedDate from "@/components/data";
 import { Skeleton, Text } from "@mantine/core";
 
 /**
@@ -38,8 +38,8 @@ export default function Demographics({ patient, isLoading = false }: Props) {
   if (isLoading) {
     return (
       <div style={{ flex: 1 }}>
-        <Skeleton height={24} width="60%" mb={4} />
-        <Skeleton height={16} width="80%" />
+        <Skeleton height={18} width="20rem" mt={10} mb={15} />
+        <Skeleton height={17} width="20rem" />
       </div>
     );
   }

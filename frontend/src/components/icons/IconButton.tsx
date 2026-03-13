@@ -46,8 +46,6 @@ interface IconButtonProps {
   "aria-label"?: string;
   /** Disabled state */
   disabled?: boolean;
-  /** Loading state */
-  loading?: boolean;
   /** Additional class name */
   className?: string;
 }

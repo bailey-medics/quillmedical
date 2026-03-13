@@ -2,220 +2,24 @@
  * Patient Detail Page Module
  *
  * Displays detailed information for a specific patient including demographics
- * in the top ribbon (via outlet context) and placeholder content for future
- * features (clinical letters, messaging, etc.).
+ * in the top ribbon (via outlet context) and action cards for navigating to
+ * clinical letters, messaging, notes, and appointments.
  */
 
-import type { Patient } from "@/domains/patient";
-import type { LayoutCtx } from "@/RootLayout";
-import { api } from "@/lib/api";
-import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
-import { Card, Container, Stack, Text, Title } from "@mantine/core";
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import ActionCard from "@/components/action-card";
+import { usePatientLoader } from "@/hooks/usePatientLoader";
+import { Card, Container, SimpleGrid, Text } from "@mantine/core";
+import {
+  IconCalendarWeek,
+  IconMessage,
+  IconBook,
+  IconMail,
+} from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
-/**
- * FHIR Name
- *
- * FHIR R4 HumanName structure containing name components.
- */
-type FhirName = {
-  /** Array of given names (first, middle) */
-  given?: string[];
-  /** Family name (surname) */
-  family?: string;
-  /** Name use context (usual, official, temp, etc.) */
-  use?: string;
-};
-
-/**
- * FHIR Identifier
- *
- * FHIR R4 Identifier structure for patient identifiers (national health IDs, MRN, etc.).
- */
-type FhirIdentifier = {
-  /** Identifier system/namespace (e.g., https://fhir.nhs.uk/Id/nhs-number, national health ID URIs) */
-  system?: string;
-  /** Identifier value (e.g., 10-digit NHS number, Medicare number, etc.) */
-  value?: string;
-};
-
-/**
- * FHIR Extension
- *
- * FHIR R4 Extension structure for custom data elements.
- */
-type FhirExtension = {
-  url?: string;
-  valueInteger?: number;
-  valueString?: string;
-  extension?: FhirExtension[];
-};
-
-/**
- * FHIR Patient
- *
- * FHIR R4 Patient resource structure returned from backend.
- */
-type FhirPatient = {
-  /** FHIR resource type (always "Patient") */
-  resourceType: string;
-  /** Unique FHIR resource ID */
-  id: string;
-  /** Array of patient names (official, usual, etc.) */
-  name?: FhirName[];
-  /** Date of birth in YYYY-MM-DD format */
-  birthDate?: string;
-  /** Administrative gender (male, female, other, unknown) */
-  gender?: string;
-  /** Array of patient identifiers (NHS number, MRN, etc.) */
-  identifier?: FhirIdentifier[];
-  /** Array of FHIR extensions */
-  extension?: FhirExtension[];
-};
-
-/**
- * Patient Demographics API Response
- *
- * Response structure from GET /api/patients/{id}/demographics.
- */
-type PatientDemographicsRes = {
-  /** Patient FHIR ID */
-  patient_id: string;
-  /** FHIR Patient resource */
-  data: FhirPatient;
-};
-
-/**
- * Patient Detail Page
- *
- * Displays a patient's information in the top ribbon (via outlet context)
- * and main content area with placeholder sections for future features.
- *
- * URL Parameters:
- * - id: Patient FHIR resource ID
- *
- * @example
- * // Routing configuration
- * <Route path="/patients/:id" element={<Patient />} />
- */
 export default function Patient() {
-  const { id } = useParams<{ id: string }>();
+  const { id, error } = usePatientLoader();
   const navigate = useNavigate();
-  const { setPatient } = useOutletContext<LayoutCtx>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) {
-      setError("No patient ID provided");
-      setIsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoading(true);
-
-    api
-      .get<PatientDemographicsRes>(`/patients/${id}/demographics`)
-      .then((res) => {
-        if (cancelled) return;
-
-        const fhirPatient = res.data;
-
-        // Extract name from FHIR structure
-        let displayName = fhirPatient.id;
-        let givenName: string | undefined;
-        let familyName: string | undefined;
-        if (fhirPatient.name && fhirPatient.name.length > 0) {
-          const primaryName = fhirPatient.name[0];
-          const givenNames = primaryName.given || [];
-          familyName = primaryName.family || undefined;
-          givenName = givenNames[0] || undefined;
-          const nameParts = [...givenNames, familyName].filter(Boolean);
-          if (nameParts.length > 0) {
-            displayName = nameParts.join(" ");
-          }
-        }
-
-        // Extract national health identifier from identifiers
-        // This could be NHS number (UK), Medicare number (AU), etc.
-        let nationalNumber: string | undefined;
-        let nationalNumberSystem: string | undefined;
-        if (fhirPatient.identifier && fhirPatient.identifier.length > 0) {
-          // Try to find a national health identifier (prioritize common systems)
-          const nationalIdentifier = fhirPatient.identifier.find(
-            (identifier) =>
-              identifier.system === "https://fhir.nhs.uk/Id/nhs-number" ||
-              identifier.system ===
-                "http://ns.electronichealth.net.au/id/medicare-number" ||
-              identifier.system?.includes("/national") ||
-              identifier.system?.includes("/health-id"),
-          );
-          if (nationalIdentifier) {
-            nationalNumber = nationalIdentifier.value;
-            nationalNumberSystem = nationalIdentifier.system;
-          }
-        }
-
-        // Calculate age from birthDate
-        let age: number | undefined;
-        if (fhirPatient.birthDate) {
-          const birthDate = new Date(fhirPatient.birthDate);
-          const today = new Date();
-          age = today.getFullYear() - birthDate.getFullYear();
-          const monthDiff = today.getMonth() - birthDate.getMonth();
-          if (
-            monthDiff < 0 ||
-            (monthDiff === 0 && today.getDate() < birthDate.getDate())
-          ) {
-            age--;
-          }
-        }
-
-        // Extract avatar gradient index from FHIR extension
-        const gradientIndex = extractAvatarGradientIndex(fhirPatient);
-
-        const mappedPatient: Patient = {
-          id: fhirPatient.id,
-          name: displayName,
-          givenName: givenName,
-          familyName: familyName,
-          dob: fhirPatient.birthDate ?? undefined,
-          age: age,
-          sex: fhirPatient.gender ?? undefined,
-          nationalNumber: nationalNumber,
-          nationalNumberSystem: nationalNumberSystem,
-          gradientIndex: gradientIndex,
-          onQuill: true,
-        };
-
-        setPatient(mappedPatient);
-        setError(null);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message || "Failed to load patient details");
-        setPatient(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-      setPatient(null);
-    };
-  }, [id, setPatient]);
-
-  if (isLoading) {
-    return (
-      <Container size="lg" py="xl">
-        <Text>Loading patient details...</Text>
-      </Container>
-    );
-  }
 
   if (error) {
     return (
@@ -241,44 +45,36 @@ export default function Patient() {
 
   return (
     <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">
-            Clinical Letters
-          </Title>
-          <Text c="dimmed">
-            Placeholder: Clinical letters will be displayed here
-          </Text>
-        </Card>
-
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">
-            Messaging
-          </Title>
-          <Text c="dimmed">
-            Placeholder: Patient messaging interface will be displayed here
-          </Text>
-        </Card>
-
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">
-            Clinical Notes
-          </Title>
-          <Text c="dimmed">
-            Placeholder: Clinical notes and observations will be displayed here
-          </Text>
-        </Card>
-
-        <Card shadow="sm" padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">
-            Appointments
-          </Title>
-          <Text c="dimmed">
-            Placeholder: Appointment history and upcoming appointments will be
-            displayed here
-          </Text>
-        </Card>
-      </Stack>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+        <ActionCard
+          icon={<IconMail />}
+          title="Clinical letters"
+          subtitle="View referral letters, clinic letters, and discharge summaries"
+          buttonLabel="View letters"
+          buttonUrl={`/patients/${id}/letters`}
+        />
+        <ActionCard
+          icon={<IconMessage />}
+          title="Messaging"
+          subtitle="Send and receive secure messages with the care team"
+          buttonLabel="Open messages"
+          buttonUrl={`/patients/${id}/messages`}
+        />
+        <ActionCard
+          icon={<IconBook />}
+          title="Clinical notes"
+          subtitle="View consultation notes, observations, and clinical records"
+          buttonLabel="View notes"
+          buttonUrl={`/patients/${id}/notes`}
+        />
+        <ActionCard
+          icon={<IconCalendarWeek />}
+          title="Appointments"
+          subtitle="View upcoming and past appointment history"
+          buttonLabel="View appointments"
+          buttonUrl={`/patients/${id}/appointments`}
+        />
+      </SimpleGrid>
     </Container>
   );
 }

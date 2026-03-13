@@ -12,7 +12,8 @@
  * ```
  */
 
-import { Button } from "@mantine/core";
+import { Button, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 
@@ -45,17 +46,22 @@ export default function AddButton({
   loading = false,
   disabled = false,
 }: AddButtonProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
   return (
     <Button
-      leftSection={<Icon icon={<IconPlus />} size="md" />}
+      leftSection={<Icon icon={<IconPlus />} size={isMobile ? "sm" : "md"} />}
       onClick={onClick}
-      size="lg"
+      size={isMobile ? "md" : "lg"}
       color="blue"
       loading={loading}
       disabled={disabled}
       styles={{
         label: {
-          fontSize: "var(--mantine-font-size-lg)",
+          fontSize: isMobile
+            ? "var(--mantine-font-size-md)"
+            : "var(--mantine-font-size-lg)",
         },
       }}
     >

@@ -1,5 +1,5 @@
 /**
- * MessagesList Component Tests
+ * UserMessagesList Component Tests
  *
  * Tests for conversation list display including status badges,
  * unread counts, and time formatting.
@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
-import MessagesList from "./MessagesList";
+import UserMessagesList from "./UserMessagesList";
 import type { Conversation } from "@/pages/Messages";
 
 const mockConversations: Conversation[] = [
@@ -17,39 +17,54 @@ const mockConversations: Conversation[] = [
     id: "1",
     patientId: "p1",
     patientName: "John Doe",
+    patientGivenName: "John",
+    patientFamilyName: "Doe",
+    patientGradientIndex: 2,
     lastMessage: "Hello, I need help with my prescription",
     lastMessageTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
     unreadCount: 2,
     status: "new",
-    assignedTo: "Dr. Smith",
+    participants: [
+      { displayName: "Dr Smith", givenName: "James", familyName: "Smith" },
+    ],
   },
   {
     id: "2",
     patientId: "p2",
     patientName: "Jane Smith",
+    patientGivenName: "Jane",
+    patientFamilyName: "Smith",
+    patientGradientIndex: 4,
     lastMessage: "Thank you for your help",
     lastMessageTime: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
     unreadCount: 0,
     status: "resolved",
-    assignedTo: undefined,
+    participants: [
+      { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
+    ],
   },
   {
     id: "3",
     patientId: "p3",
     patientName: "Bob Johnson",
+    patientGivenName: "Bob",
+    patientFamilyName: "Johnson",
+    patientGradientIndex: 9,
     lastMessage: "When is my next appointment?",
     lastMessageTime: new Date(Date.now() - 1800000).toISOString(), // 30 min ago
     unreadCount: 5,
     status: "active",
-    assignedTo: "Dr. Jones",
+    participants: [
+      { displayName: "Dr Jones", givenName: "Eleanor", familyName: "Jones" },
+    ],
   },
 ];
 
-describe("MessagesList", () => {
+describe("UserMessagesList", () => {
   describe("Basic rendering", () => {
     it("renders list of conversations", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -62,7 +77,7 @@ describe("MessagesList", () => {
 
     it("renders empty list when no conversations", () => {
       const { container } = renderWithMantine(
-        <MessagesList conversations={[]} onConversationClick={vi.fn()} />,
+        <UserMessagesList conversations={[]} onConversationClick={vi.fn()} />,
       );
 
       expect(
@@ -72,7 +87,7 @@ describe("MessagesList", () => {
 
     it("displays patient avatars", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -83,25 +98,25 @@ describe("MessagesList", () => {
       expect(avatars.length).toBeGreaterThan(0);
     });
 
-    it("uses first letter of patient name in avatar", () => {
+    it("uses patient initials in profile pic", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
       );
 
-      // Use getAllByText for multiple "J" letters (John and Jane)
-      const jLetters = screen.getAllByText("J");
-      expect(jLetters.length).toBeGreaterThan(0);
-      expect(screen.getByText("B")).toBeInTheDocument(); // Bob
+      // ProfilePic renders two-letter initials (givenName + familyName)
+      expect(screen.getByText("JD")).toBeInTheDocument(); // John Doe
+      expect(screen.getByText("JS")).toBeInTheDocument(); // Jane Smith
+      expect(screen.getByText("BJ")).toBeInTheDocument(); // Bob Johnson
     });
   });
 
   describe("Message preview", () => {
     it("displays last message text", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -120,15 +135,25 @@ describe("MessagesList", () => {
           id: "1",
           patientId: "p1",
           patientName: "Test Patient",
+          patientGivenName: "Test",
+          patientFamilyName: "Patient",
+          patientGradientIndex: 0,
           lastMessage: longMessage,
           lastMessageTime: new Date().toISOString(),
           unreadCount: 0,
           status: "new",
+          participants: [
+            {
+              displayName: "Dr Smith",
+              givenName: "James",
+              familyName: "Smith",
+            },
+          ],
         },
       ];
 
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -143,7 +168,7 @@ describe("MessagesList", () => {
   describe("Status badges", () => {
     it("displays status badge for each conversation", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -163,7 +188,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -182,7 +207,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -200,7 +225,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -218,7 +243,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -231,7 +256,7 @@ describe("MessagesList", () => {
   describe("Unread count", () => {
     it("displays unread badge when count > 0", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -250,7 +275,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -260,7 +285,7 @@ describe("MessagesList", () => {
       expect(badges.length).toBe(0);
     });
 
-    it("displays double-digit unread counts", () => {
+    it("caps unread counts above 9 as 9+", () => {
       const conversations: Conversation[] = [
         {
           ...mockConversations[0],
@@ -269,45 +294,28 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
       );
 
-      expect(screen.getByText("42")).toBeInTheDocument();
+      expect(screen.getByText("9+")).toBeInTheDocument();
     });
   });
 
-  describe("Assigned to", () => {
-    it("displays assigned clinician when present", () => {
+  describe("Participants", () => {
+    it("displays participant names", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
       );
 
-      expect(screen.getByText("Assigned to: Dr. Smith")).toBeInTheDocument();
-      expect(screen.getByText("Assigned to: Dr. Jones")).toBeInTheDocument();
-    });
-
-    it("hides assignment when not assigned", () => {
-      const conversations: Conversation[] = [
-        {
-          ...mockConversations[0],
-          assignedTo: undefined,
-        },
-      ];
-
-      renderWithMantine(
-        <MessagesList
-          conversations={conversations}
-          onConversationClick={vi.fn()}
-        />,
-      );
-
-      expect(screen.queryByText(/Assigned to:/)).not.toBeInTheDocument();
+      expect(screen.getByText("Dr Smith")).toBeInTheDocument();
+      expect(screen.getByText("Dr Patel")).toBeInTheDocument();
+      expect(screen.getByText("Dr Jones")).toBeInTheDocument();
     });
   });
 
@@ -321,7 +329,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -339,7 +347,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -357,7 +365,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -375,7 +383,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -393,7 +401,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -413,7 +421,7 @@ describe("MessagesList", () => {
       ];
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={conversations}
           onConversationClick={vi.fn()}
         />,
@@ -430,7 +438,7 @@ describe("MessagesList", () => {
       const onConversationClick = vi.fn();
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={onConversationClick}
         />,
@@ -446,7 +454,7 @@ describe("MessagesList", () => {
       const onConversationClick = vi.fn();
 
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={onConversationClick}
         />,
@@ -459,7 +467,7 @@ describe("MessagesList", () => {
 
     it("shows cursor pointer on hover", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
         />,
@@ -473,7 +481,7 @@ describe("MessagesList", () => {
   describe("Loading state", () => {
     it("displays skeleton loaders when loading", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={[]}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -487,7 +495,7 @@ describe("MessagesList", () => {
 
     it("shows 3 skeleton cards when loading", () => {
       const { container } = renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={[]}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -501,7 +509,7 @@ describe("MessagesList", () => {
 
     it("hides actual conversations when loading", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
           isLoading={true}
@@ -514,7 +522,7 @@ describe("MessagesList", () => {
 
     it("shows conversations when not loading", () => {
       renderWithMantine(
-        <MessagesList
+        <UserMessagesList
           conversations={mockConversations}
           onConversationClick={vi.fn()}
           isLoading={false}

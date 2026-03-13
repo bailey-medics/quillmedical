@@ -1,20 +1,15 @@
 /**
- * Messages List Component
+ * User Messages List Component
  *
- * Displays a list of patient conversations with preview information,
- * unread counts, and status indicators.
+ * Displays a list of patient conversations for a clinician/admin user,
+ * with preview information, unread counts, and status indicators.
+ * Shows the patient name for each conversation.
  */
 
 import type { Conversation } from "@/pages/Messages";
-import {
-  Avatar,
-  Badge,
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-} from "@mantine/core";
+import ProfilePic from "@/components/profile-pic/ProfilePic";
+import UnreadBadge from "@/components/badge/UnreadBadge";
+import { Badge, Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 type Props = {
   conversations: Conversation[];
@@ -69,7 +64,7 @@ function formatTime(timestamp: string): string {
  * Renders a list of conversation cards with patient information,
  * last message preview, unread count, and status badge.
  */
-export default function MessagesList({
+export default function UserMessagesList({
   conversations,
   onConversationClick,
   isLoading,
@@ -103,9 +98,12 @@ export default function MessagesList({
         >
           <Card shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <Avatar size={50} radius="xl" color="blue">
-                {conv.patientName.charAt(0).toUpperCase()}
-              </Avatar>
+              <ProfilePic
+                givenName={conv.patientGivenName}
+                familyName={conv.patientFamilyName}
+                gradientIndex={conv.patientGradientIndex}
+                size="md"
+              />
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
@@ -131,16 +129,10 @@ export default function MessagesList({
                 </Text>
 
                 <Group justify="space-between">
-                  {conv.assignedTo && (
-                    <Text size="lg" c="dimmed">
-                      Assigned to: {conv.assignedTo}
-                    </Text>
-                  )}
-                  {conv.unreadCount > 0 && (
-                    <Badge size="sm" color="red" variant="filled" circle>
-                      {conv.unreadCount}
-                    </Badge>
-                  )}
+                  <Text size="lg" c="dimmed">
+                    {conv.participants.map((p) => p.displayName).join(", ")}
+                  </Text>
+                  <UnreadBadge count={conv.unreadCount} size="sm" />
                 </Group>
               </div>
             </Group>

@@ -8,17 +8,23 @@ import {
   IconGenderMale,
   IconGenderFemale,
   IconGenderAgender,
-  type IconProps,
 } from "@tabler/icons-react";
 import { Skeleton } from "@mantine/core";
 import type { GenderValue } from "./Gender.types";
 
-type GenderIconProps = IconProps & {
+const SIZES = { sm: 24, md: 29, lg: 38 } as const;
+type GenderIconSize = keyof typeof SIZES;
+
+interface GenderIconProps {
   /** Gender value (male, female, unspecified) */
   gender: GenderValue | undefined | null;
+  /** Icon size */
+  size?: GenderIconSize;
+  /** Icon colour */
+  color?: string;
   /** Loading state */
   loading?: boolean;
-};
+}
 
 /**
  * GenderIcon
@@ -30,8 +36,8 @@ type GenderIconProps = IconProps & {
  * <GenderIcon gender="male" />
  *
  * @example
- * // With custom size and color
- * <GenderIcon gender="female" size={32} color="blue" />
+ * // With custom size and colour
+ * <GenderIcon gender="female" size="lg" color="blue" />
  *
  * @example
  * // Unspecified
@@ -43,34 +49,30 @@ type GenderIconProps = IconProps & {
  */
 export default function GenderIcon({
   gender,
+  size = "lg",
+  color = "#495057",
   loading,
-  ...iconProps
 }: GenderIconProps) {
-  const iconSize = iconProps.size || 24;
-  const iconColor = iconProps.color || "#495057"; // Dark grey (Mantine gray.7)
+  const iconSize = SIZES[size];
 
   if (loading) {
     return <Skeleton circle height={iconSize} width={iconSize} />;
   }
 
   if (!gender || gender === "unspecified") {
-    return (
-      <IconGenderAgender {...iconProps} size={iconSize} color={iconColor} />
-    );
+    return <IconGenderAgender size={iconSize} color={color} />;
   }
 
   const normalized = gender.toLowerCase();
 
   if (normalized === "male") {
-    return <IconGenderMale {...iconProps} size={iconSize} color={iconColor} />;
+    return <IconGenderMale size={iconSize} color={color} />;
   }
 
   if (normalized === "female") {
-    return (
-      <IconGenderFemale {...iconProps} size={iconSize} color={iconColor} />
-    );
+    return <IconGenderFemale size={iconSize} color={color} />;
   }
 
   // Fallback for any unexpected value
-  return <IconGenderAgender {...iconProps} size={iconSize} color={iconColor} />;
+  return <IconGenderAgender size={iconSize} color={color} />;
 }

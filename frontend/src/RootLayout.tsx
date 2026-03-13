@@ -6,8 +6,8 @@
  * be accessed by child routes via React Router's useOutletContext.
  */
 
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { type Patient } from "@domains/patient";
 import MainLayout from "./components/layouts/MainLayout";
@@ -45,6 +45,16 @@ export type LayoutCtx = {
  */
 export default function RootLayout() {
   const [patient, setPatient] = useState<Patient | null>(null);
+  const location = useLocation();
+
+  // Clear patient context when navigating away from patient-specific routes
+  useEffect(() => {
+    const isPatientRoute = /^\/patients\/[^/]+/.test(location.pathname);
+    const isMessageThread = /^\/messages\/[^/]+/.test(location.pathname);
+    if (!isPatientRoute && !isMessageThread) {
+      setPatient(null);
+    }
+  }, [location.pathname]);
 
   return (
     <>
