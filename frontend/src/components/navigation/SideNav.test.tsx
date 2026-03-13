@@ -3,14 +3,26 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import SideNav from "./SideNav";
-import { AuthProvider } from "@/auth/AuthContext";
 
-// Wrapper function to provide auth context for SideNavContent
-function renderWithAuth(
+// Mock useAuth to return authenticated state so SideNavContent renders
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { system_permissions: "user" },
+    },
+    logout: vi.fn(),
+    login: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));
+
+// Wrapper function for nav tests
+function renderNav(
   ui: React.ReactElement,
   options?: { initialRoute?: string },
 ) {
-  return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
+  return renderWithRouter(ui, {
     initialRoute: options?.initialRoute,
   });
 }
@@ -18,29 +30,29 @@ function renderWithAuth(
 describe("SideNav Component", () => {
   describe("Basic rendering", () => {
     it("renders navigation element with correct role", () => {
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
       const nav = screen.getByRole("navigation", { name: /primary/i });
       expect(nav).toBeInTheDocument();
     });
 
     it("renders without search when showSearch is false", () => {
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
       expect(screen.queryByPlaceholderText(/search/i)).not.toBeInTheDocument();
     });
 
     it("renders search input when showSearch is true", () => {
-      renderWithAuth(<SideNav showSearch={true} />);
+      renderNav(<SideNav showSearch={true} />);
       expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
     });
 
     it("renders search with correct aria-label", () => {
-      renderWithAuth(<SideNav showSearch={true} />);
+      renderNav(<SideNav showSearch={true} />);
       const searchInput = screen.getByLabelText(/search/i);
       expect(searchInput).toBeInTheDocument();
     });
 
     it("renders divider after search when search is shown", () => {
-      const { container } = renderWithAuth(<SideNav showSearch={true} />);
+      const { container } = renderNav(<SideNav showSearch={true} />);
       const divider = container.querySelector('[role="separator"]');
       expect(divider).toBeInTheDocument();
     });
@@ -48,13 +60,13 @@ describe("SideNav Component", () => {
 
   describe("Search input", () => {
     it("has search placeholder text", () => {
-      renderWithAuth(<SideNav showSearch={true} />);
+      renderNav(<SideNav showSearch={true} />);
       const input = screen.getByPlaceholderText("Search…");
       expect(input).toBeInTheDocument();
     });
 
     it("has search icon in right section", () => {
-      const { container } = renderWithAuth(<SideNav showSearch={true} />);
+      const { container } = renderNav(<SideNav showSearch={true} />);
       // Search icon should be rendered as an SVG
       const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
@@ -62,7 +74,7 @@ describe("SideNav Component", () => {
 
     it("allows typing in search input", async () => {
       const user = userEvent.setup();
-      renderWithAuth(<SideNav showSearch={true} />);
+      renderNav(<SideNav showSearch={true} />);
       const input = screen.getByPlaceholderText(/search/i);
 
       await user.type(input, "test query");
@@ -74,7 +86,7 @@ describe("SideNav Component", () => {
     it("calls onNavigate when provided", async () => {
       const user = userEvent.setup();
       const onNavigate = vi.fn();
-      renderWithAuth(<SideNav showSearch={false} onNavigate={onNavigate} />);
+      renderNav(<SideNav showSearch={false} onNavigate={onNavigate} />);
 
       // Find Home link by text and click it
       const homeLink = screen.getByText("Home");
@@ -85,7 +97,7 @@ describe("SideNav Component", () => {
 
     it("does not error when onNavigate is not provided", async () => {
       const user = userEvent.setup();
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
 
       // Find Home link and click it (should not throw)
       const homeLink = screen.getByText("Home");
@@ -98,7 +110,7 @@ describe("SideNav Component", () => {
 
   describe("Icon display", () => {
     it("renders with icons when showIcons is true", () => {
-      const { container } = renderWithAuth(
+      const { container } = renderNav(
         <SideNav showSearch={false} showIcons={true} />,
       );
       // Icons should be rendered as SVGs
@@ -107,14 +119,14 @@ describe("SideNav Component", () => {
     });
 
     it("renders without icons when showIcons is false", () => {
-      renderWithAuth(<SideNav showSearch={false} showIcons={false} />);
+      renderNav(<SideNav showSearch={false} showIcons={false} />);
       // Text-only links should still be present
       const homeLink = screen.getByText("Home");
       expect(homeLink).toBeInTheDocument();
     });
 
     it("renders icons by default when showIcons is undefined", () => {
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
       // Should render navigation items - check for Home link
       expect(screen.getByText("Home")).toBeInTheDocument();
     });
@@ -122,31 +134,31 @@ describe("SideNav Component", () => {
 
   describe("Navigation content", () => {
     it("renders Home link", () => {
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
       expect(screen.getByText("Home")).toBeInTheDocument();
     });
 
     it("renders Settings link", () => {
-      renderWithAuth(<SideNav showSearch={false} />);
+      renderNav(<SideNav showSearch={false} />);
       expect(screen.getByText("Settings")).toBeInTheDocument();
     });
   });
 
   describe("Layout styling", () => {
     it("has minimum width of 6.25rem", () => {
-      const { container } = renderWithAuth(<SideNav showSearch={false} />);
+      const { container } = renderNav(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
       expect(nav).toHaveStyle({ minWidth: "6.25rem" });
     });
 
     it("has 100% height", () => {
-      const { container } = renderWithAuth(<SideNav showSearch={false} />);
+      const { container } = renderNav(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
       expect(nav).toHaveStyle({ height: "100%" });
     });
 
     it("has right padding", () => {
-      const { container } = renderWithAuth(<SideNav showSearch={false} />);
+      const { container } = renderNav(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
       expect(nav).toHaveStyle({ paddingRight: "0.875rem" });
     });
@@ -154,7 +166,7 @@ describe("SideNav Component", () => {
 
   describe("Patient nav forwarding", () => {
     it("passes patientNav to SideNavContent so patient name appears", async () => {
-      renderWithAuth(
+      renderNav(
         <SideNav
           showSearch={false}
           patientNav={[
@@ -171,7 +183,7 @@ describe("SideNav Component", () => {
     });
 
     it("does not show patient name when patientNav is not provided", async () => {
-      renderWithAuth(<SideNav showSearch={false} />, {
+      renderNav(<SideNav showSearch={false} />, {
         initialRoute: "/patients/patient-123/messages",
       });
 

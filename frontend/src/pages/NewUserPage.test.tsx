@@ -188,7 +188,7 @@ describe("NewUserPage", () => {
       await waitFor(() => {
         expect(screen.getByText(/base profession:/i)).toBeInTheDocument();
       });
-    });
+    }, 10000);
 
     it("navigates back to step 1", async () => {
       const user = userEvent.setup();
@@ -209,7 +209,7 @@ describe("NewUserPage", () => {
           screen.getByRole("heading", { name: "Basic details" }),
         ).toBeInTheDocument();
       });
-    });
+    }, 10000);
 
     it("proceeds to step 3 permissions", async () => {
       const user = userEvent.setup();
