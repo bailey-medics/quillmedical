@@ -11,7 +11,7 @@ import { useAuth } from "@/auth/AuthContext";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Container, Stack } from "@mantine/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 /**
@@ -326,7 +326,7 @@ function buildFakeMessages(
 }
 
 export default function PatientMessageThread() {
-  const { patient } = usePatientLoader();
+  const { patient, setPatientNav } = usePatientLoader();
   const { state } = useAuth();
   const { conversationId } = useParams<{ conversationId: string }>();
 
@@ -336,6 +336,30 @@ export default function PatientMessageThread() {
   const patientName = patient?.name ?? "Patient";
   const patientFirstName = patient?.givenName ?? "Patient";
   const patientGradientIndex = patient?.gradientIndex ?? 0;
+
+  // TODO: Replace with real thread label from API
+  const threadLabels: Record<string, string> = {
+    "gastro-clinic": "Dr Corbett, Gemma",
+    "gp-referral": "Dr Patel",
+    "prescription-query": "Lisa Taylor",
+  };
+  const threadLabel = conversationId
+    ? (threadLabels[conversationId] ?? conversationId)
+    : "Thread";
+
+  useEffect(() => {
+    if (patient && patient.id) {
+      const nav = [
+        { label: patient.name, href: `/patients/${patient.id}` },
+        { label: "Messages", href: `/patients/${patient.id}/messages` },
+        {
+          label: threadLabel,
+          href: `/patients/${patient.id}/messages/${conversationId}`,
+        },
+      ];
+      setPatientNav(nav);
+    }
+  }, [patient, conversationId, threadLabel, setPatientNav]);
 
   const [messages, setMessages] = useState<Message[]>(
     buildFakeMessages(

@@ -9,14 +9,31 @@ import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { fakeLetters } from "@/data/fakeLetters";
 import LetterView from "@/components/letters/LetterView";
 import { Container } from "@mantine/core";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function PatientLetterView() {
   const { id, letterId } = useParams<{ id: string; letterId: string }>();
-  usePatientLoader();
+  const { patient, setPatientNav } = usePatientLoader();
   const navigate = useNavigate();
 
   const letter = fakeLetters.find((l) => l.id === letterId);
+
+  useEffect(() => {
+    if (patient && id) {
+      const nav = [
+        { label: patient.name, href: `/patients/${id}` },
+        { label: "Clinical letters", href: `/patients/${id}/letters` },
+      ];
+      if (letter) {
+        nav.push({
+          label: letter.title,
+          href: `/patients/${id}/letters/${letterId}`,
+        });
+      }
+      setPatientNav(nav);
+    }
+  }, [patient, id, letterId, letter, setPatientNav]);
 
   return (
     <Container size="lg" py="xl">

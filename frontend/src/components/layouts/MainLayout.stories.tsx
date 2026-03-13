@@ -44,5 +44,14 @@ export const NoPatient: Story = {
 };
 
 export const WithPatient: Story = {
-  args: { patient: demoPatientsList[0], isLoading: false },
+  args: {
+    patient: demoPatientsList[0],
+    isLoading: false,
+    patientNav: [
+      {
+        label: demoPatientsList[0].name,
+        href: `/patients/${demoPatientsList[0].id}`,
+      },
+    ],
+  },
 };

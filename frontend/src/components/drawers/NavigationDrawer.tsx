@@ -83,6 +83,7 @@ export default function NavigationDrawer({
             background: "white",
             display: "flex",
             flexDirection: "column",
+            overflowY: "auto",
           }}
         >
           {children}

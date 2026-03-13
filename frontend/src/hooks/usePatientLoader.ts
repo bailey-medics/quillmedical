@@ -6,6 +6,7 @@
  * and its sub-pages (letters, notes, appointments, messages).
  */
 
+import type { NavItem } from "@/components/navigation/NestedNavLink";
 import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
 import { api } from "@/lib/api";
@@ -51,11 +52,12 @@ type UsePatientLoaderResult = {
   patient: Patient | null;
   isLoading: boolean;
   error: string | null;
+  setPatientNav: React.Dispatch<React.SetStateAction<NavItem[]>>;
 };
 
 export function usePatientLoader(): UsePatientLoaderResult {
   const { id } = useParams<{ id: string }>();
-  const { patient, setPatient } = useOutletContext<LayoutCtx>();
+  const { patient, setPatient, setPatientNav } = useOutletContext<LayoutCtx>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadedIdRef = useRef<string | null>(null);
@@ -165,5 +167,5 @@ export function usePatientLoader(): UsePatientLoaderResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- patient intentionally excluded to prevent infinite loop
   }, [id, setPatient]);
 
-  return { id, patient, isLoading, error };
+  return { id, patient, isLoading, error, setPatientNav };
 }

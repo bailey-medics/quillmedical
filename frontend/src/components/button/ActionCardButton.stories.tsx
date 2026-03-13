@@ -5,20 +5,16 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "@storybook/test";
-import { MemoryRouter } from "react-router-dom";
 import ActionCardButton from "./ActionCardButton";
+import { BUTTON_STATES, buttonStateCss } from "@/stories/button-states";
+import { Group, Text } from "@mantine/core";
+
+const CONTAINER_NOTE =
+  "Constrained to 18rem for display. In practice, the button is full-width and adapts to its parent container.";
 
 const meta: Meta<typeof ActionCardButton> = {
   title: "Button/ActionCardButton",
   component: ActionCardButton,
-  decorators: [
-    (Story) => (
-      <MemoryRouter>
-        <Story />
-      </MemoryRouter>
-    ),
-  ],
   parameters: {
     layout: "padded",
   },
@@ -30,31 +26,65 @@ type Story = StoryObj<typeof ActionCardButton>;
 
 /**
  * Default ActionCardButton rendered as a link.
+ *
+ * Constrained to 18rem here for display purposes.
+ * In practice, the button is full-width and adapts to its parent container.
  */
 export const Default: Story = {
   args: {
     label: "View details",
     url: "/example",
   },
+  decorators: [
+    (Story) => (
+      <div>
+        <div style={{ width: "18rem" }}>
+          <Story />
+        </div>
+        <Text size="sm" c="dimmed" mt="md">
+          {CONTAINER_NOTE}
+        </Text>
+      </div>
+    ),
+  ],
 };
 
 /**
- * ActionCardButton with an onClick handler instead of a URL.
+ * All interaction states side-by-side.
+ *
+ * Constrained to 18rem here for display purposes.
+ * In practice, the button is full-width and adapts to its parent container.
  */
-export const WithOnClick: Story = {
+export const States: Story = {
   args: {
-    label: "Create record",
-    onClick: fn(),
-  },
-};
-
-/**
- * Disabled state.
- */
-export const Disabled: Story = {
-  args: {
-    label: "Unavailable",
+    label: "View details",
     url: "/example",
-    disabled: true,
   },
+  render: () => (
+    <>
+      <style>{buttonStateCss}</style>
+      <Group gap="xl">
+        {BUTTON_STATES.map(({ label, props, className }) => (
+          <div
+            key={label}
+            className={className}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "18rem",
+            }}
+          >
+            <ActionCardButton label="View details" url="/example" {...props} />
+            <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </Group>
+      <Text size="sm" c="dimmed" mt="md">
+        {CONTAINER_NOTE}
+      </Text>
+    </>
+  ),
 };

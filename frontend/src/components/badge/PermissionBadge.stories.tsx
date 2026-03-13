@@ -25,14 +25,14 @@ type Story = StoryObj<typeof PermissionBadge>;
 /**
  * Default PermissionBadge
  *
- * Shows the default superadmin permission badge with xl size and filled variant.
+ * Shows the default superadmin permission badge with lg size and filled variant.
  */
 export const Default: Story = {
   render: () => (
     <Group gap="md">
-      <PermissionBadge permission="superadmin" size="xl" />
-      <PermissionBadge permission="admin" size="xl" />
-      <PermissionBadge permission="staff" size="xl" />
+      <PermissionBadge permission="superadmin" />
+      <PermissionBadge permission="admin" />
+      <PermissionBadge permission="staff" />
     </Group>
   ),
 };
@@ -46,7 +46,7 @@ export const SizeVariants: Story = {
   render: () => (
     <VariantStack>
       {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "xl" ? "xl (default)" : size}>
+        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
           <PermissionBadge permission="superadmin" size={size} />
           <PermissionBadge permission="admin" size={size} />
           <PermissionBadge permission="staff" size={size} />

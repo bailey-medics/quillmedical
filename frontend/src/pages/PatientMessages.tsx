@@ -10,6 +10,7 @@ import type { Conversation } from "@/pages/Messages";
 import { PatientMessagesList } from "@/components/messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Card, Container, Stack, Text } from "@mantine/core";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -92,8 +93,17 @@ function buildFakeConversations(
 }
 
 export default function PatientMessages() {
-  const { id, patient } = usePatientLoader();
+  const { id, patient, setPatientNav } = usePatientLoader();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (patient && id) {
+      setPatientNav([
+        { label: patient.name, href: `/patients/${id}` },
+        { label: "Messages", href: `/patients/${id}/messages` },
+      ]);
+    }
+  }, [patient, id, setPatientNav]);
 
   const patientName = patient?.name ?? "Patient";
   const conversations = buildFakeConversations(

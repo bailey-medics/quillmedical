@@ -4,7 +4,6 @@ import { renderWithRouter } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import SideNav from "./SideNav";
 import { AuthProvider } from "@/auth/AuthContext";
-import type { Patient } from "@/domains/patient";
 
 // Wrapper function to provide auth context for SideNavContent
 function renderWithAuth(
@@ -15,15 +14,6 @@ function renderWithAuth(
     initialRoute: options?.initialRoute,
   });
 }
-
-const mockPatient: Patient = {
-  id: "patient-123",
-  name: "John Smith",
-  givenName: "John",
-  familyName: "Smith",
-  dob: "1985-03-15",
-  sex: "male",
-};
 
 describe("SideNav Component", () => {
   describe("Basic rendering", () => {
@@ -162,18 +152,25 @@ describe("SideNav Component", () => {
     });
   });
 
-  describe("Patient prop forwarding", () => {
-    it("passes patient to SideNavContent so patient name appears on patient pages", async () => {
-      renderWithAuth(<SideNav showSearch={false} patient={mockPatient} />, {
-        initialRoute: "/patients/patient-123/messages",
-      });
+  describe("Patient nav forwarding", () => {
+    it("passes patientNav to SideNavContent so patient name appears", async () => {
+      renderWithAuth(
+        <SideNav
+          showSearch={false}
+          patientNav={[
+            { label: "John Smith", href: "/patients/patient-123" },
+            { label: "Messages", href: "/patients/patient-123/messages" },
+          ]}
+        />,
+        { initialRoute: "/patients/patient-123/messages" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
       });
     });
 
-    it("does not show patient name when patient prop is not provided", async () => {
+    it("does not show patient name when patientNav is not provided", async () => {
       renderWithAuth(<SideNav showSearch={false} />, {
         initialRoute: "/patients/patient-123/messages",
       });

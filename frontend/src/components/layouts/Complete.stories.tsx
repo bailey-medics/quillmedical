@@ -10,7 +10,7 @@
 import MarkdownView from "@/components/markdown";
 import {
   Messaging,
-  UserMessagesList,
+  PatientMessagesList,
   type Message,
 } from "@/components/messaging";
 import type { Conversation } from "@/pages/Messages";
@@ -85,11 +85,25 @@ const mockConversations: Conversation[] = [
 ];
 
 export const WithPatientMessageList: Story = {
-  args: { patient: demoPatientsList[0], isLoading: false },
+  args: {
+    patient: demoPatientsList[0],
+    isLoading: false,
+    patientNav: [
+      {
+        label: demoPatientsList[0].name,
+        href: `/patients/${demoPatientsList[0].id}`,
+      },
+      {
+        label: "Messages",
+        href: `/patients/${demoPatientsList[0].id}/messages`,
+      },
+    ],
+  },
+  parameters: { routerPath: `/patients/${demoPatientsList[0].id}/messages` },
   render: (args) => (
     <MainLayout {...args}>
       <div style={{ padding: 16 }}>
-        <UserMessagesList
+        <PatientMessagesList
           conversations={mockConversations}
           onConversationClick={(conv) => console.log("Clicked:", conv.id)}
         />
@@ -99,7 +113,27 @@ export const WithPatientMessageList: Story = {
 };
 
 export const WithMessaging: Story = {
-  args: { patient: demoPatientsList[0], isLoading: false },
+  args: {
+    patient: demoPatientsList[0],
+    isLoading: false,
+    patientNav: [
+      {
+        label: demoPatientsList[0].name,
+        href: `/patients/${demoPatientsList[0].id}`,
+      },
+      {
+        label: "Messages",
+        href: `/patients/${demoPatientsList[0].id}/messages`,
+      },
+      {
+        label: "Dr Corbett, Gemma",
+        href: `/patients/${demoPatientsList[0].id}/messages/gastro-clinic`,
+      },
+    ],
+  },
+  parameters: {
+    routerPath: `/patients/${demoPatientsList[0].id}/messages/gastro-clinic`,
+  },
   render: (args) => {
     function MessagingContent() {
       const [messages, setMessages] = useState<Message[]>(

@@ -61,22 +61,28 @@ const decorators = [
       return <Story />;
     }
 
-    // Create a memory router with a single route for the story
-    // This supports useBlocker and other data router features
-    const router = createMemoryRouter([
-      {
-        path: "/",
-        element: (
-          <AuthProvider>
-            <MantineProvider theme={theme}>
-              <AuthWrapper>
-                <div style={{ padding: 0 }}>{Story()}</div>
-              </AuthWrapper>
-            </MantineProvider>
-          </AuthProvider>
-        ),
-      },
-    ]);
+    // Create a memory router with a catch-all route for the story.
+    // Stories can set parameters.routerPath to simulate a specific URL
+    // (e.g. "/patients/p1/messages" to trigger patient nav items).
+    const initialPath: string =
+      (context.parameters.routerPath as string) ?? "/";
+    const router = createMemoryRouter(
+      [
+        {
+          path: "*",
+          element: (
+            <AuthProvider>
+              <MantineProvider theme={theme}>
+                <AuthWrapper>
+                  <div style={{ padding: 0 }}>{Story()}</div>
+                </AuthWrapper>
+              </MantineProvider>
+            </AuthProvider>
+          ),
+        },
+      ],
+      { initialEntries: [initialPath] },
+    );
 
     return <RouterProvider router={router} />;
   },

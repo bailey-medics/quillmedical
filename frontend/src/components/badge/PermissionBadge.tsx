@@ -19,7 +19,7 @@ export type UserPermission = "superadmin" | "admin" | "staff";
 interface PermissionBadgeProps {
   /** System permission level */
   permission: UserPermission;
-  /** Badge size - defaults to xl */
+  /** Badge size - defaults to lg */
   size?: MantineSize;
   /** Badge variant - defaults to filled */
   variant?: "filled" | "light" | "outline" | "dot" | "default";
@@ -70,7 +70,7 @@ const SKELETON_HEIGHTS: Record<string, number> = {
 
 export default function PermissionBadge({
   permission,
-  size = "xl",
+  size = "lg",
   variant = "filled",
   isLoading = false,
 }: PermissionBadgeProps) {

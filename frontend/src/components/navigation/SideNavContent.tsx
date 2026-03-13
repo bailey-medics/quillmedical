@@ -4,7 +4,7 @@
  * Renders the actual navigation links and items for the side navigation.
  * Includes Home, Settings, About, and Logout links with optional icons.
  * Admin section uses NestedNavLink for hierarchical navigation.
- * Dynamically adds patient name and username as children when viewing patient/user admin pages.
+ * Patient navigation is driven by the patientNav prop passed from the page.
  * Separated from SideNav to allow reuse in drawer/desktop contexts.
  */
 
@@ -13,7 +13,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { api } from "@/lib/api";
-import type { Patient } from "@/domains/patient";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 
@@ -27,8 +26,8 @@ type Props = {
   showIcons?: boolean;
   /** Font size for navigation labels (default: 1.25rem) */
   fontSize?: number;
-  /** Currently selected patient (for patient-specific nav) */
-  patient?: Patient | null;
+  /** Patient navigation breadcrumbs — flat array converted to nested tree */
+  patientNav?: NavItem[];
 };
 
 /**
@@ -36,6 +35,7 @@ type Props = {
  *
  * Renders navigation link items with optional icons. Handles navigation
  * via React Router and logout functionality via AuthContext.
+ * Patient navigation is driven explicitly by the patientNav prop.
  *
  * @param props - Component props
  * @returns Navigation links stack
@@ -44,7 +44,7 @@ export default function SideNavContent({
   onNavigate,
   showIcons = false,
   fontSize = 1.25,
-  patient,
+  patientNav,
 }: Props) {
   const { logout, state } = useAuth();
   const navigate = useNavigate();
@@ -193,71 +193,20 @@ export default function SideNavContent({
     ],
   };
 
-  // Detect patient-specific pages (/patients/:id/...)
-  const patientPageMatch = location.pathname.match(
-    /^\/patients\/([^/]+)(?:\/(.+))?$/,
-  );
-  const isPatientPage = !!patientPageMatch;
-  const patientSubPath = patientPageMatch?.[2] ?? null;
-
-  // Map sub-paths to display labels
-  const subPageLabels: Record<string, string> = {
-    letters: "Clinical letters",
-    messages: "Messages",
-    notes: "Clinical notes",
-    appointments: "Appointments",
-  };
-
-  // Build patient nav item when on a patient page
+  // Build nested patient nav item from flat patientNav array
+  // [a, b, c] → a { children: [b { children: [c] }] }
   let patientNavItem: NavItem | null = null;
-  if (isPatientPage && patient) {
-    const patientHref = `/patients/${patient.id}`;
-    const children: NavItem[] = [];
-
-    if (patientSubPath) {
-      // e.g. "messages/gastro-clinic" → topSegment = "messages", rest = "gastro-clinic"
-      const segments = patientSubPath.split("/");
-      const topSegment = segments[0];
-      const subLabel = subPageLabels[topSegment] ?? topSegment;
-      const subHref = `${patientHref}/${topSegment}`;
-
-      const subChildren: NavItem[] = [];
-      if (segments.length > 1) {
-        // Sub-page — show thread/letter with friendly label
-        const threadId = segments.slice(1).join("/");
-        // Map known fake IDs to friendly names
-        const threadLabels: Record<string, Record<string, string>> = {
-          messages: {
-            "gastro-clinic": "Dr Corbett, Gemma",
-            "gp-referral": "Dr Patel",
-            "prescription-query": "Pharmacy",
-          },
-          letters: {
-            "letter-1": "Gastro clinic letter",
-            "letter-2": "GP referral letter",
-            "letter-3": "Routine health review",
-          },
-        };
-        const sectionLabels = threadLabels[topSegment] ?? {};
-        subChildren.push({
-          label: sectionLabels[threadId] ?? threadId,
-          href: `${patientHref}/${patientSubPath}`,
-        });
-      }
-
-      children.push({
-        label: subLabel,
-        href: subHref,
-        children: subChildren.length > 0 ? subChildren : undefined,
-      });
+  if (patientNav && patientNav.length > 0) {
+    // Build from the deepest item upward
+    let current: NavItem = { ...patientNav[patientNav.length - 1] };
+    for (let i = patientNav.length - 2; i >= 0; i--) {
+      current = { ...patientNav[i], children: [current] };
     }
-
-    patientNavItem = {
-      label: patient.name,
-      href: patientHref,
-      icon: showIcons ? "user" : undefined,
-      children: children.length > 0 ? children : undefined,
-    };
+    // Add user icon to the top-level item when icons are enabled
+    if (showIcons && !current.icon) {
+      current = { ...current, icon: "user" };
+    }
+    patientNavItem = current;
   }
 
   return (

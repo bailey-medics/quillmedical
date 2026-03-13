@@ -13,6 +13,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p1",
     name: "Jane Doe",
+    givenName: "Jane",
+    familyName: "Doe",
     dob: "1980-05-12",
     age: 45,
     sex: "female",
@@ -24,6 +26,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p2",
     name: "Alex Smith",
+    givenName: "Alex",
+    familyName: "Smith",
     dob: "1990-01-01",
     age: 35,
     sex: "male",
@@ -34,6 +38,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p3",
     name: "Sam Brown",
+    givenName: "Sam",
+    familyName: "Brown",
     dob: "1975-08-08",
     age: 50,
     sex: "male",
@@ -44,6 +50,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p4",
     name: "Emma Wilson",
+    givenName: "Emma",
+    familyName: "Wilson",
     dob: "1985-03-22",
     age: 40,
     sex: "female",
@@ -55,6 +63,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p5",
     name: "Oliver Johnson",
+    givenName: "Oliver",
+    familyName: "Johnson",
     dob: "1992-11-15",
     age: 33,
     sex: "male",
@@ -65,6 +75,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p6",
     name: "Sophia Taylor",
+    givenName: "Sophia",
+    familyName: "Taylor",
     dob: "1978-07-30",
     age: 47,
     sex: "female",
@@ -76,6 +88,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p7",
     name: "William Davis",
+    givenName: "William",
+    familyName: "Davis",
     dob: "1988-09-05",
     age: 37,
     sex: "male",
@@ -86,6 +100,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p8",
     name: "Charlotte Miller",
+    givenName: "Charlotte",
+    familyName: "Miller",
     dob: "1995-12-18",
     age: 30,
     sex: "female",
@@ -97,6 +113,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p9",
     name: "James Anderson",
+    givenName: "James",
+    familyName: "Anderson",
     dob: "1982-04-27",
     age: 43,
     sex: "male",
@@ -107,6 +125,8 @@ export const demoPatientsList: Patient[] = [
   {
     id: "p10",
     name: "Amelia Thomas",
+    givenName: "Amelia",
+    familyName: "Thomas",
     dob: "1991-06-14",
     age: 34,
     sex: "female",

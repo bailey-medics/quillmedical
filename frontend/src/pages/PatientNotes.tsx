@@ -15,6 +15,8 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 type ClinicalNote = {
   id: string;
@@ -95,7 +97,17 @@ function getCategoryColour(category: string): string {
 }
 
 export default function PatientNotes() {
-  const { patient } = usePatientLoader();
+  const { patient, setPatientNav } = usePatientLoader();
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    if (patient && id) {
+      setPatientNav([
+        { label: patient.name, href: `/patients/${id}` },
+        { label: "Clinical notes", href: `/patients/${id}/notes` },
+      ]);
+    }
+  }, [patient, id, setPatientNav]);
 
   return (
     <Container size="lg" py="xl">

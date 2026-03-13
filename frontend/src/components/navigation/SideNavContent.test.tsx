@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import SideNavContent from "./SideNavContent";
 import { AuthProvider } from "@/auth/AuthContext";
 import type { User } from "@/auth/AuthContext";
-import type { Patient } from "@/domains/patient";
+import type { NavItem } from "./NestedNavLink";
 
 // Mock users with different permission levels
 const mockUsers: Record<string, User> = {
@@ -37,15 +37,6 @@ const mockUsers: Record<string, User> = {
     roles: ["Patient"],
     system_permissions: "patient",
   },
-};
-
-const mockPatient: Patient = {
-  id: "patient-123",
-  name: "John Smith",
-  givenName: "John",
-  familyName: "Smith",
-  dob: "1985-03-15",
-  sex: "male",
 };
 
 function renderWithAuth(
@@ -289,8 +280,13 @@ describe("SideNavContent Component", () => {
   });
 
   describe("Patient navigation", () => {
-    it("does not show patient nav when not on a patient page", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />);
+    const patientBase: NavItem = {
+      label: "John Smith",
+      href: "/patients/patient-123",
+    };
+
+    it("does not show patient nav when patientNav is not provided", async () => {
+      renderWithAuth(<SideNavContent />);
 
       await waitFor(() => {
         expect(screen.getByText("Home")).toBeInTheDocument();
@@ -299,8 +295,8 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
     });
 
-    it("shows patient name when on a patient page", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
+    it("shows patient name when patientNav has one item", async () => {
+      renderWithAuth(<SideNavContent patientNav={[patientBase]} />, "staff", {
         initialRoute: "/patients/patient-123",
       });
 
@@ -309,8 +305,8 @@ describe("SideNavContent Component", () => {
       });
     });
 
-    it("does not show patient nav when patient is null on patient page", async () => {
-      renderWithAuth(<SideNavContent patient={null} />, "staff", {
+    it("does not show patient nav when patientNav is empty", async () => {
+      renderWithAuth(<SideNavContent patientNav={[]} />, "staff", {
         initialRoute: "/patients/patient-123",
       });
 
@@ -322,9 +318,16 @@ describe("SideNavContent Component", () => {
     });
 
     it("shows sub-page label for messages", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
-        initialRoute: "/patients/patient-123/messages",
-      });
+      renderWithAuth(
+        <SideNavContent
+          patientNav={[
+            patientBase,
+            { label: "Messages", href: "/patients/patient-123/messages" },
+          ]}
+        />,
+        "staff",
+        { initialRoute: "/patients/patient-123/messages" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
@@ -335,9 +338,19 @@ describe("SideNavContent Component", () => {
     });
 
     it("shows sub-page label for letters", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
-        initialRoute: "/patients/patient-123/letters",
-      });
+      renderWithAuth(
+        <SideNavContent
+          patientNav={[
+            patientBase,
+            {
+              label: "Clinical letters",
+              href: "/patients/patient-123/letters",
+            },
+          ]}
+        />,
+        "staff",
+        { initialRoute: "/patients/patient-123/letters" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
@@ -346,9 +359,16 @@ describe("SideNavContent Component", () => {
     });
 
     it("shows sub-page label for notes", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
-        initialRoute: "/patients/patient-123/notes",
-      });
+      renderWithAuth(
+        <SideNavContent
+          patientNav={[
+            patientBase,
+            { label: "Clinical notes", href: "/patients/patient-123/notes" },
+          ]}
+        />,
+        "staff",
+        { initialRoute: "/patients/patient-123/notes" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
@@ -357,9 +377,19 @@ describe("SideNavContent Component", () => {
     });
 
     it("shows sub-page label for appointments", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
-        initialRoute: "/patients/patient-123/appointments",
-      });
+      renderWithAuth(
+        <SideNavContent
+          patientNav={[
+            patientBase,
+            {
+              label: "Appointments",
+              href: "/patients/patient-123/appointments",
+            },
+          ]}
+        />,
+        "staff",
+        { initialRoute: "/patients/patient-123/appointments" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
@@ -368,9 +398,20 @@ describe("SideNavContent Component", () => {
     });
 
     it("shows thread label for known conversation", async () => {
-      renderWithAuth(<SideNavContent patient={mockPatient} />, "staff", {
-        initialRoute: "/patients/patient-123/messages/gastro-clinic",
-      });
+      renderWithAuth(
+        <SideNavContent
+          patientNav={[
+            patientBase,
+            { label: "Messages", href: "/patients/patient-123/messages" },
+            {
+              label: "Dr Corbett, Gemma",
+              href: "/patients/patient-123/messages/gastro-clinic",
+            },
+          ]}
+        />,
+        "staff",
+        { initialRoute: "/patients/patient-123/messages/gastro-clinic" },
+      );
 
       await waitFor(() => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
@@ -383,7 +424,7 @@ describe("SideNavContent Component", () => {
 
     it("shows user icon when showIcons is true", async () => {
       const { container } = renderWithAuth(
-        <SideNavContent patient={mockPatient} showIcons />,
+        <SideNavContent patientNav={[patientBase]} showIcons />,
         "staff",
         { initialRoute: "/patients/patient-123" },
       );
@@ -399,7 +440,7 @@ describe("SideNavContent Component", () => {
 
     it("renders divider between patient nav and main nav", async () => {
       const { container } = renderWithAuth(
-        <SideNavContent patient={mockPatient} />,
+        <SideNavContent patientNav={[patientBase]} />,
         "staff",
         { initialRoute: "/patients/patient-123" },
       );

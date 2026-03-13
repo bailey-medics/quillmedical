@@ -10,19 +10,24 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import { type Patient } from "@domains/patient";
+import type { NavItem } from "@/components/navigation/NestedNavLink";
 import MainLayout from "./components/layouts/MainLayout";
 
 /**
  * Layout Context
  *
  * Context object passed to child routes via React Router Outlet.
- * Provides patient selection state management.
+ * Provides patient selection and navigation state management.
  */
 export type LayoutCtx = {
   /** Currently selected patient (null if none selected) */
   patient: Patient | null;
   /** Function to update selected patient */
   setPatient: React.Dispatch<React.SetStateAction<Patient | null>>;
+  /** Patient navigation breadcrumbs for the side nav */
+  patientNav: NavItem[];
+  /** Function to update patient navigation breadcrumbs */
+  setPatientNav: React.Dispatch<React.SetStateAction<NavItem[]>>;
 };
 
 /**
@@ -45,6 +50,7 @@ export type LayoutCtx = {
  */
 export default function RootLayout() {
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [patientNav, setPatientNav] = useState<NavItem[]>([]);
   const location = useLocation();
 
   // Clear patient context when navigating away from patient-specific routes
@@ -53,13 +59,23 @@ export default function RootLayout() {
     const isMessageThread = /^\/messages\/[^/]+/.test(location.pathname);
     if (!isPatientRoute && !isMessageThread) {
       setPatient(null);
+      setPatientNav([]);
     }
   }, [location.pathname]);
 
   return (
     <>
-      <MainLayout patient={patient} isLoading={false}>
-        <Outlet context={{ patient, setPatient } satisfies LayoutCtx} />
+      <MainLayout patient={patient} isLoading={false} patientNav={patientNav}>
+        <Outlet
+          context={
+            {
+              patient,
+              setPatient,
+              patientNav,
+              setPatientNav,
+            } satisfies LayoutCtx
+          }
+        />
       </MainLayout>
     </>
   );
