@@ -285,7 +285,7 @@ describe("UserMessagesList", () => {
       expect(badges.length).toBe(0);
     });
 
-    it("displays double-digit unread counts", () => {
+    it("caps unread counts above 9 as 9+", () => {
       const conversations: Conversation[] = [
         {
           ...mockConversations[0],
@@ -300,7 +300,7 @@ describe("UserMessagesList", () => {
         />,
       );
 
-      expect(screen.getByText("42")).toBeInTheDocument();
+      expect(screen.getByText("9+")).toBeInTheDocument();
     });
   });
 

@@ -103,7 +103,7 @@ describe("FormattedDate Component", () => {
       const { container } = renderWithMantine(
         <FormattedDate date="1980-09-15" size="xl" fw={700} c="blue" />,
       );
-      const text = container.querySelector("p");
+      const text = container.querySelector("span");
       expect(text).toBeInTheDocument();
     });
 
@@ -120,7 +120,7 @@ describe("FormattedDate Component", () => {
       const { container } = renderWithMantine(
         <FormattedDate date="1980-09-15" inherit />,
       );
-      const text = container.querySelector("p");
+      const text = container.querySelector("span");
       expect(text).toBeInTheDocument();
     });
   });
