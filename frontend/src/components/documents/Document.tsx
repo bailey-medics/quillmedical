@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Image, Text, Stack, Paper } from "@mantine/core";
+import { Box, Image, Text, Stack, Paper, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 export interface DocumentProps {
   name: string;
@@ -10,38 +11,58 @@ export interface DocumentProps {
 
 /**
  * Document component displays a single document (PDF, Word, image, etc.)
+ *
+ * On smaller screens (below md breakpoint), the browser PDF toolbar is
+ * hidden via URL parameters for a cleaner view.
  */
 export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
+  const theme = useMantineTheme();
+  const isSmallScreen = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
+
+  const pdfUrl =
+    type === "pdf" && isSmallScreen ? `${url}#toolbar=0&navpanes=0` : url;
+
+  const Wrapper = isSmallScreen
+    ? Stack
+    : ({ children }: { children: React.ReactNode }) => (
+        <Paper withBorder p="md" radius="md">
+          <Stack>{children}</Stack>
+        </Paper>
+      );
+
   return (
-    <Paper withBorder p="md" radius="md">
-      <Stack>
-        <Text fw={700}>{name}</Text>
-        {type === "image" ? (
-          <Image src={url} alt={name} radius="sm" />
-        ) : type === "pdf" ? (
-          <Box
-            component="iframe"
-            src={url}
-            title={name}
-            style={{ width: "100%", height: 500, border: 0 }}
-          />
-        ) : type === "word" ? (
-          <Box>
-            <Text c="dimmed">Word document preview not available</Text>
-            <a href={url} target="_blank" rel="noopener noreferrer">
-              Download
-            </a>
-          </Box>
-        ) : (
-          <Box>
-            <Text c="dimmed">Document preview not available</Text>
-            <a href={url} target="_blank" rel="noopener noreferrer">
-              Download
-            </a>
-          </Box>
-        )}
-      </Stack>
-    </Paper>
+    <Wrapper>
+      <Text fw={700}>{name}</Text>
+      {type === "image" ? (
+        <Image src={url} alt={name} radius="sm" />
+      ) : type === "pdf" ? (
+        <Box
+          component="iframe"
+          src={pdfUrl}
+          title={name}
+          style={{
+            width: "100%",
+            height: "calc(100vh - 200px)",
+            minHeight: 400,
+            border: 0,
+          }}
+        />
+      ) : type === "word" ? (
+        <Box>
+          <Text c="dimmed">Word document preview not available</Text>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Download
+          </a>
+        </Box>
+      ) : (
+        <Box>
+          <Text c="dimmed">Document preview not available</Text>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Download
+          </a>
+        </Box>
+      )}
+    </Wrapper>
   );
 };
 
