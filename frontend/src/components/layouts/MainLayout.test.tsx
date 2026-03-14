@@ -95,6 +95,7 @@ vi.mock("@components/footer/Footer", () => ({
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: "/" }),
 }));
 
 const mockPatient: Patient = {

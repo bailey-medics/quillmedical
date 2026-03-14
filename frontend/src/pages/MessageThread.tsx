@@ -232,7 +232,7 @@ const fakeThreads: Record<
         givenName: "Mary",
         familyName: "Johnson",
         gradientIndex: 4,
-        text: "Hi, I had my appointment with Dr Corbett last week and he was very helpful. I have a quick question though — he mentioned that certain foods can trigger my symptoms. Could he provide a list of foods I should be avoiding? I forgot to ask at the time.",
+        text: "Hi, I had my appointment with Dr Corbett last week and he was very helpful. I have a quick question though. I know this was not something covered in the appointment, but I wonder if certain foods could worsen my condition. Could he provide a list of foods I should be avoiding?",
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
       },
       {

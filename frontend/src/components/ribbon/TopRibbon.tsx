@@ -129,7 +129,7 @@ export default function TopRibbon({
   onPatientClick,
   onPatientDoubleClick,
 }: Props) {
-  const showBrand = isLoading || !patient || (patient && !isNarrow);
+  const showBrand = !isNarrow;
   return (
     <>
       {/* This inner div is the query container */}

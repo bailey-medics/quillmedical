@@ -20,14 +20,7 @@ import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic";
 import Demographics from "@/components/demographics";
 import StateMessage from "@/components/state-message";
-import {
-  Group,
-  Text,
-  UnstyledButton,
-  Skeleton,
-  useMantineTheme,
-} from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Group, Text, UnstyledButton, Skeleton } from "@mantine/core";
 
 /**
  * PatientsList Props
@@ -62,16 +55,14 @@ export default function PatientsList({
   fhirAvailable = false,
   onSelect,
 }: Props) {
-  const theme = useMantineTheme();
-  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const avatarSize = isSm ? "sm" : "lg";
+  const avatarSize = "lg";
 
   if (isLoading) {
     return (
       <div style={{ width: "100%" }}>
         {Array.from({ length: 10 }, (_, i) => (
           <Group key={i} align="center" style={{ width: "100%", padding: 8 }}>
-            <Skeleton circle height={isSm ? 40 : 60} />
+            <Skeleton circle height={64} />
             <div style={{ flex: 1 }}>
               <Skeleton height={20} width="10rem" mb={8} />
               <Skeleton height={20} width="23rem" />

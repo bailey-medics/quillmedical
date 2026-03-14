@@ -75,10 +75,13 @@ export default function Messaging({
 }: Props) {
   const [input, setInput] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
+  const avatarSize: "sm" | "md" | "lg" = "lg";
+  const avatarSizePixels = 64;
   const theme = useMantineTheme();
-  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const avatarSize = isSm ? "sm" : "md";
-  const avatarSizePixels = isSm ? 32 : 48;
+  const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const scrollPaddingLeft = isSmall ? "1rem" : 12;
+  const scrollPaddingRight = isSmall ? "1rem" : 12;
+  const bubbleMaxWidth = isSmall ? "100%" : "80%";
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -96,8 +99,8 @@ export default function Messaging({
       <ScrollArea
         style={{
           flex: 1,
-          paddingLeft: 12,
-          paddingRight: 12,
+          paddingLeft: scrollPaddingLeft,
+          paddingRight: scrollPaddingRight,
           paddingBottom: 12,
         }}
         type="auto"
@@ -157,7 +160,7 @@ export default function Messaging({
                     {mine ? (
                       <div
                         style={{
-                          maxWidth: "80%",
+                          maxWidth: bubbleMaxWidth,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "flex-end",
@@ -247,7 +250,7 @@ export default function Messaging({
                     ) : (
                       <div
                         style={{
-                          maxWidth: "80%",
+                          maxWidth: bubbleMaxWidth,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "flex-start",

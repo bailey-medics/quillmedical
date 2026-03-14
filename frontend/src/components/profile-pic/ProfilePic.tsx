@@ -30,6 +30,7 @@
  */
 
 import { Avatar, Skeleton, Tooltip } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { AVATAR_GRADIENTS } from "./gradients";
 
 type ProfilePicSize = "sm" | "md" | "lg";
@@ -90,6 +91,8 @@ export default function ProfilePic({
   size = "md",
   isLoading = false,
 }: Props) {
+  const isMobile = useMediaQuery("(pointer: coarse)");
+
   // Get gradient colors from index, or use white background if index out of range
   const gradient = AVATAR_GRADIENTS[gradientIndex];
   const colorFrom = gradient?.colorFrom ?? "#FFFFFF";
@@ -112,6 +115,28 @@ export default function ProfilePic({
   const avatarSize = sizeMap[size];
   const fullName = getFullName(givenName, familyName);
 
+  /** Wrap an avatar with a tooltip. On mobile, enables touch and stops event propagation. */
+  function withTooltip(avatar: React.ReactElement, label: string) {
+    if (isMobile) {
+      return (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Tooltip
+            label={label}
+            openDelay={400}
+            events={{ hover: true, focus: true, touch: true }}
+          >
+            {avatar}
+          </Tooltip>
+        </span>
+      );
+    }
+    return (
+      <Tooltip label={label} openDelay={400}>
+        {avatar}
+      </Tooltip>
+    );
+  }
+
   // Loading state
   if (isLoading) {
     return <Skeleton circle height={avatarSize} width={avatarSize} />;
@@ -120,13 +145,7 @@ export default function ProfilePic({
   // Case 2: Real picture
   if (src) {
     const avatar = <Avatar radius="xl" size={avatarSize} src={src} />;
-    return fullName ? (
-      <Tooltip label={fullName} openDelay={400}>
-        {avatar}
-      </Tooltip>
-    ) : (
-      avatar
-    );
+    return fullName ? withTooltip(avatar, fullName) : avatar;
   }
 
   // Case 3: Two-letter initials with gradient background
@@ -150,13 +169,7 @@ export default function ProfilePic({
         {getInitials(givenName, familyName)}
       </Avatar>
     );
-    return fullName ? (
-      <Tooltip label={fullName} openDelay={400}>
-        {avatar}
-      </Tooltip>
-    ) : (
-      avatar
-    );
+    return fullName ? withTooltip(avatar, fullName) : avatar;
   }
 
   // Case 1: Generic person icon with gradient background
@@ -177,11 +190,5 @@ export default function ProfilePic({
       }}
     />
   );
-  return fullName ? (
-    <Tooltip label={fullName} openDelay={400}>
-      {genericAvatar}
-    </Tooltip>
-  ) : (
-    genericAvatar
-  );
+  return fullName ? withTooltip(genericAvatar, fullName) : genericAvatar;
 }

@@ -10,15 +10,7 @@ import type { StackedParticipant } from "@/components/profile-pic";
 import { StackedProfilePics } from "@/components/profile-pic";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
-import {
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-  useMantineTheme,
-} from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -69,9 +61,7 @@ export default function MessagesList({
   onThreadClick,
   isLoading,
 }: Props) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const iconSize = isMobile ? "sm" : "md";
+  const iconSize = "lg";
 
   if (isLoading) {
     return (
@@ -79,7 +69,7 @@ export default function MessagesList({
         {[1, 2, 3].map((i) => (
           <Card key={i} shadow="sm" padding="md" radius="md" withBorder>
             <Group wrap="nowrap" align="flex-start">
-              <Skeleton height={isMobile ? 32 : 48} circle />
+              <Skeleton height={64} circle />
               <div style={{ flex: 1 }}>
                 <Skeleton height={20} width="60%" mb="xs" />
                 <Skeleton height={16} width="100%" mb="xs" />

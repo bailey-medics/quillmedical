@@ -10,7 +10,8 @@
 import { useAuth } from "@/auth/AuthContext";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Container, Stack } from "@mantine/core";
+import { Container, Stack, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -33,7 +34,7 @@ function buildFakeMessages(
     },
   ): Message => ({
     senderId: patientId,
-    senderName: patientName,
+    senderName: `${patientName} — Patient`,
     givenName: patientFirstName,
     familyName: patientName.split(" ").slice(1).join(" "),
     gradientIndex: patientGradientIndex,
@@ -52,7 +53,7 @@ function buildFakeMessages(
       {
         id: "ref2",
         senderId: "dr-patel",
-        senderName: "GP — Dr Patel",
+        senderName: "Dr Patel — GP",
         givenName: "Raj",
         familyName: "Patel",
         gradientIndex: 13,
@@ -71,7 +72,7 @@ function buildFakeMessages(
       {
         id: "ref4",
         senderId: "dr-patel",
-        senderName: "GP — Dr Patel",
+        senderName: "Dr Patel — GP",
         givenName: "Raj",
         familyName: "Patel",
         gradientIndex: 13,
@@ -90,7 +91,7 @@ function buildFakeMessages(
       {
         id: "ref6",
         senderId: "dr-patel",
-        senderName: "GP — Dr Patel",
+        senderName: "Dr Patel — GP",
         givenName: "Raj",
         familyName: "Patel",
         gradientIndex: 13,
@@ -109,7 +110,7 @@ function buildFakeMessages(
       {
         id: "ref8",
         senderId: "dr-patel",
-        senderName: "GP — Dr Patel",
+        senderName: "Dr Patel — GP",
         givenName: "Raj",
         familyName: "Patel",
         gradientIndex: 13,
@@ -133,7 +134,7 @@ function buildFakeMessages(
       {
         id: "rx2",
         senderId: "reception-lisa",
-        senderName: "Reception — Lisa Taylor",
+        senderName: "Lisa Taylor — Reception",
         givenName: "Lisa",
         familyName: "Taylor",
         gradientIndex: 24,
@@ -152,7 +153,7 @@ function buildFakeMessages(
       {
         id: "rx4",
         senderId: "reception-lisa",
-        senderName: "Reception — Lisa Taylor",
+        senderName: "Lisa Taylor — Reception",
         givenName: "Lisa",
         familyName: "Taylor",
         gradientIndex: 24,
@@ -171,7 +172,7 @@ function buildFakeMessages(
       {
         id: "rx6",
         senderId: "reception-lisa",
-        senderName: "Reception — Lisa Taylor",
+        senderName: "Lisa Taylor — Reception",
         givenName: "Lisa",
         familyName: "Taylor",
         gradientIndex: 24,
@@ -190,7 +191,7 @@ function buildFakeMessages(
       {
         id: "rx8",
         senderId: "reception-lisa",
-        senderName: "Reception — Lisa Taylor",
+        senderName: "Lisa Taylor — Reception",
         givenName: "Lisa",
         familyName: "Taylor",
         gradientIndex: 24,
@@ -212,7 +213,7 @@ function buildFakeMessages(
     {
       id: "pm2",
       senderId: "admin-gemma",
-      senderName: "Administrator — Gemma Corbett",
+      senderName: "Gemma Corbett — Administrator",
       givenName: "Gemma",
       familyName: "Corbett",
       gradientIndex: 24,
@@ -231,7 +232,7 @@ function buildFakeMessages(
     {
       id: "pm4",
       senderId: "admin-gemma",
-      senderName: "Administrator — Gemma Corbett",
+      senderName: "Gemma Corbett — Administrator",
       givenName: "Gemma",
       familyName: "Corbett",
       gradientIndex: 24,
@@ -243,7 +244,7 @@ function buildFakeMessages(
     {
       id: "pm5",
       senderId: "system",
-      senderName: "Appointment reminder — Quill System",
+      senderName: "Quill System — Appointment reminder",
       givenName: "Quill",
       familyName: "System",
       gradientIndex: 0,
@@ -266,13 +267,13 @@ function buildFakeMessages(
     },
     patientMsg({
       id: "pm6",
-      text: "Hi, I had my appointment with Dr Corbett last week and he was very helpful. I have a quick question though — he mentioned that certain foods can trigger my symptoms. Could he provide a list of foods I should be avoiding? I forgot to ask at the time.",
+      text: "Hi, I had my appointment with Dr Corbett last week and he was very helpful. I have a quick question though. I know this was not something covered in the appointment, but I wonder if certain foods could worsen my condition. Could he provide a list of foods I should be avoiding?",
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
     }),
     {
       id: "pm7",
       senderId: "admin-gemma",
-      senderName: "Administrator — Gemma Corbett",
+      senderName: "Gemma Corbett — Administrator",
       givenName: "Gemma",
       familyName: "Corbett",
       gradientIndex: 24,
@@ -284,7 +285,7 @@ function buildFakeMessages(
     {
       id: "pm8",
       senderId: "dr-corbett",
-      senderName: "Gastroenterologist — Dr Corbett",
+      senderName: "Dr Corbett — Gastroenterologist",
       givenName: "Gareth",
       familyName: "Corbett",
       gradientIndex: 6,
@@ -315,7 +316,7 @@ function buildFakeMessages(
     {
       id: "pm10",
       senderId: "dr-corbett",
-      senderName: "Gastroenterologist — Dr Corbett",
+      senderName: "Dr Corbett — Gastroenterologist",
       givenName: "Gareth",
       familyName: "Corbett",
       gradientIndex: 6,
@@ -336,6 +337,8 @@ export default function PatientMessageThread() {
   const patientName = patient?.name ?? "Patient";
   const patientFirstName = patient?.givenName ?? "Patient";
   const patientGradientIndex = patient?.gradientIndex ?? 0;
+  const theme = useMantineTheme();
+  const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   // TODO: Replace with real thread label from API
   const threadLabels: Record<string, string> = {
@@ -370,11 +373,26 @@ export default function PatientMessageThread() {
     ),
   );
 
+  // Rebuild fake messages when patient data arrives after initial render
+  useEffect(() => {
+    if (patient) {
+      setMessages(
+        buildFakeMessages(
+          conversationId ?? "",
+          patientName,
+          patientFirstName,
+          patientGradientIndex,
+        ),
+      );
+    }
+  }, [patientName, patientFirstName, patientGradientIndex, conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Container
       size="lg"
-      pt="xs"
+      pt={isSmall ? 0 : "xs"}
       pb={0}
+      px={isSmall ? 0 : undefined}
       style={{
         display: "flex",
         flexDirection: "column",

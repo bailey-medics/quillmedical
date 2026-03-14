@@ -18,9 +18,12 @@ export interface DocumentProps {
 export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
   const theme = useMantineTheme();
   const isSmallScreen = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
+  const isTouchDevice = useMediaQuery("(pointer: coarse)");
 
   const pdfUrl =
-    type === "pdf" && isSmallScreen ? `${url}#toolbar=0&navpanes=0` : url;
+    type === "pdf" && isSmallScreen
+      ? `${url}#toolbar=0&navpanes=0&view=FitH`
+      : url;
 
   const Wrapper = isSmallScreen
     ? Stack
@@ -36,17 +39,42 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
       {type === "image" ? (
         <Image src={url} alt={name} radius="sm" />
       ) : type === "pdf" ? (
-        <Box
-          component="iframe"
-          src={pdfUrl}
-          title={name}
-          style={{
-            width: "100%",
-            height: "calc(100vh - 200px)",
-            minHeight: 400,
-            border: 0,
-          }}
-        />
+        isSmallScreen && isTouchDevice ? (
+          <Box
+            style={{
+              overflow: "hidden",
+              width: "100%",
+              height: "calc((100vh - 200px) * 0.667)",
+              minHeight: 267,
+            }}
+          >
+            <Box
+              component="iframe"
+              src={pdfUrl}
+              title={name}
+              style={{
+                width: "150%",
+                height: "calc(100vh - 200px)",
+                minHeight: 400,
+                border: 0,
+                transform: "scale(0.667)",
+                transformOrigin: "top left",
+              }}
+            />
+          </Box>
+        ) : (
+          <Box
+            component="iframe"
+            src={pdfUrl}
+            title={name}
+            style={{
+              width: "100%",
+              height: "calc(100vh - 200px)",
+              minHeight: 400,
+              border: 0,
+            }}
+          />
+        )
       ) : type === "word" ? (
         <Box>
           <Text c="dimmed">Word document preview not available</Text>
