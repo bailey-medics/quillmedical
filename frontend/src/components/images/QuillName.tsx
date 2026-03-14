@@ -6,8 +6,8 @@
  */
 
 import Image from "@components/images/Image";
+import detectStorybook from "@lib/urlUpdate";
 import React from "react";
-import quillName from "/quill-name.png";
 
 /**
  * QuillName Props
@@ -38,9 +38,11 @@ export default function QuillName({
   className,
   style = { marginRight: "0.5rem" },
 }: Props) {
+  const src = detectStorybook("/quill-name.png");
+
   return (
     <Image
-      src={quillName}
+      src={src}
       alt={alt}
       height={height}
       className={className}
