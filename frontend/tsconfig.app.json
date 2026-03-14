@@ -22,6 +22,5 @@
     "noUncheckedSideEffectImports": true,
     "types": ["react", "react-dom"]
   },
-  "include": ["src", ".storybook/utils/PhoneFrame.tsx"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+  "include": ["src", ".storybook/utils/PhoneFrame.tsx"]
 }
