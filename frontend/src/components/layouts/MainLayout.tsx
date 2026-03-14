@@ -15,9 +15,9 @@ import Footer from "@components/footer/Footer";
 import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 /**
  * MainLayout Props
@@ -57,6 +57,12 @@ export default function MainLayout({
   const { state } = useAuth();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  // Reset scroll position when navigating to a new page
+  useEffect(() => {
+    mainRef.current?.scrollTo?.(0, 0);
+  }, [location.pathname]);
 
   // Prepare footer text based on auth state
   const footerText =
@@ -158,7 +164,8 @@ export default function MainLayout({
               ref={mainRef}
               flex={1}
               style={{ overflowY: "auto" }}
-              p="md"
+              px={isSm ? 0 : "md"}
+              py={isSm ? 0 : "md"}
             >
               {isLoading ? (
                 <Stack gap="md">

@@ -16,3 +16,5 @@ frontend/src/generated/*.json
 *.generated.json
 
 prompt-output.md
+
+site/

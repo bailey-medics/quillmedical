@@ -276,6 +276,20 @@ describe("TopRibbon Component", () => {
       const img = container.querySelector('img[alt="Quill Medical"]');
       expect(img).toBeInTheDocument();
     });
+
+    it("hides QuillName on narrow screen with no patient", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithMantine(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={null}
+          isLoading={false}
+          isNarrow={true}
+        />,
+      );
+      const img = container.querySelector('img[alt="Quill Medical"]');
+      expect(img).not.toBeInTheDocument();
+    });
   });
 
   describe("Edge cases", () => {

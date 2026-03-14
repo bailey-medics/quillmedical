@@ -60,6 +60,8 @@ import PatientLetters from "./pages/PatientLetters";
 import PatientLetterView from "./pages/PatientLetterView";
 import PatientMessages from "./pages/PatientMessages";
 import PatientMessageThread from "./pages/PatientMessageThread";
+import PatientDocuments from "./pages/PatientDocuments";
+import PatientDocumentView from "./pages/PatientDocumentView";
 import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TotpSetup from "./pages/TotpSetup";
@@ -119,6 +121,11 @@ const router = createBrowserRouter(
         {
           path: "/patients/:id/messages/:conversationId",
           element: <PatientMessageThread />,
+        },
+        { path: "/patients/:id/documents", element: <PatientDocuments /> },
+        {
+          path: "/patients/:id/documents/:documentId",
+          element: <PatientDocumentView />,
         },
         { path: "/patients/:id/notes", element: <PatientNotes /> },
         {
