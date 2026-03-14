@@ -14,6 +14,7 @@ import {
   IconMessage,
   IconBook,
   IconMail,
+  IconFileText,
 } from "@tabler/icons-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -54,13 +55,6 @@ export default function Patient() {
     <Container size="lg" py="xl">
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <ActionCard
-          icon={<IconMail />}
-          title="Clinical letters"
-          subtitle="View referral letters, clinic letters, and discharge summaries"
-          buttonLabel="View letters"
-          buttonUrl={`/patients/${id}/letters`}
-        />
-        <ActionCard
           icon={<IconMessage />}
           title="Messaging"
           subtitle="Send and receive secure messages with the care team"
@@ -68,18 +62,32 @@ export default function Patient() {
           buttonUrl={`/patients/${id}/messages`}
         />
         <ActionCard
-          icon={<IconBook />}
-          title="Clinical notes"
-          subtitle="View consultation notes, observations, and clinical records"
-          buttonLabel="View notes"
-          buttonUrl={`/patients/${id}/notes`}
-        />
-        <ActionCard
           icon={<IconCalendarWeek />}
           title="Appointments"
           subtitle="View upcoming and past appointment history"
           buttonLabel="View appointments"
           buttonUrl={`/patients/${id}/appointments`}
+        />
+        <ActionCard
+          icon={<IconMail />}
+          title="Clinical letters"
+          subtitle="View referral letters, clinic letters, and discharge summaries"
+          buttonLabel="View letters"
+          buttonUrl={`/patients/${id}/letters`}
+        />
+        <ActionCard
+          icon={<IconFileText />}
+          title="Documents"
+          subtitle="Scanned documents and files"
+          buttonLabel="View documents"
+          buttonUrl={`/patients/${id}/documents`}
+        />
+        <ActionCard
+          icon={<IconBook />}
+          title="Clinical notes"
+          subtitle="View consultation notes, observations, and clinical records"
+          buttonLabel="View notes"
+          buttonUrl={`/patients/${id}/notes`}
         />
       </SimpleGrid>
     </Container>
