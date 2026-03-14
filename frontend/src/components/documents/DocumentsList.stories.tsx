@@ -1,6 +1,5 @@
-import React from "react";
 import DocumentsList from "./DocumentsList";
-import { DocumentProps } from "./Document";
+import type { DocumentProps } from "./Document";
 import { VariantStack } from "@/stories/variants";
 
 export default {

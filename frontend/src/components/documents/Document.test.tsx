@@ -1,6 +1,7 @@
 import { renderWithMantine } from "@/test/test-utils";
 import { screen } from "@testing-library/react";
-import { Document, DocumentProps } from "./Document";
+import { Document } from "./Document";
+import type { DocumentProps } from "./Document";
 
 describe("Document", () => {
   const base: DocumentProps = {

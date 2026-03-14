@@ -1,6 +1,6 @@
 import React from "react";
 import { Stack, Card, Text, Group } from "@mantine/core";
-import { DocumentProps } from "./Document";
+import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
 export interface DocumentsListProps {

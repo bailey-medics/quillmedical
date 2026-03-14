@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import DocumentsList from "./DocumentsList";
-import { DocumentProps } from "./Document";
+import type { DocumentProps } from "./Document";
 
 describe("DocumentsList", () => {
   const docs: DocumentProps[] = [
