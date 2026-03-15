@@ -40,6 +40,11 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+vi.mock("@lib/messaging", () => ({
+  fetchConversations: vi.fn().mockResolvedValue({ conversations: [] }),
+  createConversation: vi.fn(),
+}));
+
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {

@@ -2,9 +2,11 @@
 fhir_client.py
 
 FHIR client wrapper for connecting to HAPI FHIR server.
-Provides utility functions for creating and reading FHIR resources.
+Provides utility functions for creating and reading FHIR resources
+including Patient demographics and Communication (messaging).
 """
 
+import logging
 import uuid
 from typing import Any
 
@@ -17,6 +19,9 @@ from fhirclient.models.extension import (  # type: ignore[import-untyped]
     Extension,
 )
 from fhirclient.models.fhirdate import FHIRDate  # type: ignore[import-untyped]
+from fhirclient.models.fhirdatetime import (  # type: ignore[import-untyped]
+    FHIRDateTime,
+)
 from fhirclient.models.humanname import (  # type: ignore[import-untyped]
     HumanName,
 )
@@ -24,6 +29,8 @@ from fhirclient.models.patient import Patient  # type: ignore[import-untyped]
 
 from app.config import settings
 from app.utils.colors import generate_avatar_gradient_index
+
+logger = logging.getLogger(__name__)
 
 # FHIR extension URL for avatar gradient index
 AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
@@ -337,3 +344,110 @@ def update_fhir_patient(
         return patient.as_json()  # type: ignore[no-any-return]
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# FHIR Communication (messaging)
+# ---------------------------------------------------------------------------
+
+# Custom extension URLs for Quill messaging
+CONVERSATION_ID_EXTENSION_URL = "urn:quillmedical:conversation-id"
+SENDER_USER_ID_EXTENSION_URL = "urn:quillmedical:sender-user-id"
+AMENDS_EXTENSION_URL = "urn:quillmedical:amends"
+
+
+class FhirCommunicationError(Exception):
+    """Raised when a FHIR Communication operation fails."""
+
+
+def create_fhir_communication(
+    *,
+    conversation_id: str,
+    patient_id: str,
+    sender_display: str,
+    sender_user_id: int,
+    body: str,
+    first_message_fhir_id: str | None = None,
+    amends_fhir_id: str | None = None,
+) -> dict[str, Any]:
+    """Create a FHIR Communication resource for a message.
+
+    Args:
+        conversation_id: UUID grouping messages into a thread.
+        patient_id: FHIR Patient resource ID the conversation is about.
+        sender_display: Human-readable sender name.
+        sender_user_id: Auth DB user ID of the sender.
+        body: Message text content.
+        first_message_fhir_id: FHIR ID of the first message in the
+            thread (for partOf linking). None for the first message.
+        amends_fhir_id: FHIR ID of a message this one amends.
+
+    Returns:
+        dict: Created Communication resource as JSON dict.
+
+    Raises:
+        FhirCommunicationError: If creation fails.
+    """
+    fhir = get_fhir_client()
+    comm_uuid = str(uuid.uuid4())
+
+    resource: dict[str, Any] = {
+        "resourceType": "Communication",
+        "id": comm_uuid,
+        "status": "completed",
+        "subject": {"reference": f"Patient/{patient_id}"},
+        "sender": {
+            "display": sender_display,
+            "extension": [
+                {
+                    "url": SENDER_USER_ID_EXTENSION_URL,
+                    "valueInteger": sender_user_id,
+                }
+            ],
+        },
+        "sent": FHIRDateTime(datetime_module_now_utc_iso()).as_json(),
+        "payload": [{"contentString": body}],
+        "extension": [
+            {
+                "url": CONVERSATION_ID_EXTENSION_URL,
+                "valueString": conversation_id,
+            }
+        ],
+    }
+
+    if first_message_fhir_id:
+        resource["partOf"] = [
+            {"reference": f"Communication/{first_message_fhir_id}"}
+        ]
+
+    if amends_fhir_id:
+        resource["extension"].append(
+            {
+                "url": AMENDS_EXTENSION_URL,
+                "valueReference": {
+                    "reference": f"Communication/{amends_fhir_id}",
+                },
+            }
+        )
+
+    try:
+        fhir.server.put_json(f"Communication/{comm_uuid}", resource)
+    except Exception as exc:
+        logger.error(
+            "Failed to create FHIR Communication %s: %s",
+            comm_uuid,
+            exc,
+        )
+        raise FhirCommunicationError(
+            f"Failed to store message in FHIR: {exc}"
+        ) from exc
+
+    resource["id"] = comm_uuid
+    return resource
+
+
+def datetime_module_now_utc_iso() -> str:
+    """Return current UTC time as ISO-8601 string."""
+    from datetime import UTC, datetime
+
+    return datetime.now(UTC).isoformat()

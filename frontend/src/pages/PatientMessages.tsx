@@ -6,95 +6,59 @@
  * navigates to the full message thread.
  */
 
-import type { Conversation } from "@/pages/Messages";
 import { MessagesList, type MessageThread } from "@/components/messaging";
+import NewMessageModal, {
+  type NewConversationData,
+} from "@/components/messaging/NewMessageModal";
+import AddButton from "@/components/button/AddButton";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Card, Container, Stack, Text } from "@mantine/core";
-import { useEffect } from "react";
+import {
+  createConversation,
+  fetchConversations,
+  type ConversationResponse,
+} from "@lib/messaging";
+import { Card, Container, Group, Loader, Stack, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-/**
- * Build fake conversations for a patient.
- */
-function buildFakeConversations(
-  patientName: string,
-  patientId: string,
-  patientGivenName: string,
-  patientFamilyName: string,
-  patientGradientIndex: number,
-): Conversation[] {
-  return [
-    {
-      id: "gastro-clinic",
-      patientId: patientId,
-      patientName: patientName,
-      patientGivenName,
-      patientFamilyName,
-      patientGradientIndex,
-      lastMessage:
-        "Thank you, payment received. I've reviewed your case notes and endoscopy findings...",
-      lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
-      unreadCount: 1,
-      status: "active",
-      participants: [
-        {
-          displayName: "Dr Gareth Corbett",
-          givenName: "Gareth",
-          familyName: "Corbett",
-        },
-        {
-          displayName: "Gemma Corbett",
-          givenName: "Gemma",
-          familyName: "Corbett",
-        },
-      ],
-    },
-    {
-      id: "gp-referral",
-      patientId: patientId,
-      patientName: patientName,
-      patientGivenName,
-      patientFamilyName,
-      patientGradientIndex,
-      lastMessage:
-        "Your referral to the gastroenterology clinic has been processed. You should hear from them within the next few days. All the best.",
-      lastMessageTime: new Date(
-        Date.now() - 1000 * 60 * 60 * 24 * 14,
-      ).toISOString(),
-      unreadCount: 0,
-      status: "resolved",
-      participants: [
-        { displayName: "Dr Patel", givenName: "Raj", familyName: "Patel" },
-      ],
-    },
-    {
-      id: "prescription-query",
-      patientId: patientId,
-      patientName: patientName,
-      patientGivenName,
-      patientFamilyName,
-      patientGradientIndex,
-      lastMessage:
-        "Your repeat prescription has been sent to your nominated pharmacy. You're all sorted! Let us know if you need anything else.",
-      lastMessageTime: new Date(
-        Date.now() - 1000 * 60 * 60 * 24 * 30,
-      ).toISOString(),
-      unreadCount: 0,
-      status: "closed",
-      participants: [
-        {
-          displayName: "Lisa Taylor",
-          givenName: "Lisa",
-          familyName: "Taylor",
-        },
-      ],
-    },
-  ];
-}
 
 export default function PatientMessages() {
   const { id, patient, setPatientNav } = usePatientLoader();
   const navigate = useNavigate();
+  const [conversations, setConversations] = useState<ConversationResponse[]>(
+    [],
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleNewConversation = useCallback(
+    (data: NewConversationData) => {
+      setIsSubmitting(true);
+      createConversation({
+        patient_id: data.patient_id,
+        subject: data.subject,
+        participant_ids: data.participant_ids,
+        initial_message: data.initial_message,
+      })
+        .then((created) => {
+          setModalOpen(false);
+          navigate(`/patients/${id}/messages/${created.id}`);
+        })
+        .catch((err: unknown) => {
+          notifications.show({
+            title: "Failed to create conversation",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Something went wrong. Please try again.",
+            color: "red",
+          });
+        })
+        .finally(() => setIsSubmitting(false));
+    },
+    [navigate, id],
+  );
 
   useEffect(() => {
     if (patient && id) {
@@ -105,18 +69,54 @@ export default function PatientMessages() {
     }
   }, [patient, id, setPatientNav]);
 
-  const patientName = patient?.name ?? "Patient";
-  const conversations = buildFakeConversations(
-    patientName,
-    id ?? "",
-    patient?.givenName ?? "Patient",
-    patient?.familyName ?? "",
-    patient?.gradientIndex ?? 0,
-  );
+  // Fetch conversations for this patient
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setIsLoading(true);
+
+    fetchConversations({ patient_id: id })
+      .then((res) => {
+        if (cancelled) return;
+        setConversations(res.conversations);
+      })
+      .catch(() => {
+        // silently fallback to empty
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <Container size="lg" py="xl">
+        <Loader />
+      </Container>
+    );
+  }
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
+        <Group justify="flex-end">
+          <AddButton label="New message" onClick={() => setModalOpen(true)} />
+        </Group>
+
+        <NewMessageModal
+          opened={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleNewConversation}
+          isSubmitting={isSubmitting}
+          patientId={id}
+          patientName={patient?.name}
+        />
+
         {conversations.length === 0 ? (
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Text c="dimmed" ta="center">
@@ -126,27 +126,18 @@ export default function PatientMessages() {
         ) : (
           <MessagesList
             threads={conversations.map((conv) => ({
-              id: conv.id,
-              displayName: conv.participants
-                .map((p) => p.displayName)
-                .join(", "),
-              profiles: conv.participants.map((p) => {
-                const fullName = [p.givenName, p.familyName]
-                  .filter(Boolean)
-                  .join(" ");
-                let hash = 0;
-                for (let i = 0; i < fullName.length; i++) {
-                  hash = ((hash << 5) - hash + fullName.charCodeAt(i)) | 0;
-                }
-                return {
-                  givenName: p.givenName,
-                  familyName: p.familyName,
-                  gradientIndex: Math.abs(hash) % 30,
-                };
-              }),
-              lastMessage: conv.lastMessage,
-              lastMessageTime: conv.lastMessageTime,
-              unreadCount: conv.unreadCount,
+              id: String(conv.id),
+              displayName:
+                conv.subject ??
+                conv.participants.map((p) => p.display_name).join(", "),
+              profiles: conv.participants.map((p) => ({
+                givenName: p.username,
+                familyName: "",
+                gradientIndex: 0,
+              })),
+              lastMessage: conv.last_message_preview ?? "",
+              lastMessageTime: conv.last_message_time ?? conv.updated_at,
+              unreadCount: conv.unread_count,
             }))}
             onThreadClick={(thread: MessageThread) =>
               navigate(`/patients/${id}/messages/${thread.id}`)

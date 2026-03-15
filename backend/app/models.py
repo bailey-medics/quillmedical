@@ -1,14 +1,17 @@
 """SQLAlchemy ORM models for authentication database.
 
-This module defines the database schema for user authentication and role-based
-access control (RBAC). All models use SQLAlchemy 2.0 declarative style with
-Mapped type hints for enhanced type safety.
+This module defines the database schema for user authentication, role-based
+access control (RBAC), and messaging. All models use SQLAlchemy 2.0
+declarative style with Mapped type hints for enhanced type safety.
 
 The schema includes:
 - User: User accounts with credentials and TOTP settings
 - Role: Role definitions for RBAC
 - user_role: Many-to-many association table linking users to roles
 - PatientMetadata: Application-specific patient metadata (activation status, etc.)
+- Conversation: Messaging thread about a patient
+- ConversationParticipant: Who is in a conversation
+- Message: SQL projection of FHIR Communication resources
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -229,4 +233,181 @@ class Organization(Base):
     staff_members: Mapped[list[User]] = relationship(
         secondary=organisation_staff_member,
         backref="organisations",
+    )
+
+
+class Conversation(Base):
+    """Messaging thread about a patient.
+
+    Each conversation belongs to exactly one patient (identified by FHIR
+    patient UUID). Staff and patients are added as participants.
+    Thread metadata (status, subject) lives here; message content is the
+    source of truth in FHIR Communication resources and projected into
+    the ``Message`` table for fast reads.
+
+    Attributes:
+        id: Primary key.
+        fhir_conversation_id: UUID used in FHIR extensions to group
+            Communication resources into a thread.
+        patient_id: FHIR Patient resource UUID this thread is about.
+        subject: Optional human-readable thread topic.
+        status: Conversation lifecycle state.
+        created_at: When the conversation was started.
+        updated_at: When the last activity occurred.
+        participants: Joined participants (via ConversationParticipant).
+        messages: Messages in this thread (via Message).
+    """
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fhir_conversation_id: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    patient_id: Mapped[str] = mapped_column(
+        String(255), index=True, nullable=False
+    )
+    subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="new"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    participants: Mapped[list[ConversationParticipant]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+    messages: Mapped[list[Message]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+
+
+class ConversationParticipant(Base):
+    """Records a user's membership in a conversation.
+
+    Attributes:
+        id: Primary key.
+        conversation_id: FK to conversation.
+        user_id: FK to users table.
+        role: How the user joined (initiator / participant / tagged).
+        joined_at: When the user was added.
+        last_read_at: Timestamp of the last time the user viewed the
+            conversation — used to calculate unread counts.
+    """
+
+    __tablename__ = "conversation_participants"
+    __table_args__ = (
+        UniqueConstraint(
+            "conversation_id", "user_id", name="uq_conv_participant"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="participant"
+    )
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    last_read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    conversation: Mapped[Conversation] = relationship(
+        back_populates="participants"
+    )
+    user: Mapped[User] = relationship(lazy="joined")
+
+
+class Message(Base):
+    """SQL projection of a FHIR Communication resource.
+
+    Each row mirrors a Communication stored in HAPI FHIR. The FHIR
+    resource is the source of truth; this table provides fast SQL queries
+    for threading, unread counts, and search.
+
+    Messages are append-only: no editing or deletion.  Corrections are
+    handled via the ``amends_id`` self-referential FK (amendment model).
+    Redaction fields are placeholders for a future two-person sign-off
+    workflow.
+
+    Attributes:
+        id: Primary key.
+        fhir_communication_id: FHIR resource ID (unique).
+        conversation_id: FK to conversations table.
+        sender_id: FK to users table.
+        body: Message text (markdown supported).
+        amends_id: Self-FK to the message this one corrects (nullable).
+        redacted_at: Future — when the message was redacted.
+        redacted_by_id: Future — FK to user who performed redaction.
+        created_at: Immutable creation timestamp.
+    """
+
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fhir_communication_id: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    conversation_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sender_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    body: Mapped[str] = mapped_column(String, nullable=False)
+    amends_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("messages.id"), nullable=True
+    )
+    redacted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    redacted_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    conversation: Mapped[Conversation] = relationship(
+        back_populates="messages"
+    )
+    sender: Mapped[User] = relationship(
+        foreign_keys=[sender_id], lazy="joined"
+    )
+    amended_message: Mapped[Message | None] = relationship(
+        remote_side="Message.id",
+        foreign_keys=[amends_id],
     )

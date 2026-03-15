@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithRouter } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import TopRibbon from "./TopRibbon";
 import type { Patient } from "@/domains/patient";
@@ -21,7 +21,7 @@ describe("TopRibbon Component", () => {
   describe("Burger menu button", () => {
     it("renders burger button", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -35,7 +35,7 @@ describe("TopRibbon Component", () => {
     it("calls onBurgerClick when clicked", async () => {
       const user = userEvent.setup();
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -55,7 +55,7 @@ describe("TopRibbon Component", () => {
 
     it("has correct aria attributes when nav is open", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -71,7 +71,7 @@ describe("TopRibbon Component", () => {
   describe("Loading state", () => {
     it("renders skeleton when isLoading is true", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -84,7 +84,7 @@ describe("TopRibbon Component", () => {
 
     it("does not render patient details when loading", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -96,7 +96,7 @@ describe("TopRibbon Component", () => {
 
     it("renders ProfilePic skeleton when loading on wide screen", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -111,7 +111,7 @@ describe("TopRibbon Component", () => {
 
     it("does not render ProfilePic skeleton when loading on narrow screen", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -128,7 +128,7 @@ describe("TopRibbon Component", () => {
   describe("Patient details - long format", () => {
     it("renders patient name", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -141,7 +141,7 @@ describe("TopRibbon Component", () => {
 
     it("renders DOB label when patient has date of birth", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -154,7 +154,7 @@ describe("TopRibbon Component", () => {
 
     it("renders Age label when patient has age", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -167,7 +167,7 @@ describe("TopRibbon Component", () => {
 
     it("renders Sex label when patient has sex", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -180,7 +180,7 @@ describe("TopRibbon Component", () => {
 
     it("renders NHS number when available", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -195,7 +195,7 @@ describe("TopRibbon Component", () => {
   describe("Patient details - short format", () => {
     it("renders patient name in narrow mode", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -208,7 +208,7 @@ describe("TopRibbon Component", () => {
 
     it("renders condensed age and sex in narrow mode", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -223,7 +223,7 @@ describe("TopRibbon Component", () => {
 
     it("renders NHS number in narrow mode", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -238,7 +238,7 @@ describe("TopRibbon Component", () => {
   describe("Font size customisation", () => {
     it("applies custom fontSize to text elements", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -254,7 +254,7 @@ describe("TopRibbon Component", () => {
   describe("No patient", () => {
     it("renders only Quill logo when patient is null", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -266,7 +266,7 @@ describe("TopRibbon Component", () => {
 
     it("renders QuillName component when no patient", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -279,7 +279,7 @@ describe("TopRibbon Component", () => {
 
     it("hides QuillName on narrow screen with no patient", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={null}
@@ -296,7 +296,7 @@ describe("TopRibbon Component", () => {
     it("handles patient without DOB", () => {
       const onBurgerClick = vi.fn();
       const patientNoDob = { ...mockPatient, dob: undefined };
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={patientNoDob}
@@ -309,7 +309,7 @@ describe("TopRibbon Component", () => {
     it("handles patient without age", () => {
       const onBurgerClick = vi.fn();
       const patientNoAge = { ...mockPatient, age: undefined };
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={patientNoAge}
@@ -322,7 +322,7 @@ describe("TopRibbon Component", () => {
     it("handles patient without sex", () => {
       const onBurgerClick = vi.fn();
       const patientNoSex = { ...mockPatient, sex: undefined };
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={patientNoSex}
@@ -335,7 +335,7 @@ describe("TopRibbon Component", () => {
     it("handles patient without national number", () => {
       const onBurgerClick = vi.fn();
       const patientNoNHS = { ...mockPatient, nationalNumber: undefined };
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={patientNoNHS}
@@ -349,7 +349,7 @@ describe("TopRibbon Component", () => {
   describe("ProfilePic", () => {
     it("renders ProfilePic in non-narrow mode", () => {
       const onBurgerClick = vi.fn();
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -364,7 +364,7 @@ describe("TopRibbon Component", () => {
 
     it("renders ProfilePic with initials in non-narrow mode", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -378,7 +378,7 @@ describe("TopRibbon Component", () => {
 
     it("does not render ProfilePic in narrow mode", () => {
       const onBurgerClick = vi.fn();
-      renderWithMantine(
+      renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={mockPatient}
@@ -397,7 +397,7 @@ describe("TopRibbon Component", () => {
         givenName: undefined,
         familyName: undefined,
       };
-      const { container } = renderWithMantine(
+      const { container } = renderWithRouter(
         <TopRibbon
           onBurgerClick={onBurgerClick}
           patient={patientNoNames}

@@ -57,12 +57,24 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     throw new Error(`API path must start with '/', got: ${path}`);
   }
 
+  // Auto-include CSRF token for state-changing requests
+  const method = opts.method ?? "GET";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((opts.headers as Record<string, string>) ?? {}),
+  };
+  if (method !== "GET" && !headers["X-CSRF-Token"]) {
+    const match = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("XSRF-TOKEN="));
+    if (match) {
+      headers["X-CSRF-Token"] = decodeURIComponent(match.split("=")[1]);
+    }
+  }
+
   const res = await fetch(`/api${path}`, {
-    method: opts.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts.headers ?? {}),
-    },
+    method,
+    headers,
     credentials: "include",
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });

@@ -14,6 +14,7 @@ import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text } from "@mantine/core";
 import BurgerButton from "@/components/button/BurgerButton";
+import { Link } from "react-router-dom";
 import classes from "./TopRibbon.module.scss";
 
 /**
@@ -142,9 +143,12 @@ export default function TopRibbon({
         )}
 
         {showBrand && (
-          <div style={{ display: "flex", alignItems: "center", paddingTop: 3 }}>
+          <Link
+            to="/"
+            style={{ display: "flex", alignItems: "center", paddingTop: 3 }}
+          >
             <QuillName />
-          </div>
+          </Link>
         )}
         {/* middle: patient info */}
         <div className={classes.middle}>
