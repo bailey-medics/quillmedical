@@ -9,7 +9,8 @@
     "poetry.lock",
     "yarn.lock",
     "cookies.txt",
-    ".pnp.*"
+    ".pnp.*",
+    "temp"
   ],
   "words": [
     "ABAC",
