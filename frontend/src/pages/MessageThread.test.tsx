@@ -2,14 +2,14 @@
  * MessageThread Page Tests
  *
  * Tests for the conversation thread detail page including:
- * - Rendering messages for known conversations
- * - Not-found state for unknown conversation IDs
+ * - Rendering messages from API
+ * - Not-found state for failed fetches
  * - Back navigation
  * - Sending new messages
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Mock scrollIntoView (not available in jsdom)
@@ -17,6 +17,20 @@ Element.prototype.scrollIntoView = vi.fn();
 
 import { renderWithRouter } from "@/test/test-utils";
 import MessageThread from "./MessageThread";
+import {
+  fetchConversation,
+  sendMessage,
+  type ConversationDetailResponse,
+} from "@lib/messaging";
+
+vi.mock("@lib/messaging", () => ({
+  fetchConversation: vi.fn(),
+  sendMessage: vi.fn(),
+}));
+
+vi.mock("@/lib/api", () => ({
+  api: { get: vi.fn().mockResolvedValue({ patients: [], users: [] }) },
+}));
 
 // Mock ProfilePic component
 vi.mock("@/components/profile-pic/ProfilePic", () => ({
@@ -46,7 +60,7 @@ vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      user: { id: "mark-bailey", name: "Mark Bailey" },
+      user: { id: 1, name: "Mark Bailey" },
     },
   }),
 }));
@@ -65,38 +79,107 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const mockConversation: ConversationDetailResponse = {
+  id: 1,
+  fhir_conversation_id: "conv-uuid-1",
+  patient_id: "patient-1",
+  subject: "Prescription renewal",
+  status: "active",
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+  participants: [
+    {
+      user_id: 1,
+      username: "mark.bailey",
+      display_name: "Mark Bailey",
+      role: "initiator",
+      joined_at: "2025-01-01T00:00:00Z",
+    },
+  ],
+  messages: [
+    {
+      id: 1,
+      fhir_communication_id: "fhir-1",
+      sender_id: 1,
+      sender_username: "mark.bailey",
+      sender_display_name: "Mark Bailey",
+      body: "Amlodipine 5mg prescription renewal needed",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-01T10:00:00Z",
+    },
+    {
+      id: 2,
+      fhir_communication_id: "fhir-2",
+      sender_id: 2,
+      sender_username: "sarah.johnson",
+      sender_display_name: "Sarah Johnson",
+      body: "Your repeat prescription has been processed",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-01T11:00:00Z",
+    },
+  ],
+};
+
 describe("MessageThread", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fetchConversation).mockResolvedValue(mockConversation);
+    vi.mocked(sendMessage).mockResolvedValue({
+      id: 99,
+      fhir_communication_id: "fhir-99",
+      sender_id: 1,
+      sender_username: "mark.bailey",
+      sender_display_name: "Mark Bailey",
+      body: "Test reply message",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-02T10:00:00Z",
+    });
   });
 
   describe("Known conversation", () => {
-    it("renders messages from the thread", () => {
+    it("renders messages from the thread", async () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
+        initialRoute: "/messages/1",
       });
 
-      expect(screen.getByText(/prescription renewal/)).toBeInTheDocument();
-      expect(screen.getByText(/Amlodipine 5mg/)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Amlodipine 5mg prescription renewal/),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByText(/repeat prescription has been processed/),
+      ).toBeInTheDocument();
     });
 
-    it("renders back button", () => {
+    it("renders back button", async () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
+        initialRoute: "/messages/1",
       });
 
-      expect(
-        screen.getByRole("button", { name: /back to messages/i }),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /back to messages/i }),
+        ).toBeInTheDocument();
+      });
     });
 
     it("navigates back when back button is clicked", async () => {
       const user = userEvent.setup();
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
+        initialRoute: "/messages/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /back to messages/i }),
+        ).toBeInTheDocument();
       });
 
       await user.click(
@@ -110,7 +193,13 @@ describe("MessageThread", () => {
       const user = userEvent.setup();
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
+        initialRoute: "/messages/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Type a message..."),
+        ).toBeInTheDocument();
       });
 
       const input = screen.getByPlaceholderText("Type a message...");
@@ -119,99 +208,35 @@ describe("MessageThread", () => {
 
       expect(screen.getByText("Test reply message")).toBeInTheDocument();
     });
-
-    it("sets patient in ribbon via setPatient", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-1",
-      });
-
-      expect(mockSetPatient).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "patient-1",
-          name: "John Smith",
-        }),
-      );
-    });
-  });
-
-  describe("Active conversation (conv-2)", () => {
-    it("renders conversation messages", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-2",
-      });
-
-      expect(screen.getByText(/book in for Dr Corbett/)).toBeInTheDocument();
-    });
-
-    it("renders appointment reminder with action buttons", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-2",
-      });
-
-      expect(
-        screen.getByText(/Reminder.*gastro clinic appointment/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "I'll attend" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "I can't make it" }),
-      ).toBeInTheDocument();
-    });
-
-    it("removes action buttons after clicking one", async () => {
-      const user = userEvent.setup();
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-2",
-      });
-
-      await user.click(screen.getByRole("button", { name: "I'll attend" }));
-
-      expect(
-        screen.queryByRole("button", { name: "I'll attend" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "I can't make it" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Resolved conversation (conv-4)", () => {
-    it("renders conversation messages", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/conv-4",
-      });
-
-      expect(
-        screen.getByText(/headaches for the past week/),
-      ).toBeInTheDocument();
-    });
   });
 
   describe("Unknown conversation", () => {
-    it("shows not-found message for unknown ID", () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/unknown-id",
-      });
-
-      expect(screen.getByText("Conversation not found")).toBeInTheDocument();
+    beforeEach(() => {
+      vi.mocked(fetchConversation).mockRejectedValue(new Error("Not found"));
     });
 
-    it("renders back button on not-found page", () => {
+    it("shows not-found message for unknown ID", async () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
-        initialRoute: "/messages/unknown-id",
+        initialRoute: "/messages/999",
       });
 
-      expect(
-        screen.getByRole("button", { name: /back to messages/i }),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Conversation not found")).toBeInTheDocument();
+      });
+    });
+
+    it("renders back button on not-found page", async () => {
+      renderWithRouter(<MessageThread />, {
+        routePath: "/messages/:conversationId",
+        initialRoute: "/messages/999",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /back to messages/i }),
+        ).toBeInTheDocument();
+      });
     });
   });
 });

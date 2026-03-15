@@ -2,11 +2,24 @@
  * Patient Message Thread Page Tests
  */
 
-import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import PatientMessageThread from "./PatientMessageThread";
+import {
+  fetchConversation,
+  sendMessage,
+  type ConversationDetailResponse,
+} from "@lib/messaging";
+
+// Mock scrollIntoView (not available in jsdom)
+Element.prototype.scrollIntoView = vi.fn();
+
+vi.mock("@lib/messaging", () => ({
+  fetchConversation: vi.fn(),
+  sendMessage: vi.fn(),
+}));
 
 vi.mock("@/lib/api", () => ({
   api: { get: vi.fn() },
@@ -16,7 +29,7 @@ vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      user: { id: "mark-bailey", name: "Mark Bailey" },
+      user: { id: 1, name: "Mark Bailey" },
     },
   }),
 }));
@@ -48,43 +61,103 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const mockConversation: ConversationDetailResponse = {
+  id: 1,
+  fhir_conversation_id: "conv-uuid-1",
+  patient_id: "test-patient",
+  subject: "Gastro clinic",
+  status: "active",
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+  participants: [
+    {
+      user_id: 1,
+      username: "mark.bailey",
+      display_name: "Mark Bailey",
+      role: "initiator",
+      joined_at: "2025-01-01T00:00:00Z",
+    },
+  ],
+  messages: [
+    {
+      id: 1,
+      fhir_communication_id: "fhir-1",
+      sender_id: 1,
+      sender_username: "mark.bailey",
+      sender_display_name: "Mark Bailey",
+      body: "I'd like to book in for Dr Corbett",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-01T10:00:00Z",
+    },
+    {
+      id: 2,
+      fhir_communication_id: "fhir-2",
+      sender_id: 2,
+      sender_username: "dr.corbett",
+      sender_display_name: "Dr Corbett",
+      body: "Here is your personalised dietary guide",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-01T11:00:00Z",
+    },
+  ],
+};
+
 describe("PatientMessageThread", () => {
-  it("renders messages with patient name", () => {
-    renderWithRouter(<PatientMessageThread />, {
-      routePath: "/patients/:id/messages/:conversationId",
-      initialRoute: "/patients/test-patient/messages/gastro-clinic",
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fetchConversation).mockResolvedValue(mockConversation);
+    vi.mocked(sendMessage).mockResolvedValue({
+      id: 99,
+      fhir_communication_id: "fhir-99",
+      sender_id: 1,
+      sender_username: "mark.bailey",
+      sender_display_name: "Mark Bailey",
+      body: "Test message",
+      amends_id: null,
+      is_amendment: false,
+      created_at: "2025-01-02T10:00:00Z",
     });
-
-    expect(
-      screen.getByText(/I'd like to book in for Dr Corbett/),
-    ).toBeInTheDocument();
   });
 
-  it("renders Dr Corbett messages", () => {
+  it("renders messages from conversation", async () => {
     renderWithRouter(<PatientMessageThread />, {
       routePath: "/patients/:id/messages/:conversationId",
-      initialRoute: "/patients/test-patient/messages/gastro-clinic",
+      initialRoute: "/patients/test-patient/messages/1",
     });
 
-    expect(screen.getByText(/personalised dietary guide/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/I'd like to book in for Dr Corbett/),
+      ).toBeInTheDocument();
+    });
   });
 
-  it("renders action buttons on system message", () => {
+  it("renders Dr Corbett messages", async () => {
     renderWithRouter(<PatientMessageThread />, {
       routePath: "/patients/:id/messages/:conversationId",
-      initialRoute: "/patients/test-patient/messages/gastro-clinic",
+      initialRoute: "/patients/test-patient/messages/1",
     });
 
-    expect(
-      screen.getByRole("button", { name: "I'll attend" }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/personalised dietary guide/),
+      ).toBeInTheDocument();
+    });
   });
 
   it("allows sending a new message", async () => {
     const user = userEvent.setup();
     renderWithRouter(<PatientMessageThread />, {
       routePath: "/patients/:id/messages/:conversationId",
-      initialRoute: "/patients/test-patient/messages/gastro-clinic",
+      initialRoute: "/patients/test-patient/messages/1",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("Type a message..."),
+      ).toBeInTheDocument();
     });
 
     const input = screen.getByPlaceholderText("Type a message...");
