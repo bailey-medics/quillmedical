@@ -2,24 +2,23 @@
  * Messages Page Module
  *
  * Main messaging dashboard for clinicians/admins showing all patient conversations.
- * Displays a list of message threads with filtering and sorting capabilities,
- * defaulting to most recent messages first.
+ * Displays a list of message threads, defaulting to most recent messages first.
  */
 
 import { MessagesList, type MessageThread } from "@/components/messaging";
+import NewMessageModal, {
+  type NewConversationData,
+} from "@/components/messaging/NewMessageModal";
+import AddButton from "@/components/button/AddButton";
 import PageHeader from "@/components/page-header";
-// import { api } from "@/lib/api"; // TODO: Replace mock data with API call
 import {
-  Card,
-  Container,
-  Group,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-} from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+  createConversation,
+  fetchConversations,
+  type ConversationResponse,
+} from "@lib/messaging";
+import { Card, Container, Group, Stack, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -61,241 +60,108 @@ export type Participant = {
   familyName?: string;
 };
 
-type SortOption = "recent" | "unread" | "patient-name";
-type StatusFilter = "all" | "new" | "active" | "resolved" | "closed";
-
 /**
  * Messages Page
  *
- * Displays all patient conversations for clinicians/admins with filtering
- * and sorting capabilities. Shows conversation preview, unread counts, and
- * patient information.
- *
- * Features:
- * - Sort by: Most recent (default), Unread count, Patient name
- * - Filter by: Status (all, new, active, resolved, closed)
- * - Search by patient name
- * - Click to navigate to conversation detail
- *
- * @example
- * // Routing configuration
- * <Route path="/messages" element={<Messages />} />
+ * Displays all patient conversations where the current user
+ * has contributed or been tagged.
  */
 export default function Messages() {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>("recent");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleNewConversation = useCallback(
+    (data: NewConversationData) => {
+      setIsSubmitting(true);
+      createConversation({
+        patient_id: data.patient_id,
+        subject: data.subject,
+        participant_ids: data.participant_ids,
+        initial_message: data.initial_message,
+      })
+        .then((created) => {
+          setModalOpen(false);
+          navigate(`/messages/${created.id}`);
+        })
+        .catch((err: unknown) => {
+          notifications.show({
+            title: "Failed to create conversation",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Something went wrong. Please try again.",
+            color: "red",
+          });
+        })
+        .finally(() => setIsSubmitting(false));
+    },
+    [navigate],
+  );
 
   // Fetch conversations
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
 
-    // TODO: Replace with actual API endpoint when backend implements conversations
-    // For now, using placeholder data
-    setTimeout(() => {
-      if (cancelled) return;
-
-      const mockConversations: Conversation[] = [
-        {
-          id: "conv-1",
-          patientId: "patient-1",
-          patientName: "John Smith",
-          patientGivenName: "John",
-          patientFamilyName: "Smith",
-          patientGradientIndex: 2,
-          lastMessage: "Thank you for your help with my prescription",
-          lastMessageTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
-          unreadCount: 2,
-          status: "active",
-          participants: [
-            {
-              displayName: "Dr Williams",
-              givenName: "David",
-              familyName: "Williams",
-            },
-          ],
-        },
-        {
-          id: "conv-2",
-          patientId: "patient-2",
-          patientName: "Mary Johnson",
-          patientGivenName: "Mary",
-          patientFamilyName: "Johnson",
-          patientGradientIndex: 4,
-          lastMessage: "I need to schedule a follow-up appointment",
-          lastMessageTime: new Date(
-            Date.now() - 1000 * 60 * 60 * 2,
-          ).toISOString(), // 2 hours ago
-          unreadCount: 0,
-          status: "new",
-          participants: [
-            {
-              displayName: "Dr Corbett",
-              givenName: "Gareth",
-              familyName: "Corbett",
-            },
-          ],
-        },
-        {
-          id: "conv-3",
-          patientId: "patient-3",
-          patientName: "Robert Brown",
-          patientGivenName: "Robert",
-          patientFamilyName: "Brown",
-          patientGradientIndex: 9,
-          lastMessage: "My test results came back, what should I do next?",
-          lastMessageTime: new Date(
-            Date.now() - 1000 * 60 * 60 * 5,
-          ).toISOString(), // 5 hours ago
-          unreadCount: 1,
-          status: "active",
-          participants: [
-            {
-              displayName: "Dr Smith",
-              givenName: "James",
-              familyName: "Smith",
-            },
-          ],
-        },
-        {
-          id: "conv-4",
-          patientId: "patient-4",
-          patientName: "Sarah Davis",
-          patientGivenName: "Sarah",
-          patientFamilyName: "Davis",
-          patientGradientIndex: 1,
-          lastMessage: "Issue resolved, thank you",
-          lastMessageTime: new Date(
-            Date.now() - 1000 * 60 * 60 * 24,
-          ).toISOString(), // 1 day ago
-          unreadCount: 0,
-          status: "resolved",
-          participants: [
-            {
-              displayName: "Dr Williams",
-              givenName: "David",
-              familyName: "Williams",
-            },
-          ],
-        },
-      ];
-
-      setConversations(mockConversations);
-      setError(null);
-      setIsLoading(false);
-    }, 500);
+    fetchConversations()
+      .then((res) => {
+        if (cancelled) return;
+        setConversations(
+          res.conversations.map(
+            (c: ConversationResponse): Conversation => ({
+              id: String(c.id),
+              patientId: c.patient_id,
+              patientName: c.patient_id, // TODO: resolve from FHIR
+              patientGivenName: c.patient_id,
+              patientFamilyName: "",
+              patientGradientIndex: 0,
+              lastMessage: c.last_message_preview ?? "",
+              lastMessageTime: c.last_message_time ?? c.updated_at,
+              unreadCount: c.unread_count,
+              status: c.status as Conversation["status"],
+              participants: c.participants.map((p) => ({
+                displayName: p.display_name,
+                givenName: p.username,
+                familyName: "",
+              })),
+            }),
+          ),
+        );
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setError(err.message || "Failed to load conversations");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-
-    // TODO: Uncomment when API is ready
-    // api
-    //   .get<{ conversations: Conversation[] }>("/conversations")
-    //   .then((res) => {
-    //     if (cancelled) return;
-    //     setConversations(res.conversations || []);
-    //     setError(null);
-    //   })
-    //   .catch((err: Error) => {
-    //     if (cancelled) return;
-    //     setError(err.message || "Failed to load conversations");
-    //   })
-    //   .finally(() => {
-    //     if (cancelled) return;
-    //     setIsLoading(false);
-    //   });
-
-    // return () => {
-    //   cancelled = true;
-    // };
   }, []);
-
-  // Filter conversations
-  const filteredConversations = conversations.filter((conv) => {
-    // Status filter
-    if (statusFilter !== "all" && conv.status !== statusFilter) {
-      return false;
-    }
-
-    // Search filter
-    if (
-      searchQuery &&
-      !conv.patientName.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-
-  // Sort conversations
-  const sortedConversations = [...filteredConversations].sort((a, b) => {
-    switch (sortBy) {
-      case "recent":
-        return (
-          new Date(b.lastMessageTime).getTime() -
-          new Date(a.lastMessageTime).getTime()
-        );
-      case "unread":
-        return b.unreadCount - a.unreadCount;
-      case "patient-name":
-        return a.patientName.localeCompare(b.patientName);
-      default:
-        return 0;
-    }
-  });
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Messages"
-          description="View and manage all patient conversations"
-          size="lg"
+        <Group justify="space-between" align="flex-end">
+          <PageHeader title="Messages" size="lg" mb={0} />
+          <AddButton label="New message" onClick={() => setModalOpen(true)} />
+        </Group>
+
+        <NewMessageModal
+          opened={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleNewConversation}
+          isSubmitting={isSubmitting}
         />
 
-        {/* Filters and Search */}
-        <Card shadow="sm" padding="md" radius="md" withBorder>
-          <Group gap="md" grow>
-            <TextInput
-              label="Search"
-              placeholder="Search by patient name..."
-              leftSection={<IconSearch size={16} />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.currentTarget.value)}
-            />
-            <Select
-              label="Sort by"
-              value={sortBy}
-              onChange={(value) => setSortBy(value as SortOption)}
-              data={[
-                { value: "recent", label: "Most Recent" },
-                { value: "unread", label: "Unread Count" },
-                { value: "patient-name", label: "Patient Name" },
-              ]}
-            />
-            <Select
-              label="Status"
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as StatusFilter)}
-              data={[
-                { value: "all", label: "All" },
-                { value: "new", label: "New" },
-                { value: "active", label: "Active" },
-                { value: "resolved", label: "Resolved" },
-                { value: "closed", label: "Closed" },
-              ]}
-            />
-          </Group>
-        </Card>
-
-        {/* Conversations List */}
         {error && (
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Text c="red">{error}</Text>
@@ -304,17 +170,15 @@ export default function Messages() {
 
         {isLoading ? (
           <Text>Loading conversations...</Text>
-        ) : sortedConversations.length === 0 ? (
+        ) : conversations.length === 0 ? (
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Text c="dimmed" ta="center">
-              {searchQuery || statusFilter !== "all"
-                ? "No conversations match your filters"
-                : "No conversations yet"}
+              No conversations yet
             </Text>
           </Card>
         ) : (
           <MessagesList
-            threads={sortedConversations.map((conv) => ({
+            threads={conversations.map((conv) => ({
               id: conv.id,
               displayName: conv.patientName,
               profiles: [

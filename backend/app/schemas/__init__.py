@@ -2,3 +2,4 @@
 
 from app.schemas.auth import *  # noqa: F403, F401
 from app.schemas.letters import *  # noqa: F403, F401
+from app.schemas.messaging import *  # noqa: F403, F401
