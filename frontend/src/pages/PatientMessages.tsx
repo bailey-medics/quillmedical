@@ -14,7 +14,7 @@ import AddButton from "@/components/button/AddButton";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import {
   createConversation,
-  fetchConversations,
+  fetchPatientConversations,
   type ConversationResponse,
 } from "@lib/messaging";
 import { Card, Container, Group, Loader, Stack, Text } from "@mantine/core";
@@ -40,6 +40,7 @@ export default function PatientMessages() {
         subject: data.subject,
         participant_ids: data.participant_ids,
         initial_message: data.initial_message,
+        include_patient_as_participant: data.include_patient_as_participant,
       })
         .then((created) => {
           setModalOpen(false);
@@ -75,7 +76,7 @@ export default function PatientMessages() {
     let cancelled = false;
     setIsLoading(true);
 
-    fetchConversations({ patient_id: id })
+    fetchPatientConversations(id)
       .then((res) => {
         if (cancelled) return;
         setConversations(res.conversations);

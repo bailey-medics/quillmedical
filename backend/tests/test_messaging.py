@@ -19,12 +19,29 @@ from app.security import hash_password
 
 @pytest.fixture
 def second_user(db_session: Session) -> User:
-    """Create a second test user."""
+    """Create a second test user with staff permissions."""
     user = User(
         username="seconduser",
         email="second@example.com",
         password_hash=hash_password("SecondPassword123!"),
         is_active=True,
+        system_permissions="staff",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def patient_user(db_session: Session) -> User:
+    """Create a test user with patient permissions."""
+    user = User(
+        username="patientuser",
+        email="patient@example.com",
+        password_hash=hash_password("PatientPassword123!"),
+        is_active=True,
+        system_permissions="patient",
     )
     db_session.add(user)
     db_session.commit()
@@ -535,3 +552,384 @@ class TestUnreadCount:
         convs = resp.json()["conversations"]
         assert len(convs) == 1
         assert convs[0]["unread_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Include patient as participant flag
+# ---------------------------------------------------------------------------
+
+
+class TestIncludePatientAsParticipant:
+    """Test include_patient_as_participant flag on create."""
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_default_false(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Flag defaults to false when not provided."""
+        resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["include_patient_as_participant"] is False
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_set_true(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Flag can be set to true on creation."""
+        resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+                "include_patient_as_participant": True,
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["include_patient_as_participant"] is True
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_persisted_in_detail(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Flag is persisted and returned in detail view."""
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+                "include_patient_as_participant": True,
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        detail = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert detail.status_code == 200
+        assert detail.json()["include_patient_as_participant"] is True
+
+
+# ---------------------------------------------------------------------------
+# Access control: non-participant reads
+# ---------------------------------------------------------------------------
+
+
+class TestNonParticipantAccess:
+    """Test that non-participants can view conversations."""
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_non_participant_can_read_detail(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+        db_session: Session,
+    ):
+        """A non-participant can view conversation detail."""
+        # Create conversation as test_user (no second_user participant)
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Private-ish message",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        # Log in as second_user
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "seconduser",
+                "password": "SecondPassword123!",
+            },
+        )
+
+        resp = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_participant"] is False
+        assert data["can_write"] is False
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_participant_flags_true_for_member(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """A participant gets is_participant=True, can_write=True."""
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "My message",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        resp = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_participant"] is True
+        assert data["can_write"] is True
+
+
+# ---------------------------------------------------------------------------
+# Patient conversations list
+# ---------------------------------------------------------------------------
+
+
+class TestPatientConversations:
+    """Test GET /api/patients/{patient_id}/conversations."""
+
+    def test_empty_list(self, authenticated_client: TestClient):
+        """Returns empty when no conversations exist for patient."""
+        resp = authenticated_client.get(
+            f"/api/patients/{PATIENT_ID}/conversations"
+        )
+        assert resp.status_code == 200
+        assert resp.json()["conversations"] == []
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_returns_all_conversations(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+        db_session: Session,
+    ):
+        """Returns all conversations for a patient."""
+        # Create conversation as test_user
+        authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Msg from user 1",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+
+        resp = authenticated_client.get(
+            f"/api/patients/{PATIENT_ID}/conversations"
+        )
+        assert resp.status_code == 200
+        convs = resp.json()["conversations"]
+        assert len(convs) == 1
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_non_participant_sees_conversations(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+        db_session: Session,
+    ):
+        """Non-participant can list patient conversations."""
+        # Create conversation as test_user
+        authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Msg",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+
+        # Log in as second_user (not a participant)
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "seconduser",
+                "password": "SecondPassword123!",
+            },
+        )
+
+        resp = authenticated_client.get(
+            f"/api/patients/{PATIENT_ID}/conversations"
+        )
+        assert resp.status_code == 200
+        convs = resp.json()["conversations"]
+        assert len(convs) == 1
+        assert convs[0]["is_participant"] is False
+        assert convs[0]["can_write"] is False
+
+    def test_requires_auth(self, test_client: TestClient):
+        """Unauthenticated users cannot list patient conversations."""
+        resp = test_client.get(f"/api/patients/{PATIENT_ID}/conversations")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Join conversation
+# ---------------------------------------------------------------------------
+
+
+class TestJoinConversation:
+    """Test POST /api/conversations/{id}/join."""
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_staff_can_join(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+        db_session: Session,
+    ):
+        """Staff user can self-join a conversation."""
+        # Create conversation as test_user
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        # Log in as second_user (staff by default)
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "seconduser",
+                "password": "SecondPassword123!",
+            },
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.post(
+            f"/api/conversations/{conv_id}/join",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["user_id"] == second_user.id
+        assert resp.json()["role"] == "participant"
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_patient_cannot_join(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        patient_user: User,
+    ):
+        """Patient user cannot self-join a conversation."""
+        # Create conversation as test_user
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        # Log in as patient on the same client
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "patientuser",
+                "password": "PatientPassword123!",
+            },
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        # Try to join as patient
+        resp = authenticated_client.post(
+            f"/api/conversations/{conv_id}/join",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 403
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_join_idempotent(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+    ):
+        """Joining a conversation you're already in returns existing."""
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Hello",
+                "participant_ids": [second_user.id],
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        conv_id = create_resp.json()["id"]
+
+        # Log in as second_user (staff, already a participant)
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "seconduser",
+                "password": "SecondPassword123!",
+            },
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.post(
+            f"/api/conversations/{conv_id}/join",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["role"] == "participant"
+
+    def test_join_nonexistent(
+        self,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        second_user: User,
+    ):
+        """404 for nonexistent conversation."""
+        # Log in as staff user (test_user defaults to patient)
+        authenticated_client.post(
+            "/api/auth/login",
+            json={
+                "username": "seconduser",
+                "password": "SecondPassword123!",
+            },
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.post(
+            "/api/conversations/99999/join",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 404
+
+    def test_join_requires_auth(self, test_client: TestClient):
+        """Unauthenticated users cannot join conversations."""
+        resp = test_client.post("/api/conversations/1/join")
+        assert resp.status_code == 401

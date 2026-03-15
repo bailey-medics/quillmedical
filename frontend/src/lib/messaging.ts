@@ -43,6 +43,9 @@ export interface ConversationResponse {
   last_message_preview: string | null;
   last_message_time: string | null;
   unread_count: number;
+  is_participant: boolean;
+  can_write: boolean;
+  include_patient_as_participant: boolean;
 }
 
 export interface ConversationListResponse {
@@ -59,6 +62,9 @@ export interface ConversationDetailResponse {
   updated_at: string;
   participants: ParticipantResponse[];
   messages: MessageResponse[];
+  is_participant: boolean;
+  can_write: boolean;
+  include_patient_as_participant: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +76,7 @@ export interface CreateConversationRequest {
   subject?: string;
   participant_ids?: number[];
   initial_message: string;
+  include_patient_as_participant?: boolean;
 }
 
 export interface SendMessageRequest {
@@ -122,4 +129,22 @@ export function markConversationRead(
   conversationId: number,
 ): Promise<{ ok: boolean }> {
   return api.post<{ ok: boolean }>(`/conversations/${conversationId}/read`);
+}
+
+export function fetchPatientConversations(
+  patientId: string,
+  params?: { status?: string },
+): Promise<ConversationListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString();
+  return api.get<ConversationListResponse>(
+    `/patients/${patientId}/conversations${query ? `?${query}` : ""}`,
+  );
+}
+
+export function joinConversation(
+  conversationId: number,
+): Promise<ParticipantResponse> {
+  return api.post<ParticipantResponse>(`/conversations/${conversationId}/join`);
 }

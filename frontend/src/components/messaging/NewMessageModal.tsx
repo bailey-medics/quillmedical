@@ -7,12 +7,14 @@
  */
 
 import { api } from "@lib/api";
+import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
 import {
   Modal,
   MultiSelect,
   Select,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
@@ -44,6 +46,7 @@ export interface NewConversationData {
   subject: string;
   participant_ids: number[];
   initial_message: string;
+  include_patient_as_participant: boolean;
 }
 
 interface NewMessageModalProps {
@@ -59,6 +62,8 @@ interface NewMessageModalProps {
   patientId?: string;
   /** Patient name to display when patientId is locked */
   patientName?: string;
+  /** Override patient-view mode (hides patient field and toggle). Defaults to auth context. */
+  isPatientView?: boolean;
 }
 
 export default function NewMessageModal({
@@ -68,7 +73,14 @@ export default function NewMessageModal({
   isSubmitting = false,
   patientId: lockedPatientId,
   patientName: lockedPatientName,
+  isPatientView,
 }: NewMessageModalProps) {
+  const { state } = useAuth();
+  const isPatientUser =
+    isPatientView ??
+    (state.status === "authenticated" &&
+      state.user.system_permissions === "patient");
+
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
@@ -78,6 +90,7 @@ export default function NewMessageModal({
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
   const [initialMessage, setInitialMessage] = useState("");
+  const [includePatient, setIncludePatient] = useState(false);
 
   // Fetch patients and users when modal opens
   useEffect(() => {
@@ -132,6 +145,7 @@ export default function NewMessageModal({
       setParticipantIds([]);
       setSubject("");
       setInitialMessage("");
+      setIncludePatient(false);
     }
   }, [opened]);
 
@@ -148,8 +162,18 @@ export default function NewMessageModal({
       subject: subject.trim(),
       participant_ids: participantIds.map(Number),
       initial_message: initialMessage.trim(),
+      include_patient_as_participant: isPatientUser ? true : includePatient,
     });
-  }, [canSubmit, patientId, subject, participantIds, initialMessage, onSubmit]);
+  }, [
+    canSubmit,
+    patientId,
+    subject,
+    participantIds,
+    initialMessage,
+    onSubmit,
+    isPatientUser,
+    includePatient,
+  ]);
 
   return (
     <Modal
@@ -164,8 +188,8 @@ export default function NewMessageModal({
       centered
     >
       <Stack gap="md">
-        {lockedPatientId ? (
-          <Text size="sm" fw={500}>
+        {isPatientUser ? null : lockedPatientId ? (
+          <Text size="md" fw={700}>
             Patient: {lockedPatientName ?? lockedPatientId}
           </Text>
         ) : (
@@ -181,6 +205,15 @@ export default function NewMessageModal({
             nothingFoundMessage={
               loadingPatients ? "Loading patients…" : "No patients found"
             }
+          />
+        )}
+
+        {!isPatientUser && (
+          <Switch
+            label="Patient as participant"
+            description="Allow the patient to reply to this conversation"
+            checked={includePatient}
+            onChange={(e) => setIncludePatient(e.currentTarget.checked)}
           />
         )}
 
@@ -216,11 +249,14 @@ export default function NewMessageModal({
           required
         />
 
-        {!canSubmit && patientId === null && initialMessage.trim() && (
-          <Text size="sm" c="red">
-            Please select a patient
-          </Text>
-        )}
+        {!canSubmit &&
+          patientId === null &&
+          !isPatientUser &&
+          initialMessage.trim() && (
+            <Text size="sm" c="red">
+              Please select a patient
+            </Text>
+          )}
 
         <ButtonPair
           acceptLabel={isSubmitting ? "Creating\u2026" : "Start conversation"}

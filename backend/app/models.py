@@ -271,6 +271,9 @@ class Conversation(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="new"
     )
+    include_patient_as_participant: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

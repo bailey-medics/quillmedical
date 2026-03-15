@@ -7,15 +7,33 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import PatientMessages from "./PatientMessages";
-import { fetchConversations, createConversation } from "@lib/messaging";
+import { fetchPatientConversations, createConversation } from "@lib/messaging";
 
 vi.mock("@/lib/api", () => ({
   api: { get: vi.fn().mockResolvedValue({ patients: [], users: [] }) },
 }));
 
 vi.mock("@lib/messaging", () => ({
-  fetchConversations: vi.fn(),
+  fetchPatientConversations: vi.fn(),
   createConversation: vi.fn(),
+}));
+
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: {
+        id: 1,
+        username: "staffuser",
+        email: "staff@example.com",
+        system_permissions: "staff",
+      },
+      loading: false,
+    },
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  }),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -60,11 +78,14 @@ const mockConversations = [
     last_message_preview: "Your repeat prescription has been sent",
     last_message_time: "2025-01-01T00:00:00Z",
     unread_count: 0,
+    is_participant: true,
+    can_write: true,
+    include_patient_as_participant: false,
   },
 ];
 
 beforeEach(() => {
-  vi.mocked(fetchConversations).mockResolvedValue({
+  vi.mocked(fetchPatientConversations).mockResolvedValue({
     conversations: mockConversations,
   });
   vi.mocked(createConversation).mockResolvedValue({
@@ -77,6 +98,9 @@ beforeEach(() => {
     updated_at: "2025-01-01T00:00:00Z",
     participants: [],
     messages: [],
+    is_participant: true,
+    can_write: true,
+    include_patient_as_participant: false,
   });
 });
 
@@ -95,7 +119,7 @@ describe("PatientMessages", () => {
   });
 
   it("shows empty state when no conversations", async () => {
-    vi.mocked(fetchConversations).mockResolvedValue({
+    vi.mocked(fetchPatientConversations).mockResolvedValue({
       conversations: [],
     });
 

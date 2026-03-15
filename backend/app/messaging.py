@@ -58,6 +58,9 @@ def _message_out(msg: Message) -> MessageOut:
 def _build_conversation_out(
     conv: Conversation,
     unread_count: int,
+    *,
+    is_participant: bool,
+    can_write: bool,
 ) -> ConversationOut:
     last_msg = (
         max(conv.messages, key=lambda m: m.created_at)
@@ -76,6 +79,9 @@ def _build_conversation_out(
         last_message_preview=last_msg.body[:200] if last_msg else None,
         last_message_time=last_msg.created_at if last_msg else None,
         unread_count=unread_count,
+        is_participant=is_participant,
+        can_write=can_write,
+        include_patient_as_participant=(conv.include_patient_as_participant),
     )
 
 
@@ -92,6 +98,7 @@ def create_conversation(
     initial_message: str,
     subject: str | None = None,
     participant_ids: list[int] | None = None,
+    include_patient_as_participant: bool = False,
 ) -> ConversationDetailOut:
     """Create a new conversation and its first message.
 
@@ -115,6 +122,7 @@ def create_conversation(
         patient_id=patient_id,
         subject=subject,
         status="new",
+        include_patient_as_participant=include_patient_as_participant,
     )
     db.add(conv)
     db.flush()  # get conv.id
@@ -161,6 +169,9 @@ def create_conversation(
         updated_at=conv.updated_at,
         participants=[_participant_out(p) for p in conv.participants],
         messages=[_message_out(msg)],
+        is_participant=True,
+        can_write=True,
+        include_patient_as_participant=(conv.include_patient_as_participant),
     )
 
 
@@ -199,7 +210,14 @@ def list_conversations(
             # Never read — all messages from others are unread
             unread = sum(1 for m in conv.messages if m.sender_id != user_id)
 
-        results.append(_build_conversation_out(conv, unread))
+        results.append(
+            _build_conversation_out(
+                conv,
+                unread,
+                is_participant=True,
+                can_write=True,
+            )
+        )
 
     return results
 
@@ -212,21 +230,21 @@ def get_conversation_detail(
 ) -> ConversationDetailOut | None:
     """Get a single conversation with all messages.
 
-    Also updates the participant's last_read_at.
+    Any authenticated user with access to the patient record can read.
+    Updates last_read_at only if the user is a participant.
     """
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         return None
 
-    # Check user is a participant
     cp = next((p for p in conv.participants if p.user_id == user_id), None)
-    if cp is None:
-        return None
+    is_participant = cp is not None
 
-    # Mark as read
-    cp.last_read_at = func.now()
-    db.commit()
-    db.refresh(conv)
+    # Mark as read only for participants
+    if cp is not None:
+        cp.last_read_at = func.now()
+        db.commit()
+        db.refresh(conv)
 
     sorted_msgs = sorted(conv.messages, key=lambda m: m.created_at)
 
@@ -240,6 +258,9 @@ def get_conversation_detail(
         updated_at=conv.updated_at,
         participants=[_participant_out(p) for p in conv.participants],
         messages=[_message_out(m) for m in sorted_msgs],
+        is_participant=is_participant,
+        can_write=is_participant,
+        include_patient_as_participant=(conv.include_patient_as_participant),
     )
 
 
@@ -365,3 +386,89 @@ def mark_conversation_read(
     cp.last_read_at = func.now()
     db.commit()
     return True
+
+
+def list_patient_conversations(
+    *,
+    db: Session,
+    patient_id: str,
+    user_id: int,
+    status: str | None = None,
+) -> list[ConversationOut]:
+    """List all conversations about a patient.
+
+    Returns all conversations regardless of participation, with
+    is_participant and can_write flags per conversation.
+    """
+    query = db.query(Conversation).filter(
+        Conversation.patient_id == patient_id
+    )
+    if status:
+        query = query.filter(Conversation.status == status)
+
+    query = query.order_by(Conversation.updated_at.desc())
+    conversations = query.all()
+
+    results: list[ConversationOut] = []
+    for conv in conversations:
+        cp = next((p for p in conv.participants if p.user_id == user_id), None)
+        is_participant = cp is not None
+
+        if cp is not None and cp.last_read_at:
+            unread = sum(
+                1
+                for m in conv.messages
+                if m.created_at > cp.last_read_at and m.sender_id != user_id
+            )
+        elif cp is not None:
+            unread = sum(1 for m in conv.messages if m.sender_id != user_id)
+        else:
+            unread = 0
+
+        results.append(
+            _build_conversation_out(
+                conv,
+                unread,
+                is_participant=is_participant,
+                can_write=is_participant,
+            )
+        )
+
+    return results
+
+
+def join_conversation(
+    *,
+    db: Session,
+    conversation_id: int,
+    user: User,
+) -> ParticipantOut:
+    """Allow a staff member to join a conversation.
+
+    Only users with staff-level permissions or above can self-join.
+    Patients must be added by an existing participant.
+    """
+    if user.system_permissions == "patient":
+        raise PermissionError("Patients cannot self-join conversations")
+
+    conv = db.get(Conversation, conversation_id)
+    if conv is None:
+        raise ValueError("Conversation not found")
+
+    existing = (
+        db.query(ConversationParticipant)
+        .filter_by(conversation_id=conversation_id, user_id=user.id)
+        .first()
+    )
+    if existing:
+        return _participant_out(existing)
+
+    cp = ConversationParticipant(
+        conversation_id=conversation_id,
+        user_id=user.id,
+        role="participant",
+    )
+    db.add(cp)
+    db.commit()
+    db.refresh(cp)
+    return _participant_out(cp)

@@ -21,6 +21,26 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+const mockAuthState = {
+  status: "authenticated" as const,
+  user: {
+    id: 1,
+    username: "staffuser",
+    email: "staff@example.com",
+    system_permissions: "staff",
+  },
+  loading: false,
+};
+
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: mockAuthState,
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));
+
 describe("NewMessageModal", () => {
   const defaultProps = {
     opened: true,
@@ -135,6 +155,29 @@ describe("NewMessageModal", () => {
     it("shows patient selector when no patientId prop", () => {
       renderWithRouter(<NewMessageModal {...defaultProps} />);
       expect(screen.getByText("Patient")).toBeInTheDocument();
+    });
+  });
+
+  describe("Patient as participant toggle", () => {
+    it("renders switch for staff users", () => {
+      renderWithRouter(<NewMessageModal {...defaultProps} />);
+      expect(screen.getByText("Patient as participant")).toBeInTheDocument();
+    });
+
+    it("hides switch in patient view", () => {
+      renderWithRouter(
+        <NewMessageModal {...defaultProps} isPatientView={true} />,
+      );
+      expect(
+        screen.queryByText("Patient as participant"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides patient selector in patient view", () => {
+      renderWithRouter(
+        <NewMessageModal {...defaultProps} isPatientView={true} />,
+      );
+      expect(screen.queryByText("Patient")).not.toBeInTheDocument();
     });
   });
 });
