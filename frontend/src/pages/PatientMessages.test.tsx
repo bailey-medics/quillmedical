@@ -42,32 +42,41 @@ vi.mock("react-router-dom", async () => {
 const mockConversations = [
   {
     id: 1,
+    fhir_conversation_id: "conv-uuid-1",
     patient_id: "test-patient",
     subject: "Prescription renewal",
     status: "active",
-    participants: [
-      { user_id: 1, username: "mark.bailey", display_name: "Mark Bailey" },
-    ],
-    last_message_at: "2025-01-01T00:00:00Z",
-    last_message_preview: "Your repeat prescription has been sent",
     created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    participants: [
+      {
+        user_id: 1,
+        username: "mark.bailey",
+        display_name: "Mark Bailey",
+        role: "initiator",
+        joined_at: "2025-01-01T00:00:00Z",
+      },
+    ],
+    last_message_preview: "Your repeat prescription has been sent",
+    last_message_time: "2025-01-01T00:00:00Z",
+    unread_count: 0,
   },
 ];
 
 beforeEach(() => {
   vi.mocked(fetchConversations).mockResolvedValue({
     conversations: mockConversations,
-    total: 1,
   });
   vi.mocked(createConversation).mockResolvedValue({
     id: 99,
+    fhir_conversation_id: "conv-uuid-99",
     patient_id: "test-patient",
     subject: "New",
     status: "active",
-    participants: [],
-    last_message_at: null,
-    last_message_preview: null,
     created_at: "2025-01-01T00:00:00Z",
+    updated_at: "2025-01-01T00:00:00Z",
+    participants: [],
+    messages: [],
   });
 });
 
@@ -88,7 +97,6 @@ describe("PatientMessages", () => {
   it("shows empty state when no conversations", async () => {
     vi.mocked(fetchConversations).mockResolvedValue({
       conversations: [],
-      total: 0,
     });
 
     renderWithRouter(<PatientMessages />, {
