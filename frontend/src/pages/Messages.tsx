@@ -82,6 +82,7 @@ export default function Messages() {
         subject: data.subject,
         participant_ids: data.participant_ids,
         initial_message: data.initial_message,
+        include_patient_as_participant: data.include_patient_as_participant,
       })
         .then((created) => {
           setModalOpen(false);

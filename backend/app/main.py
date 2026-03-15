@@ -56,7 +56,9 @@ from app.messaging import (
     add_participant,
     create_conversation,
     get_conversation_detail,
+    join_conversation,
     list_conversations,
+    list_patient_conversations,
     mark_conversation_read,
     send_message,
 )
@@ -2419,6 +2421,9 @@ def create_conversation_endpoint(
             initial_message=body.initial_message,
             subject=body.subject,
             participant_ids=body.participant_ids,
+            include_patient_as_participant=(
+                body.include_patient_as_participant
+            ),
         )
     except FhirCommunicationError as exc:
         raise HTTPException(
@@ -2453,6 +2458,39 @@ def list_conversations_endpoint(
         user_id=u.id,
         status=status,
         patient_id=patient_id,
+    )
+    return ConversationListOut(conversations=items)
+
+
+@router.get(
+    "/patients/{patient_id}/conversations",
+    response_model=ConversationListOut,
+)
+def list_patient_conversations_endpoint(
+    patient_id: str,
+    status: str | None = None,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> ConversationListOut:
+    """List all conversations about a patient.
+
+    Returns all conversations for the patient regardless of
+    whether the current user is a participant.
+
+    Args:
+        patient_id: FHIR patient ID.
+        status: Optional filter by conversation status.
+        u: Authenticated user.
+        db: Database session.
+
+    Returns:
+        ConversationListOut: All conversations for this patient.
+    """
+    items = list_patient_conversations(
+        db=db,
+        patient_id=patient_id,
+        user_id=u.id,
+        status=status,
     )
     return ConversationListOut(conversations=items)
 
@@ -2701,6 +2739,45 @@ def list_participants_endpoint(
         )
         for p in conv.participants
     ]
+
+
+@router.post(
+    "/conversations/{conversation_id}/join",
+    response_model=ParticipantOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def join_conversation_endpoint(
+    conversation_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> ParticipantOut:
+    """Join a conversation as a staff member.
+
+    Staff can self-join any conversation they can see.
+    Patients cannot self-join; they must be added by a participant.
+
+    Args:
+        conversation_id: ID of the conversation.
+        u: Authenticated user.
+        db: Database session.
+
+    Returns:
+        ParticipantOut: The new or existing participant record.
+
+    Raises:
+        HTTPException: 404 if conversation not found.
+        HTTPException: 403 if user is a patient.
+    """
+    try:
+        return join_conversation(
+            db=db,
+            conversation_id=conversation_id,
+            user=u,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.post(

@@ -20,12 +20,15 @@ class ConversationCreateIn(BaseModel):
         subject: Optional thread topic / subject line.
         participant_ids: Other user IDs to add as participants.
         initial_message: Body text of the first message.
+        include_patient_as_participant: Whether the patient should be
+            able to reply to this conversation.
     """
 
     patient_id: str
     subject: str | None = None
     participant_ids: list[int] = Field(default_factory=list)
     initial_message: str
+    include_patient_as_participant: bool = False
 
     model_config = {"extra": "forbid"}
 
@@ -113,6 +116,9 @@ class ConversationOut(BaseModel):
     last_message_preview: str | None = None
     last_message_time: datetime | None = None
     unread_count: int = 0
+    is_participant: bool = False
+    can_write: bool = False
+    include_patient_as_participant: bool = False
 
 
 class ConversationListOut(BaseModel):
@@ -133,3 +139,6 @@ class ConversationDetailOut(BaseModel):
     updated_at: datetime
     participants: list[ParticipantOut]
     messages: list[MessageOut]
+    is_participant: bool = False
+    can_write: bool = False
+    include_patient_as_participant: bool = False

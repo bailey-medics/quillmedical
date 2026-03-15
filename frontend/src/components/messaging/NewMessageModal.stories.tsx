@@ -80,9 +80,11 @@ export const Submitting: Story = {
   },
 };
 
-/** Modal closed — nothing rendered */
-export const Closed: Story = {
+/** Patient user view — patient field and toggle hidden */
+export const PatientView: Story = {
   args: {
-    opened: false,
+    isPatientView: true,
+    patientId: "p-1",
+    patientName: "James Green",
   },
 };
