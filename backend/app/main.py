@@ -22,6 +22,7 @@ Architecture:
 """
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -64,11 +65,18 @@ from app.messaging import (
 )
 from app.models import (
     Conversation,
+    ExternalPatientAccess,
     Organization,
     PatientMetadata,
     User,
     organisation_patient_member,
     organisation_staff_member,
+)
+from app.organisations import (
+    get_accessible_patient_ids,
+    get_org_staff_ids,
+    get_patient_org_ids,
+    get_shared_org_ids,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -80,19 +88,23 @@ from app.schemas.cbac import (
 )
 from app.schemas.letters import LetterIn
 from app.schemas.messaging import (
+    AcceptInviteIn,
     AddParticipantIn,
     ConversationCreateIn,
     ConversationDetailOut,
     ConversationListOut,
     ConversationOut,
     ConversationStatusUpdateIn,
+    InviteExternalIn,
     MessageCreateIn,
     MessageOut,
     ParticipantOut,
 )
 from app.security import (
+    create_invite_token,
     create_jwt_with_competencies,
     create_refresh_token,
+    decode_invite_token,
     decode_token,
     generate_totp_secret,
     hash_password,
@@ -102,6 +114,7 @@ from app.security import (
     verify_password,
     verify_totp_code,
 )
+from app.system_permissions.permissions import is_external_user
 
 DEV_MODE = (
     str(getattr(settings, "BACKEND_ENV", "development"))
@@ -1011,29 +1024,68 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
 
 @router.get("/users")
 def list_users(
-    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+    patient_id: str | None = None,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
-    """List All Users.
+    """List users, optionally filtered by shared org with a patient.
 
-    Retrieves all user accounts from the authentication database. Returns
-    user ID, username, and email for each user. Used by admin interface
-    to display user count and populate user selection dropdowns.
+    When ``patient_id`` is provided, returns staff who share an org with
+    that patient plus external users with active access grants. This is
+    used by the message participant picker.
 
-    Requires admin or superadmin system permissions.
+    Without ``patient_id``, returns all users (admin/superadmin only).
 
     Args:
-        u: Currently authenticated user (admin/superadmin only).
+        patient_id: Optional FHIR patient ID to filter by shared org.
+        u: Currently authenticated user.
         db: Database session.
 
     Returns:
-        dict: Response with key:
-            - users: Array of user objects with id, username, email
+        dict: Response with users array.
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
-        HTTPException: 500 if database query fails.
+        HTTPException: 403 if user lacks permissions.
     """
-    # Check permissions
+    if patient_id:
+        # Filtered mode: staff in patient's orgs + external with access
+        patient_orgs = get_patient_org_ids(db, patient_id)
+        staff_ids = (
+            get_org_staff_ids(db, patient_orgs) if patient_orgs else set()
+        )
+
+        # Also include external users with active access to this patient
+        external_rows = db.execute(
+            select(ExternalPatientAccess.user_id).where(
+                ExternalPatientAccess.patient_id == patient_id,
+                ExternalPatientAccess.revoked_at.is_(None),
+            )
+        ).all()
+        external_ids = {r[0] for r in external_rows}
+
+        all_ids = staff_ids | external_ids
+        if not all_ids:
+            return {"users": []}
+
+        users = (
+            db.execute(select(User).where(User.id.in_(all_ids)))
+            .scalars()
+            .unique()
+            .all()
+        )
+        return {
+            "users": [
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "system_permissions": user.system_permissions,
+                }
+                for user in users
+            ]
+        }
+
+    # Unfiltered mode: admin/superadmin only
     if u.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
@@ -1044,7 +1096,12 @@ def list_users(
         users = db.execute(select(User)).scalars().unique().all()
         return {
             "users": [
-                {"id": user.id, "username": user.username, "email": user.email}
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "system_permissions": user.system_permissions,
+                }
                 for user in users
             ]
         }
@@ -1215,37 +1272,26 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
 @router.get("/patients")
 def list_patients(
     include_inactive: bool = False,
+    scope: str | None = None,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
-    """List All Patients from FHIR.
+    """List patients from FHIR, filtered by organisation membership.
 
-    Retrieves all patient demographics from the FHIR server. Returns FHIR R4
-    Patient resources including name, date of birth, gender, identifiers (NHS
-    number), and contact information. Each patient includes activation status
-    from the patient_metadata table.
-
-    By default, only active patients are returned. Admin and superadmin users
-    can set include_inactive=true to see deactivated patients.
-
-    Also includes FHIR readiness status to prevent race conditions where
-    health check succeeds but patient query fails during FHIR initialization.
+    By default, staff see only patients in their organisation(s).
+    Admin/superadmin can pass ``scope=admin`` to see all patients.
+    External users see only patients they have ExternalPatientAccess for.
 
     Args:
         include_inactive: If true, include deactivated patients (admin only).
+        scope: Pass "admin" to bypass org filtering (admin/superadmin only).
         u: Currently authenticated user.
         db: Database session.
 
     Returns:
-        dict: Response with keys:
-            - patients: Array of FHIR Patient resources with is_active field
-            - fhir_ready: Boolean indicating if FHIR is fully initialized
-
-    Raises:
-        HTTPException: 500 if FHIR server communication fails.
+        dict: Response with patients array and fhir_ready flag.
     """
     try:
-        # Fetch all patients from FHIR
         patients = list_fhir_patients()
 
         # Fetch all patient metadata from database
@@ -1253,25 +1299,36 @@ def list_patients(
         metadata_records = db.execute(stmt).scalars().all()
         metadata_map = {m.patient_id: m.is_active for m in metadata_records}
 
-        # Enrich patients with activation status
+        # Determine which patients are accessible
+        is_admin = u.system_permissions in ["admin", "superadmin"]
+        admin_scope = scope == "admin" and is_admin
+
+        accessible_ids: set[str] | None = None
+        if admin_scope:
+            accessible_ids = None  # no filtering
+        else:
+            accessible_ids = get_accessible_patient_ids(db, u)
+
+        # Enrich patients with activation status and filter
         enriched_patients = []
         for patient in patients:
             patient_id = patient.get("id")
             if patient_id is None:
                 continue
-            is_active = metadata_map.get(patient_id, True)  # Default to active
 
-            # Filter based on activation status and user permissions
-            is_admin = u.system_permissions in ["admin", "superadmin"]
+            # Org-based filtering (skip for admin scope)
+            if accessible_ids is not None and patient_id not in accessible_ids:
+                continue
+
+            is_active = metadata_map.get(patient_id, True)
+
+            # Filter based on activation status
             if is_active or (include_inactive and is_admin):
-                # Add is_active field to patient resource
                 patient["is_active"] = is_active
                 enriched_patients.append(patient)
 
         return {"patients": enriched_patients, "fhir_ready": True}
     except Exception:
-        # If patient query fails, FHIR might still be loading
-        # Return empty list with fhir_ready=False instead of 500 error
         return {"patients": [], "fhir_ready": False}
 
 
@@ -1819,6 +1876,44 @@ def activate_patient(
         "patient_id": patient_id,
         "is_active": True,
         "message": "Patient activated successfully",
+    }
+
+
+@router.get("/patients/{patient_id}/shared-organisations")
+def shared_organisations_endpoint(
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Return organisations shared between the current user and a patient.
+
+    For external users this returns an empty list (they use
+    per-patient access grants, not org membership).
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        u: Authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: ``organisations`` list with id/name/type for each shared org.
+    """
+    if is_external_user(u.system_permissions):
+        return {"organisations": []}
+
+    shared_ids = get_shared_org_ids(db, u.id, patient_id)
+    if not shared_ids:
+        return {"organisations": []}
+
+    orgs = (
+        db.execute(select(Organization).where(Organization.id.in_(shared_ids)))
+        .scalars()
+        .all()
+    )
+    return {
+        "organisations": [
+            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
+        ]
     }
 
 
@@ -2385,6 +2480,387 @@ def add_patient_to_organization(
     }
 
 
+@router.delete(
+    "/organizations/{org_id}/staff/{user_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def remove_staff_from_organization(
+    org_id: int,
+    user_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Remove a staff member from an organisation.
+
+    Admin/superadmin only.
+
+    Args:
+        org_id: Organisation ID.
+        user_id: User ID to remove.
+        u: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    existing = db.scalar(
+        select(organisation_staff_member).where(
+            organisation_staff_member.c.organisation_id == org_id,
+            organisation_staff_member.c.user_id == user_id,
+        )
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    db.execute(
+        organisation_staff_member.delete().where(
+            organisation_staff_member.c.organisation_id == org_id,
+            organisation_staff_member.c.user_id == user_id,
+        )
+    )
+    db.commit()
+    return {"status": "removed"}
+
+
+@router.delete(
+    "/organizations/{org_id}/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def remove_patient_from_organization(
+    org_id: int,
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Remove a patient from an organisation.
+
+    Admin/superadmin only.
+
+    Args:
+        org_id: Organisation ID.
+        patient_id: FHIR Patient resource ID.
+        u: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    existing = db.scalar(
+        select(organisation_patient_member).where(
+            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.patient_id == patient_id,
+        )
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Membership not found")
+
+    db.execute(
+        organisation_patient_member.delete().where(
+            organisation_patient_member.c.organisation_id == org_id,
+            organisation_patient_member.c.patient_id == patient_id,
+        )
+    )
+    db.commit()
+    return {"status": "removed"}
+
+
+@router.patch(
+    "/users/{user_id}/link-patient",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def link_patient_to_user(
+    user_id: int,
+    body: dict[str, str],
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Link a user account to a FHIR patient record.
+
+    Admin/superadmin only. Sets ``fhir_patient_id`` on the user.
+
+    Args:
+        user_id: User ID.
+        body: Must contain ``fhir_patient_id``.
+        u: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with user and patient IDs.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    fhir_patient_id = body.get("fhir_patient_id")
+    if not fhir_patient_id:
+        raise HTTPException(
+            status_code=422, detail="fhir_patient_id is required"
+        )
+
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check not already linked to another user
+    clash = db.scalar(
+        select(User).where(
+            User.fhir_patient_id == fhir_patient_id,
+            User.id != user_id,
+        )
+    )
+    if clash is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="FHIR patient already linked to another user",
+        )
+
+    target.fhir_patient_id = fhir_patient_id
+    db.commit()
+
+    return {
+        "user_id": user_id,
+        "fhir_patient_id": fhir_patient_id,
+    }
+
+
+# ==========================================================================
+# EXTERNAL ACCESS (invite / accept / revoke)
+# ==========================================================================
+
+
+@router.post(
+    "/patients/{patient_id}/invite-external",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def invite_external_user(
+    patient_id: str,
+    body: InviteExternalIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Generate an invite link for an external user.
+
+    Only the patient themselves (via ``fhir_patient_id``) or an
+    admin/superadmin may issue invites.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        body: Email and user type.
+        u: Authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: ``invite_url`` containing the signed JWT.
+    """
+    # Only patient-self or admin can invite
+    is_own = u.fhir_patient_id is not None and u.fhir_patient_id == patient_id
+    is_admin = u.system_permissions in ("admin", "superadmin")
+    if not (is_own or is_admin):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the patient or an admin can invite external users",
+        )
+
+    token = create_invite_token(
+        patient_id=patient_id,
+        email=body.email,
+        user_type=body.user_type,
+    )
+
+    # In production the base URL would come from settings
+    invite_url = f"/app/accept-invite?token={token}"
+
+    return {"invite_url": invite_url, "token": token}
+
+
+@router.post("/accept-invite")
+def accept_invite(
+    body: AcceptInviteIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Accept an invite — register or grant access to existing user.
+
+    If the email matches an existing user, access is granted
+    immediately. Otherwise a new user is created with the fields
+    supplied in the request body.
+
+    Args:
+        body: Invite token and optional registration fields.
+        db: Database session.
+
+    Returns:
+        dict: Status and redirect information.
+    """
+    from jose import JWTError
+
+    try:
+        payload = decode_invite_token(body.token)
+    except JWTError as err:
+        raise HTTPException(
+            status_code=400, detail="Invalid or expired invite token"
+        ) from err
+
+    patient_id: str = payload["patient_id"]
+    email: str = payload["email"]
+    user_type: str = payload["user_type"]
+
+    # Check if user already exists
+    existing = db.scalar(select(User).where(User.email == email))
+
+    if existing is not None:
+        # Grant access to existing user (idempotent)
+        grant = db.scalar(
+            select(ExternalPatientAccess).where(
+                ExternalPatientAccess.user_id == existing.id,
+                ExternalPatientAccess.patient_id == patient_id,
+            )
+        )
+        if grant is None:
+            db.add(
+                ExternalPatientAccess(
+                    user_id=existing.id,
+                    patient_id=patient_id,
+                    granted_by_user_id=existing.id,
+                )
+            )
+            db.commit()
+        elif grant.revoked_at is not None:
+            grant.revoked_at = None
+            db.commit()
+        return {"status": "access_granted", "user_id": existing.id}
+
+    # New user registration
+    if not body.username or not body.password:
+        raise HTTPException(
+            status_code=422,
+            detail="username and password required for new registration",
+        )
+
+    # Validate uniqueness
+    if db.scalar(select(User).where(User.username == body.username)):
+        raise HTTPException(status_code=409, detail="Username already taken")
+
+    new_user = User(
+        username=body.username,
+        email=email,
+        password_hash=hash_password(body.password),
+        system_permissions=user_type,
+        base_profession="patient",
+    )
+    db.add(new_user)
+    db.flush()
+
+    db.add(
+        ExternalPatientAccess(
+            user_id=new_user.id,
+            patient_id=patient_id,
+            granted_by_user_id=new_user.id,
+        )
+    )
+    db.commit()
+
+    return {"status": "registered", "user_id": new_user.id}
+
+
+@router.delete(
+    "/patients/{patient_id}/external-access/{user_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def revoke_external_access(
+    patient_id: str,
+    user_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Revoke an external user's access to a patient.
+
+    Admin/superadmin only. Soft-deletes by setting ``revoked_at``.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        user_id: ID of the external user.
+        u: Authenticated admin user.
+        db: Database session.
+
+    Returns:
+        dict: Confirmation message.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    grant = db.scalar(
+        select(ExternalPatientAccess).where(
+            ExternalPatientAccess.user_id == user_id,
+            ExternalPatientAccess.patient_id == patient_id,
+            ExternalPatientAccess.revoked_at.is_(None),
+        )
+    )
+    if grant is None:
+        raise HTTPException(
+            status_code=404, detail="Active access grant not found"
+        )
+
+    grant.revoked_at = datetime.now(UTC)
+    db.commit()
+
+    return {"status": "revoked"}
+
+
+@router.get("/patients/{patient_id}/external-access")
+def list_external_access(
+    patient_id: str,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """List external users with access to a patient.
+
+    Returns active (non-revoked) external access grants.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        u: Authenticated user.
+        db: Database session.
+
+    Returns:
+        dict: ``grants`` list with user info and access details.
+    """
+    # Only admin or the patient themselves
+    is_own = u.fhir_patient_id is not None and u.fhir_patient_id == patient_id
+    is_admin = u.system_permissions in ("admin", "superadmin")
+    if not (is_own or is_admin):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    grants = (
+        db.execute(
+            select(ExternalPatientAccess).where(
+                ExternalPatientAccess.patient_id == patient_id,
+                ExternalPatientAccess.revoked_at.is_(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return {
+        "grants": [
+            {
+                "user_id": g.user_id,
+                "username": g.user.username,
+                "email": g.user.email,
+                "user_type": g.user.system_permissions,
+                "granted_at": g.granted_at.isoformat(),
+                "access_level": g.access_level,
+            }
+            for g in grants
+        ]
+    }
+
+
 # ---------------------------------------------------------------------------
 # Messaging
 # ---------------------------------------------------------------------------
@@ -2425,6 +2901,8 @@ def create_conversation_endpoint(
                 body.include_patient_as_participant
             ),
         )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except FhirCommunicationError as exc:
         raise HTTPException(
             status_code=502,
@@ -2455,7 +2933,7 @@ def list_conversations_endpoint(
     """
     items = list_conversations(
         db=db,
-        user_id=u.id,
+        user=u,
         status=status,
         patient_id=patient_id,
     )
@@ -2489,7 +2967,7 @@ def list_patient_conversations_endpoint(
     items = list_patient_conversations(
         db=db,
         patient_id=patient_id,
-        user_id=u.id,
+        user=u,
         status=status,
     )
     return ConversationListOut(conversations=items)
@@ -2520,7 +2998,7 @@ def get_conversation_endpoint(
         HTTPException: 404 if not found or user is not a participant.
     """
     result = get_conversation_detail(
-        db=db, conversation_id=conversation_id, user_id=u.id
+        db=db, conversation_id=conversation_id, user=u
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Conversation not found")

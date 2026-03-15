@@ -55,7 +55,9 @@ export default function ViewAllPatientsPage() {
 
     async function fetchPatients() {
       try {
-        const data = await api.get<PatientsApiResponse>("/patients");
+        const data = await api.get<PatientsApiResponse>(
+          "/patients?scope=admin",
+        );
 
         if (cancelled) return;
 

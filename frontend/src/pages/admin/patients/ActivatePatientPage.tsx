@@ -78,9 +78,12 @@ export default function ActivatePatientPage() {
           setSpecificPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch deactivated patients for selection
-          const response = await fetch("/api/patients?include_inactive=true", {
-            credentials: "include",
-          });
+          const response = await fetch(
+            "/api/patients?include_inactive=true&scope=admin",
+            {
+              credentials: "include",
+            },
+          );
 
           if (!response.ok) {
             throw new Error("Failed to fetch patients");

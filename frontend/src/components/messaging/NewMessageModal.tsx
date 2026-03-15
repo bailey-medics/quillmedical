@@ -33,7 +33,7 @@ interface UserOption {
 
 interface ApiPatient {
   id: string;
-  name: string;
+  name?: Array<{ given?: string[]; family?: string }>;
 }
 
 interface ApiUser {
@@ -102,10 +102,15 @@ export default function NewMessageModal({
         .get<{ patients: ApiPatient[] }>("/patients")
         .then((res) => {
           setPatients(
-            res.patients.map((p) => ({
-              value: p.id,
-              label: p.name,
-            })),
+            res.patients.map((p) => {
+              const primary = p.name?.[0];
+              const given = primary?.given?.[0] ?? "";
+              const family = primary?.family ?? "";
+              return {
+                value: p.id,
+                label: `${given} ${family}`.trim() || p.id,
+              };
+            }),
           );
         })
         .catch(() => {
@@ -149,10 +154,14 @@ export default function NewMessageModal({
     }
   }, [opened]);
 
+  const hasRecipient =
+    isPatientUser || includePatient || participantIds.length > 0;
+
   const canSubmit =
     patientId !== null &&
     subject.trim().length > 0 &&
     initialMessage.trim().length > 0 &&
+    hasRecipient &&
     !isSubmitting;
 
   const handleSubmit = useCallback(() => {
@@ -255,6 +264,15 @@ export default function NewMessageModal({
           initialMessage.trim() && (
             <Text size="sm" c="red">
               Please select a patient
+            </Text>
+          )}
+
+        {!canSubmit &&
+          !hasRecipient &&
+          patientId !== null &&
+          initialMessage.trim() && (
+            <Text size="sm" c="red">
+              Add at least one participant or include the patient
             </Text>
           )}
 

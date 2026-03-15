@@ -55,7 +55,9 @@ export default function AddPatientToOrgPage() {
   useEffect(() => {
     async function fetchPatients() {
       try {
-        const response = await api.get<PatientsApiResponse>("/patients");
+        const response = await api.get<PatientsApiResponse>(
+          "/patients?scope=admin",
+        );
         if (response.fhir_ready) {
           setPatients(response.patients);
           setPatientsLoading(false);
