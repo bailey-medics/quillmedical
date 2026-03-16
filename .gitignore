@@ -18,3 +18,4 @@ frontend/src/generated/*.json
 prompt-output.md
 
 site/
+.claude/

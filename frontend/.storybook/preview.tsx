@@ -30,6 +30,10 @@ import { theme } from "../src/theme";
       },
     });
   }
+  // Mock /auth/refresh to prevent the api client from redirecting to login
+  if (url.includes("/auth/refresh")) {
+    return new Response(null, { status: 401, statusText: "Unauthorised" });
+  }
   // Mock other endpoints as needed
   console.log("[Storybook Mock] No mock for URL, returning 404");
   return new Response(null, { status: 404, statusText: "Not Found" });
