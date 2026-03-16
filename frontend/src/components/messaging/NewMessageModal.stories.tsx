@@ -7,7 +7,7 @@
  * - Submitting state
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "@storybook/test";
+import { fn, userEvent, within } from "@storybook/test";
 import NewMessageModal from "./NewMessageModal";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,6 +77,15 @@ export const WithLockedPatient: Story = {
 export const Submitting: Story = {
   args: {
     isSubmitting: true,
+    patientId: "p-1",
+    patientName: "James Green",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const subject = canvas.getByLabelText("Subject");
+    const message = canvas.getByLabelText("Message");
+    await userEvent.type(subject, "Prescription renewal");
+    await userEvent.type(message, "Hello, I'd like to renew my prescription.");
   },
 };
 

@@ -59,7 +59,7 @@ describe("StateMessage Component", () => {
     it("displays explanatory text about data retrieval", () => {
       renderWithMantine(<StateMessage type="database-initialising" />);
       expect(
-        screen.getByText(/Patient data is being retrieved/i),
+        screen.getByText(/Quill databases are just warming up/i),
       ).toBeInTheDocument();
     });
 

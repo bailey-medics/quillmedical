@@ -9,12 +9,13 @@
 import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
+import SolidSwitch from "@/components/switch/SolidSwitch";
 import {
+  Group,
   Modal,
   MultiSelect,
   Select,
   Stack,
-  Switch,
   Text,
   Textarea,
   TextInput,
@@ -218,12 +219,22 @@ export default function NewMessageModal({
         )}
 
         {!isPatientUser && (
-          <Switch
-            label="Patient as participant"
-            description="Allow the patient to reply to this conversation"
-            checked={includePatient}
-            onChange={(e) => setIncludePatient(e.currentTarget.checked)}
-          />
+          <div>
+            <Text size="sm" fw={500} mb={4}>
+              Patient as participant
+            </Text>
+            <Group gap="xs">
+              <SolidSwitch
+                checked={includePatient}
+                onChange={(e) => setIncludePatient(e.currentTarget.checked)}
+                size="lg"
+              />
+              <Text size="sm">{includePatient ? "Yes" : "No"}</Text>
+            </Group>
+            <Text size="xs" c="dimmed" mt={4}>
+              Allow the patient to reply to this conversation
+            </Text>
+          </div>
         )}
 
         <MultiSelect

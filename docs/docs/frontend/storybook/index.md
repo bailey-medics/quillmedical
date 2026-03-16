@@ -118,7 +118,7 @@ This story provides visual documentation of expected UX during system startup an
 
 The **StateMessage** component provides consistent system state messaging across the application:
 
-- **Database Initialising**: Blue alert with `IconClock`, message: "Patient data is being retrieved from the database. This may take a moment..."
+- **Database Initialising**: Blue alert with `IconClock`, message: "The Quill databases are just warming up. This may take a few moments..."
   - Used when FHIR server is starting up or search indexes are building
   - Prevents showing "failed to load" errors during startup window
   - Linked to Hazard-0046 (Backend starts before FHIR ready) mitigation

@@ -15,6 +15,16 @@ import Messaging, { type Message } from "./Messaging";
 const meta: Meta<typeof Messaging> = {
   title: "Messaging/Messaging",
   component: Messaging,
+  parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story) => (
+      <div
+        style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;
@@ -31,23 +41,21 @@ function Wrapper() {
   );
 
   return (
-    <div style={{ height: 400 }}>
-      <Messaging
-        messages={messages}
-        currentUserId="me"
-        onSend={(text) =>
-          setMessages((m) => [
-            ...m,
-            {
-              id: String(m.length + 1),
-              senderId: "me",
-              text,
-              timestamp: new Date().toISOString(),
-            },
-          ])
-        }
-      />
-    </div>
+    <Messaging
+      messages={messages}
+      currentUserId="me"
+      onSend={(text) =>
+        setMessages((m) => [
+          ...m,
+          {
+            id: String(m.length + 1),
+            senderId: "me",
+            text,
+            timestamp: new Date().toISOString(),
+          },
+        ])
+      }
+    />
   );
 }
 
@@ -65,9 +73,5 @@ export const Default: Story = {
  * Shows skeleton loaders where messages would appear.
  */
 export const Loading: Story = {
-  render: () => (
-    <div style={{ height: 400 }}>
-      <Messaging messages={[]} currentUserId="me" isLoading={true} />
-    </div>
-  ),
+  render: () => <Messaging messages={[]} currentUserId="me" isLoading={true} />,
 };

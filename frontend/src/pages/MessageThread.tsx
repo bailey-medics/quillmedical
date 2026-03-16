@@ -9,17 +9,19 @@
 import { useAuth } from "@/auth/AuthContext";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import PageHeader from "@/components/page-header";
+import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
+import { api } from "@lib/api";
+import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import {
   fetchConversation,
   sendMessage,
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
-import { Button, Container, Loader, Stack, Text } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { Container, Loader, Stack, Text } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 
 /** Map a backend MessageResponse to the UI Message shape. */
 function toUiMessage(m: MessageResponse): Message {
@@ -45,10 +47,25 @@ function toUiMessage(m: MessageResponse): Message {
  * @example
  * <Route path="/messages/:conversationId" element={<MessageThread />} />
  */
+type FhirName = { given?: string[]; family?: string };
+type FhirIdentifier = { system?: string; value?: string };
+type FhirPatient = {
+  id: string;
+  name?: FhirName[];
+  birthDate?: string;
+  gender?: string;
+  identifier?: FhirIdentifier[];
+  extension?: Array<{
+    url?: string;
+    valueInteger?: number;
+    extension?: Array<{ url?: string; valueInteger?: number }>;
+  }>;
+};
+type PatientDemographicsRes = { patient_id: string; data: FhirPatient };
+
 export default function MessageThread() {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const navigate = useNavigate();
-  const { setPatient } = useOutletContext<LayoutCtx>();
+  const { setPatient, setPatientNav } = useOutletContext<LayoutCtx>();
   const { state } = useAuth();
 
   const currentUserId =
@@ -87,13 +104,86 @@ export default function MessageThread() {
     };
   }, [conversationId]);
 
-  // Clear patient ribbon on unmount
+  // Set nav breadcrumbs once conversation is loaded
   useEffect(() => {
-    setPatient(null);
+    if (!conversation) return;
+    const label = conversation.subject || "Thread";
+    setPatientNav([
+      { label: "Messages", href: "/messages", icon: "message" },
+      { label, href: `/messages/${conversationId}` },
+    ]);
     return () => {
+      setPatientNav([]);
+    };
+  }, [conversation, conversationId, setPatientNav]);
+
+  // Load patient demographics for the ribbon once conversation is available
+  useEffect(() => {
+    if (!conversation?.patient_id) return;
+    let cancelled = false;
+
+    api
+      .get<PatientDemographicsRes>(
+        `/patients/${conversation.patient_id}/demographics`,
+      )
+      .then((res) => {
+        if (cancelled) return;
+        const f = res.data;
+        const givenName = f.name?.[0]?.given?.[0];
+        const familyName = f.name?.[0]?.family;
+        const nameParts = [...(f.name?.[0]?.given ?? []), familyName].filter(
+          Boolean,
+        );
+
+        let nationalNumber: string | undefined;
+        let nationalNumberSystem: string | undefined;
+        const natId = f.identifier?.find(
+          (i) =>
+            i.system === "https://fhir.nhs.uk/Id/nhs-number" ||
+            i.system ===
+              "http://ns.electronichealth.net.au/id/medicare-number" ||
+            i.system?.includes("/national") ||
+            i.system?.includes("/health-id"),
+        );
+        if (natId) {
+          nationalNumber = natId.value;
+          nationalNumberSystem = natId.system;
+        }
+
+        let age: number | undefined;
+        if (f.birthDate) {
+          const bd = new Date(f.birthDate);
+          const today = new Date();
+          age = today.getFullYear() - bd.getFullYear();
+          const md = today.getMonth() - bd.getMonth();
+          if (md < 0 || (md === 0 && today.getDate() < bd.getDate())) {
+            age--;
+          }
+        }
+
+        const mapped: Patient = {
+          id: f.id,
+          name: nameParts.join(" ") || f.id,
+          givenName,
+          familyName,
+          dob: f.birthDate,
+          age,
+          sex: f.gender,
+          nationalNumber,
+          nationalNumberSystem,
+          gradientIndex: extractAvatarGradientIndex(f),
+        };
+        setPatient(mapped);
+      })
+      .catch(() => {
+        // Patient demographics unavailable — ribbon stays empty
+      });
+
+    return () => {
+      cancelled = true;
       setPatient(null);
     };
-  }, [setPatient]);
+  }, [conversation?.patient_id, setPatient]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -137,13 +227,6 @@ export default function MessageThread() {
     return (
       <Container size="lg" py="xl">
         <Stack gap="lg">
-          <Button
-            variant="subtle"
-            leftSection={<IconArrowLeft size={16} />}
-            onClick={() => navigate("/messages")}
-          >
-            Back to messages
-          </Button>
           <PageHeader
             title="Conversation not found"
             description={
@@ -168,15 +251,6 @@ export default function MessageThread() {
       }}
     >
       <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-        <Button
-          variant="subtle"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={() => navigate("/messages")}
-          style={{ alignSelf: "flex-start" }}
-        >
-          Back to messages
-        </Button>
-
         {conversation.subject && (
           <Text fw={600} size="lg">
             {conversation.subject}

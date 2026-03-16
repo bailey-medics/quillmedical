@@ -55,7 +55,7 @@ describe("AddPatientToOrgPage", () => {
     });
 
     await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalledWith("/patients");
+      expect(apiLib.api.get).toHaveBeenCalledWith("/patients?scope=admin");
     });
   });
 
