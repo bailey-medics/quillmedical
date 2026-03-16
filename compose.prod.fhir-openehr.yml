@@ -1,0 +1,134 @@
+# compose.prod.fhir-openehr.yml
+# Production compose for Compute Engine VM (FHIR + EHRbase only)
+# Runs on a dedicated VM, accessed by Cloud Run services via VPC
+
+services:
+  postgres-fhir:
+    image: postgres:16-alpine
+    container_name: quill_postgres_fhir
+    environment:
+      POSTGRES_DB: hapi
+      POSTGRES_USER: ${FHIR_DB_USER}
+      POSTGRES_PASSWORD: ${FHIR_DB_PASSWORD}
+    volumes:
+      - postgres_fhir_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FHIR_DB_USER} -d hapi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - internal
+
+  postgres-ehrbase:
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    container_name: quill_postgres_ehrbase
+    environment:
+      POSTGRES_DB: ehrbase
+      POSTGRES_USER: ${EHRBASE_DB_USER}
+      POSTGRES_PASSWORD: ${EHRBASE_DB_PASSWORD}
+    volumes:
+      - postgres_ehrbase_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EHRBASE_DB_USER} -d ehrbase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    restart: unless-stopped
+    networks:
+      - internal
+
+  fhir:
+    image: hapiproject/hapi:latest
+    container_name: quill_fhir
+    environment:
+      - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
+      - spring.datasource.username=${FHIR_DB_USER}
+      - spring.datasource.password=${FHIR_DB_PASSWORD}
+      - spring.datasource.driverClassName=org.postgresql.Driver
+      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      - hapi.fhir.fhir_version=R4
+      - hapi.fhir.subscription.resthook_enabled=false
+      - hapi.fhir.subscription.email.enabled=false
+      - hapi.fhir.subscription.websocket_enabled=false
+      - hapi.fhir.cors.allowed_origin=*
+      - hapi.fhir.bulk_export_enabled=false
+      - hapi.fhir.advanced_lucene_indexing=false
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-fhir:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/fhir/metadata || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - internal
+      - external
+
+  ehrbase:
+    image: ehrbase/ehrbase:latest
+    container_name: quill_ehrbase
+    environment:
+      - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/ehrbase
+      - DB_USER=${EHRBASE_DB_USER}
+      - DB_PASS=${EHRBASE_DB_PASSWORD}
+      - DB_USER_ADMIN=${EHRBASE_DB_USER}
+      - DB_PASS_ADMIN=${EHRBASE_DB_PASSWORD}
+      - SECURITY_AUTHTYPE=BASIC
+      - SECURITY_AUTHUSER=${EHRBASE_API_USER}
+      - SECURITY_AUTHPASSWORD=${EHRBASE_API_PASSWORD}
+      - SECURITY_AUTHADMINUSER=${EHRBASE_ADMIN_USER}
+      - SECURITY_AUTHADMINPASSWORD=${EHRBASE_ADMIN_PASSWORD}
+      - SERVER_NODENAME=quill.ehrbase.node
+      - SYSTEM_ALLOW_TEMPLATE_OVERWRITE=false
+      - DB_JDBC_PARAMS=?stringtype=unspecified&lc_collate=C
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres-ehrbase:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ehrbase/rest/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    restart: unless-stopped
+    networks:
+      - internal
+      - external
+
+volumes:
+  postgres_fhir_data:
+  postgres_ehrbase_data:
+
+networks:
+  internal:
+    internal: true
+  external: {}

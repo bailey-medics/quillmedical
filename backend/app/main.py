@@ -34,6 +34,7 @@ from fastapi import (
     Request,
     Response,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -116,11 +117,7 @@ from app.security import (
 )
 from app.system_permissions.permissions import is_external_user
 
-DEV_MODE = (
-    str(getattr(settings, "BACKEND_ENV", "development"))
-    .lower()
-    .startswith("dev")
-)
+DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
 
 router = APIRouter(prefix=settings.API_PREFIX)
@@ -133,6 +130,14 @@ app = FastAPI(
     redoc_url=f"{settings.API_PREFIX}/redoc" if DEV_MODE else None,
     openapi_url=f"{settings.API_PREFIX}/openapi.json" if DEV_MODE else None,
     swagger_ui_parameters={"persistAuthorization": True},
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
 app.include_router(push_send_router)
