@@ -1,0 +1,7 @@
+.thumb {
+  border: none;
+}
+
+.thumb::before {
+  display: none;
+}

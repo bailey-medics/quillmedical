@@ -68,21 +68,6 @@ export default function SideNavContent({
   );
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
 
-  // Extract conversation ID from URL if on messages thread page
-  const conversationIdMatch = location.pathname.match(/^\/messages\/([^/]+)$/);
-  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
-  // TODO: Replace with API call when backend implements conversations
-  const conversationPatientNames: Record<string, string> = {
-    "conv-1": "John Smith",
-    "conv-2": "Mary Johnson",
-    "conv-3": "Robert Brown",
-    "conv-4": "Sarah Davis",
-  };
-  const conversationPatientName = conversationId
-    ? (conversationPatientNames[conversationId] ?? conversationId)
-    : null;
-
   // Extract user ID from URL if on user admin page
   const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
   const userId = userIdMatch ? userIdMatch[1] : null;
@@ -239,34 +224,15 @@ export default function SideNavContent({
         }}
         leftSection={showIcons ? <NavIcon name="home" /> : undefined}
       />
-      {conversationId ? (
-        <NestedNavLink
-          item={{
-            label: "Messages",
-            href: "/messages",
-            icon: showIcons ? "message" : undefined,
-            children: [
-              {
-                label: conversationPatientName ?? conversationId,
-                href: `/messages/${conversationId}`,
-              },
-            ],
-          }}
-          onNavigate={onNavigate}
-          showIcons={showIcons}
-          baseFontSize={fontSize}
-        />
-      ) : (
-        <NavLink
-          label="Messages"
-          styles={navLinkStyles}
-          onClick={() => {
-            navigate("/messages");
-            if (onNavigate) onNavigate();
-          }}
-          leftSection={showIcons ? <NavIcon name="message" /> : undefined}
-        />
-      )}
+      <NavLink
+        label="Messages"
+        styles={navLinkStyles}
+        onClick={() => {
+          navigate("/messages");
+          if (onNavigate) onNavigate();
+        }}
+        leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+      />
       <NavLink
         label="Settings"
         styles={navLinkStyles}

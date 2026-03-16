@@ -73,6 +73,36 @@ class AddParticipantIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class InviteExternalIn(BaseModel):
+    """Invite an external user to access a patient's records.
+
+    Attributes:
+        email: Recipient email address.
+        user_type: ``external_hcp`` or ``patient_advocate``.
+    """
+
+    email: str = Field(max_length=255)
+    user_type: str = Field(pattern=r"^(external_hcp|patient_advocate)$")
+
+    model_config = {"extra": "forbid"}
+
+
+class AcceptInviteIn(BaseModel):
+    """Accept an invite token (new user registration or existing user grant).
+
+    Attributes:
+        token: JWT invite token from the URL.
+        username: Username for new user registration (optional if existing).
+        password: Password for new user registration (optional if existing).
+    """
+
+    token: str
+    username: str | None = None
+    password: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------

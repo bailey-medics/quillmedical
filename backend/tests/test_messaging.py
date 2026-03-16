@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Message,
+    Organization,
     User,
+    organisation_patient_member,
+    organisation_staff_member,
 )
 from app.security import hash_password
 
@@ -18,8 +21,47 @@ from app.security import hash_password
 
 
 @pytest.fixture
-def second_user(db_session: Session) -> User:
-    """Create a second test user with staff permissions."""
+def test_org(db_session: Session) -> Organization:
+    """Create a test organisation."""
+    org = Organization(name="Test Hospital", type="hospital_team")
+    db_session.add(org)
+    db_session.commit()
+    db_session.refresh(org)
+    return org
+
+
+@pytest.fixture(autouse=True)
+def _setup_org_context(
+    db_session: Session, test_user: User, test_org: Organization
+) -> None:
+    """Set up organisation membership for messaging tests.
+
+    Makes the default test_user a staff member and registers
+    PATIENT_ID as a patient in the same organisation.
+    """
+    test_user.system_permissions = "staff"
+    db_session.flush()
+
+    db_session.execute(
+        organisation_staff_member.insert().values(
+            organisation_id=test_org.id,
+            user_id=test_user.id,
+            is_primary=True,
+        )
+    )
+    db_session.execute(
+        organisation_patient_member.insert().values(
+            organisation_id=test_org.id,
+            patient_id=PATIENT_ID,
+            is_primary=True,
+        )
+    )
+    db_session.commit()
+
+
+@pytest.fixture
+def second_user(db_session: Session, test_org: Organization) -> User:
+    """Create a second test user with staff permissions in the same org."""
     user = User(
         username="seconduser",
         email="second@example.com",
@@ -28,6 +70,15 @@ def second_user(db_session: Session) -> User:
         system_permissions="staff",
     )
     db_session.add(user)
+    db_session.flush()
+
+    db_session.execute(
+        organisation_staff_member.insert().values(
+            organisation_id=test_org.id,
+            user_id=user.id,
+            is_primary=False,
+        )
+    )
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -912,7 +963,7 @@ class TestJoinConversation:
         second_user: User,
     ):
         """404 for nonexistent conversation."""
-        # Log in as staff user (test_user defaults to patient)
+        # Log in as second staff user
         authenticated_client.post(
             "/api/auth/login",
             json={
@@ -933,3 +984,418 @@ class TestJoinConversation:
         """Unauthenticated users cannot join conversations."""
         resp = test_client.post("/api/conversations/1/join")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Org-scoped access
+# ---------------------------------------------------------------------------
+
+
+class TestOrgScopedAccess:
+    """Test that org-scoped access works correctly."""
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_create_denied_without_org_access(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """User cannot create conversation for unshared patient."""
+        resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": "some-other-patient-999",
+                "initial_message": "Hello",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 403
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_conversation_gets_org_linked(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Created conversation gets shared orgs auto-linked."""
+        resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Msg",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 200
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_user_outside_org_cannot_see_conversation(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+    ):
+        """User in a different org cannot see another org's conversation."""
+        # Create conversation as test_user (in test_org)
+        create_resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Secret",
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert create_resp.status_code == 200
+        conv_id = create_resp.json()["id"]
+
+        # Create an outsider user in a different org
+        outsider = User(
+            username="outsider",
+            email="outsider@example.com",
+            password_hash=hash_password("OutsiderPass123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add(outsider)
+        other_org = Organization(name="Other Hospital", type="hospital_team")
+        db_session.add(other_org)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=other_org.id,
+                user_id=outsider.id,
+                is_primary=True,
+            )
+        )
+        db_session.commit()
+
+        # Log in as outsider
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "outsider", "password": "OutsiderPass123!"},
+        )
+
+        resp = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Shared organisations endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestSharedOrganisations:
+    """Test GET /api/patients/{id}/shared-organisations."""
+
+    def test_shared_orgs_returned(
+        self,
+        authenticated_client: TestClient,
+        test_org: Organization,
+    ):
+        """Returns orgs shared between user and patient."""
+        resp = authenticated_client.get(
+            f"/api/patients/{PATIENT_ID}/shared-organisations"
+        )
+        assert resp.status_code == 200
+        orgs = resp.json()["organisations"]
+        assert len(orgs) == 1
+        assert orgs[0]["id"] == test_org.id
+        assert orgs[0]["name"] == "Test Hospital"
+
+    def test_no_shared_orgs(self, authenticated_client: TestClient):
+        """Returns empty when no shared orgs."""
+        resp = authenticated_client.get(
+            "/api/patients/unrelated-patient/shared-organisations"
+        )
+        assert resp.status_code == 200
+        assert resp.json()["organisations"] == []
+
+
+# ---------------------------------------------------------------------------
+# External access: invite / accept / revoke
+# ---------------------------------------------------------------------------
+
+
+class TestInviteExternal:
+    """Test POST /api/patients/{id}/invite-external."""
+
+    def test_non_admin_non_patient_cannot_invite(
+        self,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Staff user who is not the patient cannot invite."""
+        resp = authenticated_client.post(
+            f"/api/patients/{PATIENT_ID}/invite-external",
+            json={"email": "ext@example.com", "user_type": "external_hcp"},
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 403
+
+    def test_admin_can_invite(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """Admin can generate an invite."""
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.post(
+            f"/api/patients/{PATIENT_ID}/invite-external",
+            json={"email": "ext@example.com", "user_type": "external_hcp"},
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "invite_url" in data
+        assert "token" in data
+
+
+class TestAcceptInvite:
+    """Test POST /api/accept-invite."""
+
+    def test_new_user_registration(
+        self,
+        test_client: TestClient,
+        test_admin: User,
+        authenticated_client: TestClient,
+        db_session: Session,
+    ):
+        """New user can register via invite token."""
+        # Generate invite as admin
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        invite_resp = authenticated_client.post(
+            f"/api/patients/{PATIENT_ID}/invite-external",
+            json={
+                "email": "newhcp@example.com",
+                "user_type": "external_hcp",
+            },
+            headers={"X-CSRF-Token": token},
+        )
+        invite_token = invite_resp.json()["token"]
+
+        # Accept invite as new user (no auth required)
+        resp = test_client.post(
+            "/api/accept-invite",
+            json={
+                "token": invite_token,
+                "username": "newhcp",
+                "password": "NewHcpPass123!",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "registered"
+
+    def test_invalid_token_rejected(self, test_client: TestClient):
+        """Invalid token returns 400."""
+        resp = test_client.post(
+            "/api/accept-invite",
+            json={"token": "invalid.token.here"},
+        )
+        assert resp.status_code == 400
+
+
+class TestRevokeExternalAccess:
+    """Test DELETE /api/patients/{id}/external-access/{user_id}."""
+
+    def test_admin_can_revoke(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        db_session: Session,
+    ):
+        """Admin can revoke external access."""
+        from app.models import ExternalPatientAccess
+
+        # Create an external user with access
+        ext_user = User(
+            username="extuser",
+            email="ext@example.com",
+            password_hash=hash_password("ExtPass123!"),
+            is_active=True,
+            system_permissions="external_hcp",
+        )
+        db_session.add(ext_user)
+        db_session.flush()
+        db_session.add(
+            ExternalPatientAccess(
+                user_id=ext_user.id,
+                patient_id=PATIENT_ID,
+                granted_by_user_id=test_admin.id,
+            )
+        )
+        db_session.commit()
+
+        # Log in as admin
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.delete(
+            f"/api/patients/{PATIENT_ID}/external-access/{ext_user.id}",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "revoked"
+
+    def test_non_admin_cannot_revoke(
+        self,
+        authenticated_client: TestClient,
+        csrf_token: str,
+    ):
+        """Non-admin cannot revoke external access."""
+        resp = authenticated_client.delete(
+            f"/api/patients/{PATIENT_ID}/external-access/999",
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Organisation management: remove staff / patients, link patient
+# ---------------------------------------------------------------------------
+
+
+class TestRemoveStaffFromOrg:
+    """Test DELETE /api/organizations/{org_id}/staff/{user_id}."""
+
+    def test_admin_can_remove_staff(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        test_org: Organization,
+        second_user: User,
+        db_session: Session,
+    ):
+        """Admin can remove a staff member from an org."""
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.delete(
+            f"/api/organizations/{test_org.id}/staff/{second_user.id}",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+
+    def test_non_admin_cannot_remove(
+        self,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        test_org: Organization,
+        second_user: User,
+    ):
+        """Non-admin cannot remove staff."""
+        resp = authenticated_client.delete(
+            f"/api/organizations/{test_org.id}/staff/{second_user.id}",
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 403
+
+
+class TestRemovePatientFromOrg:
+    """Test DELETE /api/organizations/{org_id}/patients/{patient_id}."""
+
+    def test_admin_can_remove_patient(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        test_org: Organization,
+    ):
+        """Admin can remove a patient from an org."""
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.delete(
+            f"/api/organizations/{test_org.id}/patients/{PATIENT_ID}",
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+
+
+class TestLinkPatient:
+    """Test PATCH /api/users/{user_id}/link-patient."""
+
+    def test_admin_can_link(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        patient_user: User,
+    ):
+        """Admin can link a user to a FHIR patient record."""
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.patch(
+            f"/api/users/{patient_user.id}/link-patient",
+            json={"fhir_patient_id": "fhir-patient-xyz"},
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["fhir_patient_id"] == "fhir-patient-xyz"
+
+    def test_duplicate_link_rejected(
+        self,
+        authenticated_client: TestClient,
+        test_admin: User,
+        patient_user: User,
+        db_session: Session,
+    ):
+        """Cannot link two users to the same FHIR patient."""
+        # Link patient_user first
+        patient_user.fhir_patient_id = "fhir-dupe-123"
+        db_session.commit()
+
+        # Create another user
+        other = User(
+            username="otherpatient",
+            email="other@example.com",
+            password_hash=hash_password("OtherPass123!"),
+            is_active=True,
+            system_permissions="patient",
+        )
+        db_session.add(other)
+        db_session.commit()
+
+        authenticated_client.post(
+            "/api/auth/login",
+            json={"username": "testadmin", "password": "AdminPassword123!"},
+        )
+        authenticated_client.get("/api/auth/me")
+        token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        resp = authenticated_client.patch(
+            f"/api/users/{other.id}/link-patient",
+            json={"fhir_patient_id": "fhir-dupe-123"},
+            headers={"X-CSRF-Token": token},
+        )
+        assert resp.status_code == 409

@@ -4,8 +4,8 @@
  * Tests for the conversation thread detail page including:
  * - Rendering messages from API
  * - Not-found state for failed fetches
- * - Back navigation
  * - Sending new messages
+ * - Patient demographics in ribbon
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -29,7 +29,22 @@ vi.mock("@lib/messaging", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-  api: { get: vi.fn().mockResolvedValue({ patients: [], users: [] }) },
+  api: {
+    get: vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/demographics")) {
+        return Promise.resolve({
+          patient_id: "patient-1",
+          data: {
+            id: "patient-1",
+            name: [{ given: ["James"], family: "Green" }],
+            birthDate: "1980-01-01",
+            gender: "male",
+          },
+        });
+      }
+      return Promise.resolve({ patients: [], users: [] });
+    }),
+  },
 }));
 
 // Mock ProfilePic component
@@ -65,8 +80,8 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
-const mockNavigate = vi.fn();
 const mockSetPatient = vi.fn();
+const mockSetPatientNav = vi.fn();
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>(
@@ -74,8 +89,10 @@ vi.mock("react-router-dom", async () => {
     );
   return {
     ...actual,
-    useNavigate: () => mockNavigate,
-    useOutletContext: () => ({ setPatient: mockSetPatient }),
+    useOutletContext: () => ({
+      setPatient: mockSetPatient,
+      setPatientNav: mockSetPatientNav,
+    }),
   };
 });
 
@@ -159,39 +176,26 @@ describe("MessageThread", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders back button", async () => {
+    it("sets patient demographics in ribbon", async () => {
       renderWithRouter(<MessageThread />, {
         routePath: "/messages/:conversationId",
         initialRoute: "/messages/1",
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: /back to messages/i }),
-        ).toBeInTheDocument();
+        expect(mockSetPatient).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "patient-1",
+            name: "James Green",
+            givenName: "James",
+            familyName: "Green",
+          }),
+        );
       });
     });
+  });
 
-    it("navigates back when back button is clicked", async () => {
-      const user = userEvent.setup();
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/1",
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: /back to messages/i }),
-        ).toBeInTheDocument();
-      });
-
-      await user.click(
-        screen.getByRole("button", { name: /back to messages/i }),
-      );
-
-      expect(mockNavigate).toHaveBeenCalledWith("/messages");
-    });
-
+  describe("Sending messages", () => {
     it("allows sending a new message", async () => {
       const user = userEvent.setup();
       renderWithRouter(<MessageThread />, {
@@ -226,19 +230,6 @@ describe("MessageThread", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Conversation not found")).toBeInTheDocument();
-      });
-    });
-
-    it("renders back button on not-found page", async () => {
-      renderWithRouter(<MessageThread />, {
-        routePath: "/messages/:conversationId",
-        initialRoute: "/messages/999",
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: /back to messages/i }),
-        ).toBeInTheDocument();
       });
     });
   });

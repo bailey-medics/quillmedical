@@ -386,5 +386,12 @@
     "zstd",
     "zxcvbn"
   ],
-  "ignoreWords": ["Exampletown", "behavior"]
+  "ignoreWords": [
+    "Exampletown",
+    "behavior",
+    "autouse",
+    "newhcp",
+    "extuser",
+    "otherpatient"
+  ]
 }

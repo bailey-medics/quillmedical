@@ -104,6 +104,11 @@ class User(Base):
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # FHIR patient ID link (for patient users)
+    fhir_patient_id: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
+
     # System Permissions: Administrative and system-level access control
     system_permissions: Mapped[str] = mapped_column(
         String(20), nullable=False, default="patient"
@@ -236,6 +241,80 @@ class Organization(Base):
     )
 
 
+message_organisation = Table(
+    "message_organisation",
+    Base.metadata,
+    Column(
+        "conversation_id",
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "organisation_id",
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+"""Association table linking conversations to organisations."""
+
+
+class ExternalPatientAccess(Base):
+    """Per-patient access grant for external HCPs and patient advocates.
+
+    Links an external user (external_hcp or patient_advocate) to a specific
+    patient they have been granted access to. Access is granted via invite
+    and can only be revoked by an admin.
+
+    Attributes:
+        id: Primary key.
+        user_id: FK to the external user.
+        patient_id: FHIR Patient resource ID.
+        granted_by_user_id: FK to the user (patient or admin) who granted access.
+        granted_at: When access was granted.
+        revoked_at: When access was revoked (nullable; null = active).
+        access_level: Access granularity (default "full").
+    """
+
+    __tablename__ = "external_patient_access"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "patient_id", name="uq_external_user_patient"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    patient_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True
+    )
+    granted_by_user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    access_level: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="full"
+    )
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id], lazy="joined")
+    granted_by: Mapped[User] = relationship(
+        foreign_keys=[granted_by_user_id], lazy="joined"
+    )
+
+
 class Conversation(Base):
     """Messaging thread about a patient.
 
@@ -293,6 +372,9 @@ class Conversation(Base):
     messages: Mapped[list[Message]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
+    )
+    organisations: Mapped[list[Organization]] = relationship(
+        secondary=message_organisation,
     )
 
 

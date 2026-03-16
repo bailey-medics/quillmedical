@@ -56,7 +56,7 @@ export default function AdminPatientsPage() {
       try {
         // Include inactive patients for admin view
         const data = await api.get<PatientsApiResponse>(
-          "/patients?include_inactive=true",
+          "/patients?include_inactive=true&scope=admin",
         );
 
         if (cancelled) return;

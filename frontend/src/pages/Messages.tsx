@@ -11,15 +11,35 @@ import NewMessageModal, {
 } from "@/components/messaging/NewMessageModal";
 import AddButton from "@/components/button/AddButton";
 import PageHeader from "@/components/page-header";
+import StateMessage from "@/components/state-message";
 import {
   createConversation,
   fetchConversations,
   type ConversationResponse,
 } from "@lib/messaging";
+import { api } from "@lib/api";
+import { FHIR_POLLING_TIME } from "@lib/constants";
+import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import { Card, Container, Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+type FhirName = {
+  given?: string[];
+  family?: string;
+};
+
+type FhirPatient = {
+  id: string;
+  name?: FhirName[];
+  [key: string]: unknown;
+};
+
+type PatientLookup = Record<
+  string,
+  { givenName: string; familyName: string; gradientIndex: number }
+>;
 
 /**
  * Conversation
@@ -45,6 +65,8 @@ export type Conversation = {
   lastMessageTime: string;
   /** Number of unread messages */
   unreadCount: number;
+  /** Conversation subject */
+  subject: string;
   /** Conversation status */
   status: "new" | "active" | "resolved" | "closed";
   /** All non-patient participants in this conversation (at least one required) */
@@ -70,6 +92,8 @@ export default function Messages() {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fhirAvailable, setFhirAvailable] = useState(false);
+  const [isFhirReady, setIsFhirReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,23 +127,106 @@ export default function Messages() {
     [navigate],
   );
 
-  // Fetch conversations
+  // Poll health endpoint until FHIR is ready
   useEffect(() => {
+    let cancelled = false;
+
+    const checkHealth = async () => {
+      try {
+        const response = await api.get<{
+          services: { fhir: { available: boolean } };
+        }>("/health");
+        if (cancelled) return;
+        if (response.services.fhir.available) {
+          setIsFhirReady(true);
+          setFhirAvailable(true);
+        } else {
+          setIsLoading(false);
+          setFhirAvailable(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsLoading(false);
+          setFhirAvailable(false);
+        }
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(() => {
+      if (!isFhirReady) checkHealth();
+    }, FHIR_POLLING_TIME);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isFhirReady]);
+
+  // Fetch conversations and patient names once FHIR is ready
+  useEffect(() => {
+    if (!isFhirReady) return;
     let cancelled = false;
     setIsLoading(true);
 
-    fetchConversations()
-      .then((res) => {
+    Promise.all([
+      fetchConversations(),
+      api.get<{ patients: FhirPatient[] }>("/patients"),
+    ])
+      .then(async ([convRes, patRes]) => {
         if (cancelled) return;
+
+        // Build a lookup of patient ID → name parts
+        const lookup: PatientLookup = {};
+        for (const p of patRes.patients) {
+          const primary = p.name?.[0];
+          lookup[p.id] = {
+            givenName: primary?.given?.[0] ?? "",
+            familyName: primary?.family ?? "",
+            gradientIndex: extractAvatarGradientIndex(p) ?? 0,
+          };
+        }
+
+        // Fetch any patients not in the org-scoped list
+        const missingIds = [
+          ...new Set(
+            convRes.conversations
+              .map((c) => c.patient_id)
+              .filter((id) => !lookup[id]),
+          ),
+        ];
+        if (missingIds.length > 0) {
+          const results = await Promise.allSettled(
+            missingIds.map((id) => api.get<FhirPatient>(`/patients/${id}`)),
+          );
+          for (const result of results) {
+            if (result.status === "fulfilled") {
+              const p = result.value;
+              const primary = p.name?.[0];
+              lookup[p.id] = {
+                givenName: primary?.given?.[0] ?? "",
+                familyName: primary?.family ?? "",
+                gradientIndex: extractAvatarGradientIndex(p) ?? 0,
+              };
+            }
+          }
+        }
+
         setConversations(
-          res.conversations.map(
-            (c: ConversationResponse): Conversation => ({
+          convRes.conversations.map((c: ConversationResponse): Conversation => {
+            const patient = lookup[c.patient_id];
+            const givenName = patient?.givenName ?? "";
+            const familyName = patient?.familyName ?? "";
+            const displayName =
+              `${givenName} ${familyName}`.trim() || "Unknown patient";
+            return {
               id: String(c.id),
               patientId: c.patient_id,
-              patientName: c.patient_id, // TODO: resolve from FHIR
-              patientGivenName: c.patient_id,
-              patientFamilyName: "",
-              patientGradientIndex: 0,
+              patientName: displayName,
+              subject: c.subject ?? "",
+              patientGivenName: givenName,
+              patientFamilyName: familyName,
+              patientGradientIndex: patient?.gradientIndex ?? 0,
               lastMessage: c.last_message_preview ?? "",
               lastMessageTime: c.last_message_time ?? c.updated_at,
               unreadCount: c.unread_count,
@@ -129,8 +236,8 @@ export default function Messages() {
                 givenName: p.username,
                 familyName: "",
               })),
-            }),
-          ),
+            };
+          }),
         );
         setError(null);
       })
@@ -146,7 +253,7 @@ export default function Messages() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isFhirReady]);
 
   return (
     <Container size="lg" py="xl">
@@ -170,7 +277,9 @@ export default function Messages() {
         )}
 
         {isLoading ? (
-          <Text>Loading conversations...</Text>
+          <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
+        ) : !fhirAvailable ? (
+          <StateMessage type="database-initialising" />
         ) : conversations.length === 0 ? (
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Text c="dimmed" ta="center">
@@ -181,7 +290,7 @@ export default function Messages() {
           <MessagesList
             threads={conversations.map((conv) => ({
               id: conv.id,
-              displayName: conv.patientName,
+              displayName: conv.subject || conv.patientName,
               profiles: [
                 {
                   givenName: conv.patientGivenName,

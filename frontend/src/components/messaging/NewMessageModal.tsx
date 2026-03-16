@@ -9,12 +9,13 @@
 import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
+import SolidSwitch from "@/components/switch/SolidSwitch";
 import {
+  Group,
   Modal,
   MultiSelect,
   Select,
   Stack,
-  Switch,
   Text,
   Textarea,
   TextInput,
@@ -33,7 +34,7 @@ interface UserOption {
 
 interface ApiPatient {
   id: string;
-  name: string;
+  name?: Array<{ given?: string[]; family?: string }>;
 }
 
 interface ApiUser {
@@ -102,10 +103,15 @@ export default function NewMessageModal({
         .get<{ patients: ApiPatient[] }>("/patients")
         .then((res) => {
           setPatients(
-            res.patients.map((p) => ({
-              value: p.id,
-              label: p.name,
-            })),
+            res.patients.map((p) => {
+              const primary = p.name?.[0];
+              const given = primary?.given?.[0] ?? "";
+              const family = primary?.family ?? "";
+              return {
+                value: p.id,
+                label: `${given} ${family}`.trim() || p.id,
+              };
+            }),
           );
         })
         .catch(() => {
@@ -149,10 +155,14 @@ export default function NewMessageModal({
     }
   }, [opened]);
 
+  const hasRecipient =
+    isPatientUser || includePatient || participantIds.length > 0;
+
   const canSubmit =
     patientId !== null &&
     subject.trim().length > 0 &&
     initialMessage.trim().length > 0 &&
+    hasRecipient &&
     !isSubmitting;
 
   const handleSubmit = useCallback(() => {
@@ -209,12 +219,22 @@ export default function NewMessageModal({
         )}
 
         {!isPatientUser && (
-          <Switch
-            label="Patient as participant"
-            description="Allow the patient to reply to this conversation"
-            checked={includePatient}
-            onChange={(e) => setIncludePatient(e.currentTarget.checked)}
-          />
+          <div>
+            <Text size="sm" fw={500} mb={4}>
+              Patient as participant
+            </Text>
+            <Group gap="xs">
+              <SolidSwitch
+                checked={includePatient}
+                onChange={(e) => setIncludePatient(e.currentTarget.checked)}
+                size="lg"
+              />
+              <Text size="sm">{includePatient ? "Yes" : "No"}</Text>
+            </Group>
+            <Text size="xs" c="dimmed" mt={4}>
+              Allow the patient to reply to this conversation
+            </Text>
+          </div>
         )}
 
         <MultiSelect
@@ -255,6 +275,15 @@ export default function NewMessageModal({
           initialMessage.trim() && (
             <Text size="sm" c="red">
               Please select a patient
+            </Text>
+          )}
+
+        {!canSubmit &&
+          !hasRecipient &&
+          patientId !== null &&
+          initialMessage.trim() && (
+            <Text size="sm" c="red">
+              Add at least one participant or include the patient
             </Text>
           )}
 

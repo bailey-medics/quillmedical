@@ -63,8 +63,8 @@ export default function StateMessage({ type }: Props) {
       }}
     >
       <Text size="lg">
-        Patient data is being retrieved. This may take a few moments. The
-        patient list will appear automatically once available.
+        The Quill databases are just warming up. This may take a few moments.
+        The patient list will appear automatically once available.
       </Text>
     </Alert>
   );

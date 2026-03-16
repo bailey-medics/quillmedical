@@ -347,3 +347,54 @@ def decode_jwt_with_competencies(tok: str) -> dict[str, Any]:
         jose.JWTClaimsError: If token claims are invalid.
     """
     return decode_token(tok)
+
+
+def create_invite_token(
+    patient_id: str,
+    email: str,
+    user_type: str,
+    *,
+    ttl_days: int = 7,
+) -> str:
+    """Create a JWT invite token for external user access.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+        email: Invitee email address.
+        user_type: ``external_hcp`` or ``patient_advocate``.
+        ttl_days: Token validity in days (default 7).
+
+    Returns:
+        str: Signed JWT invite token.
+    """
+    payload: dict[str, Any] = {
+        "type": "invite",
+        "patient_id": patient_id,
+        "email": email,
+        "user_type": user_type,
+        "exp": _now() + timedelta(days=ttl_days),
+    }
+    return jwt.encode(  # type: ignore[no-any-return]
+        payload,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithm=settings.JWT_ALG,
+    )
+
+
+def decode_invite_token(tok: str) -> dict[str, Any]:
+    """Decode and verify an invite JWT.
+
+    Returns:
+        dict: Payload with ``patient_id``, ``email``, ``user_type``.
+
+    Raises:
+        jose.JWTError: Invalid or expired token.
+    """
+    data: dict[str, Any] = jwt.decode(
+        tok,
+        settings.JWT_SECRET.get_secret_value(),
+        algorithms=[settings.JWT_ALG],
+    )
+    if data.get("type") != "invite":
+        raise jwt.JWTError("Not an invite token")
+    return data

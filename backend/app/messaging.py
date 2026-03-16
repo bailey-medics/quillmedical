@@ -2,6 +2,10 @@
 
 Writes message content to FHIR (source of truth) then projects
 metadata into SQL tables for fast reads. All reads come from SQL.
+
+Organisation-scoped: conversations auto-include all shared orgs
+between creator and patient. When a cross-org participant joins,
+their orgs snowball onto the conversation.
 """
 
 import logging
@@ -11,13 +15,26 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.fhir_client import create_fhir_communication
-from app.models import Conversation, ConversationParticipant, Message, User
+from app.models import (
+    Conversation,
+    ConversationParticipant,
+    ExternalPatientAccess,
+    Message,
+    User,
+    message_organisation,
+)
+from app.organisations import (
+    check_user_patient_access,
+    get_shared_org_ids,
+    get_user_org_ids,
+)
 from app.schemas.messaging import (
     ConversationDetailOut,
     ConversationOut,
     MessageOut,
     ParticipantOut,
 )
+from app.system_permissions.permissions import is_external_user
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +42,66 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
+    """Add a user's org(s) to a conversation (org snowball effect)."""
+    user_orgs = get_user_org_ids(db, user_id)
+    if not user_orgs:
+        return
+    # Get existing conversation org IDs
+    existing = db.execute(
+        message_organisation.select().where(
+            message_organisation.c.conversation_id == conversation_id
+        )
+    ).all()
+    existing_org_ids = {r.organisation_id for r in existing}
+    for org_id in user_orgs:
+        if org_id not in existing_org_ids:
+            db.execute(
+                message_organisation.insert().values(
+                    conversation_id=conversation_id,
+                    organisation_id=org_id,
+                )
+            )
+
+
+def _user_has_conversation_access(
+    db: Session, user: User, conv: Conversation
+) -> bool:
+    """Check if user can access a conversation.
+
+    Access is granted if:
+    - user is a participant, OR
+    - user's org(s) overlap with the conversation's orgs, OR
+    - user is an external type with active access to the patient.
+    """
+    # Participant check
+    cp = next((p for p in conv.participants if p.user_id == user.id), None)
+    if cp is not None:
+        return True
+
+    # Org overlap check
+    user_orgs = set(get_user_org_ids(db, user.id))
+    conv_org_ids = {o.id for o in conv.organisations}
+    if user_orgs & conv_org_ids:
+        return True
+
+    # External access grant (see ALL messages for granted patients)
+    if is_external_user(user.system_permissions):
+        grant = (
+            db.query(ExternalPatientAccess)
+            .filter(
+                ExternalPatientAccess.user_id == user.id,
+                ExternalPatientAccess.patient_id == conv.patient_id,
+                ExternalPatientAccess.revoked_at.is_(None),
+            )
+            .first()
+        )
+        if grant is not None:
+            return True
+
+    return False
 
 
 def _user_display_name(user: User) -> str:
@@ -102,8 +179,15 @@ def create_conversation(
 ) -> ConversationDetailOut:
     """Create a new conversation and its first message.
 
-    Writes the first message to FHIR, then creates all SQL records.
+    Validates the creator has access to the patient, writes the first
+    message to FHIR, then creates all SQL records including org links.
     """
+    # Validate creator has access to this patient
+    if not check_user_patient_access(db, creator, patient_id):
+        raise PermissionError(
+            "You do not share an organisation with this patient"
+        )
+
     conv_uuid = str(uuid.uuid4())
 
     # --- FHIR write (source of truth) ---
@@ -127,6 +211,16 @@ def create_conversation(
     db.add(conv)
     db.flush()  # get conv.id
 
+    # Auto-add all shared orgs between creator and patient
+    shared_org_ids = get_shared_org_ids(db, creator.id, patient_id)
+    for org_id in shared_org_ids:
+        db.execute(
+            message_organisation.insert().values(
+                conversation_id=conv.id,
+                organisation_id=org_id,
+            )
+        )
+
     # Add the creator as initiator
     creator_participant = ConversationParticipant(
         conversation_id=conv.id,
@@ -135,7 +229,7 @@ def create_conversation(
     )
     db.add(creator_participant)
 
-    # Add other participants
+    # Add other participants (with org snowball)
     if participant_ids:
         for uid in participant_ids:
             if uid == creator.id:
@@ -147,6 +241,7 @@ def create_conversation(
                     role="participant",
                 )
             )
+            _snowball_orgs(db, conv.id, uid)
 
     # Project the first message
     msg = Message(
@@ -178,16 +273,17 @@ def create_conversation(
 def list_conversations(
     *,
     db: Session,
-    user_id: int,
+    user: User,
     status: str | None = None,
     patient_id: str | None = None,
 ) -> list[ConversationOut]:
-    """List conversations the user participates in."""
-    query = (
-        db.query(Conversation)
-        .join(ConversationParticipant)
-        .filter(ConversationParticipant.user_id == user_id)
-    )
+    """List conversations the user can access.
+
+    Includes conversations where the user is a participant, or where
+    the user's org(s) overlap with the conversation's orgs, or where
+    the user is an external type with access to the patient.
+    """
+    query = db.query(Conversation)
     if status:
         query = query.filter(Conversation.status == status)
     if patient_id:
@@ -196,26 +292,49 @@ def list_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
+    user_org_ids = set(get_user_org_ids(db, user.id))
+
+    # For external users, get their granted patient IDs
+    external_patient_ids: set[str] = set()
+    if is_external_user(user.system_permissions):
+        rows = db.execute(
+            ExternalPatientAccess.__table__.select().where(
+                ExternalPatientAccess.user_id == user.id,
+                ExternalPatientAccess.revoked_at.is_(None),
+            )
+        ).all()
+        external_patient_ids = {r.patient_id for r in rows}
+
     results: list[ConversationOut] = []
     for conv in conversations:
-        # Calculate unread count for this user
-        cp = next((p for p in conv.participants if p.user_id == user_id), None)
+        cp = next((p for p in conv.participants if p.user_id == user.id), None)
+        is_participant = cp is not None
+
+        # Access check: participant OR org overlap OR external grant
+        conv_org_ids = {o.id for o in conv.organisations}
+        has_org_access = bool(user_org_ids & conv_org_ids)
+        has_external_access = conv.patient_id in external_patient_ids
+
+        if not (is_participant or has_org_access or has_external_access):
+            continue
+
         if cp and cp.last_read_at:
             unread = sum(
                 1
                 for m in conv.messages
-                if m.created_at > cp.last_read_at and m.sender_id != user_id
+                if m.created_at > cp.last_read_at and m.sender_id != user.id
             )
+        elif cp:
+            unread = sum(1 for m in conv.messages if m.sender_id != user.id)
         else:
-            # Never read — all messages from others are unread
-            unread = sum(1 for m in conv.messages if m.sender_id != user_id)
+            unread = 0
 
         results.append(
             _build_conversation_out(
                 conv,
                 unread,
-                is_participant=True,
-                can_write=True,
+                is_participant=is_participant,
+                can_write=is_participant,
             )
         )
 
@@ -226,18 +345,22 @@ def get_conversation_detail(
     *,
     db: Session,
     conversation_id: int,
-    user_id: int,
+    user: User,
 ) -> ConversationDetailOut | None:
     """Get a single conversation with all messages.
 
-    Any authenticated user with access to the patient record can read.
+    Any user with org-based or external access can read.
     Updates last_read_at only if the user is a participant.
     """
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         return None
 
-    cp = next((p for p in conv.participants if p.user_id == user_id), None)
+    # Access check
+    if not _user_has_conversation_access(db, user, conv):
+        return None
+
+    cp = next((p for p in conv.participants if p.user_id == user.id), None)
     is_participant = cp is not None
 
     # Mark as read only for participants
@@ -345,7 +468,7 @@ def add_participant(
     user_id: int,
     role: str = "participant",
 ) -> ParticipantOut:
-    """Add a user to a conversation."""
+    """Add a user to a conversation. Snowballs their org(s) in."""
     user = db.get(User, user_id)
     if user is None:
         raise ValueError("User not found")
@@ -364,6 +487,10 @@ def add_participant(
         role=role,
     )
     db.add(cp)
+
+    # Snowball: add the new participant's orgs to the conversation
+    _snowball_orgs(db, conversation_id, user_id)
+
     db.commit()
     db.refresh(cp)
     return _participant_out(cp)
@@ -392,14 +519,18 @@ def list_patient_conversations(
     *,
     db: Session,
     patient_id: str,
-    user_id: int,
+    user: User,
     status: str | None = None,
 ) -> list[ConversationOut]:
     """List all conversations about a patient.
 
-    Returns all conversations regardless of participation, with
-    is_participant and can_write flags per conversation.
+    Only returns conversations the user can access via org membership,
+    participation, or external access grant.
     """
+    # First verify user has access to this patient
+    if not check_user_patient_access(db, user, patient_id):
+        return []
+
     query = db.query(Conversation).filter(
         Conversation.patient_id == patient_id
     )
@@ -409,19 +540,30 @@ def list_patient_conversations(
     query = query.order_by(Conversation.updated_at.desc())
     conversations = query.all()
 
+    user_org_ids = set(get_user_org_ids(db, user.id))
+    is_ext = is_external_user(user.system_permissions)
+
     results: list[ConversationOut] = []
     for conv in conversations:
-        cp = next((p for p in conv.participants if p.user_id == user_id), None)
+        cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
+
+        # For non-external users, check org overlap
+        if not is_participant and not is_ext:
+            conv_org_ids = {o.id for o in conv.organisations}
+            if not (user_org_ids & conv_org_ids):
+                continue
+
+        # External users see ALL conversations for granted patients
 
         if cp is not None and cp.last_read_at:
             unread = sum(
                 1
                 for m in conv.messages
-                if m.created_at > cp.last_read_at and m.sender_id != user_id
+                if m.created_at > cp.last_read_at and m.sender_id != user.id
             )
         elif cp is not None:
-            unread = sum(1 for m in conv.messages if m.sender_id != user_id)
+            unread = sum(1 for m in conv.messages if m.sender_id != user.id)
         else:
             unread = 0
 
@@ -446,14 +588,25 @@ def join_conversation(
     """Allow a staff member to join a conversation.
 
     Only users with staff-level permissions or above can self-join.
-    Patients must be added by an existing participant.
+    The user must be in one of the conversation's orgs.
+    External users cannot self-join.
     """
     if user.system_permissions == "patient":
         raise PermissionError("Patients cannot self-join conversations")
+    if is_external_user(user.system_permissions):
+        raise PermissionError("External users cannot self-join conversations")
 
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         raise ValueError("Conversation not found")
+
+    # Verify org membership
+    user_org_ids = set(get_user_org_ids(db, user.id))
+    conv_org_ids = {o.id for o in conv.organisations}
+    if not (user_org_ids & conv_org_ids):
+        raise PermissionError(
+            "You must be in one of the message's organisations to join"
+        )
 
     existing = (
         db.query(ConversationParticipant)
@@ -469,6 +622,10 @@ def join_conversation(
         role="participant",
     )
     db.add(cp)
+
+    # Snowball the joining user's orgs
+    _snowball_orgs(db, conversation_id, user.id)
+
     db.commit()
     db.refresh(cp)
     return _participant_out(cp)
