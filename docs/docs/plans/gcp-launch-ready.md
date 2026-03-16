@@ -1,6 +1,6 @@
 # GCP launch-ready infrastructure
 
-Deploy Quill Medical to GCP with three isolated environments (production, staging, teaching) across separate GCP projects. Cloud Run for app services, Cloud SQL for databases, a Compute Engine VM for FHIR/EHRbase, Terraform for IaC, and GitHub Actions CI/CD pushing images to GHCR. DNS delegated from GoDaddy to Cloud DNS. Budget target: £50-200/month.
+Deploy Quill Medical to GCP with three isolated environments (production, staging, teaching) across separate GCP projects. Cloud Run for app services, Cloud SQL for databases, a Compute Engine VM for FHIR/EHRbase, Terraform for Infrastructure as code (IaC), and GitHub Actions CI/CD pushing images to Github container register (GHCR). DNS delegated from GoDaddy to Cloud DNS. Budget target: £50-200/month.
 
 ## Architecture
 
@@ -19,25 +19,26 @@ Deploy Quill Medical to GCP with three isolated environments (production, stagin
        ▼             ▼           ▼
    Cloud Run      Cloud Run   Cloud Run
    (prod proj)   (staging)   (teaching)
-       │             │
-   Cloud SQL      Cloud SQL
-   (3× Postgres) (3× Postgres)
-       │             │
-   Compute Engine  Compute Engine
-   (FHIR+EHRbase) (FHIR+EHRbase)
+       │             │           │
+   Cloud SQL      Cloud SQL   Cloud SQL
+   (3× Postgres) (3× Postgres) (1× Postgres)
+       │             │           │
+   Compute Engine  Compute Engine  Cloud Storage
+   (FHIR+EHRbase) (FHIR+EHRbase)  (images)
 ```
 
-`quill-medical.com` (landing page) is also served via Cloud Run from the existing `public_pages` build. Teaching has no clinical databases (just MCQ content).
+`quill-medical.com` (landing page) is also served via Cloud Run from the existing `public_pages` build. Teaching has no clinical databases (no FHIR/EHRbase) but needs a single Postgres instance for auth and user scores, plus a Cloud Storage bucket for images.
 
 ## Estimated monthly cost
 
 | Service                        | Prod   | Staging | Teaching | Total        |
 | ------------------------------ | ------ | ------- | -------- | ------------ |
 | Cloud Run (backend + frontend) | £8-15  | £3-8    | £3-5     | £14-28       |
-| Cloud SQL (3× db-f1-micro)     | £25-40 | £25-40  | £0       | £50-80       |
+| Cloud SQL (3× db-f1-micro)     | £25-40 | £25-40  | £8-13    | £58-93       |
 | Compute Engine (e2-small)      | £12-15 | £12-15  | £0       | £24-30       |
+| Cloud Storage (images)         | £0     | £0      | £1-3     | £1-3         |
 | Cloud DNS + Load Balancer      | £16-21 | —       | —        | £16-21       |
-| **Total**                      |        |         |          | **£104-159** |
+| **Total**                      |        |         |          | **£113-175** |
 
 Staging can be stopped when not in use to reduce costs.
 
@@ -50,7 +51,8 @@ Staging can be stopped when not in use to reduce costs.
 - **Separate GCP projects** per environment — strongest isolation boundaries
 - **Cloud DNS** — delegated from GoDaddy, Terraform-managed
 - **Google-managed TLS certificates** — free, auto-renewing
-- **Teaching app** — part of this monorepo, deployed to its own project
+- **Teaching app** — part of this monorepo, deployed to its own project, single Postgres DB (auth + scores), Cloud Storage for images
+- **Cloud Storage** for teaching images — cheaper and more suitable than storing blobs in a database
 - **Budget target**: £50-200/month
 
 ## Phase 1: Code hardening (no GCP dependency)
@@ -120,6 +122,7 @@ infra/
 ├── modules/
 │   ├── cloud-run/       # Reusable Cloud Run service
 │   ├── cloud-sql/       # Reusable Cloud SQL instance
+│   ├── cloud-storage/   # GCS buckets (teaching images)
 │   ├── compute-fhir/    # FHIR+EHRbase VM
 │   ├── dns/             # Cloud DNS zone + records
 │   ├── networking/      # VPC, subnets, firewall
@@ -143,7 +146,8 @@ infra/
 
 ### Step 2.4: Cloud SQL module
 
-- 3× PostgreSQL 16 instances per environment (auth, fhir, ehrbase)
+- 3× PostgreSQL 16 instances for prod/staging (auth, fhir, ehrbase)
+- 1× PostgreSQL 16 instance for teaching (auth + scores, no FHIR/EHRbase)
 - `db-f1-micro` tier for cost (can scale up)
 - Private IP only (no public access)
 - Automated daily backups with 7-day retention
