@@ -192,40 +192,63 @@ infra/
 - Cloud Run services reference secrets as env vars
 - Terraform creates secrets, values set manually or via CI
 
-## Phase 3: CI/CD pipeline
+## Phase 3: CI/CD pipeline (GitFlow)
+
+### Branching strategy
+
+```text
+feature/*  ──→  develop  ──→  release/*  ──→  main
+                  │                             │
+              staging +                     production
+              teaching
+```
+
+- **`develop`** — integration branch; all feature branches merge here
+- **`release/*`** — cut from `develop` when ready; bug-fixes only, PR to `main`
+- **`main`** — production-ready code; only receives merges from `release/*` branches
 
 ### Step 3.1: Docker image build
 
 New workflow `.github/workflows/deploy.yml`:
 
-- **Trigger**: push to `main`, skip if only docs changed
+- **Trigger**: push to `develop` or `main`, skip if only docs changed
 - Detect which services changed → only build affected images
-- Push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
+- Tag images:
+  - On `develop`: `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
+  - On `main`: `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
 
-### Step 3.2: Auto-deploy to staging
+### Step 3.2: Auto-deploy to staging and teaching (from `develop`)
 
-- After image build: authenticate to GCP via Workload Identity Federation (no keys)
-- Deploy updated Cloud Run services to staging
-- Run Alembic migrations against staging DB
-- Smoke test `staging.quill-medical.com/api/health`
+- **Trigger**: push to `develop`
+- Authenticate to GCP via Workload Identity Federation (no keys)
+- Deploy updated Cloud Run services to **staging** and **teaching**
+- Run Alembic migrations against staging DB and teaching DB
+- Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
 - Slack notification
 
-### Step 3.3: Manual deploy to production
+### Step 3.3: Deploy to production (from `main`)
 
-- **Trigger**: `workflow_dispatch` or GitHub Release
-- Same steps as staging, targets prod project
-- Requires manual approval
+- **Trigger**: merge to `main` (via PR from `release/*` branch)
+- Same build and deploy steps as staging, targets prod project
+- Run Alembic migrations against prod DB
+- Smoke test `app.quill-medical.com/api/health`
+- Slack notification
 
-### Step 3.4: Teaching deploy
+### Step 3.4: Release process
 
-- Auto on `main` when teaching files change
+1. Cut `release/x.y.z` branch from `develop`
+2. Only bug-fixes committed to the release branch
+3. Open PR from `release/x.y.z` → `main`
+4. On merge: CI deploys to production (Step 3.3)
+5. Merge `main` back into `develop` to sync fixes
 
 ### Step 3.5: Terraform CI
 
 New workflow `.github/workflows/terraform.yml`:
 
 - On PR: `terraform plan`, post diff as PR comment
-- On merge to main: `terraform apply`
+- On merge to `main`: `terraform apply` (production infra)
+- On merge to `develop`: `terraform apply` (staging/teaching infra)
 
 ## Phase 4: Observability (parallel with Phase 3)
 
