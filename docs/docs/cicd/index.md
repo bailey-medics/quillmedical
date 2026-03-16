@@ -1,33 +1,53 @@
 # CI/CD pipeline
 
-**Last updated:** 20 February 2026
+**Last updated:** 16 March 2026
 
-Quill Medical uses a dual-workflow GitHub Actions pipeline that automatically validates, tests, and deploys code changes. The pipeline runs comprehensive checks on feature branches and automatically merges passing branches to main, which then builds and deploys documentation to GitHub Pages.
+Quill Medical uses a GitFlow branching strategy with GitHub Actions workflows that automatically validate, test, and deploy code changes. Feature branches merge into `develop`, which auto-deploys to staging and teaching. Release branches are cut from `develop` and merged to `main` via PR, which triggers production deployment.
+
+## Branching strategy
+
+```mermaid
+graph LR
+    A[feature/*] -->|merge| B[develop]
+    B -->|cut| C[release/*]
+    C -->|PR| D[main]
+    D -->|back-merge| B
+```
+
+- **`feature/*`** — individual feature/fix branches, merge into `develop`
+- **`develop`** — integration branch; auto-deploys to staging + teaching
+- **`release/*`** — cut from `develop` when ready for production; bug-fixes only
+- **`main`** — production-ready code; only receives merges from `release/*` via PR
 
 ## Pipeline overview
 
 ```mermaid
 graph TD
-    A[Push to feature branch] --> B[Non-main workflow]
+    A[Push to feature branch] --> B[Feature workflow]
     B --> C{All checks pass?}
-    C -->|Yes| D[Auto-merge to main]
+    C -->|Yes| D[Auto-merge to develop]
     C -->|No| E[Notify via Slack]
-    D --> F[Main workflow]
-    F --> G[Build docs + Storybook]
-    G --> H[Deploy to GitHub Pages]
-    F --> I[Notify via Slack]
+    D --> F[Develop workflow]
+    F --> G[Build Docker images]
+    G --> H[Deploy to staging + teaching]
+    F --> I[Build docs + Storybook]
+    I --> J[Deploy to GitHub Pages]
+    K[PR: release/* → main] --> L[Main workflow]
+    L --> M[Build Docker images]
+    M --> N[Deploy to production]
+    L --> O[Notify via Slack]
 ```
 
 ## Workflows
 
-### Non-main workflow
+### Feature workflow
 
 **File:** [`.github/workflows/non-main.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/non-main.yml)
 
 **Triggers:**
 
-- Push to any branch except `main`
-- Pull requests to any branch except `main`
+- Push to any branch except `main` and `develop`
+- Pull requests to `develop`
 
 **Jobs:**
 
@@ -58,38 +78,47 @@ graph TD
     - Ensures OpenAPI schema generation works
     - Depends on: `python_checks`, `typescript_checks`, `frontend_security`
 
-5. **Merge to main**
+5. **Merge to develop**
     - **Only runs on push events** (not PRs)
-    - Automatically merges passing branches into `main` with no-fast-forward merge
+    - Automatically merges passing branches into `develop` with no-fast-forward merge
     - Configured git user: `github-actions[bot]`
     - Aborts on merge conflicts
     - Depends on: `docs_build`
 
 **Concurrency:**
 
-- Group: `nonmain-${{ github.ref }}`
+- Group: `feature-${{ github.ref }}`
 - Cancel in-progress: `true` (cancels older runs when new commits pushed)
 
 **Notifications:**
 
 - Slack webhooks on failure at each job level
-- Slack notification on successful merge to main
+- Slack notification on successful merge to `develop`
 - Messages include commit SHA, author, and GitHub Actions run link
 
-### Main workflow
+### Develop workflow
 
-**File:** [`.github/workflows/main.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/main.yml)
+**File:** [`.github/workflows/develop.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/develop.yml)
 
 **Triggers:**
 
-- Push to `main` branch
-- Pull requests to `main` branch
+- Push to `develop` branch
 - Workflow dispatch (manual trigger)
-- Workflow run completion from non-main workflow (when successful)
 
 **Jobs:**
 
-1. **Build**
+1. **Build Docker images**
+    - Detect which services changed → only build affected images
+    - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
+    - Skip if only docs changed
+
+2. **Deploy to staging and teaching**
+    - Authenticate to GCP via Workload Identity Federation
+    - Deploy updated Cloud Run services to staging and teaching
+    - Run Alembic migrations against staging DB and teaching DB
+    - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
+
+3. **Build docs**
     - Builds MkDocs documentation site
     - Builds Storybook static site
     - Generates TypeDoc API documentation
@@ -99,22 +128,52 @@ graph TD
     - Uploads artifact for GitHub Pages
     - Caches: Yarn dependencies, Poetry dependencies, Storybook artifacts
 
-2. **Deploy**
+4. **Deploy docs**
     - Deploys built site to GitHub Pages
     - Extracts commit info (handles merge commits specially)
     - Environment: `github-pages`
-    - Depends on: `build`
+    - Depends on: `build_docs`
 
 **Concurrency:**
 
-- Group: `pages`
-- Cancel in-progress: `true` (only one Pages deployment at a time)
+- Group: `develop`
+- Cancel in-progress: `true`
 
 **Notifications:**
 
-- Slack notification on build success
+- Slack notification on staging/teaching deploy success
 - Slack notification on build or deployment failure
 - Messages extract original commit info from merge commits
+
+### Main workflow (production)
+
+**File:** [`.github/workflows/main.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/main.yml)
+
+**Triggers:**
+
+- Push to `main` branch (via merged PR from `release/*`)
+- Workflow dispatch (manual trigger)
+
+**Jobs:**
+
+1. **Build Docker images**
+    - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
+
+2. **Deploy to production**
+    - Authenticate to GCP via Workload Identity Federation
+    - Deploy updated Cloud Run services to production
+    - Run Alembic migrations against prod DB
+    - Smoke test `app.quill-medical.com/api/health`
+
+**Concurrency:**
+
+- Group: `production`
+- Cancel in-progress: `false` (never cancel a production deploy)
+
+**Notifications:**
+
+- Slack notification on production deploy success
+- Slack notification on build or deployment failure
 
 ## Running checks locally
 
@@ -267,16 +326,16 @@ The pipeline uses aggressive caching to improve performance:
 
 ## Permissions
 
-### Non-main workflow
+### Feature workflow
 
 ```yaml
 permissions:
   contents: write
 ```
 
-Required for auto-merge functionality (pushing to main branch).
+Required for auto-merge functionality (pushing to `develop` branch).
 
-### Main workflow
+### Develop workflow
 
 ```yaml
 permissions:
@@ -285,16 +344,33 @@ permissions:
   id-token: write
 ```
 
-Required for GitHub Pages deployment (OIDC authentication).
+Required for GitHub Pages deployment (OIDC authentication) and GCP deployment.
+
+### Main workflow
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Required for GCP production deployment via Workload Identity Federation.
 
 ## Branch protection
 
-While not enforced via GitHub UI settings, the workflows implement protection through:
+### `develop` branch
 
-1. **Required checks:** All jobs in non-main workflow must pass before merge
-2. **Automatic merging:** No manual intervention needed for passing branches
+1. **Required checks:** All jobs in feature workflow must pass before merge
+2. **Automatic merging:** Feature branches auto-merge to `develop` when checks pass
 3. **Merge commit strategy:** Always uses `--no-ff` to preserve branch history
 4. **Conflict detection:** Aborts merge and fails workflow on conflicts
+
+### `main` branch
+
+1. **PR required:** Only `release/*` branches may PR to `main`
+2. **No direct pushes:** All changes must come through a reviewed PR
+3. **Required reviews:** At least one approval before merge
+4. **Back-merge:** After merging to `main`, changes are merged back into `develop`
 
 ## Slack notifications
 
@@ -306,8 +382,12 @@ All workflows send notifications to a Slack channel on both success and failure:
 - ❌ TypeScript checks failure (per matrix job)
 - ❌ Docs build failure
 - ❌ Merge failure
-- ✅ Successful merge to main
+- ✅ Successful merge to `develop`
+- ✅ Successful staging + teaching deployment
+- ✅ Successful production deployment
 - ✅ Successful docs deployment
+- ❌ Staging/teaching deployment failure
+- ❌ Production deployment failure
 - ❌ Docs deployment failure
 
 **Information included:**
@@ -357,8 +437,8 @@ Common causes:
 
 The auto-merge job will abort on conflicts. To resolve:
 
-1. Fetch latest main: `git fetch origin main`
-2. Merge main into your branch: `git merge origin/main`
+1. Fetch latest develop: `git fetch origin develop`
+2. Merge develop into your branch: `git merge origin/develop`
 3. Resolve conflicts locally
 4. Push resolved branch: `git push`
 5. Workflow will retry merge automatically
@@ -387,10 +467,15 @@ graph LR
     A[python_checks] --> D[docs_build]
     B[typescript_checks] --> D
     C[frontend_security] --> D
-    D --> E[merge-to-main]
-    E --> F[main workflow]
-    F --> G[build]
-    G --> H[deploy]
+    D --> E[merge-to-develop]
+    E --> F[develop workflow]
+    F --> G[build images]
+    G --> H[deploy staging + teaching]
+    F --> I[build docs]
+    I --> J[deploy GitHub Pages]
+    K[PR: release → main] --> L[main workflow]
+    L --> M[build images]
+    M --> N[deploy production]
 ```
 
 ## Performance metrics
@@ -402,8 +487,9 @@ Typical run times (with warm caches):
 - **TypeScript checks:** ~1-3m per job (7 parallel)
 - **Frontend security:** ~30s
 - **Documentation build:** ~3-5m
-- **Total non-main workflow:** ~5-8m
-- **Main workflow (build + deploy):** ~5-10m
+- **Total feature workflow:** ~5-8m
+- **Develop workflow (build + deploy):** ~5-10m
+- **Main workflow (build + prod deploy):** ~5-10m
 
 **Cold cache times:**
 
@@ -420,16 +506,21 @@ Typical run times (with warm caches):
 5. **Dependency scanning:** Semgrep runs on every push
 6. **Code analysis:** Pre-commit hooks include bandit (Python security linter)
 
+## Release process
+
+1. **Cut release branch:** `git checkout develop && git checkout -b release/x.y.z`
+2. **Bug-fixes only:** Commit fixes directly to the release branch
+3. **Open PR:** `release/x.y.z` → `main`
+4. **Review and merge:** On merge, CI builds and deploys to production
+5. **Back-merge:** Merge `main` back into `develop` to sync fixes: `git checkout develop && git merge main`
+
 ## Future improvements
 
 - [ ] Add integration tests to pipeline
 - [ ] Add E2E tests with Playwright
-- [ ] Implement deployment to staging environment
 - [ ] Add performance benchmarking (Lighthouse CI)
 - [ ] Add coverage reporting (Codecov or similar)
 - [ ] Add dependency vulnerability scanning (Dependabot/Snyk)
-- [ ] Implement semantic versioning and automated releases
-- [ ] Add Docker image builds for production deployments
 
 ## Related documentation
 
