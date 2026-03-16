@@ -1,6 +1,6 @@
 # GCP launch-ready infrastructure
 
-Deploy Quill Medical to GCP with three isolated environments (production, staging, teaching) across separate GCP projects. Cloud Run for app services, Cloud SQL for databases, a Compute Engine VM for FHIR/EHRbase, Terraform for Infrastructure as code (IaC), and GitHub Actions CI/CD pushing images to Github container register (GHCR). DNS delegated from GoDaddy to Cloud DNS. Budget target: £50-200/month.
+Deploy Quill Medical to Google Cloud Platform (GCP) with three isolated environments (production, staging, teaching) across separate GCP projects. Cloud Run for app services, Cloud SQL for databases, a Compute Engine virtual machine (VM) for Fast Healthcare Interoperability Resources (FHIR) and EHRbase, Terraform for infrastructure as code (IaC), and GitHub Actions continuous integration / continuous deployment (CI/CD) pushing images to GitHub Container Registry (GHCR). Domain Name System (DNS) delegated from GoDaddy to Cloud DNS. Budget target: £50-200/month.
 
 ## Architecture
 
@@ -45,12 +45,12 @@ Staging can be stopped when not in use to reduce costs.
 ## Decisions
 
 - **Cloud Run** for app/backend/public-pages — scales to zero, cheapest for moderate traffic, auto-TLS
-- **Cloud SQL** (PostgreSQL 16) for all databases — managed backups, encryption-at-rest, critical for clinical data
+- **Cloud SQL** (PostgreSQL 18) for all databases — managed backups, encryption-at-rest, critical for clinical data
 - **Compute Engine** (e2-small) for FHIR + EHRbase — always-on Java apps, Docker Compose on VM
 - **GHCR** for container images — built in GitHub Actions, pulled by Cloud Run
 - **Separate GCP projects** per environment — strongest isolation boundaries
 - **Cloud DNS** — delegated from GoDaddy, Terraform-managed
-- **Google-managed TLS certificates** — free, auto-renewing
+- **Google-managed Transport Layer Security (TLS) certificates** — free, auto-renewing
 - **Teaching app** — part of this monorepo, deployed to its own project, single Postgres DB (auth + scores), Cloud Storage for images
 - **Cloud Storage** for teaching images — cheaper and more suitable than storing blobs in a database
 - **Budget target**: £50-200/month
@@ -76,7 +76,7 @@ Staging can be stopped when not in use to reduce costs.
 
 Create `caddy/prod/Caddyfile`:
 
-- Security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options
+- Security headers: HTTP Strict Transport Security (HSTS), Content Security Policy (CSP), X-Frame-Options, X-Content-Type-Options
 - Static asset caching (Cache-Control)
 - Rate limiting on `/api/auth/*` endpoints
 - Health check passthrough
@@ -84,8 +84,8 @@ Create `caddy/prod/Caddyfile`:
 ### Step 1.3: Production Docker Compose files
 
 - `compose.yml` — base service definitions shared between dev/prod
-- `compose.prod.yml` — production overrides (no volume mounts, resource limits, restart policies, secrets from environment)
-- `compose.fhir.yml` — FHIR + EHRbase for the Compute Engine VM
+- `compose.prod.cloud-run.yml` — production overrides (no volume mounts, resource limits, restart policies, secrets from environment)
+- `compose.prod.fhir-openehr.yml` — FHIR + EHRbase for the Compute Engine VM
 
 ### Step 1.4: Harden backend for public exposure
 
@@ -93,7 +93,7 @@ Modify `backend/app/config.py`, `backend/app/main.py`, `backend/app/push.py`:
 
 - `SECURE_COOKIES=True` in production (currently `False`)
 - `COOKIE_DOMAIN=.quill-medical.com`
-- CORS allowed origins whitelist (`app.quill-medical.com`, `staging.quill-medical.com`)
+- Cross-origin resource sharing (CORS) allowed origins whitelist (`app.quill-medical.com`, `staging.quill-medical.com`)
 - Rate limiting on login/register endpoints (slowapi)
 - Move push subscriptions from in-memory list → database table
 - Create `backend/docker/entrypoint.sh` to run Alembic migrations before server start
@@ -103,14 +103,14 @@ Modify `backend/app/config.py`, `backend/app/main.py`, `backend/app/push.py`:
 Modify `frontend/vite.config.ts`, `frontend/public/manifest.webmanifest`:
 
 - Production build with minification + tree-shaking
-- PWA manifest with correct production `start_url` and `scope`
+- Progressive Web App (PWA) manifest with correct production `start_url` and `scope`
 
 ## Phase 2: Terraform infrastructure
 
 ### Step 2.1: GCP setup (manual)
 
 - Create GCP projects: `quill-prod`, `quill-staging`, `quill-teaching`
-- Enable APIs: Cloud Run, Cloud SQL, Compute Engine, Cloud DNS, Secret Manager, IAM
+- Enable APIs: Cloud Run, Cloud SQL, Compute Engine, Cloud DNS, Secret Manager, Identity and Access Management (IAM)
 - Create Terraform service account + store key as GitHub secret
 
 ### Step 2.2: Terraform project structure
@@ -138,27 +138,31 @@ infra/
 
 ### Step 2.3: Networking module
 
-- VPC with private subnets for Cloud SQL and Compute Engine
-- Cloud NAT for outbound internet from private resources
-- Firewall rules: SSH only from IAP, no direct DB access from internet
+- Virtual private cloud (VPC) with private subnets for Cloud SQL and Compute Engine
+- Cloud network address translation (NAT) for outbound internet from private resources
+- Firewall rules: Secure Shell (SSH) only from Identity-Aware Proxy (IAP), no direct database access from internet
 - Private service connection for Cloud SQL (no public IP on databases)
 - Serverless VPC connector for Cloud Run → Cloud SQL connectivity
 
 ### Step 2.4: Cloud SQL module
 
-- 3× PostgreSQL 16 instances for prod/staging (auth, fhir, ehrbase)
-- 1× PostgreSQL 16 instance for teaching (auth + scores, no FHIR/EHRbase)
+- 3× PostgreSQL 18 instances for prod/staging (auth, fhir, ehrbase)
+- 1× PostgreSQL 18 instance for teaching (auth + scores, no FHIR/EHRbase)
 - `db-f1-micro` tier for cost (can scale up)
 - Private IP only (no public access)
-- Automated daily backups with 7-day retention
-- Point-in-time recovery enabled
+- Backup retention (clinical data in `prod`):
+  - Daily backups: 30-day retention (operational recovery)
+  - Weekly backups: 12-month retention
+  - Monthly snapshots: 10-year retention (NHS compliance baseline)
+  - Point-in-time recovery (PITR): enabled, 7-day window (Cloud SQL supports this natively)
 - Encryption at rest (Google-managed keys)
 - Maintenance window: Sunday 03:00 UTC
+- **High availability (HA)**: Not needed initially (development, showcasing, single clinic). Enable HA on production Cloud SQL once the system holds real patient data and serves multiple clinics — HA provides automatic failover to a standby instance in a different zone (~60s recovery). Roughly doubles Cloud SQL cost.
 
 ### Step 2.5: Compute Engine module (FHIR + EHRbase)
 
 - `e2-small` instance (2 vCPU, 2GB RAM)
-- Container-optimised OS or Debian with Docker
+- Container-optimised operating system (OS) or Debian with Docker
 - Startup script installs Docker Compose, pulls images, starts services
 - Private IP only, accessed via VPC from Cloud Run
 - Health check on FHIR (`/fhir/metadata`) and EHRbase (`/ehrbase/rest/status`)
@@ -176,19 +180,19 @@ infra/
 ### Step 2.7: Load Balancer and DNS
 
 - Global HTTPS load balancer
-- Backend services pointing to Cloud Run NEGs (serverless)
+- Backend services pointing to Cloud Run serverless network endpoint groups (NEGs)
 - URL map routing:
   - `app.quill-medical.com/*` → prod Cloud Run (app)
   - `staging.quill-medical.com/*` → staging Cloud Run
   - `teaching.quill-medical.com/*` → teaching Cloud Run
   - `quill-medical.com/*` → prod Cloud Run (public pages)
-- Google-managed SSL certificates for all domains
-- Cloud DNS zone with A records pointing to LB IP
-- Optional: Cloud Armor WAF rules (OWASP top 10 protection)
+- Google-managed Secure Sockets Layer (SSL) certificates for all domains
+- Cloud DNS zone with A records pointing to load balancer IP
+- Optional: Cloud Armor web application firewall (WAF) rules (Open Worldwide Application Security Project (OWASP) top 10 protection)
 
 ### Step 2.8: Secret Manager
 
-- Store: JWT_SECRET, DB passwords, VAPID keys, EHRbase credentials
+- Store: JWT_SECRET (JSON Web Token secret), database passwords, Voluntary Application Server Identification (VAPID) keys, EHRbase credentials
 - Cloud Run services reference secrets as env vars
 - Terraform creates secrets, values set manually or via CI
 
@@ -207,42 +211,41 @@ feature/*  ──→  develop  ──→  release/*  ──→  main
 - **`release/*`** — cut from `develop` when ready; bug-fixes only, PR to `main`
 - **`main`** — production-ready code; only receives merges from `release/*` branches
 
-### Step 3.1: Docker image build
+### Step 3.1: Deploy to staging and teaching (from `develop`)
 
-New workflow `.github/workflows/deploy.yml`:
+Workflow `.github/workflows/deploy-staging.yml`:
 
-- **Trigger**: push to `develop` or `main`, skip if only docs changed
+- **Trigger**: push to `develop`, skip if only docs changed
 - Detect which services changed → only build affected images
-- Tag images:
-  - On `develop`: `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
-  - On `main`: `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
-
-### Step 3.2: Auto-deploy to staging and teaching (from `develop`)
-
-- **Trigger**: push to `develop`
+- Tag images as `develop-<sha>`
 - Authenticate to GCP via Workload Identity Federation (no keys)
 - Deploy updated Cloud Run services to **staging** and **teaching**
 - Run Alembic migrations against staging DB and teaching DB
 - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
 - Slack notification
 
-### Step 3.3: Deploy to production (from `main`)
+### Step 3.2: Deploy to production (from `main`)
+
+Workflow `.github/workflows/deploy-production.yml`:
 
 - **Trigger**: merge to `main` (via PR from `release/*` branch)
-- Same build and deploy steps as staging, targets prod project
+- Detect which services changed → only build affected images
+- Tag images as `main-<sha>` and `:latest`
+- Authenticate to GCP via Workload Identity Federation (no keys)
+- Deploy updated Cloud Run services to **production**
 - Run Alembic migrations against prod DB
 - Smoke test `app.quill-medical.com/api/health`
 - Slack notification
 
-### Step 3.4: Release process
+### Step 3.3: Release process
 
 1. Cut `release/x.y.z` branch from `develop`
 2. Only bug-fixes committed to the release branch
 3. Open PR from `release/x.y.z` → `main`
-4. On merge: CI deploys to production (Step 3.3)
+4. On merge: CI deploys to production (Step 3.2)
 5. Merge `main` back into `develop` to sync fixes
 
-### Step 3.5: Terraform CI
+### Step 3.4: Terraform CI
 
 New workflow `.github/workflows/terraform.yml`:
 
@@ -256,7 +259,7 @@ New workflow `.github/workflows/terraform.yml`:
 
 - Cloud Run auto-sends stdout/stderr to Cloud Logging
 - Structure backend logs as JSON (`python-json-logger`)
-- Log request ID, user ID (not PHI), response times
+- Log request ID, user ID (not protected health information / PHI), response times
 
 ### Step 4.2: Health checks and uptime monitoring
 
@@ -269,29 +272,19 @@ New workflow `.github/workflows/terraform.yml`:
 - Sentry or Cloud Error Reporting for frontend + backend
 - Source maps for frontend error deobfuscation
 
-## Phase 5: Staging access control
-
-### Step 5.1: Identity-Aware Proxy (IAP)
-
-- Enable Cloud IAP on staging Cloud Run service
-- Only allow specific Google accounts / Google Workspace group
-- Zero-trust access without VPN
-- Terraform-managed IAP member list
-
 ## Verification
 
-1. **Phase 1**: `docker compose -f compose.yml -f compose.prod.yml build` succeeds; health checks pass locally
+1. **Phase 1**: `docker compose -f compose.yml -f compose.prod.cloud-run.yml build` succeeds; health checks pass locally
 2. **Phase 2**: `terraform plan` shows expected resources; `terraform apply` creates staging infra
 3. **Phase 3**: Push to main → images build → staging deploys → `curl staging.quill-medical.com/api/health` returns healthy
 4. **Phase 4**: Structured logs visible in Cloud Logging; uptime checks green
-5. **Phase 5**: Unauthorised users get 403 on staging; allowed users can access
 
 ## Scope
 
-**Included**: Infrastructure, CI/CD, Docker hardening, security headers, DNS, TLS, basic monitoring, staging access control
+**Included**: Infrastructure, CI/CD, Docker hardening, security headers, DNS, TLS, basic monitoring
 
-**Excluded**: Application feature work, clinical data migration, production data seeding, custom domain email, CDN (add later), disaster recovery runbook, penetration testing, compliance certifications
+**Excluded**: Application feature work, clinical data migration, production data seeding, custom domain email, content delivery network (add later), disaster recovery runbook, penetration testing, compliance certifications, staging access control via IAP (add later when staging needs locking down)
 
 ## Implementation order
 
-Phases 1 and 2.1 (manual GCP setup) start **in parallel**. Phase 2.2+ depends on 2.1. Phase 3 depends on 1 + 2. Phase 4 is parallel with 3. Phase 5 follows staging deployment. ~20 distinct implementation tasks, each walkthrough-able individually.
+Phases 1 and 2.1 (manual GCP setup) start **in parallel**. Phase 2.2+ depends on 2.1. Phase 3 depends on 1 + 2. Phase 4 is parallel with 3. ~20 distinct implementation tasks, each walkthrough-able individually.
