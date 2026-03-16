@@ -7,7 +7,7 @@
  * - Submitting state
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, waitFor, within } from "@storybook/test";
+import { fn, userEvent, within } from "@storybook/test";
 import NewMessageModal from "./NewMessageModal";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,12 +81,20 @@ export const Submitting: Story = {
     patientName: "James Green",
   },
   play: async () => {
+    // Query document.body — Mantine Modal renders in a portal outside canvasElement.
+    // Use findByLabelText with a generous timeout to handle slow CI environments
+    // where the story may still be loading when the play function starts.
     const body = within(document.body);
-    await waitFor(() => {
-      expect(body.getByLabelText("Subject")).toBeInTheDocument();
-    });
-    const subject = body.getByLabelText("Subject");
-    const message = body.getByLabelText("Message");
+    const subject = await body.findByLabelText(
+      "Subject",
+      {},
+      { timeout: 15000 },
+    );
+    const message = await body.findByLabelText(
+      "Message",
+      {},
+      { timeout: 15000 },
+    );
     await userEvent.type(subject, "Prescription renewal");
     await userEvent.type(message, "Hello, I'd like to renew my prescription.");
   },
