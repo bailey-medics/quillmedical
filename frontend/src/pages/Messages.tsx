@@ -183,7 +183,7 @@ export default function Messages() {
           lookup[p.id] = {
             givenName: primary?.given?.[0] ?? "",
             familyName: primary?.family ?? "",
-            gradientIndex: extractAvatarGradientIndex(p),
+            gradientIndex: extractAvatarGradientIndex(p) ?? 0,
           };
         }
 
@@ -206,7 +206,7 @@ export default function Messages() {
               lookup[p.id] = {
                 givenName: primary?.given?.[0] ?? "",
                 familyName: primary?.family ?? "",
-                gradientIndex: extractAvatarGradientIndex(p),
+                gradientIndex: extractAvatarGradientIndex(p) ?? 0,
               };
             }
           }
