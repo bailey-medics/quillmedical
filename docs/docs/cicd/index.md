@@ -52,38 +52,38 @@ graph TD
 **Jobs:**
 
 1. **Python checks** (matrix: `styling`, `unit`)
-    - **Styling:** Pre-commit hooks (ruff, black, mypy, bandit, YAML/TOML/JSON validation, cspell)
-    - **Unit tests:** pytest for non-integration/non-e2e tests
-    - Python 3.13, Poetry dependency management
-    - Caches: `.venv`, pre-commit hooks, pip cache
+   - **Styling:** Pre-commit hooks (ruff, black, mypy, bandit, YAML/TOML/JSON validation, cspell)
+   - **Unit tests:** pytest for non-integration/non-e2e tests
+   - Python 3.13, Poetry dependency management
+   - Caches: `.venv`, pre-commit hooks, pip cache
 
 2. **TypeScript checks** (matrix: 7 parallel jobs)
-    - **eslint:** JavaScript/TypeScript linting
-    - **prettier:** Code formatting
-    - **stylelint:** CSS/SCSS linting
-    - **typecheck:all:** TypeScript type checking across entire codebase
-    - **unit-test:run:** Vitest unit tests
-    - **storybook:build:** Build Storybook static site
-    - **storybook:test:ci:** Playwright visual regression tests
-    - Node 22, Yarn 4.10.3
-    - Caches: Yarn dependencies, Playwright browsers, Storybook build artifacts, ESLint cache
+   - **eslint:** JavaScript/TypeScript linting
+   - **prettier:** Code formatting
+   - **stylelint:** CSS/SCSS linting
+   - **typecheck:all:** TypeScript type checking across entire codebase
+   - **unit-test:run:** Vitest unit tests
+   - **storybook:build:** Build Storybook static site
+   - **storybook:test:ci:** Playwright visual regression tests
+   - Node 22, Yarn 4.10.3
+   - Caches: Yarn dependencies, Playwright browsers, Storybook build artifacts, ESLint cache
 
 3. **Frontend security**
-    - Semgrep SAST (Static Application Security Testing)
-    - Runs against frontend code with custom rules (`.semgrep.yml`)
+   - Semgrep SAST (Static Application Security Testing)
+   - Runs against frontend code with custom rules (`.semgrep.yml`)
 
 4. **Documentation build**
-    - Validates that docs build successfully before merging
-    - Builds both frontend docs (TypeDoc, Storybook) and backend docs (MkDocs)
-    - Ensures OpenAPI schema generation works
-    - Depends on: `python_checks`, `typescript_checks`, `frontend_security`
+   - Validates that docs build successfully before merging
+   - Builds both frontend docs (TypeDoc, Storybook) and backend docs (MkDocs)
+   - Ensures OpenAPI schema generation works
+   - Depends on: `python_checks`, `typescript_checks`, `frontend_security`
 
 5. **Merge to develop**
-    - **Only runs on push events** (not PRs)
-    - Automatically merges passing branches into `develop` with no-fast-forward merge
-    - Configured git user: `github-actions[bot]`
-    - Aborts on merge conflicts
-    - Depends on: `docs_build`
+   - **Only runs on push events** (not PRs)
+   - Automatically merges passing branches into `develop` with no-fast-forward merge
+   - Configured git user: `github-actions[bot]`
+   - Aborts on merge conflicts
+   - Depends on: `docs_build`
 
 **Concurrency:**
 
@@ -108,31 +108,31 @@ graph TD
 **Jobs:**
 
 1. **Build Docker images**
-    - Detect which services changed → only build affected images
-    - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
-    - Skip if only docs changed
+   - Detect which services changed → only build affected images
+   - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
+   - Skip if only docs changed
 
 2. **Deploy to staging and teaching**
-    - Authenticate to GCP via Workload Identity Federation
-    - Deploy updated Cloud Run services to staging and teaching
-    - Run Alembic migrations against staging DB and teaching DB
-    - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
+   - Authenticate to GCP via Workload Identity Federation
+   - Deploy updated Cloud Run services to staging and teaching
+   - Run Alembic migrations against staging DB and teaching DB
+   - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
 
 3. **Build docs**
-    - Builds MkDocs documentation site
-    - Builds Storybook static site
-    - Generates TypeDoc API documentation
-    - Exports OpenAPI schema to JSON
-    - Copies LLM prompts to docs
-    - Creates unified site in `/site` directory
-    - Uploads artifact for GitHub Pages
-    - Caches: Yarn dependencies, Poetry dependencies, Storybook artifacts
+   - Builds MkDocs documentation site
+   - Builds Storybook static site
+   - Generates TypeDoc API documentation
+   - Exports OpenAPI schema to JSON
+   - Copies LLM prompts to docs
+   - Creates unified site in `/site` directory
+   - Uploads artifact for GitHub Pages
+   - Caches: Yarn dependencies, Poetry dependencies, Storybook artifacts
 
 4. **Deploy docs**
-    - Deploys built site to GitHub Pages
-    - Extracts commit info (handles merge commits specially)
-    - Environment: `github-pages`
-    - Depends on: `build_docs`
+   - Deploys built site to GitHub Pages
+   - Extracts commit info (handles merge commits specially)
+   - Environment: `github-pages`
+   - Depends on: `build_docs`
 
 **Concurrency:**
 
@@ -157,13 +157,13 @@ graph TD
 **Jobs:**
 
 1. **Build Docker images**
-    - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
+   - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
 
 2. **Deploy to production**
-    - Authenticate to GCP via Workload Identity Federation
-    - Deploy updated Cloud Run services to production
-    - Run Alembic migrations against prod DB
-    - Smoke test `app.quill-medical.com/api/health`
+   - Authenticate to GCP via Workload Identity Federation
+   - Deploy updated Cloud Run services to production
+   - Run Alembic migrations against prod DB
+   - Smoke test `app.quill-medical.com/api/health`
 
 **Concurrency:**
 
@@ -274,13 +274,13 @@ Non-main workflow jobs:
 
 ### When to use which approach
 
-| Scenario                              | Use                              |
-| ------------------------------------- | -------------------------------- |
-| Quick feedback during development     | `run-ci-checks.sh`               |
-| Final check before pushing            | `run-ci-checks.sh`               |
-| Debugging environment-specific issues | `run-github-actions-locally.sh`  |
-| CI passes locally but fails on GitHub | `run-github-actions-locally.sh`  |
-| Need exact parity with CI             | `run-github-actions-locally.sh`  |
+| Scenario                              | Use                             |
+| ------------------------------------- | ------------------------------- |
+| Quick feedback during development     | `run-ci-checks.sh`              |
+| Final check before pushing            | `run-ci-checks.sh`              |
+| Debugging environment-specific issues | `run-github-actions-locally.sh` |
+| CI passes locally but fails on GitHub | `run-github-actions-locally.sh` |
+| Need exact parity with CI             | `run-github-actions-locally.sh` |
 
 ## Caching strategy
 
