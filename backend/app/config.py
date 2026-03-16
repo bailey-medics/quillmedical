@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     """
 
     API_PREFIX: str = "/api"
+    BACKEND_ENV: str = "development"
+
+    # CORS — restrict in production, allow all in development
+    CORS_ORIGINS: list[str] = Field(
+        default=["*"],
+        description="Allowed CORS origins (set explicitly in production)",
+    )
 
     # No env_file: read env provided by Docker/Compose (and Docker secrets)
     model_config = SettingsConfigDict(

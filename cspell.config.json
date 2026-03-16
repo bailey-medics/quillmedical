@@ -362,6 +362,8 @@
     "Traefik",
     "tritanopia",
     "uncracked",
+    "urllib",
+    "urlopen",
     "urlsafe",
     "utcnow",
     "uvicorn",

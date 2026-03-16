@@ -1,7 +1,9 @@
 # backend/Dockerfile
 
 # ---------- Base layer (deps + app) ----------
-FROM python:3.13-slim AS base
+# Pin by digest for reproducible builds. To update, run:
+#   docker pull python:3.13-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.13-slim
+FROM python:3.13-slim@sha256:8bc60ca09afaa8ea0d6d1220bde073bacfedd66a4bf8129cbdc8ef0e16c8a952 AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -33,6 +35,10 @@ RUN useradd --uid 10001 --create-home appuser \
 USER appuser
 
 EXPOSE 8000
+
+# Health check for container orchestration (Cloud Run, Docker Compose)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
 
 # ---------- Dev target (hot-reload) ----------
 FROM base AS dev
