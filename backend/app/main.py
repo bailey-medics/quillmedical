@@ -21,9 +21,12 @@ Architecture:
 - Push notifications: In-memory subscriptions (production should use database)
 """
 
+import logging
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 import httpx
 from fastapi import (
@@ -57,6 +60,7 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
+from app.logging_config import setup_logging
 from app.messaging import (
     add_participant,
     create_conversation,
@@ -120,6 +124,9 @@ from app.security import (
 )
 from app.system_permissions.permissions import is_external_user
 
+setup_logging()
+logger = logging.getLogger(__name__)
+
 DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
 
@@ -147,6 +154,37 @@ app.add_middleware(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# --- Request logging middleware ---
+@app.middleware("http")
+async def log_requests(
+    request: Request,
+    call_next: Callable,  # type: ignore[type-arg]
+) -> Response:
+    """Log every request with timing, method, path, and status."""
+    request_id = uuid4().hex[:12]
+    start = time.monotonic()
+    response: Response = await call_next(request)
+    elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+
+    logger.info(
+        "%s %s %s %.1fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": response.status_code,
+            "duration_ms": elapsed_ms,
+            "client_ip": request.client.host if request.client else None,
+        },
+    )
+    return response
+
 
 app.include_router(push_send_router)
 

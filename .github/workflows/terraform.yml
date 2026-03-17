@@ -1,13 +1,13 @@
-# Terraform plan on PRs, apply on merge to develop (staging/teaching) or main (prod)
+# Terraform plan on PRs, apply on merge to main (staging/teaching) or clinical-live (prod)
 name: Terraform
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, clinical-live]
     paths:
       - "infra/**"
   pull_request:
-    branches: [main, develop]
+    branches: [main, clinical-live]
     paths:
       - "infra/**"
 
@@ -93,11 +93,11 @@ jobs:
               body: body
             });
 
-  # ---------- Terraform apply: staging + teaching (develop branch) ----------
+  # ---------- Terraform apply: staging + teaching (main branch) ----------
   apply-staging:
     name: Apply (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
         include:
@@ -154,11 +154,11 @@ jobs:
               ]
             }
 
-  # ---------- Terraform apply: production (main branch) ----------
+  # ---------- Terraform apply: production (clinical-live branch) ----------
   apply-production:
     name: Apply (prod)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/clinical-live'
     environment: production
     steps:
       - uses: actions/checkout@v4

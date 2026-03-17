@@ -1,11 +1,17 @@
-# Workflow for non-main branches: runs checks and auto-merges to main after passing
-name: Non-main branch workflows
+# Workflow for feature/* and release/* branches:
+# - Runs all checks (Python, TypeScript, Semgrep, docs)
+# - feature/* branches: auto-merge into main after checks pass
+# - release/* branches: checks only (merge to clinical-live via PR)
+name: Branch checks
 
 on:
   push:
-    branches-ignore: [main, master]
+    branches:
+      - "feature/**"
+      - "release/**"
+      - "hotfix/**"
   pull_request:
-    branches-ignore: [main, master]
+    branches: [main, clinical-live]
 
 permissions:
   contents: write
@@ -379,12 +385,12 @@ jobs:
             }
 
 
-  # ---------- Merge to main (only on push, never from main) ----------
+  # ---------- Merge feature/* into main ----------
   merge-to-main:
     runs-on: ubuntu-latest
-    name: Merge branch into main
+    name: Merge feature into main
     needs: [docs_build]
-    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -394,14 +400,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge branch into main and push
+      - name: Merge feature branch into main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ensure we have latest main locally
-          git fetch origin main:main || git fetch origin refs/heads/main:main
-
-          # Source branch name from the push event
           BRANCH_NAME="${GITHUB_REF_NAME:-}"
           BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
 
@@ -410,17 +412,17 @@ jobs:
             exit 1
           fi
 
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "Not merging main into main. Exiting."
-            exit 0
-          fi
+          # Fetch main
+          git fetch origin main:main || {
+            echo "ERROR: 'main' branch does not exist on remote." >&2
+            exit 1
+          }
 
           echo "Merging '$BRANCH_NAME' into main"
           git checkout main
 
-          # Ensure the source branch exists locally
+          # Ensure the feature branch exists locally
           if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
-            echo "Fetching branch '$BRANCH_NAME' from origin"
             git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
           fi
 
@@ -438,61 +440,56 @@ jobs:
       - name: Extract commit info
         id: commit
         run: |
-          # Get commit subject from the branch that was merged (second parent of merge commit)
-          COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s)
-          # Escape for JSON: replace quotes and newlines
+          COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s 2>/dev/null || git log -1 --pretty=%s)
           COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
           COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
           echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
 
-          # Get SHA from the branch that was merged (second parent of merge commit)
-          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H)
+          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H 2>/dev/null || echo "$GITHUB_SHA")
           echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
 
-          # Get short SHA (first 7 characters)
-          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h)
+          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h 2>/dev/null || echo "${GITHUB_SHA:0:7}")
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          # Get commit author from the branch that was merged
-          AUTHOR=$(git log HEAD^2 -1 --pretty=%an)
+          AUTHOR=$(git log HEAD^2 -1 --pretty=%an 2>/dev/null || git log -1 --pretty=%an)
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
 
-      - name: Notify Slack on Success
+      - name: Notify Slack on success
         if: success()
         uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "✅ Non-main tests passed and merged to main"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *✅ Non-main tests passed and merged to main*
+            {
+              "text": "✅ Feature branch merged to main",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Feature branch merged to main*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
 
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
-
-      - name: Notify Slack on Failure
+      - name: Notify Slack on failure
         if: failure()
         uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "❌ Non-main tests and merge failed"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: |
-                    *❌ Non-main tests and merge failed*
-
-                    *Commit:* ${{ steps.commit.outputs.subject }}
-                    *Author:* ${{ steps.commit.outputs.author }}
-                    *Non-main SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>
-                    *GitHub Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+            {
+              "text": "❌ Feature merge to main failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Feature merge to main failed*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }

@@ -6,9 +6,6 @@ on:
   workflow_dispatch: {}
   pull_request:
     branches: [ main ]
-  workflow_run:
-    workflows: ["Non-main branch workflows"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -26,8 +23,6 @@ jobs:
     env:
       OPENAPI_SRC: docs/docs/code/swagger/openapi.json
       OPENAPI_DST: site/code/swagger/openapi.json
-    # If this was triggered by workflow_run, only proceed if the previous workflow succeeded
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

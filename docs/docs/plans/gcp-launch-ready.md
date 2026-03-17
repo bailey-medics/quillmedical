@@ -198,43 +198,44 @@ infra/
 - Cloud Run services reference secrets as env vars
 - Terraform creates secrets, values set manually or via CI
 
-## Phase 3: CI/CD pipeline (GitFlow)
+## Phase 3: CI/CD pipeline
 
 _Done: deploy-staging.yml (Step 3.1), deploy-production.yml (Step 3.2), terraform.yml (Step 3.4) created. Step 3.3 (release process) is a documented workflow, not code._
 
 ### Branching strategy
 
 ```text
-feature/*  ──→  develop  ──→  release/*  ──→  main
-                  │                             │
-              staging +                     production
-              teaching
+feature/*  ──→  main  ──→  release/*  ──→  clinical-live
+                  │                            │
+            staging + teaching           production app
+            + landing page               (clinical)
+            + docs (GitHub Pages)
 ```
 
-- **`develop`** — integration branch; all feature branches merge here
-- **`release/*`** — cut from `develop` when ready; bug-fixes only, PR to `main`
-- **`main`** — production-ready code; only receives merges from `release/*` branches
+- **`main`** — integration branch; all feature branches merge here; deploys staging, teaching, landing page, and docs
+- **`release/*`** — cut from `main` when ready for production; bug-fixes only, PR to `clinical-live`
+- **`clinical-live`** — clinical production code; only receives merges from `release/*` branches
 
-### Step 3.1: Deploy to staging and teaching (from `develop`)
+### Step 3.1: Deploy to staging and teaching (from `main`)
 
 Workflow `.github/workflows/deploy-staging.yml`:
 
-- **Trigger**: push to `develop`, skip if only docs changed
+- **Trigger**: push to `main`, skip if only docs changed
 - Detect which services changed → only build affected images
-- Tag images as `develop-<sha>`
+- Tag images as `main-<sha>`
 - Authenticate to GCP via Workload Identity Federation (no keys)
 - Deploy updated Cloud Run services to **staging** and **teaching**
 - Run Alembic migrations against staging DB and teaching DB
 - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
 - Slack notification
 
-### Step 3.2: Deploy to production (from `main`)
+### Step 3.2: Deploy to production (from `clinical-live`)
 
 Workflow `.github/workflows/deploy-production.yml`:
 
-- **Trigger**: merge to `main` (via PR from `release/*` branch)
+- **Trigger**: merge to `clinical-live` (via PR from `release/*` branch)
 - Detect which services changed → only build affected images
-- Tag images as `main-<sha>` and `:latest`
+- Tag images as `clinical-live-<sha>` and `:latest`
 - Authenticate to GCP via Workload Identity Federation (no keys)
 - Deploy updated Cloud Run services to **production**
 - Run Alembic migrations against prod DB
@@ -243,35 +244,35 @@ Workflow `.github/workflows/deploy-production.yml`:
 
 ### Step 3.3: Release process
 
-1. Cut `release/x.y.z` branch from `develop`
+1. Cut `release/x.y.z` branch from `main`
 2. Only bug-fixes committed to the release branch
-3. Open PR from `release/x.y.z` → `main`
+3. Open PR from `release/x.y.z` → `clinical-live`
 4. On merge: CI deploys to production (Step 3.2)
-5. Merge `main` back into `develop` to sync fixes
+5. Merge `clinical-live` back into `main` to sync fixes
 
 ### Step 3.4: Terraform CI
 
 New workflow `.github/workflows/terraform.yml`:
 
 - On PR: `terraform plan`, post diff as PR comment
-- On merge to `main`: `terraform apply` (production infra)
-- On merge to `develop`: `terraform apply` (staging/teaching infra)
+- On merge to `clinical-live`: `terraform apply` (production infra)
+- On merge to `main`: `terraform apply` (staging/teaching infra)
 
-## Phase 4: Observability (parallel with Phase 3)
+## Phase 4: Observability (parallel with Phase 3) — _Done_
 
-### Step 4.1: Logging
+### Step 4.1: Logging — _Done_
 
 - Cloud Run auto-sends stdout/stderr to Cloud Logging
 - Structure backend logs as JSON (`python-json-logger`)
 - Log request ID, user ID (not protected health information / PHI), response times
 
-### Step 4.2: Health checks and uptime monitoring
+### Step 4.2: Health checks and uptime monitoring — _Done_
 
 - GCP Uptime Checks on each subdomain (free tier: 6 checks)
 - Alert policy → email/Slack on downtime
 - Use existing `/api/health` endpoint
 
-### Step 4.3: Error tracking (future)
+### Step 4.3: Error tracking — _Deferred (post-launch)_
 
 - Sentry or Cloud Error Reporting for frontend + backend
 - Source maps for frontend error deobfuscation
@@ -292,3 +293,24 @@ New workflow `.github/workflows/terraform.yml`:
 ## Implementation order
 
 Phases 1 and 2.1 (manual GCP setup) start **in parallel**. Phase 2.2+ depends on 2.1. Phase 3 depends on 1 + 2. Phase 4 is parallel with 3. ~20 distinct implementation tasks, each walkthrough-able individually.
+
+## Branching model diagram
+
+```text
+                    feature/*
+                       │
+                       │ (auto-merge after CI passes)
+                       ▼
+                      main ──────────────────────┐
+                       │                          │
+                 ┌─────┴──────┐              release/*
+                 ▼            ▼                   │
+             staging      teaching          (bug-fixes only)
+             + landing    environment             │
+             + docs                               ▼
+             (GitHub                        clinical-live
+              Pages)                              │
+                                                  ▼
+                                            production
+                                          (clinical app)
+```

@@ -13,3 +13,6 @@ cloud_run_max_instances = 3
 
 backend_image  = "ghcr.io/bailey-medics/quillmedical/backend:latest"
 frontend_image = "ghcr.io/bailey-medics/quillmedical/frontend:latest"
+
+monitored_hostnames = ["staging.quill-medical.com"]
+alert_email         = "alerts@quill-medical.com"

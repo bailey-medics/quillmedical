@@ -2386,6 +2386,21 @@ pycryptodome = ["pycryptodome (>=3.3.1,<4.0.0)"]
 test = ["pytest", "pytest-cov"]
 
 [[package]]
+name = "python-json-logger"
+version = "4.0.0"
+description = "JSON Log Formatter for the Python Logging Package"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "python_json_logger-4.0.0-py3-none-any.whl", hash = "sha256:af09c9daf6a813aa4cc7180395f50f2a9e5fa056034c9953aec92e381c5ba1e2"},
+    {file = "python_json_logger-4.0.0.tar.gz", hash = "sha256:f58e68eb46e1faed27e0f574a55a0455eecd7b8a5b88b85a784519ba3cff047f"},
+]
+
+[package.extras]
+dev = ["backports.zoneinfo ; python_version < \"3.9\"", "black", "build", "freezegun", "mdx_truly_sane_lists", "mike", "mkdocs", "mkdocs-awesome-pages-plugin", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-material (>=8.5)", "mkdocstrings[python]", "msgspec ; implementation_name != \"pypy\"", "mypy", "orjson ; implementation_name != \"pypy\"", "pylint", "pytest", "tzdata", "validate-pyproject[all]"]
+
+[[package]]
 name = "pywebpush"
 version = "2.0.3"
 description = "WebPush publication library"
@@ -3347,4 +3362,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "c272995ece2fa0203d53769bbbb2343689d5cebc8747195bead1b2e28f53cd72"
+content-hash = "3f2b3b9dcf73154e319201e29fdca636d4359fb418fc854d1f65ee254135bab1"

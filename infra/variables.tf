@@ -62,3 +62,15 @@ variable "frontend_image" {
   type        = string
   default     = "ghcr.io/bailey-medics/quillmedical/frontend:latest"
 }
+
+variable "monitored_hostnames" {
+  description = "Hostnames to create uptime checks for (e.g. api, app subdomains)"
+  type        = list(string)
+  default     = []
+}
+
+variable "alert_email" {
+  description = "Email address to receive uptime failure alerts"
+  type        = string
+  default     = ""
+}
