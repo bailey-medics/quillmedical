@@ -1,0 +1,207 @@
+# Terraform plan on PRs, apply on merge to develop (staging/teaching) or main (prod)
+name: Terraform
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "infra/**"
+
+permissions:
+  contents: read
+  id-token: write       # Workload Identity Federation
+  pull-requests: write   # Post plan as PR comment
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- Terraform plan (PRs only) ----------
+  plan:
+    name: Plan (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        include:
+          - environment: staging
+            wif_provider_secret: GCP_STAGING_WIF_PROVIDER
+            service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
+          - environment: teaching
+            wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
+            service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
+          - environment: prod
+            wif_provider_secret: GCP_PROD_WIF_PROVIDER
+            service_account_secret: GCP_PROD_SERVICE_ACCOUNT
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets[matrix.wif_provider_secret] }}
+          service_account: ${{ secrets[matrix.service_account_secret] }}
+
+      - name: Terraform init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform plan
+        id: plan
+        working-directory: infra
+        run: |
+          terraform plan \
+            -var-file=environments/${{ matrix.environment }}/terraform.tfvars \
+            -input=false \
+            -no-color \
+            -out=tfplan \
+            2>&1 | tee plan-output.txt
+
+      - name: Post plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan-output.txt', 'utf8');
+            const maxLen = 60000;
+            const truncated = plan.length > maxLen
+              ? plan.substring(0, maxLen) + '\n\n... (truncated)'
+              : plan;
+
+            const body = `### Terraform Plan: \`${{ matrix.environment }}\`
+
+            \`\`\`
+            ${truncated}
+            \`\`\`
+
+            *Workflow:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # ---------- Terraform apply: staging + teaching (develop branch) ----------
+  apply-staging:
+    name: Apply (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    strategy:
+      matrix:
+        include:
+          - environment: staging
+            wif_provider_secret: GCP_STAGING_WIF_PROVIDER
+            service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
+          - environment: teaching
+            wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
+            service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
+    environment: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets[matrix.wif_provider_secret] }}
+          service_account: ${{ secrets[matrix.service_account_secret] }}
+
+      - name: Terraform init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        working-directory: infra
+        run: |
+          terraform apply \
+            -var-file=environments/${{ matrix.environment }}/terraform.tfvars \
+            -input=false \
+            -auto-approve
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Terraform apply failed (${{ matrix.environment }})",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Terraform apply failed (${{ matrix.environment }})*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+  # ---------- Terraform apply: production (main branch) ----------
+  apply-production:
+    name: Apply (prod)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
+
+      - name: Terraform init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        working-directory: infra
+        run: |
+          terraform apply \
+            -var-file=environments/prod/terraform.tfvars \
+            -input=false \
+            -auto-approve
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Terraform apply failed (production)",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Terraform apply failed (production)*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }

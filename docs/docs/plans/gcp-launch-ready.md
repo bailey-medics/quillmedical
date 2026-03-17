@@ -200,6 +200,8 @@ infra/
 
 ## Phase 3: CI/CD pipeline (GitFlow)
 
+_Done: deploy-staging.yml (Step 3.1), deploy-production.yml (Step 3.2), terraform.yml (Step 3.4) created. Step 3.3 (release process) is a documented workflow, not code._
+
 ### Branching strategy
 
 ```text
