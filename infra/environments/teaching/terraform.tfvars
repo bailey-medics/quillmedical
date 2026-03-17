@@ -1,6 +1,6 @@
 # environments/teaching/terraform.tfvars — Teaching configuration
 
-project_id  = "quill-teaching"
+project_id  = "quill-medical-teaching"
 region      = "europe-west2"
 environment = "teaching"
 domain      = "quill-medical.com"
