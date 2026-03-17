@@ -1,9 +1,9 @@
-# Deploy to production when main is updated via a release/* merge
+# Deploy to production when clinical-live is updated via a release/* merge
 name: Deploy to production
 
 on:
   push:
-    branches: [main]
+    branches: [clinical-live]
     paths-ignore:
       - "docs/**"
       - "*.md"
@@ -87,7 +87,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:main-${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:clinical-live-${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -117,7 +117,7 @@ jobs:
           gcloud run services update backend \
             --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/backend:main-${{ github.sha }}
+            --image=${{ env.IMAGE_PREFIX }}/backend:clinical-live-${{ github.sha }}
 
       - name: Deploy frontend to production
         if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -125,7 +125,7 @@ jobs:
           gcloud run services update frontend \
             --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/frontend:main-${{ github.sha }}
+            --image=${{ env.IMAGE_PREFIX }}/frontend:clinical-live-${{ github.sha }}
 
       - name: Run Alembic migrations (production)
         if: ${{ needs.changes.outputs.backend == 'true' }}

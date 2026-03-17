@@ -1,7 +1,7 @@
 # Workflow for feature/* and release/* branches:
 # - Runs all checks (Python, TypeScript, Semgrep, docs)
-# - feature/* branches: auto-merge into develop after checks pass
-# - release/* branches: checks only (merge to main via PR)
+# - feature/* branches: auto-merge into main after checks pass
+# - release/* branches: checks only (merge to clinical-live via PR)
 name: Branch checks
 
 on:
@@ -11,7 +11,7 @@ on:
       - "release/**"
       - "hotfix/**"
   pull_request:
-    branches: [main, develop]
+    branches: [main, clinical-live]
 
 permissions:
   contents: write
@@ -385,10 +385,10 @@ jobs:
             }
 
 
-  # ---------- Merge feature/* into develop (GitFlow) ----------
-  merge-to-develop:
+  # ---------- Merge feature/* into main ----------
+  merge-to-main:
     runs-on: ubuntu-latest
-    name: Merge feature into develop
+    name: Merge feature into main
     needs: [docs_build]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
     steps:
@@ -400,7 +400,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Merge feature branch into develop
+      - name: Merge feature branch into main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -412,14 +412,14 @@ jobs:
             exit 1
           fi
 
-          # Fetch develop
-          git fetch origin develop:develop || {
-            echo "ERROR: 'develop' branch does not exist on remote." >&2
+          # Fetch main
+          git fetch origin main:main || {
+            echo "ERROR: 'main' branch does not exist on remote." >&2
             exit 1
           }
 
-          echo "Merging '$BRANCH_NAME' into develop"
-          git checkout develop
+          echo "Merging '$BRANCH_NAME' into main"
+          git checkout main
 
           # Ensure the feature branch exists locally
           if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
@@ -427,7 +427,7 @@ jobs:
           fi
 
           # Attempt merge; on conflict, abort and fail
-          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into develop"; then
+          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
             echo "Merge succeeded"
           else
             echo "Merge conflict. Aborting."
@@ -435,7 +435,7 @@ jobs:
             exit 1
           fi
 
-          git push origin develop
+          git push origin main
 
       - name: Extract commit info
         id: commit
@@ -462,13 +462,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "✅ Feature branch merged to develop",
+              "text": "✅ Feature branch merged to main",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*✅ Feature branch merged to develop*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*✅ Feature branch merged to main*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -482,13 +482,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Feature merge to develop failed",
+              "text": "❌ Feature merge to main failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Feature merge to develop failed*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Feature merge to main failed*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
