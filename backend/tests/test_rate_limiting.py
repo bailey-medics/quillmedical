@@ -113,7 +113,7 @@ class TestRateLimitDisabledInTests:
         self, test_client: TestClient, test_user: User
     ) -> None:
         """When limiter is disabled, no rate limits apply."""
-        with patch.object(limiter, "_disabled", True):
+        with patch.object(limiter, "enabled", False):
             for _ in range(10):
                 resp = test_client.post(
                     "/api/auth/login",
