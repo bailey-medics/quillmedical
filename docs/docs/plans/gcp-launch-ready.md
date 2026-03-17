@@ -78,12 +78,12 @@ Create `caddy/prod/Caddyfile`:
 
 - Security headers: HTTP Strict Transport Security (HSTS), Content Security Policy (CSP), X-Frame-Options, X-Content-Type-Options
 - Static asset caching (Cache-Control)
-- Rate limiting on `/api/auth/*` endpoints
+- Rate limiting on `/api/auth/*` endpoints — *done: slowapi on login (5/min) and register (3/min) in the backend*
 - Health check passthrough
 
 ### Step 1.3: Production Docker Compose files
 
-- `compose.yml` — base service definitions shared between dev/prod
+- ~~`compose.yml` — base service definitions shared between dev/prod~~ *skipped: dev and prod configs differ significantly (volume mounts, build targets, services, env vars); separate standalone files are simpler and clearer at this project size*
 - `compose.prod.cloud-run.yml` — production overrides (no volume mounts, resource limits, restart policies, secrets from environment)
 - `compose.prod.fhir-openehr.yml` — FHIR + EHRbase for the Compute Engine VM
 
@@ -94,8 +94,8 @@ Modify `backend/app/config.py`, `backend/app/main.py`, `backend/app/push.py`:
 - `SECURE_COOKIES=True` in production (currently `False`)
 - `COOKIE_DOMAIN=.quill-medical.com`
 - Cross-origin resource sharing (CORS) allowed origins whitelist (`app.quill-medical.com`, `staging.quill-medical.com`)
-- Rate limiting on login/register endpoints (slowapi)
-- Move push subscriptions from in-memory list → database table
+- Rate limiting on login/register endpoints (slowapi) — *done: 5/min login, 3/min register*
+- Move push subscriptions from in-memory list → database table — *deferred: requires new SQLAlchemy model, Alembic migration, and updating `push_send.py`; separate piece of work*
 - Create `backend/docker/entrypoint.sh` to run Alembic migrations before server start
 
 ### Step 1.5: Environment-aware frontend
