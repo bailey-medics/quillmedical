@@ -36,6 +36,9 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -139,6 +142,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
+
+# --- Rate limiting (slowapi) ---
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(push_send_router)
 
@@ -438,8 +446,12 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
 @router.post("/auth/login")
+@limiter.limit("5/minute")
 def login(
-    data: LoginIn, response: Response, db: Session = DEP_GET_SESSION
+    request: Request,
+    data: LoginIn,
+    response: Response,
+    db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """User Login with Optional TOTP.
 
@@ -507,8 +519,11 @@ def login(
 
 
 @router.post("/auth/register")
+@limiter.limit("3/minute")
 def register(
-    payload: RegisterIn, db: Session = DEP_GET_SESSION
+    request: Request,
+    payload: RegisterIn,
+    db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """User Registration.
 

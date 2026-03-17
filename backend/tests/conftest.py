@@ -27,12 +27,19 @@ os.environ.setdefault(
 )
 
 from app.db import get_session
-from app.main import app
+from app.main import app, limiter
 from app.models import Base, Role, User
 from app.security import hash_password
 
 # Use in-memory SQLite database for unit tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    """Reset slowapi rate limiter state between tests."""
+    limiter.reset()
+
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,

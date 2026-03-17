@@ -10,6 +10,11 @@ services:
     container_name: quill_backend
     environment:
       BACKEND_ENV: production
+      SECURE_COOKIES: "true"
+      COOKIE_DOMAIN: ".quill-medical.com"
+      # CORS_ORIGINS set per environment via Secret Manager / Cloud Run env:
+      #   prod:    '["https://app.quill-medical.com","https://quill-medical.com"]'
+      #   staging: '["https://staging.quill-medical.com"]'
     expose:
       - "8000"
     deploy:
