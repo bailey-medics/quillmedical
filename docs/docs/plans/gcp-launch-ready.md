@@ -257,21 +257,21 @@ New workflow `.github/workflows/terraform.yml`:
 - On merge to `main`: `terraform apply` (production infra)
 - On merge to `develop`: `terraform apply` (staging/teaching infra)
 
-## Phase 4: Observability (parallel with Phase 3)
+## Phase 4: Observability (parallel with Phase 3) — _Done_
 
-### Step 4.1: Logging
+### Step 4.1: Logging — _Done_
 
 - Cloud Run auto-sends stdout/stderr to Cloud Logging
 - Structure backend logs as JSON (`python-json-logger`)
 - Log request ID, user ID (not protected health information / PHI), response times
 
-### Step 4.2: Health checks and uptime monitoring
+### Step 4.2: Health checks and uptime monitoring — _Done_
 
 - GCP Uptime Checks on each subdomain (free tier: 6 checks)
 - Alert policy → email/Slack on downtime
 - Use existing `/api/health` endpoint
 
-### Step 4.3: Error tracking (future)
+### Step 4.3: Error tracking — _Deferred (post-launch)_
 
 - Sentry or Cloud Error Reporting for frontend + backend
 - Source maps for frontend error deobfuscation

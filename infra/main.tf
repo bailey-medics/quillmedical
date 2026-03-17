@@ -189,3 +189,13 @@ module "cloud_storage" {
   region      = var.region
   environment = var.environment
 }
+
+# ---------- Monitoring: uptime checks + alerting ----------
+module "monitoring" {
+  source      = "./modules/monitoring"
+  project_id  = var.project_id
+  environment = var.environment
+
+  monitored_hostnames = var.monitored_hostnames
+  alert_email         = var.alert_email
+}
