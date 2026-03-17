@@ -1,13 +1,13 @@
 # backend.tf — Remote state in GCS bucket
 #
 # Before first use:
-#   1. Create the bucket:    gsutil mb -p <admin-project> gs://quill-terraform-state
-#   2. Enable versioning:    gsutil versioning set on gs://quill-terraform-state
+#   1. Create the bucket:    gsutil mb -p quill-medical-production gs://quill-medical-terraform-state
+#   2. Enable versioning:    gsutil versioning set on gs://quill-medical-terraform-state
 #   3. Initialise Terraform: terraform init
 
 terraform {
   backend "gcs" {
-    bucket = "quill-terraform-state"
+    bucket = "quill-medical-terraform-state"
     prefix = "terraform/state"
   }
 }
