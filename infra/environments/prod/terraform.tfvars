@@ -1,6 +1,6 @@
 # environments/prod/terraform.tfvars — Production configuration
 
-project_id  = "quill-prod"
+project_id  = "quill-medical-production"
 region      = "europe-west2"
 environment = "prod"
 domain      = "quill-medical.com"

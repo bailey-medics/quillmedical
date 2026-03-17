@@ -1,6 +1,6 @@
 # environments/staging/terraform.tfvars — Staging configuration
 
-project_id  = "quill-staging"
+project_id  = "quill-medical-staging"
 region      = "europe-west2"
 environment = "staging"
 domain      = "quill-medical.com"

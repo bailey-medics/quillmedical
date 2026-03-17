@@ -111,7 +111,7 @@ _Scaffold done: all modules created in `infra/` (steps 2.2–2.8). Step 2.1 (man
 
 ### Step 2.1: GCP setup (manual)
 
-- Create GCP projects: `quill-prod`, `quill-staging`, `quill-teaching`
+- Create GCP projects: `quill-medical-production`, `quill-medical-staging`, `quill-medical-teaching`
 - Enable APIs: Cloud Run, Cloud SQL, Compute Engine, Cloud DNS, Secret Manager, Identity and Access Management (IAM)
 - Create Terraform service account + store key as GitHub secret
 
