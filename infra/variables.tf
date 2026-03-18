@@ -68,6 +68,12 @@ variable "lb_domains" {
   type        = list(string)
 }
 
+variable "landing_domain" {
+  description = "Apex domain for the static landing page (optional, production only)"
+  type        = string
+  default     = null
+}
+
 variable "monitored_hostnames" {
   description = "Hostnames to create uptime checks for (e.g. api, app subdomains)"
   type        = list(string)
