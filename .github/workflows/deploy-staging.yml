@@ -13,16 +13,14 @@ on:
 permissions:
   contents: read
   id-token: write   # Workload Identity Federation
-  packages: write   # GHCR push
 
 concurrency:
   group: deploy-staging
   cancel-in-progress: true
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
   GCP_REGION: europe-west2
+  AR_REGISTRY: europe-west2-docker.pkg.dev
 
 jobs:
   # ---------- Detect which services changed ----------
@@ -68,19 +66,22 @@ jobs:
       - uses: actions/checkout@v4
         if: ${{ matrix.changed == 'true' }}
 
-      - name: Log in to GHCR
+      - name: Authenticate to GCP (staging)
         if: ${{ matrix.changed == 'true' }}
-        uses: docker/login-action@v3
+        uses: google-github-actions/auth@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          workload_identity_provider: ${{ secrets.GCP_STAGING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_STAGING_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        if: ${{ matrix.changed == 'true' }}
+        run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
       - name: Set up Docker Buildx
         if: ${{ matrix.changed == 'true' }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build and push to staging AR
         if: ${{ matrix.changed == 'true' }}
         uses: docker/build-push-action@v6
         with:
@@ -88,10 +89,33 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:main-${{ github.sha }}
-            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:main
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Authenticate to GCP (teaching)
+        if: ${{ matrix.changed == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for teaching AR
+        if: ${{ matrix.changed == 'true' }}
+        run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
+
+      - name: Push to teaching AR
+        if: ${{ matrix.changed == 'true' }}
+        run: |
+          docker tag \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+          docker tag \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
+          docker push ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+          docker push ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
 
   # ---------- Deploy to staging ----------
   deploy-staging:
@@ -116,18 +140,18 @@ jobs:
       - name: Deploy backend to staging
         if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
-          gcloud run services update backend \
+          gcloud run services update quill-backend-staging \
             --project=${{ secrets.GCP_STAGING_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/backend:main-${{ github.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/backend:main-${{ github.sha }}
 
       - name: Deploy frontend to staging
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          gcloud run services update frontend \
+          gcloud run services update quill-frontend-staging \
             --project=${{ secrets.GCP_STAGING_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/frontend:main-${{ github.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/frontend:main-${{ github.sha }}
 
       - name: Run Alembic migrations (staging)
         if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -174,18 +198,18 @@ jobs:
       - name: Deploy backend to teaching
         if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
-          gcloud run services update backend \
+          gcloud run services update quill-backend-teaching \
             --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/backend:main-${{ github.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:main-${{ github.sha }}
 
       - name: Deploy frontend to teaching
         if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: |
-          gcloud run services update frontend \
+          gcloud run services update quill-frontend-teaching \
             --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --image=${{ env.IMAGE_PREFIX }}/frontend:main-${{ github.sha }}
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:main-${{ github.sha }}
 
       - name: Run Alembic migrations (teaching)
         if: ${{ needs.changes.outputs.backend == 'true' }}

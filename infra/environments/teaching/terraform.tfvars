@@ -11,8 +11,8 @@ enable_ha   = false
 
 cloud_run_max_instances = 5
 
-backend_image  = "ghcr.io/bailey-medics/quillmedical/backend:latest"
-frontend_image = "ghcr.io/bailey-medics/quillmedical/frontend:latest"
+backend_image  = "europe-west2-docker.pkg.dev/quill-medical-teaching/quill/backend:latest"
+frontend_image = "europe-west2-docker.pkg.dev/quill-medical-teaching/quill/frontend:latest"
 
 monitored_hostnames = ["teaching.quill-medical.com"]
 alert_email         = "alerts@quill-medical.com"

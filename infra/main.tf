@@ -16,6 +16,15 @@ provider "google-beta" {
   region  = var.region
 }
 
+# ---------- Artifact Registry ----------
+resource "google_artifact_registry_repository" "docker" {
+  project       = var.project_id
+  location      = var.region
+  repository_id = "quill"
+  format        = "DOCKER"
+  description   = "Container images for Quill Medical (${var.environment})"
+}
+
 # ---------- Secrets (created first, values set manually) ----------
 module "secrets" {
   source     = "./modules/secrets"
@@ -131,6 +140,42 @@ module "compute_fhir" {
   ehrbase_admin_password_secret = "ehrbase-admin-password"
 }
 
+# ---------- IAM: Cloud Run → Secret Manager ----------
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+resource "google_project_iam_member" "cloudrun_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# ---------- Initial secret values (jwt-secret, vapid-private) ----------
+# These are generated once by Terraform. Replace vapid-private with a real
+# VAPID key via `gcloud secrets versions add` before going live.
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = true
+}
+
+resource "google_secret_manager_secret_version" "jwt_secret" {
+  secret      = "projects/${var.project_id}/secrets/jwt-secret"
+  secret_data = random_password.jwt_secret.result
+  depends_on  = [module.secrets]
+}
+
+resource "random_password" "vapid_placeholder" {
+  length  = 32
+  special = false
+}
+
+resource "google_secret_manager_secret_version" "vapid_private" {
+  secret      = "projects/${var.project_id}/secrets/vapid-private"
+  secret_data = random_password.vapid_placeholder.result
+  depends_on  = [module.secrets]
+}
+
 # ---------- Cloud Run: backend ----------
 module "cloud_run_backend" {
   source      = "./modules/cloud-run"
@@ -166,6 +211,13 @@ module "cloud_run_backend" {
     AUTH_DB_PASSWORD  = "auth-db-password"
     VAPID_PRIVATE    = "vapid-private"
   }
+
+  depends_on = [
+    google_secret_manager_secret_version.jwt_secret,
+    google_secret_manager_secret_version.vapid_private,
+    google_project_iam_member.cloudrun_secret_accessor,
+    module.cloud_sql_auth, # writes auth-db-password version
+  ]
 }
 
 # ---------- Cloud Run: frontend ----------
@@ -178,8 +230,8 @@ module "cloud_run_frontend" {
   service_name     = "frontend"
   image            = var.frontend_image
   port             = 80
-  memory           = "256Mi"
-  cpu              = "0.5"
+  memory           = "512Mi"
+  cpu              = "1"
   max_instances    = var.cloud_run_max_instances
   vpc_connector_id = module.networking.vpc_connector_id
 }

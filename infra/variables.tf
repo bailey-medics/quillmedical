@@ -54,13 +54,13 @@ variable "cloud_run_max_instances" {
 variable "backend_image" {
   description = "Container image for the backend service"
   type        = string
-  default     = "ghcr.io/bailey-medics/quillmedical/backend:latest"
+  default     = "gcr.io/cloudrun/hello:latest"
 }
 
 variable "frontend_image" {
   description = "Container image for the frontend service"
   type        = string
-  default     = "ghcr.io/bailey-medics/quillmedical/frontend:latest"
+  default     = "gcr.io/cloudrun/hello:latest"
 }
 
 variable "monitored_hostnames" {
