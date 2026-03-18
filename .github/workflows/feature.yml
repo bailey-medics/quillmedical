@@ -1,0 +1,77 @@
+# Workflow for feature/* branches:
+# - Runs all code quality checks (via reusable _checks.yml)
+# - Opens a pull request to main (if one doesn't already exist)
+#
+# When the PR is merged by a human, the push to main triggers
+# deploy-staging.yml (unlike the old auto-merge which used GITHUB_TOKEN
+# and silently failed to trigger downstream workflows).
+name: Feature branch
+
+on:
+  push:
+    branches: ["feature/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: feature-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Run checks
+    uses: ./.github/workflows/_checks.yml
+    secrets: inherit
+
+  open-pr:
+    runs-on: ubuntu-latest
+    name: Open pull request
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create PR if none exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if a PR already exists for this branch targeting main
+          EXISTING=$(gh pr list \
+            --head "$GITHUB_REF_NAME" \
+            --base main \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || true)
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for $GITHUB_REF_NAME"
+            exit 0
+          fi
+
+          # Use the latest commit message as the PR title
+          TITLE=$(git log -1 --pretty=%s)
+
+          gh pr create \
+            --base main \
+            --head "$GITHUB_REF_NAME" \
+            --title "$TITLE" \
+            --body "Auto-created PR for \`$GITHUB_REF_NAME\`."
+
+      - name: Notify Slack on PR creation failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Failed to create PR for feature branch",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Failed to create PR for feature branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
