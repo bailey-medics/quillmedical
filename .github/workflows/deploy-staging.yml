@@ -156,14 +156,6 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/frontend:main-${{ github.sha }}
 
-      - name: Run Alembic migrations (staging)
-        if: ${{ needs.changes.outputs.backend == 'true' }}
-        run: |
-          gcloud run jobs execute migrate-auth-db \
-            --project=${{ secrets.GCP_STAGING_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --wait
-
       - name: Smoke test staging
         run: |
           for i in 1 2 3 4 5; do
@@ -213,14 +205,6 @@ jobs:
             --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:main-${{ github.sha }}
-
-      - name: Run Alembic migrations (teaching)
-        if: ${{ needs.changes.outputs.backend == 'true' }}
-        run: |
-          gcloud run jobs execute migrate-auth-db \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --wait
 
       - name: Smoke test teaching
         run: |

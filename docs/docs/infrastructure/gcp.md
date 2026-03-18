@@ -144,7 +144,7 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
-| `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs           |
+| `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs            |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |
 | `cloud-storage` | Image bucket (teaching only)                                            |
@@ -240,22 +240,22 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 - **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
 - **Static global IP**: stable IP addresses for DNS A records
 
-| Environment | Domain                       | Load Balancer IP   |
-| ----------- | ---------------------------- | ------------------ |
-| Production  | `app.quill-medical.com`      | `34.110.153.200`   |
-| Staging     | `staging.quill-medical.com`  | `35.186.223.130`   |
-| Teaching    | `teaching.quill-medical.com` | `136.110.221.126`  |
+| Environment | Domain                       | Load Balancer IP  |
+| ----------- | ---------------------------- | ----------------- |
+| Production  | `app.quill-medical.com`      | `34.110.153.200`  |
+| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  |
+| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` |
 
 The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
-| Domain                       | Purpose                              | Update process                      |
-| ---------------------------- | ------------------------------------ | ----------------------------------- |
-| `quill-medical.com`          | Public landing/marketing site        | Update anytime, no clinical sign-off |
-| `app.quill-medical.com`      | Live clinical application            | Release versions, DCB0129, UAT      |
-| `staging.quill-medical.com`  | Staging/integration testing          | Auto-deploy from main branch        |
-| `teaching.quill-medical.com` | Teaching/training environment         | Auto-deploy from main branch        |
+| Domain                       | Purpose                       | Update process                       |
+| ---------------------------- | ----------------------------- | ------------------------------------ |
+| `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off |
+| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       |
+| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         |
+| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         |
 
 The public landing site (`quill-medical.com`) is intentionally separate from the clinical app. This allows marketing pages, pricing, and feature announcements to be updated without going through clinical release gates. The apex domain is currently unused — a Cloud Storage bucket with CDN can be added later.
 
@@ -414,8 +414,17 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 1. Build container images
 2. Push to Artifact Registry
 3. Deploy to staging and teaching Cloud Run
-4. Run Alembic migrations
-5. Smoke test the health endpoint
+4. Smoke test the health endpoint
+
+### Create Alembic migration Cloud Run job
+
+The deploy workflows originally included an Alembic migration step (`gcloud run jobs execute migrate-auth-db`), but this Cloud Run job doesn't exist yet. It was removed from the workflows temporarily.
+
+To restore it:
+
+1. Add a `google_cloud_run_v2_job` resource in Terraform that runs `alembic upgrade head` against the auth DB
+2. Grant the job's service account access to the Cloud SQL instance and the `database-url` secret
+3. Re-add the migration steps to `deploy-staging.yml` (staging + teaching) and `deploy-production.yml`
 
 ### Production go-live
 
