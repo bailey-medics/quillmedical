@@ -89,3 +89,9 @@ variable "ingress" {
   type        = string
   default     = "INGRESS_TRAFFIC_ALL"
 }
+
+variable "health_check_path" {
+  description = "HTTP path for startup and liveness probes"
+  type        = string
+  default     = "/"
+}

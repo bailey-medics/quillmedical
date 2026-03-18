@@ -37,6 +37,10 @@ FROM deps AS build
 
 COPY . .
 
+# VAPID public key — injected at build time for push notifications
+ARG VITE_VAPID_PUBLIC
+ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
+
 # Build SPA (outputs to dist/) and public pages (outputs to dist/public_pages/)
 RUN yarn build && yarn workspace public_pages build
 

@@ -11,8 +11,10 @@ enable_ha   = false
 
 cloud_run_max_instances = 3
 
-backend_image  = "europe-west2-docker.pkg.dev/quill-medical-staging/quill/backend:latest"
-frontend_image = "europe-west2-docker.pkg.dev/quill-medical-staging/quill/frontend:latest"
+lb_domains = ["staging.quill-medical.com"]
+
+backend_image  = "gcr.io/cloudrun/hello:latest"
+frontend_image = "gcr.io/cloudrun/hello:latest"
 
 monitored_hostnames = ["staging.quill-medical.com"]
 alert_email         = "alerts@quill-medical.com"

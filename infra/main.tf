@@ -190,6 +190,7 @@ module "cloud_run_backend" {
   cpu              = "1"
   max_instances    = var.cloud_run_max_instances
   vpc_connector_id = module.networking.vpc_connector_id
+  health_check_path = "/api/health"
 
   env_vars = merge(
     {
@@ -234,6 +235,19 @@ module "cloud_run_frontend" {
   cpu              = "1"
   max_instances    = var.cloud_run_max_instances
   vpc_connector_id = module.networking.vpc_connector_id
+  health_check_path = "/healthz"
+}
+
+# ---------- Global HTTPS Load Balancer ----------
+module "load_balancer" {
+  source      = "./modules/load-balancer"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  domains               = var.lb_domains
+  backend_service_name  = module.cloud_run_backend.service_name
+  frontend_service_name = module.cloud_run_frontend.service_name
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
