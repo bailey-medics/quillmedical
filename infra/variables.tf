@@ -63,6 +63,11 @@ variable "frontend_image" {
   default     = "gcr.io/cloudrun/hello:latest"
 }
 
+variable "lb_domains" {
+  description = "Domain names for the load balancer SSL certificate and routing"
+  type        = list(string)
+}
+
 variable "monitored_hostnames" {
   description = "Hostnames to create uptime checks for (e.g. api, app subdomains)"
   type        = list(string)

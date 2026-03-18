@@ -1,5 +1,9 @@
 # Production Caddyfile — served inside the frontend prod container
-# Caddy listens on :80; the GCP load balancer handles TLS termination
+# Caddy listens on :80; the GCP Global HTTPS Load Balancer handles:
+#   - TLS termination (Google-managed certificate)
+#   - Path routing: /api/* → backend Cloud Run, /* → this container
+#   - Cloud Armor WAF + rate limiting
+#   - HTTP → HTTPS redirect
 
 :80 {
 	encode zstd gzip
@@ -25,19 +29,10 @@
 	}
 
 	# ──────────────────────────────────────────────
-	# API — reverse proxy to backend (Cloud Run sidecar)
+	# Health check (for Cloud Run container probes)
 	# ──────────────────────────────────────────────
-	@api path /api/*
-	handle @api {
-		reverse_proxy localhost:8000
-	}
-
-	# ──────────────────────────────────────────────
-	# Health check passthrough (no auth required)
-	# ──────────────────────────────────────────────
-	@health path /api/health
-	handle @health {
-		reverse_proxy localhost:8000
+	handle /healthz {
+		respond "ok" 200
 	}
 
 	# ──────────────────────────────────────────────

@@ -1,12 +1,17 @@
 # outputs.tf — Root-level outputs
 
+output "lb_ip" {
+  description = "Global load balancer IP address (point DNS A records here)"
+  value       = module.load_balancer.lb_ip
+}
+
 output "backend_url" {
-  description = "Cloud Run backend URL"
+  description = "Cloud Run backend URL (direct, bypasses LB)"
   value       = module.cloud_run_backend.service_url
 }
 
 output "frontend_url" {
-  description = "Cloud Run frontend URL"
+  description = "Cloud Run frontend URL (direct, bypasses LB)"
   value       = module.cloud_run_frontend.service_url
 }
 

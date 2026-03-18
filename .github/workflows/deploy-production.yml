@@ -21,6 +21,7 @@ concurrency:
 env:
   GCP_REGION: europe-west2
   AR_REGISTRY: europe-west2-docker.pkg.dev
+  VITE_VAPID_PUBLIC: BC0B26JO27tGc5qkbt2-QzY8M7_0u3gt5hmFj1RGWvZp9Vr9fDQ3-lpQ6YxqNlU0fFKlIUzCnb-baAE0rzIL-Ys
 
 jobs:
   # ---------- Detect which services changed ----------
@@ -90,6 +91,8 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/${{ matrix.service }}:clinical-live-${{ github.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/${{ matrix.service }}:latest
+          build-args: |
+            VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
