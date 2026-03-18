@@ -159,13 +159,15 @@ Container images are pushed here by CI (not GHCR — Cloud Run only supports Art
 
 ### Organisation policy override (done)
 
-The GCP organisation (`826360329716`) enforces **Domain Restricted Sharing** by default, which blocks `allUsers` IAM bindings. This was overridden at the project level for staging to allow public Cloud Run access:
+The GCP organisation (`826360329716`) enforces **Domain Restricted Sharing** by default, which blocks `allUsers` IAM bindings. This was overridden at the project level for all three projects to allow public Cloud Run access:
 
 ```bash
 gcloud resource-manager org-policies set-policy policy.yaml --project=quill-medical-staging
+gcloud resource-manager org-policies set-policy policy.yaml --project=quill-medical-teaching
+gcloud resource-manager org-policies set-policy policy.yaml --project=quill-medical-production
 ```
 
-This must also be done for teaching and production projects before deploying those environments.
+This required the `roles/orgpolicy.policyAdmin` role at the organisation level.
 
 ### Staging Terraform apply (done)
 
@@ -185,9 +187,51 @@ Cloud Run URLs (placeholder containers, will serve real app after first CI deplo
 - Backend: `https://quill-backend-staging-fptrrusgxa-nw.a.run.app`
 - Frontend: `https://quill-frontend-staging-fptrrusgxa-nw.a.run.app`
 
-### Local Terraform plan (done)
+### Teaching Terraform apply (done)
 
-`terraform plan` for staging completed successfully: **43 resources to add, 0 errors**.
+`terraform apply` completed for the teaching environment — **32 resources created**:
+
+- VPC, subnet, Cloud NAT, VPC connector, firewall rules
+- 1 Cloud SQL instance (auth only — no FHIR/EHRbase) with auto-generated password
+- Secret Manager secrets with initial values
+- Cloud Run backend and frontend (placeholder images)
+- Artifact Registry Docker repository
+- Cloud Storage image bucket
+- IAM bindings for public Cloud Run access and Secret Manager
+- Monitoring uptime checks and email alerts
+
+Cloud Run URLs:
+
+- Backend: `https://quill-backend-teaching-izhomeiy6q-nw.a.run.app`
+- Frontend: `https://quill-frontend-teaching-izhomeiy6q-nw.a.run.app`
+
+### Production Terraform apply (done)
+
+`terraform apply` completed for the production environment — **50 resources created**:
+
+- VPC, subnet, Cloud NAT, VPC connector, firewall rules
+- 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
+- Secret Manager secrets with initial values
+- Cloud Run backend and frontend (placeholder images)
+- Compute Engine VM for HAPI FHIR + EHRbase
+- Artifact Registry Docker repository
+- IAM bindings for public Cloud Run access and Secret Manager
+- Monitoring uptime checks and email alerts
+
+Cloud Run URLs:
+
+- Backend: `https://quill-backend-prod-vyeoxhqnba-nw.a.run.app`
+- Frontend: `https://quill-frontend-prod-vyeoxhqnba-nw.a.run.app`
+
+### Terraform workspaces (done)
+
+Each environment uses a separate Terraform workspace to isolate state:
+
+| Workspace    | Environment | State path in GCS                                                       |
+| ------------ | ----------- | ----------------------------------------------------------------------- |
+| `staging`    | Staging     | `gs://quill-medical-terraform-state/terraform/state/staging.tfstate`    |
+| `teaching`   | Teaching    | `gs://quill-medical-terraform-state/terraform/state/teaching.tfstate`   |
+| `production` | Production  | `gs://quill-medical-terraform-state/terraform/state/production.tfstate` |
 
 Terraform and the `gh` CLI were installed via Homebrew on the admin account.
 
@@ -281,31 +325,18 @@ cloud_run_max_instances = 5
 
 ## Remaining steps
 
-### Organisation policy override for teaching and production
+### Set real VAPID key
 
-The same `iam.allowedPolicyMemberDomains` override applied to staging must be applied to teaching and production before deploying:
-
-```bash
-gcloud resource-manager org-policies set-policy /tmp/policy.yaml --project=quill-medical-teaching
-gcloud resource-manager org-policies set-policy /tmp/policy.yaml --project=quill-medical-production
-```
-
-### Terraform apply for teaching
-
-Same as staging but without FHIR/EHRbase resources. Fewer resources, lower cost.
-
-### Terraform apply for production
-
-Applied separately via the `clinical-live` branch. Same structure as staging.
-
-### Set real secret values
-
-Terraform auto-generated placeholder values for `jwt-secret` and `vapid-private`. Before going live, replace with proper values:
-
-- `vapid-private` — generate with `just vapid-key` and update via:
+Terraform auto-generated a placeholder value for `vapid-private`. Before going live, replace with a real VAPID key:
 
 ```bash
+# Generate a VAPID key pair
+just vapid-key
+
+# Update the secret in each environment
 echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-staging
+echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-teaching
+echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-production
 ```
 
 The `jwt-secret` auto-generated value is fine for use — it's a strong random 64-character string.
