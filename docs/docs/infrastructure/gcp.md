@@ -4,11 +4,11 @@
 
 Quill Medical runs on three separate GCP projects, each in **europe-west2** (London):
 
-| Environment | Project ID | Purpose |
-|---|---|---|
-| Production | `quill-medical-production` | Clinical app for real patients |
-| Staging | `quill-medical-staging` | Integration testing before production |
-| Teaching | `quill-medical-teaching` | Educational environment (no clinical data) |
+| Environment | Project ID                 | Purpose                                    |
+| ----------- | -------------------------- | ------------------------------------------ |
+| Production  | `quill-medical-production` | Clinical app for real patients             |
+| Staging     | `quill-medical-staging`    | Integration testing before production      |
+| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) |
 
 Estimated cost: **£113–175/month** across all three projects.
 
@@ -100,12 +100,12 @@ Terraform uses workspace prefixes to separate state per environment.
 
 Each project has a WIF setup that lets GitHub Actions authenticate without long-lived JSON key files:
 
-| Component | Value |
-|---|---|
-| Service account | `github-actions@quill-medical-{env}.iam.gserviceaccount.com` |
-| WIF pool | `github-pool` |
-| WIF provider | `github-provider` |
-| Attribute condition | `assertion.repository == 'bailey-medics/quillmedical'` |
+| Component           | Value                                                        |
+| ------------------- | ------------------------------------------------------------ |
+| Service account     | `github-actions@quill-medical-{env}.iam.gserviceaccount.com` |
+| WIF pool            | `github-pool`                                                |
+| WIF provider        | `github-provider`                                            |
+| Attribute condition | `assertion.repository == 'bailey-medics/quillmedical'`       |
 
 The service accounts have the following IAM roles:
 
@@ -118,11 +118,11 @@ The service accounts have the following IAM roles:
 
 Nine repository secrets set via `gh secret set`:
 
-| Secret | Value pattern |
-|---|---|
-| `GCP_{ENV}_WIF_PROVIDER` | `projects/{number}/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
-| `GCP_{ENV}_SERVICE_ACCOUNT` | `github-actions@quill-medical-{env}.iam.gserviceaccount.com` |
-| `GCP_{ENV}_PROJECT_ID` | `quill-medical-{env}` |
+| Secret                      | Value pattern                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `GCP_{ENV}_WIF_PROVIDER`    | `projects/{number}/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
+| `GCP_{ENV}_SERVICE_ACCOUNT` | `github-actions@quill-medical-{env}.iam.gserviceaccount.com`                                     |
+| `GCP_{ENV}_PROJECT_ID`      | `quill-medical-{env}`                                                                            |
 
 Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
 
@@ -132,17 +132,58 @@ Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
 
 The infrastructure is defined in `infra/` using Terraform modules:
 
-| Module | Purpose |
-|---|---|
-| `secrets` | Secret Manager secret containers |
-| `networking` | VPC, subnet, Cloud NAT, VPC connector, firewall rules |
-| `cloud-sql` | PostgreSQL instances with private IP, backups, auto-generated passwords |
-| `cloud-run` | Backend and frontend services with secret injection |
-| `compute-fhir` | VM running HAPI FHIR + EHRbase (prod/staging only) |
-| `monitoring` | Uptime checks and email alerting |
-| `cloud-storage` | Image bucket (teaching only) |
+| Module          | Purpose                                                                 |
+| --------------- | ----------------------------------------------------------------------- |
+| `secrets`       | Secret Manager secret containers                                        |
+| `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
+| `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
+| `cloud-run`     | Backend and frontend services with secret injection                     |
+| `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
+| `monitoring`    | Uptime checks and email alerting                                        |
+| `cloud-storage` | Image bucket (teaching only)                                            |
 
 Environment-specific settings live in `infra/environments/{env}/terraform.tfvars`.
+
+### Artifact Registry (done)
+
+Each project has a Docker repository in Artifact Registry:
+
+```
+europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
+```
+
+Container images are pushed here by CI (not GHCR — Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
+
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:latest`
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:latest`
+
+### Organisation policy override (done)
+
+The GCP organisation (`826360329716`) enforces **Domain Restricted Sharing** by default, which blocks `allUsers` IAM bindings. This was overridden at the project level for staging to allow public Cloud Run access:
+
+```bash
+gcloud resource-manager org-policies set-policy policy.yaml --project=quill-medical-staging
+```
+
+This must also be done for teaching and production projects before deploying those environments.
+
+### Staging Terraform apply (done)
+
+`terraform apply` completed for the staging environment — **all resources created successfully**:
+
+- VPC, subnet, Cloud NAT, VPC connector, firewall rules
+- 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
+- Secret Manager secrets with initial values (jwt-secret, vapid-private, db passwords)
+- Cloud Run backend and frontend (placeholder images)
+- Compute Engine VM for HAPI FHIR + EHRbase
+- Artifact Registry Docker repository
+- IAM bindings for public Cloud Run access and Secret Manager
+- Monitoring uptime checks and email alerts
+
+Cloud Run URLs (placeholder containers, will serve real app after first CI deploy):
+
+- Backend: `https://quill-backend-staging-fptrrusgxa-nw.a.run.app`
+- Frontend: `https://quill-frontend-staging-fptrrusgxa-nw.a.run.app`
 
 ### Local Terraform plan (done)
 
@@ -167,7 +208,7 @@ feature/*  ──►  main  ──►  release/*  ──►  clinical-live
 Workflow: `.github/workflows/deploy-staging.yml`
 
 1. Detect what changed (backend, frontend, shared)
-2. Build and push container images to GHCR, tagged `main-{sha}`
+2. Build and push container images to Artifact Registry, tagged `main-{sha}`
 3. Deploy to staging and teaching Cloud Run
 4. Run Alembic database migrations
 5. Smoke test: `GET /api/health` (5 retries, 10s intervals)
@@ -178,7 +219,7 @@ Workflow: `.github/workflows/deploy-staging.yml`
 Workflow: `.github/workflows/deploy-production.yml`
 
 1. Detect what changed
-2. Build and push container images, tagged `clinical-live-{sha}` and `latest`
+2. Build and push container images to Artifact Registry, tagged `clinical-live-{sha}` and `latest`
 3. Deploy to production Cloud Run
 4. Run Alembic database migrations
 5. Smoke test: `GET /api/health`
@@ -233,25 +274,21 @@ cloud_run_max_instances = 5
 
 - **No public database IPs** — Cloud SQL is accessible only via VPC
 - **SSH via IAP only** — no open SSH ports, all access through Identity-Aware Proxy
-- **Secrets in Secret Manager** — never in Terraform state or environment variables
+- **Secrets in Secret Manager** — never in environment variables (initial values auto-generated by Terraform)
 - **WIF authentication** — no long-lived JSON key files, short-lived tokens only
 - **Attribute condition on WIF** — only the `bailey-medics/quillmedical` repository can authenticate
 - **Least-privilege service accounts** — each environment has its own service account
 
 ## Remaining steps
 
-### Terraform apply for staging
+### Organisation policy override for teaching and production
 
-Run `terraform apply` for the staging environment to create all 43 resources. This will provision:
+The same `iam.allowedPolicyMemberDomains` override applied to staging must be applied to teaching and production before deploying:
 
-- VPC and private networking
-- 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
-- Secret Manager secrets
-- Cloud Run backend and frontend services (images won't exist yet — that's fine)
-- Compute Engine VM for FHIR + EHRbase
-- Monitoring and uptime checks
-
-Cloud Run services will show as unhealthy until the first container images are pushed via CI.
+```bash
+gcloud resource-manager org-policies set-policy /tmp/policy.yaml --project=quill-medical-teaching
+gcloud resource-manager org-policies set-policy /tmp/policy.yaml --project=quill-medical-production
+```
 
 ### Terraform apply for teaching
 
@@ -261,12 +298,17 @@ Same as staging but without FHIR/EHRbase resources. Fewer resources, lower cost.
 
 Applied separately via the `clinical-live` branch. Same structure as staging.
 
-### Set secret values
+### Set real secret values
 
-After Terraform creates the Secret Manager containers, some secrets need manual values:
+Terraform auto-generated placeholder values for `jwt-secret` and `vapid-private`. Before going live, replace with proper values:
 
-- `jwt-secret` — generate with `openssl rand -base64 64`
-- `vapid-private` — generate with `just vapid-key`
+- `vapid-private` — generate with `just vapid-key` and update via:
+
+```bash
+echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-staging
+```
+
+The `jwt-secret` auto-generated value is fine for use — it's a strong random 64-character string.
 
 Database passwords are auto-generated by Terraform and stored in Secret Manager automatically.
 
@@ -279,7 +321,7 @@ Point GoDaddy nameservers to Cloud DNS. This makes `quill-medical.com` and all s
 Once DNS is set up, merge the `feature/gcp-setup` branch to `main`. The CI pipeline will:
 
 1. Build container images
-2. Push to GHCR
+2. Push to Artifact Registry
 3. Deploy to staging and teaching Cloud Run
 4. Run Alembic migrations
 5. Smoke test the health endpoint
