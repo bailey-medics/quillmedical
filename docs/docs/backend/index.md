@@ -109,11 +109,12 @@ All functions are organised under the `/api` prefix:
 
 ### User Authentication
 
-- Register a new account
-- Log in with credentials
-- Refresh your session
-- Log out securely
-- View your profile
+- Register a new account (`POST /api/auth/register`)
+- Log in with credentials and optional TOTP (`POST /api/auth/login`)
+- Refresh your session (`POST /api/auth/refresh`)
+- Log out securely (`POST /api/auth/logout`)
+- View your profile (`GET /api/auth/me`)
+- Set up TOTP two-factor authentication (`POST /api/auth/totp/setup`, `/verify`, `/disable`)
 
 ### Patient Management
 
@@ -127,9 +128,54 @@ All functions are organised under the `/api` prefix:
 
 ### Clinical Letters
 
-- Create a new clinical letter
+- Create a new clinical letter for a patient
 - View all letters for a patient
 - Retrieve a specific letter
+
+### Messaging
+
+- **Create conversation** (`POST /api/conversations`): Start a new patient conversation with initial message
+  - Writes first message to FHIR as source of truth
+  - Creates SQL projection for fast reads
+  - Automatically links shared organisations between creator and patient
+- **List conversations** (`GET /api/conversations`): List conversations for the current user
+  - Filterable by status and patient
+  - Shows unread counts per conversation
+- **View conversation** (`GET /api/conversations/{id}`): Get conversation with all messages
+  - Marks conversation as read for the current user
+- **Send message** (`POST /api/conversations/{id}/messages`): Send a message in a conversation
+  - Supports message amendments via `amends_id`
+- **Manage participants**: Add participants, self-join as staff, list participants
+- **Update status** (`PATCH /api/conversations/{id}`): Update conversation status (new, active, resolved, closed)
+- **Patient conversations** (`GET /api/patients/{id}/conversations`): List all conversations for a specific patient
+
+### User Management (Admin)
+
+- **List users** (`GET /api/users`): List users, filterable by patient shared access
+- **Get user** (`GET /api/users/{id}`): Get user details including CBAC fields
+- **Create user** (`POST /api/users`): Create user with CBAC configuration
+- **Update user** (`PATCH /api/users/{id}`): Update user details
+- **Link patient** (`PATCH /api/users/{id}/link-patient`): Link user to FHIR patient
+
+### Organisations (Admin)
+
+- **List organisations** (`GET /api/organizations`): List all organisations
+- **Create organisation** (`POST /api/organizations`): Create new organisation
+- **View organisation** (`GET /api/organizations/{id}`): Get organisation with staff/patient lists
+- **Update organisation** (`PUT /api/organizations/{id}`): Update organisation details
+- **Manage membership**: Add/remove staff and patients
+
+### CBAC (Competency-Based Access Control)
+
+- **View competencies** (`GET /api/cbac/my-competencies`): Get current user’s resolved competencies
+- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user competencies (admin only)
+
+### External Access
+
+- **Invite external user** (`POST /api/patients/{id}/invite-external`): Generate invite link for external HCPs or patient advocates
+- **Accept invite** (`POST /api/accept-invite`): Register or grant access via invite token
+- **Revoke access** (`DELETE /api/patients/{id}/external-access/{user_id}`): Revoke external access
+- **List grants** (`GET /api/patients/{id}/external-access`): List external access grants
 
 ### Push Notifications
 
@@ -162,9 +208,13 @@ Medical documentation stored in the OpenEHR system:
 User login and permission information:
 
 - Usernames and email addresses
-- Encrypted passwords
-- User roles (patient, clinician, admin)
-- Two-factor authentication settings
+- Encrypted passwords (Argon2 hashing)
+- System permissions (patient, staff, admin, superadmin)
+- Roles (e.g. Clinician)
+- CBAC configuration (base profession, additional/removed competencies)
+- Two-factor authentication settings (TOTP)
+- Organisation membership (staff and patient associations)
+- External patient access grants
 
 ## Security
 

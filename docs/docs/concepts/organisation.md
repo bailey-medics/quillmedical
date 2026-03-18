@@ -28,19 +28,21 @@
 
 ## 5. API Endpoints
 
-- `POST /organisations` — create
-- `GET /organisations/:id` — retrieve
-- `GET /organisations/:id/staff` — list staff members
-- `GET /organisations/:id/patients` — list patients (requires patient-level access)
-- `POST /organisations/:id/staff` — add staff member
-- `POST /organisations/:id/patients` — add patient
-- `DELETE /organisations/:id/staff/:userId` — remove staff member
-- `DELETE /organisations/:id/patients/:patientId` — remove patient
+All endpoints are admin-only (admin or superadmin system permissions required). The API uses the American spelling `organizations` for FHIR alignment.
+
+- `GET /api/organizations` — list all organisations
+- `POST /api/organizations` — create organisation
+- `GET /api/organizations/:id` — retrieve organisation with staff/patient lists and counts
+- `PUT /api/organizations/:id` — update organisation
+- `POST /api/organizations/:id/staff` — add staff member
+- `POST /api/organizations/:id/patients` — add patient
+- `DELETE /api/organizations/:id/staff/:userId` — remove staff member (requires CSRF)
+- `DELETE /api/organizations/:id/patients/:patientId` — remove patient (requires CSRF)
 
 ## 6. Permissions & Access
 
-- Viewing Organisation and staff list does not require patient data access
-- Viewing patient list requires patient-level permissions
+- All organisation CRUD operations require admin or superadmin system permissions
+- Mutating operations (DELETE) require CSRF token validation
 - `isPrimary` staff membership controls default Organisation on login
 
 ## 7. Naming Convention
