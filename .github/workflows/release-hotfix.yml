@@ -1,12 +1,23 @@
-# Reusable workflow containing all code quality checks.
-# Called by feature.yml (feature branches) and non-main.yml (release/hotfix/PRs).
-name: Code checks
+# Workflow for release/* and hotfix/* branches, and pull requests.
+# Runs all code quality checks. Fully self-contained — does NOT share
+# code with feature.yml or deploy workflows. A change to this file
+# cannot affect feature branch checks or production deployments.
+name: Release and hotfix checks
 
 on:
-  workflow_call: {}
+  push:
+    branches:
+      - "release/**"
+      - "hotfix/**"
+  pull_request:
+    branches: [main, clinical-live]
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-hotfix-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ---------- Python ----------
@@ -115,13 +126,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Python ${{ matrix.task }} checks failed",
+              "text": "❌ Release/hotfix python ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -220,13 +231,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ TypeScript ${{ matrix.task }} checks failed",
+              "text": "❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -241,7 +252,6 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      # Install Semgrep via pipx (fast, isolated)
       - name: Install Semgrep
         run: pipx install semgrep
 
@@ -253,8 +263,7 @@ jobs:
           SEMGREP_NO_VERSION_CHECK: "1"
         run: semgrep --config .semgrep.yml --error
 
-
-  # ---------- Build docs (validate docs build) ----------
+  # ---------- Build docs ----------
   docs_build:
     runs-on: ubuntu-latest
     name: Build documentation
@@ -264,7 +273,6 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      # ---------- Frontend docs (Node + Yarn) ----------
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -314,7 +322,6 @@ jobs:
         working-directory: frontend
         run: yarn docs:build
 
-      # ---------- Backend docs (Python + Poetry + MkDocs) ----------
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -360,13 +367,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Docs build failed",
+              "text": "❌ Release/hotfix docs build failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
