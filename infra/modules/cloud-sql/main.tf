@@ -66,15 +66,23 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.instance.name
 }
 
-# Fetch password from Secret Manager
-data "google_secret_manager_secret_version" "db_password" {
-  project = var.project_id
-  secret  = var.db_password_secret_id
+# Generate a strong random password for the DB user
+resource "random_password" "db_password" {
+  length  = 32
+  special = false # Avoid shell-escaping issues in connection strings
+}
+
+# Store the generated password in Secret Manager so Cloud Run can read it
+resource "google_secret_manager_secret_version" "db_password" {
+  secret      = "projects/${var.project_id}/secrets/${var.db_password_secret_id}"
+  secret_data = random_password.db_password.result
+
+  depends_on = [var.secret_depends_on]
 }
 
 resource "google_sql_user" "user" {
   project  = var.project_id
   name     = var.db_user
   instance = google_sql_database_instance.instance.name
-  password = data.google_secret_manager_secret_version.db_password.secret_data
+  password = random_password.db_password.result
 }
