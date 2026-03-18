@@ -20,35 +20,41 @@ Estimated cost: **£113–175/month** across all three projects.
                         │   quill-medical.com      │
                         └────────────┬─────────────┘
                                      │
-                        ┌────────────▼─────────────┐
-                        │  Global HTTPS LB         │
-                        │  (Google-managed TLS)     │
-                        └──┬──────────┬──────────┬─┘
-                           │          │          │
-              app.         │  staging.│  teaching.│
-              quill-medical│          │          │
-                           │          │          │
-                    ┌──────▼──┐ ┌─────▼───┐ ┌───▼──────┐
-                    │Cloud Run│ │Cloud Run│ │Cloud Run │
-                    │Backend  │ │Backend  │ │Backend   │
-                    │Frontend │ │Frontend │ │Frontend  │
-                    └────┬────┘ └────┬────┘ └────┬─────┘
-                         │          │          │
-                    ┌────▼────┐ ┌───▼────┐     │ (no FHIR)
-                    │Cloud SQL│ │Cloud SQL│     │
-                    │Auth+FHIR│ │Auth+FHIR│ ┌──▼──────┐
-                    │+EHRbase │ │+EHRbase │ │Cloud SQL│
-                    └────┬────┘ └────┬────┘ │Auth only│
-                         │          │      └─────────┘
-                    ┌────▼────┐ ┌───▼────┐
-                    │Compute  │ │Compute │
-                    │HAPI FHIR│ │HAPI FHIR│
-                    │EHRbase  │ │EHRbase │
-                    └─────────┘ └────────┘
+         ┌───────────────────────────┼───────────────────────────┐
+         │                           │                           │
+    app.quill-         staging.quill-         teaching.quill-
+    medical.com        medical.com            medical.com
+         │                           │                           │
+  ┌──────▼──────┐           ┌────────▼────────┐         ┌───────▼───────┐
+  │  Global LB  │           │   Global LB     │         │  Global LB   │
+  │  Cloud Armor│           │   Cloud Armor   │         │  Cloud Armor │
+  │  WAF        │           │   WAF           │         │  WAF         │
+  └──┬───────┬──┘           └──┬───────┬──────┘         └──┬────────┬──┘
+     │       │                 │       │                   │        │
+  /api/*   /*               /api/*   /*                 /api/*    /*
+     │       │                 │       │                   │        │
+  ┌──▼──┐ ┌──▼──┐          ┌──▼──┐ ┌──▼──┐            ┌──▼──┐  ┌──▼──┐
+  │Back │ │Front│          │Back │ │Front│            │Back │  │Front│
+  │end  │ │end  │          │end  │ │end  │            │end  │  │end  │
+  └──┬──┘ └─────┘          └──┬──┘ └─────┘            └──┬──┘  └─────┘
+     │                        │                          │
+  ┌──▼────────┐            ┌──▼────────┐              ┌──▼────────┐
+  │Cloud SQL  │            │Cloud SQL  │              │Cloud SQL  │
+  │Auth+FHIR  │            │Auth+FHIR  │              │Auth only  │
+  │+EHRbase   │            │+EHRbase   │              └───────────┘
+  └──┬────────┘            └──┬────────┘
+     │                        │
+  ┌──▼────────┐            ┌──▼────────┐
+  │HAPI FHIR  │            │HAPI FHIR  │
+  │EHRbase VM │            │EHRbase VM │
+  └───────────┘            └───────────┘
+
+  Production                Staging                    Teaching
 ```
 
 Each environment has:
 
+- **Global HTTPS Load Balancer** — path-based routing, Cloud Armor WAF, Google-managed SSL
 - **Cloud Run** — backend (FastAPI) and frontend (React/Vite), auto-scaling
 - **Cloud SQL** — PostgreSQL for the auth database (all environments)
 - **Secret Manager** — JWT keys, database passwords, VAPID keys
@@ -138,6 +144,7 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
+| `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs           |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |
 | `cloud-storage` | Image bucket (teaching only)                                            |
@@ -222,6 +229,54 @@ Cloud Run URLs:
 
 - Backend: `https://quill-backend-prod-vyeoxhqnba-nw.a.run.app`
 - Frontend: `https://quill-frontend-prod-vyeoxhqnba-nw.a.run.app`
+
+### Global HTTPS Load Balancer (done)
+
+Each environment has a Global HTTPS Load Balancer that sits in front of the Cloud Run services. This provides:
+
+- **Path-based routing**: `/api/*` goes to the backend Cloud Run service, everything else goes to the frontend
+- **Google-managed SSL certificates**: automatically provisioned and renewed for each domain
+- **Cloud Armor WAF**: rate limiting at 500 requests per minute per IP address
+- **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
+- **Static global IP**: stable IP addresses for DNS A records
+
+| Environment | Domain                       | Load Balancer IP   |
+| ----------- | ---------------------------- | ------------------ |
+| Production  | `app.quill-medical.com`      | `34.110.153.200`   |
+| Staging     | `staging.quill-medical.com`  | `35.186.223.130`   |
+| Teaching    | `teaching.quill-medical.com` | `136.110.221.126`  |
+
+The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
+
+### Domain architecture (done)
+
+| Domain                       | Purpose                              | Update process                      |
+| ---------------------------- | ------------------------------------ | ----------------------------------- |
+| `quill-medical.com`          | Public landing/marketing site        | Update anytime, no clinical sign-off |
+| `app.quill-medical.com`      | Live clinical application            | Release versions, DCB0129, UAT      |
+| `staging.quill-medical.com`  | Staging/integration testing          | Auto-deploy from main branch        |
+| `teaching.quill-medical.com` | Teaching/training environment         | Auto-deploy from main branch        |
+
+The public landing site (`quill-medical.com`) is intentionally separate from the clinical app. This allows marketing pages, pricing, and feature announcements to be updated without going through clinical release gates. The apex domain is currently unused — a Cloud Storage bucket with CDN can be added later.
+
+### DNS records (done)
+
+Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
+
+| Record                       | Type | TTL | Value             |
+| ---------------------------- | ---- | --- | ----------------- |
+| `app.quill-medical.com`      | A    | 300 | `34.110.153.200`  |
+| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |
+| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |
+
+GoDaddy nameservers were updated to delegate to Google Cloud DNS:
+
+```
+ns-cloud-c1.googledomains.com
+ns-cloud-c2.googledomains.com
+ns-cloud-c3.googledomains.com
+ns-cloud-c4.googledomains.com
+```
 
 ### Terraform workspaces (done)
 
@@ -322,34 +377,39 @@ cloud_run_max_instances = 5
 - **WIF authentication** — no long-lived JSON key files, short-lived tokens only
 - **Attribute condition on WIF** — only the `bailey-medics/quillmedical` repository can authenticate
 - **Least-privilege service accounts** — each environment has its own service account
+- **Cloud Armor WAF** — rate limiting (500 req/min per IP) on all load balancers
+- **HTTPS enforced** — HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
+- **Google-managed TLS** — certificates auto-provisioned and auto-renewed, no manual cert management
 
 ## Remaining steps
 
-### Set real VAPID key
+### Set real VAPID key ~~(pending)~~ (done)
 
-Terraform auto-generated a placeholder value for `vapid-private`. Before going live, replace with a real VAPID key:
+VAPID keys were generated and stored in Secret Manager for all three environments (version 2):
 
-```bash
-# Generate a VAPID key pair
-just vapid-key
+- **Public key**: `BC0B26JO27tGc5qkbt2-QzY8M7_0u3gt5hmFj1RGWvZp9Vr9fDQ3-lpQ6YxqNlU0fFKlIUzCnb-baAE0rzIL-Ys`
+- **Private key**: stored in Secret Manager (`vapid-private`, version 2) for all three projects
 
-# Update the secret in each environment
-echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-staging
-echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-teaching
-echo -n "REAL_KEY_HERE" | gcloud secrets versions add vapid-private --data-file=- --project=quill-medical-production
-```
+The public key is baked into the frontend Docker image at build time via the `VITE_VAPID_PUBLIC` build argument (set in CI workflows).
 
 The `jwt-secret` auto-generated value is fine for use — it's a strong random 64-character string.
 
 Database passwords are auto-generated by Terraform and stored in Secret Manager automatically.
 
-### DNS delegation
+### DNS delegation ~~(pending)~~ (done)
 
-Point GoDaddy nameservers to Cloud DNS. This makes `quill-medical.com` and all subdomains resolve to GCP.
+GoDaddy nameservers updated to point to Cloud DNS:
+
+```
+ns-cloud-c1.googledomains.com
+ns-cloud-c2.googledomains.com
+ns-cloud-c3.googledomains.com
+ns-cloud-c4.googledomains.com
+```
 
 ### First deployment
 
-Once DNS is set up, merge the `feature/gcp-setup` branch to `main`. The CI pipeline will:
+Once DNS is fully propagated and SSL certificates are provisioned, merge the `feature/gcp-setup` branch to `main`. The CI pipeline will:
 
 1. Build container images
 2. Push to Artifact Registry
@@ -367,9 +427,11 @@ Once DNS is set up, merge the `feature/gcp-setup` branch to `main`. The CI pipel
 
 ### Future improvements
 
-- Load balancer with Google-managed TLS (currently Cloud Run handles TLS directly)
-- Cloud DNS managed zone via Terraform
+- Cloud DNS managed zone via Terraform (currently created manually)
+- DNS A records via Terraform (currently created manually via `gcloud`)
+- Public landing site at `quill-medical.com` (Cloud Storage + CDN or similar)
 - Slack webhook for deployment notifications
 - CPU/memory/error-rate monitoring (beyond uptime checks)
 - Production database tier upgrade from `db-f1-micro`
 - High availability for production Cloud SQL
+- Restrict Cloud Run ingress to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (once LB is confirmed working)
