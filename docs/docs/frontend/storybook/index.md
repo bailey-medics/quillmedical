@@ -1,10 +1,10 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 25 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 51 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
-Quill Medical uses [Storybook 10.2.7](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
+Quill Medical uses [Storybook 10.2.10](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
 
 - Develop UI components in isolation
 - Document component props and variations
@@ -16,7 +16,7 @@ Quill Medical uses [Storybook 10.2.7](https://storybook.js.org/) as an interacti
 Storybook is configured with:
 
 - **Framework**: React + Vite integration (`@storybook/react-vite`)
-- **Version**: 10.2.7
+- **Version**: 10.2.10
 - **Dev Server**: Port 6006
 - **Build Output**: `docs/code/storybook/` (deployed with MkDocs documentation)
 
@@ -44,54 +44,94 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **25 component story files** across various UI categories:
+The project includes **51 component story files** across various UI categories:
 
 ### Core Components
 
 - **Date** - Date display formatting
+- **NationalNumber** - National identifier display
 - **MarkdownView** - Markdown content rendering
-- **ProfilePic** - User avatar with gradient colors
+- **ProfilePic** - User avatar with gradient colours
+- **StackedProfilePics** - Overlapping avatar group display
 - **QuillLogo** - Brand logo component
 - **QuillName** - Brand name component
+- **Typography** - Reference story for typographic styles
 
 ### Navigation & Layout
 
 - **Complete** - Full page layout compositions
+- **CompletePatientList** - Full page layout with patient list
 - **MainLayout** - Primary application layout
 - **NavigationDrawer** - Mobile navigation drawer
 - **NotFoundLayout** - 404 error page layout
 - **SideNav** - Sidebar navigation component
 - **TopRibbon** - Header ribbon component
 - **NavIcon** - Navigation icon component
+- **Footer** - Application footer component
+- **PageHeader** - Page title and description header
 
 ### Patient Management
 
 - **PatientsList** - Patient list with demographics and loading states
+- **Demographics** - Patient demographics display
+- **Gender** - Gender display component
+- **GenderIcon** - Gender icon component
+
+### Actions & Buttons
+
+- **ActionCard** - Card with icon, title, subtitle, and action
+- **ActionCardButton** - Button variant for action cards
+- **AddButton** - Add/create action button
+- **BurgerButton** - Hamburger menu toggle
+- **ButtonPair** - Paired button layout
+- **IconButton** - Icon-only button
+
+### Badges & Status
+
+- **ActiveStatus** - Active/inactive status badge
+- **PermissionBadge** - User permission level badge
+- **UnreadBadge** - Unread message count badge
 
 ### State Messages
 
-- **StateMessage** - System state message component for database initialization and empty states
+- **StateMessage** - System state message component for database initialisation and empty states
 
 ### Clinical Features
 
-- **Letters** - Letter list view
+- **LetterList** - Letter list view
 - **LetterView** - Individual letter display
+- **NotesList** - Clinical notes list
+- **AppointmentsList** - Appointment history display
 
-### Messaging (Planned Feature)
+### Documents
+
+- **Document** - Document viewer
+- **DocumentThumbnail** - Document thumbnail preview
+- **DocumentsList** - Document list display
+
+### Messaging
 
 - **Messaging** - Messaging interface component
 - **MessagesList** - Message thread list
 - **MessagingTriagePayment** - Payment workflow component
+- **NewMessageModal** - New message creation modal
 
-**Note**: Messaging components in Storybook represent UI designs for planned features. The full messaging system with quotes/payments is not yet implemented in the application.
+### Forms & Data Entry
 
-### Search & Filters
-
+- **MultiStepForm** - Multi-step form wizard
+- **DirtyFormNavigation** - Unsaved changes navigation guard
 - **SearchFields** - Collapsible search input component
+- **SolidSwitch** - Toggle switch component
 
-### Notifications
+### Icons & Images
 
-- **EnableNotificationsButton** - Push notification subscription button
+- **Icon** - Icon wrapper component with size variants
+
+### Tables & Data Display
+
+- **AdminTable** - Configurable admin data table
+- **StatCard** - Statistics card component
+- **Admin** - Admin dashboard component
 
 ## Notable Stories
 

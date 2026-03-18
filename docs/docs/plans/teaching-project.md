@@ -1,35 +1,37 @@
-# Teaching module — implementation plan
+# Teaching feature — implementation plan
 
-Add a gastroenterology MCQ teaching module as an **additive feature** — no restructuring of existing EPR code. Teaching gets its own `modules/teaching/` directories in both backend and frontend, gated by a new `OrganisationModule` model. Same codebase deploys to separate GCP projects via environment config. GCS handles image storage with local-filesystem fallback for dev.
+Add a gastroenterology MCQ teaching feature — no restructuring of existing EPR code. Teaching gets its own `features/teaching/` directories in both backend and frontend, gated by a new `OrganisationFeature` model. Same codebase deploys to separate GCP projects via environment config. GCS handles image storage with local-filesystem fallback for dev.
+
+> **Convention**: new optional functionality goes in `features/`. Existing code (e.g. messaging) will be migrated into `features/` later when it becomes gated.
 
 ---
 
 ## Current state vs proposal
 
-| Area                 | Current codebase                                                                                                       | Change needed                                                                             |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Backend structure    | Flat — all routes in `main.py`, models in `models.py`                                                                  | Add `app/modules/teaching/` with own router, models, schemas                              |
-| Config               | `FHIR_SERVER_URL` and `EHRBASE_URL` are hardcoded required strings; FHIR/EHRbase DB passwords are required `SecretStr` | Make all optional (`str \| None = None`) with `fhir_enabled`/`ehrbase_enabled` properties |
-| Organisation modules | `Organization` model exists, no module gating                                                                          | New `OrganisationModule` model — runtime feature flags per org                            |
-| CBAC                 | 34 clinical competencies, 18 professions                                                                               | Add teaching competencies and professions (`learner`, `educator`)                         |
-| Image storage        | No object storage anywhere                                                                                             | Abstract storage: filesystem (dev), GCS (cloud)                                           |
-| Frontend routes      | Statically imported in `main.tsx` (~40 eager imports)                                                                  | Add teaching routes under `/teaching/*`, gated by org module                              |
-| Navigation           | Static links in `SideNavContent.tsx`                                                                                   | Conditionally show teaching nav items                                                     |
-| Terraform            | Teaching env already configured with `enable_fhir = false`                                                             | Add GCS storage env vars to Cloud Run, CI/CD pipeline                                     |
+| Area                  | Current codebase                                                                                                       | Change needed                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Backend structure     | Flat — all routes in `main.py`, models in `models.py`                                                                  | Add `app/features/teaching/` with own router, models, schemas                             |
+| Config                | `FHIR_SERVER_URL` and `EHRBASE_URL` are hardcoded required strings; FHIR/EHRbase DB passwords are required `SecretStr` | Make all optional (`str \| None = None`) with `fhir_enabled`/`ehrbase_enabled` properties |
+| Organisation features | `Organization` model exists, no feature gating                                                                         | New `OrganisationFeature` model — runtime feature flags per org                           |
+| CBAC                  | 34 clinical competencies, 18 professions                                                                               | Add teaching competencies and professions (`learner`, `educator`)                         |
+| Image storage         | No object storage anywhere                                                                                             | Abstract storage: filesystem (dev), GCS (cloud)                                           |
+| Frontend routes       | Statically imported in `main.tsx` (~40 eager imports)                                                                  | Add teaching routes under `/teaching/*`, gated by org feature                             |
+| Navigation            | Static links in `SideNavContent.tsx`                                                                                   | Conditionally show teaching nav items                                                     |
+| Terraform             | Teaching env already configured with `enable_fhir = false`                                                             | Add GCS storage env vars to Cloud Run, CI/CD pipeline                                     |
 
 ---
 
-## Phase 1: OrganisationModule + config changes
+## Phase 1: OrganisationFeature + config changes
 
-### Step 1.1 — OrganisationModule model
+### Step 1.1 — OrganisationFeature model
 
 Add to `backend/app/models.py`:
 
-- `OrganisationModule` table with `id` (UUID PK), `organisation_id` (FK → organizations.id), `module_key` (str, e.g. "epr", "teaching", "messaging"), `enabled` (bool), `enabled_at` (datetime), `enabled_by` (FK → users.id)
-- Unique constraint on `(organisation_id, module_key)`
-- Relationship from `Organization` → `OrganisationModule` (one-to-many)
+- `OrganisationFeature` table with `id` (UUID PK), `organisation_id` (FK → organizations.id), `feature_key` (str, e.g. "epr", "teaching", "messaging"), `enabled` (bool), `enabled_at` (datetime), `enabled_by` (FK → users.id)
+- Unique constraint on `(organisation_id, feature_key)`
+- Relationship from `Organization` → `OrganisationFeature` (one-to-many)
 
-Migration: `just migrate "add_organisation_modules_table"`
+Migration: `just migrate "add_organisation_features_table"`
 
 **Files**: `backend/app/models.py`, new migration in `alembic/versions/`
 
@@ -57,30 +59,30 @@ _Depends on 1.2_
 
 **Files**: `backend/app/fhir_client.py`, `backend/app/ehrbase_client.py`, `backend/app/main.py`
 
-### Step 1.4 — OrganisationModule API endpoints
+### Step 1.4 — OrganisationFeature API endpoints
 
 _Depends on 1.1_
 
-- `GET /api/organizations/{id}/modules` — List enabled modules for an org (admin only)
-- `PUT /api/organizations/{id}/modules/{module_key}` — Enable/disable module (admin only)
-- Extend `GET /api/auth/me` response to include `enabled_modules: list[str]` for the user's primary org
+- `GET /api/organizations/{id}/features` — List enabled features for an org (admin only)
+- `PUT /api/organizations/{id}/features/{feature_key}` — Enable/disable feature (admin only)
+- Extend `GET /api/auth/me` response to include `enabled_features: list[str]` for the user's primary org
 
-**Files**: `backend/app/main.py`, new `backend/app/schemas/modules.py`
+**Files**: `backend/app/main.py`, new `backend/app/schemas/features.py`
 
-### Step 1.5 — `requires_module` FastAPI dependency
+### Step 1.5 — `requires_feature` FastAPI dependency
 
 _Depends on 1.1_
 
-Reusable dependency for gating routes by module (same pattern as existing `has_competency()` in `backend/app/cbac/decorators.py`):
+Reusable dependency for gating routes by feature (same pattern as existing `has_competency()` in `backend/app/cbac/decorators.py`):
 
 ```python
-def requires_module(module_key: str) -> Callable:
-    """FastAPI dependency: checks user's org has module enabled. Returns 403 if not."""
+def requires_feature(feature_key: str) -> Callable:
+    """FastAPI dependency: checks user's org has feature enabled. Returns 403 if not."""
 ```
 
-Resolves: user → primary org → `OrganisationModule` → 403 if disabled.
+Resolves: user → primary org → `OrganisationFeature` → 403 if disabled.
 
-**Files**: new `backend/app/modules/__init__.py`
+**Files**: new `backend/app/features/__init__.py`
 
 ---
 
@@ -90,7 +92,7 @@ Resolves: user → primary org → `OrganisationModule` → 403 if disabled.
 
 _Depends on 1.1_
 
-Create `backend/app/modules/teaching/models.py`:
+Create `backend/app/features/teaching/models.py`:
 
 **Curriculum**
 
@@ -136,13 +138,13 @@ Import these in `alembic/env.py` so Alembic detects them for migration generatio
 
 Migration: `just migrate "add_teaching_tables"`
 
-**Files**: new `backend/app/modules/teaching/__init__.py`, new `backend/app/modules/teaching/models.py`, `backend/alembic/env.py`
+**Files**: new `backend/app/features/teaching/__init__.py`, new `backend/app/features/teaching/models.py`, `backend/alembic/env.py`
 
 ### Step 2.2 — Storage abstraction
 
 _Parallel with 2.1_
 
-Create `backend/app/modules/teaching/storage.py`:
+Create `backend/app/features/teaching/storage.py`:
 
 - `StorageBackend` protocol with methods: `upload(key, data, content_type) → str`, `get_signed_url(key) → str`, `delete(key) → None`
 - `LocalStorageBackend` — writes to a configurable directory (Docker volume in dev). Returns local URL.
@@ -156,15 +158,15 @@ Add to `config.py`:
 
 Add `google-cloud-storage` to `pyproject.toml` dependencies.
 
-**Files**: new `backend/app/modules/teaching/storage.py`, `backend/app/config.py`, `backend/pyproject.toml`
+**Files**: new `backend/app/features/teaching/storage.py`, `backend/app/config.py`, `backend/pyproject.toml`
 
 ### Step 2.3 — Teaching API router
 
 _Depends on 1.5, 2.1, 2.2_
 
-Create `backend/app/modules/teaching/router.py` and `schemas.py`.
+Create `backend/app/features/teaching/router.py` and `schemas.py`.
 
-All routes gated by `Depends(requires_module("teaching"))`.
+All routes gated by `Depends(requires_feature("teaching"))`.
 
 **Educator endpoints** (require `manage_teaching_content` competency):
 
@@ -191,7 +193,7 @@ All routes gated by `Depends(requires_module("teaching"))`.
 
 Register in `main.py`: `app.include_router(teaching_router)`.
 
-**Files**: new `backend/app/modules/teaching/router.py`, new `backend/app/modules/teaching/schemas.py`, `backend/app/main.py`
+**Files**: new `backend/app/features/teaching/router.py`, new `backend/app/features/teaching/schemas.py`, `backend/app/main.py`
 
 ---
 
@@ -226,26 +228,26 @@ Run `yarn generate:types` to update `src/generated/competencies.json` and `src/g
 
 ---
 
-## Phase 4: Frontend — module context and routing
+## Phase 4: Frontend — feature context and routing
 
-### Step 4.1 — Auth context and module hook
+### Step 4.1 — Auth context and feature hook
 
 _Depends on 1.4_
 
-- Extend `User` type in `frontend/src/auth/AuthContext.tsx` with `enabled_modules: string[]`
-- New `frontend/src/lib/modules.ts`: `useHasModule(key: string): boolean` hook
+- Extend `User` type in `frontend/src/auth/AuthContext.tsx` with `enabled_features: string[]`
+- New `frontend/src/lib/features.ts`: `useHasFeature(key: string): boolean` hook
 
-### Step 4.2 — RequireModule guard
+### Step 4.2 — RequireFeature guard
 
 _Depends on 4.1_
 
-New `frontend/src/auth/RequireModule.tsx` — same pattern as existing `RequirePermission.tsx`. Returns 404 if module not enabled (hides feature existence from users without access).
+New `frontend/src/auth/RequireFeature.tsx` — same pattern as existing `RequirePermission.tsx`. Returns 404 if feature not enabled (hides feature existence from users without access).
 
 ### Step 4.3 — Teaching routes
 
 _Depends on 4.2_
 
-Add to `frontend/src/main.tsx` (inside authenticated children array), all wrapped in `<RequireModule module="teaching">`:
+Add to `frontend/src/main.tsx` (inside authenticated children array), all wrapped in `<RequireFeature feature="teaching">`:
 
 | Path                                      | Page                                | Access             |
 | ----------------------------------------- | ----------------------------------- | ------------------ |
@@ -257,14 +259,14 @@ Add to `frontend/src/main.tsx` (inside authenticated children array), all wrappe
 | `/teaching/manage/:curriculumId`          | Case management                     | Educators only     |
 | `/teaching/manage/:curriculumId/new-case` | Create/edit case                    | Educators only     |
 
-### Step 4.4 — Module-aware navigation
+### Step 4.4 — Feature-aware navigation
 
 _Depends on 4.1_
 
 Modify `frontend/src/components/navigation/SideNavContent.tsx`:
 
-- Import `useHasModule` hook
-- If `useHasModule("teaching")` → show "Teaching" nav section with sub-items: Cases, My progress
+- Import `useHasFeature` hook
+- If `useHasFeature("teaching")` → show "Teaching" nav section with sub-items: Cases, My progress
 - If user also has `manage_teaching_content` competency → show "Manage" sub-item
 
 ---
@@ -291,7 +293,7 @@ All in `frontend/src/components/teaching/` with `.stories.tsx` and `.test.tsx`:
 
 _Depends on 4.3, 5.1_
 
-All in `frontend/src/modules/teaching/pages/`, using `<Container size="lg">` wrapper:
+All in `frontend/src/features/teaching/pages/`, using `<Container size="lg">` wrapper:
 
 | Page                | Purpose                                              |
 | ------------------- | ---------------------------------------------------- |
@@ -331,7 +333,7 @@ All in `frontend/src/modules/teaching/pages/`, using `<Container size="lg">` wra
 Create `dev-scripts/seed-teaching-data.sh`:
 
 - Create a teaching organisation
-- Enable "teaching" module on it
+- Enable "teaching" feature on it
 - Create sample educator and learner users
 - Create sample curriculum with placeholder cases
 
@@ -341,8 +343,8 @@ Create `dev-scripts/seed-teaching-data.sh`:
 
 ### Backend
 
-- `OrganisationModule` model CRUD
-- `requires_module` dependency (enabled, disabled, no-org cases)
+- `OrganisationFeature` model CRUD
+- `requires_feature` dependency (enabled, disabled, no-org cases)
 - Teaching router endpoints (full CRUD for curricula, cases, attempts)
 - Storage backends (local + GCS mock)
 - Config with optional FHIR/EHRbase (app starts without them)
@@ -350,8 +352,8 @@ Create `dev-scripts/seed-teaching-data.sh`:
 
 ### Frontend
 
-- `useHasModule` hook
-- `RequireModule` guard (show/hide routes)
+- `useHasFeature` hook
+- `RequireFeature` guard (show/hide routes)
 - All teaching components (Storybook stories + test files)
 - Teaching pages (render with mock API data)
 - Navigation conditional rendering
@@ -359,8 +361,8 @@ Create `dev-scripts/seed-teaching-data.sh`:
 ### Integration
 
 - Full flow: create curriculum → add cases → learner attempts → check progress
-- Module gating: teaching routes 403 when module disabled
-- EPR routes still work when teaching module enabled alongside
+- Feature gating: teaching routes 403 when feature disabled
+- EPR routes still work when teaching feature enabled alongside
 
 ---
 
@@ -371,7 +373,7 @@ Create `dev-scripts/seed-teaching-data.sh`:
 3. `just unit-tests-frontend` — all existing and new tests pass
 4. `just storybook` — teaching components render correctly
 5. `just pre-commit` — mypy strict, ruff, eslint all pass
-6. Manual: teaching org → enable module → educator creates curriculum + cases → learner attempts → progress verified
+6. Manual: teaching org → enable feature → educator creates curriculum + cases → learner attempts → progress verified
 7. Manual: EPR routes return 503 (not crash) when FHIR/EHRbase disabled
 8. Manual: teaching nav hidden for EPR-only organisations
 9. `terraform plan -var-file=environments/teaching/terraform.tfvars` — no unexpected diffs
@@ -380,10 +382,10 @@ Create `dev-scripts/seed-teaching-data.sh`:
 
 ## Decisions
 
-- **Additive only**: existing EPR code stays in place. No restructure to `app/core/` + `app/modules/epr/`. Teaching code goes in `app/modules/teaching/`.
+- **Additive only**: existing EPR code stays in place. New optional functionality goes in `features/`. Teaching code goes in `app/features/teaching/` (backend) and `src/features/teaching/` (frontend). Existing code (e.g. messaging) will be migrated into `features/` later.
 - **Storage**: GCS for cloud, local filesystem for dev. No MinIO. Abstract `StorageBackend` interface allows future backends.
 - **Single migration history**: teaching tables always created everywhere (dormant in EPR env). No Alembic branching.
-- **Module keys**: string constants (`"epr"`, `"teaching"`, `"messaging"`, `"letters"`), not an enum — extensible without migrations.
+- **Feature keys**: string constants (`"epr"`, `"teaching"`, `"messaging"`, `"letters"`), not an enum — extensible without migrations.
 - **Route prefixes**: `/api/teaching/*` (backend), `/teaching/*` (frontend).
 - **Case status**: `draft`/`published` field on `Case` model — only published cases visible to learners.
 
@@ -391,6 +393,6 @@ Create `dev-scripts/seed-teaching-data.sh`:
 
 ## Open considerations
 
-1. **Multi-org users**: a user could belong to both an EPR org and a teaching org. `requires_module` should check the user's active org context, not just primary. May need org-switching UI in future.
+1. **Multi-org users**: a user could belong to both an EPR org and a teaching org. `requires_feature` should check the user's active org context, not just primary. May need org-switching UI in future.
 2. **Educator analytics**: Phase 5 covers learner progress. Future work could add class-level analytics (cohort performance, commonly failed cases, difficulty calibration).
 3. **EPR document storage**: the same `StorageBackend` abstraction could later serve EPR binary documents (clinical scans, letters). Out of scope for this plan.

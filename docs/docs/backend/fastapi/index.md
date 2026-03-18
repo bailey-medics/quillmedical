@@ -43,16 +43,35 @@ The backend is organised in `backend/app/`:
 app/
 ├── main.py              # Application entry point, route definitions
 ├── config.py            # Configuration and environment variables
-├── db.py                # Database session management
-├── models.py            # SQLAlchemy ORM models (User, etc.)
-├── security.py          # Authentication, JWT, password hashing
+├── models.py            # SQLAlchemy ORM models (User, Organization, etc.)
+├── security.py          # Authentication, JWT, password hashing, CSRF, TOTP
 ├── fhir_client.py       # FHIR integration
 ├── ehrbase_client.py    # OpenEHR integration
+├── messaging.py         # Messaging CQRS coordination layer
+├── organisations.py     # Organisation access control helpers
+├── logging_config.py    # Structured JSON logging configuration
 ├── push.py              # Web push notification endpoints
 ├── push_send.py         # Push notification sending logic
-└── schemas/
-    ├── auth.py          # Authentication request/response models
-    └── letters.py       # Letter/correspondence models
+├── db/
+│   ├── __init__.py      # Database module exports
+│   └── auth_db.py       # Auth database engine and session management
+├── cbac/
+│   ├── __init__.py      # CBAC module exports
+│   ├── competencies.py  # Competency definitions from YAML
+│   ├── base_professions.py  # Base profession definitions from YAML
+│   └── decorators.py    # has_competency(), FastAPI dependencies
+├── system_permissions/
+│   ├── __init__.py      # Permission module exports
+│   ├── permissions.py   # Permission types and hierarchy validation
+│   └── decorators.py    # requires_staff(), requires_admin() dependencies
+├── schemas/
+│   ├── __init__.py      # Schema module exports
+│   ├── auth.py          # Authentication request/response models
+│   ├── cbac.py          # CBAC request/response models
+│   ├── letters.py       # Letter/correspondence models
+│   └── messaging.py     # Messaging request/response models
+└── utils/
+    └── colors.py        # Avatar gradient colour utilities
 ```
 
 ### Key Components
@@ -114,28 +133,38 @@ def create_letter(patient_id: str, letter: LetterIn):
 
 All API endpoints are prefixed with `/api`:
 
-- `/api/auth/*` - Authentication endpoints
+- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout)
+- `/api/users/*` - User management (admin CRUD, profile)
 - `/api/patients/*` - Patient management (backed by FHIR)
+- `/api/patients/{id}/letters/*` - Clinical letters (backed by OpenEHR)
+- `/api/patients/{id}/conversations/*` - Patient-scoped conversations
+- `/api/patients/{id}/invite-external` - External access invitations
+- `/api/patients/{id}/external-access/*` - External access management
+- `/api/conversations/*` - Messaging (conversations and messages)
+- `/api/organizations/*` - Organisation management (admin)
+- `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications
+- `/api/health` - Service health check
 
 ### Authentication & Security
 
 #### JWT-Based Authentication
 
 ```python
-# Login returns JWT tokens
+# Login with credentials and optional TOTP
 POST /api/auth/login
 {
   "username": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "totp_code": "123456"  # Optional, required if 2FA enabled
 }
 
-# Response includes tokens
+# Response body
 {
-  "access_token": "eyJ...",
-  "refresh_token": "eyJ...",
-  "user": { ... }
+  "detail": "ok",
+  "user": { "username": "...", "roles": [...] }
 }
+# JWT access/refresh tokens and CSRF token set as HTTP-only cookies
 ```
 
 #### Protected Endpoints
@@ -151,7 +180,7 @@ def list_patients(u: User = DEP_CURRENT_USER):
 def create_letter(
     patient_id: str,
     letter: LetterIn,
-    u: User = Depends(require_roles(["clinician"]))
+    u: User = DEP_REQUIRE_ROLES_CLINICIAN,
 ):
     pass
 ```
@@ -182,12 +211,12 @@ The backend implements a multi-layered permission system:
 ##### Permission hierarchy
 
 ```python
-SYSTEM_PERMISSIONS = {
-    "patient": 0,      # Lowest privileges
-    "staff": 1,        # Clinical staff
-    "admin": 2,        # Administrators
-    "superadmin": 3    # Highest privileges
-}
+# 4-level hierarchy: patient < staff < admin < superadmin
+PERMISSION_LEVELS = ["patient", "staff", "admin", "superadmin"]
+
+# check_permission_level(user_permission, required_permission)
+# Returns True if user meets or exceeds required level
+# External types (external_hcp, patient_advocate) treated as patient level
 ```
 
 ##### Usage in endpoints
