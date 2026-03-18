@@ -87,5 +87,5 @@ variable "service_account_email" {
 variable "ingress" {
   description = "Ingress setting: INGRESS_TRAFFIC_ALL, INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER, INGRESS_TRAFFIC_INTERNAL_ONLY"
   type        = string
-  default     = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  default     = "INGRESS_TRAFFIC_ALL"
 }

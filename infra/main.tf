@@ -59,6 +59,7 @@ module "cloud_sql_auth" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   # Production gets longer backup retention
   backup_retained_count = var.environment == "prod" ? 30 : 7
@@ -82,6 +83,7 @@ module "cloud_sql_fhir" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   backup_retained_count = var.environment == "prod" ? 30 : 7
   pitr_enabled          = var.environment == "prod"
@@ -104,6 +106,7 @@ module "cloud_sql_ehrbase" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   backup_retained_count = var.environment == "prod" ? 30 : 7
   pitr_enabled          = var.environment == "prod"
