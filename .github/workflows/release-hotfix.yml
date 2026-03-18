@@ -1,23 +1,22 @@
-# Workflow for feature/* and release/* branches:
-# - Runs all checks (Python, TypeScript, Semgrep, docs)
-# - feature/* branches: auto-merge into main after checks pass
-# - release/* branches: checks only (merge to clinical-live via PR)
-name: Branch checks
+# Workflow for release/* and hotfix/* branches, and pull requests.
+# Runs all code quality checks. Fully self-contained — does NOT share
+# code with feature.yml or deploy workflows. A change to this file
+# cannot affect feature branch checks or production deployments.
+name: Release and hotfix checks
 
 on:
   push:
     branches:
-      - "feature/**"
       - "release/**"
       - "hotfix/**"
   pull_request:
     branches: [main, clinical-live]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: nonmain-${{ github.ref }}
+  group: release-hotfix-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -127,13 +126,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Non-main python ${{ matrix.task }} checks failed",
+              "text": "❌ Release/hotfix python ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Non-main python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -232,13 +231,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Non-main TypeScript ${{ matrix.task }} checks failed",
+              "text": "❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Non-main TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -253,7 +252,6 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      # Install Semgrep via pipx (fast, isolated)
       - name: Install Semgrep
         run: pipx install semgrep
 
@@ -265,8 +263,7 @@ jobs:
           SEMGREP_NO_VERSION_CHECK: "1"
         run: semgrep --config .semgrep.yml --error
 
-
-  # ---------- Build docs (validate docs build before merging) ----------
+  # ---------- Build docs ----------
   docs_build:
     runs-on: ubuntu-latest
     name: Build documentation
@@ -276,7 +273,6 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      # ---------- Frontend docs (Node + Yarn) ----------
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -326,7 +322,6 @@ jobs:
         working-directory: frontend
         run: yarn docs:build
 
-      # ---------- Backend docs (Python + Poetry + MkDocs) ----------
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -372,123 +367,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Non-main docs build failed",
+              "text": "❌ Release/hotfix docs build failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Non-main docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
-
-
-  # ---------- Merge feature/* into main ----------
-  merge-to-main:
-    runs-on: ubuntu-latest
-    name: Merge feature into main
-    needs: [docs_build]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Merge feature branch into main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH_NAME="${GITHUB_REF_NAME:-}"
-          BRANCH_NAME=$(echo "$BRANCH_NAME" | tr -d '[:space:]')
-
-          if [ -z "$BRANCH_NAME" ]; then
-            echo "ERROR: Cannot determine source branch." >&2
-            exit 1
-          fi
-
-          # Fetch main
-          git fetch origin main:main || {
-            echo "ERROR: 'main' branch does not exist on remote." >&2
-            exit 1
-          }
-
-          echo "Merging '$BRANCH_NAME' into main"
-          git checkout main
-
-          # Ensure the feature branch exists locally
-          if ! git rev-parse --verify --quiet "$BRANCH_NAME"; then
-            git fetch origin "$BRANCH_NAME":"$BRANCH_NAME"
-          fi
-
-          # Attempt merge; on conflict, abort and fail
-          if git merge --no-ff "$BRANCH_NAME" -m "Merge branch '$BRANCH_NAME' into main"; then
-            echo "Merge succeeded"
-          else
-            echo "Merge conflict. Aborting."
-            git merge --abort || true
-            exit 1
-          fi
-
-          git push origin main
-
-      - name: Extract commit info
-        id: commit
-        run: |
-          COMMIT_SUBJECT=$(git log HEAD^2 -1 --pretty=%s 2>/dev/null || git log -1 --pretty=%s)
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//\"/\\\"}"
-          COMMIT_SUBJECT="${COMMIT_SUBJECT//$'\n'/ }"
-          echo "subject=$COMMIT_SUBJECT" >> $GITHUB_OUTPUT
-
-          BRANCH_SHA=$(git log HEAD^2 -1 --pretty=%H 2>/dev/null || echo "$GITHUB_SHA")
-          echo "branch_sha=$BRANCH_SHA" >> $GITHUB_OUTPUT
-
-          SHORT_SHA=$(git log HEAD^2 -1 --pretty=%h 2>/dev/null || echo "${GITHUB_SHA:0:7}")
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-
-          AUTHOR=$(git log HEAD^2 -1 --pretty=%an 2>/dev/null || git log -1 --pretty=%an)
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
-
-      - name: Notify Slack on success
-        if: success()
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "✅ Feature branch merged to main",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Feature branch merged to main*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Feature merge to main failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Feature merge to main failed*\n\n*Commit:* ${{ steps.commit.outputs.subject }}\n*Author:* ${{ steps.commit.outputs.author }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.commit.outputs.branch_sha }}|${{ steps.commit.outputs.short_sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*❌ Release/hotfix docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
