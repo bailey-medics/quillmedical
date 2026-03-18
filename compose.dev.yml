@@ -25,7 +25,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: ./frontend/Dockerfile
       target: dev
     container_name: quill_frontend
     env_file: frontend/.env
