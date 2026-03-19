@@ -4,13 +4,13 @@
 
 Quill Medical runs on three separate GCP projects, each in **europe-west2** (London):
 
-| Environment | Project ID                 | Purpose                                    |
-| ----------- | -------------------------- | ------------------------------------------ |
-| Production  | `quill-medical-production` | Clinical app for real patients             |
-| Staging     | `quill-medical-staging`    | Integration testing before production      |
-| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) |
+| Environment | Project ID                 | Purpose                                    | Status      |
+| ----------- | -------------------------- | ------------------------------------------ | ----------- |
+| Production  | `quill-medical-production` | Clinical app for real patients             | Hibernated  |
+| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Active      |
+| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) | Active      |
 
-Estimated cost: **£113–175/month** across all three projects.
+Estimated cost: **£72–107/month** across staging and teaching (production hibernated — see [Production hibernation](#production-hibernation) below).
 
 ## Architecture
 
@@ -20,36 +20,38 @@ Estimated cost: **£113–175/month** across all three projects.
                         │   quill-medical.com      │
                         └────────────┬─────────────┘
                                      │
-         ┌───────────────────────────┼───────────────────────────┐
-         │                           │                           │
-    app.quill-         staging.quill-         teaching.quill-
-    medical.com        medical.com            medical.com
-         │                           │                           │
-  ┌──────▼──────┐           ┌────────▼────────┐         ┌───────▼───────┐
-  │  Global LB  │           │   Global LB     │         │  Global LB   │
-  │  Cloud Armor│           │   Cloud Armor   │         │  Cloud Armor │
-  │  WAF        │           │   WAF           │         │  WAF         │
-  └──┬───────┬──┘           └──┬───────┬──────┘         └──┬────────┬──┘
-     │       │                 │       │                   │        │
-  /api/*   /*               /api/*   /*                 /api/*    /*
-     │       │                 │       │                   │        │
-  ┌──▼──┐ ┌──▼──┐          ┌──▼──┐ ┌──▼──┐            ┌──▼──┐  ┌──▼──┐
-  │Back │ │Front│          │Back │ │Front│            │Back │  │Front│
-  │end  │ │end  │          │end  │ │end  │            │end  │  │end  │
-  └──┬──┘ └─────┘          └──┬──┘ └─────┘            └──┬──┘  └─────┘
-     │                        │                          │
-  ┌──▼────────┐            ┌──▼────────┐              ┌──▼────────┐
-  │Cloud SQL  │            │Cloud SQL  │              │Cloud SQL  │
-  │Auth+FHIR  │            │Auth+FHIR  │              │Auth only  │
-  │+EHRbase   │            │+EHRbase   │              └───────────┘
-  └──┬────────┘            └──┬────────┘
-     │                        │
-  ┌──▼────────┐            ┌──▼────────┐
-  │HAPI FHIR  │            │HAPI FHIR  │
-  │EHRbase VM │            │EHRbase VM │
-  └───────────┘            └───────────┘
+         ┌───────────────────────────┼───────────────────┐
+         │                           │                   │
+    quill-medical.com    staging.quill-    teaching.quill-
+    (landing page)       medical.com       medical.com
+         │                           │                   │
+         │              ┌────────────▼────────┐   ┌──────▼───────┐
+         └──────────────►   Global LB        │   │  Global LB   │
+                        │   Cloud Armor      │   │  Cloud Armor │
+                        │   WAF              │   │  WAF         │
+                        └──┬───────┬───┬─────┘   └──┬────────┬──┘
+                           │       │   │            │        │
+                        /api/*   /*   landing     /api/*    /*
+                           │       │   page         │        │
+                        ┌──▼──┐ ┌──▼──┐ ┌──┐    ┌──▼──┐  ┌──▼──┐
+                        │Back │ │Front│ │GCS│   │Back │  │Front│
+                        │end  │ │end  │ │   │   │end  │  │end  │
+                        └──┬──┘ └─────┘ └───┘   └──┬──┘  └─────┘
+                           │                       │
+                        ┌──▼────────┐           ┌──▼────────┐
+                        │Cloud SQL  │           │Cloud SQL  │
+                        │Auth+FHIR  │           │Auth only  │
+                        │+EHRbase   │           └───────────┘
+                        └──┬────────┘
+                           │
+                        ┌──▼────────┐
+                        │HAPI FHIR  │
+                        │EHRbase VM │
+                        └───────────┘
 
-  Production                Staging                    Teaching
+                         Staging                 Teaching
+
+  Production: HIBERNATED (project exists, all resources destroyed)
 ```
 
 Each environment has:
@@ -212,23 +214,9 @@ Cloud Run URLs:
 - Backend: `https://quill-backend-teaching-izhomeiy6q-nw.a.run.app`
 - Frontend: `https://quill-frontend-teaching-izhomeiy6q-nw.a.run.app`
 
-### Production Terraform apply (done)
+### Production Terraform apply ~~(done)~~ (hibernated)
 
-`terraform apply` completed for the production environment — **50 resources created**:
-
-- VPC, subnet, Cloud NAT, VPC connector, firewall rules
-- 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
-- Secret Manager secrets with initial values
-- Cloud Run backend and frontend (placeholder images)
-- Compute Engine VM for HAPI FHIR + EHRbase
-- Artifact Registry Docker repository
-- IAM bindings for public Cloud Run access and Secret Manager
-- Monitoring uptime checks and email alerts
-
-Cloud Run URLs:
-
-- Backend: `https://quill-backend-prod-vyeoxhqnba-nw.a.run.app`
-- Frontend: `https://quill-frontend-prod-vyeoxhqnba-nw.a.run.app`
+Production was fully provisioned and deployed, then **hibernated** via `terraform destroy` to save costs while not needed. See [Production hibernation](#production-hibernation) for details and restore instructions.
 
 ### Global HTTPS Load Balancer (done)
 
@@ -240,34 +228,35 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 - **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
 - **Static global IP**: stable IP addresses for DNS A records
 
-| Environment | Domain                       | Load Balancer IP  |
-| ----------- | ---------------------------- | ----------------- |
-| Production  | `app.quill-medical.com`      | `34.110.153.200`  |
-| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  |
-| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` |
+| Environment | Domain                       | Load Balancer IP  | Status     |
+| ----------- | ---------------------------- | ----------------- | ---------- |
+| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Active     |
+| Staging     | `quill-medical.com`          | `35.186.223.130`  | Active (landing page) |
+| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active     |
+| Production  | `app.quill-medical.com`      | —                 | Hibernated |
 
 The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
-| Domain                       | Purpose                       | Update process                       |
-| ---------------------------- | ----------------------------- | ------------------------------------ |
-| `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off |
-| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       |
-| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         |
-| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         |
+| Domain                       | Purpose                       | Update process                       | Status     |
+| ---------------------------- | ----------------------------- | ------------------------------------ | ---------- |
+| `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off | Active (staging LB) |
+| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Hibernated |
+| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Active     |
+| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         | Active     |
 
-The public landing site (`quill-medical.com`) is intentionally separate from the clinical app. This allows marketing pages, pricing, and feature announcements to be updated without going through clinical release gates. The apex domain is currently unused — a Cloud Storage bucket with CDN can be added later.
+The public landing site (`quill-medical.com`) is served from a GCS bucket behind the staging load balancer. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
 ### DNS records (done)
 
 Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
 
-| Record                       | Type | TTL | Value             |
-| ---------------------------- | ---- | --- | ----------------- |
-| `app.quill-medical.com`      | A    | 300 | `34.110.153.200`  |
-| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |
-| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |
+| Record                       | Type | TTL | Value             | Notes     |
+| ---------------------------- | ---- | --- | ----------------- | --------- |
+| `quill-medical.com`          | A    | 300 | `35.186.223.130`  | Landing page (staging LB) |
+| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |           |
+| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |           |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 
@@ -438,9 +427,96 @@ To restore it:
 
 - Cloud DNS managed zone via Terraform (currently created manually)
 - DNS A records via Terraform (currently created manually via `gcloud`)
-- Public landing site at `quill-medical.com` (Cloud Storage + CDN or similar)
+- **Public landing site at `quill-medical.com`** — served from GCS bucket behind the staging LB (done)
 - Slack webhook for deployment notifications
 - CPU/memory/error-rate monitoring (beyond uptime checks)
 - Production database tier upgrade from `db-f1-micro`
 - High availability for production Cloud SQL
 - Restrict Cloud Run ingress to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (once LB is confirmed working)
+
+## Production hibernation
+
+Production was hibernated to save costs while the environment is not actively needed. All Terraform-managed resources were destroyed; the GCP project and certain manually-created resources remain intact.
+
+### What was destroyed
+
+All ~67 Terraform-managed resources including:
+
+- VPC, subnet, Cloud NAT, VPC connector, firewall rules
+- 3 Cloud SQL instances (auth, FHIR, EHRbase) and all data
+- Secret Manager secret versions (containers remain)
+- Cloud Run backend and frontend services
+- Compute Engine VM (HAPI FHIR + EHRbase)
+- Global HTTPS Load Balancer, Cloud Armor policy, SSL certificate
+- Monitoring uptime checks and alert policies
+
+Two orphaned Cloud Run services (`quill-backend-production`, `quill-frontend-production`) were also manually deleted.
+
+### What is preserved
+
+The following resources survive `terraform destroy` and do **not** need recreating:
+
+| Resource | Location | Notes |
+| --- | --- | --- |
+| GCP project | `quill-medical-production` | Project itself is not Terraform-managed |
+| Workload Identity Federation | `github-pool` / `github-provider` | GitHub Actions can still authenticate |
+| GitHub secrets | `GCP_PROD_*` | 3 repository secrets remain valid |
+| Cloud DNS zone | `quill-medical-zone` | Manually created, holds all DNS records |
+| Organisation policy override | Domain Restricted Sharing | Allows `allUsers` IAM bindings |
+| Artifact Registry | `europe-west2-docker.pkg.dev/quill-medical-production/quill/` | Container images still stored |
+| Terraform state | `gs://quill-medical-terraform-state` (production workspace) | Empty state, workspace exists |
+| Secret Manager containers | `jwt-secret`, `db-password-*`, `vapid-private`, etc. | Empty (no versions), will be repopulated on apply |
+| Enabled APIs | Cloud Run, Cloud SQL Admin, etc. | Remain enabled on the project |
+
+### Restore procedure
+
+To bring production back online:
+
+```bash
+# 1. Authenticate Terraform
+gcloud auth application-default login
+
+# 2. Select the production workspace
+cd infra
+terraform workspace select production
+
+# 3. Recreate all resources (~50 resources, takes ~10 minutes)
+terraform apply -var-file=environments/prod/terraform.tfvars
+
+# 4. Note the new load balancer IP from the output
+# lb_ip = "x.x.x.x"
+
+# 5. Create DNS A record for the app domain
+gcloud dns record-sets create app.quill-medical.com. \
+  --type=A --ttl=300 \
+  --rrdatas="<NEW_LB_IP>" \
+  --zone=quill-medical-zone \
+  --project=quill-medical-production
+
+# 6. Wait for SSL certificate to provision (requires DNS propagation)
+gcloud compute ssl-certificates describe quill-cert-v3-prod \
+  --project=quill-medical-production --global \
+  --format="value(managed.status)"
+# Repeat until status is ACTIVE (can take up to 30 minutes)
+
+# 7. Trigger a deployment (push to clinical-live or manually deploy)
+# The CI pipeline will build, push images, and deploy to Cloud Run
+
+# 8. Run database migrations
+# Either via CI or manually inside the backend container
+
+# 9. Verify health
+curl https://app.quill-medical.com/api/health
+```
+
+**Important**: New Cloud SQL instances will have fresh auto-generated passwords (stored in Secret Manager). All databases will be empty — a data restore from backups would be needed if any data existed previously.
+
+### Landing page during hibernation
+
+The landing page at `quill-medical.com` is served from the **staging** load balancer (`35.186.223.130`). The staging SSL certificate covers both `staging.quill-medical.com` and `quill-medical.com`. The `landing_domain` variable in the staging tfvars controls this.
+
+When production is restored, you may optionally move the landing page back to the production LB by:
+
+1. Setting `landing_domain = "quill-medical.com"` in `environments/prod/terraform.tfvars`
+2. Removing `landing_domain` and `quill-medical.com` from `monitored_hostnames` in `environments/staging/terraform.tfvars`
+3. Updating the DNS A record for `quill-medical.com` to point to the production LB IP
