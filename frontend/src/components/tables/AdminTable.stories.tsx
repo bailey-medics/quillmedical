@@ -6,7 +6,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import { Container, Text, Badge } from "@mantine/core";
 import AdminTable, { type Column } from "./AdminTable";
 
