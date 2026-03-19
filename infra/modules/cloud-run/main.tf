@@ -83,6 +83,13 @@ resource "google_cloud_run_v2_service" "service" {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
     percent = 100
   }
+
+  # CI deploys images via `gcloud run services update`; don't revert them
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+    ]
+  }
 }
 
 # Allow unauthenticated access (public-facing via load balancer)
