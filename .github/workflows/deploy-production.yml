@@ -55,7 +55,7 @@ jobs:
       matrix:
         include:
           - service: backend
-            context: ./backend
+            context: .
             dockerfile: ./backend/Dockerfile
             changed: ${{ needs.changes.outputs.backend }}
           - service: frontend
