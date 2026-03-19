@@ -22,6 +22,8 @@ concurrency:
 jobs:
   # ---------- Python ----------
   python_checks:
+    # Skip for feature-branch PRs (they use feature.yml)
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/')
     runs-on: ubuntu-latest
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
@@ -140,6 +142,7 @@ jobs:
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -245,6 +248,7 @@ jobs:
 
   # ---------- Frontend security (Semgrep) ----------
   frontend_security:
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/')
     runs-on: ubuntu-latest
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
@@ -265,6 +269,7 @@ jobs:
 
   # ---------- Build docs ----------
   docs_build:
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/')
     runs-on: ubuntu-latest
     name: Build documentation
     timeout-minutes: 20
