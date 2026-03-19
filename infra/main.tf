@@ -204,14 +204,28 @@ module "cloud_run_backend" {
     var.enable_fhir ? {
       FHIR_BASE_URL    = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
       EHRBASE_BASE_URL = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
+      FHIR_DB_HOST     = module.cloud_sql_fhir[0].private_ip
+      FHIR_DB_NAME     = module.cloud_sql_fhir[0].database_name
+      FHIR_DB_USER     = module.cloud_sql_fhir[0].database_user
+      EHRBASE_DB_HOST  = module.cloud_sql_ehrbase[0].private_ip
+      EHRBASE_DB_NAME  = module.cloud_sql_ehrbase[0].database_name
+      EHRBASE_DB_USER  = module.cloud_sql_ehrbase[0].database_user
     } : {}
   )
 
-  secret_env_vars = {
-    JWT_SECRET       = "jwt-secret"
-    AUTH_DB_PASSWORD  = "auth-db-password"
-    VAPID_PRIVATE    = "vapid-private"
-  }
+  secret_env_vars = merge(
+    {
+      JWT_SECRET       = "jwt-secret"
+      AUTH_DB_PASSWORD  = "auth-db-password"
+      VAPID_PRIVATE    = "vapid-private"
+    },
+    var.enable_fhir ? {
+      FHIR_DB_PASSWORD           = "fhir-db-password"
+      EHRBASE_DB_PASSWORD        = "ehrbase-db-password"
+      EHRBASE_API_PASSWORD       = "ehrbase-api-password"
+      EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
+    } : {}
+  )
 
   depends_on = [
     google_secret_manager_secret_version.jwt_secret,

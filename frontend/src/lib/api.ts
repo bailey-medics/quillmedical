@@ -143,7 +143,11 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   if (ct.includes("application/json")) {
     return (await res.json()) as T;
   }
-  return (await res.text()) as unknown as T;
+
+  // Reject non-JSON responses — the backend API should always return JSON.
+  // A text/html 200 (e.g. from a misconfigured proxy or placeholder service)
+  // must never be silently accepted as valid data.
+  throw new Error(`Unexpected response content-type: ${ct || "none"}`);
 }
 
 /**
