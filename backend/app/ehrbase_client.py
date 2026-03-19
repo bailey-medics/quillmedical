@@ -10,6 +10,8 @@ from app.config import settings
 
 def get_auth_header() -> dict[str, str]:
     """Get Basic Auth header for EHRbase."""
+    if settings.EHRBASE_API_PASSWORD is None:
+        raise RuntimeError("EHRBASE_API_PASSWORD is not configured")
     credentials = f"{settings.EHRBASE_API_USER}:{settings.EHRBASE_API_PASSWORD.get_secret_value()}"
     encoded = base64.b64encode(credentials.encode()).decode()
     return {"Authorization": f"Basic {encoded}"}

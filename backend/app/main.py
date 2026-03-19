@@ -242,7 +242,7 @@ def check_ehrbase_health() -> dict[str, bool | int | str]:
     try:
         # Use get_secret_value() to extract the actual password string
         api_user = settings.EHRBASE_API_USER
-        api_password = settings.EHRBASE_API_PASSWORD.get_secret_value()
+        api_password: str = settings.EHRBASE_API_PASSWORD.get_secret_value()
 
         response = httpx.get(
             f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4",
