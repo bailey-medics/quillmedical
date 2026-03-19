@@ -107,6 +107,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Pull image back from staging AR while we still have staging credentials.
+      # Buildx pushes directly to the registry without keeping a local copy.
+      - name: Pull image from staging AR
+        if: ${{ matrix.changed == 'true' }}
+        run: |
+          docker pull ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+
       - name: Authenticate to GCP (teaching)
         if: ${{ matrix.changed == 'true' }}
         uses: google-github-actions/auth@v2
@@ -118,17 +125,17 @@ jobs:
         if: ${{ matrix.changed == 'true' }}
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
-      - name: Push to teaching AR
+      - name: Tag and push to teaching AR
         if: ${{ matrix.changed == 'true' }}
         run: |
-          docker tag \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
-          docker tag \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
-          docker push ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
-          docker push ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
+          STAGING_IMAGE=${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+          TEACHING_SHA=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
+          TEACHING_MAIN=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
+
+          docker tag "$STAGING_IMAGE" "$TEACHING_SHA"
+          docker tag "$STAGING_IMAGE" "$TEACHING_MAIN"
+          docker push "$TEACHING_SHA"
+          docker push "$TEACHING_MAIN"
 
   # ---------- Deploy to staging ----------
   deploy-staging:
