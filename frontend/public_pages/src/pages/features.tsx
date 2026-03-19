@@ -1,19 +1,23 @@
-import { MantineProvider } from "@mantine/core";
+import PublicLayout from "@/components/public-layout/PublicLayout";
+import { theme } from "@/theme";
+import { Container, List, MantineProvider, Text, Title } from "@mantine/core";
 import "@mantine/core/styles.css";
 import ReactDOM from "react-dom/client";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider defaultColorScheme="light">
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 16 }}>
-      <h1>Features</h1>
-      <ul>
-        <li>Clinician-first workflows. 22</li>
-        <li>Git-backed history</li>
-        <li>Argon2 password hashing</li>
-      </ul>
-      <p>
-        <a href="/">← Back home</a>
-      </p>
-    </main>
+  <MantineProvider theme={theme} defaultColorScheme="light">
+    <PublicLayout>
+      <Container size="lg" py="xl">
+        <Title order={1}>Features</Title>
+        <List mt="md" size="md">
+          <List.Item>Clinician-first workflows</List.Item>
+          <List.Item>Git-backed history</List.Item>
+          <List.Item>Argon2 password hashing</List.Item>
+        </List>
+        <Text mt="lg">
+          <a href="/">← Back home</a>
+        </Text>
+      </Container>
+    </PublicLayout>
   </MantineProvider>,
 );

@@ -52,7 +52,7 @@ The `public_pages/` Vite build currently only outputs `index.html` — other pag
 1. **Fix Vite multi-page build** — add `rollupOptions.input` to `public_pages/vite.config.ts` listing all HTML entry points (`index.html`, `features.html`, `not-found.html`)
 2. **Share Mantine theme** — extract the app's theme config to a shared file (e.g. `frontend/src/theme.ts`), import it in both the main app's `MantineProvider` and each public page's `MantineProvider`
 3. **Create a `PublicLayout` component** — lightweight wrapper with consistent header (logo + "Sign in" link) and footer, used by all public pages. Add stories and tests
-4. **Verify** — build and test that all public pages work locally and in Docker
+4. **Verify** — build and test that all public pages work locally (`yarn workspace public-pages build && yarn workspace public-pages preview`)
 
 ### Phase 2 — Move the React app from `/app/` to `/`
 
@@ -60,13 +60,15 @@ The `public_pages/` Vite build currently only outputs `index.html` — other pag
 
 1. **Vite config** — change `base` from `"/app/"` to `"/"`
 2. **Caddy prod config** — remove the `/app/*` handler with `uri strip_prefix`, replace with a simple root SPA handler at `/`:
-   ```
+
+   ```text
    handle {
      root * /srv/app
      try_files {path} /index.html
      file_server
    }
    ```
+
 3. **Caddy dev config** — change `handle /app*` to `handle` for the SPA, remove the public pages proxy (port 5174)
 4. **Remove public pages from Docker build** — remove `yarn workspace public-pages build` from the Dockerfile `RUN` step, remove the `COPY --from=build /app/dist/public_pages /srv/public_pages` layer
 5. **Update health check** — change `HEALTHCHECK` from `/app/` to `/`
@@ -127,7 +129,6 @@ quill-medical.com (www)          staging/teaching/app.quill-medical.com
 
 | Risk                                           | Mitigation                                                                       |
 | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| Breaking existing bookmarks to `/app/*` URLs   | Add Caddy redirect: `/app/*` → `/*` (301) for a transition period                |
 | Shared component changes breaking public pages | Public pages CI triggers on `frontend/src/components/**` changes                 |
 | GCS bucket publicly accessible                 | Bucket is behind the LB, not directly exposed. Use IAM to restrict direct access |
 | Theme drift between app and public site        | Single `theme.ts` file imported by both, enforced by shared workspace            |
