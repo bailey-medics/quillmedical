@@ -1,6 +1,6 @@
 # Deploy to staging + teaching environments and publish docs to GitHub Pages
 # when main branch is updated.
-name: Deploy to staging
+name: Deploy to staging and teaching
 
 on:
   workflow_dispatch: {}
