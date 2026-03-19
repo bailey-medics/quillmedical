@@ -189,7 +189,7 @@ resource "google_compute_backend_bucket" "landing" {
 # ---------- Google-managed SSL certificate ----------
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
-  name    = "quill-cert-v3-${var.environment}"
+  name    = "quill-cert-v4-${var.environment}"
 
   managed {
     domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain, "www.${var.landing_domain}"] : [])
