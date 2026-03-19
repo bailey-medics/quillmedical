@@ -3,9 +3,9 @@
 ## Stack Overview
 
 - **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL auth DB
-- **Frontend**: React 19 + TypeScript + Vite + Mantine UI at `/app/` (Yarn 4, **never use npm**)
+- **Frontend**: React 19 + TypeScript + Vite + Mantine UI (Yarn 4, **never use npm**)
 - **Healthcare**: HAPI FHIR (demographics), EHRbase (clinical letters)
-- **Infrastructure**: Docker Compose, Caddy reverse proxy
+- **Infrastructure**: Docker Compose, Caddy reverse proxy, GCS (public site)
 
 ## Key Commands
 
@@ -63,7 +63,7 @@ just pre-commit     # Run pre-commit hooks                      [alias: pc]
 
 - **API**: Use `frontend/src/lib/api.ts` client (auto-retry on 401, never raw `fetch`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
-- **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`, `basename` from `import.meta.env.BASE_URL` for `/app/` mount
+- **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles

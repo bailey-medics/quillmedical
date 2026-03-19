@@ -79,6 +79,14 @@ export default defineConfig({
   build: {
     outDir: "../dist/public_pages",
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        index: path.resolve(__dirname, "index.html"),
+        features: path.resolve(__dirname, "features.html"),
+        "not-found": path.resolve(__dirname, "not-found.html"),
+        "storybook-test": path.resolve(__dirname, "storybook-test.html"),
+      },
+    },
   },
   resolve: {
     alias: {

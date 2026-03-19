@@ -13,8 +13,8 @@ import { useAuth } from "./AuthContext";
  * GuestOnly
  *
  * Route protection component that ensures only unauthenticated users can
- * access child routes. Redirects authenticated users to the base application
- * URL (typically /app/).
+ * access child routes. Redirects authenticated users to the application
+ * home page.
  *
  * Used for login and registration pages to prevent authenticated users from
  * accessing them. Performs full navigation (window.location.assign) to ensure
@@ -34,8 +34,8 @@ export default function GuestOnly({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state.status === "authenticated") {
       // Perform a full navigation to BASE_URL so we land on the exact
-      // path including trailing slash (e.g. '/app/'). This avoids the
-      // router basename producing URLs without the trailing slash.
+      // path including trailing slash. This avoids the router producing
+      // URLs without the trailing slash.
       const rawBase = (import.meta.env.BASE_URL as string) || "/";
       const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
       window.location.assign(base);

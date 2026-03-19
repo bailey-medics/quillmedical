@@ -82,9 +82,8 @@ export default function LoginPage() {
       await login(email.trim(), password, requireTotp ? totp : undefined);
       // If the user was trying to reach the app home (router path "/") or
       // there is no 'from' path, perform a full navigation to Vite's
-      // BASE_URL (which usually includes a trailing slash, e.g. '/app/').
-      // This prevents the router basename from producing URLs like '/app'
-      // without the trailing slash. For other paths (e.g. '/about') we
+      // BASE_URL. This prevents the router from producing URLs without
+      // the trailing slash. For other paths (e.g. '/about') we
       // navigate internally so the user returns to the exact protected page.
       if (!redirectFrom || redirectFrom === "/") {
         window.location.assign(base);

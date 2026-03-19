@@ -7,7 +7,7 @@
  * - Submitting state
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import NewMessageModal from "./NewMessageModal";
 
 const meta: Meta<typeof NewMessageModal> = {

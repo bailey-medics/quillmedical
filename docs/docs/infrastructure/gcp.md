@@ -246,17 +246,18 @@ The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load bal
 | `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Active              |
 | `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         | Active              |
 
-The public landing site (`quill-medical.com`) is served from a GCS bucket behind the staging load balancer. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
+The public landing site (`quill-medical.com` and `www.quill-medical.com`) is served from a GCS bucket behind the staging load balancer. The site is built from the `frontend/public_pages/` Vite workspace and deployed via the `public-site.yml` CI workflow on pushes to `main`. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
 ### DNS records (done)
 
 Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
 
-| Record                       | Type | TTL | Value             | Notes                     |
-| ---------------------------- | ---- | --- | ----------------- | ------------------------- |
-| `quill-medical.com`          | A    | 300 | `35.186.223.130`  | Landing page (staging LB) |
-| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |                           |
-| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |                           |
+| Record                       | Type  | TTL | Value             | Notes                     |
+| ---------------------------- | ----- | --- | ----------------- | ------------------------- |
+| `quill-medical.com`          | A     | 300 | `35.186.223.130`  | Landing page (staging LB) |
+| `www.quill-medical.com`      | CNAME | 300 | `quill-medical.com` | www redirect to apex    |
+| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`  |                           |
+| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126` |                           |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 
@@ -513,7 +514,9 @@ curl https://app.quill-medical.com/api/health
 
 ### Landing page during hibernation
 
-The landing page at `quill-medical.com` is served from the **staging** load balancer (`35.186.223.130`). The staging SSL certificate covers both `staging.quill-medical.com` and `quill-medical.com`. The `landing_domain` variable in the staging tfvars controls this.
+The landing page at `quill-medical.com` and `www.quill-medical.com` is served from the **staging** load balancer (`35.186.223.130`). The staging SSL certificate covers `staging.quill-medical.com`, `quill-medical.com`, and `www.quill-medical.com`. The `landing_domain` variable in the staging tfvars controls this.
+
+The site is built from the `frontend/public_pages/` Vite workspace and deployed to the `{project_id}-landing` GCS bucket by the `.github/workflows/public-site.yml` CI workflow. Changes to `frontend/public_pages/**`, `frontend/src/components/**`, or `frontend/src/theme.ts` trigger a rebuild and upload.
 
 When production is restored, you may optionally move the landing page back to the production LB by:
 
