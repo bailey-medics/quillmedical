@@ -35,3 +35,9 @@ variable "log_sample_rate" {
   type        = number
   default     = 1.0
 }
+
+variable "landing_domain" {
+  description = "Apex domain for the static landing page (e.g. quill-medical.com). When set, creates a GCS-hosted landing page with its own host rule."
+  type        = string
+  default     = null
+}

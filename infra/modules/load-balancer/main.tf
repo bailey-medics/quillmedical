@@ -136,15 +136,75 @@ resource "google_compute_url_map" "https" {
       service = google_compute_backend_service.backend.id
     }
   }
+
+  # Landing page host rule (when landing_domain is set)
+  dynamic "host_rule" {
+    for_each = var.landing_domain != null ? [var.landing_domain] : []
+    content {
+      hosts        = [host_rule.value]
+      path_matcher = "landing"
+    }
+  }
+
+  dynamic "path_matcher" {
+    for_each = var.landing_domain != null ? [1] : []
+    content {
+      name            = "landing"
+      default_service = google_compute_backend_bucket.landing[0].id
+    }
+  }
+}
+
+# ---------- Landing page: GCS bucket + backend bucket ----------
+resource "google_storage_bucket" "landing" {
+  count    = var.landing_domain != null ? 1 : 0
+  project  = var.project_id
+  name     = "${var.project_id}-landing"
+  location = "EU"
+
+  website {
+    main_page_suffix = "index.html"
+    not_found_page   = "index.html"
+  }
+
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+resource "google_storage_bucket_iam_member" "landing_public" {
+  count  = var.landing_domain != null ? 1 : 0
+  bucket = google_storage_bucket.landing[0].name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_object" "landing_index" {
+  count        = var.landing_domain != null ? 1 : 0
+  name         = "index.html"
+  source       = "${path.module}/landing/index.html"
+  bucket       = google_storage_bucket.landing[0].name
+  content_type = "text/html"
+}
+
+resource "google_compute_backend_bucket" "landing" {
+  count       = var.landing_domain != null ? 1 : 0
+  project     = var.project_id
+  name        = "quill-landing-${var.environment}"
+  bucket_name = google_storage_bucket.landing[0].name
+  enable_cdn  = true
 }
 
 # ---------- Google-managed SSL certificate ----------
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
-  name    = "quill-cert-${var.environment}"
+  name    = "quill-cert-v3-${var.environment}"
 
   managed {
-    domains = var.domains
+    domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain] : [])
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

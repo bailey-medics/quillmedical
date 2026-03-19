@@ -1,5 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
+# Build context: repository root (required so prod stage can access caddy/prod/)
+# CI: context: .        dockerfile: ./frontend/Dockerfile
+# Dev: context: .        dockerfile: ./frontend/Dockerfile  target: dev
+
 # ============================================================
 # Stage: deps — install node_modules (shared by dev + build)
 # ============================================================
@@ -11,9 +15,9 @@ RUN corepack enable
 
 WORKDIR /app
 
-COPY package.json yarn.lock .yarnrc.yml ./
-COPY public_pages/package.json ./public_pages/package.json
-COPY .yarn/ .yarn/
+COPY frontend/package.json frontend/yarn.lock frontend/.yarnrc.yml ./
+COPY frontend/public_pages/package.json ./public_pages/package.json
+COPY frontend/.yarn/ .yarn/
 
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --immutable --check-cache
@@ -23,7 +27,7 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
 # ============================================================
 FROM deps AS dev
 
-COPY . .
+COPY frontend/ .
 
 EXPOSE 5173
 EXPOSE 5174
@@ -35,14 +39,15 @@ CMD ["/bin/sh", "-c", "/app/dev-start.sh"]
 # ============================================================
 FROM deps AS build
 
-COPY . .
+COPY frontend/ .
+COPY shared/ /shared/
 
 # VAPID public key — injected at build time for push notifications
 ARG VITE_VAPID_PUBLIC
 ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 
 # Build SPA (outputs to dist/) and public pages (outputs to dist/public_pages/)
-RUN yarn build && yarn workspace public_pages build
+RUN yarn build && yarn workspace public-pages build
 
 # ============================================================
 # Stage: prod — tiny Caddy image serving static files

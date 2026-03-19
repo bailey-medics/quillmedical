@@ -1,4 +1,4 @@
-# Workflow for release/* and hotfix/* branches, and pull requests.
+# Workflow for release/* and hotfix/* branches.
 # Runs all code quality checks. Fully self-contained — does NOT share
 # code with feature.yml or deploy workflows. A change to this file
 # cannot affect feature branch checks or production deployments.
@@ -9,8 +9,6 @@ on:
     branches:
       - "release/**"
       - "hotfix/**"
-  pull_request:
-    branches: [main, clinical-live]
 
 permissions:
   contents: read
