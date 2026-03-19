@@ -20,8 +20,10 @@ WORKDIR /app
 # Most of our deps ship many linux wheels, so you can usually skip build-essential.
 # RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry (pinned)
-RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
+# Install Poetry (pinned) and remove pre-installed charset-normalizer to avoid
+# attrs/pip conflict when Poetry manages system site-packages.
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" \
+ && pip uninstall -y charset-normalizer 2>/dev/null || true
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
