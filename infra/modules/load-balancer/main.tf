@@ -141,7 +141,7 @@ resource "google_compute_url_map" "https" {
   dynamic "host_rule" {
     for_each = var.landing_domain != null ? [var.landing_domain] : []
     content {
-      hosts        = [host_rule.value]
+      hosts        = [host_rule.value, "www.${host_rule.value}"]
       path_matcher = "landing"
     }
   }
@@ -164,7 +164,7 @@ resource "google_storage_bucket" "landing" {
 
   website {
     main_page_suffix = "index.html"
-    not_found_page   = "index.html"
+    not_found_page   = "not-found.html"
   }
 
   uniform_bucket_level_access = true
@@ -176,14 +176,6 @@ resource "google_storage_bucket_iam_member" "landing_public" {
   bucket = google_storage_bucket.landing[0].name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
-}
-
-resource "google_storage_bucket_object" "landing_index" {
-  count        = var.landing_domain != null ? 1 : 0
-  name         = "index.html"
-  source       = "${path.module}/landing/index.html"
-  bucket       = google_storage_bucket.landing[0].name
-  content_type = "text/html"
 }
 
 resource "google_compute_backend_bucket" "landing" {
@@ -200,7 +192,7 @@ resource "google_compute_managed_ssl_certificate" "cert" {
   name    = "quill-cert-v3-${var.environment}"
 
   managed {
-    domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain] : [])
+    domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain, "www.${var.landing_domain}"] : [])
   }
 
   lifecycle {
