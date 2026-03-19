@@ -30,12 +30,15 @@ jobs:
       matrix:
         include:
           - environment: staging
+            workspace: staging
             wif_provider_secret: GCP_STAGING_WIF_PROVIDER
             service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
+            workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
             service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
           - environment: prod
+            workspace: production
             wif_provider_secret: GCP_PROD_WIF_PROVIDER
             service_account_secret: GCP_PROD_SERVICE_ACCOUNT
     steps:
@@ -55,6 +58,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select ${{ matrix.workspace }}
 
       - name: Terraform plan
         id: plan
@@ -102,9 +109,11 @@ jobs:
       matrix:
         include:
           - environment: staging
+            workspace: staging
             wif_provider_secret: GCP_STAGING_WIF_PROVIDER
             service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
+            workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
             service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
     environment: ${{ matrix.environment }}
@@ -125,6 +134,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select ${{ matrix.workspace }}
 
       - name: Terraform apply
         working-directory: infra
@@ -177,6 +190,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select production
 
       - name: Terraform apply
         working-directory: infra
