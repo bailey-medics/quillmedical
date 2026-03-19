@@ -213,6 +213,8 @@ def check_fhir_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
+    if settings.FHIR_DB_PASSWORD is None:
+        return {"available": False, "error": "FHIR not configured"}
     try:
         # Test actual data access, not just metadata
         # This ensures database is ready and indexes are loaded
@@ -235,6 +237,8 @@ def check_ehrbase_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
+    if settings.EHRBASE_API_PASSWORD is None:
+        return {"available": False, "error": "EHRbase not configured"}
     try:
         # Use get_secret_value() to extract the actual password string
         api_user = settings.EHRBASE_API_USER
@@ -261,24 +265,31 @@ async def startup_event() -> None:
     print("Quill Medical Backend Starting...")
     print("=" * 60)
 
-    fhir_status = check_fhir_health()
-    ehrbase_status = check_ehrbase_health()
-
-    if fhir_status["available"]:
-        print("✓ FHIR server is available")
+    if settings.FHIR_DB_PASSWORD is not None:
+        fhir_status = check_fhir_health()
+        if fhir_status["available"]:
+            print("✓ FHIR server is available")
+        else:
+            print(
+                f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
+            )
+            print("  Patient operations will fail until FHIR server is ready")
     else:
-        print(
-            f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
-        )
-        print("  Patient operations will fail until FHIR server is ready")
+        print("- FHIR not configured (skipped)")
 
-    if ehrbase_status["available"]:
-        print("✓ EHRbase server is available")
+    if settings.EHRBASE_API_PASSWORD is not None:
+        ehrbase_status = check_ehrbase_health()
+        if ehrbase_status["available"]:
+            print("✓ EHRbase server is available")
+        else:
+            print(
+                f"✗ WARNING: EHRbase not available - {ehrbase_status.get('error', 'Unknown error')}"
+            )
+            print(
+                "  Clinical letter operations will fail until EHRbase is ready"
+            )
     else:
-        print(
-            f"✗ WARNING: EHRbase not available - {ehrbase_status.get('error', 'Unknown error')}"
-        )
-        print("  Clinical letter operations will fail until EHRbase is ready")
+        print("- EHRbase not configured (skipped)")
 
     print("=" * 60 + "\n")
 
@@ -355,20 +366,23 @@ def health_check() -> dict[str, Any]:
     Returns:
         dict: Health status with service availability details
     """
-    fhir_status = check_fhir_health()
-    ehrbase_status = check_ehrbase_health()
+    services: dict[str, dict[str, bool | int | str]] = {
+        "auth_db": {
+            "available": True
+        },  # If we can respond, auth DB is working
+    }
 
-    all_healthy = fhir_status["available"] and ehrbase_status["available"]
+    # Only check FHIR/EHRbase when configured
+    if settings.FHIR_DB_PASSWORD is not None:
+        services["fhir"] = check_fhir_health()
+    if settings.EHRBASE_API_PASSWORD is not None:
+        services["ehrbase"] = check_ehrbase_health()
+
+    all_healthy = all(s.get("available", False) for s in services.values())
 
     return {
         "status": "healthy" if all_healthy else "degraded",
-        "services": {
-            "fhir": fhir_status,
-            "ehrbase": ehrbase_status,
-            "auth_db": {
-                "available": True
-            },  # If we can respond, auth DB is working
-        },
+        "services": services,
     }
 
 
