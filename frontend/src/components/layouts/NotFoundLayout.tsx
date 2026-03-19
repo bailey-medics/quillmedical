@@ -18,7 +18,7 @@ import { Button, Container, Text, Title } from "@mantine/core";
 export default function NotFoundLayout() {
   // Vite provides BASE_URL (may or may not include a trailing slash).
   // Normalize it to always include a trailing slash so an absolute
-  // navigation/href goes exactly to the SPA base (e.g. '/app/').
+  // navigation/href goes exactly to the SPA base.
   const rawBase = (import.meta.env.BASE_URL as string) || "/";
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
 

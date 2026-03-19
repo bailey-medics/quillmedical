@@ -30,7 +30,7 @@ describe("PublicLayout", () => {
     );
     const signIn = getByText("Sign in");
     expect(signIn).toBeInTheDocument();
-    expect(signIn.closest("a")).toHaveAttribute("href", "/app/");
+    expect(signIn.closest("a")).toHaveAttribute("href", "/login");
   });
 
   it("renders sign in link with custom URL", () => {

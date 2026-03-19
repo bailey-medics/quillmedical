@@ -35,7 +35,7 @@ createRoot(document.getElementById("root")!).render(
             fair pricing based on clinician time.
           </Text>
           <Group mt="lg">
-            <Button component="a" href="/app/" size="md">
+            <Button component="a" href="/login" size="md">
               Sign in / register
             </Button>
             <Button

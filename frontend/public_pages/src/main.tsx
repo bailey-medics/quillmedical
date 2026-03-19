@@ -13,7 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <h1>Quill Medical</h1>
       <p>Digital notes that behave. Safety by design.</p>
       <p>
-        <a href="/app/">Open the app</a>
+        <a href="/login">Open the app</a>
       </p>
       {/* <Hero ... /> */}
     </main>

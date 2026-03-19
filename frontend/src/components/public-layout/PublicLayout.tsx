@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 interface PublicLayoutProps {
   /** Page content */
   children: ReactNode;
-  /** URL for the "Sign in" link (default: "/app/") */
+  /** URL for the "Sign in" link (default: "/login") */
   signInUrl?: string;
   /** Footer text (default: copyright notice) */
   footerText?: string;
@@ -21,7 +21,7 @@ interface PublicLayoutProps {
 
 export default function PublicLayout({
   children,
-  signInUrl = "/app/",
+  signInUrl = "/login",
   footerText = `© ${new Date().getFullYear()} Quill Medical`,
 }: PublicLayoutProps) {
   const theme = useMantineTheme();

@@ -46,8 +46,8 @@ COPY shared/ /shared/
 ARG VITE_VAPID_PUBLIC
 ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 
-# Build SPA (outputs to dist/) and public pages (outputs to dist/public_pages/)
-RUN yarn build && yarn workspace public-pages build
+# Build SPA (outputs to dist/)
+RUN yarn build
 
 # ============================================================
 # Stage: prod — tiny Caddy image serving static files
@@ -61,7 +61,6 @@ COPY caddy/prod/Caddyfile /etc/caddy/Caddyfile
 
 # Copy built assets from the build stage
 COPY --from=build /app/dist /srv/app
-COPY --from=build /app/dist/public_pages /srv/public_pages
 
 # Run as non-root
 USER nobody
@@ -69,4 +68,4 @@ USER nobody
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/app/", "||", "exit", "1"]
+  CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/", "||", "exit", "1"]
