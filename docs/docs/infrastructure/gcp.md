@@ -4,11 +4,11 @@
 
 Quill Medical runs on three separate GCP projects, each in **europe-west2** (London):
 
-| Environment | Project ID                 | Purpose                                    | Status      |
-| ----------- | -------------------------- | ------------------------------------------ | ----------- |
-| Production  | `quill-medical-production` | Clinical app for real patients             | Hibernated  |
-| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Active      |
-| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) | Active      |
+| Environment | Project ID                 | Purpose                                    | Status     |
+| ----------- | -------------------------- | ------------------------------------------ | ---------- |
+| Production  | `quill-medical-production` | Clinical app for real patients             | Hibernated |
+| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Active     |
+| Teaching    | `quill-medical-teaching`   | Educational environment (no clinical data) | Active     |
 
 Estimated cost: **£72–107/month** across staging and teaching (production hibernated — see [Production hibernation](#production-hibernation) below).
 
@@ -228,23 +228,23 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 - **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
 - **Static global IP**: stable IP addresses for DNS A records
 
-| Environment | Domain                       | Load Balancer IP  | Status     |
-| ----------- | ---------------------------- | ----------------- | ---------- |
-| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Active     |
+| Environment | Domain                       | Load Balancer IP  | Status                |
+| ----------- | ---------------------------- | ----------------- | --------------------- |
+| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Active                |
 | Staging     | `quill-medical.com`          | `35.186.223.130`  | Active (landing page) |
-| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active     |
-| Production  | `app.quill-medical.com`      | —                 | Hibernated |
+| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active                |
+| Production  | `app.quill-medical.com`      | —                 | Hibernated            |
 
 The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
-| Domain                       | Purpose                       | Update process                       | Status     |
-| ---------------------------- | ----------------------------- | ------------------------------------ | ---------- |
+| Domain                       | Purpose                       | Update process                       | Status              |
+| ---------------------------- | ----------------------------- | ------------------------------------ | ------------------- |
 | `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off | Active (staging LB) |
-| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Hibernated |
-| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Active     |
-| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         | Active     |
+| `app.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Hibernated          |
+| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Active              |
+| `teaching.quill-medical.com` | Teaching/training environment | Auto-deploy from main branch         | Active              |
 
 The public landing site (`quill-medical.com`) is served from a GCS bucket behind the staging load balancer. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
@@ -252,11 +252,11 @@ The public landing site (`quill-medical.com`) is served from a GCS bucket behind
 
 Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
 
-| Record                       | Type | TTL | Value             | Notes     |
-| ---------------------------- | ---- | --- | ----------------- | --------- |
+| Record                       | Type | TTL | Value             | Notes                     |
+| ---------------------------- | ---- | --- | ----------------- | ------------------------- |
 | `quill-medical.com`          | A    | 300 | `35.186.223.130`  | Landing page (staging LB) |
-| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |           |
-| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |           |
+| `staging.quill-medical.com`  | A    | 300 | `35.186.223.130`  |                           |
+| `teaching.quill-medical.com` | A    | 300 | `136.110.221.126` |                           |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 
@@ -456,17 +456,17 @@ Two orphaned Cloud Run services (`quill-backend-production`, `quill-frontend-pro
 
 The following resources survive `terraform destroy` and do **not** need recreating:
 
-| Resource | Location | Notes |
-| --- | --- | --- |
-| GCP project | `quill-medical-production` | Project itself is not Terraform-managed |
-| Workload Identity Federation | `github-pool` / `github-provider` | GitHub Actions can still authenticate |
-| GitHub secrets | `GCP_PROD_*` | 3 repository secrets remain valid |
-| Cloud DNS zone | `quill-medical-zone` | Manually created, holds all DNS records |
-| Organisation policy override | Domain Restricted Sharing | Allows `allUsers` IAM bindings |
-| Artifact Registry | `europe-west2-docker.pkg.dev/quill-medical-production/quill/` | Container images still stored |
-| Terraform state | `gs://quill-medical-terraform-state` (production workspace) | Empty state, workspace exists |
-| Secret Manager containers | `jwt-secret`, `db-password-*`, `vapid-private`, etc. | Empty (no versions), will be repopulated on apply |
-| Enabled APIs | Cloud Run, Cloud SQL Admin, etc. | Remain enabled on the project |
+| Resource                     | Location                                                      | Notes                                             |
+| ---------------------------- | ------------------------------------------------------------- | ------------------------------------------------- |
+| GCP project                  | `quill-medical-production`                                    | Project itself is not Terraform-managed           |
+| Workload Identity Federation | `github-pool` / `github-provider`                             | GitHub Actions can still authenticate             |
+| GitHub secrets               | `GCP_PROD_*`                                                  | 3 repository secrets remain valid                 |
+| Cloud DNS zone               | `quill-medical-zone`                                          | Manually created, holds all DNS records           |
+| Organisation policy override | Domain Restricted Sharing                                     | Allows `allUsers` IAM bindings                    |
+| Artifact Registry            | `europe-west2-docker.pkg.dev/quill-medical-production/quill/` | Container images still stored                     |
+| Terraform state              | `gs://quill-medical-terraform-state` (production workspace)   | Empty state, workspace exists                     |
+| Secret Manager containers    | `jwt-secret`, `db-password-*`, `vapid-private`, etc.          | Empty (no versions), will be repopulated on apply |
+| Enabled APIs                 | Cloud Run, Cloud SQL Admin, etc.                              | Remain enabled on the project                     |
 
 ### Restore procedure
 
