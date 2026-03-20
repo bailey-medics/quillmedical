@@ -37,7 +37,9 @@ export default function PublicTopRibbon({
             <img
               src="/quill-name-long-white-amber.png"
               alt="Quill Medical"
-              style={{ height: "1.5rem" }}
+              width={143}
+              height={24}
+              style={{ height: "1.5rem", width: "auto" }}
             />
           </a>
           <Group component="nav" gap="lg" className={classes.navLinks}>
