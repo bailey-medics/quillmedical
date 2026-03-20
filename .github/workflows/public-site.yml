@@ -92,20 +92,6 @@ jobs:
           gsutil -m -h "Cache-Control:no-cache" \
             cp public-site/*.html "gs://${BUCKET}/"
 
-          # Upload extensionless copies for clean URLs (/about → about object)
-          # GCS has no URL rewriting, so we upload each page twice:
-          # once as page.html (for direct access) and once without extension
-          # (for clean URL navigation). index.html is skipped — the bucket's
-          # main_page_suffix handles / → index.html automatically.
-          for f in public-site/*.html; do
-            name=$(basename "$f" .html)
-            if [ "$name" != "index" ]; then
-              gsutil -h "Cache-Control:no-cache" \
-                -h "Content-Type:text/html; charset=utf-8" \
-                cp "$f" "gs://${BUCKET}/${name}"
-            fi
-          done
-
       - name: Verify deployment
         run: |
           BUCKET="${{ secrets.GCP_STAGING_PROJECT_ID }}-landing"
@@ -145,16 +131,6 @@ jobs:
   #         # Upload HTML files with no-cache
   #         gsutil -m -h "Cache-Control:no-cache" \
   #           cp public-site/*.html "gs://${BUCKET}/"
-  #
-  #         # Upload extensionless copies for clean URLs
-  #         for f in public-site/*.html; do
-  #           name=$(basename "$f" .html)
-  #           if [ "$name" != "index" ]; then
-  #             gsutil -h "Cache-Control:no-cache" \
-  #               -h "Content-Type:text/html; charset=utf-8" \
-  #               cp "$f" "gs://${BUCKET}/${name}"
-  #           fi
-  #         done
   #
   #     - name: Verify deployment
   #       run: |
