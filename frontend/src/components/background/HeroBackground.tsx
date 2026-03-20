@@ -10,7 +10,6 @@ export default function HeroBackground({ children }: HeroBackgroundProps) {
     <Box
       data-testid="hero-background"
       style={{
-        minHeight: "100vh",
         background: "#0A1628",
         position: "relative",
         overflow: "hidden",
@@ -25,8 +24,8 @@ export default function HeroBackground({ children }: HeroBackgroundProps) {
           zIndex: 0,
           pointerEvents: "none",
           background: [
-            "radial-gradient(ellipse 80% 60% at 65% 50%, rgba(200,150,62,0.07) 0%, transparent 60%)",
-            "radial-gradient(ellipse 40% 40% at 15% 80%, rgba(30,58,95,0.6) 0%, transparent 60%)",
+            "radial-gradient(ellipse 900px 600px at 65% 50%, rgba(200,150,62,0.07) 0%, transparent 60%)",
+            "radial-gradient(ellipse 500px 500px at 15% 80%, rgba(30,58,95,0.6) 0%, transparent 60%)",
           ].join(", "),
         }}
       />
