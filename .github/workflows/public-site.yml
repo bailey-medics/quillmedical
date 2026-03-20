@@ -74,6 +74,7 @@ jobs:
 
       # Sync files to the landing bucket. Set cache headers:
       # - Hashed assets (js/css): 1 year immutable cache
+      # - Static assets (images, icons, manifest): 30 day cache
       # - HTML files: no-cache (always revalidate)
       - name: Upload to GCS
         run: |
@@ -82,6 +83,10 @@ jobs:
           # Upload hashed assets with aggressive caching
           gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
             rsync -r -x '.*\.html$' public-site/assets/ "gs://${BUCKET}/assets/"
+
+          # Upload static assets (images, icons, manifest, service worker)
+          gsutil -m -h "Cache-Control:public, max-age=2592000" \
+            cp public-site/*.png public-site/*.ico public-site/*.webmanifest public-site/*.js "gs://${BUCKET}/"
 
           # Upload HTML files with no-cache
           gsutil -m -h "Cache-Control:no-cache" \
