@@ -9,12 +9,23 @@ import Image from "@components/images/Image";
 import detectStorybook from "@lib/urlUpdate";
 import React from "react";
 
+/** Available logo colour variants */
+type LogoColour = "default" | "light-grey" | "white";
+
+const logoFileMap: Record<LogoColour, string> = {
+  default: "/quill-logo.png",
+  "light-grey": "/quill-light-grey.png",
+  white: "/quill-white.png",
+};
+
 /**
  * QuillLogo Props
  */
 type Props = {
   /** Alt text for accessibility (default: "Quill") */
   alt?: string;
+  /** Logo colour variant (default: "default") */
+  colour?: LogoColour;
   /** Logo height in rem (default: 8) */
   height?: number | string;
   /** CSS class name */
@@ -34,11 +45,12 @@ type Props = {
  */
 export default function QuillLogo({
   alt = "Quill",
+  colour = "default",
   height = 8,
   className,
   style,
 }: Props) {
-  const src = detectStorybook("/quill-logo.png");
+  const src = detectStorybook(logoFileMap[colour]);
 
   return (
     <Image

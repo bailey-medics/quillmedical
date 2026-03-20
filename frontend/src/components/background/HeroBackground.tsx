@@ -9,6 +9,7 @@ export default function HeroBackground({ children }: HeroBackgroundProps) {
   return (
     <Box
       data-testid="hero-background"
+      pb="3rem"
       style={{
         background: "#0A1628",
         position: "relative",

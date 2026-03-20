@@ -1,16 +1,14 @@
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 
-interface HeroBackgroundLightProps {
+interface LightBackgroundProps {
   children?: ReactNode;
 }
 
-export default function HeroBackgroundLight({
-  children,
-}: HeroBackgroundLightProps) {
+export default function LightBackground({ children }: LightBackgroundProps) {
   return (
     <Box
-      data-testid="hero-background-light"
+      data-testid="light-background"
       style={{
         background: "#112240",
         position: "relative",

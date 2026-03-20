@@ -54,6 +54,17 @@ describe("Icon Component", () => {
     expect(icon).toHaveAttribute("height", "48");
   });
 
+  it("renders with xl size (72px)", () => {
+    renderWithMantine(
+      <Icon icon={<IconPencil data-testid="xl-icon" />} size="xl" />,
+    );
+
+    const icon = screen.getByTestId("xl-icon");
+    expect(icon).toBeInTheDocument();
+    expect(icon).toHaveAttribute("width", "72");
+    expect(icon).toHaveAttribute("height", "72");
+  });
+
   it("applies custom className", () => {
     renderWithMantine(
       <Icon

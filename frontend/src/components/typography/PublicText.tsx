@@ -10,6 +10,10 @@ export interface PublicTextProps {
   ta?: "left" | "center" | "right";
   /** Use dimmed colour instead of white — defaults to false */
   dimmed?: boolean;
+  /** Top margin (Mantine spacing value) */
+  mt?: string;
+  /** Bottom margin (Mantine spacing value) */
+  mb?: string;
 }
 
 export default function PublicText({
@@ -17,9 +21,17 @@ export default function PublicText({
   size = "md",
   ta = "center",
   dimmed = false,
+  mt,
+  mb,
 }: PublicTextProps) {
   return (
-    <Text size={size} ta={ta} c={dimmed ? "dimmed" : "rgba(245,240,232,0.55)"}>
+    <Text
+      size={size}
+      ta={ta}
+      c={dimmed ? "dimmed" : "rgba(245,240,232,0.55)"}
+      mt={mt}
+      mb={mb}
+    >
       {children}
     </Text>
   );

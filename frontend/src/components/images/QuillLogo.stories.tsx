@@ -20,6 +20,10 @@ const meta: Meta<typeof QuillLogo> = {
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },
+    colour: {
+      control: "select",
+      options: ["default", "light-grey", "white"],
+    },
   },
 };
 
@@ -36,4 +40,38 @@ export const Default: Story = {
     height: 5,
     alt: "Quill",
   },
+};
+
+/**
+ * Light grey variant of the Quill Medical logo.
+ */
+export const LightGrey: Story = {
+  args: {
+    height: 5,
+    colour: "light-grey",
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ background: "#0A1628", padding: "2rem" }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/**
+ * White variant of the Quill Medical logo.
+ */
+export const White: Story = {
+  args: {
+    height: 5,
+    colour: "white",
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ background: "#0A1628", padding: "2rem" }}>
+        <Story />
+      </div>
+    ),
+  ],
 };

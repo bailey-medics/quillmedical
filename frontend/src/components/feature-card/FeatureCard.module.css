@@ -1,0 +1,60 @@
+.card {
+  background: #112240;
+  border: 0.0625rem solid rgb(200 150 62 / 20%);
+  border-radius: 4px;
+  padding: 2rem 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #c8963e;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: background 0.35s ease;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.clickable:hover {
+  background: #152a4a;
+}
+
+.clickable:hover::before {
+  transform: scaleX(1);
+}
+
+.icon {
+  margin-bottom: 1.25rem;
+  color: #c8963e;
+}
+
+.icon svg {
+  stroke-width: 1 !important;
+}
+
+.title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2.4rem;
+  font-weight: 500;
+  color: #fdfbf7;
+  margin-bottom: 0.6rem;
+}
+
+.body {
+  font-size: 1.25rem;
+  color: rgb(245 240 232 / 55%);
+  line-height: 1.75;
+}
