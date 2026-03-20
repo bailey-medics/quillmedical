@@ -252,12 +252,12 @@ The public landing site (`quill-medical.com` and `www.quill-medical.com`) is ser
 
 Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
 
-| Record                       | Type  | TTL | Value             | Notes                     |
-| ---------------------------- | ----- | --- | ----------------- | ------------------------- |
-| `quill-medical.com`          | A     | 300 | `35.186.223.130`  | Landing page (staging LB) |
-| `www.quill-medical.com`      | CNAME | 300 | `quill-medical.com` | www redirect to apex    |
-| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`  |                           |
-| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126` |                           |
+| Record                       | Type  | TTL | Value               | Notes                     |
+| ---------------------------- | ----- | --- | ------------------- | ------------------------- |
+| `quill-medical.com`          | A     | 300 | `35.186.223.130`    | Landing page (staging LB) |
+| `www.quill-medical.com`      | CNAME | 300 | `quill-medical.com` | www redirect to apex      |
+| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`    |                           |
+| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126`   |                           |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 
