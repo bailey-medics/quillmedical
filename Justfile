@@ -174,6 +174,7 @@ rebase:
     git pull
     git checkout "$BRANCH"
     git rebase main
+    git push --force-with-lease
 
 
 alias pi := poetry-install
