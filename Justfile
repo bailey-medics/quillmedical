@@ -187,7 +187,7 @@ poetry-install:
     poetry install
 
 
-alias pp := poetry-path
+alias pop := poetry-path
 # Show the poetry path
 poetry-path:
     #!/usr/bin/env bash
@@ -196,6 +196,14 @@ poetry-path:
     poetry env info -p
     echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
+
+alias pup := public-pages
+# Run public pages dev server
+public-pages:
+    #!/usr/bin/env bash
+    {{initialise}} "public-pages"
+    cd frontend
+    yarn workspace public-pages dev
 
 alias sb := storybook
 # Run storybook dev server

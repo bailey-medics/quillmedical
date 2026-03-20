@@ -1,4 +1,4 @@
-import PublicLayout from "@/components/public-layout/PublicLayout";
+import PublicLayout from "@/components/layouts/PublicLayout";
 import { theme } from "@/theme";
 import { Container, List, MantineProvider, Text, Title } from "@mantine/core";
 import "@mantine/core/styles.css";

@@ -145,7 +145,12 @@ export default function TopRibbon({
         {showBrand && (
           <Link
             to="/"
-            style={{ display: "flex", alignItems: "center", paddingTop: 3 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              paddingTop: 3,
+              marginLeft: "0.8rem",
+            }}
           >
             <QuillName />
           </Link>

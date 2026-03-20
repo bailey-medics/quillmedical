@@ -3,7 +3,7 @@ import { Container, Stack, Text, Title } from "@mantine/core";
 import PublicLayout from "./PublicLayout";
 
 const meta: Meta<typeof PublicLayout> = {
-  title: "Layouts/PublicLayout",
+  title: "Public/Layouts/PublicLayout",
   component: PublicLayout,
   parameters: {
     layout: "fullscreen",
@@ -24,28 +24,6 @@ export const Default: Story = {
             A modern, secure platform for patients and clinics.
           </Text>
         </Stack>
-      </Container>
-    ),
-  },
-};
-
-export const CustomSignInUrl: Story = {
-  args: {
-    signInUrl: "https://app.quill-medical.com/",
-    children: (
-      <Container size="lg" py="xl">
-        <Title order={1}>Public site</Title>
-        <Text>Sign in link points to the production app domain.</Text>
-      </Container>
-    ),
-  },
-};
-
-export const MinimalContent: Story = {
-  args: {
-    children: (
-      <Container size="lg" py="xl">
-        <Text>404 — Page not found</Text>
       </Container>
     ),
   },

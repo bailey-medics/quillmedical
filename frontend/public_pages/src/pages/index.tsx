@@ -1,15 +1,12 @@
-import PublicLayout from "@/components/public-layout/PublicLayout";
+import HeroBackground from "@/components/background/HeroBackground";
+import HeroBackgroundLight from "@/components/background/HeroBackgroundLight";
+import PublicButton from "@/components/button/PublicButton";
+import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
+import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
-import {
-  Button,
-  Container,
-  Group,
-  MantineProvider,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Container, Group, MantineProvider, Stack } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import { createRoot } from "react-dom/client";
@@ -17,38 +14,49 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <Container size="lg" py="xl">
-        <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
-          <QuillLogo height={8} />
-          <Title order={1}>Welcome to Quill Medical</Title>
-          <Text size="lg" ta="center">
-            Quill is a modern, secure platform for patients and clinics to
-            communicate seamlessly. Send messages, receive expert responses, and
-            get professional clinical letters—all with transparent billing and
-            secure records using healthcare standards (FHIR and OpenEHR).
-            Designed for fairness, privacy, and future-ready electronic patient
-            records.
-          </Text>
-          <Text size="md" ta="center" c="dimmed">
-            Whether you're a patient seeking care or a clinic managing
-            communications, Quill ensures secure, auditable interactions with
-            fair pricing based on clinician time.
-          </Text>
-          <Group mt="lg">
-            <Button component="a" href="/login" size="md">
-              Sign in / register
-            </Button>
-            <Button
-              variant="outline"
-              component="a"
-              href="/features.html"
-              size="md"
-            >
-              Features
-            </Button>
-          </Group>
-        </Stack>
-      </Container>
+      <HeroBackground>
+        <Container size="lg" py="xl">
+          <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
+            <QuillLogo
+              height={8}
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+            <PublicTitle title="Communication that Counts!" />
+            <PublicText size="lg">
+              Exceptional clinical care deserves exceptional clinical tools.
+              Software your team actually wants to use, and trainees who walk
+              into any clinical setting knowing exactly what they're doing.
+              Quill Medical is what a clinical team builds when they refuse to
+              settle - for trainees across every specialty, and the clinicians
+              who teach them.
+            </PublicText>
+            <Group mt="lg">
+              <PublicButton href="https://teaching.quill-medical.com">
+                Teaching
+              </PublicButton>
+              <PublicButton href="https://staging.quill-medical.com">
+                EPR Staging
+              </PublicButton>
+              <PublicButton variant="outline" disabled>
+                EPR Live
+              </PublicButton>
+            </Group>
+          </Stack>
+        </Container>
+      </HeroBackground>
+
+      <HeroBackgroundLight>
+        <Container size="lg" py="xl">
+          <Stack align="center" gap="md" py="xl">
+            <PublicTitle title="Built for clinicians" size="md" />
+            <PublicText>
+              Quill Medical is designed from the ground up by clinicians who
+              understand the pressures of modern healthcare. Every feature is
+              shaped by real clinical workflows — not assumptions.
+            </PublicText>
+          </Stack>
+        </Container>
+      </HeroBackgroundLight>
     </PublicLayout>
   </MantineProvider>,
 );

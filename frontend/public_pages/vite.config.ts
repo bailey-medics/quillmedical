@@ -28,13 +28,18 @@ export default defineConfig({
             // allow root and index.html to continue
             if (pathname === "/" || pathname === "/index.html") return next();
 
-            // check if the file exists on disk relative to server root
-            const filePath = path.join(server.config.root, pathname);
-            const exists = await fs.promises
-              .stat(filePath)
-              .then(() => true)
-              .catch(() => false);
-            if (exists) return next();
+            // check if the file exists on disk relative to server root or publicDir
+            const fileExists = async (base: string) =>
+              fs.promises
+                .stat(path.join(base, pathname))
+                .then(() => true)
+                .catch(() => false);
+            if (
+              (await fileExists(server.config.root)) ||
+              (typeof server.config.publicDir === "string" &&
+                (await fileExists(server.config.publicDir)))
+            )
+              return next();
 
             // For HTML requests, serve 404.html with 404 status instead of index.html
             const accept = (req.headers &&

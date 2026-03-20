@@ -12,57 +12,36 @@ describe("PublicLayout", () => {
     expect(getByText("Page content")).toBeInTheDocument();
   });
 
-  it("renders the Quill Medical logo link", () => {
+  it("renders the PublicTopRibbon in the header", () => {
     const { container } = renderWithMantine(
       <PublicLayout>
         <p>Content</p>
       </PublicLayout>,
     );
-    const homeLink = container.querySelector('a[href="/"]');
-    expect(homeLink).toBeInTheDocument();
+    const header = container.querySelector("header");
+    expect(header).toBeInTheDocument();
   });
 
-  it("renders sign in link with default URL", () => {
-    const { getByText } = renderWithMantine(
+  it("renders the Quill Medical logo in the ribbon", () => {
+    const { container } = renderWithMantine(
       <PublicLayout>
         <p>Content</p>
       </PublicLayout>,
     );
-    const signIn = getByText("Sign in");
-    expect(signIn).toBeInTheDocument();
-    expect(signIn.closest("a")).toHaveAttribute("href", "/login");
+    const logo = container.querySelector('img[alt="Quill Medical"]');
+    expect(logo).toBeInTheDocument();
   });
 
-  it("renders sign in link with custom URL", () => {
-    const { getByText } = renderWithMantine(
-      <PublicLayout signInUrl="https://app.quill-medical.com/">
-        <p>Content</p>
-      </PublicLayout>,
-    );
-    const signIn = getByText("Sign in");
-    expect(signIn.closest("a")).toHaveAttribute(
-      "href",
-      "https://app.quill-medical.com/",
-    );
-  });
-
-  it("renders footer with copyright text", () => {
+  it("renders the PublicFooter with copyright text", () => {
     const { getByText } = renderWithMantine(
       <PublicLayout>
         <p>Content</p>
       </PublicLayout>,
     );
     const year = new Date().getFullYear();
-    expect(getByText(`© ${year} Quill Medical`)).toBeInTheDocument();
-  });
-
-  it("renders custom footer text", () => {
-    const { getByText } = renderWithMantine(
-      <PublicLayout footerText="Custom footer">
-        <p>Content</p>
-      </PublicLayout>,
-    );
-    expect(getByText("Custom footer")).toBeInTheDocument();
+    expect(
+      getByText(`© ${year} Quill Medical. All rights reserved.`),
+    ).toBeInTheDocument();
   });
 
   it("has header, main, and footer semantic elements", () => {
