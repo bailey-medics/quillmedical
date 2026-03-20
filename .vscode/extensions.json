@@ -1,6 +1,5 @@
 {
   "recommendations": [
-    "github.copilot-chat",
     "ms-python.python",
     "ms-python.black-formatter",
     "esbenp.prettier-vscode",

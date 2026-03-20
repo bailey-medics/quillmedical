@@ -159,6 +159,24 @@ pre-commit:
     pre-commit run --all-files
 
 
+alias rb := rebase
+# Rebase current feature branch onto an up-to-date main
+rebase:
+    #!/usr/bin/env bash
+    {{initialise}} "rebase"
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$BRANCH" = "main" ]; then
+        echo "Already on main — switch to a feature branch first"
+        exit 1
+    fi
+    echo "Updating main and rebasing $BRANCH onto it..."
+    git checkout main
+    git pull
+    git checkout "$BRANCH"
+    git rebase main
+    git push --force-with-lease
+
+
 alias pi := poetry-install
 # Install the poetry dependencies
 poetry-install:
