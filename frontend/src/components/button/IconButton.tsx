@@ -21,6 +21,7 @@ const actionIconSizeMap: Record<IconSize, number> = {
   sm: 36,
   md: 44,
   lg: 60,
+  xl: 84,
 };
 
 interface IconButtonProps {
