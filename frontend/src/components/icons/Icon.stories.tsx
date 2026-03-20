@@ -79,7 +79,7 @@ export const Default: Story = {
 };
 
 /**
- * All sizes comparison — sm, md, and lg side by side.
+ * All sizes comparison — sm, md, lg, and xl side by side.
  */
 export const AllSizes: Story = {
   args: {
@@ -129,6 +129,22 @@ export const AllSizes: Story = {
             {appIcons.slice(0, 10).map(({ name, icon }) => (
               <Stack key={name} gap={4} align="center">
                 <Icon icon={icon} size="lg" />
+                <Text size="xs" c="dimmed">
+                  {name}
+                </Text>
+              </Stack>
+            ))}
+          </SimpleGrid>
+        </div>
+
+        <div>
+          <Text size="sm" fw={700} mb="xs">
+            Extra large (72px desktop, 48px mobile)
+          </Text>
+          <SimpleGrid cols={5} spacing="md">
+            {appIcons.slice(0, 10).map(({ name, icon }) => (
+              <Stack key={name} gap={4} align="center">
+                <Icon icon={icon} size="xl" />
                 <Text size="xs" c="dimmed">
                   {name}
                 </Text>

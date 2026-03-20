@@ -55,4 +55,43 @@ describe("PublicTitle", () => {
       expect(screen.getByText("Left")).toBeInTheDocument();
     });
   });
+
+  describe("Accent parsing", () => {
+    it("renders *marked* word as italic span", () => {
+      const { container } = renderWithMantine(
+        <PublicTitle title="Communication that *counts*!" />,
+      );
+      const span = container.querySelector("span");
+      expect(span).toBeInTheDocument();
+      expect(span?.textContent).toBe("counts");
+      expect(span?.style.fontStyle).toBe("italic");
+    });
+
+    it("renders accent word in the specified accent colour", () => {
+      const { container } = renderWithMantine(
+        <PublicTitle title="Hello *world*!" accentColour="#FF0000" />,
+      );
+      const span = container.querySelector("span");
+      expect(span?.style.color).toBe("rgb(255, 0, 0)");
+    });
+
+    it("renders title without markers unchanged", () => {
+      const { container } = renderWithMantine(
+        <PublicTitle title="No markers here" />,
+      );
+      const span = container.querySelector("span");
+      expect(span).toBeNull();
+      expect(screen.getByText("No markers here")).toBeInTheDocument();
+    });
+
+    it("supports multiple accent words", () => {
+      const { container } = renderWithMantine(
+        <PublicTitle title="*Hello* beautiful *world*!" />,
+      );
+      const spans = container.querySelectorAll("span");
+      expect(spans).toHaveLength(2);
+      expect(spans[0].textContent).toBe("Hello");
+      expect(spans[1].textContent).toBe("world");
+    });
+  });
 });

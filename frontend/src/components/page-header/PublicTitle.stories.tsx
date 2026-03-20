@@ -27,6 +27,13 @@ export const Default: Story = {
   },
 };
 
+export const WithAccent: Story = {
+  args: {
+    title: "Communication that *counts*!",
+    c: "white",
+  },
+};
+
 export const WithDescription: Story = {
   args: {
     title: "Communication that Counts!",

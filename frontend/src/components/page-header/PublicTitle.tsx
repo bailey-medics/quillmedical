@@ -1,8 +1,28 @@
 import { Box, Text, Title } from "@mantine/core";
+import type { ReactNode } from "react";
 import classes from "./PageHeader.module.css";
 
+/**
+ * Parse a title string, converting `*word*` markers into amber italic spans.
+ * Plain text is returned as-is; marked segments become styled `<span>` elements.
+ */
+function parseTitle(title: string, accentColour: string): ReactNode {
+  const parts = title.split(/(\*[^*]+\*)/g);
+  if (parts.length === 1) return title;
+  return parts.map((part, i) => {
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <span key={i} style={{ color: accentColour, fontStyle: "italic" }}>
+          {part.slice(1, -1)}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export interface PublicTitleProps {
-  /** Page title text */
+  /** Title text — wrap a word in *asterisks* for amber italic accent */
   title: string;
   /** Optional description/subtitle text */
   description?: string;
@@ -10,6 +30,10 @@ export interface PublicTitleProps {
   size?: "sm" | "md" | "lg";
   /** Text alignment — defaults to center */
   ta?: "left" | "center" | "right";
+  /** Base text colour — defaults to amber (#C8963E) */
+  c?: string;
+  /** Accent colour for *marked* words — defaults to amber (#C8963E) */
+  accentColour?: string;
 }
 
 export default function PublicTitle({
@@ -17,6 +41,8 @@ export default function PublicTitle({
   description,
   size = "lg",
   ta = "center",
+  c = "#C8963E",
+  accentColour = "#C8963E",
 }: PublicTitleProps) {
   const orderMap = {
     sm: 3,
@@ -30,7 +56,7 @@ export default function PublicTitle({
     <Box>
       <Title
         order={order}
-        c="#C8963E"
+        c={c}
         ta={ta}
         mb={description ? "xs" : undefined}
         ff="'Cormorant Garamond', serif"
@@ -42,7 +68,7 @@ export default function PublicTitle({
               : undefined
         }
       >
-        {title}
+        {parseTitle(title, accentColour)}
       </Title>
       {description && (
         <Text c="dimmed" size="lg" ta={ta}>

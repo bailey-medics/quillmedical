@@ -17,13 +17,15 @@ import { useMediaQuery } from "@mantine/hooks";
  * - sm: 20px (inputs, small buttons, inline text)
  * - md: 28px (default size, general UI elements)
  * - lg: 48px (action cards, prominent features)
+ * - xl: 72px (hero sections, landing page features)
  *
  * Mobile (<768px):
  * - sm: 16px
  * - md: 20px
  * - lg: 32px
+ * - xl: 48px
  */
-export type IconSize = "sm" | "md" | "lg";
+export type IconSize = "sm" | "md" | "lg" | "xl";
 
 interface IconProps {
   /** Icon element from @tabler/icons-react */
@@ -39,6 +41,7 @@ const desktopSizeMap: Record<IconSize, number> = {
   sm: 20,
   md: 28,
   lg: 48,
+  xl: 72,
 };
 
 /** Mobile size map (<768px) */
@@ -46,6 +49,7 @@ const mobileSizeMap: Record<IconSize, number> = {
   sm: 16,
   md: 20,
   lg: 32,
+  xl: 48,
 };
 
 /**

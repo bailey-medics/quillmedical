@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import HeroBackgroundLight from "./HeroBackgroundLight";
+import LightBackground from "./LightBackground";
 import { Container, Stack, Text, Title } from "@mantine/core";
 
 const meta = {
-  title: "Public/Background/HeroBackgroundLight",
-  component: HeroBackgroundLight,
+  title: "Public/Background/LightBackground",
+  component: LightBackground,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof HeroBackgroundLight>;
+} satisfies Meta<typeof LightBackground>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -17,7 +17,7 @@ export const Default: Story = {};
 
 export const WithContent: Story = {
   render: () => (
-    <HeroBackgroundLight>
+    <LightBackground>
       <Container size="lg" py="xl">
         <Stack align="center" gap="md">
           <Title order={2} c="white">
@@ -28,6 +28,6 @@ export const WithContent: Story = {
           </Text>
         </Stack>
       </Container>
-    </HeroBackgroundLight>
+    </LightBackground>
   ),
 };
