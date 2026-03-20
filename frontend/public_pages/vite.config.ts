@@ -75,6 +75,7 @@ export default defineConfig({
       ],
     }),
   ],
+  publicDir: path.resolve(__dirname, "../public"),
   base: "/",
   build: {
     outDir: "../dist/public_pages",
@@ -91,6 +92,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "../src"),
+      // Force shared packages to resolve from the parent workspace so
+      // components imported via @/ share the same React and Mantine
+      // context as the page entry points (prevents dual-context errors).
+      react: path.resolve(__dirname, "../node_modules/react"),
+      "react-dom": path.resolve(__dirname, "../node_modules/react-dom"),
+      "@mantine/core": path.resolve(__dirname, "../node_modules/@mantine/core"),
+      "@mantine/hooks": path.resolve(
+        __dirname,
+        "../node_modules/@mantine/hooks",
+      ),
     },
   },
 });

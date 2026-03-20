@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "frontend/public_pages/**"
+      - "frontend/public/**"
       - "frontend/src/components/**"
       - "frontend/src/theme.ts"
       - "frontend/src/styles/**"
