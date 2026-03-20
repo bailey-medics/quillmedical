@@ -1,4 +1,4 @@
-import PublicLayout from "@/components/public-layout/PublicLayout";
+import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
 import { theme } from "@/theme";
 import {
@@ -35,16 +35,22 @@ createRoot(document.getElementById("root")!).render(
             fair pricing based on clinician time.
           </Text>
           <Group mt="lg">
-            <Button component="a" href="/login" size="md">
-              Sign in / register
-            </Button>
             <Button
-              variant="outline"
               component="a"
-              href="/features.html"
+              href="https://teaching.quill-medical.com"
               size="md"
             >
-              Features
+              Teaching
+            </Button>
+            <Button
+              component="a"
+              href="https://staging.quill-medical.com"
+              size="md"
+            >
+              EPR Staging
+            </Button>
+            <Button size="md" variant="outline" disabled>
+              EPR Live
             </Button>
           </Group>
         </Stack>

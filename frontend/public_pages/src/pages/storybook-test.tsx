@@ -1,4 +1,4 @@
-import PublicLayout from "@/components/public-layout/PublicLayout";
+import PublicLayout from "@/components/layouts/PublicLayout";
 import { theme } from "@/theme";
 import {
   Anchor,

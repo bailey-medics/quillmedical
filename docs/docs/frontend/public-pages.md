@@ -28,13 +28,13 @@ frontend/
 
 ### How it differs from the clinical app
 
-| Aspect | Clinical app (`frontend/src/`) | Public pages (`frontend/public_pages/`) |
-|---|---|---|
-| Routing | React Router SPA | Multi-page — each page is a separate HTML file |
-| Deployment | Cloud Run container via Caddy | GCS bucket with CDN |
-| Authentication | Required (JWT cookies) | None |
-| Release process | DCB0129 clinical sign-off | Update anytime |
-| Domain | `staging.quill-medical.com` | `quill-medical.com` |
+| Aspect          | Clinical app (`frontend/src/`) | Public pages (`frontend/public_pages/`)        |
+| --------------- | ------------------------------ | ---------------------------------------------- |
+| Routing         | React Router SPA               | Multi-page — each page is a separate HTML file |
+| Deployment      | Cloud Run container via Caddy  | GCS bucket with CDN                            |
+| Authentication  | Required (JWT cookies)         | None                                           |
+| Release process | DCB0129 clinical sign-off      | Update anytime                                 |
+| Domain          | `staging.quill-medical.com`    | `quill-medical.com`                            |
 
 ### Shared code
 
@@ -82,38 +82,38 @@ You must also add the new page to `rollupOptions.input` in `vite.config.ts` for 
 
 1. Create `frontend/public_pages/src/pages/my-page.tsx`:
 
-    ```tsx
-    import PublicLayout from "@/components/public-layout/PublicLayout";
-    import { theme } from "@/theme";
-    import { Container, MantineProvider, Title } from "@mantine/core";
-    import "@mantine/core/styles.css";
-    import { createRoot } from "react-dom/client";
+   ```tsx
+   import PublicLayout from "@/components/layouts/PublicLayout";
+   import { theme } from "@/theme";
+   import { Container, MantineProvider, Title } from "@mantine/core";
+   import "@mantine/core/styles.css";
+   import { createRoot } from "react-dom/client";
 
-    createRoot(document.getElementById("root")!).render(
-      <MantineProvider theme={theme} defaultColorScheme="light">
-        <PublicLayout>
-          <Container size="lg" py="xl">
-            <Title order={1}>My page</Title>
-          </Container>
-        </PublicLayout>
-      </MantineProvider>,
-    );
-    ```
+   createRoot(document.getElementById("root")!).render(
+     <MantineProvider theme={theme} defaultColorScheme="light">
+       <PublicLayout>
+         <Container size="lg" py="xl">
+           <Title order={1}>My page</Title>
+         </Container>
+       </PublicLayout>
+     </MantineProvider>,
+   );
+   ```
 
 2. Add the entry to `vite.config.ts` → `build.rollupOptions.input`:
 
-    ```typescript
-    input: {
-      // ... existing entries
-      "my-page": path.resolve(__dirname, "my-page.html"),
-    },
-    ```
+   ```typescript
+   input: {
+     // ... existing entries
+     "my-page": path.resolve(__dirname, "my-page.html"),
+   },
+   ```
 
 3. Run `just pup` — the HTML file is generated automatically and the dev server opens.
 
 ## PublicLayout
 
-All public pages use `PublicLayout` from `@/components/public-layout/PublicLayout.tsx`. It provides:
+All public pages use `PublicLayout` from `@/components/layouts/PublicLayout.tsx`. It provides:
 
 - **Header** — Quill logo (links to `/`) and "Sign in" link (links to `/login`)
 - **Main content** area (flex-grows to fill viewport)
@@ -121,11 +121,11 @@ All public pages use `PublicLayout` from `@/components/public-layout/PublicLayou
 
 Props:
 
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `children` | `ReactNode` | required | Page content |
-| `signInUrl` | `string` | `"/login"` | Sign-in link URL |
-| `footerText` | `string` | `© {year} Quill Medical` | Footer text |
+| Prop         | Type        | Default                  | Description      |
+| ------------ | ----------- | ------------------------ | ---------------- |
+| `children`   | `ReactNode` | required                 | Page content     |
+| `signInUrl`  | `string`    | `"/login"`               | Sign-in link URL |
+| `footerText` | `string`    | `© {year} Quill Medical` | Footer text      |
 
 ## Local development
 
@@ -165,10 +165,10 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 
 ### Cache strategy
 
-| File type | Cache-Control | Reason |
-|---|---|---|
-| Hashed assets (`assets/*.js`, `assets/*.css`) | `public, max-age=31536000, immutable` | Filename hash changes on content change |
-| HTML files (`*.html`) | `no-cache` | Always revalidate to pick up new deploys |
+| File type                                     | Cache-Control                         | Reason                                   |
+| --------------------------------------------- | ------------------------------------- | ---------------------------------------- |
+| Hashed assets (`assets/*.js`, `assets/*.css`) | `public, max-age=31536000, immutable` | Filename hash changes on content change  |
+| HTML files (`*.html`)                         | `no-cache`                            | Always revalidate to pick up new deploys |
 
 ### Infrastructure
 
@@ -181,7 +181,7 @@ The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Te
 
 ### DNS
 
-| Record | Type | Value |
-|---|---|---|
-| `quill-medical.com` | A | Staging LB IP |
+| Record                  | Type  | Value               |
+| ----------------------- | ----- | ------------------- |
+| `quill-medical.com`     | A     | Staging LB IP       |
 | `www.quill-medical.com` | CNAME | `quill-medical.com` |
