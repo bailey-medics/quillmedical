@@ -45,3 +45,20 @@
   margin-top: 5px;
   margin-bottom: -5px;
 }
+
+/* Public nav links (wide mode only) */
+.navLinks {
+  flex: 1;
+  margin-left: var(--mantine-spacing-xl);
+  color: #fff;
+}
+
+.navLink {
+  font-size: var(--mantine-font-size-xl);
+  font-weight: 500;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #e8a317;
+  }
+}

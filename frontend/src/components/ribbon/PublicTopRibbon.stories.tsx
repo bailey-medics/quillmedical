@@ -16,7 +16,7 @@ export default meta;
 
 type Story = StoryObj<typeof PublicTopRibbon>;
 
-/** Wide — shows Quill logo */
+/** Wide — shows Quill logo and nav links */
 export const Wide: Story = {
   args: {
     isNarrow: false,
@@ -24,7 +24,7 @@ export const Wide: Story = {
   },
 };
 
-/** Narrow — shows hamburger menu */
+/** Narrow — shows hamburger menu, nav links hidden */
 export const Narrow: Story = {
   args: {
     isNarrow: true,

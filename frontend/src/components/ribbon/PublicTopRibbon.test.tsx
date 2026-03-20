@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import PublicTopRibbon from "./PublicTopRibbon";
+import publicNavLinks from "./publicNavLinks";
 
 describe("PublicTopRibbon Component", () => {
   describe("Wide mode (default)", () => {
@@ -44,6 +45,29 @@ describe("PublicTopRibbon Component", () => {
       renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
+
+    it("renders all nav links", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      for (const link of publicNavLinks) {
+        expect(screen.getByText(link.label)).toBeInTheDocument();
+      }
+    });
+
+    it("renders nav links with correct href values", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      for (const link of publicNavLinks) {
+        const anchor = screen.getByText(link.label).closest("a");
+        expect(anchor).toHaveAttribute("href", link.href);
+      }
+    });
+
+    it("does not open links in new tab", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      for (const link of publicNavLinks) {
+        const anchor = screen.getByText(link.label).closest("a");
+        expect(anchor).not.toHaveAttribute("target");
+      }
+    });
   });
 
   describe("Narrow mode", () => {
@@ -68,6 +92,13 @@ describe("PublicTopRibbon Component", () => {
       );
       const img = container.querySelector('img[alt="Quill Medical"]');
       expect(img).not.toBeInTheDocument();
+    });
+
+    it("does not render nav links", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} isNarrow />);
+      for (const link of publicNavLinks) {
+        expect(screen.queryByText(link.label)).not.toBeInTheDocument();
+      }
     });
   });
 });

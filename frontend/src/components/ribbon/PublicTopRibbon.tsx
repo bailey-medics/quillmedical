@@ -1,5 +1,7 @@
 import PublicBurgerButton from "@/components/button/PublicBurgerButton";
+import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
+import publicNavLinks from "./publicNavLinks";
 
 type Props = {
   /** Callback when hamburger menu is clicked (opens drawer) */
@@ -22,21 +24,38 @@ export default function PublicTopRibbon({
           <PublicBurgerButton navOpen={navOpen} onClick={onBurgerClick} />
         </div>
       ) : (
-        <a
-          href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            paddingTop: 3,
-            marginLeft: "0.8rem",
-          }}
-        >
-          <img
-            src="/quill-name-long-white-amber.png"
-            alt="Quill Medical"
-            style={{ height: "1.5rem" }}
-          />
-        </a>
+        <>
+          <a
+            href="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              paddingTop: 3,
+              marginLeft: "0.8rem",
+            }}
+          >
+            <img
+              src="/quill-name-long-white-amber.png"
+              alt="Quill Medical"
+              style={{ height: "1.5rem" }}
+            />
+          </a>
+          <Group component="nav" gap="lg" className={classes.navLinks}>
+            {publicNavLinks.map((link) => (
+              <Anchor
+                key={link.label}
+                href={link.href}
+                className={classes.navLink}
+                underline="never"
+                c="inherit"
+                fz="xl"
+                fw={500}
+              >
+                {link.label}
+              </Anchor>
+            ))}
+          </Group>
+        </>
       )}
     </div>
   );

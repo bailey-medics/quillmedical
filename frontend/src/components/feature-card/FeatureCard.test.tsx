@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import { FeatureCard } from "./FeatureCard";
 import { IconMessage } from "@tabler/icons-react";
@@ -34,27 +33,26 @@ describe("FeatureCard", () => {
     expect(screen.getByTestId("feature-card")).toBeInTheDocument();
   });
 
-  it("does not have clickable class without onClick", () => {
+  it("renders as a div without href", () => {
     renderWithMantine(<FeatureCard {...defaultProps} />);
     const card = screen.getByTestId("feature-card");
+    expect(card.tagName).toBe("DIV");
     expect(card.className).not.toMatch(/clickable/);
   });
 
-  it("has clickable class with onClick", () => {
-    renderWithMantine(<FeatureCard {...defaultProps} onClick={() => {}} />);
+  it("renders as an anchor with href", () => {
+    renderWithMantine(<FeatureCard {...defaultProps} href="/about" />);
     const card = screen.getByTestId("feature-card");
+    expect(card.tagName).toBe("A");
+    expect(card).toHaveAttribute("href", "/about");
     expect(card.className).toMatch(/clickable/);
   });
 
-  it("calls onClick when clicked", async () => {
-    const handleClick = vi.fn();
-    renderWithMantine(<FeatureCard {...defaultProps} onClick={handleClick} />);
-    await userEvent.click(screen.getByTestId("feature-card"));
-    expect(handleClick).toHaveBeenCalledOnce();
-  });
-
-  it("does not throw when clicked without onClick", async () => {
-    renderWithMantine(<FeatureCard {...defaultProps} />);
-    await userEvent.click(screen.getByTestId("feature-card"));
+  it("does not set target on links", () => {
+    renderWithMantine(
+      <FeatureCard {...defaultProps} href="https://example.com" />,
+    );
+    const card = screen.getByTestId("feature-card");
+    expect(card).not.toHaveAttribute("target");
   });
 });

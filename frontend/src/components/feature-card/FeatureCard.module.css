@@ -23,6 +23,9 @@
 .clickable {
   cursor: pointer;
   transition: background 0.35s ease;
+  text-decoration: none;
+  display: block;
+  color: inherit;
 }
 
 .clickable:hover {

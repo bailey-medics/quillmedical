@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
 import { FeatureCard } from "./FeatureCard";
 import FeatureCardGrid from "./FeatureCardGrid";
 import { Box } from "@mantine/core";
@@ -37,7 +36,7 @@ export const Clickable: Story = {
     icon: IconMessage,
     title: "Structured Clinical Records",
     body: "OpenEHR archetypes ensure clinical data is semantically rich, queryable, and portable.",
-    onClick: fn(),
+    href: "/features",
   },
 };
 
@@ -69,7 +68,7 @@ const features = [
 ];
 
 export const Grid: Story = {
-  args: { icon: IconMessage, title: "", body: "", onClick: fn() },
+  args: { icon: IconMessage, title: "", body: "" },
   render: () => (
     <FeatureCardGrid>
       {features.map((f) => (
@@ -78,7 +77,7 @@ export const Grid: Story = {
           icon={IconMessage}
           title={f.title}
           body={f.body}
-          onClick={fn()}
+          href="/features"
         />
       ))}
     </FeatureCardGrid>
