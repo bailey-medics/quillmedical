@@ -32,6 +32,7 @@ export const Default: Story = {
 };
 
 export const AllSizes: Story = {
+  args: { children: "" },
   render: () => (
     <VariantStack>
       <VariantRow label="sm">
@@ -55,6 +56,7 @@ export const Dimmed: Story = {
 };
 
 export const DimmedSizes: Story = {
+  args: { children: "" },
   render: () => (
     <VariantStack>
       <VariantRow label="sm dimmed">
@@ -84,6 +86,7 @@ export const LeftAligned: Story = {
 };
 
 export const Combined: Story = {
+  args: { children: "" },
   render: () => (
     <Stack gap="md">
       <PublicText size="lg">

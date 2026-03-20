@@ -50,6 +50,7 @@ export const Disabled: Story = {
 };
 
 export const AllSizes: Story = {
+  args: { children: "" },
   render: () => (
     <VariantStack>
       <VariantRow label="sm">
@@ -66,6 +67,7 @@ export const AllSizes: Story = {
 };
 
 export const AllVariants: Story = {
+  args: { children: "" },
   render: () => (
     <Group>
       <PublicButton>Filled</PublicButton>
