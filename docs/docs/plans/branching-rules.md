@@ -127,3 +127,24 @@ terraform apply -var-file=terraform.tfvars
 - The `repo` scope on the `gh` CLI token is sufficient for creating
   rulesets — `admin:org` is not required for personal/org repos where you
   are an admin.
+
+### Code review findings (20 March 2026)
+
+GitHub Copilot code review identified two significant issues with the
+original CI workflow:
+
+1. **Security: PAT token exposure in PR workflows** — The `pull_request`
+   event runs the workflow from the PR branch. A malicious Terraform
+   `data "external"` block or provider could exfiltrate the admin-scoped
+   PAT stored in `TERRAFORM_GITHUB_TOKEN`. This is a real risk for any
+   repo with collaborators.
+2. **No remote backend** — With local-only state, CI has no knowledge of
+   previously applied resources. Every `terraform apply` would attempt to
+   recreate the rulesets, either failing with a 422 or creating duplicates.
+
+**Resolution:** Removed the plan and apply jobs entirely. The workflow now
+only sends a Slack notification when `infra/github/**` files are merged to
+main, reminding the developer to run `terraform apply` locally. The plan
+and apply jobs can be restored once a remote backend (e.g. GCS) is
+configured and the PAT is scoped to a GitHub environment with deployment
+protection rules.

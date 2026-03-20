@@ -1,6 +1,6 @@
 # branch_rules.tf — GitHub branch protection via Repository Rulesets
 #
-# This file manages branch protection for the quill-medical repository using
+# This file manages branch protection for the quillmedical repository using
 # GitHub Rulesets (the modern replacement for classic branch protection rules).
 #
 # Clinical safety context (DCB 0129):

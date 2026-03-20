@@ -1,11 +1,23 @@
-# Terraform plan on PRs, apply on merge to main — GitHub repository rulesets
+# GitHub rulesets — change detection and Slack notification
 #
-# This workflow manages branch protection rules via the GitHub Terraform provider.
-# It is separate from the GCP infrastructure workflow (terraform.yml) because it
-# uses a different provider, authentication method, and state.
+# This workflow fires when infra/github/** files change. It alerts via Slack
+# that a manual `terraform apply` is needed to sync the rulesets to GitHub.
 #
-# Authentication: requires a PAT or GitHub App token stored as TERRAFORM_GITHUB_TOKEN
-# with admin permissions on the repository (needed to manage rulesets).
+# Why no automatic apply?
+#   1. No remote backend — Terraform state is local, so CI has no prior state
+#      and would attempt to recreate resources on every run.
+#   2. Security — exposing an admin-scoped PAT to PR workflows risks token
+#      exfiltration via malicious Terraform data sources.
+#
+# When a remote backend (e.g. GCS) is configured, this workflow can be
+# extended to run plan on PRs and apply on merge to main.
+#
+# Manual workflow:
+#   export GITHUB_TOKEN=$(gh auth token)
+#   cd infra/github/
+#   terraform init
+#   terraform plan -var-file=terraform.tfvars
+#   terraform apply -var-file=terraform.tfvars
 
 name: GitHub rulesets
 
@@ -21,120 +33,29 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-
-concurrency:
-  group: github-rulesets-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  # ---------- Check token exists ----------
-  check-token:
-    name: Check token
+  # ---------- Notify that manual apply is needed ----------
+  notify:
+    name: Notify
     runs-on: ubuntu-latest
-    outputs:
-      has_token: ${{ steps.check.outputs.has_token }}
     steps:
-      - name: Check TERRAFORM_GITHUB_TOKEN is set
-        id: check
-        run: |
-          if [ -n "${{ secrets.TERRAFORM_GITHUB_TOKEN }}" ]; then
-            echo "has_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_token=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Warn via Slack if token is missing
-        if: steps.check.outputs.has_token == 'false'
+      - name: Warn via Slack that manual apply is required
+        if: github.event_name == 'push'
         uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "⚠️ WARNING: TERRAFORM_GITHUB_TOKEN secret is missing",
+              "text": "⚠️ GitHub rulesets changed — manual terraform apply required",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*⚠️ WARNING: TERRAFORM_GITHUB_TOKEN SECRET IS MISSING*\n\nThe GitHub rulesets workflow was triggered but cannot run because the `TERRAFORM_GITHUB_TOKEN` repository secret has not been configured.\n\nBranch protection rules will NOT be updated until this is fixed.\n\n*Action required:* Add a PAT with `repo` scope as a repository secret named `TERRAFORM_GITHUB_TOKEN`.\n\n*Trigger:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    "text": "*⚠️ GITHUB RULESETS CHANGED — MANUAL TERRAFORM APPLY REQUIRED*\n\nFiles under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.\n\n*Action required:*\n```\nexport GITHUB_TOKEN=$(gh auth token)\ncd infra/github/\nterraform plan -var-file=terraform.tfvars\nterraform apply -var-file=terraform.tfvars\n```\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
             }
-
-  # ---------- Terraform plan (PRs only) ----------
-  plan:
-    name: Plan
-    needs: check-token
-    if: github.event_name == 'pull_request' && needs.check-token.outputs.has_token == 'true'
-    runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.TERRAFORM_GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "~> 1.5"
-
-      - name: Terraform init
-        working-directory: infra/github
-        run: terraform init -input=false
-
-      - name: Terraform plan
-        id: plan
-        working-directory: infra/github
-        run: |
-          terraform plan \
-            -var-file=terraform.tfvars \
-            -input=false \
-            -no-color \
-            -out=tfplan \
-            2>&1 | tee plan-output.txt
-
-      - name: Post plan to PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('infra/github/plan-output.txt', 'utf8');
-            const truncated = plan.length > 60000
-              ? plan.substring(0, 60000) + '\n... (truncated)'
-              : plan;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `### GitHub rulesets — Terraform plan\n\n\`\`\`\n${truncated}\n\`\`\``
-            });
-
-  # ---------- Terraform apply (main branch only) ----------
-  apply:
-    name: Apply
-    needs: check-token
-    if: github.event_name == 'push' && needs.check-token.outputs.has_token == 'true'
-    runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.TERRAFORM_GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "~> 1.5"
-
-      - name: Terraform init
-        working-directory: infra/github
-        run: terraform init -input=false
-
-      - name: Terraform apply
-        working-directory: infra/github
-        run: |
-          terraform apply \
-            -var-file=terraform.tfvars \
-            -input=false \
-            -auto-approve
