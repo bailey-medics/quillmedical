@@ -10217,16 +10217,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "public-pages@workspace:public_pages"
   dependencies:
-    "@mantine/core": "npm:^8.3.1"
-    "@mantine/hooks": "npm:^8.3.1"
-    "@mantine/notifications": "npm:^8.3.1"
     "@types/react": "npm:^19.1.10"
     "@types/react-dom": "npm:^19.1.7"
     "@vitejs/plugin-react-swc": "npm:^4.0.0"
     chokidar-cli: "npm:^3.0.0"
     concurrently: "npm:^9.1.0"
-    react: "npm:^19.1.1"
-    react-dom: "npm:^19.1.1"
     vite: "npm:^7.1.2"
     vite-tsconfig-paths: "npm:^5.1.4"
   languageName: unknown

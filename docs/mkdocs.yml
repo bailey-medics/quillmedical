@@ -50,6 +50,7 @@ nav:
           - Overview: backend/payments/index.md
   - Frontend:
       - Overview: frontend/index.md
+      - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
       - Accessibility: frontend/accessibility.md
