@@ -86,9 +86,10 @@ resource "github_repository_ruleset" "protected_branches" {
   }
 
   rules {
-    # Require a pull request before merging
+    # Require a pull request before merging (0 approvals while solo developer;
+    # increase to 1+ when additional team members join — see docs/docs/plans/todo.md)
     pull_request {
-      required_approving_review_count   = 1
+      required_approving_review_count   = 0
       dismiss_stale_reviews_on_push     = true
       require_code_owner_review         = false
       require_last_push_approval        = false
