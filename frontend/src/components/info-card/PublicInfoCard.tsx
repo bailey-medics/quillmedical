@@ -1,4 +1,4 @@
-import { Box, Text } from "@mantine/core";
+import { Box, Text, Title } from "@mantine/core";
 import PublicText from "@/components/typography/PublicText";
 import type { ReactNode } from "react";
 
@@ -29,7 +29,8 @@ export default function PublicInfoCard({
       <Text fz="1.4rem" c="#C8963E" mb="xs" tt="uppercase">
         {label}
       </Text>
-      <Text
+      <Title
+        order={2}
         c="white"
         ff="'Cormorant Garamond', serif"
         fw={400}
@@ -38,7 +39,7 @@ export default function PublicInfoCard({
         mb="xs"
       >
         {heading}
-      </Text>
+      </Title>
       <PublicText ta="left" size="lg">
         {description}
       </PublicText>
