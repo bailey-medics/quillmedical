@@ -1,11 +1,14 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import LightBackground from "@/components/background/LightBackground";
+import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
+import { colours } from "@/styles/colours";
 import { theme } from "@/theme";
 import { Container, MantineProvider, Stack } from "@mantine/core";
 import "@mantine/core/styles.css";
+import { IconStack2 } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
@@ -14,6 +17,9 @@ createRoot(document.getElementById("root")!).render(
       <DarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
+            <div style={{ color: colours.amber }}>
+              <Icon icon={<IconStack2 />} size="xl" />
+            </div>
             <PublicTitle title="Modular deployment" c="white" />
             <PublicText size="lg">
               Not every organisation needs every feature on day one. Quill is
