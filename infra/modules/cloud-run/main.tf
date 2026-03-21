@@ -65,7 +65,7 @@ resource "google_cloud_run_v2_service" "service" {
         }
         initial_delay_seconds = 5
         period_seconds        = 10
-        failure_threshold     = 3
+        failure_threshold     = 6
       }
 
       # Liveness probe
