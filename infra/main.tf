@@ -235,6 +235,34 @@ module "cloud_run_backend" {
   ]
 }
 
+# ---------- Cloud Run Job: admin tasks ----------
+module "cloud_run_admin_job" {
+  source      = "./modules/cloud-run-job"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  job_name         = "admin"
+  image            = var.admin_image
+  vpc_connector_id = module.networking.vpc_connector_id
+
+  env_vars = {
+    AUTH_DB_HOST = module.cloud_sql_auth.private_ip
+    AUTH_DB_NAME = module.cloud_sql_auth.database_name
+    AUTH_DB_USER = module.cloud_sql_auth.database_user
+  }
+
+  secret_env_vars = {
+    AUTH_DB_PASSWORD = "auth-db-password"
+    JWT_SECRET      = "jwt-secret"
+  }
+
+  depends_on = [
+    google_project_iam_member.cloudrun_secret_accessor,
+    module.cloud_sql_auth,
+  ]
+}
+
 # ---------- Cloud Run: frontend ----------
 module "cloud_run_frontend" {
   source      = "./modules/cloud-run"

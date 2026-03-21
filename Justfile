@@ -355,6 +355,7 @@ vapid-key:
     cd frontend
     yarn dlx web-push generate-vapid-keys
 
+
 alias yi := yarn-install
 # Run yarn install in the frontend container
 yarn-install:
@@ -362,3 +363,134 @@ yarn-install:
     {{initialise}} "yarn-install"
     cd frontend
     yarn install
+
+
+# ── Cloud Run Admin Job (remote environments) ──────────────────────────
+
+_gcp_env_project env:
+    #!/usr/bin/env bash
+    case "{{env}}" in
+        staging)  echo "quill-medical-staging"  ;;
+        teaching) echo "quill-medical-teaching" ;;
+        prod)     echo "quill-medical-production" ;;
+        *)        echo "ERROR: env must be staging, teaching, or prod" >&2; exit 1 ;;
+    esac
+
+
+alias ba := build-admin
+# Build and push the admin Docker image to a remote environment (staging/teaching/prod)
+build-admin env:
+    #!/usr/bin/env bash
+    {{initialise}} "build-admin ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/admin:latest"
+
+    echo "Building admin image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
+
+    docker build \
+        --target admin \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile \
+        .
+
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Admin image pushed to ${IMAGE}"
+
+    # Deploy the Cloud Run Job (creates if new, updates if existing)
+    # Look up the Cloud SQL auth database private IP
+    echo "Looking up database connection..."
+    AUTH_DB_HOST=$(gcloud sql instances describe "quill-auth-{{env}}" \
+        --project="$PROJECT" \
+        --format='value(ipAddresses[0].ipAddress)')
+
+    echo "Deploying Cloud Run Job..."
+    gcloud run jobs deploy "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --vpc-connector="quill-vpc-cx-{{env}}" \
+        --vpc-egress=private-ranges-only \
+        --max-retries=0 \
+        --task-timeout=300s \
+        --set-env-vars "AUTH_DB_HOST=${AUTH_DB_HOST},AUTH_DB_NAME=quill_auth,AUTH_DB_USER=quill" \
+        --set-secrets "AUTH_DB_PASSWORD=auth-db-password:latest,JWT_SECRET=jwt-secret:latest" \
+        --quiet
+    echo "✓ Cloud Run Job deployed"
+
+
+alias cs := create-superadmin
+# Create a superadmin on a remote environment via Cloud Run Job
+create-superadmin env:
+    #!/usr/bin/env bash
+    {{initialise}} "create-superadmin ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Create superadmin on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    read -rp "Email: " email
+    read -rsp "Password: " password
+    echo
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=create-superadmin,ADMIN_USERNAME=${username},ADMIN_EMAIL=${email},ADMIN_PASSWORD=${password}" \
+        --wait
+
+
+alias up := update-permissions-remote
+# Update a user's system permissions on a remote environment
+update-permissions-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "update-permissions ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Update permissions on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    echo "Permission levels: patient, staff, admin, superadmin"
+    read -rp "Permission: " permission
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=update-permissions,ADMIN_USERNAME=${username},ADMIN_PERMISSION=${permission}" \
+        --wait
+
+
+alias ar := add-role-remote
+# Add a role to a user on a remote environment
+add-role-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "add-role ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Add role on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    echo "Roles: System Administrator, Clinical Administrator, Clinician,"
+    echo "       Clinical Support Staff, Patient, Patient Advocate"
+    read -rp "Role: " role
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
+        --wait

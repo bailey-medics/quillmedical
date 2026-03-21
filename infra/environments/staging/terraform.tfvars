@@ -16,6 +16,7 @@ landing_domain = "quill-medical.com"
 
 backend_image  = "gcr.io/cloudrun/hello:latest"
 frontend_image = "gcr.io/cloudrun/hello:latest"
+admin_image    = "gcr.io/cloudrun/hello:latest"
 
 monitored_hostnames = ["staging.quill-medical.com", "quill-medical.com"]
 alert_email         = "alerts@quill-medical.com"
