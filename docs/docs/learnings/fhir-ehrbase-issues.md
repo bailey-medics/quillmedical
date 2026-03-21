@@ -58,18 +58,14 @@ EHRbase takes 30–110 seconds to start (Flyway migrations, Spring Boot init, Hi
 
 ### Infrastructure changes made
 
-| Change | File | Status |
-|---|---|---|
-| Startup probe timeout (1s → 15s) | `infra/modules/cloud-run/main.tf` | Modified, not committed |
-| COS startup script path fixes | `infra/modules/compute-fhir/startup.sh` | Modified, not committed (needs further work) |
-| `uuid-ossp` extension on Cloud SQL | `quill-ehrbase-staging` instance | Applied manually |
-| EHRbase container with correct env vars | `fhir-ehrbase-staging` VM | Running via `docker run` |
-| FHIR container | `fhir-ehrbase-staging` VM | Running via `docker run` |
+| Change                                  | File                                    | Status                                    |
+| --------------------------------------- | --------------------------------------- | ----------------------------------------- |
+| Startup probe timeout (1s → 15s)        | `infra/modules/cloud-run/main.tf`       | Committed (`ed5b39b`)                     |
+| COS startup script path fixes           | `infra/modules/compute-fhir/startup.sh` | Committed (`ed5b39b`, needs further work) |
+| `uuid-ossp` extension on Cloud SQL      | `quill-ehrbase-staging` instance        | Applied manually                          |
+| EHRbase container with correct env vars | `fhir-ehrbase-staging` VM               | Running via `docker run`                  |
+| FHIR container                          | `fhir-ehrbase-staging` VM               | Running via `docker run`                  |
 
 ### Remaining actions
 
-- [ ] Commit startup probe timeout fix
-- [ ] Redesign `startup.sh` for COS (replace Docker Compose with `docker run` or container-based Compose)
-- [ ] Rotate temporary postgres admin password (`temp-admin-pw-2026`) on `quill-ehrbase-staging` Cloud SQL
-- [ ] Add `uuid-ossp` extension creation to Terraform (`google_sql_database` or startup script)
-- [ ] Consider adding EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to Terraform module
+See [plans/todo.md](../plans/todo.md#fhrehrbase-vm-cos) for the tracked to-do list.

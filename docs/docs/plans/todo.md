@@ -27,3 +27,27 @@
       `auth-db-password`, `AUTH_DB_*` env vars) 4. Backend config (`AUTH_DB_HOST`, `AUTH_DB_NAME`, `AUTH_DB_USER`,
       `AUTH_DB_PASSWORD` in `app/config.py`) 5. Backend DB module (`app/db/auth_db.py`, `AuthSessionLocal`,
       `AuthBase`, `get_auth_db`) 6. All scripts and tests that reference the auth DB 7. Docker Compose service name and environment variables 8. CI/CD workflows and Justfile commands 9. Cloud Run Job admin tooling (env vars set in `build-admin`)
+
+## FHIR/EHRbase VM (COS)
+
+_See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for full context._
+
+- [ ] Redesign `infra/modules/compute-fhir/startup.sh` for COS — Docker
+      Compose binary cannot be installed or executed anywhere on
+      Container-Optimised OS (read-only root, noexec on writable paths).
+      Options: use direct `docker run` commands, run Compose via a container
+      image, or switch to a standard VM image.
+
+- [ ] Automate `uuid-ossp` extension creation for the EHRbase Cloud SQL
+      database. EHRbase Flyway migrations require `uuid_generate_v4()`, but
+      Cloud SQL does not install the extension by default. Currently created
+      manually — **must be re-run if the Cloud SQL instance or `ehrbase`
+      database is ever destroyed and recreated**. Automate via the VM startup
+      script (run `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"` using a
+      disposable postgres container before starting EHRbase).
+
+- [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to the
+      Terraform compute-fhir module so Flyway can run schema migrations.
+
+- [ ] Rotate temporary postgres admin password (`temp-admin-pw-2026`) on the
+      `quill-ehrbase-staging` Cloud SQL instance.
