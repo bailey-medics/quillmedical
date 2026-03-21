@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 
@@ -10,7 +11,7 @@ export default function LightBackground({ children }: LightBackgroundProps) {
     <Box
       data-testid="light-background"
       style={{
-        background: "#112240",
+        background: colours.darkBlue,
         position: "relative",
         overflow: "hidden",
       }}

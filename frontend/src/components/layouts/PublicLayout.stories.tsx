@@ -14,17 +14,31 @@ const meta: Meta<typeof PublicLayout> = {
 export default meta;
 type Story = StoryObj<typeof PublicLayout>;
 
+const SampleContent = () => (
+  <Container size="lg" py="xl">
+    <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
+      <Title order={1} c="#fff">
+        Welcome to Quill Medical
+      </Title>
+      <Text size="lg" ta="center" c="dimmed">
+        A modern, secure platform for patients and clinics.
+      </Text>
+    </Stack>
+  </Container>
+);
+
 export const Default: Story = {
   args: {
-    children: (
-      <Container size="lg" py="xl">
-        <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
-          <Title order={1}>Welcome to Quill Medical</Title>
-          <Text size="lg" ta="center">
-            A modern, secure platform for patients and clinics.
-          </Text>
-        </Stack>
-      </Container>
-    ),
+    children: <SampleContent />,
+  },
+};
+
+/** Resize the viewport below 768px to see the burger button and drawer. */
+export const NarrowWithDrawer: Story = {
+  args: {
+    children: <SampleContent />,
+  },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
   },
 };

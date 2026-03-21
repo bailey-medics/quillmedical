@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { Box, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PageHeader.module.css";
@@ -30,9 +31,9 @@ export interface PublicTitleProps {
   size?: "sm" | "md" | "lg";
   /** Text alignment — defaults to center */
   ta?: "left" | "center" | "right";
-  /** Base text colour — defaults to amber (#C8963E) */
+  /** Base text colour — defaults to amber */
   c?: string;
-  /** Accent colour for *marked* words — defaults to amber (#C8963E) */
+  /** Accent colour for *marked* words — defaults to amber */
   accentColour?: string;
 }
 
@@ -41,8 +42,8 @@ export default function PublicTitle({
   description,
   size = "lg",
   ta = "center",
-  c = "#C8963E",
-  accentColour = "#C8963E",
+  c = colours.amber,
+  accentColour = colours.amber,
 }: PublicTitleProps) {
   const orderMap = {
     sm: 3,

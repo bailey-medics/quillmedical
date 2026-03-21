@@ -1,4 +1,5 @@
 import DarkBackground from "@/components/background/DarkBackground";
+import HeroBackground from "@/components/background/HeroBackground";
 import LightBackground from "@/components/background/LightBackground";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
@@ -11,6 +12,29 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
+      <HeroBackground>
+        <Container size="lg" py="xl">
+          <Stack align="center" gap="md" py="xl">
+            <PublicTitle title="Clinical messaging" />
+            <PublicText size="lg">
+              A new approach to patient-clinician communication. Private
+              clinics, independent practitioners, and specialist services can
+              now offer patients a direct, paid messaging channel — giving
+              patients quick access to clinical advice outside of scheduled
+              appointments.
+            </PublicText>
+            <PublicText size="lg">
+              Patients pay per question, avoiding the cost and delay of a full
+              appointment for straightforward queries. Clinicians respond on
+              their own schedule, triaging and prioritising as they see fit.
+              It&apos;s a model that respects everyone&apos;s time — and keeps
+              clinical communication where it belongs: inside a governed,
+              auditable system.
+            </PublicText>
+          </Stack>
+        </Container>
+      </HeroBackground>
+
       <DarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">

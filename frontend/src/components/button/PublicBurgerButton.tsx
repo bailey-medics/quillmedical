@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { ActionIcon } from "@mantine/core";
 import { IconMenu2 } from "@tabler/icons-react";
 
@@ -21,9 +22,9 @@ export default function PublicBurgerButton({
       aria-label={navOpen ? "Close navigation" : "Open navigation"}
       aria-expanded={navOpen}
       style={{
-        color: "#C8963E",
+        color: colours.amber,
         "--ai-hover": "#1e2d4a",
-        "--ai-hover-color": "#C8963E",
+        "--ai-hover-color": colours.amber,
       }}
     >
       <IconMenu2 size={32} stroke={2.5} />

@@ -1,0 +1,18 @@
+/**
+ * Public site colour custom properties
+ *
+ * CSS modules cannot import TypeScript, so these custom properties
+ * mirror the values in colours.ts.  Keep both files in sync.
+ */
+
+:root {
+  --public-navy: #0a1628;
+  --public-dark-blue: #112240;
+  --public-dark-blue-hover: #152a4a;
+  --public-amber: #c8963e;
+  --public-amber-hover: #b5862f;
+  --public-gold-hover: #e8a317;
+  --public-off-white: #fdfbf7;
+  --public-light-text: rgb(245 240 232 / 55%);
+  --public-muted: #909296;
+}

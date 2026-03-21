@@ -1,7 +1,7 @@
 .footer {
   padding-top: calc(var(--mantine-spacing-xl) * 2);
   padding-bottom: calc(var(--mantine-spacing-xl) * 2);
-  background: #0a1628;
+  background: var(--public-navy);
   border-top: 1px solid rgb(255 255 255 / 10%);
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
@@ -50,7 +50,7 @@
 
 .link {
   display: block;
-  color: #909296;
+  color: var(--public-muted);
   font-size: var(--mantine-font-size-sm);
   padding-top: 3px;
   padding-bottom: 3px;

@@ -100,13 +100,19 @@ export default defineConfig({
       input: {
         index: path.resolve(__dirname, "index.html"),
         about: path.resolve(__dirname, "about.html"),
+        careers: path.resolve(__dirname, "careers.html"),
         "clinical-messaging": path.resolve(
           __dirname,
           "clinical-messaging.html",
         ),
+        "company-information": path.resolve(
+          __dirname,
+          "company-information.html",
+        ),
         "clinical-teaching": path.resolve(__dirname, "clinical-teaching.html"),
         "competency-access": path.resolve(__dirname, "competency-access.html"),
         contact: path.resolve(__dirname, "contact.html"),
+        "cookie-policy": path.resolve(__dirname, "cookie-policy.html"),
         "external-referrals": path.resolve(
           __dirname,
           "external-referrals.html",
@@ -117,10 +123,12 @@ export default defineConfig({
           "modular-deployment.html",
         ),
         pricing: path.resolve(__dirname, "pricing.html"),
+        "privacy-policy": path.resolve(__dirname, "privacy-policy.html"),
         "structured-records": path.resolve(
           __dirname,
           "structured-records.html",
         ),
+        "terms-of-service": path.resolve(__dirname, "terms-of-service.html"),
         "not-found": path.resolve(__dirname, "not-found.html"),
         "storybook-test": path.resolve(__dirname, "storybook-test.html"),
       },

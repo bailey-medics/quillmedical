@@ -13,27 +13,31 @@ interface FooterGroup {
 
 const data: FooterGroup[] = [
   {
-    title: "Product",
+    title: "Features",
     links: [
-      { label: "Features", link: "/features" },
-      { label: "Pricing", link: "#" },
-      { label: "Security", link: "#" },
+      { label: "Messaging", link: "/clinical-messaging.html" },
+      { label: "Records", link: "/structured-records.html" },
+      { label: "Modules", link: "/modular-deployment.html" },
+      { label: "Access", link: "/competency-access.html" },
+      { label: "Referrals", link: "/external-referrals.html" },
+      { label: "Teaching", link: "/clinical-teaching.html" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", link: "#" },
-      { label: "Contact", link: "#" },
-      { label: "Careers", link: "#" },
+      { label: "About", link: "/about.html" },
+      { label: "Contact", link: "/contact.html" },
+      { label: "Careers", link: "/careers.html" },
+      { label: "Information", link: "/company-information.html" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy policy", link: "#" },
-      { label: "Terms of service", link: "#" },
-      { label: "Cookie policy", link: "#" },
+      { label: "Privacy policy", link: "/privacy-policy.html" },
+      { label: "Terms of service", link: "/terms-of-service.html" },
+      { label: "Cookie policy", link: "/cookie-policy.html" },
     ],
   },
 ];
@@ -77,12 +81,12 @@ export default function PublicFooter() {
           </Text>
           <Group gap="xs" className={classes.social} justify="flex-end">
             <Anchor
-              href="mailto:Email address coming soon"
+              href="mailto:info@quill-medical.com"
               size="sm"
               underline="hover"
               c="dimmed"
             >
-              Email address coming soon
+              info@quill-medical.com
             </Anchor>
           </Group>
         </Container>

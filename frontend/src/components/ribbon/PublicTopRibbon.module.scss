@@ -9,7 +9,7 @@
   justify-content: space-between;
   gap: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-sm);
-  background: #0a1628;
+  background: var(--public-navy);
   border-top: 1px solid rgb(255 255 255 / 10%);
   border-bottom: 1px solid rgb(255 255 255 / 10%);
   min-height: 60px;
@@ -59,6 +59,6 @@
   transition: color 0.15s ease;
 
   &:hover {
-    color: #e8a317;
+    color: var(--public-gold-hover);
   }
 }

@@ -159,6 +159,20 @@ pre-commit:
     pre-commit run --all-files
 
 
+alias pb := prune-branches
+# Remove local branches whose remote tracking branch is gone
+prune-branches:
+    #!/usr/bin/env bash
+    {{initialise}} "prune-branches"
+    git fetch --prune
+    GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}')
+    if [ -z "$GONE" ]; then
+        echo "No stale branches to remove."
+    else
+        echo "$GONE" | xargs git branch -d
+    fi
+
+
 alias rb := rebase
 # Rebase current feature branch onto an up-to-date main
 rebase:

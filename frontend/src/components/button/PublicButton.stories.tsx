@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicButton from "./PublicButton";
 import { Box, Group } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
+import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/Button/PublicButton",
@@ -12,7 +13,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg="#0A1628" p="xl">
+      <Box bg={colours.navy} p="xl">
         <Story />
       </Box>
     ),

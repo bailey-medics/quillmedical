@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicInfoCard from "./PublicInfoCard";
 import { Box, Group } from "@mantine/core";
+import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/InfoCard/PublicInfoCard",
@@ -11,7 +12,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg="#0A1628" p="xl" maw={400}>
+      <Box bg={colours.navy} p="xl" maw={400}>
         <Story />
       </Box>
     ),
