@@ -17,6 +17,11 @@ import {
   IconFileText,
   IconAdjustmentsHorizontal,
   IconBuildingCommunity,
+  IconChalkboardTeacher,
+  IconBook,
+  IconCurrencyPound,
+  IconDatabase,
+  IconMail,
 } from "@tabler/icons-react";
 
 /** Available icon types */
@@ -29,7 +34,12 @@ type IconName =
   | "message"
   | "file"
   | "adjustments"
-  | "building-community";
+  | "building-community"
+  | "teaching"
+  | "book"
+  | "pricing"
+  | "database"
+  | "mail";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -55,6 +65,11 @@ const iconMap = {
   file: IconFileText,
   adjustments: IconAdjustmentsHorizontal,
   "building-community": IconBuildingCommunity,
+  teaching: IconChalkboardTeacher,
+  book: IconBook,
+  pricing: IconCurrencyPound,
+  database: IconDatabase,
+  mail: IconMail,
 } as const;
 
 // Map size to icon pixel dimensions

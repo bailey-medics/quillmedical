@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 
@@ -11,7 +12,7 @@ export default function DarkBackground({ children }: DarkBackgroundProps) {
       data-testid="dark-background"
       pb="3rem"
       style={{
-        background: "#0A1628",
+        background: colours.navy,
         position: "relative",
         overflow: "hidden",
       }}

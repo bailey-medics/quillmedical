@@ -1,5 +1,6 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import HeroBackground from "@/components/background/HeroBackground";
+import LightBackground from "@/components/background/LightBackground";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
@@ -14,27 +15,41 @@ createRoot(document.getElementById("root")!).render(
       <HeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Contact us" />
+            <PublicTitle title="Company information" />
             <PublicText size="lg">
-              Whether you are a clinician interested in early access, an
-              organisation exploring clinical software options, or just curious
-              about what we are building — we would love to hear from you.
+              Quill Medical is a trade name of Bailey Medics Ltd, also trading
+              under the trade name of Let&rsquo;s Do Digital.
             </PublicText>
           </Stack>
         </Container>
       </HeroBackground>
 
+      <LightBackground>
+        <Container size="lg" py="xl">
+          <Stack align="center" gap="md" py="xl">
+            <PublicTitle title="Registered address" c="white" />
+            <PublicText size="lg">
+              Brooklands Place
+              <br />
+              Unit 5
+              <br />
+              Brooklands Road
+              <br />
+              Sale
+              <br />
+              Cheshire
+              <br />
+              United Kingdom, M33 3SD
+            </PublicText>
+          </Stack>
+        </Container>
+      </LightBackground>
+
       <DarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <PublicTitle title="Get in touch" c="white" />
-            <PublicText size="lg">
-              A contact form is coming soon. In the meantime, you can reach us
-              at {/* TODO: Add contact email address here */}.
-            </PublicText>
-            <PublicText size="lg">
-              We aim to respond to all enquiries within two working days.
-            </PublicText>
+            <PublicTitle title="Company details" c="white" />
+            <PublicText size="lg">Company number: 15604352</PublicText>
           </Stack>
         </Container>
       </DarkBackground>

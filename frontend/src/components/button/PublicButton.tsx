@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { Button } from "@mantine/core";
 import type { ReactNode } from "react";
 
@@ -39,18 +40,18 @@ export default function PublicButton({
     ? {
         root: {
           ...baseStyles,
-          backgroundColor: "#C8963E",
+          backgroundColor: colours.amber,
           color: "#333",
           border: "none",
-          "&:hover": { backgroundColor: "#b5862f" },
+          "&:hover": { backgroundColor: colours.amberHover },
         },
       }
     : {
         root: {
           ...baseStyles,
           backgroundColor: "transparent",
-          color: "#C8963E",
-          border: "1px solid #C8963E",
+          color: colours.amber,
+          border: `1px solid ${colours.amber}`,
           "&:hover": { backgroundColor: "rgba(200,150,62,0.1)" },
         },
       };

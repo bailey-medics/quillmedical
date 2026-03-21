@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicTitle from "./PublicTitle";
 import { Box } from "@mantine/core";
+import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/PageHeader/PublicTitle",
@@ -11,7 +12,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box maw={800} bg="#0A1628" p="xl">
+      <Box maw={800} bg={colours.navy} p="xl">
         <Story />
       </Box>
     ),

@@ -9,6 +9,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillLogo from "./QuillLogo";
+import { colours } from "@/styles/colours";
 
 const meta: Meta<typeof QuillLogo> = {
   title: "Images/QuillLogo",
@@ -52,7 +53,7 @@ export const LightGrey: Story = {
   },
   decorators: [
     (Story) => (
-      <div style={{ background: "#0A1628", padding: "2rem" }}>
+      <div style={{ background: colours.navy, padding: "2rem" }}>
         <Story />
       </div>
     ),
@@ -69,7 +70,7 @@ export const White: Story = {
   },
   decorators: [
     (Story) => (
-      <div style={{ background: "#0A1628", padding: "2rem" }}>
+      <div style={{ background: colours.navy, padding: "2rem" }}>
         <Story />
       </div>
     ),

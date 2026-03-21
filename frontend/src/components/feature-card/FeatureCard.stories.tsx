@@ -3,6 +3,7 @@ import { FeatureCard } from "./FeatureCard";
 import FeatureCardGrid from "./FeatureCardGrid";
 import { Box } from "@mantine/core";
 import { IconMessage } from "@tabler/icons-react";
+import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/FeatureCard/FeatureCard",
@@ -13,7 +14,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg="#0A1628" p="2rem">
+      <Box bg={colours.navy} p="2rem">
         <Story />
       </Box>
     ),

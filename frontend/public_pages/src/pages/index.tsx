@@ -45,7 +45,7 @@ createRoot(document.getElementById("root")!).render(
               settle - for trainees across every specialty, and the clinicians
               who teach them.
             </PublicText>
-            <Group mt="lg">
+            <Group mt="lg" justify="center">
               <PublicButton href="https://teaching.quill-medical.com">
                 Teaching
               </PublicButton>

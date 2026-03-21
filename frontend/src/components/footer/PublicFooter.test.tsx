@@ -22,14 +22,23 @@ describe("PublicFooter", () => {
 
   it("renders link group titles", () => {
     renderWithMantine(<PublicFooter />);
-    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("Features")).toBeInTheDocument();
     expect(screen.getByText("Company")).toBeInTheDocument();
     expect(screen.getByText("Legal")).toBeInTheDocument();
   });
 
-  it("renders links within groups", () => {
+  it("renders feature links within the Features group", () => {
     renderWithMantine(<PublicFooter />);
-    expect(screen.getByText("Features")).toBeInTheDocument();
+    expect(screen.getByText("Messaging")).toBeInTheDocument();
+    expect(screen.getByText("Records")).toBeInTheDocument();
+    expect(screen.getByText("Modules")).toBeInTheDocument();
+    expect(screen.getByText("Access")).toBeInTheDocument();
+    expect(screen.getByText("Referrals")).toBeInTheDocument();
+    expect(screen.getByText("Teaching")).toBeInTheDocument();
+  });
+
+  it("renders links within other groups", () => {
+    renderWithMantine(<PublicFooter />);
     expect(screen.getByText("Privacy policy")).toBeInTheDocument();
     expect(screen.getByText("Contact")).toBeInTheDocument();
   });

@@ -1,5 +1,6 @@
-import { Box, Text, Title } from "@mantine/core";
 import PublicText from "@/components/typography/PublicText";
+import { colours } from "@/styles/colours";
+import { Box, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 
 export interface PublicInfoCardProps {
@@ -21,12 +22,12 @@ export default function PublicInfoCard({
       data-testid="public-info-card"
       p="xl"
       style={{
-        background: "#112240",
+        background: colours.darkBlue,
         border: "0.0625rem solid rgba(200,150,62,0.2)",
         borderRadius: "0.5rem",
       }}
     >
-      <Text fz="1.4rem" c="#C8963E" mb="xs" tt="uppercase">
+      <Text fz="1.4rem" c={colours.amber} mb="xs" tt="uppercase">
         {label}
       </Text>
       <Title

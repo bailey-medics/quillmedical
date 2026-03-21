@@ -1,3 +1,4 @@
+import { colours } from "@/styles/colours";
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
 
@@ -28,7 +29,7 @@ export default function PublicText({
     <Text
       size={size}
       ta={ta}
-      c={dimmed ? "dimmed" : "rgba(245,240,232,0.55)"}
+      c={dimmed ? "dimmed" : colours.lightText}
       mt={mt}
       mb={mb}
     >
