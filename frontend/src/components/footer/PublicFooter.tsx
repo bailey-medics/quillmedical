@@ -81,12 +81,12 @@ export default function PublicFooter() {
           </Text>
           <Group gap="xs" className={classes.social} justify="flex-end">
             <Anchor
-              href="mailto:Email address coming soon"
+              href="mailto:info@quill-medical.com"
               size="sm"
               underline="hover"
               c="dimmed"
             >
-              Email address coming soon
+              info@quill-medical.com
             </Anchor>
           </Group>
         </Container>

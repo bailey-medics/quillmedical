@@ -4,7 +4,7 @@ import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
-import { Container, MantineProvider, Stack } from "@mantine/core";
+import { Anchor, Container, MantineProvider, Stack } from "@mantine/core";
 import "@mantine/core/styles.css";
 import { createRoot } from "react-dom/client";
 
@@ -30,7 +30,15 @@ createRoot(document.getElementById("root")!).render(
             <PublicTitle title="Get in touch" c="white" />
             <PublicText size="lg">
               A contact form is coming soon. In the meantime, you can reach us
-              at {/* TODO: Add contact email address here */}.
+              at{" "}
+              <Anchor
+                href="mailto:info@quill-medical.com"
+                c="inherit"
+                underline="always"
+              >
+                info@quill-medical.com
+              </Anchor>
+              .
             </PublicText>
             <PublicText size="lg">
               We aim to respond to all enquiries within two working days.

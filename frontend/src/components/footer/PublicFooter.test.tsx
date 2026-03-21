@@ -53,11 +53,11 @@ describe("PublicFooter", () => {
 
   it("renders the email contact link", () => {
     renderWithMantine(<PublicFooter />);
-    const emailLink = screen.getByText("Email address coming soon");
+    const emailLink = screen.getByText("info@quill-medical.com");
     expect(emailLink).toBeInTheDocument();
     expect(emailLink.closest("a")).toHaveAttribute(
       "href",
-      "mailto:Email address coming soon",
+      "mailto:info@quill-medical.com",
     );
   });
 });
