@@ -236,7 +236,6 @@ module "cloud_run_backend" {
 }
 
 # ---------- Cloud Run Job: admin tasks ----------
-# Import existing job created via `just build-admin` before Terraform managed it
 import {
   to = module.cloud_run_admin_job.google_cloud_run_v2_job.job
   id = "projects/${var.project_id}/locations/${var.region}/jobs/quill-admin-${var.environment}"
