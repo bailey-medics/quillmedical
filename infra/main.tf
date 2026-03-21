@@ -202,8 +202,8 @@ module "cloud_run_backend" {
       AUTH_DB_USER   = module.cloud_sql_auth.database_user
     },
     var.enable_fhir ? {
-      FHIR_BASE_URL    = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
-      EHRBASE_BASE_URL = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
+      FHIR_SERVER_URL  = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
+      EHRBASE_URL      = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
       FHIR_DB_HOST     = module.cloud_sql_fhir[0].private_ip
       FHIR_DB_NAME     = module.cloud_sql_fhir[0].database_name
       FHIR_DB_USER     = module.cloud_sql_fhir[0].database_user

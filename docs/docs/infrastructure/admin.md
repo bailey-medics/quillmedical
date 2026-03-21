@@ -39,7 +39,7 @@ just create-superadmin staging
 
 You will be prompted for:
 
-- **Username** — your login username (e.g. `mark`)
+- **Username** — your login username (e.g. `steve.jones`)
 - **Email** — your email address
 - **Password** — your account password (hidden as you type)
 
