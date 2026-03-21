@@ -68,4 +68,4 @@ EHRbase takes 30–110 seconds to start (Flyway migrations, Spring Boot init, Hi
 
 ### Remaining actions
 
-See [plans/todo.md](../plans/todo.md#fhrehrbase-vm-cos) for the tracked to-do list.
+See [plans/todo.md](../plans/todo.md#fhirehrbase-vm-cos) for the tracked to-do list.

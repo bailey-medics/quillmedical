@@ -90,6 +90,7 @@
     "cursorindexingignore",
     "Cython",
     "datefmt",
+    "dataclass",
     "Datix",
     "dbaeumer",
     "dbname",

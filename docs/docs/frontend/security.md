@@ -44,14 +44,14 @@ Even if someone obtains your password, they cannot access your account without y
 
 #### Session Timeout
 
-- Sessions expire after 15 minutes of inactivity
-- You'll be automatically logged out for security
-- Your work is saved before logout (in most cases)
+- Access tokens expire 15 minutes after issuance (not after inactivity)
+- The API client automatically refreshes tokens on 401 responses
+- If refresh fails (e.g. refresh token expired after 7 days), you are redirected to login
 
 #### Token Refresh
 
 - Access tokens are short-lived (15 minutes)
-- Automatically refreshed while you're active
+- Automatically refreshed via the 7-day refresh token when a request returns 401
 - Seamless experience without repeated logins
 
 #### Why this is important
@@ -119,10 +119,9 @@ Different user types receive different experiences when attempting unauthorized 
 
 ##### Staff and administrators
 
-- May show redirect to login or permission error
-- Indicates system functionality exists
-- Allows understanding of available features
-- Supports privilege escalation requests
+- Show 404 "Not found" page by default
+- Can be configured to redirect to home with `fallback=\"redirect\"`
+- Consistent behaviour across all unauthorized access attempts
 
 #### Implementation
 
@@ -318,31 +317,9 @@ Patient health information is never
 
 ## Payment Security
 
-### PCI Compliance
+**Status: Planned feature — not yet implemented.**
 
-#### What it means
-
-We follow Payment Card Industry (PCI) standards for handling payment information.
-
-#### How we protect you
-
-- No credit card details stored in our system
-- Payments processed by certified payment processor (Stripe)
-- Tokenized payment methods
-- Secure payment forms
-
-### Payment Process
-
-#### What happens
-
-1. You're redirected to secure payment page
-2. Enter payment details on processor's site (not ours)
-3. Processor returns confirmation
-4. We receive only confirmation, not card details
-
-#### Why this is safer
-
-Even in the unlikely event of a breach, your payment information is not in our system.
+Payment processing via Stripe is planned but not yet built. When implemented, it will follow PCI standards with no credit card details stored in our system.
 
 ---
 
@@ -366,36 +343,15 @@ Even in the unlikely event of a breach, your payment information is not in our s
 
 ### Account Recovery
 
-#### If you forget your password
+**Status: Planned feature — not yet implemented.**
 
-1. Click "Forgot Password" on login page
-2. Enter your email address
-3. Receive secure reset link via email
-4. Link expires after 1 hour for security
-5. Create new password
-
-#### Security measures
-
-- Reset links are single-use
-- Email verification required
-- Old password cannot be reused
-- Account remains locked during reset
+Password reset functionality is not yet available. Contact an administrator to reset your password.
 
 ### Suspicious Activity Detection
 
-#### Automatic monitoring
+**Status: Planned feature — not yet implemented.**
 
-- Failed login attempts
-- Access from unusual locations
-- Multiple simultaneous sessions
-- Unusual activity patterns
-
-#### Actions taken
-
-- Temporary account lock after repeated failures
-- Email notifications of suspicious activity
-- Administrator alerts for serious concerns
-- Manual review if needed
+Automatic monitoring of suspicious activity (failed logins, unusual locations) is planned but not yet built.
 
 ---
 

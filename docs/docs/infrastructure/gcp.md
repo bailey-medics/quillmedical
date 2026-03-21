@@ -38,11 +38,13 @@ Estimated cost: **£72–107/month** across staging and teaching (production hib
                         │end  │ │end  │ │   │   │end  │  │end  │
                         └──┬──┘ └─────┘ └───┘   └──┬──┘  └─────┘
                            │                       │
-                        ┌──▼────────┐           ┌──▼────────┐
-                        │Cloud SQL  │           │Cloud SQL  │
-                        │Auth+FHIR  │           │Auth only  │
-                        │+EHRbase   │           └───────────┘
-                        └──┬────────┘
+                     ┌─────┼─────────┐          ┌──▼────────┐
+                     │     │         │          │Cloud SQL  │
+                  ┌──▼──┐┌─▼──┐┌────▼┐         │Auth only  │
+                  │Auth ││FHIR││EHR- │         └───────────┘
+                  │DB   ││DB  ││base │
+                  └─────┘└────┘└─────┘
+                  3× Cloud SQL instances
                            │
                         ┌──▼────────┐
                         │HAPI FHIR  │
@@ -146,9 +148,11 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
+| `cloud-run-job` | Admin CLI jobs (create-user, update-permissions, etc.)                   |
 | `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs            |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |
+| `dns`           | Cloud DNS zone management                                               |
 | `cloud-storage` | Image bucket (teaching only)                                            |
 
 Environment-specific settings live in `infra/environments/{env}/terraform.tfvars`.
@@ -298,14 +302,15 @@ feature/*  ──►  main  ──►  release/*  ──►  clinical-live
 
 ### Staging deployment (push to main)
 
-Workflow: `.github/workflows/deploy-staging.yml`
+Workflow: `.github/workflows/deploy-staging-teaching.yml`
 
 1. Detect what changed (backend, frontend, shared)
 2. Build and push container images to Artifact Registry, tagged `main-{sha}`
 3. Deploy to staging and teaching Cloud Run
-4. Run Alembic database migrations
-5. Smoke test: `GET /api/health` (5 retries, 10s intervals)
-6. Slack notification
+4. Smoke test: `GET /api/health` (5 retries, 10s intervals)
+5. Slack notification
+
+Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
 
 ### Production deployment (push to clinical-live)
 
@@ -314,9 +319,10 @@ Workflow: `.github/workflows/deploy-production.yml`
 1. Detect what changed
 2. Build and push container images to Artifact Registry, tagged `clinical-live-{sha}` and `latest`
 3. Deploy to production Cloud Run
-4. Run Alembic database migrations
-5. Smoke test: `GET /api/health`
-6. Slack notification
+4. Smoke test: `GET /api/health`
+5. Slack notification
+
+Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
 
 Production deploys are never cancelled mid-flight.
 
@@ -446,9 +452,6 @@ The job is defined in the `cloud-run-job` Terraform module and uses a separate D
 
 ### Future improvements
 
-- Cloud DNS managed zone via Terraform (currently created manually)
-- DNS A records via Terraform (currently created manually via `gcloud`)
-- **Public landing site at `quill-medical.com`** — served from GCS bucket behind the staging LB (done)
 - Slack webhook for deployment notifications
 - CPU/memory/error-rate monitoring (beyond uptime checks)
 - Production database tier upgrade from `db-f1-micro`

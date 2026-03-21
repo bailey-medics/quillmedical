@@ -114,7 +114,7 @@ This approach ensures:
 #### Required Software
 
 - Docker Desktop – runs the application in containers
-- Node.js 24 – for frontend development
+- Node.js 22+ – for frontend development
 - Python 3.13+ – for backend development
 - Yarn – JavaScript package manager
 - Just – command runner for common tasks
@@ -128,17 +128,12 @@ This approach ensures:
 
 #### Access Points
 
-- Main application: <http://localhost>
-- API documentation: <http://localhost/api/health>
-- Version control: <http://localhost:3001>
-
-## Environment Variables
-
-- Only ASCII characters for the gitea token in the `.env` file.
+- Main application: <http://localhost:8080>
+- API documentation: <http://localhost:8080/api/docs>
 
 ## Pre-commit CI
 
-This repository uses `pre-commit` to run formatters, linters and checks. A GitHub Actions workflow (`.github/workflows/pre-commit.yml`) runs `pre-commit run --all-files` on pushes and pull requests.
+This repository uses `pre-commit` to run formatters, linters and checks. The feature workflow (`.github/workflows/feature.yml`) runs `pre-commit run --all-files` as part of the Python styling checks.
 
 To run the checks locally:
 

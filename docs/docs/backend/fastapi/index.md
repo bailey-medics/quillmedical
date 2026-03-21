@@ -82,10 +82,9 @@ app/
 from fastapi import FastAPI
 
 app = FastAPI(
-    title="Quill Medical API",
-    version="1.0.0",
-    docs_url="/api/docs",      # Swagger UI
-    redoc_url="/api/redoc"     # ReDoc
+    title="Quill API",
+    docs_url="/api/docs",      # Swagger UI (dev only)
+    redoc_url="/api/redoc"     # ReDoc (dev only)
 )
 
 router = APIRouter(prefix="/api")
@@ -231,21 +230,16 @@ def list_users(
         raise HTTPException(403, "Insufficient permissions")
     # ... list users
 
-# Multiple permission checks
-@router.post("/patients/{id}/letters")
+# CBAC-protected endpoint
+@router.post(
+    "/patients/{id}/letters",
+    dependencies=[DEP_REQUIRE_CSRF]
+)
 def create_letter(
     patient_id: str,
     letter: LetterIn,
-    user: User = Depends(get_current_user)
+    u: User = DEP_REQUIRE_ROLES_CLINICIAN,
 ):
-    # Permission check
-    if not has_permission(user, "create_letter"):
-        raise HTTPException(403)
-
-    # Assignment check
-    if not is_assigned_to_patient(user, patient_id):
-        raise HTTPException(403, "Not assigned to patient")
-
     # ... create letter
 ```
 
@@ -268,30 +262,19 @@ The backend permission system works with frontend route guards:
 
 ### Dependency Injection
 
-FastAPI's dependency injection provides:
+FastAPI's dependency injection provides clean, testable code. The backend uses pre-built dependency constants:
 
 ```python
-# Database sessions
-def get_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# Current user from JWT
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_session)
-) -> User:
-    payload = verify_token(token)
-    user = db.get(User, payload["sub"])
-    return user
+# Standard dependency constants (defined in main.py)
+DEP_GET_SESSION    # Database session via get_auth_db
+DEP_CURRENT_USER   # Authenticated user from JWT cookie
+DEP_REQUIRE_ROLES_CLINICIAN  # Clinician role gate
+DEP_REQUIRE_CSRF   # CSRF token validation (mutating endpoints)
 
 # Use in routes
 @router.get("/profile")
-def get_profile(user: User = Depends(get_current_user)):
-    return user
+def get_profile(u: User = DEP_CURRENT_USER):
+    return u
 ```
 
 ## API Documentation
