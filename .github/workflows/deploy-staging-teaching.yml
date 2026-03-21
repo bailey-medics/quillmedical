@@ -65,10 +65,12 @@ jobs:
             context: .
             dockerfile: ./backend/Dockerfile
             changed: ${{ needs.changes.outputs.backend }}
+            target: prod
           - service: frontend
             context: .
             dockerfile: ./frontend/Dockerfile
             changed: ${{ needs.changes.outputs.frontend }}
+            target: prod
     # Only build if the service actually changed
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     steps:
@@ -96,6 +98,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_STAGING_PROJECT_ID }}/quill/${{ matrix.service }}:main-${{ github.sha }}
