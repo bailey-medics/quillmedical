@@ -22,6 +22,9 @@ Before you can run any admin commands against a live environment, you need to lo
 
 ```bash
 gcloud auth login
+```
+
+```bash
 just build-admin staging
 ```
 
@@ -115,6 +118,9 @@ The system is built from four pieces:
 
 2. **Docker image** (`admin` target in `backend/Dockerfile`) — a lightweight container that includes only the admin script and the app's database libraries. It does not include the full backend server.
 
+   !!! warning "Multi-stage Dockerfile ordering"
+   The `admin` stage is the **last stage** in the Dockerfile. If you build without `--target`, Docker builds the last stage by default — which means you get the admin CLI, not the web server. CI deploy workflows must always specify `target: prod` explicitly.
+
 3. **Terraform module** (`infra/modules/cloud-run-job/`) — infrastructure-as-code that creates the `google_cloud_run_v2_job` resource in each GCP project. It has the same VPC access and database credentials as the backend service.
 
 4. **Justfile commands** — developer-friendly wrappers that handle Docker builds, image pushes, and `gcloud run jobs execute` calls with the right project and region.
@@ -132,6 +138,83 @@ When you run `just create-superadmin staging`, what happens behind the scenes:
 The `--wait` flag means your terminal will wait for the job to finish and show you the output.
 
 ## Troubleshooting
+
+### Backend service running the admin image by mistake
+
+**Symptom:** Cloud Run backend fails its startup probe. Logs show `ERROR: ADMIN_ACTION environment variable is required` repeating in a loop.
+
+**Cause:** The backend _service_ is running the `admin` Docker image instead of the `prod` image. The admin image is a CLI tool that exits immediately — it does not start an HTTP server, so health checks always fail.
+
+This can happen if:
+
+- Someone manually deploys the admin image to the backend service by mistake
+- The CI deploy workflow builds Docker without `--target prod`, causing Docker to build the last stage in the Dockerfile (which is `admin`)
+
+**Fix:** Deploy the correct `prod` image:
+
+```bash
+# Build the prod stage locally
+docker build --target prod -f backend/Dockerfile -t quill-backend-prod .
+
+# Auth to the environment's Artifact Registry
+gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
+
+# Tag and push (replace {env} and {project})
+docker tag quill-backend-prod \
+  europe-west2-docker.pkg.dev/{project}/quill/backend:main
+docker push \
+  europe-west2-docker.pkg.dev/{project}/quill/backend:main
+
+# Deploy to Cloud Run
+gcloud run services update quill-backend-{env} \
+  --project={project} \
+  --region=europe-west2 \
+  --image=europe-west2-docker.pkg.dev/{project}/quill/backend:main
+```
+
+**Prevention:** The deploy workflow must always specify `target: prod` in the Docker build step. See the `deploy-staging-teaching.yml` matrix config.
+
+### Startup probe failures (general)
+
+**Symptom:** `The user-provided container failed the configured startup probe checks.`
+
+**Diagnosis:** Check the Cloud Run revision logs:
+
+```bash
+gcloud beta run revisions logs read {revision-name} \
+  --project={project} \
+  --region=europe-west2 \
+  --limit=30
+```
+
+Or for the whole service:
+
+```bash
+gcloud run services logs read quill-backend-{env} \
+  --project={project} \
+  --region=europe-west2 \
+  --limit=30
+```
+
+Common causes:
+
+- **Wrong image** — admin CLI image instead of prod (see above)
+- **Migration failure** — `entrypoint.sh` runs `alembic upgrade head` before starting uvicorn. If the database is unreachable or migrations fail, the container crashes before the HTTP server starts
+- **Slow cold start** — VPC connector setup and Cloud SQL connections can be slow. The startup probe allows 65 seconds (5s delay + 6 failures x 10s period)
+
+### Terraform state lock
+
+**Symptom:** `Error acquiring the state lock` with `conditionNotMet`.
+
+**Cause:** A previous Terraform run (usually a failed CI apply) didn't release the GCS state lock.
+
+**Fix:**
+
+```bash
+gsutil rm gs://quill-medical-terraform-state/terraform/state/{env}.tflock
+```
+
+Then re-run the Terraform apply (or re-trigger the CI workflow).
 
 ### "Permission denied" or "not authenticated"
 

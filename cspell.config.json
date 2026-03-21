@@ -377,6 +377,7 @@
     "testpass",
     "testpaths",
     "testuser",
+    "tflock",
     "tfstate",
     "tfvars",
     "thankyou",

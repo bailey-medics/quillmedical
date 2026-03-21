@@ -163,8 +163,12 @@ europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
 
 Container images are pushed here by CI (not GHCR — Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
 
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:latest`
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:latest`
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:main` — backend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:main` — frontend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` — admin CLI (built from `admin` Dockerfile stage, via `just build-admin`)
+
+!!! warning "Docker build targets"
+The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is last, so building without `--target` produces the admin CLI image, not the web server. CI deploy workflows must always specify `target: prod`.
 
 ### Organisation policy override (done)
 
@@ -359,6 +363,22 @@ db_tier                 = "db-f1-micro"
 cloud_run_max_instances = 5
 ```
 
+## Environment variable naming
+
+Terraform injects environment variables into Cloud Run services via the `env_vars` and `secret_env_vars` maps in the Cloud Run module. The variable names must **exactly match** the Pydantic Settings field names in `backend/app/config.py`.
+
+Key mappings:
+
+| Terraform env var | Config field      | Default (Docker Compose)      |
+| ----------------- | ----------------- | ----------------------------- |
+| `AUTH_DB_HOST`    | `AUTH_DB_HOST`    | `postgres-auth`               |
+| `AUTH_DB_NAME`    | `AUTH_DB_NAME`    | `quill_auth`                  |
+| `AUTH_DB_USER`    | `AUTH_DB_USER`    | `auth_user`                   |
+| `FHIR_SERVER_URL` | `FHIR_SERVER_URL` | `http://fhir:8080/fhir`       |
+| `EHRBASE_URL`     | `EHRBASE_URL`     | `http://ehrbase:8080/ehrbase` |
+
+If names don't match, the backend silently falls back to the Docker Compose defaults (which are unresolvable hostnames in Cloud Run), causing FHIR/EHRbase health checks to fail.
+
 ## Security
 
 - **No public database IPs** — Cloud SQL is accessible only via VPC
@@ -406,15 +426,15 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 3. Deploy to staging and teaching Cloud Run
 4. Smoke test the health endpoint
 
-### Create Alembic migration Cloud Run job
+### ~~Create Alembic migration Cloud Run job~~ (solved)
 
-The deploy workflows originally included an Alembic migration step (`gcloud run jobs execute migrate-auth-db`), but this Cloud Run job doesn't exist yet. It was removed from the workflows temporarily.
+Database migrations are handled by the backend's `entrypoint.sh`, which runs `alembic upgrade head` before starting the uvicorn server. This runs automatically on every Cloud Run revision deployment — no separate migration job is needed.
 
-To restore it:
+### Admin Cloud Run Job (done)
 
-1. Add a `google_cloud_run_v2_job` resource in Terraform that runs `alembic upgrade head` against the auth DB
-2. Grant the job's service account access to the Cloud SQL instance and the `database-url` secret
-3. Re-add the migration steps to `deploy-staging.yml` (staging + teaching) and `deploy-production.yml`
+Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles). See the [admin tasks documentation](admin.md) for usage.
+
+The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool — it does **not** run an HTTP server.
 
 ### Production go-live
 
