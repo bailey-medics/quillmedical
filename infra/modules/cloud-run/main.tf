@@ -64,6 +64,7 @@ resource "google_cloud_run_v2_service" "service" {
           path = var.health_check_path
         }
         initial_delay_seconds = 5
+        timeout_seconds       = 15
         period_seconds        = 10
         failure_threshold     = 6
       }
