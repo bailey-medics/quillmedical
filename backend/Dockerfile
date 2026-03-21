@@ -65,3 +65,8 @@ RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
+
+# ---------- Admin target (Cloud Run Job for admin tasks) ----------
+FROM base AS admin
+COPY --chown=appuser:appuser backend/scripts/admin_cli.py ./scripts/admin_cli.py
+CMD ["python", "scripts/admin_cli.py"]
