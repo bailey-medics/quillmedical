@@ -16,7 +16,13 @@ interface PublicLayoutProps {
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
   const theme = useMantineTheme();
-  const isNarrow = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`, true);
+  const isNarrow = useMediaQuery(
+    `(max-width: ${theme.breakpoints.sm})`,
+    undefined,
+    {
+      getInitialValueInEffect: false,
+    },
+  );
   const [opened, { toggle, close }] = useDisclosure(false);
 
   return (
