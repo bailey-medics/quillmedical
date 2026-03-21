@@ -1,12 +1,15 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import HeroBackground from "@/components/background/HeroBackground";
 import LightBackground from "@/components/background/LightBackground";
+import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
+import { colours } from "@/styles/colours";
 import { theme } from "@/theme";
 import { Container, MantineProvider, Stack } from "@mantine/core";
 import "@mantine/core/styles.css";
+import { IconMessage } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
@@ -15,6 +18,9 @@ createRoot(document.getElementById("root")!).render(
       <HeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
+            <div style={{ color: colours.amber }}>
+              <Icon icon={<IconMessage />} size="xl" />
+            </div>
             <PublicTitle title="Clinical messaging" />
             <PublicText size="lg">
               A new approach to patient-clinician communication. Private

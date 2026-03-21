@@ -1,12 +1,15 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import LightBackground from "@/components/background/LightBackground";
 import PublicButton from "@/components/button/PublicButton";
+import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/page-header/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
+import { colours } from "@/styles/colours";
 import { theme } from "@/theme";
 import { Container, MantineProvider, Stack } from "@mantine/core";
 import "@mantine/core/styles.css";
+import { IconChalkboardTeacher } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
@@ -15,6 +18,9 @@ createRoot(document.getElementById("root")!).render(
       <DarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
+            <div style={{ color: colours.amber }}>
+              <Icon icon={<IconChalkboardTeacher />} size="xl" />
+            </div>
             <PublicTitle title="Clinical teaching platform" c="white" />
             <PublicText size="lg">
               A structured MCQ-based learning platform for trainees across every
