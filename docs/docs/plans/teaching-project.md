@@ -883,6 +883,8 @@ All in `frontend/src/features/teaching/pages/`, using `<Container size="lg">` wr
 
 ### Step 6.3 — GitHub Actions
 
+> **Discovery**: Already implemented in `.github/workflows/deploy-staging-teaching.yml`. Builds images, pushes to teaching AR, deploys to Cloud Run, runs smoke test. No changes needed.
+
 - Teaching deployment workflow (separate from EPR)
 - Trigger: push to `main`
 - Deploy to `quill-medical-teaching` GCP project
@@ -900,6 +902,8 @@ Create `dev-scripts/seed-teaching-data.sh`:
 - Mark items as published (need ≥ `min_pool_size` for a valid assessment)
 
 ### Step 6.5 — Question bank repo CI
+
+> **Note**: This step targets the separate `bailey-medics/quill-question-bank` repository and should be implemented there, not in this workspace.
 
 Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 

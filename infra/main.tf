@@ -210,6 +210,12 @@ module "cloud_run_backend" {
       EHRBASE_DB_HOST  = module.cloud_sql_ehrbase[0].private_ip
       EHRBASE_DB_NAME  = module.cloud_sql_ehrbase[0].database_name
       EHRBASE_DB_USER  = module.cloud_sql_ehrbase[0].database_user
+    } : {},
+    var.environment == "teaching" ? {
+      CLINICAL_SERVICES_ENABLED    = "false"
+      TEACHING_STORAGE_BACKEND     = "gcs"
+      TEACHING_GCS_BUCKET          = module.cloud_storage[0].bucket_name
+      TEACHING_IMAGES_BASE_URL     = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
     } : {}
   )
 

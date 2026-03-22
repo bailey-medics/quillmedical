@@ -8,6 +8,7 @@ services:
     env_file: backend/.env
     environment:
       BACKEND_ENV: development
+      TEACHING_STORAGE_BACKEND: local
     expose:
       - "8000"
     depends_on:
