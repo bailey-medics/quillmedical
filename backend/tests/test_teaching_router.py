@@ -679,3 +679,82 @@ class TestEducatorEndpoints:
         data = resp.json()
         assert data["coordinator_email"] == "coord@test.local"
         assert data["institution_name"] == "Test Institution"
+
+
+# ------------------------------------------------------------------
+# _resolve_bank_path security
+# ------------------------------------------------------------------
+
+
+class TestResolveBankPath:
+    """Ensure _resolve_bank_path rejects path traversal."""
+
+    def test_rejects_path_traversal(self):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path
+
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path("../etc/passwd")
+        assert exc.value.status_code == 400
+
+    def test_rejects_slash(self):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path
+
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path("some/nested/path")
+        assert exc.value.status_code == 400
+
+    def test_rejects_empty(self):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path
+
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path("")
+        assert exc.value.status_code == 400
+
+    def test_missing_config_raises_400(self, monkeypatch):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+        )
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path("valid-bank-id")
+        assert exc.value.status_code == 400
+
+    def test_nonexistent_bank_raises_404(self, monkeypatch, tmp_path):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            str(tmp_path),
+        )
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path("no-such-bank")
+        assert exc.value.status_code == 404
+
+    def test_valid_bank_returns_path(self, monkeypatch, tmp_path):
+        from app.features.teaching.router import _resolve_bank_path
+
+        bank_dir = tmp_path / "my-bank"
+        bank_dir.mkdir()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            str(tmp_path),
+        )
+        result = _resolve_bank_path("my-bank")
+        assert result == bank_dir

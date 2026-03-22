@@ -318,6 +318,8 @@
     "pyver",
     "pywebpush",
     "pyyaml",
+    "qbps",
+    "qbpu",
     "qrcode",
     "qualname",
     "quillmedical",

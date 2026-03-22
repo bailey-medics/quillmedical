@@ -138,6 +138,41 @@ port-8000:
     lsof -i :8000
 
 
+alias qbc := question-bank-clone
+# Clone the question bank repo into question-bank/
+question-bank-clone:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-clone"
+    if [ -d "question-bank/.git" ]; then
+        echo "question-bank/ already exists — use 'just question-bank-pull' to update"
+        exit 1
+    fi
+    git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
+    echo "Cloned into question-bank/"
+
+alias qbpu := question-bank-pull
+# Pull the latest question bank content
+question-bank-pull:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-pull"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank pull
+
+alias qbps := question-bank-push
+# Push question bank changes
+question-bank-push:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-push"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank push
+
+
 alias m := migrate
 # Run the database migrations
 migrate message:

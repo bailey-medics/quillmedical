@@ -144,6 +144,10 @@ class Settings(BaseSettings):
         None,
         description="Override for dev: local file serving base URL",
     )
+    TEACHING_QUESTION_BANK_PATH: str | None = Field(
+        None,
+        description="Local filesystem path to question bank content",
+    )
 
     # --- Startup validation ---
     @model_validator(mode="after")

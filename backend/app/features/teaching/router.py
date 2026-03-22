@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import random
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -620,6 +621,31 @@ def list_items(
     return list(db.execute(stmt).scalars().all())
 
 
+def _resolve_bank_path(bank_id: str) -> Path:
+    """Resolve a bank_id to a safe filesystem path.
+
+    Uses ``TEACHING_QUESTION_BANK_PATH`` from config.  Raises 400 if
+    the setting is not configured, 404 if the bank directory does not
+    exist.  Rejects path-traversal attempts (``..`` or ``/``).
+    """
+    from app.config import settings
+
+    if not bank_id or "/" in bank_id or ".." in bank_id:
+        raise HTTPException(400, "Invalid bank_id")
+
+    base = settings.TEACHING_QUESTION_BANK_PATH
+    if not base:
+        raise HTTPException(
+            400,
+            "TEACHING_QUESTION_BANK_PATH is not configured",
+        )
+
+    resolved = Path(base) / bank_id
+    if not resolved.is_dir():
+        raise HTTPException(404, f"Question bank '{bank_id}' not found")
+    return resolved
+
+
 @teaching_router.post(
     "/items/validate",
     response_model=ValidationResultOut,
@@ -631,17 +657,16 @@ def validate_items(
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Dry-run validation of a question bank (no import)."""
-    from pathlib import Path
-
     from app.features.teaching.sync import sync_question_bank
 
-    bank_path = body.get("bank_path", "")
-    if not bank_path:
-        raise HTTPException(400, "bank_path is required")
+    bank_id = body.get("bank_id", "")
+    if not bank_id:
+        raise HTTPException(400, "bank_id is required")
 
+    bank_path = _resolve_bank_path(bank_id)
     org_id = _get_user_org_id(user, db)
     result, _ = sync_question_bank(
-        Path(bank_path),
+        bank_path,
         org_id,
         user.id,
         db,
@@ -675,17 +700,16 @@ def sync_items(
     db: Session = _DEP_SESSION,
 ) -> QuestionBankSync:
     """Trigger sync from filesystem/GCS to database."""
-    from pathlib import Path
-
     from app.features.teaching.sync import sync_question_bank
 
-    bank_path = body.get("bank_path", "")
-    if not bank_path:
-        raise HTTPException(400, "bank_path is required")
+    bank_id = body.get("bank_id", "")
+    if not bank_id:
+        raise HTTPException(400, "bank_id is required")
 
+    bank_path = _resolve_bank_path(bank_id)
     org_id = _get_user_org_id(user, db)
     validation, sync_record = sync_question_bank(
-        Path(bank_path),
+        bank_path,
         org_id,
         user.id,
         db,

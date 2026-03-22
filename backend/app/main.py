@@ -3531,3 +3531,17 @@ from app.features.teaching.router import teaching_router  # noqa: E402
 
 router.include_router(teaching_router)
 app.include_router(router)
+
+# --- Conditional static file serving for local dev ---
+if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
+    from pathlib import Path
+
+    from starlette.staticfiles import StaticFiles
+
+    _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
+    if _qb_path.is_dir():
+        app.mount(
+            "/api/teaching/images",
+            StaticFiles(directory=str(_qb_path)),
+            name="teaching-images",
+        )

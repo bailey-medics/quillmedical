@@ -559,31 +559,76 @@ Migration: `just migrate "add_teaching_tables"`
 
 **Files**: new `backend/app/features/teaching/__init__.py`, new `backend/app/features/teaching/models.py`, `backend/alembic/env.py`
 
-### Step 2.2 — Image storage (Git + GCS)
+### Step 2.2 — Image storage (Git + GCS + CDN)
 
 _Parallel with 2.1_
 
-Images are **version-controlled in Git** (source of truth, PR review) and **served from GCS** at runtime (fast, scalable, signed URLs).
+Images are **version-controlled in Git** (source of truth, PR review) and **served via Cloud CDN + signed URLs** in production (fast, scalable, secure). The backend never proxies images — it generates short-lived signed URLs and the browser fetches directly from Google's edge network.
+
+#### Architecture overview
+
+```
+quill-question-bank repo (source of truth)
+        │
+        ▼ CI/CD (GitHub Actions)
+        │
+   ┌────┴────┐
+   │         │
+   ▼         ▼
+  GCS      Backend (Cloud Run)
+bucket     reads YAML → DB sync (Option A: download to tempdir)
+   │
+   ▼
+Cloud CDN (edge cache, ~150 locations)
+   │
+   ▼
+Browser loads images directly (signed URL, 15 min expiry)
+```
+
+| Layer          | Local dev                                        | Production                                  |
+| -------------- | ------------------------------------------------ | ------------------------------------------- |
+| Image storage  | Local `question-bank/` folder (Docker mount)     | GCS bucket                                  |
+| Image serving  | FastAPI `StaticFiles` at `/api/teaching/images/` | Cloud CDN + signed URLs                     |
+| DB sync source | Local folder (`TEACHING_QUESTION_BANK_PATH`)     | GCS bucket → tempdir → existing sync code   |
+| Config         | `TEACHING_QUESTION_BANK_PATH=/question-banks`    | `TEACHING_GCS_BUCKET=quill-images-teaching` |
+
+**Why CDN + signed URLs at enterprise scale**: the backend should never serve images. A single Cloud Run instance handling 1000 concurrent assessments (2 images each) would choke if proxying images. Cloud CDN handles it trivially from edge locations worldwide. Signed URLs expire after 15 minutes, preventing hotlinking and permanent sharing.
 
 #### Git side — source of truth
 
 Question bank content lives in a **separate private repository** (`bailey-medics/quill-question-bank`), not in the main application repo. This keeps large binary files (polyp images etc.) out of the application codebase while maintaining version control and PR-based review. Git LFS tracks binary files so the repo stays fast.
 
-The directory structure follows the format described in the [Question bank config format](#question-bank-config-format) section:
+For **local development**, the question bank repo is cloned into a `question-bank/` folder within the quillmedical workspace. This folder is gitignored so question bank content is never committed to the main application repo. Justfile commands manage the clone/pull lifecycle:
+
+```bash
+just question-bank-clone   # git clone into question-bank/
+just question-bank-pull    # pull latest content
+just question-bank-push    # push changes (educator workflow)
+```
+
+The `.gitignore` entry:
 
 ```
-questions/
-  colonoscopy-optical-diagnosis/
-    config.yaml                 # bank config (type, options, pass criteria)
-    question_001/
-      question.yaml             # item metadata (e.g. diagnosis: adenoma)
-      image_1.png               # WLI image
-      image_2.png               # NBI image
-    question_002/
-      question.yaml
-      image_1.png
-      image_2.png
-    ...
+question-bank/
+```
+
+The directory structure within the question bank repo follows the format described in the [Question bank config format](#question-bank-config-format) section:
+
+```
+question-bank/                      ← gitignored, cloned from quill-question-bank
+  questions/
+    colonoscopy-optical-diagnosis/
+      config.yaml                   # bank config (type, options, pass criteria)
+      certificate_background.pdf    # optional certificate template
+      question_001/
+        question.yaml               # item metadata (e.g. diagnosis: adenoma)
+        image_1.png                 # WLI image
+        image_2.png                 # NBI image
+      question_002/
+        question.yaml
+        image_1.png
+        image_2.png
+      ...
 ```
 
 The `config.yaml` is the bank-level config documented above. Each `question_<n>/` subfolder is one item, containing a `question.yaml` (item metadata) and image files named `image_<n>.<ext>` matching the config's `image_labels` order.
@@ -594,45 +639,69 @@ Add `.gitattributes` in the question bank repo:
 questions/*/question_*/image_*.* filter=lfs diff=lfs merge=lfs -text
 ```
 
-#### GCS side — runtime serving
+#### Local dev — filesystem serving
 
-Each GCP project (staging, teaching, production) has a dedicated GCS bucket (e.g. `quill-teaching-images-teaching`). The CI/CD pipeline clones the question bank repo and syncs content to the bucket on every deploy:
+Docker Compose mounts the question bank folder into the backend container:
 
-```bash
-# In CI/CD deploy step:
-git clone --depth 1 git@github.com:bailey-medics/quill-question-bank.git /tmp/question-bank
-gsutil -m rsync -r /tmp/question-bank/questions/ gs://$TEACHING_GCS_BUCKET/questions/
+```yaml
+# compose.dev.yml (backend service)
+volumes:
+  - ./question-bank/questions:/question-banks
+environment:
+  TEACHING_QUESTION_BANK_PATH: /question-banks
+  TEACHING_IMAGES_BASE_URL: /api/teaching/images
 ```
 
-The backend generates **signed URLs** (short-lived, e.g. 15 minutes) when serving items to candidates. The frontend never accesses GCS directly — it receives signed URLs from the API.
+The backend conditionally mounts a `StaticFiles` endpoint at `/api/teaching/images/` from the `TEACHING_QUESTION_BANK_PATH` directory (only when `TEACHING_STORAGE_BACKEND=local`). This goes through the existing Caddy `/api/*` proxy with no Caddyfile changes needed.
+
+`LocalStorageBackend` generates URLs like `/api/teaching/images/colonoscopy-optical-diagnosis/question_42/image_1.png`.
+
+The sync endpoint resolves the bank path from the `TEACHING_QUESTION_BANK_PATH` config setting + the `bank_id` from the request body — it does **not** accept arbitrary filesystem paths (prevents path traversal).
+
+#### GCS side — production serving
+
+Each GCP project has a dedicated GCS bucket (e.g. `quill-images-teaching`). The CI/CD pipeline (GitHub Actions on the `quill-question-bank` repo) syncs content to the bucket:
+
+```bash
+# In CI/CD step on quill-question-bank repo:
+gsutil -m rsync -r questions/ gs://$TEACHING_GCS_BUCKET/questions/
+```
+
+The backend generates **signed URLs** (15-minute expiry) when serving items to candidates. The frontend never accesses GCS directly — it receives signed URLs from the API. Cloud CDN sits in front of the bucket for edge caching.
+
+`GCSStorageBackend` generates URLs like `https://storage.googleapis.com/quill-images-teaching/questions/colonoscopy.../question_42/image_1.png?X-Goog-Signature=...`.
+
+#### GCS DB sync — Option A (download to tempdir)
+
+In production, the sync endpoint needs to read `config.yaml` and `question.yaml` files from the GCS bucket to populate the database. Rather than rewriting `sync.py` to understand GCS natively, the sync endpoint **downloads the YAML files from the bucket to a temporary directory**, then passes that `Path` to the existing `sync_question_bank()` function. Images are not downloaded — they stay in the bucket and are only referenced by key in the database.
+
+This keeps `sync.py` simple and filesystem-based while supporting both local and GCS environments. The tempdir is cleaned up after the sync completes.
+
+#### Config settings
 
 Add to `config.py`:
 
 - `TEACHING_GCS_BUCKET: str | None = None` — GCS bucket name (set per environment)
-- `TEACHING_IMAGES_BASE_URL: str | None = None` — optional override for dev (local file serving)
-
-For **local dev**, images are served directly from the filesystem via a static files endpoint — no GCS needed. The backend detects `TEACHING_GCS_BUCKET` is unset and falls back to local file paths.
+- `TEACHING_IMAGES_BASE_URL: str | None = None` — base URL for local dev image serving
+- `TEACHING_QUESTION_BANK_PATH: str | None = None` — local filesystem path to question bank content
 
 Create `backend/app/features/teaching/storage.py`:
 
-- `get_image_url(bank_id: str, filename: str) → str` — returns a signed GCS URL in production, or a local file URL in dev
+- `get_image_url(bank_id: str, item_folder: str, filename: str) → str` — returns a signed GCS URL in production, or a local file URL in dev
 - Uses `google-cloud-storage` for signed URL generation
 
 Add `google-cloud-storage` and `reportlab` to `pyproject.toml` dependencies.
-
-#### Sync command
-
-`just sync-question-bank colonoscopy-optical-diagnosis` — clones/pulls the question bank repo, runs the validation tool (see [Question bank validation](#question-bank-validation) below), then reads each `question_<n>/question.yaml` + image files and creates/updates `QuestionBankItem` rows in the database for the current `version`. Validates image count matches `images_per_item`, metadata values match `correct_answer_values`, and all required files are present.
 
 **Why this hybrid approach?**
 
 - **Version control**: image changes tracked in Git history, tied to the YAML version bump in one PR
 - **PR review**: educators submit images via PR → reviewers can inspect before merge
 - **Single source of truth**: config, images, and manifest are co-located in the repo
-- **Fast serving**: GCS signed URLs are fast and scalable — no load on the backend for image delivery
-- **Security**: signed URLs expire, so images can’t be hotlinked or shared permanently
+- **Fast serving**: Cloud CDN + signed URLs — no load on the backend for image delivery
+- **Security**: signed URLs expire, so images can't be hotlinked or shared permanently
+- **Dev parity**: same `StorageBackend` abstraction hides the difference — the router calls `storage.get_image_url()` and doesn't care whether it gets a local path or a signed CDN URL
 
-**Files**: `.gitattributes` (in question bank repo), `backend/app/config.py`, `backend/pyproject.toml`, new `backend/app/features/teaching/storage.py`, new `backend/app/features/teaching/sync.py`, new `backend/app/features/teaching/validate.py`
+**Files**: `.gitattributes` (in question bank repo), `.gitignore`, `Justfile`, `compose.dev.yml`, `backend/app/config.py`, `backend/app/main.py`, `backend/pyproject.toml`, new `backend/app/features/teaching/storage.py`, new `backend/app/features/teaching/sync.py`, new `backend/app/features/teaching/validate.py`
 
 ### Step 2.3 — Question bank validation
 
@@ -880,16 +949,22 @@ All in `frontend/src/features/teaching/pages/`, using `<Container size="lg">` wr
 
 - No new services needed (uses local filesystem storage)
 - Add `TEACHING_STORAGE_BACKEND=local` to backend env in `compose.dev.yml`
+- Add volume mount `./question-bank/questions:/question-banks` to backend service
+- Add `TEACHING_QUESTION_BANK_PATH=/question-banks` to backend env
+- Add `TEACHING_IMAGES_BASE_URL=/api/teaching/images` to backend env
+- Add conditional `StaticFiles` mount in `main.py` at `/api/teaching/images/` from `TEACHING_QUESTION_BANK_PATH` (only when `TEACHING_STORAGE_BACKEND=local`)
 
 ### Step 6.3 — GitHub Actions
 
-> **Discovery**: Already implemented in `.github/workflows/deploy-staging-teaching.yml`. Builds images, pushes to teaching AR, deploys to Cloud Run, runs smoke test. No changes needed.
+> **Discovery**: Already implemented in `.github/workflows/deploy-staging-teaching.yml`. Builds images, pushes to teaching AR, deploys to Cloud Run, runs smoke test. No changes needed for the main app deployment.
 
 - Teaching deployment workflow (separate from EPR)
 - Trigger: push to `main`
 - Deploy to `quill-medical-teaching` GCP project
 - Same Docker image build, different env vars
 - Workload Identity Federation (per existing pattern)
+
+Additionally, the `quill-question-bank` repo needs its own CI/CD (see Step 6.5) with a `gsutil -m rsync` step to push content to the GCS bucket on merge to `main`. This requires Workload Identity Federation configured for that repo too.
 
 ### Step 6.4 — Seed data
 
@@ -911,6 +986,19 @@ Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 - Runs `validate.py` against all question banks in the repo
 - Blocks merge on validation errors
 - Reports warnings in PR comments
+- On merge to `main`: `gsutil -m rsync -r questions/ gs://$TEACHING_GCS_BUCKET/questions/` to push images + YAML to the GCS bucket (requires WIF for the teaching GCP project)
+
+### Step 6.6 — Justfile question bank commands
+
+Add Justfile commands for local development with the question bank repo:
+
+```bash
+question-bank-clone:   # git clone bailey-medics/quill-question-bank into question-bank/
+question-bank-pull:    # git -C question-bank pull
+question-bank-push:    # git -C question-bank push
+```
+
+Also add `question-bank/` to `.gitignore` so the cloned content stays out of the main application repo.
 
 ---
 
