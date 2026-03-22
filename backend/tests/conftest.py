@@ -22,7 +22,7 @@ os.environ.setdefault("AUTH_DB_PASSWORD", "test_auth_password")
 os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 
 from app.db import get_session
-from app.main import app, limiter
+from app.main import app, limiter, require_clinical_services
 from app.models import Base, Role, User
 from app.security import hash_password
 
@@ -69,6 +69,9 @@ def test_client(db_session: Session) -> TestClient:
             pass
 
     app.dependency_overrides[get_session] = override_get_session
+    # Allow clinical endpoints in tests (CLINICAL_SERVICES_ENABLED=false
+    # in test env). Tests for the guard itself override this back.
+    app.dependency_overrides[require_clinical_services] = lambda: None
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()

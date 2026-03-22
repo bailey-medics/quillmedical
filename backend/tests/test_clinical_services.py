@@ -1,5 +1,9 @@
 """Tests for CLINICAL_SERVICES_ENABLED flag and requires_feature."""
 
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app, require_clinical_services
 from app.models import Organization, User, organisation_staff_member
 from app.security import hash_password
 
@@ -36,6 +40,47 @@ class TestClinicalServicesFlag:
 
         if not settings.CLINICAL_SERVICES_ENABLED:
             assert settings.EHRBASE_DATABASE_URL is None
+
+
+class TestRequireClinicalServicesDependency:
+    """Test that endpoints return 503 when clinical services are disabled."""
+
+    @pytest.fixture()
+    def clinical_disabled_client(self, test_client: TestClient) -> TestClient:
+        """Remove the require_clinical_services override so the real
+        guard runs (CLINICAL_SERVICES_ENABLED=false in test env)."""
+        app.dependency_overrides.pop(require_clinical_services, None)
+        yield test_client
+        # Restore the no-op override for other tests
+        app.dependency_overrides[require_clinical_services] = lambda: None
+
+    def test_patients_returns_503(
+        self,
+        clinical_disabled_client: TestClient,
+        authenticated_clinician_client: TestClient,
+    ) -> None:
+        """GET /patients returns 503 when clinical services disabled."""
+        resp = clinical_disabled_client.get("/api/patients")
+        assert resp.status_code == 503
+
+    def test_conversations_returns_503(
+        self,
+        clinical_disabled_client: TestClient,
+        authenticated_clinician_client: TestClient,
+    ) -> None:
+        """GET /conversations returns 503 when clinical services disabled."""
+        resp = clinical_disabled_client.get("/api/conversations")
+        assert resp.status_code == 503
+
+    def test_me_includes_clinical_flag(
+        self, authenticated_clinician_client: TestClient
+    ) -> None:
+        """/api/auth/me includes clinical_services_enabled."""
+        resp = authenticated_clinician_client.get("/api/auth/me")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "clinical_services_enabled" in data
+        assert data["clinical_services_enabled"] is False
 
 
 class TestRequireFeatureDependency:

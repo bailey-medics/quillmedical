@@ -1140,6 +1140,7 @@ def me(
         "system_permissions": u.system_permissions,
         "totp_enabled": u.is_totp_enabled,
         "enabled_features": enabled_features,
+        "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
     }
 
 
@@ -1411,7 +1412,7 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients")
+@router.get("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
 def list_patients(
     include_inactive: bool = False,
     scope: str | None = None,
@@ -1476,7 +1477,11 @@ def list_patients(
 
 @router.put(
     "/patients/{patient_id}/demographics",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def upsert_demographics(
     patient_id: str, demographics: dict[str, Any], u: User = DEP_CURRENT_USER
@@ -1514,7 +1519,10 @@ def upsert_demographics(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/demographics")
+@router.get(
+    "/patients/{patient_id}/demographics",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_demographics(
     patient_id: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, str | Any]:
@@ -1550,7 +1558,11 @@ def get_demographics(
 
 @router.post(
     "/patients/{patient_id}/letters",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
     """Create Clinical Letter in OpenEHR.
@@ -1595,7 +1607,10 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/letters/{composition_uid}")
+@router.get(
+    "/patients/{patient_id}/letters/{composition_uid}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def read_letter(
     patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1635,7 +1650,10 @@ def read_letter(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/letters")
+@router.get(
+    "/patients/{patient_id}/letters",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_letters(
     patient_id: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1694,7 +1712,7 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-@router.post("/patients")
+@router.post("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1731,7 +1749,10 @@ def create_patient_in_fhir(
         ) from e
 
 
-@router.get("/patients/{patient_id}")
+@router.get(
+    "/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
     """Get Single Patient from FHIR.
 
@@ -1766,7 +1787,10 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
         ) from e
 
 
-@router.patch("/patients/{patient_id}")
+@router.patch(
+    "/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
@@ -1853,7 +1877,10 @@ def update_patient(
         ) from e
 
 
-@router.get("/patients/{patient_id}/metadata")
+@router.get(
+    "/patients/{patient_id}/metadata",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_patient_metadata(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -1892,7 +1919,10 @@ def get_patient_metadata(
         }
 
 
-@router.post("/patients/{patient_id}/deactivate")
+@router.post(
+    "/patients/{patient_id}/deactivate",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def deactivate_patient(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -1957,7 +1987,10 @@ def deactivate_patient(
     }
 
 
-@router.post("/patients/{patient_id}/activate")
+@router.post(
+    "/patients/{patient_id}/activate",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def activate_patient(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -2021,7 +2054,10 @@ def activate_patient(
     }
 
 
-@router.get("/patients/{patient_id}/shared-organisations")
+@router.get(
+    "/patients/{patient_id}/shared-organisations",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def shared_organisations_endpoint(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -2571,7 +2607,10 @@ class AddPatientIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.post("/organizations/{org_id}/patients")
+@router.post(
+    "/organizations/{org_id}/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def add_patient_to_organization(
     org_id: int,
     body: AddPatientIn,
@@ -2874,7 +2913,7 @@ def link_patient_to_user(
 
 @router.post(
     "/patients/{patient_id}/invite-external",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def invite_external_user(
     patient_id: str,
@@ -3008,7 +3047,7 @@ def accept_invite(
 
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def revoke_external_access(
     patient_id: str,
@@ -3050,7 +3089,10 @@ def revoke_external_access(
     return {"status": "revoked"}
 
 
-@router.get("/patients/{patient_id}/external-access")
+@router.get(
+    "/patients/{patient_id}/external-access",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_external_access(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -3108,7 +3150,7 @@ def list_external_access(
 @router.post(
     "/conversations",
     response_model=ConversationDetailOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def create_conversation_endpoint(
     body: ConversationCreateIn,
@@ -3149,7 +3191,11 @@ def create_conversation_endpoint(
         ) from exc
 
 
-@router.get("/conversations", response_model=ConversationListOut)
+@router.get(
+    "/conversations",
+    response_model=ConversationListOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_conversations_endpoint(
     status: str | None = None,
     patient_id: str | None = None,
@@ -3182,6 +3228,7 @@ def list_conversations_endpoint(
 @router.get(
     "/patients/{patient_id}/conversations",
     response_model=ConversationListOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def list_patient_conversations_endpoint(
     patient_id: str,
@@ -3215,6 +3262,7 @@ def list_patient_conversations_endpoint(
 @router.get(
     "/conversations/{conversation_id}",
     response_model=ConversationDetailOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def get_conversation_endpoint(
     conversation_id: int,
@@ -3247,7 +3295,7 @@ def get_conversation_endpoint(
 @router.patch(
     "/conversations/{conversation_id}",
     response_model=ConversationOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def update_conversation_status_endpoint(
     conversation_id: int,
@@ -3324,7 +3372,7 @@ def update_conversation_status_endpoint(
 @router.post(
     "/conversations/{conversation_id}/messages",
     response_model=MessageOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def send_message_endpoint(
     conversation_id: int,
@@ -3372,7 +3420,7 @@ def send_message_endpoint(
 @router.post(
     "/conversations/{conversation_id}/participants",
     response_model=ParticipantOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def add_participant_endpoint(
     conversation_id: int,
@@ -3420,6 +3468,7 @@ def add_participant_endpoint(
 @router.get(
     "/conversations/{conversation_id}/participants",
     response_model=list[ParticipantOut],
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def list_participants_endpoint(
     conversation_id: int,
@@ -3461,7 +3510,7 @@ def list_participants_endpoint(
 @router.post(
     "/conversations/{conversation_id}/join",
     response_model=ParticipantOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def join_conversation_endpoint(
     conversation_id: int,
@@ -3499,7 +3548,7 @@ def join_conversation_endpoint(
 
 @router.post(
     "/conversations/{conversation_id}/read",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def mark_read_endpoint(
     conversation_id: int,
