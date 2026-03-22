@@ -64,6 +64,11 @@ export default function SideNavContent({
   const hasTeaching = useHasFeature("teaching");
   const canManageContent = useHasCompetency("manage_teaching_content");
 
+  // Check if clinical services (FHIR/EHRbase) are available
+  const hasClinicalServices =
+    state.status === "authenticated" &&
+    (state.user.clinical_services_enabled ?? true);
+
   // Don't render nav while auth is loading to avoid layout flicker
   // (Admin link appears after auth resolves, shifting Logout down)
   const isLoading = state.status === "loading";
@@ -240,24 +245,28 @@ export default function SideNavContent({
           <Divider my="xs" />
         </>
       )}
-      <NavLink
-        label="Home"
-        styles={navLinkStyles}
-        onClick={() => {
-          navigate("/");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="home" /> : undefined}
-      />
-      <NavLink
-        label="Messages"
-        styles={navLinkStyles}
-        onClick={() => {
-          navigate("/messages");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="message" /> : undefined}
-      />
+      {hasClinicalServices && (
+        <NavLink
+          label="Home"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="home" /> : undefined}
+        />
+      )}
+      {hasClinicalServices && (
+        <NavLink
+          label="Messages"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/messages");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+        />
+      )}
       {hasTeaching && (
         <NestedNavLink
           item={teachingNavItem}

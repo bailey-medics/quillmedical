@@ -31,6 +31,8 @@ export type User = {
   system_permissions?: string;
   /** Features enabled on the user's primary organisation */
   enabled_features?: string[];
+  /** Whether FHIR and EHRbase clinical services are available */
+  clinical_services_enabled?: boolean;
 };
 
 /**
