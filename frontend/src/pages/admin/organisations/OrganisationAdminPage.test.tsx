@@ -40,7 +40,13 @@ const mockAdminUser: User = {
 };
 
 describe("OrganisationAdminPage", () => {
-  const emptyFeatures = { features: [] };
+  const emptyFeatures: {
+    features: Array<{
+      feature_key: string;
+      enabled_at: string;
+      enabled_by: number;
+    }>;
+  } = { features: [] };
 
   /** Mock api.get to return org data and empty features by default */
   function mockOrgApi(org: Record<string, unknown>, features = emptyFeatures) {

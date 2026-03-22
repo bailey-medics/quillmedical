@@ -24,7 +24,12 @@ type IconName =
   | "message"
   | "file"
   | "adjustments"
-  | "building-community";
+  | "building-community"
+  | "teaching"
+  | "book"
+  | "pricing"
+  | "database"
+  | "mail";
 
 /**
  * Navigation item configuration

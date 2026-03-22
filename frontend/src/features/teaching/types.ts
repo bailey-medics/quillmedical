@@ -19,8 +19,30 @@ export interface QuestionBank {
   synced_at: string;
 }
 
+export interface AssessmentPageConfig {
+  title?: string;
+  body?: string;
+}
+
+export interface AssessmentConfigYaml {
+  items_per_attempt?: number;
+  time_limit_minutes?: number;
+  min_pool_size?: number;
+  randomise_selection?: boolean;
+  randomise_order?: boolean;
+  allow_immediate_retry?: boolean;
+  intro_page?: AssessmentPageConfig;
+  closing_page?: AssessmentPageConfig;
+}
+
+export interface QuestionBankConfigYaml {
+  assessment?: AssessmentConfigYaml;
+  results?: { certificate_download?: boolean };
+  [key: string]: unknown;
+}
+
 export interface QuestionBankDetail extends QuestionBank {
-  config_yaml: Record<string, unknown>;
+  config_yaml: QuestionBankConfigYaml;
 }
 
 // ------------------------------------------------------------------

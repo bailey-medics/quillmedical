@@ -7,6 +7,7 @@ import { CertificateDownload } from "@/components/teaching/certificate-download/
 import type {
   Assessment,
   CriterionResult,
+  QuestionBankConfigYaml,
   QuestionBankDetail,
 } from "@/features/teaching/types";
 
@@ -68,7 +69,7 @@ export default function AssessmentResultPage() {
 
   const criteria: CriterionResult[] =
     (assessment.score_breakdown?.criteria as CriterionResult[]) ?? [];
-  const config = bankDetail?.config_yaml ?? {};
+  const config: QuestionBankConfigYaml = bankDetail?.config_yaml ?? {};
   const allowRetry = config?.assessment?.allow_immediate_retry !== false;
   const showCertificate =
     assessment.is_passed && config?.results?.certificate_download === true;
