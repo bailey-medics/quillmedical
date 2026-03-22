@@ -15,7 +15,6 @@ export const Default: Story = {
     title: "Optical diagnosis of diminutive colorectal polyps",
     description:
       "Assess colonoscopists' ability to optically diagnose diminutive (≤5mm) colorectal polyps using white light and narrow band imaging.",
-    itemCount: 250,
     onStart: () => {},
   },
 };
@@ -24,7 +23,6 @@ export const FewItems: Story = {
   args: {
     title: "Medication safety MCQs",
     description: "Test your knowledge of common drug interactions and dosing.",
-    itemCount: 45,
     onStart: () => {},
   },
 };
@@ -33,7 +31,6 @@ export const Disabled: Story = {
   args: {
     title: "Dermatology lesion assessment",
     description: "Classify skin lesions from clinical photographs.",
-    itemCount: 80,
     onStart: () => {},
     disabled: true,
   },

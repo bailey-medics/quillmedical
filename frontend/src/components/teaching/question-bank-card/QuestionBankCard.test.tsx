@@ -10,7 +10,6 @@ describe("QuestionBankCard", () => {
       <QuestionBankCard
         title="Polyp diagnosis"
         description="Optical diagnosis assessment."
-        itemCount={250}
         onStart={() => {}}
       />,
     );
@@ -21,19 +20,6 @@ describe("QuestionBankCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows item count", () => {
-    renderWithMantine(
-      <QuestionBankCard
-        title="Test"
-        description="Desc"
-        itemCount={120}
-        onStart={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("120 items available")).toBeInTheDocument();
-  });
-
   it("calls onStart when button clicked", async () => {
     const handleStart = vi.fn();
     const user = userEvent.setup();
@@ -42,7 +28,6 @@ describe("QuestionBankCard", () => {
       <QuestionBankCard
         title="Test"
         description="Desc"
-        itemCount={200}
         onStart={handleStart}
       />,
     );
@@ -56,7 +41,6 @@ describe("QuestionBankCard", () => {
       <QuestionBankCard
         title="Test"
         description="Desc"
-        itemCount={50}
         onStart={() => {}}
         disabled
       />,

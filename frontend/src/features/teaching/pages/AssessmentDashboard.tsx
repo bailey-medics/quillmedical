@@ -77,7 +77,6 @@ export default function AssessmentDashboard() {
                 key={bank.id}
                 title={bank.title}
                 description={bank.description}
-                itemCount={0}
                 onStart={() =>
                   navigate(
                     `/teaching/assessment/new?bank=${bank.question_bank_id}`,

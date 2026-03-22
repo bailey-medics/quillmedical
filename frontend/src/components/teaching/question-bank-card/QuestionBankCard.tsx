@@ -1,19 +1,17 @@
 /**
  * QuestionBankCard Component
  *
- * Card displaying a question bank with title, description, item count,
+ * Card displaying a question bank with title, description,
  * and a "Start assessment" button.
  */
 
-import { Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Button, Card, Stack, Text, Title } from "@mantine/core";
 
 interface QuestionBankCardProps {
   /** Question bank title */
   title: string;
   /** Question bank description */
   description: string;
-  /** Number of published items available */
-  itemCount: number;
   /** Called when "Start assessment" is clicked */
   onStart: () => void;
   /** Whether starting is disabled (e.g. insufficient items) */
@@ -23,7 +21,6 @@ interface QuestionBankCardProps {
 export function QuestionBankCard({
   title,
   description,
-  itemCount,
   onStart,
   disabled = false,
 }: QuestionBankCardProps) {
@@ -34,14 +31,9 @@ export function QuestionBankCard({
         <Text size="sm" c="dimmed" lineClamp={3}>
           {description}
         </Text>
-        <Group justify="space-between" align="center">
-          <Text size="xs" c="dimmed">
-            {itemCount} items available
-          </Text>
-          <Button size="sm" onClick={onStart} disabled={disabled}>
-            Start assessment
-          </Button>
-        </Group>
+        <Button size="sm" onClick={onStart} disabled={disabled}>
+          Start assessment
+        </Button>
       </Stack>
     </Card>
   );
