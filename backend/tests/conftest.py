@@ -19,12 +19,7 @@ os.environ.setdefault("POSTGRES_DB", "test")
 os.environ.setdefault("VAPID_PRIVATE", "test_vapid_private_key")
 os.environ.setdefault("COMPANY_EMAIL", "test@example.com")
 os.environ.setdefault("AUTH_DB_PASSWORD", "test_auth_password")
-os.environ.setdefault("FHIR_DB_PASSWORD", "test_fhir_password")
-os.environ.setdefault("EHRBASE_DB_PASSWORD", "test_ehrbase_password")
-os.environ.setdefault("EHRBASE_API_PASSWORD", "test_ehrbase_api_password")
-os.environ.setdefault(
-    "EHRBASE_API_ADMIN_PASSWORD", "test_ehrbase_admin_password"
-)
+os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 
 from app.db import get_session
 from app.main import app, limiter

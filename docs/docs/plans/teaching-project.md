@@ -14,6 +14,7 @@ Questions are stored in in a private repository at `bailey-medics` organisation 
 questions/
   colonoscopy-optical-diagnosis/
     config.yml
+    certificate_background.pdf
     question_1/
       question.yaml
       image_1.png
@@ -23,6 +24,8 @@ questions/
       image_1.png
       image_2.png
 ```
+
+Each question bank can include a `certificate_background.pdf` — a PDF template with the institution branding, borders, and logos. The certificate endpoint overlays dynamic text (candidate name, institution, date, score, question bank title) onto defined text areas on this background. If no background is provided, a default plain template is used.
 
 The `config.yml` file contains the below:
 
@@ -117,6 +120,24 @@ pass_criteria:
 
 results:
   certificate_download: true # candidate can download a PDF certificate on pass
+  certificate_background: certificate_background.pdf # PDF template in the bank folder
+  certificate_text_areas:
+    - field: candidate_name
+      x: 300
+      y: 400
+      font_size: 24
+    - field: date
+      x: 300
+      y: 450
+      font_size: 16
+    - field: institution
+      x: 300
+      y: 500
+      font_size: 16
+    - field: score_summary
+      x: 300
+      y: 550
+      font_size: 14
   email_notification: true # send result to a coordinator email address
   email_subject: "Optical Diagnosis MCQ — Assessment Result"
   # The recipient email address is set per-organisation in the admin UI,
@@ -158,6 +179,8 @@ results:
 | `pass_criteria[].tag`              | string    | Which option tag the rule filters on                               |
 | `pass_criteria[].threshold`        | float     | Required minimum (0.0–1.0)                                         |
 | `results.certificate_download`     | bool      | Candidate can download a PDF certificate on pass                   |
+| `results.certificate_background`   | string?   | Filename of PDF background template (e.g. `certificate_background.pdf`) |
+| `results.certificate_text_areas`   | list?     | Text area positions on certificate: `[{field, x, y, font_size}]`  |
 | `results.email_notification`       | bool      | Send result to a coordinator email (address set in admin UI)       |
 | `results.email_subject`            | string?   | Subject line for notification email (required if email enabled)    |
 
@@ -206,7 +229,7 @@ Each item defines its **own images, text, and options**. The config sets only as
   - `options`: list of `{id, label, tags}` — same structure as `uniform`, but per-item
   - `correct_option_id`: which option is correct (replaces `metadata` + `correct_answer_field` lookup)
 
-> **Implementation note**: the `QuestionBankItem` model uses the same table for both types. For `uniform` items, `options` and `images[].label` are null (read from config). For `variable` items, they’re populated per-row. The API and frontend check `type` to know where to read options from.
+> **Implementation note**: the `QuestionBankItem` model uses the same table for both types. For `uniform` items, `options` is null (read from config) and `images` stores `[{"key": "image_1.png"}, ...]` (labels read from config’s `image_labels`). For `variable` items, `options` and `images` (with `{key, label}` objects) are populated per-row from `question.yaml`. The API and frontend check `type` to know where to read options and image labels from.
 
 The colonoscopy optical diagnosis MCQ could not use off-the-shelf platforms because of the compound pass criteria — most platforms support only a single overall percentage threshold. The config-driven approach with pluggable MCQ types means any future question bank — whether uniform image-classification (like colonoscopy) or variable mixed-format MCQs — can be added with just a YAML file and content uploads.
 
@@ -218,7 +241,7 @@ For `uniform` type questions, the YAML is minimal — only the metadata fields d
 
 ```yaml
 # questions/colonoscopy-optical-diagnosis/question_001/question.yaml
-answer: adenoma
+diagnosis: adenoma
 ```
 
 Image filenames within the folder must match the pattern `image_<n>.<ext>` where `<n>` corresponds to the position in `image_labels` (1-indexed). For the colonoscopy bank: `image_1.png` = WLI, `image_2.png` = NBI.
@@ -228,6 +251,7 @@ For `variable` type questions, the `question.yaml` file includes the full item d
 ```yaml
 # questions/medication-safety/question_001/question.yaml
 text: "A 72-year-old patient with CKD stage 4 is prescribed..."
+images: [] # explicitly empty — this question has no images
 options:
   - id: reduce_dose
     label: "Reduce dose by 50%"
@@ -239,7 +263,26 @@ options:
     label: "Stop the medication"
     tags: [incorrect]
 correct_option_id: reduce_dose
-# images are optional for variable type — this question has none
+```
+
+For variable items with images, the `images` field **must** list every image file with its label. The validator checks that each listed image file exists in the subfolder and that no unlisted `image_<n>.*` files are present:
+
+```yaml
+# questions/radiology-basics/question_001/question.yaml
+text: "A 45-year-old patient presents with chest pain..."
+images:
+  - key: image_1.png
+    label: "PA chest X-ray"
+  - key: image_2.png
+    label: "Lateral chest X-ray"
+options:
+  - id: pneumothorax
+    label: "Pneumothorax"
+    tags: [correct]
+  - id: pleural_effusion
+    label: "Pleural effusion"
+    tags: [incorrect]
+correct_option_id: pneumothorax
 ```
 
 ---
@@ -377,7 +420,7 @@ Create `backend/app/features/teaching/models.py`:
 | `organisation_id`   | UUID (FK)            | Owning org                                                                                              |
 | `question_bank_id`  | str                  | Matches config `id` (e.g. `"colonoscopy-optical-diagnosis"`)                                            |
 | `bank_version`      | int                  | Version of the question bank this item belongs to                                                       |
-| `image_keys`        | JSON list[str]       | Paths relative to the question bank images directory, one per image slot                                |
+| `images`            | JSON list[dict]      | `[{"key": "image_1.png"}]` for uniform; `[{"key": "image_1.png", "label": "CT scan"}]` for variable     |
 | `text`              | str \| None          | Optional free-text shown below images (e.g. patient history)                                            |
 | `options`           | JSON list \| None    | Per-item options (`variable` type only); null for `uniform` (read from config)                          |
 | `correct_option_id` | str \| None          | Correct option id (`variable` type only); null for `uniform` (uses `metadata` + `correct_answer_field`) |
@@ -428,30 +471,87 @@ The `metadata` field is freeform JSON validated against the question bank config
 
 **AssessmentAnswer** (one answer within an assessment)
 
-| Field             | Type             | Notes                                        |
-| ----------------- | ---------------- | -------------------------------------------- |
-| `id`              | UUID             | Primary key                                  |
-| `assessment_id`   | UUID (FK)        | Parent assessment                            |
-| `item_id`         | UUID (FK)        | Which `QuestionBankItem`                     |
-| `display_order`   | int              | Position in this assessment (1–N)            |
-| `selected_option` | str or None      | Option `id` from config; null until answered |
-| `answered_at`     | datetime or None | When answered                                |
+| Field             | Type                    | Notes                                                              |
+| ----------------- | ----------------------- | ------------------------------------------------------------------ |
+| `id`              | UUID                    | Primary key                                                        |
+| `assessment_id`   | UUID (FK)               | Parent assessment                                                  |
+| `item_id`         | UUID (FK)               | Which `QuestionBankItem`                                           |
+| `display_order`   | int                     | Position in this assessment (1–N)                                  |
+| `selected_option` | str or None             | Option `id` from config; null until answered                       |
+| `is_correct`      | bool or None            | Null until answered; set when answer is submitted                  |
+| `resolved_tags`   | JSON list[str] or None  | Tags resolved from the selected option at answer time (audit trail)|
+| `answered_at`     | datetime or None        | When answered                                                      |
 
-**Scoring engine** (computed server-side on assessment completion):
+**QuestionBankConfig** (cached config from the question bank repo)
 
-The scoring engine reads the question bank config's `pass_criteria` list and evaluates each rule. Tag resolution differs by MCQ type:
+The backend pulls config from the GCS bucket (where it was synced from the question bank repo) and stores the parsed YAML in the database. Images stay in the bucket; only text/YAML data is persisted to the DB. This avoids requiring a clone of the question bank repo at runtime.
+
+| Field              | Type                 | Notes                                                                    |
+| ------------------ | -------------------- | ------------------------------------------------------------------------ |
+| `id`               | UUID                 | Primary key                                                              |
+| `organisation_id`  | UUID (FK)            | Owning org                                                               |
+| `question_bank_id` | str                  | Matches config `id` (e.g. `"colonoscopy-optical-diagnosis"`)             |
+| `version`          | int                  | Config version (matches `version` field in config.yaml)                  |
+| `title`            | str                  | Display title                                                            |
+| `description`      | str                  | Shown on assessment dashboard                                            |
+| `type`             | str                  | `"uniform"` or `"variable"`                                              |
+| `config_yaml`      | JSON dict            | Full parsed config.yaml content (options, pass_criteria, assessment, etc)|
+| `synced_at`        | datetime             | When this config was last pulled from the bucket                         |
+| `synced_by`        | UUID (FK → users.id) | Who triggered the sync                                                   |
+
+Unique constraint on `(organisation_id, question_bank_id, version)`. The `GET /api/teaching/question-banks` endpoint reads from this table — no filesystem or bucket access needed at request time.
+
+**TeachingOrgSettings** (per-organisation teaching configuration)
+
+| Field               | Type      | Notes                                                                    |
+| ------------------- | --------- | ------------------------------------------------------------------------ |
+| `id`                | UUID      | Primary key                                                              |
+| `organisation_id`   | UUID (FK) | Unique — one settings row per org                                        |
+| `coordinator_email` | str       | Recipient email for assessment result notifications                      |
+| `institution_name`  | str       | Institution name for certificate generation and accreditation tracking   |
+
+Unique constraint on `organisation_id`. The admin UI for teaching organisations includes fields to set the coordinator email and institution name. The `POST /api/teaching/results/email` endpoint reads the coordinator email from this table.
+
+**QuestionBankSync** (sync history for audit and the SyncStatus page)
+
+| Field              | Type                 | Notes                                                     |
+| ------------------ | -------------------- | --------------------------------------------------------- |
+| `id`               | UUID                 | Primary key                                               |
+| `organisation_id`  | UUID (FK)            | Owning org                                                |
+| `question_bank_id` | str                  | Which bank was synced                                     |
+| `version`          | int                  | Version that was synced                                   |
+| `status`           | str                  | `"success"` / `"failed"` / `"in_progress"`                |
+| `items_created`    | int                  | Number of new items imported                              |
+| `items_updated`    | int                  | Number of existing items updated                          |
+| `errors`           | JSON list[dict]      | Validation errors (empty on success)                      |
+| `warnings`         | JSON list[dict]      | Validation warnings (non-blocking)                        |
+| `started_at`       | datetime             | When sync began                                           |
+| `completed_at`     | datetime or None     | When sync finished (null if in progress or crashed)       |
+| `triggered_by`     | UUID (FK → users.id) | Who triggered the sync                                    |
+
+The `SyncStatus` page reads from this table to show the last sync result, validation errors, and item counts per bank.
+
+**Per-answer scoring** (answers scored individually on submission):
+
+Each answer is scored **immediately when submitted** via `POST /assessments/{id}/answer`. The endpoint resolves the selected option's tags and correctness, then persists `is_correct` and `resolved_tags` on the `AssessmentAnswer` row. This gives a complete per-answer audit trail — if a question bank item is later found to have a wrong diagnosis, affected answers can be identified by querying `AssessmentAnswer` rows by `item_id` without re-running the scoring engine.
+
+Tag resolution differs by MCQ type:
 
 - **`uniform`**: the selected option's `tags` come from the config's `options` list (shared across all items). Correctness is checked by comparing the option's non-confidence tags against the item's `metadata[correct_answer_field]`.
 - **`variable`**: the selected option's `tags` come from the item's own `options` list. Correctness is checked by comparing `selected_option` against the item's `correct_option_id`.
 
-Once tags and correctness are resolved, the rules are type-agnostic:
+**Assessment completion** (aggregate scoring on `POST /assessments/{id}/complete`):
 
-1. For each answer, resolve the selected option's `tags` (from config for `uniform`, from item for `variable`)
-2. **`tag_percentage`** rule: count answers where option has the specified tag ÷ `total_items`. Must be ≥ threshold.
-3. **`tag_accuracy`** rule: of answers that have the specified tag, count those that are correct (see correctness check above). Must be ≥ threshold.
+The scoring engine reads the already-scored `AssessmentAnswer` rows and evaluates the config's `pass_criteria` rules. Because `is_correct` and `resolved_tags` are already persisted per-answer, the completion step is purely an aggregation — no re-evaluation of individual answers.
+
+1. Read all `AssessmentAnswer` rows for the assessment where `selected_option` is not null (only submitted answers count)
+2. **`tag_percentage`** rule: count answered items where option has the specified tag ÷ `total_items`. Must be ≥ threshold. Unanswered items have no tags and count against this threshold.
+3. **`tag_accuracy`** rule: of answered items that have the specified tag, count those where `is_correct = true`. Must be ≥ threshold.
 4. `is_passed` = ALL criteria pass
 
-_Example (colonoscopy MCQ, `uniform`)_: `high_confidence_adenoma` has tags `[high_confidence, adenoma]`. Item metadata is `{"diagnosis": "adenoma"}`. The `high_confidence` tag contributes to the 70% threshold; the `adenoma` tag matches the item's diagnosis, so it's counted as correct for the 85% accuracy threshold.
+**No auto-complete on timeout**: the assessment is **not** automatically completed when the timer expires. The candidate must explicitly submit via `POST /assessments/{id}/complete` (or the frontend triggers this when the timer reaches zero). Unanswered items are simply not scored — they have no `selected_option`, no `is_correct`, no `resolved_tags`. They still count against `tag_percentage` rules (denominator is always `total_items`), which naturally penalises incomplete assessments.
+
+_Example (colonoscopy MCQ, `uniform`)_: `high_confidence_adenoma` has tags `[high_confidence, adenoma]`. Item metadata is `{"diagnosis": "adenoma"}`. When the candidate submits this answer, `is_correct` is set to `true` and `resolved_tags` is set to `["high_confidence", "adenoma"]`. At completion, the `high_confidence` tag contributes to the 70% threshold; `is_correct = true` counts towards the 85% accuracy threshold.
 
 Import these in `alembic/env.py` so Alembic detects them for migration generation.
 
@@ -476,7 +576,7 @@ questions/
   colonoscopy-optical-diagnosis/
     config.yaml                 # bank config (type, options, pass criteria)
     question_001/
-      question.yaml             # item metadata (e.g. answer: adenoma)
+      question.yaml             # item metadata (e.g. diagnosis: adenoma)
       image_1.png               # WLI image
       image_2.png               # NBI image
     question_002/
@@ -518,7 +618,7 @@ Create `backend/app/features/teaching/storage.py`:
 - `get_image_url(bank_id: str, filename: str) → str` — returns a signed GCS URL in production, or a local file URL in dev
 - Uses `google-cloud-storage` for signed URL generation
 
-Add `google-cloud-storage` to `pyproject.toml` dependencies.
+Add `google-cloud-storage` and `reportlab` to `pyproject.toml` dependencies.
 
 #### Sync command
 
@@ -552,19 +652,19 @@ A dedicated validation module (`backend/app/features/teaching/validate.py`) chec
 | Config schema valid   | `config.yaml` must parse against the Pydantic `QuestionBankConfig` schema (all required fields present) |
 | Subfolder naming      | Item subfolders must match `question_<n>/` pattern (sequential integers, 1-indexed, zero-padded to 3+)  |
 | Question YAML present | Each `question_<n>/` must contain exactly one `question.yaml`                                           |
-| No stray files        | No unexpected files in bank root or item subfolders (only `config.yaml`, `question_<n>/` dirs)          |
+| No stray files        | No unexpected files in bank root or item subfolders (only `config.yaml`, `certificate_background.pdf`, `question_<n>/` dirs) |
 
 #### Content checks (per item, validated against config)
 
-| Check                  | `uniform` type                                                                      | `variable` type                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Image count            | Exactly `images_per_item` image files (`image_1.*`, `image_2.*`, ...) per subfolder | 0 or more `image_<n>.*` files (validated against item's own `images` list if present) |
-| Image format           | Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.webp`                                | Same                                                                                  |
-| Metadata field present | `question.yaml` must contain `correct_answer_field` key (e.g. `answer: adenoma`)    | `question.yaml` must contain `correct_option_id` and `options` list                   |
-| Metadata value valid   | Value of the answer field must be in config's `correct_answer_values` list          | `correct_option_id` must match one of the item's `options[].id` values                |
-| Options valid          | N/A (options defined in config)                                                     | Each option must have `id`, `label`, `tags`; no duplicate `id`s                       |
-| Item text              | If config has `item_text.required: true`, `question.yaml` must include `text` field | Same                                                                                  |
-| Tags consistency       | N/A (tags defined in config)                                                        | Tags referenced in `pass_criteria` must appear in at least one item's options         |
+| Check                  | `uniform` type                                                                      | `variable` type                                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Image count            | Exactly `images_per_item` image files (`image_1.*`, `image_2.*`, ...) per subfolder | `images` list in `question.yaml` is **required** (may be empty `[]`). Each listed `{key, label}` must have a matching file in the subfolder. No unlisted `image_<n>.*` files allowed. |
+| Image format           | Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.webp`                                | Same                                                                                                                                                                                 |
+| Metadata field present | `question.yaml` must contain `correct_answer_field` key (e.g. `diagnosis: adenoma`) | `question.yaml` must contain `correct_option_id`, `options` list, and `images` list                                                                                                  |
+| Metadata value valid   | Value of the answer field must be in config's `correct_answer_values` list          | `correct_option_id` must match one of the item's `options[].id` values                                                                                                               |
+| Options valid          | N/A (options defined in config)                                                     | Each option must have `id`, `label`, `tags`; no duplicate `id`s                                                                                                                      |
+| Item text              | If config has `item_text.required: true`, `question.yaml` must include `text` field | Same                                                                                                                                                                                 |
+| Tags consistency       | N/A (tags defined in config)                                                        | Tags referenced in `pass_criteria` must appear in at least one item's options                                                                                                        |
 
 #### Cross-item checks (whole bank)
 
@@ -593,9 +693,9 @@ class ValidationResult:
 
 Each error/warning includes the file path and a clear message, e.g.:
 
-- `ERROR: questions/colonoscopy-optical-diagnosis/question_042/question.yaml — missing required field 'answer'`
+- `ERROR: questions/colonoscopy-optical-diagnosis/question_042/question.yaml — missing required field 'diagnosis'`
 - `ERROR: questions/colonoscopy-optical-diagnosis/question_017/ — expected 2 images, found 1`
-- `WARNING: questions/colonoscopy-optical-diagnosis/ — 78% of items have answer 'adenoma' (distribution skew)`
+- `WARNING: questions/colonoscopy-optical-diagnosis/ — 78% of items have diagnosis 'adenoma' (distribution skew)`
 
 **Files**: new `backend/app/features/teaching/validate.py`, new `backend/tests/test_teaching_validate.py`
 
@@ -609,34 +709,38 @@ All routes gated by `Depends(requires_feature("teaching"))`.
 
 **Educator endpoints** (require `manage_teaching_content` competency):
 
-| Method | Path                           | Purpose                                                          |
-| ------ | ------------------------------ | ---------------------------------------------------------------- |
-| GET    | `/api/teaching/items`          | List items in org's bank (filtered by `question_bank_id`)        |
-| POST   | `/api/teaching/items/sync`     | Trigger sync from question bank repo to database (runs validate) |
-| POST   | `/api/teaching/items/validate` | Dry-run validation only — check repo content without importing   |
-| GET    | `/api/teaching/results`        | All assessment results for org (reporting)                       |
-| POST   | `/api/teaching/results/email`  | Trigger result email to central address                          |
-| GET    | `/api/teaching/question-banks` | List available question bank configs                             |
+| Method | Path                              | Purpose                                                          |
+| ------ | --------------------------------- | ---------------------------------------------------------------- |
+| GET    | `/api/teaching/items`             | List items in org's bank (filtered by `question_bank_id`)        |
+| POST   | `/api/teaching/items/sync`        | Trigger sync from GCS bucket to database (runs validate)         |
+| POST   | `/api/teaching/items/validate`    | Dry-run validation only — check bucket content without importing |
+| GET    | `/api/teaching/results`           | All assessment results for org (reporting)                       |
+| POST   | `/api/teaching/results/email`     | Trigger result email to coordinator address                      |
+| GET    | `/api/teaching/question-banks`    | List available question bank configs (from DB)                   |
+| GET    | `/api/teaching/syncs`             | List sync history for reporting/audit                            |
+| PUT    | `/api/teaching/settings`          | Update teaching org settings (coordinator email, institution)    |
 
 **Candidate endpoints** (require `view_teaching_cases` competency):
 
-| Method | Path                                      | Purpose                                                                    |
-| ------ | ----------------------------------------- | -------------------------------------------------------------------------- |
-| GET    | `/api/teaching/question-banks`            | List question banks available to candidate (with titles, descriptions)     |
-| POST   | `/api/teaching/assessments`               | Start new assessment (specify `question_bank_id`, randomly selects items)  |
-| GET    | `/api/teaching/assessments/{id}`          | Get assessment state (progress, time remaining, question bank config)      |
-| GET    | `/api/teaching/assessments/{id}/current`  | Get current unanswered item (signed image URLs, option labels from config) |
-| POST   | `/api/teaching/assessments/{id}/answer`   | Submit answer for current item, advance to next                            |
-| POST   | `/api/teaching/assessments/{id}/complete` | Finalise assessment, run scoring engine, return result                     |
-| GET    | `/api/teaching/assessments/history`       | List user's past assessments with results                                  |
+| Method | Path                                         | Purpose                                                                    |
+| ------ | -------------------------------------------- | -------------------------------------------------------------------------- |
+| GET    | `/api/teaching/question-banks`               | List question banks available to candidate (with titles, descriptions)     |
+| POST   | `/api/teaching/assessments`                  | Start new assessment (specify `question_bank_id`, randomly selects items)  |
+| GET    | `/api/teaching/assessments/{id}`             | Get assessment state (progress, time remaining, question bank config)      |
+| GET    | `/api/teaching/assessments/{id}/current`     | Get current unanswered item (signed image URLs, option labels from config) |
+| POST   | `/api/teaching/assessments/{id}/answer`      | Submit answer + score it immediately; returns next item inline             |
+| POST   | `/api/teaching/assessments/{id}/complete`    | Finalise assessment, aggregate scored answers, return result               |
+| GET    | `/api/teaching/assessments/{id}/certificate` | Download PDF certificate (only if passed)                                  |
+| GET    | `/api/teaching/assessments/history`          | List user's past assessments with results                                  |
 
 **Assessment lifecycle**:
 
-1. `POST /assessments` with `{"question_bank_id": "colonoscopy-optical-diagnosis"}` → loads config, validates pool size ≥ `min_pool_size`, creates `Assessment` row + N `AssessmentAnswer` rows (items randomly selected + ordered, `selected_option` null)
-2. `GET /assessments/{id}/current` → returns first unanswered item with signed image URLs (GCS in production, local in dev) + option labels from config. Returns 404 if all answered.
-3. `POST /assessments/{id}/answer` → validates time limit not exceeded, validates `selected_option` is a valid option `id` from config, sets `selected_option` + `answered_at`, returns next item (or signals completion)
-4. `POST /assessments/{id}/complete` → runs scoring engine against config's `pass_criteria`, sets `score_breakdown`, `is_passed`, `completed_at`. If `results.email_notification` is enabled, sends result email to the org's configured coordinator address. Returns full result breakdown.
-5. Server-side timer: if `now > started_at + time_limit_minutes`, auto-complete with whatever answers exist. Unanswered items count as having no tags (penalises `tag_percentage` rules).
+1. `POST /assessments` with `{"question_bank_id": "colonoscopy-optical-diagnosis"}` → loads config from `QuestionBankConfig` table, validates pool size ≥ `min_pool_size`, creates `Assessment` row + N `AssessmentAnswer` rows (items randomly selected + ordered, `selected_option` null). Returns first item inline (signed image URLs + options).
+2. `POST /assessments/{id}/answer` with `{"selected_option": "high_confidence_adenoma"}` → validates time limit not exceeded, validates `selected_option` is a valid option `id`, scores the answer immediately (sets `selected_option`, `answered_at`, `is_correct`, `resolved_tags`), then returns the **next unanswered item** inline (signed image URLs + options). If no more items remain, returns `{"next_item": null, "all_answered": true}`. This avoids a separate `GET /current` round-trip.
+3. `GET /assessments/{id}/current` → fallback endpoint: returns first unanswered item. Useful for resuming after a disconnect. Returns 404 if all answered.
+4. `POST /assessments/{id}/complete` → aggregates the already-scored `AssessmentAnswer` rows against the config's `pass_criteria`, sets `score_breakdown`, `is_passed`, `completed_at`. If `results.email_notification` is enabled, sends result email to the org's `coordinator_email` (from `TeachingOrgSettings`). Returns full result breakdown.
+5. **No auto-complete on timeout**: the server does not automatically complete the assessment when the timer expires. The frontend triggers `POST /complete` when the timer reaches zero. The server validates `now ≤ started_at + time_limit_minutes` on `POST /answer` calls — any answer submitted after the time limit is rejected with HTTP 409. Unanswered items have no `selected_option` and count against `tag_percentage` rules (denominator is always `total_items`).
+6. `GET /assessments/{id}/certificate` → generates a PDF certificate using the certificate background template from the question bank config (stored in `QuestionBankConfig.config_yaml`). Only available when `is_passed = true` and `results.certificate_download = true` in the config. Returns 403 if not passed, 404 if certificates not enabled.
 
 Register in `main.py`: `app.include_router(teaching_router)`.
 
@@ -669,7 +773,9 @@ Add to `shared/base-professions.yaml`:
 
 _Depends on 3.1_
 
-Question bank configs (`config.yaml` per bank) live in the external question bank repo. The backend loads them at sync time from the cloned repo, validates against a Pydantic schema, and stores the parsed config in the database (or caches it). The `GET /api/teaching/question-banks` endpoint returns available banks from this cached data.
+Question bank configs (`config.yaml` per bank) are synced from the GCS bucket to the database. The sync process (`POST /api/teaching/items/sync`) pulls the config and question YAML files from the bucket, validates them against a Pydantic schema, and stores the parsed config in the `QuestionBankConfig` table. Images stay in the bucket and are served via signed URLs at runtime — only text/YAML data is persisted to the DB.
+
+The `GET /api/teaching/question-banks` endpoint reads from the `QuestionBankConfig` table — no bucket or filesystem access at request time. When new materials are detected in the bucket (e.g. after a CI/CD deploy syncs the question bank repo to GCS), the sync process pulls the updated config and items.
 
 The frontend generates types from the YAML competencies and professions (same existing pattern):
 
@@ -742,6 +848,7 @@ All in `frontend/src/components/teaching/` with `.stories.tsx` and `.test.tsx`:
 | `QuestionBankCard`       | Card: question bank title, description, item count, "Start assessment" button                                                                                                                                                         |
 | `AssessmentIntro`        | Intro page before questions: renders `title` + markdown `body` from config + "Begin" button                                                                                                                                           |
 | `AssessmentClosing`      | Closing page after last answer: renders `title` + markdown `body` from config + "View results" button                                                                                                                                 |
+| `CertificateDownload`    | Download button for PDF certificate (shown only when passed + `certificate_download` enabled). Calls `GET /assessments/{id}/certificate`.                                                                                              |
 
 ### Step 5.2 — Pages
 
@@ -813,12 +920,16 @@ Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 - **Validation tool**: structural checks (missing config, missing question.yaml, wrong image count, stray files), content checks (invalid metadata values, missing required fields, bad option IDs), cross-item checks (pool size, duplicate IDs, answer distribution warnings)
 - Validation dry-run endpoint returns structured errors/warnings without importing
 - Item sync endpoints (sync from repo, validate-then-import, reject on validation errors)
-- Assessment lifecycle (start → answer → complete → score)
+- Assessment lifecycle (start → answer+score → complete → aggregate)
+- Per-answer scoring: `is_correct` and `resolved_tags` set on each `POST /answer`
 - Scoring engine: test `tag_percentage` and `tag_accuracy` rules independently, compound criteria
-- Edge cases: time expiry mid-assessment, resume after disconnect, pool < `min_pool_size`
+- Edge cases: time expiry mid-assessment (answers rejected after limit), resume after disconnect, pool < `min_pool_size`
 - Storage backends (local + GCS mock)
 - Config with `CLINICAL_SERVICES_ENABLED=false` (app starts without clinical services)
-- Result email notification to central address
+- Result email notification to coordinator address (from `TeachingOrgSettings`)
+- Certificate PDF generation (background template + text overlay)
+- Sync history: `QuestionBankSync` records created on sync, errors/warnings persisted
+- `QuestionBankConfig` loaded from GCS bucket and stored in DB
 
 ### Frontend
 
@@ -835,11 +946,13 @@ Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 
 ### Integration
 
-- Full flow: educator syncs items from question bank repo → candidate selects question bank → starts assessment → answers N items → scoring engine runs → pass/fail displayed → email sent
+- Full flow: educator syncs items from GCS bucket → candidate selects question bank → starts assessment → answers N items (each scored immediately) → completes assessment → aggregate scoring runs → pass/fail displayed → email sent → certificate downloadable
 - Scoring engine: test each rule type with different configs (single criterion, compound criteria, different thresholds)
-- Timer expiry: assessment auto-completes on timeout, unanswered items penalise `tag_percentage` rules
+- Per-answer audit: verify `is_correct` and `resolved_tags` persisted on each answer submission
+- Timer expiry: answers rejected after time limit, assessment remains open until explicit `POST /complete`, unanswered items penalise `tag_percentage` rules
 - Feature gating: teaching routes 403 when feature disabled
 - EPR routes still work when teaching feature enabled alongside
+- Certificate: PDF generated with correct background template, text areas populated, only available when passed
 
 ---
 
@@ -851,12 +964,15 @@ Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 4. `just unit-tests-frontend` — all existing and new tests pass
 5. `just storybook` — teaching components render correctly
 6. `just pre-commit` — mypy strict, ruff, eslint all pass
-7. Manual: teaching org → enable feature → educator syncs items for colonoscopy bank → candidate selects bank → starts assessment → answers 120 → compound score correct → result email received
+7. Manual: teaching org → enable feature → set coordinator email + institution → educator syncs items for colonoscopy bank → candidate selects bank → starts assessment → answers 120 → compound score correct → result email received → certificate downloads
 8. Manual: EPR routes return 503 (not crash) when FHIR/EHRbase disabled
 9. Manual: teaching nav hidden for EPR-only organisations
 10. Manual: new org has zero features until admin explicitly enables them
 11. `terraform plan -var-file=environments/teaching/terraform.tfvars` — no unexpected diffs
 12. Validation: run validator against a valid question bank → passes. Run against a bank with missing images, bad metadata, missing config → returns correct errors.
+13. Manual: per-answer `is_correct` and `resolved_tags` persisted on each submitted answer
+14. Manual: answers rejected with 409 after time limit expires; assessment not auto-completed
+15. Manual: sync history visible on SyncStatus page after running sync
 
 ---
 
@@ -875,10 +991,17 @@ Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
 - **Item status**: `draft`/`published` field — only published items enter the random selection pool for assessments.
 - **Tag-based scoring**: option tags drive the scoring engine. `tag_percentage` and `tag_accuracy` rules are composable — any number of criteria, any combination of tags. Works identically for `uniform` (tags from config) and `variable` (tags from per-item options). New rule types (e.g. `overall_accuracy`, `minimum_correct_count`) can be added without schema changes.
 - **Random selection**: each assessment randomly draws N items from the published pool per config. Order is also randomised — no two attempts are identical.
-- **Timer**: server-validated, duration from config. Unanswered items after time expiry have no tags (penalises `tag_percentage` rules).
+- **Timer**: server-validated, duration from config. The assessment is **not** auto-completed on timeout. The frontend triggers `POST /complete` when the timer reaches zero. `POST /answer` calls are rejected with HTTP 409 after the time limit. Unanswered items count against `tag_percentage` rules (denominator is always `total_items`).
+- **Per-answer scoring**: each answer is scored immediately on submission (`POST /answer`). `is_correct` and `resolved_tags` are persisted per-row on `AssessmentAnswer`. Assessment completion (`POST /complete`) aggregates already-scored answers — no re-evaluation. This provides a complete audit trail for rebuttal or retrospective item correction.
 - **Metadata validation**: item metadata is validated against the question bank config at sync time — prevents orphan data that the scoring engine can't evaluate. The validation tool also runs as a pre-sync check and can be triggered independently (dry-run).
 - **Content lives in a separate repo**: question bank configs, images, and item metadata live in `bailey-medics/quill-question-bank`, not in the main application repo. This keeps large binaries out of the app codebase. Content is synced to GCS (production) or local filesystem (dev) and imported to the database via the sync command. Educators submit content via Git PRs — no direct web upload.
 - **Question bank validation**: a dedicated validation tool checks repo structure (config presence, subfolder naming, image counts, YAML schema, metadata values) before any sync. Runs in CI on the question bank repo, as a dry-run endpoint, and as the first step of every sync.
+- **Config versioning**: config changes (e.g. new pass criteria thresholds, updated options) only take effect with a `version` bump in `config.yaml`. The `Assessment.bank_version` field ties each assessment to the config version that was active when it started. In-progress assessments are always scored against the config version they were created with (read from `QuestionBankConfig` table by version). This means two assessments running concurrently can use different configs if a version bump happened between their starts.
+- **Answer + next item combined**: `POST /assessments/{id}/answer` scores the submitted answer and returns the next unanswered item inline, avoiding a separate `GET /current` round-trip. `GET /current` remains as a fallback for resuming after disconnect.
+- **Certificate generation**: PDF certificates use a background template (`certificate_background.pdf`) from the question bank repo, with configurable text areas for candidate name, date, institution, and score. Generated server-side using `reportlab` (or `PyPDF2` for overlay). Only available for passed assessments with `results.certificate_download = true`.
+- **Coordinator email and institution**: stored per-org in the `TeachingOrgSettings` table, not in the question bank config. The admin UI provides fields to set these. The email is used for result notifications; the institution name appears on certificates.
+- **Sync history**: every sync operation creates a `QuestionBankSync` row with status, item counts, errors, and warnings. The `SyncStatus` page reads from this table. Sync history persists across server restarts.
+- **Config stored in DB**: question bank configs are pulled from the GCS bucket during sync and stored in the `QuestionBankConfig` table. The API reads configs from the DB at request time — no bucket or filesystem access needed for serving question bank metadata.
 
 ---
 
@@ -889,9 +1012,9 @@ How a teaching-only environment goes from zero to working:
 1. **Terraform provisions GCP project** — `terraform apply -var-file=environments/teaching/terraform.tfvars` creates Cloud Run service, Cloud SQL (Postgres), GCS bucket. No HAPI FHIR or EHRbase services.
 2. **Same Docker image deploys** — identical backend image to EPR, but env vars set `CLINICAL_SERVICES_ENABLED=false`, `TEACHING_STORAGE_BACKEND=gcs`, `TEACHING_GCS_BUCKET=quill-teaching-images`.
 3. **App starts without clinical services** — FHIR/EHRbase clients are not initialised. Clinical routes return 503. Teaching routes are available.
-4. **Admin creates organisation** — e.g. "Gastroenterology MCQs" via admin UI or API. Enables `teaching` feature on it. Does NOT enable `epr`, `messaging`, or `letters`.
+4. **Admin creates organisation** — e.g. "Gastroenterology MCQs" via admin UI or API. Enables `teaching` feature on it. Does NOT enable `epr`, `messaging`, or `letters`. Sets coordinator email and institution name in `TeachingOrgSettings`.
 5. **Admin creates users** — educator and learner accounts, assigned to the teaching org with appropriate professions (`educator` / `learner`).
-6. **Educator syncs items** — runs `just sync-question-bank colonoscopy-optical-diagnosis` which validates and imports polyp images + metadata from the question bank repo into the database.
+6. **Educator syncs items** — triggers sync via admin UI or `just sync-question-bank colonoscopy-optical-diagnosis`. The sync pulls config and question YAML files from the GCS bucket (where CI/CD already deployed them), validates the content, and imports item metadata into the database. Images stay in the bucket and are served via signed URLs.
 7. **Users see teaching-only UI** — no EPR nav items, no patient demographics, no clinical letters. Only assessment dashboard listing available question banks, MCQ assessments, scoring results, and attempt history.
 
 ---
@@ -899,12 +1022,10 @@ How a teaching-only environment goes from zero to working:
 ## Open considerations
 
 1. **Multi-org users**: a user could belong to both an EPR org and a teaching org. `requires_feature` should check the user's active org context, not just primary. May need org-switching UI in future.
-2. **Central reporting**: results emailed to a configured central address for accreditation tracking. May need structured export (CSV) for integration with accreditation bodies. The `AllResults` page provides the educator-facing view; the email provides the external audit trail.
+2. **Central reporting**: results emailed to the coordinator address (from `TeachingOrgSettings`) for accreditation tracking. May need structured export (CSV) for integration with accreditation bodies. The `AllResults` page provides the educator-facing view; the email provides the external audit trail.
 3. **Self-registration**: the spec describes users creating their own accounts (Name, Institution, Work Email). The current system uses admin-created accounts. Options: (a) self-registration endpoint for teaching orgs with email verification, (b) admin creates accounts and sends invitation links, (c) open registration with auto-assignment to teaching org. Decision deferred — start with admin-created accounts.
-4. **Timer behaviour**: if the candidate's browser closes mid-assessment, the assessment should remain open and resumable within the time limit. Server-side timer validation prevents extending time by manipulating the client. On timeout, unanswered items penalise `tag_percentage` rules.
+4. **Timer behaviour**: if the candidate's browser closes mid-assessment, the assessment remains open and resumable within the time limit. `GET /assessments/{id}/current` picks up where they left off. The server rejects `POST /answer` calls after the time limit with HTTP 409. The frontend triggers `POST /complete` when the timer reaches zero. If the candidate never returns, the assessment remains in an incomplete state (no `completed_at`, no `score_breakdown`) — it can be viewed by educators in reporting but does not count as a pass or fail.
 5. **Pool size safety**: if the item pool has fewer than `min_pool_size` published items, refuse to start an assessment (HTTP 409). Educator management page should show a warning banner when pool is below threshold.
 6. **EPR document storage**: the same `StorageBackend` abstraction could later serve EPR binary documents (clinical scans, letters). Out of scope for this plan.
 7. **Educator analytics**: future work could add cohort-level analytics (commonly misclassified items, confidence calibration curves, pass rates over time) — generic across all question banks.
-8. **Institution field**: the `User` model may need an `institution` field (or it could live as metadata). Required for accreditation tracking but not currently in the model.
-9. **Question bank versioning**: if a config changes (e.g. new pass criteria thresholds), existing in-progress assessments should use the config snapshot from when they started. May need to store config version on the `Assessment` row.
-10. **Future question bank examples**: the same engine could host radiology image classification (`uniform`), medication safety MCQs (`variable` — text-only, no images), dermatology lesion assessment (`uniform` — single image), or mixed clinical scenarios (`variable` — varying images + text per question) — each as a new YAML file with the appropriate `type`.
+8. **Future question bank examples**: the same engine could host radiology image classification (`uniform`), medication safety MCQs (`variable` — text-only, no images), dermatology lesion assessment (`uniform` — single image), or mixed clinical scenarios (`variable` — varying images + text per question) — each as a new YAML file with the appropriate `type`.
