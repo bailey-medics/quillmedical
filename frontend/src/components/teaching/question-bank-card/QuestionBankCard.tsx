@@ -25,12 +25,13 @@ export function QuestionBankCard({
   disabled = false,
 }: QuestionBankCardProps) {
   return (
-    <Card withBorder p="lg" radius="md">
-      <Stack gap="sm">
+    <Card withBorder p="lg" radius="md" h="100%">
+      <Stack gap="sm" h="100%">
         <Title order={4}>{title}</Title>
         <Text size="sm" c="dimmed" lineClamp={3}>
           {description}
         </Text>
+        <div style={{ marginTop: "auto" }} />
         <Button size="sm" onClick={onStart} disabled={disabled}>
           Start assessment
         </Button>

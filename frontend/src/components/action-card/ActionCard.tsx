@@ -12,7 +12,7 @@ import ActionCardButton from "@/components/button/ActionCardButton";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
-  icon: ReactElement;
+  icon?: ReactElement;
   /** Icon size - defaults to lg (48px desktop, 32px mobile) */
   iconSize?: IconSize;
   /** Card title */
@@ -59,10 +59,14 @@ export default function ActionCard({
       h="100%"
     >
       <Stack gap="md" h="100%">
-        <Group>
-          <Icon icon={icon} size={iconSize} />
+        {icon ? (
+          <Group>
+            <Icon icon={icon} size={iconSize} />
+            <Title order={3}>{title}</Title>
+          </Group>
+        ) : (
           <Title order={3}>{title}</Title>
-        </Group>
+        )}
         <Text size="lg" c="dimmed">
           {subtitle}
         </Text>

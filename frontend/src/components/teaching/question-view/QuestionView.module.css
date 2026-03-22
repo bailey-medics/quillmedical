@@ -1,6 +1,5 @@
 .imagePanel {
-  max-width: 400px;
-  flex: 1 1 300px;
+  flex: 1;
 }
 
 .image {

@@ -7,10 +7,11 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import PageHeader from "@components/page-header/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { QuestionBankCard } from "@/components/teaching/question-bank-card/QuestionBankCard";
+import ActionCard from "@/components/action-card/ActionCard";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
 import type {
   AssessmentHistory,
@@ -65,19 +66,23 @@ export default function AssessmentDashboard() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Teaching</Title>
-        <Text>Select a question bank to begin an assessment.</Text>
+        <PageHeader
+          title="Teaching"
+          description="Select a question bank to begin an assessment."
+          mb={0}
+        />
 
         {banks.length === 0 ? (
           <Text c="dimmed">No question banks available.</Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {banks.map((bank) => (
-              <QuestionBankCard
+              <ActionCard
                 key={bank.id}
                 title={bank.title}
-                description={bank.description}
-                onStart={() =>
+                subtitle={bank.description}
+                buttonLabel="Start assessment"
+                onClick={() =>
                   navigate(
                     `/teaching/assessment/new?bank=${bank.question_bank_id}`,
                   )

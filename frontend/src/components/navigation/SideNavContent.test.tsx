@@ -49,6 +49,14 @@ const mockUsers: Record<string, User> = {
     system_permissions: "staff",
     clinical_services_enabled: false,
   },
+  admin_no_clinical: {
+    id: "6",
+    username: "admin.teaching",
+    email: "admin.teaching@example.com",
+    roles: ["Clinician", "Administrator"],
+    system_permissions: "admin",
+    clinical_services_enabled: false,
+  },
 };
 
 function renderWithAuth(
@@ -476,6 +484,22 @@ describe("SideNavContent Component", () => {
         expect(screen.queryByText("Home")).not.toBeInTheDocument();
         expect(screen.queryByText("Messages")).not.toBeInTheDocument();
       });
+    });
+
+    it("hides Patients from Admin when clinical services are disabled", async () => {
+      renderWithAuth(<SideNavContent />, "admin_no_clinical");
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+
+      // Expand Admin to check children
+      const adminLink = screen.getByText("Admin");
+      await userEvent.click(adminLink);
+
+      expect(screen.queryByText("Patients")).not.toBeInTheDocument();
+      expect(screen.getByText("Users")).toBeInTheDocument();
+      expect(screen.getByText("Organisations")).toBeInTheDocument();
     });
 
     it("still shows Settings and Logout when clinical services are disabled", async () => {

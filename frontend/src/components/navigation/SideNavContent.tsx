@@ -184,7 +184,7 @@ export default function SideNavContent({
     icon: showIcons ? "adjustments" : undefined,
     children: [
       usersNavItem,
-      patientsNavItem,
+      ...(hasClinicalServices ? [patientsNavItem] : []),
       {
         label: "Organisations",
         href: "/admin/organisations",
