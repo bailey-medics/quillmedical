@@ -15,7 +15,6 @@ import {
   Stack,
   Paper,
   Group,
-  SimpleGrid,
   Text,
   Title,
   Skeleton,
@@ -28,13 +27,12 @@ import {
 import {
   IconPencil,
   IconAlertCircle,
-  IconStack2,
   IconDots,
   IconUserMinus,
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
-import ActionCard from "@/components/action-card";
+import IconButton from "@/components/button/IconButton";
 import AdminTable, { type Column } from "@/components/tables/AdminTable";
 import AddButton from "@/components/button/AddButton";
 import { api } from "@/lib/api";
@@ -246,9 +244,16 @@ export default function OrganisationAdminPage() {
         {/* Organisation Information */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="md">
-            <Title order={2} size="lg">
-              Organisation information
-            </Title>
+            <Group justify="space-between" align="center">
+              <Title order={2} size="lg">
+                Organisation information
+              </Title>
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/organisations/${id}/edit`)}
+                aria-label="Edit organisation"
+              />
+            </Group>
 
             <Stack gap="xs">
               <Group gap="xs">
@@ -313,27 +318,6 @@ export default function OrganisationAdminPage() {
           </Stack>
         </Paper>
 
-        {/* Enabled Features */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Title order={2} size="lg">
-              Enabled features
-            </Title>
-
-            {enabledFeatures.length > 0 ? (
-              <Group gap="sm">
-                {enabledFeatures.map((key) => (
-                  <Badge key={key} variant="light" color="blue" size="lg">
-                    {FEATURE_LABELS[key] ?? key}
-                  </Badge>
-                ))}
-              </Group>
-            ) : (
-              <Text c="dimmed">No features enabled</Text>
-            )}
-          </Stack>
-        </Paper>
-
         {/* Staff Members */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="md">
@@ -384,30 +368,33 @@ export default function OrganisationAdminPage() {
           </Stack>
         </Paper>
 
-        {/* Action Cards */}
-        <Stack gap="md">
-          <Title order={2} size="lg">
-            Actions
-          </Title>
+        {/* Enabled Features */}
+        <Paper shadow="sm" p="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Title order={2} size="lg">
+                Enabled features
+              </Title>
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/organisations/${id}/features`)}
+                aria-label="Edit features"
+              />
+            </Group>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <ActionCard
-              icon={<IconPencil />}
-              onClick={() => navigate(`/admin/organisations/${id}/edit`)}
-              title="Edit organisation"
-              subtitle="Modify organisation details"
-              buttonLabel="Edit"
-            />
-
-            <ActionCard
-              icon={<IconStack2 />}
-              onClick={() => navigate(`/admin/organisations/${id}/features`)}
-              title="Features"
-              subtitle="Enable or disable features for this organisation"
-              buttonLabel="Manage features"
-            />
-          </SimpleGrid>
-        </Stack>
+            {enabledFeatures.length > 0 ? (
+              <Group gap="sm">
+                {enabledFeatures.map((key) => (
+                  <Badge key={key} variant="light" color="blue" size="lg">
+                    {FEATURE_LABELS[key] ?? key}
+                  </Badge>
+                ))}
+              </Group>
+            ) : (
+              <Text c="dimmed">No features enabled</Text>
+            )}
+          </Stack>
+        </Paper>
 
         <Modal
           opened={removingMember !== null}

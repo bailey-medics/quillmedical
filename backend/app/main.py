@@ -124,7 +124,12 @@ from app.security import (
     verify_password,
     verify_totp_code,
 )
-from app.system_permissions.permissions import is_external_user
+from app.system_permissions.permissions import (
+    PERMISSION_LEVELS,
+    PERMISSION_STAFF,
+    check_permission_level,
+    is_external_user,
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -1141,6 +1146,7 @@ def me(
 @router.get("/users")
 def list_users(
     patient_id: str | None = None,
+    permission_level: str | None = None,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -1151,9 +1157,12 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users (admin/superadmin only).
+    Use ``permission_level`` to filter by minimum permission level
+    (e.g. ``staff`` returns staff, admin, and superadmin users).
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
+        permission_level: Optional minimum permission level to filter by.
         u: Currently authenticated user.
         db: Database session.
 
@@ -1162,6 +1171,7 @@ def list_users(
 
     Raises:
         HTTPException: 403 if user lacks permissions.
+        HTTPException: 400 if permission_level is invalid.
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
@@ -1208,8 +1218,20 @@ def list_users(
             detail="Requires admin or superadmin permissions",
         )
 
+    if permission_level is not None:
+        if permission_level not in PERMISSION_LEVELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid permission_level: {permission_level}",
+            )
+        min_index = PERMISSION_LEVELS.index(permission_level)
+        allowed = PERMISSION_LEVELS[min_index:]
+        stmt = select(User).where(User.system_permissions.in_(allowed))
+    else:
+        stmt = select(User)
+
     try:
-        users = db.execute(select(User)).scalars().unique().all()
+        users = db.execute(stmt).scalars().unique().all()
         return {
             "users": [
                 {
@@ -2497,6 +2519,12 @@ def add_staff_to_organization(
     user = db.scalar(select(User).where(User.id == body.user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if not check_permission_level(user.system_permissions, PERMISSION_STAFF):
+        raise HTTPException(
+            status_code=400,
+            detail="User must have staff-level permissions or above",
+        )
 
     # Check if already a member
     existing = db.scalar(

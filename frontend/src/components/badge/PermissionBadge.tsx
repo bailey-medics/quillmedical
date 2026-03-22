@@ -15,7 +15,7 @@
 import { Badge, Skeleton } from "@mantine/core";
 import type { MantineSize } from "@mantine/core";
 
-export type UserPermission = "superadmin" | "admin" | "staff";
+export type UserPermission = "superadmin" | "admin" | "staff" | "patient";
 interface PermissionBadgeProps {
   /** System permission level */
   permission: UserPermission;
@@ -39,6 +39,7 @@ const PERMISSION_COLORS: Record<UserPermission, string> = {
   superadmin: "green",
   admin: "blue",
   staff: "gray",
+  patient: "orange",
 };
 
 /**
@@ -82,6 +83,10 @@ export default function PermissionBadge({
         radius="xl"
       />
     );
+  }
+
+  if (!permission) {
+    return null;
   }
 
   return (

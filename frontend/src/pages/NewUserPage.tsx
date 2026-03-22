@@ -257,6 +257,7 @@ function Step3Permissions({
   setFormData: (data: UserFormData) => void;
 }) {
   const permissionOptions = [
+    { value: "patient", label: "Patient - No staff access" },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
     { value: "superadmin", label: "Super Admin - Full system access" },
@@ -277,12 +278,14 @@ function Step3Permissions({
         label="System permission level"
         data={permissionOptions}
         value={formData.systemPermissions}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
-            systemPermissions: value as SystemPermission,
-          })
-        }
+        onChange={(value) => {
+          if (value) {
+            setFormData({
+              ...formData,
+              systemPermissions: value as SystemPermission,
+            });
+          }
+        }}
         required
       />
 

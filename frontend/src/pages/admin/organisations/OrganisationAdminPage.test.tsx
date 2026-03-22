@@ -356,8 +356,8 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
-  describe("Action cards", () => {
-    it("displays edit action card", async () => {
+  describe("Inline actions", () => {
+    it("displays edit icon in organisation information card", async () => {
       const mockOrganisation = {
         id: 1,
         name: "Test Hospital",
@@ -378,7 +378,9 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Edit organisation")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "Edit organisation" }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -436,7 +438,7 @@ describe("OrganisationAdminPage", () => {
       });
     });
 
-    it("navigates to edit page on edit button click", async () => {
+    it("navigates to edit page on edit icon click", async () => {
       const user = userEvent.setup();
       const mockOrganisation = {
         id: 1,
@@ -459,12 +461,76 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Edit organisation")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "Edit organisation" }),
+        ).toBeInTheDocument();
       });
 
-      const editButton = screen.getByRole("button", { name: "Edit" });
-      await user.click(editButton);
+      await user.click(
+        screen.getByRole("button", { name: "Edit organisation" }),
+      );
       expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1/edit");
+    });
+
+    it("displays edit icon in features card", async () => {
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      mockOrgApi(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Edit features" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("navigates to features page on edit features icon click", async () => {
+      const user = userEvent.setup();
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      mockOrgApi(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Edit features" }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Edit features" }));
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/1/features",
+      );
     });
 
     it("navigates to add staff page on add staff button click", async () => {

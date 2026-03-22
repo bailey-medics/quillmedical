@@ -5,6 +5,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.models import User
+from app.security import hash_password
 
 
 class TestCurrentUserDependency:
@@ -641,6 +642,79 @@ class TestOrganizationEndpoints:
         )
         assert response.status_code == 409
         assert "already a staff member" in response.json()["detail"]
+
+    def test_add_staff_rejects_patient_user(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Test adding a patient-level user as staff is rejected."""
+        from app.models import Organization
+
+        org = Organization(name="Staff Only Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        patient_user = User(
+            username="patientuser",
+            email="patient@example.com",
+            password_hash=hash_password("PatientPass123!"),
+            is_active=True,
+            system_permissions="patient",
+        )
+        db_session.add(patient_user)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/staff",
+            json={"user_id": patient_user.id},
+        )
+        assert response.status_code == 400
+        assert "staff-level permissions" in response.json()["detail"]
+
+    def test_list_users_permission_level_filter(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test filtering users by minimum permission level."""
+        patient_user = User(
+            username="listpatient",
+            email="listpatient@example.com",
+            password_hash=hash_password("PatientPass123!"),
+            is_active=True,
+            system_permissions="patient",
+        )
+        staff_user = User(
+            username="liststaff",
+            email="liststaff@example.com",
+            password_hash=hash_password("StaffPass123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add_all([patient_user, staff_user])
+        db_session.commit()
+
+        response = authenticated_admin_client.get(
+            "/api/users?permission_level=staff"
+        )
+        assert response.status_code == 200
+
+        usernames = [u["username"] for u in response.json()["users"]]
+        assert "liststaff" in usernames
+        assert "testadmin" in usernames
+        assert "listpatient" not in usernames
+
+    def test_list_users_invalid_permission_level(
+        self,
+        authenticated_admin_client: TestClient,
+    ):
+        """Test invalid permission_level returns 400."""
+        response = authenticated_admin_client.get(
+            "/api/users?permission_level=invalid"
+        )
+        assert response.status_code == 400
 
     def test_add_patient_unauthenticated(self, test_client: TestClient):
         """Test adding patient without authentication."""
