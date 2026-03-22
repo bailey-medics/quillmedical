@@ -100,15 +100,16 @@ def _build_candidate_item(
     # Resolve images
     images: list[ItemImageOut] = []
     image_labels = config.get("image_labels", [])
+    item_folder = item.metadata_json.get(
+        "_source_dir", f"question_{answer.display_order}"
+    )
 
     for idx, img in enumerate(item.images or []):
         key = img.get("key", "")
         label = img.get("label")
         if not label and idx < len(image_labels):
             label = image_labels[idx]
-        url = storage.get_image_url(
-            item.question_bank_id, f"question_{answer.display_order}", key
-        )
+        url = storage.get_image_url(item.question_bank_id, item_folder, key)
         images.append(ItemImageOut(key=key, label=label, url=url))
 
     # Resolve options

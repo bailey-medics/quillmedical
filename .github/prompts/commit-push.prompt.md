@@ -6,7 +6,7 @@ description: Commit and push code
 
 # Commit and push code
 
-1. Only do the below for `non-main` branches
+1. Only operate on the **quillmedical** repository — never commit or push to `question-bank/` (quill-question-bank)
 2. Check git status and confirm there are changes to commit
 3. Review the changes and create a clear, descriptive commit message following conventional commit format (e.g., "feat:", "fix:", "refactor:")
 4. Stage and commit the changes

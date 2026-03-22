@@ -9,7 +9,7 @@ services:
     environment:
       BACKEND_ENV: development
       TEACHING_STORAGE_BACKEND: local
-      TEACHING_QUESTION_BANK_PATH: /question-banks
+      TEACHING_QUESTION_BANK_PATH: /question-banks/questions
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
     expose:
@@ -23,7 +23,7 @@ services:
     volumes:
       - ./backend:/app
       - ./shared:/shared
-      - ./question-bank/questions:/question-banks
+      - ./question-bank:/question-banks
 
   frontend:
     build:

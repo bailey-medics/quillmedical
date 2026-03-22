@@ -172,6 +172,21 @@ question-bank-push:
     fi
     git -C question-bank push
 
+alias sdt := seed-teaching
+# Seed teaching data (org, users, feature, sync) for a fresh DB
+seed-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "seed-teaching"
+    ./dev-scripts/seed-teaching-data.sh
+
+
+alias syt := sync-teaching
+# Sync all local question banks into the DB (no restart needed)
+sync-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "sync-teaching"
+    ./dev-scripts/sync-teaching-data.sh
+
 
 alias m := migrate
 # Run the database migrations

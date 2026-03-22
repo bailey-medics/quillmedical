@@ -3539,9 +3539,12 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
     from starlette.staticfiles import StaticFiles
 
     _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
-    if _qb_path.is_dir():
+    _static_root = (
+        _qb_path.parent
+    )  # Serve from parent so /questions/ in URLs resolves
+    if _static_root.is_dir():
         app.mount(
             "/api/teaching/images",
-            StaticFiles(directory=str(_qb_path)),
+            StaticFiles(directory=str(_static_root)),
             name="teaching-images",
         )
