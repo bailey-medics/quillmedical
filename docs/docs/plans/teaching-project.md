@@ -146,43 +146,43 @@ results:
 
 ### Config field reference
 
-| Field                              | Type      | Purpose                                                            |
-| ---------------------------------- | --------- | ------------------------------------------------------------------ |
-| `id`                               | string    | Unique identifier, matches filename                                |
-| `version`                          | int       | Bank version — bump when correcting items (see versioning below)   |
-| `title`                            | string    | Display title in UI                                                |
-| `description`                      | string    | Shown on assessment dashboard                                      |
-| `type`                             | string    | MCQ type: `uniform` or `variable` (see MCQ types section)          |
-| `images_per_item`                  | int       | (`uniform` only) Fixed number of images per question               |
-| `image_labels`                     | list[str] | (`uniform` only) Label for each image slot (displayed above image) |
-| `item_text`                        | object?   | Optional per-item text block shown below images                    |
-| `item_text.label`                  | string    | Heading displayed above the text (e.g. "Patient history")          |
-| `item_text.required`               | bool      | Whether educators must provide text when authoring items           |
-| `options`                          | list      | (`uniform` only) Answer choices, each with `id`, `label`, `tags`   |
-| `options[].tags`                   | list[str] | (`uniform` only) Tags used by scoring rules                        |
-| `correct_answer_field`             | string    | (`uniform` only) Item metadata key that holds the correct answer   |
-| `correct_answer_values`            | list[str] | (`uniform` only) Valid values for that field                       |
-| `assessment.items_per_attempt`     | int       | Questions per assessment                                           |
-| `assessment.time_limit_minutes`    | int       | Server-enforced time limit                                         |
-| `assessment.min_pool_size`         | int       | Minimum published items to start an assessment                     |
-| `assessment.randomise_selection`   | bool      | Randomly draw from pool                                            |
-| `assessment.randomise_order`       | bool      | Randomise presentation order                                       |
-| `assessment.allow_immediate_retry` | bool      | Can retry immediately after failure                                |
-| `assessment.intro_page`            | object?   | Optional page shown before the first question                      |
-| `assessment.intro_page.title`      | string    | Heading for the intro page                                         |
-| `assessment.intro_page.body`       | string    | Markdown body — instructions, marking criteria, time limit         |
-| `assessment.closing_page`          | object?   | Optional page shown after the last answer, before results          |
-| `assessment.closing_page.title`    | string    | Heading for the closing page                                       |
-| `assessment.closing_page.body`     | string    | Markdown body — submission confirmation, next steps                |
-| `pass_criteria`                    | list      | Compound rules — ALL must pass                                     |
-| `pass_criteria[].rule`             | string    | `tag_percentage` or `tag_accuracy` (extensible)                    |
-| `pass_criteria[].tag`              | string    | Which option tag the rule filters on                               |
-| `pass_criteria[].threshold`        | float     | Required minimum (0.0–1.0)                                         |
-| `results.certificate_download`     | bool      | Candidate can download a PDF certificate on pass                   |
+| Field                              | Type      | Purpose                                                                 |
+| ---------------------------------- | --------- | ----------------------------------------------------------------------- |
+| `id`                               | string    | Unique identifier, matches filename                                     |
+| `version`                          | int       | Bank version — bump when correcting items (see versioning below)        |
+| `title`                            | string    | Display title in UI                                                     |
+| `description`                      | string    | Shown on assessment dashboard                                           |
+| `type`                             | string    | MCQ type: `uniform` or `variable` (see MCQ types section)               |
+| `images_per_item`                  | int       | (`uniform` only) Fixed number of images per question                    |
+| `image_labels`                     | list[str] | (`uniform` only) Label for each image slot (displayed above image)      |
+| `item_text`                        | object?   | Optional per-item text block shown below images                         |
+| `item_text.label`                  | string    | Heading displayed above the text (e.g. "Patient history")               |
+| `item_text.required`               | bool      | Whether educators must provide text when authoring items                |
+| `options`                          | list      | (`uniform` only) Answer choices, each with `id`, `label`, `tags`        |
+| `options[].tags`                   | list[str] | (`uniform` only) Tags used by scoring rules                             |
+| `correct_answer_field`             | string    | (`uniform` only) Item metadata key that holds the correct answer        |
+| `correct_answer_values`            | list[str] | (`uniform` only) Valid values for that field                            |
+| `assessment.items_per_attempt`     | int       | Questions per assessment                                                |
+| `assessment.time_limit_minutes`    | int       | Server-enforced time limit                                              |
+| `assessment.min_pool_size`         | int       | Minimum published items to start an assessment                          |
+| `assessment.randomise_selection`   | bool      | Randomly draw from pool                                                 |
+| `assessment.randomise_order`       | bool      | Randomise presentation order                                            |
+| `assessment.allow_immediate_retry` | bool      | Can retry immediately after failure                                     |
+| `assessment.intro_page`            | object?   | Optional page shown before the first question                           |
+| `assessment.intro_page.title`      | string    | Heading for the intro page                                              |
+| `assessment.intro_page.body`       | string    | Markdown body — instructions, marking criteria, time limit              |
+| `assessment.closing_page`          | object?   | Optional page shown after the last answer, before results               |
+| `assessment.closing_page.title`    | string    | Heading for the closing page                                            |
+| `assessment.closing_page.body`     | string    | Markdown body — submission confirmation, next steps                     |
+| `pass_criteria`                    | list      | Compound rules — ALL must pass                                          |
+| `pass_criteria[].rule`             | string    | `tag_percentage` or `tag_accuracy` (extensible)                         |
+| `pass_criteria[].tag`              | string    | Which option tag the rule filters on                                    |
+| `pass_criteria[].threshold`        | float     | Required minimum (0.0–1.0)                                              |
+| `results.certificate_download`     | bool      | Candidate can download a PDF certificate on pass                        |
 | `results.certificate_background`   | string?   | Filename of PDF background template (e.g. `certificate_background.pdf`) |
-| `results.certificate_text_areas`   | list?     | Text area positions on certificate: `[{field, x, y, font_size}]`  |
-| `results.email_notification`       | bool      | Send result to a coordinator email (address set in admin UI)       |
-| `results.email_subject`            | string?   | Subject line for notification email (required if email enabled)    |
+| `results.certificate_text_areas`   | list?     | Text area positions on certificate: `[{field, x, y, font_size}]`        |
+| `results.email_notification`       | bool      | Send result to a coordinator email (address set in admin UI)            |
+| `results.email_subject`            | string?   | Subject line for notification email (required if email enabled)         |
 
 ### Versioning
 
@@ -471,63 +471,63 @@ The `metadata` field is freeform JSON validated against the question bank config
 
 **AssessmentAnswer** (one answer within an assessment)
 
-| Field             | Type                    | Notes                                                              |
-| ----------------- | ----------------------- | ------------------------------------------------------------------ |
-| `id`              | UUID                    | Primary key                                                        |
-| `assessment_id`   | UUID (FK)               | Parent assessment                                                  |
-| `item_id`         | UUID (FK)               | Which `QuestionBankItem`                                           |
-| `display_order`   | int                     | Position in this assessment (1–N)                                  |
-| `selected_option` | str or None             | Option `id` from config; null until answered                       |
-| `is_correct`      | bool or None            | Null until answered; set when answer is submitted                  |
-| `resolved_tags`   | JSON list[str] or None  | Tags resolved from the selected option at answer time (audit trail)|
-| `answered_at`     | datetime or None        | When answered                                                      |
+| Field             | Type                   | Notes                                                               |
+| ----------------- | ---------------------- | ------------------------------------------------------------------- |
+| `id`              | UUID                   | Primary key                                                         |
+| `assessment_id`   | UUID (FK)              | Parent assessment                                                   |
+| `item_id`         | UUID (FK)              | Which `QuestionBankItem`                                            |
+| `display_order`   | int                    | Position in this assessment (1–N)                                   |
+| `selected_option` | str or None            | Option `id` from config; null until answered                        |
+| `is_correct`      | bool or None           | Null until answered; set when answer is submitted                   |
+| `resolved_tags`   | JSON list[str] or None | Tags resolved from the selected option at answer time (audit trail) |
+| `answered_at`     | datetime or None       | When answered                                                       |
 
 **QuestionBankConfig** (cached config from the question bank repo)
 
 The backend pulls config from the GCS bucket (where it was synced from the question bank repo) and stores the parsed YAML in the database. Images stay in the bucket; only text/YAML data is persisted to the DB. This avoids requiring a clone of the question bank repo at runtime.
 
-| Field              | Type                 | Notes                                                                    |
-| ------------------ | -------------------- | ------------------------------------------------------------------------ |
-| `id`               | UUID                 | Primary key                                                              |
-| `organisation_id`  | UUID (FK)            | Owning org                                                               |
-| `question_bank_id` | str                  | Matches config `id` (e.g. `"colonoscopy-optical-diagnosis"`)             |
-| `version`          | int                  | Config version (matches `version` field in config.yaml)                  |
-| `title`            | str                  | Display title                                                            |
-| `description`      | str                  | Shown on assessment dashboard                                            |
-| `type`             | str                  | `"uniform"` or `"variable"`                                              |
-| `config_yaml`      | JSON dict            | Full parsed config.yaml content (options, pass_criteria, assessment, etc)|
-| `synced_at`        | datetime             | When this config was last pulled from the bucket                         |
-| `synced_by`        | UUID (FK → users.id) | Who triggered the sync                                                   |
+| Field              | Type                 | Notes                                                                     |
+| ------------------ | -------------------- | ------------------------------------------------------------------------- |
+| `id`               | UUID                 | Primary key                                                               |
+| `organisation_id`  | UUID (FK)            | Owning org                                                                |
+| `question_bank_id` | str                  | Matches config `id` (e.g. `"colonoscopy-optical-diagnosis"`)              |
+| `version`          | int                  | Config version (matches `version` field in config.yaml)                   |
+| `title`            | str                  | Display title                                                             |
+| `description`      | str                  | Shown on assessment dashboard                                             |
+| `type`             | str                  | `"uniform"` or `"variable"`                                               |
+| `config_yaml`      | JSON dict            | Full parsed config.yaml content (options, pass_criteria, assessment, etc) |
+| `synced_at`        | datetime             | When this config was last pulled from the bucket                          |
+| `synced_by`        | UUID (FK → users.id) | Who triggered the sync                                                    |
 
 Unique constraint on `(organisation_id, question_bank_id, version)`. The `GET /api/teaching/question-banks` endpoint reads from this table — no filesystem or bucket access needed at request time.
 
 **TeachingOrgSettings** (per-organisation teaching configuration)
 
-| Field               | Type      | Notes                                                                    |
-| ------------------- | --------- | ------------------------------------------------------------------------ |
-| `id`                | UUID      | Primary key                                                              |
-| `organisation_id`   | UUID (FK) | Unique — one settings row per org                                        |
-| `coordinator_email` | str       | Recipient email for assessment result notifications                      |
-| `institution_name`  | str       | Institution name for certificate generation and accreditation tracking   |
+| Field               | Type      | Notes                                                                  |
+| ------------------- | --------- | ---------------------------------------------------------------------- |
+| `id`                | UUID      | Primary key                                                            |
+| `organisation_id`   | UUID (FK) | Unique — one settings row per org                                      |
+| `coordinator_email` | str       | Recipient email for assessment result notifications                    |
+| `institution_name`  | str       | Institution name for certificate generation and accreditation tracking |
 
 Unique constraint on `organisation_id`. The admin UI for teaching organisations includes fields to set the coordinator email and institution name. The `POST /api/teaching/results/email` endpoint reads the coordinator email from this table.
 
 **QuestionBankSync** (sync history for audit and the SyncStatus page)
 
-| Field              | Type                 | Notes                                                     |
-| ------------------ | -------------------- | --------------------------------------------------------- |
-| `id`               | UUID                 | Primary key                                               |
-| `organisation_id`  | UUID (FK)            | Owning org                                                |
-| `question_bank_id` | str                  | Which bank was synced                                     |
-| `version`          | int                  | Version that was synced                                   |
-| `status`           | str                  | `"success"` / `"failed"` / `"in_progress"`                |
-| `items_created`    | int                  | Number of new items imported                              |
-| `items_updated`    | int                  | Number of existing items updated                          |
-| `errors`           | JSON list[dict]      | Validation errors (empty on success)                      |
-| `warnings`         | JSON list[dict]      | Validation warnings (non-blocking)                        |
-| `started_at`       | datetime             | When sync began                                           |
-| `completed_at`     | datetime or None     | When sync finished (null if in progress or crashed)       |
-| `triggered_by`     | UUID (FK → users.id) | Who triggered the sync                                    |
+| Field              | Type                 | Notes                                               |
+| ------------------ | -------------------- | --------------------------------------------------- |
+| `id`               | UUID                 | Primary key                                         |
+| `organisation_id`  | UUID (FK)            | Owning org                                          |
+| `question_bank_id` | str                  | Which bank was synced                               |
+| `version`          | int                  | Version that was synced                             |
+| `status`           | str                  | `"success"` / `"failed"` / `"in_progress"`          |
+| `items_created`    | int                  | Number of new items imported                        |
+| `items_updated`    | int                  | Number of existing items updated                    |
+| `errors`           | JSON list[dict]      | Validation errors (empty on success)                |
+| `warnings`         | JSON list[dict]      | Validation warnings (non-blocking)                  |
+| `started_at`       | datetime             | When sync began                                     |
+| `completed_at`     | datetime or None     | When sync finished (null if in progress or crashed) |
+| `triggered_by`     | UUID (FK → users.id) | Who triggered the sync                              |
 
 The `SyncStatus` page reads from this table to show the last sync result, validation errors, and item counts per bank.
 
@@ -646,25 +646,25 @@ A dedicated validation module (`backend/app/features/teaching/validate.py`) chec
 
 #### Structural checks (per question bank)
 
-| Check                 | Rule                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------- |
-| Config present        | `questions/<bank-id>/config.yaml` must exist                                                            |
-| Config schema valid   | `config.yaml` must parse against the Pydantic `QuestionBankConfig` schema (all required fields present) |
-| Subfolder naming      | Item subfolders must match `question_<n>/` pattern (sequential integers, 1-indexed, zero-padded to 3+)  |
-| Question YAML present | Each `question_<n>/` must contain exactly one `question.yaml`                                           |
+| Check                 | Rule                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Config present        | `questions/<bank-id>/config.yaml` must exist                                                                                 |
+| Config schema valid   | `config.yaml` must parse against the Pydantic `QuestionBankConfig` schema (all required fields present)                      |
+| Subfolder naming      | Item subfolders must match `question_<n>/` pattern (sequential integers, 1-indexed, zero-padded to 3+)                       |
+| Question YAML present | Each `question_<n>/` must contain exactly one `question.yaml`                                                                |
 | No stray files        | No unexpected files in bank root or item subfolders (only `config.yaml`, `certificate_background.pdf`, `question_<n>/` dirs) |
 
 #### Content checks (per item, validated against config)
 
-| Check                  | `uniform` type                                                                      | `variable` type                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Check                  | `uniform` type                                                                      | `variable` type                                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Image count            | Exactly `images_per_item` image files (`image_1.*`, `image_2.*`, ...) per subfolder | `images` list in `question.yaml` is **required** (may be empty `[]`). Each listed `{key, label}` must have a matching file in the subfolder. No unlisted `image_<n>.*` files allowed. |
-| Image format           | Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.webp`                                | Same                                                                                                                                                                                 |
-| Metadata field present | `question.yaml` must contain `correct_answer_field` key (e.g. `diagnosis: adenoma`) | `question.yaml` must contain `correct_option_id`, `options` list, and `images` list                                                                                                  |
-| Metadata value valid   | Value of the answer field must be in config's `correct_answer_values` list          | `correct_option_id` must match one of the item's `options[].id` values                                                                                                               |
-| Options valid          | N/A (options defined in config)                                                     | Each option must have `id`, `label`, `tags`; no duplicate `id`s                                                                                                                      |
-| Item text              | If config has `item_text.required: true`, `question.yaml` must include `text` field | Same                                                                                                                                                                                 |
-| Tags consistency       | N/A (tags defined in config)                                                        | Tags referenced in `pass_criteria` must appear in at least one item's options                                                                                                        |
+| Image format           | Allowed extensions: `.png`, `.jpg`, `.jpeg`, `.webp`                                | Same                                                                                                                                                                                  |
+| Metadata field present | `question.yaml` must contain `correct_answer_field` key (e.g. `diagnosis: adenoma`) | `question.yaml` must contain `correct_option_id`, `options` list, and `images` list                                                                                                   |
+| Metadata value valid   | Value of the answer field must be in config's `correct_answer_values` list          | `correct_option_id` must match one of the item's `options[].id` values                                                                                                                |
+| Options valid          | N/A (options defined in config)                                                     | Each option must have `id`, `label`, `tags`; no duplicate `id`s                                                                                                                       |
+| Item text              | If config has `item_text.required: true`, `question.yaml` must include `text` field | Same                                                                                                                                                                                  |
+| Tags consistency       | N/A (tags defined in config)                                                        | Tags referenced in `pass_criteria` must appear in at least one item's options                                                                                                         |
 
 #### Cross-item checks (whole bank)
 
@@ -709,16 +709,16 @@ All routes gated by `Depends(requires_feature("teaching"))`.
 
 **Educator endpoints** (require `manage_teaching_content` competency):
 
-| Method | Path                              | Purpose                                                          |
-| ------ | --------------------------------- | ---------------------------------------------------------------- |
-| GET    | `/api/teaching/items`             | List items in org's bank (filtered by `question_bank_id`)        |
-| POST   | `/api/teaching/items/sync`        | Trigger sync from GCS bucket to database (runs validate)         |
-| POST   | `/api/teaching/items/validate`    | Dry-run validation only — check bucket content without importing |
-| GET    | `/api/teaching/results`           | All assessment results for org (reporting)                       |
-| POST   | `/api/teaching/results/email`     | Trigger result email to coordinator address                      |
-| GET    | `/api/teaching/question-banks`    | List available question bank configs (from DB)                   |
-| GET    | `/api/teaching/syncs`             | List sync history for reporting/audit                            |
-| PUT    | `/api/teaching/settings`          | Update teaching org settings (coordinator email, institution)    |
+| Method | Path                           | Purpose                                                          |
+| ------ | ------------------------------ | ---------------------------------------------------------------- |
+| GET    | `/api/teaching/items`          | List items in org's bank (filtered by `question_bank_id`)        |
+| POST   | `/api/teaching/items/sync`     | Trigger sync from GCS bucket to database (runs validate)         |
+| POST   | `/api/teaching/items/validate` | Dry-run validation only — check bucket content without importing |
+| GET    | `/api/teaching/results`        | All assessment results for org (reporting)                       |
+| POST   | `/api/teaching/results/email`  | Trigger result email to coordinator address                      |
+| GET    | `/api/teaching/question-banks` | List available question bank configs (from DB)                   |
+| GET    | `/api/teaching/syncs`          | List sync history for reporting/audit                            |
+| PUT    | `/api/teaching/settings`       | Update teaching org settings (coordinator email, institution)    |
 
 **Candidate endpoints** (require `view_teaching_cases` competency):
 
@@ -848,7 +848,7 @@ All in `frontend/src/components/teaching/` with `.stories.tsx` and `.test.tsx`:
 | `QuestionBankCard`       | Card: question bank title, description, item count, "Start assessment" button                                                                                                                                                         |
 | `AssessmentIntro`        | Intro page before questions: renders `title` + markdown `body` from config + "Begin" button                                                                                                                                           |
 | `AssessmentClosing`      | Closing page after last answer: renders `title` + markdown `body` from config + "View results" button                                                                                                                                 |
-| `CertificateDownload`    | Download button for PDF certificate (shown only when passed + `certificate_download` enabled). Calls `GET /assessments/{id}/certificate`.                                                                                              |
+| `CertificateDownload`    | Download button for PDF certificate (shown only when passed + `certificate_download` enabled). Calls `GET /assessments/{id}/certificate`.                                                                                             |
 
 ### Step 5.2 — Pages
 
