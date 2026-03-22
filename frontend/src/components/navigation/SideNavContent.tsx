@@ -189,22 +189,23 @@ export default function SideNavContent({
   };
 
   // Teaching navigation structure — only built when feature is enabled
-  const teachingChildren: NavItem[] = [
-    { label: "Assessments", href: "/teaching" },
-    { label: "My history", href: "/teaching/history" },
-  ];
-  if (canManageContent) {
-    teachingChildren.push(
-      { label: "Manage items", href: "/teaching/manage" },
-      { label: "Results", href: "/teaching/results" },
-    );
-  }
-  const teachingNavItem: NavItem = {
-    label: "Teaching",
-    href: "/teaching",
-    icon: showIcons ? "teaching" : undefined,
-    children: teachingChildren,
-  };
+  // Educators get nested nav with manage/results sub-pages
+  const teachingNavItem: NavItem = canManageContent
+    ? {
+        label: "Teaching",
+        href: "/teaching",
+        icon: showIcons ? "teaching" : undefined,
+        children: [
+          { label: "Assessments", href: "/teaching" },
+          { label: "Manage items", href: "/teaching/manage" },
+          { label: "Results", href: "/teaching/results" },
+        ],
+      }
+    : {
+        label: "Teaching",
+        href: "/teaching",
+        icon: showIcons ? "teaching" : undefined,
+      };
 
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }

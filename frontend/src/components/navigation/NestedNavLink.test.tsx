@@ -262,6 +262,66 @@ describe("NestedNavLink Component", () => {
     });
   });
 
+  describe("Parent without href", () => {
+    const parentWithoutHref: NavItem = {
+      label: "Teaching",
+      children: [
+        { label: "Assessments", href: "/teaching" },
+        { label: "My history", href: "/teaching/history" },
+      ],
+    };
+
+    it("renders parent and expands when child route is active", () => {
+      renderWithRouter(<NestedNavLink item={parentWithoutHref} />, {
+        initialRoute: "/teaching",
+      });
+
+      expect(screen.getByText("Teaching")).toBeInTheDocument();
+      expect(screen.getByText("Assessments")).toBeInTheDocument();
+      expect(screen.getByText("My history")).toBeInTheDocument();
+    });
+
+    it("does not mark parent as active when child is active", () => {
+      const { container } = renderWithRouter(
+        <NestedNavLink item={parentWithoutHref} />,
+        { initialRoute: "/teaching" },
+      );
+
+      // Only NavLink roots should be checked for active state
+      const navLinks = container.querySelectorAll(".mantine-NavLink-root");
+      const activeLabels = Array.from(navLinks)
+        .filter((el) => el.getAttribute("data-active") === "true")
+        .map((el) => el.textContent);
+
+      // Only "Assessments" child should be active, not the "Teaching" parent
+      expect(activeLabels).toHaveLength(1);
+      expect(activeLabels[0]).toContain("Assessments");
+    });
+
+    it("navigates to first child href when parent is clicked", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<NestedNavLink item={parentWithoutHref} />, {
+        initialRoute: "/teaching",
+      });
+
+      const parentLink = screen.getByText("Teaching");
+      await user.click(parentLink);
+
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/teaching");
+      });
+    });
+
+    it("does not expand when on unrelated route", () => {
+      renderWithRouter(<NestedNavLink item={parentWithoutHref} />, {
+        initialRoute: "/dashboard",
+      });
+
+      expect(screen.getByText("Teaching")).toBeInTheDocument();
+      expect(screen.queryByText("Assessments")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Font size customization", () => {
     it("uses default base font size of 1.25rem", () => {
       const { container } = renderWithRouter(

@@ -88,17 +88,13 @@ export default function AssessmentDashboard() {
           </SimpleGrid>
         )}
 
-        {history.length > 0 && (
-          <>
-            <Title order={3} mt="md">
-              Recent attempts
-            </Title>
-            <AssessmentHistoryTable
-              assessments={history.slice(0, 5)}
-              onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
-            />
-          </>
-        )}
+        <Title order={3} mt="md">
+          My history
+        </Title>
+        <AssessmentHistoryTable
+          assessments={history}
+          onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
+        />
       </Stack>
     </Container>
   );

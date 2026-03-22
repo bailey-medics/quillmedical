@@ -21,7 +21,6 @@ vi.mock("@/lib/api", () => ({
 
 import { api } from "@/lib/api";
 import AssessmentDashboard from "./AssessmentDashboard";
-import AssessmentHistoryPage from "./AssessmentHistoryPage";
 import AllResults from "./AllResults";
 import SyncStatus from "./SyncStatus";
 import ManageItems from "./ManageItems";
@@ -65,27 +64,19 @@ describe("AssessmentDashboard", () => {
     });
   });
 
+  it("shows history section with heading", async () => {
+    (api.get as Mock).mockResolvedValue([]);
+    renderWithRouter(<AssessmentDashboard />);
+    await waitFor(() => {
+      expect(screen.getByText("My history")).toBeTruthy();
+    });
+  });
+
   it("shows error on API failure", async () => {
     (api.get as Mock).mockRejectedValue(new Error("Network error"));
     renderWithRouter(<AssessmentDashboard />);
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeTruthy();
-    });
-  });
-});
-
-describe("AssessmentHistoryPage", () => {
-  it("shows loading state initially", () => {
-    (api.get as Mock).mockReturnValue(new Promise(() => {}));
-    renderWithRouter(<AssessmentHistoryPage />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
-  });
-
-  it("shows empty state when no history", async () => {
-    (api.get as Mock).mockResolvedValue([]);
-    renderWithRouter(<AssessmentHistoryPage />);
-    await waitFor(() => {
-      expect(screen.getByText("No assessments yet.")).toBeTruthy();
     });
   });
 });

@@ -32,8 +32,8 @@ type IconName =
 export type NavItem = {
   /** Display label */
   label: string;
-  /** Route path */
-  href: string;
+  /** Route path (optional for parent-only group headers) */
+  href?: string;
   /** Optional icon name (uses NavIcon) */
   icon?: IconName;
   /** Optional child navigation items */
@@ -64,11 +64,11 @@ type Props = {
  * @returns True if item or any descendant matches path
  */
 function isActiveOrParent(navItem: NavItem, path: string): boolean {
-  // Exact match
-  if (path === navItem.href) return true;
+  // Exact match (only if href is set)
+  if (navItem.href && path === navItem.href) return true;
 
   // Child route match (starts with parent path + /)
-  if (path.startsWith(navItem.href + "/")) return true;
+  if (navItem.href && path.startsWith(navItem.href + "/")) return true;
 
   // Check children recursively
   if (navItem.children) {
@@ -105,12 +105,16 @@ export default function NestedNavLink({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isActive = location.pathname === item.href;
+  const isActive = item.href ? location.pathname === item.href : false;
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;
 
   const handleClick = () => {
-    navigate(item.href);
+    if (item.href) {
+      navigate(item.href);
+    } else if (hasChildren && item.children![0].href) {
+      navigate(item.children![0].href);
+    }
     onNavigate?.();
   };
 
@@ -148,7 +152,7 @@ export default function NestedNavLink({
         <>
           {item.children!.map((child) => (
             <NestedNavLink
-              key={child.href}
+              key={child.href ?? child.label}
               item={child}
               onNavigate={onNavigate}
               showIcons={showIcons}
