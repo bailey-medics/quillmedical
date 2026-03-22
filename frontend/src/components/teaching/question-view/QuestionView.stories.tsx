@@ -63,6 +63,8 @@ export const UniformType: Story = {
     item: uniformItem,
     selectedOption: null,
     onSelectOption: () => {},
+    currentQuestion: 1,
+    totalQuestions: 20,
   },
 };
 
@@ -71,6 +73,8 @@ export const UniformWithSelection: Story = {
     item: uniformItem,
     selectedOption: "high_confidence_adenoma",
     onSelectOption: () => {},
+    currentQuestion: 3,
+    totalQuestions: 20,
   },
 };
 
@@ -79,6 +83,8 @@ export const VariableType: Story = {
     item: variableItem,
     selectedOption: null,
     onSelectOption: () => {},
+    currentQuestion: 5,
+    totalQuestions: 20,
   },
 };
 
@@ -88,5 +94,7 @@ export const Disabled: Story = {
     selectedOption: "low_confidence_adenoma",
     onSelectOption: () => {},
     disabled: true,
+    currentQuestion: 20,
+    totalQuestions: 20,
   },
 };

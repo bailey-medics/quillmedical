@@ -8,8 +8,17 @@
  * Optional text block shown below images when present.
  */
 
-import { Card, Group, Image, Radio, Stack, Text, Title } from "@mantine/core";
+import {
+  Card,
+  Image,
+  Radio,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
+import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import classes from "./QuestionView.module.css";
 
 interface QuestionViewProps {
@@ -21,6 +30,10 @@ interface QuestionViewProps {
   onSelectOption: (optionId: string) => void;
   /** Whether interaction is disabled (e.g. already answered) */
   disabled?: boolean;
+  /** Current question number (1-based) for progress bar */
+  currentQuestion?: number;
+  /** Total number of questions for progress bar */
+  totalQuestions?: number;
 }
 
 function ImagePanel({ image }: { image: ItemImage }) {
@@ -46,16 +59,22 @@ export function QuestionView({
   selectedOption,
   onSelectOption,
   disabled = false,
+  currentQuestion,
+  totalQuestions,
 }: QuestionViewProps) {
   return (
     <Stack gap="lg">
+      {/* Progress bar */}
+      {currentQuestion != null && totalQuestions != null && (
+        <AssessmentProgress current={currentQuestion} total={totalQuestions} />
+      )}
       {/* Images */}
       {item.images.length > 0 && (
-        <Group gap="md" justify="center" wrap="wrap">
+        <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
           {item.images.map((img) => (
             <ImagePanel key={img.key} image={img} />
           ))}
-        </Group>
+        </SimpleGrid>
       )}
 
       {/* Optional item text */}

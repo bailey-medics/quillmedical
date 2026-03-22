@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { AssessmentHistoryTable } from "./AssessmentHistoryTable";
 
 const meta: Meta<typeof AssessmentHistoryTable> = {
   title: "Teaching/AssessmentHistoryTable",
   component: AssessmentHistoryTable,
   tags: ["autodocs"],
+  args: {
+    onSelect: fn(),
+  },
 };
 
 export default meta;

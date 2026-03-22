@@ -21,7 +21,7 @@ export function AssessmentProgress({
 
   return (
     <Group gap="sm" align="center">
-      <Progress value={percentage} size="sm" style={{ flex: 1 }} />
+      <Progress value={percentage} size="xl" style={{ flex: 1 }} />
       <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap" }}>
         {current} of {total}
       </Text>
