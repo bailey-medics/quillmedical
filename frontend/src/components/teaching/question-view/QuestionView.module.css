@@ -1,0 +1,18 @@
+.imagePanel {
+  max-width: 400px;
+  flex: 1 1 300px;
+}
+
+.image {
+  border-radius: var(--mantine-radius-md);
+}
+
+.option {
+  padding: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-sm);
+  transition: background-color 150ms ease;
+}
+
+.option:hover {
+  background-color: var(--mantine-color-gray-0);
+}

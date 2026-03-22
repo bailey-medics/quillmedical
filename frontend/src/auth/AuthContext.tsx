@@ -29,6 +29,8 @@ export type User = {
   roles?: string[];
   /** System permission level (patient, staff, admin, superadmin) */
   system_permissions?: string;
+  /** Features enabled on the user's primary organisation */
+  enabled_features?: string[];
 };
 
 /**

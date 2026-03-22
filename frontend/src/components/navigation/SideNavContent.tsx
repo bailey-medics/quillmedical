@@ -12,6 +12,8 @@ import { NavLink, Divider, Stack } from "@mantine/core";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useHasFeature } from "@lib/features";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
@@ -57,6 +59,10 @@ export default function SideNavContent({
     state.status === "authenticated" &&
     (state.user.system_permissions === "admin" ||
       state.user.system_permissions === "superadmin");
+
+  // Check if teaching feature is enabled for this user's organisation
+  const hasTeaching = useHasFeature("teaching");
+  const canManageContent = useHasCompetency("manage_teaching_content");
 
   // Don't render nav while auth is loading to avoid layout flicker
   // (Admin link appears after auth resolves, shifting Logout down)
@@ -182,6 +188,24 @@ export default function SideNavContent({
     ],
   };
 
+  // Teaching navigation structure — only built when feature is enabled
+  const teachingChildren: NavItem[] = [
+    { label: "Assessments", href: "/teaching" },
+    { label: "My history", href: "/teaching/history" },
+  ];
+  if (canManageContent) {
+    teachingChildren.push(
+      { label: "Manage items", href: "/teaching/manage" },
+      { label: "Results", href: "/teaching/results" },
+    );
+  }
+  const teachingNavItem: NavItem = {
+    label: "Teaching",
+    href: "/teaching",
+    icon: showIcons ? "teaching" : undefined,
+    children: teachingChildren,
+  };
+
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }
   let patientNavItem: NavItem | null = null;
@@ -233,6 +257,14 @@ export default function SideNavContent({
         }}
         leftSection={showIcons ? <NavIcon name="message" /> : undefined}
       />
+      {hasTeaching && (
+        <NestedNavLink
+          item={teachingNavItem}
+          onNavigate={onNavigate}
+          showIcons={showIcons}
+          baseFontSize={fontSize}
+        />
+      )}
       <NavLink
         label="Settings"
         styles={navLinkStyles}
