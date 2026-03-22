@@ -544,6 +544,74 @@ class TestOrganizationEndpoints:
         assert data["user_id"] == test_admin.id
         assert data["username"] == test_admin.username
 
+    def test_add_staff_auto_sets_primary(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test first org membership is auto-set as primary."""
+        from sqlalchemy import select
+
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(name="Primary Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        authenticated_admin_client.post(
+            f"/api/organizations/{org.id}/staff",
+            json={"user_id": test_admin.id},
+        )
+
+        row = db_session.execute(
+            select(organisation_staff_member).where(
+                organisation_staff_member.c.user_id == test_admin.id,
+                organisation_staff_member.c.organisation_id == org.id,
+            )
+        ).first()
+        assert row is not None
+        assert row.is_primary is True
+
+    def test_add_staff_does_not_override_primary(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test second org membership does not override existing primary."""
+        from sqlalchemy import insert, select
+
+        from app.models import Organization, organisation_staff_member
+
+        org1 = Organization(name="First Org", type="hospital_team")
+        org2 = Organization(name="Second Org", type="hospital_team")
+        db_session.add_all([org1, org2])
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org1.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+        db_session.commit()
+
+        authenticated_admin_client.post(
+            f"/api/organizations/{org2.id}/staff",
+            json={"user_id": test_admin.id},
+        )
+
+        row = db_session.execute(
+            select(organisation_staff_member).where(
+                organisation_staff_member.c.user_id == test_admin.id,
+                organisation_staff_member.c.organisation_id == org2.id,
+            )
+        ).first()
+        assert row is not None
+        assert row.is_primary is False
+
     def test_add_staff_duplicate(
         self,
         authenticated_admin_client: TestClient,

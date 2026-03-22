@@ -48,6 +48,7 @@ import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisati
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
+import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
@@ -325,6 +326,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <AddPatientToOrgPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id/features",
+        element: (
+          <RequirePermission level="admin">
+            <OrgFeaturesPage />
           </RequirePermission>
         ),
       },

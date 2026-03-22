@@ -2511,11 +2511,19 @@ def add_staff_to_organization(
             detail="User is already a staff member of this organisation",
         )
 
+    # Auto-set as primary if user has no existing primary org
+    has_primary = db.scalar(
+        select(organisation_staff_member.c.organisation_id).where(
+            organisation_staff_member.c.user_id == body.user_id,
+            organisation_staff_member.c.is_primary.is_(True),
+        )
+    )
+
     db.execute(
         organisation_staff_member.insert().values(
             organisation_id=org_id,
             user_id=body.user_id,
-            is_primary=False,
+            is_primary=has_primary is None,
         )
     )
     db.commit()

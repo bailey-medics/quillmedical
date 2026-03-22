@@ -9,14 +9,11 @@ services:
     environment:
       BACKEND_ENV: development
       TEACHING_STORAGE_BACKEND: local
+      CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
     expose:
       - "8000"
     depends_on:
       postgres-auth:
-        condition: service_healthy
-      postgres-fhir:
-        condition: service_healthy
-      postgres-ehrbase:
         condition: service_healthy
     networks:
       - public
@@ -73,6 +70,7 @@ services:
       - private
 
   postgres-fhir:
+    profiles: ["clinical"]
     image: postgres:16-alpine
     container_name: quill_postgres_fhir
     environment:
@@ -95,6 +93,7 @@ services:
       - private
 
   postgres-ehrbase:
+    profiles: ["clinical"]
     image: ehrbase/ehrbase-v2-postgres:16.2
     container_name: quill_postgres_ehrbase
     environment:
@@ -117,15 +116,19 @@ services:
       - private
 
   fhir:
+    profiles: ["clinical"]
     image: hapiproject/hapi:latest
     container_name: quill_fhir
     env_file: backend/.env
     environment:
+      # Disable C2 JIT compiler — avoids MachOper::hash() crash when running
+      # amd64 JVM under Rosetta 2 emulation on Apple Silicon
+      - JAVA_TOOL_OPTIONS=-XX:TieredStopAtLevel=1
       - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
       - spring.datasource.username=hapi_user
       - spring.datasource.password=hapi_secure_password_123
       - spring.datasource.driverClassName=org.postgresql.Driver
-      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
       - hapi.fhir.fhir_version=R4
       - hapi.fhir.subscription.resthook_enabled=false
       - hapi.fhir.subscription.email.enabled=false
@@ -153,6 +156,7 @@ services:
       start_period: 120s
 
   ehrbase:
+    profiles: ["clinical"]
     image: ehrbase/ehrbase:latest
     container_name: quill_ehrbase
     env_file: backend/.env

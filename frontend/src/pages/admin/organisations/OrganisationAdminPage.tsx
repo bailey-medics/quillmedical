@@ -7,9 +7,10 @@
  * Provides action cards for editing and managing organisations.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
+  ActionIcon,
   Container,
   Stack,
   Paper,
@@ -20,17 +21,22 @@ import {
   Skeleton,
   Alert,
   Badge,
+  Menu,
+  Modal,
+  Button,
 } from "@mantine/core";
 import {
   IconPencil,
   IconAlertCircle,
-  IconUserPlus,
-  IconHeartPlus,
+  IconStack2,
+  IconDots,
+  IconUserMinus,
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
 import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import AddButton from "@/components/button/AddButton";
 import { api } from "@/lib/api";
 
 /**
@@ -67,6 +73,19 @@ interface OrganizationDetails {
   patient_members: PatientMember[];
 }
 
+interface FeatureOut {
+  feature_key: string;
+  enabled_at: string;
+  enabled_by: number | null;
+}
+
+/** Labels for known feature keys */
+const FEATURE_LABELS: Record<string, string> = {
+  teaching: "Teaching",
+  messaging: "Messaging",
+  letters: "Letters",
+};
+
 /**
  * Organisation Admin Page
  *
@@ -82,31 +101,48 @@ export default function OrganisationAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [org, setOrg] = useState<OrganizationDetails | null>(null);
+  const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [removingMember, setRemovingMember] = useState<StaffMember | null>(
+    null,
+  );
 
-  useEffect(() => {
-    async function fetchOrganizationData() {
-      if (!id) {
-        setError("No organisation ID provided");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const orgData = await api.get<OrganizationDetails>(
-          `/organizations/${id}`,
-        );
-        setOrg(orgData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
+  const fetchOrganizationData = useCallback(async () => {
+    if (!id) {
+      setError("No organisation ID provided");
+      setLoading(false);
+      return;
     }
 
-    fetchOrganizationData();
+    try {
+      const [orgData, featuresData] = await Promise.all([
+        api.get<OrganizationDetails>(`/organizations/${id}`),
+        api.get<{ features: FeatureOut[] }>(`/organizations/${id}/features`),
+      ]);
+      setOrg(orgData);
+      setEnabledFeatures(featuresData.features.map((f) => f.feature_key));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchOrganizationData();
+  }, [fetchOrganizationData]);
+
+  async function confirmRemoveStaff() {
+    if (!id || !removingMember) return;
+    try {
+      await api.del(`/organizations/${id}/staff/${removingMember.id}`);
+      setRemovingMember(null);
+      await fetchOrganizationData();
+    } catch {
+      setRemovingMember(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -152,6 +188,36 @@ export default function OrganisationAdminPage() {
             Primary
           </Badge>
         ) : null,
+    },
+    {
+      header: "",
+      width: "50px",
+      render: (member) => (
+        <Menu position="bottom-end" shadow="md">
+          <Menu.Target>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Actions for ${member.username}`}
+            >
+              <Icon icon={<IconDots />} size="sm" />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              color="red"
+              leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRemovingMember(member);
+              }}
+            >
+              Remove from organisation
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      ),
     },
   ];
 
@@ -247,12 +313,39 @@ export default function OrganisationAdminPage() {
           </Stack>
         </Paper>
 
-        {/* Staff Members */}
+        {/* Enabled Features */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="md">
             <Title order={2} size="lg">
-              Staff members
+              Enabled features
             </Title>
+
+            {enabledFeatures.length > 0 ? (
+              <Group gap="sm">
+                {enabledFeatures.map((key) => (
+                  <Badge key={key} variant="light" color="blue" size="lg">
+                    {FEATURE_LABELS[key] ?? key}
+                  </Badge>
+                ))}
+              </Group>
+            ) : (
+              <Text c="dimmed">No features enabled</Text>
+            )}
+          </Stack>
+        </Paper>
+
+        {/* Staff Members */}
+        <Paper shadow="sm" p="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Title order={2} size="lg">
+                Staff members
+              </Title>
+              <AddButton
+                label="Add staff member"
+                onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
+              />
+            </Group>
 
             <AdminTable<StaffMember>
               data={org.staff_members}
@@ -267,9 +360,17 @@ export default function OrganisationAdminPage() {
         {/* Patient Members */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="md">
-            <Title order={2} size="lg">
-              Patients
-            </Title>
+            <Group justify="space-between" align="center">
+              <Title order={2} size="lg">
+                Patients
+              </Title>
+              <AddButton
+                label="Add patient"
+                onClick={() =>
+                  navigate(`/admin/organisations/${id}/add-patient`)
+                }
+              />
+            </Group>
 
             <AdminTable<PatientMember>
               data={org.patient_members}
@@ -299,22 +400,39 @@ export default function OrganisationAdminPage() {
             />
 
             <ActionCard
-              icon={<IconUserPlus />}
-              onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
-              title="Add staff member"
-              subtitle="Add a user as a staff member"
-              buttonLabel="Add staff"
-            />
-
-            <ActionCard
-              icon={<IconHeartPlus />}
-              onClick={() => navigate(`/admin/organisations/${id}/add-patient`)}
-              title="Add patient"
-              subtitle="Add a patient to this organisation"
-              buttonLabel="Add patient"
+              icon={<IconStack2 />}
+              onClick={() => navigate(`/admin/organisations/${id}/features`)}
+              title="Features"
+              subtitle="Enable or disable features for this organisation"
+              buttonLabel="Manage features"
             />
           </SimpleGrid>
         </Stack>
+
+        <Modal
+          opened={removingMember !== null}
+          onClose={() => setRemovingMember(null)}
+          title="Remove staff member"
+          centered
+        >
+          <Stack gap="md">
+            <Text>
+              Are you sure you want to remove{" "}
+              <Text span fw={700}>
+                {removingMember?.username}
+              </Text>{" "}
+              from this organisation?
+            </Text>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setRemovingMember(null)}>
+                Cancel
+              </Button>
+              <Button color="red" onClick={confirmRemoveStaff}>
+                Remove
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </Container>
   );

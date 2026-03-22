@@ -51,3 +51,7 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
 
 - [ ] Rotate temporary postgres admin password (`temp-admin-pw-2026`) on the
       `quill-ehrbase-staging` Cloud SQL instance.
+
+## MISC
+
+- [ ] Update all libraries to most recent

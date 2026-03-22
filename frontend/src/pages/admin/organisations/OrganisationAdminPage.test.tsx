@@ -40,6 +40,16 @@ const mockAdminUser: User = {
 };
 
 describe("OrganisationAdminPage", () => {
+  const emptyFeatures = { features: [] };
+
+  /** Mock api.get to return org data and empty features by default */
+  function mockOrgApi(org: Record<string, unknown>, features = emptyFeatures) {
+    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
+      if (url.includes("/features")) return Promise.resolve(features);
+      return Promise.resolve(org);
+    });
+  }
+
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
@@ -71,7 +81,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -99,7 +109,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -124,7 +134,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -150,7 +160,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -191,7 +201,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 5,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -217,7 +227,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 15,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -247,7 +257,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -275,7 +285,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -307,7 +317,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 2,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -333,7 +343,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -360,7 +370,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -372,7 +382,7 @@ describe("OrganisationAdminPage", () => {
       });
     });
 
-    it("displays manage staff action card", async () => {
+    it("displays add staff member button in staff section", async () => {
       const mockOrganisation = {
         id: 1,
         name: "Test Hospital",
@@ -385,32 +395,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
-
-      renderWithRouter(<OrganisationAdminPage />, {
-        routePath: "/admin/organisations/:id",
-        initialRoute: "/admin/organisations/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Add staff member")).toBeInTheDocument();
-      });
-    });
-
-    it("displays add patient action card", async () => {
-      const mockOrganisation = {
-        id: 1,
-        name: "Test Hospital",
-        type: "hospital",
-        location: "London",
-        created_at: "2024-01-15T10:00:00Z",
-        updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
-        patient_count: 0,
-      };
-
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -419,8 +404,35 @@ describe("OrganisationAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getAllByText("Add patient").length,
-        ).toBeGreaterThanOrEqual(1);
+          screen.getByRole("button", { name: /Add staff member/ }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("displays add patient button in patients section", async () => {
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      mockOrgApi(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Add patient/ }),
+        ).toBeInTheDocument();
       });
     });
 
@@ -439,7 +451,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -455,7 +467,7 @@ describe("OrganisationAdminPage", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1/edit");
     });
 
-    it("navigates to manage staff page on manage button click", async () => {
+    it("navigates to add staff page on add staff button click", async () => {
       const user = userEvent.setup();
       const mockOrganisation = {
         id: 1,
@@ -470,7 +482,7 @@ describe("OrganisationAdminPage", () => {
         patient_count: 0,
       };
 
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+      mockOrgApi(mockOrganisation);
 
       renderWithRouter(<OrganisationAdminPage />, {
         routePath: "/admin/organisations/:id",
@@ -478,13 +490,50 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Add staff member")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Add staff member/ }),
+        ).toBeInTheDocument();
       });
 
-      const manageButton = screen.getByRole("button", { name: "Add staff" });
-      await user.click(manageButton);
+      await user.click(
+        screen.getByRole("button", { name: /Add staff member/ }),
+      );
       expect(mockNavigate).toHaveBeenCalledWith(
         "/admin/organisations/1/add-staff",
+      );
+    });
+
+    it("navigates to add patient page on add patient button click", async () => {
+      const user = userEvent.setup();
+      const mockOrganisation = {
+        id: 1,
+        name: "Test Hospital",
+        type: "hospital",
+        location: "London",
+        created_at: "2024-01-15T10:00:00Z",
+        updated_at: "2024-01-15T10:00:00Z",
+        staff_count: 0,
+        staff_members: [],
+        patient_members: [],
+        patient_count: 0,
+      };
+
+      mockOrgApi(mockOrganisation);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Add patient/ }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /Add patient/ }));
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/1/add-patient",
       );
     });
   });
@@ -541,6 +590,175 @@ describe("OrganisationAdminPage", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("API error")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Enabled features card", () => {
+    const baseOrg = {
+      id: 1,
+      name: "Test Hospital",
+      type: "hospital",
+      location: "London",
+      created_at: "2024-01-15T10:00:00Z",
+      updated_at: "2024-01-15T10:00:00Z",
+      staff_count: 0,
+      staff_members: [],
+      patient_members: [],
+      patient_count: 0,
+    };
+
+    it("shows enabled features as badges", async () => {
+      mockOrgApi(baseOrg, {
+        features: [
+          {
+            feature_key: "teaching",
+            enabled_at: "2026-01-15T10:00:00Z",
+            enabled_by: 1,
+          },
+          {
+            feature_key: "messaging",
+            enabled_at: "2026-01-15T10:00:00Z",
+            enabled_by: 1,
+          },
+        ],
+      });
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Enabled features" }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Teaching")).toBeInTheDocument();
+        expect(screen.getByText("Messaging")).toBeInTheDocument();
+      });
+    });
+
+    it("shows 'No features enabled' when empty", async () => {
+      mockOrgApi(baseOrg);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("No features enabled")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Remove staff member", () => {
+    const orgWithStaff = {
+      id: 3,
+      name: "Test Hospital",
+      type: "hospital",
+      location: "London",
+      created_at: "2024-01-15T10:00:00Z",
+      updated_at: "2024-01-15T10:00:00Z",
+      staff_count: 2,
+      staff_members: [
+        {
+          id: 10,
+          username: "alice",
+          email: "alice@example.com",
+          is_primary: true,
+        },
+        {
+          id: 20,
+          username: "bob",
+          email: "bob@example.com",
+          is_primary: false,
+        },
+      ],
+      patient_members: [],
+      patient_count: 0,
+    };
+
+    it("shows actions menu and opens remove confirmation modal", async () => {
+      const user = userEvent.setup();
+      mockOrgApi(orgWithStaff);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+
+      // Wait for staff to render
+      await waitFor(() => {
+        expect(screen.getByText("alice")).toBeInTheDocument();
+      });
+
+      // Click the ellipsis menu for bob
+      const actionsButton = screen.getByLabelText("Actions for bob");
+      await user.click(actionsButton);
+
+      // Click "Remove from organisation"
+      const removeItem = await screen.findByText("Remove from organisation");
+      await user.click(removeItem);
+
+      // Modal should appear with bob's name
+      expect(screen.getByText("Remove staff member")).toBeInTheDocument();
+      expect(screen.getAllByText("bob").length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("calls api.del and reloads data on confirm", async () => {
+      const user = userEvent.setup();
+      mockOrgApi(orgWithStaff);
+      const delSpy = vi.spyOn(apiLib.api, "del").mockResolvedValue(undefined);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("bob")).toBeInTheDocument();
+      });
+
+      // Open menu and click remove
+      await user.click(screen.getByLabelText("Actions for bob"));
+      await user.click(await screen.findByText("Remove from organisation"));
+
+      // Confirm removal
+      await user.click(screen.getByRole("button", { name: "Remove" }));
+
+      await waitFor(() => {
+        expect(delSpy).toHaveBeenCalledWith("/organizations/3/staff/20");
+      });
+    });
+
+    it("closes modal on cancel without calling api", async () => {
+      const user = userEvent.setup();
+      mockOrgApi(orgWithStaff);
+      const delSpy = vi.spyOn(apiLib.api, "del").mockResolvedValue(undefined);
+
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("bob")).toBeInTheDocument();
+      });
+
+      // Open menu and click remove
+      await user.click(screen.getByLabelText("Actions for bob"));
+      await user.click(await screen.findByText("Remove from organisation"));
+
+      // Cancel
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      // Modal should close, api.del not called
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Remove staff member"),
+        ).not.toBeInTheDocument();
+      });
+      expect(delSpy).not.toHaveBeenCalled();
     });
   });
 });

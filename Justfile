@@ -262,13 +262,13 @@ start-dev build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.dev.yml down
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        docker compose -f compose.dev.yml up --build; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull always; \
     else \
-        docker compose -f compose.dev.yml up; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up; \
     fi
 
 
@@ -317,9 +317,29 @@ start-prod build="":
     #!/usr/bin/env bash
     {{initialise}} "start-prod"
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.prod.yml up --build; \
+        docker compose -f compose.yml -f compose.prod.yml up --build --pull always; \
     else \
         docker compose -f compose.yml -f compose.prod.yml up; \
+    fi
+
+alias st := start-teaching
+# Start dev without clinical services (FHIR/EHRbase) for teaching work
+start-teaching build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-teaching"
+
+    just _start-docker-daemon
+    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+    echo "Clinical services (FHIR/EHRbase) disabled"
+
+    if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.dev.yml down
+        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
+        cd frontend && yarn install && cd ..
+        cd backend && poetry lock && poetry install && cd ..
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull always; \
+    else \
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up; \
     fi
 
 alias sc := stop
@@ -327,7 +347,7 @@ alias sc := stop
 stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
-    docker compose -f compose.dev.yml down
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
     docker compose -f compose.prod.yml down
 
 
