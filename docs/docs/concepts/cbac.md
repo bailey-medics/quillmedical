@@ -148,8 +148,11 @@ competencies:
 - `prescribing`: Medication prescribing authorities
 - `certification`: Medical certifications (death, fitness to work, etc.)
 - `procedures`: Clinical procedures (venepuncture, lumbar puncture, etc.)
-- `imaging`: Requesting diagnostic imaging
-- `data_access`: Accessing patient records
+- `patient_management`: Patient admission, discharge, and referral
+- `consent`: Informed consent and mental capacity assessment
+- `diagnostics`: Requesting diagnostic imaging (X-ray, CT, MRI)
+- `administrative`: Clinic admin, user management, letter approval
+- `specialty`: Specialist clinical skills (diabetes, anticoagulation, ECG)
 
 ### base-professions.yaml
 
@@ -166,9 +169,13 @@ base_professions:
       - access_patient_records
       - modify_patient_records
       - perform_venepuncture
+      - perform_cannulation
+      - request_plain_xray
+      - take_informed_consent
+      - refer_specialty
       - prescribe_non_controlled
       - certify_fitness_to_work
-    notes: "FY1 doctors require supervision for prescribing."
+    notes: "FY1 doctors require supervision for prescribing and procedures."
 ```
 
 **Available Base Professions**:
@@ -179,9 +186,19 @@ base_professions:
 - `specialty_trainee_1_2` - ST1-2 doctors
 - `specialty_trainee_3_plus` - ST3+ doctors
 - `consultant` - Consultant physicians
-- `gp_partner` - GP partners
-- `nurse_prescriber` - Nurse prescribers
-- `pharmacist_independent` - Independent pharmacist prescribers
+- `general_practitioner` - General practitioners
+- `registered_nurse` - Registered nurses
+- `advanced_nurse_practitioner` - Advanced nurse practitioners
+- `healthcare_assistant` - Healthcare assistants
+- `pharmacist` - Pharmacists
+- `pharmacy_technician` - Pharmacy technicians
+- `physiotherapist` - Physiotherapists
+- `occupational_therapist` - Occupational therapists
+- `paramedic` - Paramedics
+- `medical_secretary` - Medical secretaries
+- `receptionist` - Receptionists
+- `clinic_manager` - Clinic managers
+- `system_administrator` - System administrators
 
 ## API Protection
 
@@ -286,6 +303,11 @@ removed_competencies = []
 # Result: FY1 base competencies
 # - access_patient_records
 # - modify_patient_records
+# - perform_venepuncture
+# - perform_cannulation
+# - request_plain_xray
+# - take_informed_consent
+# - refer_specialty
 # - prescribe_non_controlled
 # - certify_fitness_to_work
 # (Cannot prescribe controlled drugs, cannot certify death)
@@ -309,28 +331,35 @@ removed_competencies = ["certify_death"]  # Not yet trained
 
 ```python
 base_profession = "consultant"
-additional_competencies = ["certify_cremation"]  # Completed 5+ years, trained
+additional_competencies = ["apply_deprivation_of_liberty"]  # Completed DoLS training
 removed_competencies = []
 
-# Result: consultant base + certify_cremation
-# - All consultant competencies
+# Result: consultant base + apply_deprivation_of_liberty
+# - All consultant competencies (including certify_cremation, certify_death)
 # - prescribe_controlled_schedule_2
-# - certify_death
-# - certify_cremation (added)
+# - apply_deprivation_of_liberty (added)
 ```
 
-**Example 4: Nurse Prescriber (Non-Doctor)**
+**Example 4: Advanced Nurse Practitioner**
 
 ```python
-base_profession = "nurse_prescriber"
+base_profession = "advanced_nurse_practitioner"
 additional_competencies = []
 removed_competencies = []
 
-# Result: nurse prescriber base competencies
+# Result: advanced nurse practitioner base competencies
 # - access_patient_records
+# - modify_patient_records
+# - perform_venepuncture
+# - perform_cannulation
+# - request_plain_xray
+# - take_informed_consent
+# - assess_mental_capacity
+# - refer_specialty
 # - prescribe_non_controlled
-# - prescribe_controlled_schedule_3_4_5 (limited formulary)
-# (Cannot certify death, cannot request CT/MRI)
+# - prescribe_controlled_schedule_3_4_5
+# - certify_fitness_to_work
+# - approve_clinical_letters
 ```
 
 ## Validation & Type Safety
@@ -375,7 +404,7 @@ risk_level = get_competency_risk_level("prescribe_controlled_schedule_2")
 # - prescribe_controlled_schedule_2 (Schedule 2 drugs)
 # - certify_death (death certification)
 # - certify_cremation (cremation forms)
-# - perform_general_anaesthetic (anaesthesia)
+# - perform_advanced_airway (advanced airway management)
 ```
 
 **TODO**: Audit logging is currently a placeholder. When implemented, high-risk competency checks will log:

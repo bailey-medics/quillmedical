@@ -74,6 +74,7 @@ from app.messaging import (
 from app.models import (
     Conversation,
     ExternalPatientAccess,
+    OrganisationFeature,
     Organization,
     PatientMetadata,
     User,
@@ -94,6 +95,7 @@ from app.schemas.cbac import (
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
+from app.schemas.features import FeatureOut, FeatureToggleIn
 from app.schemas.letters import LetterIn
 from app.schemas.messaging import (
     AcceptInviteIn,
@@ -122,7 +124,12 @@ from app.security import (
     verify_password,
     verify_totp_code,
 )
-from app.system_permissions.permissions import is_external_user
+from app.system_permissions.permissions import (
+    PERMISSION_LEVELS,
+    PERMISSION_STAFF,
+    check_permission_level,
+    is_external_user,
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -200,6 +207,18 @@ COOKIE_KW: dict[str, Any] = {
 }
 
 
+def require_clinical_services() -> None:
+    """FastAPI dependency: raises 503 when FHIR/EHRbase are disabled."""
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="Clinical services are not available in this deployment",
+        )
+
+
+DEP_REQUIRE_CLINICAL = Depends(require_clinical_services)
+
+
 def check_fhir_health() -> dict[str, bool | int | str]:
     """Check if FHIR server is available and ready to serve data.
 
@@ -213,8 +232,8 @@ def check_fhir_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
-    if settings.FHIR_DB_PASSWORD is None:
-        return {"available": False, "error": "FHIR not configured"}
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        return {"available": False, "error": "Clinical services disabled"}
     try:
         # Test actual data access, not just metadata
         # This ensures database is ready and indexes are loaded
@@ -237,8 +256,8 @@ def check_ehrbase_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
-    if settings.EHRBASE_API_PASSWORD is None:
-        return {"available": False, "error": "EHRbase not configured"}
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        return {"available": False, "error": "Clinical services disabled"}
     try:
         # Use get_secret_value() to extract the actual password string
         api_user = settings.EHRBASE_API_USER
@@ -265,7 +284,7 @@ async def startup_event() -> None:
     print("Quill Medical Backend Starting...")
     print("=" * 60)
 
-    if settings.FHIR_DB_PASSWORD is not None:
+    if settings.CLINICAL_SERVICES_ENABLED:
         fhir_status = check_fhir_health()
         if fhir_status["available"]:
             print("✓ FHIR server is available")
@@ -274,10 +293,7 @@ async def startup_event() -> None:
                 f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
             )
             print("  Patient operations will fail until FHIR server is ready")
-    else:
-        print("- FHIR not configured (skipped)")
 
-    if settings.EHRBASE_API_PASSWORD is not None:
         ehrbase_status = check_ehrbase_health()
         if ehrbase_status["available"]:
             print("✓ EHRbase server is available")
@@ -289,7 +305,7 @@ async def startup_event() -> None:
                 "  Clinical letter operations will fail until EHRbase is ready"
             )
     else:
-        print("- EHRbase not configured (skipped)")
+        print("- Clinical services disabled (FHIR/EHRbase skipped)")
 
     print("=" * 60 + "\n")
 
@@ -372,11 +388,19 @@ def health_check() -> dict[str, Any]:
         },  # If we can respond, auth DB is working
     }
 
-    # Only check FHIR/EHRbase when configured
-    if settings.FHIR_DB_PASSWORD is not None:
+    # Only check FHIR/EHRbase when clinical services are enabled
+    if settings.CLINICAL_SERVICES_ENABLED:
         services["fhir"] = check_fhir_health()
-    if settings.EHRBASE_API_PASSWORD is not None:
         services["ehrbase"] = check_ehrbase_health()
+    else:
+        services["fhir"] = {
+            "available": False,
+            "error": "Not provisioned",
+        }
+        services["ehrbase"] = {
+            "available": False,
+            "error": "Not provisioned",
+        }
 
     all_healthy = all(s.get("available", False) for s in services.values())
 
@@ -1064,16 +1088,19 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
 
 
 @router.get("/auth/me")
-def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
+def me(
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
-    email, assigned roles, system permissions, and TOTP status. Used by frontend
-    to display user information and determine available features based on roles
-    and permissions.
+    email, assigned roles, system permissions, TOTP status, and enabled
+    features from the user's primary organisation.
 
     Args:
         u: Currently authenticated user from JWT.
+        db: Database session.
 
     Returns:
         dict: User profile with keys:
@@ -1083,7 +1110,28 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
             - roles: List of assigned role names
             - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
+            - enabled_features: Features enabled on user's primary org
     """
+    # Resolve features from user's primary org
+    enabled_features: list[str] = []
+    primary_org_row = db.execute(
+        select(organisation_staff_member.c.organisation_id).where(
+            organisation_staff_member.c.user_id == u.id,
+            organisation_staff_member.c.is_primary.is_(True),
+        )
+    ).first()
+    if primary_org_row:
+        features = (
+            db.execute(
+                select(OrganisationFeature.feature_key).where(
+                    OrganisationFeature.organisation_id == primary_org_row[0],
+                )
+            )
+            .scalars()
+            .all()
+        )
+        enabled_features = list(features)
+
     return {
         "id": u.id,
         "username": u.username,
@@ -1091,12 +1139,14 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
         "roles": [r.name for r in u.roles],
         "system_permissions": u.system_permissions,
         "totp_enabled": u.is_totp_enabled,
+        "enabled_features": enabled_features,
     }
 
 
 @router.get("/users")
 def list_users(
     patient_id: str | None = None,
+    permission_level: str | None = None,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -1107,9 +1157,12 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users (admin/superadmin only).
+    Use ``permission_level`` to filter by minimum permission level
+    (e.g. ``staff`` returns staff, admin, and superadmin users).
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
+        permission_level: Optional minimum permission level to filter by.
         u: Currently authenticated user.
         db: Database session.
 
@@ -1118,6 +1171,7 @@ def list_users(
 
     Raises:
         HTTPException: 403 if user lacks permissions.
+        HTTPException: 400 if permission_level is invalid.
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
@@ -1164,8 +1218,20 @@ def list_users(
             detail="Requires admin or superadmin permissions",
         )
 
+    if permission_level is not None:
+        if permission_level not in PERMISSION_LEVELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid permission_level: {permission_level}",
+            )
+        min_index = PERMISSION_LEVELS.index(permission_level)
+        allowed = PERMISSION_LEVELS[min_index:]
+        stmt = select(User).where(User.system_permissions.in_(allowed))
+    else:
+        stmt = select(User)
+
     try:
-        users = db.execute(select(User)).scalars().unique().all()
+        users = db.execute(stmt).scalars().unique().all()
         return {
             "users": [
                 {
@@ -1305,7 +1371,11 @@ def refresh(
 
 @router.post(
     "/patients/verify",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def create_patient_record(patient_id: str) -> dict[str, str]:
     """Create or Verify Patient in FHIR.
@@ -2450,6 +2520,12 @@ def add_staff_to_organization(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if not check_permission_level(user.system_permissions, PERMISSION_STAFF):
+        raise HTTPException(
+            status_code=400,
+            detail="User must have staff-level permissions or above",
+        )
+
     # Check if already a member
     existing = db.scalar(
         select(organisation_staff_member).where(
@@ -2463,11 +2539,19 @@ def add_staff_to_organization(
             detail="User is already a staff member of this organisation",
         )
 
+    # Auto-set as primary if user has no existing primary org
+    has_primary = db.scalar(
+        select(organisation_staff_member.c.organisation_id).where(
+            organisation_staff_member.c.user_id == body.user_id,
+            organisation_staff_member.c.is_primary.is_(True),
+        )
+    )
+
     db.execute(
         organisation_staff_member.insert().values(
             organisation_id=org_id,
             user_id=body.user_id,
-            is_primary=False,
+            is_primary=has_primary is None,
         )
     )
     db.commit()
@@ -2640,6 +2724,89 @@ def remove_patient_from_organization(
     )
     db.commit()
     return {"status": "removed"}
+
+
+# ==========================================================================
+# ORGANISATION FEATURE ENDPOINTS
+# ==========================================================================
+
+
+@router.get("/organizations/{org_id}/features")
+def list_org_features(
+    org_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, list[dict[str, Any]]]:
+    """List enabled features for an organisation.
+
+    Admin/superadmin only.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    return {
+        "features": [
+            FeatureOut(
+                feature_key=f.feature_key,
+                enabled_at=f.enabled_at,
+                enabled_by=f.enabled_by,
+            ).model_dump()
+            for f in org.features
+        ]
+    }
+
+
+@router.put(
+    "/organizations/{org_id}/features/{feature_key}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def toggle_org_feature(
+    org_id: int,
+    feature_key: str,
+    body: FeatureToggleIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Enable or disable a feature on an organisation.
+
+    Admin/superadmin only.  When ``enabled=true`` a row is created;
+    when ``enabled=false`` the row is deleted.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    existing = db.scalar(
+        select(OrganisationFeature).where(
+            OrganisationFeature.organisation_id == org_id,
+            OrganisationFeature.feature_key == feature_key,
+        )
+    )
+
+    if body.enabled:
+        if existing:
+            return {"status": "already_enabled"}
+        feature = OrganisationFeature(
+            organisation_id=org_id,
+            feature_key=feature_key,
+            enabled_by=u.id,
+        )
+        db.add(feature)
+        db.commit()
+        return {"status": "enabled"}
+    else:
+        if not existing:
+            return {"status": "already_disabled"}
+        db.delete(existing)
+        db.commit()
+        return {"status": "disabled"}
 
 
 @router.patch(
@@ -3360,4 +3527,24 @@ def mark_read_endpoint(
     return {"ok": True}
 
 
+from app.features.teaching.router import teaching_router  # noqa: E402
+
+router.include_router(teaching_router)
 app.include_router(router)
+
+# --- Conditional static file serving for local dev ---
+if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
+    from pathlib import Path
+
+    from starlette.staticfiles import StaticFiles
+
+    _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
+    _static_root = (
+        _qb_path.parent
+    )  # Serve from parent so /questions/ in URLs resolves
+    if _static_root.is_dir():
+        app.mount(
+            "/api/teaching/images",
+            StaticFiles(directory=str(_static_root)),
+            name="teaching-images",
+        )

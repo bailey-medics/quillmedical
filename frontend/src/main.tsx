@@ -48,6 +48,7 @@ import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisati
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
+import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
@@ -71,7 +72,16 @@ import { AuthProvider } from "./auth/AuthContext";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
+import { RequireFeature } from "./auth/RequireFeature";
 import LoginPage from "./pages/LoginPage";
+
+// Teaching pages
+import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
+import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
+import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
+import ManageItems from "./features/teaching/pages/ManageItems";
+import AllResults from "./features/teaching/pages/AllResults";
+import SyncStatus from "./features/teaching/pages/SyncStatus";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -319,6 +329,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "/admin/organisations/:id/features",
+        element: (
+          <RequirePermission level="admin">
+            <OrgFeaturesPage />
+          </RequirePermission>
+        ),
+      },
+      {
         path: "/admin/permissions",
         element: (
           <RequirePermission level="admin">
@@ -332,6 +350,56 @@ const router = createBrowserRouter([
       },
       { path: "/settings/totp", element: <TotpSetup /> },
       { path: "/about", element: <About /> },
+
+      // Teaching routes — gated by "teaching" feature flag
+      {
+        path: "/teaching",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentDashboard />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/assessment/:id",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentAttempt />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/assessment/:id/result",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentResultPage />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/manage",
+        element: (
+          <RequireFeature feature="teaching">
+            <ManageItems />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/results",
+        element: (
+          <RequireFeature feature="teaching">
+            <AllResults />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/sync",
+        element: (
+          <RequireFeature feature="teaching">
+            <SyncStatus />
+          </RequireFeature>
+        ),
+      },
     ],
   },
 

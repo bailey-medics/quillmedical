@@ -1,0 +1,81 @@
+/**
+ * AssessmentTimer Component
+ *
+ * Countdown timer for assessments. Shows remaining time from the
+ * config-defined time_limit_minutes. Visual warning at 5 minutes.
+ */
+
+import { Badge, Group, Text } from "@mantine/core";
+import { useEffect, useState } from "react";
+import Icon from "@/components/icons";
+import { IconClock } from "@tabler/icons-react";
+
+interface AssessmentTimerProps {
+  /** Total time limit in minutes */
+  timeLimitMinutes: number;
+  /** When the assessment started (ISO string) */
+  startedAt: string;
+  /** Called when time expires */
+  onExpire: () => void;
+}
+
+function formatTime(totalSeconds: number): string {
+  if (totalSeconds <= 0) return "00:00";
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
+export function AssessmentTimer({
+  timeLimitMinutes,
+  startedAt,
+  onExpire,
+}: AssessmentTimerProps) {
+  const [remainingSeconds, setRemainingSeconds] = useState(() => {
+    const elapsed = Math.floor(
+      (Date.now() - new Date(startedAt).getTime()) / 1000,
+    );
+    return Math.max(0, timeLimitMinutes * 60 - elapsed);
+  });
+
+  useEffect(() => {
+    if (remainingSeconds <= 0) {
+      onExpire();
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          clearInterval(interval);
+          onExpire();
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [remainingSeconds, onExpire]);
+
+  const isWarning = remainingSeconds > 0 && remainingSeconds <= 300;
+  const isExpired = remainingSeconds <= 0;
+
+  const colour = isExpired ? "red" : isWarning ? "orange" : "blue";
+
+  return (
+    <Badge
+      size="lg"
+      variant="light"
+      color={colour}
+      leftSection={<Icon icon={<IconClock />} size="sm" />}
+    >
+      <Group gap={4}>
+        <Text size="sm" fw={600}>
+          {isExpired ? "Time up" : formatTime(remainingSeconds)}
+        </Text>
+      </Group>
+    </Badge>
+  );
+}

@@ -66,15 +66,13 @@ The interface is designed around user workflows, not technical systems. Patients
 
 - Works on desktop, tablet, and mobile devices
 - Follows accessibility standards
-- Progressive Web App (PWA) - can be installed like a native app
-- Works offline for viewing previously loaded content
+- Progressive Web App (PWA) — can be installed like a native app
 
 ### Progressive Enhancement
 
-The application adapts to the user's device capabilities
+The application adapts to the user's device capabilities:
 
 - Push notifications on supported devices
-- Offline access when network is unavailable
 - Graceful degradation on older browsers
 
 ## User Experience
@@ -96,11 +94,10 @@ The application adapts to the user's device capabilities
 - Clear visual hierarchy
 - Purposeful use of color and spacing
 
-### Real-Time Updates
+### Updates
 
-- New messages appear immediately
-- Status changes reflect instantly
-- No need to refresh the page manually
+- Push notifications alert users to new messages
+- Page data refreshes on navigation
 
 ## Technical Capabilities (Non-Technical Summary)
 

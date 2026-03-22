@@ -175,6 +175,40 @@ graph TD
 - Slack notification on production deploy success
 - Slack notification on build or deployment failure
 
+### Terraform workflow
+
+**File:** [`.github/workflows/terraform.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/terraform.yml)
+
+**Triggers:**
+
+- Pull requests to `main` or `clinical-live` (changes to `infra/`)
+- Push to `main` or `clinical-live` (changes to `infra/`)
+
+**Jobs:**
+
+1. **Plan** (on PRs) — runs `terraform plan` for staging, teaching, and production
+2. **Apply staging + teaching** (on push to `main`) — runs `terraform apply` for both environments
+3. **Apply production** (on push to `clinical-live`) — runs `terraform apply` for production
+
+Each job authenticates via WIF with the environment-specific service account.
+
+### Docker build targets
+
+The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is the **last stage**, which means building without an explicit `--target` produces the admin CLI image instead of the web server.
+
+All deploy workflows **must** specify `target: prod` in the Docker build step:
+
+```yaml
+# In the build matrix
+- service: backend
+  target: prod
+
+# In the build-push-action step
+target: ${{ matrix.target }}
+```
+
+If this is omitted, the backend Cloud Run service will receive the admin CLI image, which immediately exits on startup and fails health checks.
+
 ## Running checks locally
 
 You can run the same CI checks locally before pushing to GitHub using two complementary approaches:

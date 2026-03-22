@@ -67,6 +67,12 @@ nav:
       - GCP Launch-Ready: plans/gcp-launch-ready.md
       - Organisations, Messaging & External Access: plans/orgs-and-messaging-and-external-access.md
       - Teaching Module: plans/teaching-project.md
+      - Branch Protection Rules: plans/branching-rules.md
+      - Public Pages Separation: plans/public-pages.md
+      - Email Subscriptions: plans/subscriptions.md
+      - To-Do List: plans/todo.md
+  - Learnings:
+      - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
   - LLM Prompts:
       - Code Documentation: llm/prompts/code-documentation.prompt.md
       - Commit & Push: llm/prompts/commit-push.prompt.md

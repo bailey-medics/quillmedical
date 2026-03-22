@@ -15,10 +15,24 @@ frontend/
 │   ├── scripts/
 │   │   └── generate-pages.cjs  ← Generates HTML from TSX
 │   └── src/pages/
-│       ├── index.tsx       ← Home page
-│       ├── features.tsx    ← Features page
-│       ├── not-found.tsx   ← 404 page
-│       └── storybook-test.tsx  ← Component demo
+│       ├── about.tsx
+│       ├── careers.tsx
+│       ├── clinical-messaging.tsx
+│       ├── clinical-teaching.tsx
+│       ├── company-information.tsx
+│       ├── competency-access.tsx
+│       ├── contact.tsx
+│       ├── cookie-policy.tsx
+│       ├── external-referrals.tsx
+│       ├── features.tsx
+│       ├── index.tsx           ← Home page
+│       ├── modular-deployment.tsx
+│       ├── not-found.tsx       ← 404 page
+│       ├── pricing.tsx
+│       ├── privacy-policy.tsx
+│       ├── storybook-test.tsx  ← Component demo
+│       ├── structured-records.tsx
+│       └── terms-of-service.tsx
 ├── src/
 │   ├── theme.ts            ← Shared Mantine theme
 │   └── components/
@@ -115,17 +129,15 @@ You must also add the new page to `rollupOptions.input` in `vite.config.ts` for 
 
 All public pages use `PublicLayout` from `@/components/layouts/PublicLayout.tsx`. It provides:
 
-- **Header** — Quill logo (links to `/`) and "Sign in" link (links to `/login`)
+- **Header** — `PublicTopRibbon` navigation with logo and links
 - **Main content** area (flex-grows to fill viewport)
-- **Footer** — Copyright notice
+- **Footer** — `PublicFooter` component
 
 Props:
 
-| Prop         | Type        | Default                  | Description      |
-| ------------ | ----------- | ------------------------ | ---------------- |
-| `children`   | `ReactNode` | required                 | Page content     |
-| `signInUrl`  | `string`    | `"/login"`               | Sign-in link URL |
-| `footerText` | `string`    | `© {year} Quill Medical` | Footer text      |
+| Prop       | Type        | Default  | Description  |
+| ---------- | ----------- | -------- | ------------ |
+| `children` | `ReactNode` | required | Page content |
 
 ## Local development
 
@@ -143,7 +155,7 @@ Navigation between pages uses full page loads (anchor tags), not client-side rou
 
 ### Dev-mode 404 handling
 
-The Vite config includes a `vite:dev-404` plugin that intercepts requests for non-existent pages and serves `not-found.html` with a 404 status code, matching production behaviour.
+The Vite config includes a `vite:mpa-clean-urls` plugin that provides clean URL rewriting (e.g. `/about` → `/about.html`) and serves `not-found.html` with a 404 status code for non-existent pages, matching production behaviour.
 
 ## Deployment
 

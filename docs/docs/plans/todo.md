@@ -27,3 +27,61 @@
       `auth-db-password`, `AUTH_DB_*` env vars) 4. Backend config (`AUTH_DB_HOST`, `AUTH_DB_NAME`, `AUTH_DB_USER`,
       `AUTH_DB_PASSWORD` in `app/config.py`) 5. Backend DB module (`app/db/auth_db.py`, `AuthSessionLocal`,
       `AuthBase`, `get_auth_db`) 6. All scripts and tests that reference the auth DB 7. Docker Compose service name and environment variables 8. CI/CD workflows and Justfile commands 9. Cloud Run Job admin tooling (env vars set in `build-admin`)
+
+## FHIR/EHRbase VM (COS)
+
+_See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for full context._
+
+- [ ] Redesign `infra/modules/compute-fhir/startup.sh` for COS — Docker
+      Compose binary cannot be installed or executed anywhere on
+      Container-Optimised OS (read-only root, noexec on writable paths).
+      Options: use direct `docker run` commands, run Compose via a container
+      image, or switch to a standard VM image.
+
+- [ ] Automate `uuid-ossp` extension creation for the EHRbase Cloud SQL
+      database. EHRbase Flyway migrations require `uuid_generate_v4()`, but
+      Cloud SQL does not install the extension by default. Currently created
+      manually — **must be re-run if the Cloud SQL instance or `ehrbase`
+      database is ever destroyed and recreated**. Automate via the VM startup
+      script (run `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"` using a
+      disposable postgres container before starting EHRbase).
+
+- [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to the
+      Terraform compute-fhir module so Flyway can run schema migrations.
+
+- [ ] Rotate temporary postgres admin password (`temp-admin-pw-2026`) on the
+      `quill-ehrbase-staging` Cloud SQL instance.
+
+## Real-time auth state refresh
+
+- [ ] Implement automatic auth state refresh when users return to Quill, so
+      that nav links and permissions update without a manual page reload.
+      **Scenario:** IT adds a doctor to a hospital's organisation — the
+      doctor's nav should update when they switch back to Quill, not require
+      a full refresh.
+
+      **Options (in order of complexity):**
+
+      1. **Visibility listener** — add a `visibilitychange` listener in
+         `AuthContext.tsx` that calls `reload()` when the page becomes visible
+         (with a debounce, e.g. max once per 30s). Zero backend changes. Covers
+         tab switching, alt-tabbing back from other apps, unminimising, and
+         returning from lock screen. Simple and effective for most cases.
+
+      2. **Periodic polling** — add a `setInterval` in `AuthContext` to
+         re-fetch `/api/auth/me` every 60s. Wasteful since 99% of polls return
+         identical data, but simpler than SSE.
+
+      3. **Server-Sent Events (SSE)** — backend pushes events when org
+         membership or features change, frontend subscribes in `AuthContext`.
+         True real-time but requires new backend infrastructure, connection
+         management, and Caddy config for persistent connections. Worth
+         considering if real-time updates are needed elsewhere (e.g. messaging,
+         appointments, clinical alerts).
+
+      Option 1 is recommended as a first step; option 3 may be worth investing
+      in later as the app grows.
+
+## MISC
+
+- [ ] Update all libraries to most recent

@@ -36,12 +36,24 @@ logger = logging.getLogger(__name__)
 AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
 
 
+def _require_clinical_services() -> None:
+    """Raise if clinical services are disabled."""
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        raise FhirCommunicationError(
+            "Clinical services are disabled in this deployment"
+        )
+
+
 def get_fhir_client() -> client.FHIRClient:
     """Get configured FHIR client instance.
 
     Returns:
         FHIRClient: Configured client connected to HAPI FHIR server.
+
+    Raises:
+        FhirCommunicationError: If clinical services are disabled.
     """
+    _require_clinical_services()
     fhir_settings = {
         "app_id": "quill_medical",
         "api_base": settings.FHIR_SERVER_URL,

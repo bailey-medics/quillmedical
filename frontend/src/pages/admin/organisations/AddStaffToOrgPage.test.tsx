@@ -10,6 +10,10 @@ import AddStaffToOrgPage from "./AddStaffToOrgPage";
 import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
+const mockReload = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({ reload: mockReload }),
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -23,6 +27,7 @@ describe("AddStaffToOrgPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
+    mockReload.mockClear();
   });
 
   it("renders page title", async () => {
@@ -52,7 +57,9 @@ describe("AddStaffToOrgPage", () => {
     });
 
     await waitFor(() => {
-      expect(apiLib.api.get).toHaveBeenCalledWith("/users");
+      expect(apiLib.api.get).toHaveBeenCalledWith(
+        "/users?permission_level=staff",
+      );
     });
   });
 
@@ -170,6 +177,8 @@ describe("AddStaffToOrgPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Staff member added")).toBeInTheDocument();
     });
+
+    expect(mockReload).toHaveBeenCalledOnce();
   });
 
   it("shows error when user loading fails", async () => {

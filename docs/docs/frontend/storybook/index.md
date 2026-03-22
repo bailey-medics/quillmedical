@@ -1,6 +1,6 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 51 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 65 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
@@ -18,18 +18,27 @@ Storybook is configured with:
 - **Framework**: React + Vite integration (`@storybook/react-vite`)
 - **Version**: 10.2.10
 - **Dev Server**: Port 6006
-- **Build Output**: `docs/code/storybook/` (deployed with MkDocs documentation)
+- **Build Output**: `docs/docs/code/storybook/` (deployed with MkDocs documentation)
 
 ### Decorators
 
-All stories are wrapped with essential providers:
+All stories are wrapped with essential providers via a `createMemoryRouter`:
 
 ```tsx
-<AuthProvider>
-  <MantineProvider defaultColorScheme="light">
-    <MemoryRouter>{Story()}</MemoryRouter>
-  </MantineProvider>
-</AuthProvider>
+<RouterProvider router={createMemoryRouter([
+  {
+    path: "*",
+    element: (
+      <AuthProvider>
+        <MantineProvider theme={theme}>
+          <AuthWrapper>
+            {Story()}
+          </AuthWrapper>
+        </MantineProvider>
+      </AuthProvider>
+    ),
+  },
+])} />
 ```
 
 This ensures components have access to:
@@ -44,7 +53,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **51 component story files** across various UI categories:
+The project includes **65 component story files** across various UI categories:
 
 ### Core Components
 

@@ -10,7 +10,11 @@
 import { render } from "@testing-library/react";
 import type { RenderOptions } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
-import { BrowserRouter, MemoryRouter, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter,
+  createMemoryRouter,
+  RouterProvider,
+} from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
 import { theme } from "@/theme";
 
@@ -88,18 +92,20 @@ export function renderWithRouter(
 ) {
   const { initialRoute, routePath, ...renderOptions } = options ?? {};
 
-  // If a routePath is provided, use MemoryRouter with Routes to support params
+  // If a routePath is provided, use a data router to support useBlocker/useParams
   if (routePath) {
+    const router = createMemoryRouter([{ path: routePath, element: ui }], {
+      initialEntries: [initialRoute || "/"],
+    });
     const Wrapper = ({ children }: { children: ReactNode }) => (
-      <MemoryRouter initialEntries={[initialRoute || "/"]}>
-        <MantineProvider theme={theme} env="test">
-          <Routes>
-            <Route path={routePath} element={children} />
-          </Routes>
-        </MantineProvider>
-      </MemoryRouter>
+      <MantineProvider theme={theme} env="test">
+        {children}
+      </MantineProvider>
     );
-    return render(ui, { wrapper: Wrapper, ...renderOptions });
+    return render(<RouterProvider router={router} />, {
+      wrapper: Wrapper,
+      ...renderOptions,
+    });
   }
 
   // Otherwise use BrowserRouter for simple routes

@@ -138,6 +138,56 @@ port-8000:
     lsof -i :8000
 
 
+alias qbc := question-bank-clone
+# Clone the question bank repo into question-bank/
+question-bank-clone:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-clone"
+    if [ -d "question-bank/.git" ]; then
+        echo "question-bank/ already exists — use 'just question-bank-pull' to update"
+        exit 1
+    fi
+    git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
+    echo "Cloned into question-bank/"
+
+alias qbpu := question-bank-pull
+# Pull the latest question bank content
+question-bank-pull:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-pull"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank pull
+
+alias qbps := question-bank-push
+# Push question bank changes
+question-bank-push:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-push"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank push
+
+alias sdt := seed-teaching
+# Seed teaching data (org, users, feature, sync) for a fresh DB
+seed-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "seed-teaching"
+    ./dev-scripts/seed-teaching-data.sh
+
+
+alias syt := sync-teaching
+# Sync all local question banks into the DB (no restart needed)
+sync-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "sync-teaching"
+    ./dev-scripts/sync-teaching-data.sh
+
+
 alias m := migrate
 # Run the database migrations
 migrate message:
@@ -262,13 +312,13 @@ start-dev build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.dev.yml down
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        docker compose -f compose.dev.yml up --build; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull always; \
     else \
-        docker compose -f compose.dev.yml up; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up; \
     fi
 
 
@@ -317,9 +367,29 @@ start-prod build="":
     #!/usr/bin/env bash
     {{initialise}} "start-prod"
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.prod.yml up --build; \
+        docker compose -f compose.yml -f compose.prod.yml up --build --pull always; \
     else \
         docker compose -f compose.yml -f compose.prod.yml up; \
+    fi
+
+alias st := start-teaching
+# Start dev without clinical services (FHIR/EHRbase) for teaching work
+start-teaching build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-teaching"
+
+    just _start-docker-daemon
+    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+    echo "Clinical services (FHIR/EHRbase) disabled"
+
+    if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.dev.yml down
+        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
+        cd frontend && yarn install && cd ..
+        cd backend && poetry lock && poetry install && cd ..
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull always; \
+    else \
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up; \
     fi
 
 alias sc := stop
@@ -327,7 +397,7 @@ alias sc := stop
 stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
-    docker compose -f compose.dev.yml down
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
     docker compose -f compose.prod.yml down
 
 

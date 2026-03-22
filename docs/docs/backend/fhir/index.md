@@ -66,7 +66,10 @@ from fhirclient import client
 from fhirclient.models.patient import Patient
 
 # Connect to FHIR server
-fhir = client.FHIRClient(settings={'api_base': FHIR_SERVER_URL})
+fhir = client.FHIRClient(settings={
+    'app_id': 'quill_medical',
+    'api_base': FHIR_SERVER_URL,
+})
 
 # Create/read/update patient resources
 patient = Patient.read(patient_id, fhir.server)
@@ -133,7 +136,7 @@ def check_fhir_health() -> dict[str, bool | int | str]:
         return {"available": False, "error": str(e)}
 ```
 
-**Implementation**: [backend/app/main.py](../../backend/app/main.py) lines 110-139
+**Implementation**: [backend/app/main.py](../../backend/app/main.py) (see `check_fhir_health` function)
 
 ### Frontend Integration
 
@@ -159,7 +162,7 @@ Frontend implements health polling during startup:
 
 ```http
 GET /api/patients/{patient_id}/demographics
-Authorization: Bearer {token}
+Cookie: access_token_cookie=<jwt>
 ```
 
 ### Update Patient Demographics

@@ -19,3 +19,6 @@ prompt-output.md
 
 site/
 .claude/
+
+# Question bank (private repo cloned locally)
+question-bank/

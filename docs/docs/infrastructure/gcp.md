@@ -38,11 +38,13 @@ Estimated cost: **£72–107/month** across staging and teaching (production hib
                         │end  │ │end  │ │   │   │end  │  │end  │
                         └──┬──┘ └─────┘ └───┘   └──┬──┘  └─────┘
                            │                       │
-                        ┌──▼────────┐           ┌──▼────────┐
-                        │Cloud SQL  │           │Cloud SQL  │
-                        │Auth+FHIR  │           │Auth only  │
-                        │+EHRbase   │           └───────────┘
-                        └──┬────────┘
+                     ┌─────┼─────────┐          ┌──▼────────┐
+                     │     │         │          │Cloud SQL  │
+                  ┌──▼──┐┌─▼──┐┌────▼┐         │Auth only  │
+                  │Auth ││FHIR││EHR- │         └───────────┘
+                  │DB   ││DB  ││base │
+                  └─────┘└────┘└─────┘
+                  3× Cloud SQL instances
                            │
                         ┌──▼────────┐
                         │HAPI FHIR  │
@@ -146,9 +148,11 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
+| `cloud-run-job` | Admin CLI jobs (create-user, update-permissions, etc.)                   |
 | `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs            |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |
+| `dns`           | Cloud DNS zone management                                               |
 | `cloud-storage` | Image bucket (teaching only)                                            |
 
 Environment-specific settings live in `infra/environments/{env}/terraform.tfvars`.
@@ -163,8 +167,12 @@ europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
 
 Container images are pushed here by CI (not GHCR — Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
 
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:latest`
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:latest`
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:main` — backend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:main` — frontend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` — admin CLI (built from `admin` Dockerfile stage, via `just build-admin`)
+
+!!! warning "Docker build targets"
+The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is last, so building without `--target` produces the admin CLI image, not the web server. CI deploy workflows must always specify `target: prod`.
 
 ### Organisation policy override (done)
 
@@ -294,14 +302,15 @@ feature/*  ──►  main  ──►  release/*  ──►  clinical-live
 
 ### Staging deployment (push to main)
 
-Workflow: `.github/workflows/deploy-staging.yml`
+Workflow: `.github/workflows/deploy-staging-teaching.yml`
 
 1. Detect what changed (backend, frontend, shared)
 2. Build and push container images to Artifact Registry, tagged `main-{sha}`
 3. Deploy to staging and teaching Cloud Run
-4. Run Alembic database migrations
-5. Smoke test: `GET /api/health` (5 retries, 10s intervals)
-6. Slack notification
+4. Smoke test: `GET /api/health` (5 retries, 10s intervals)
+5. Slack notification
+
+Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
 
 ### Production deployment (push to clinical-live)
 
@@ -310,9 +319,10 @@ Workflow: `.github/workflows/deploy-production.yml`
 1. Detect what changed
 2. Build and push container images to Artifact Registry, tagged `clinical-live-{sha}` and `latest`
 3. Deploy to production Cloud Run
-4. Run Alembic database migrations
-5. Smoke test: `GET /api/health`
-6. Slack notification
+4. Smoke test: `GET /api/health`
+5. Slack notification
+
+Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
 
 Production deploys are never cancelled mid-flight.
 
@@ -358,6 +368,22 @@ enable_ha               = false
 db_tier                 = "db-f1-micro"
 cloud_run_max_instances = 5
 ```
+
+## Environment variable naming
+
+Terraform injects environment variables into Cloud Run services via the `env_vars` and `secret_env_vars` maps in the Cloud Run module. The variable names must **exactly match** the Pydantic Settings field names in `backend/app/config.py`.
+
+Key mappings:
+
+| Terraform env var | Config field      | Default (Docker Compose)      |
+| ----------------- | ----------------- | ----------------------------- |
+| `AUTH_DB_HOST`    | `AUTH_DB_HOST`    | `postgres-auth`               |
+| `AUTH_DB_NAME`    | `AUTH_DB_NAME`    | `quill_auth`                  |
+| `AUTH_DB_USER`    | `AUTH_DB_USER`    | `auth_user`                   |
+| `FHIR_SERVER_URL` | `FHIR_SERVER_URL` | `http://fhir:8080/fhir`       |
+| `EHRBASE_URL`     | `EHRBASE_URL`     | `http://ehrbase:8080/ehrbase` |
+
+If names don't match, the backend silently falls back to the Docker Compose defaults (which are unresolvable hostnames in Cloud Run), causing FHIR/EHRbase health checks to fail.
 
 ## Security
 
@@ -406,15 +432,15 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 3. Deploy to staging and teaching Cloud Run
 4. Smoke test the health endpoint
 
-### Create Alembic migration Cloud Run job
+### ~~Create Alembic migration Cloud Run job~~ (solved)
 
-The deploy workflows originally included an Alembic migration step (`gcloud run jobs execute migrate-auth-db`), but this Cloud Run job doesn't exist yet. It was removed from the workflows temporarily.
+Database migrations are handled by the backend's `entrypoint.sh`, which runs `alembic upgrade head` before starting the uvicorn server. This runs automatically on every Cloud Run revision deployment — no separate migration job is needed.
 
-To restore it:
+### Admin Cloud Run Job (done)
 
-1. Add a `google_cloud_run_v2_job` resource in Terraform that runs `alembic upgrade head` against the auth DB
-2. Grant the job's service account access to the Cloud SQL instance and the `database-url` secret
-3. Re-add the migration steps to `deploy-staging.yml` (staging + teaching) and `deploy-production.yml`
+Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles). See the [admin tasks documentation](admin.md) for usage.
+
+The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool — it does **not** run an HTTP server.
 
 ### Production go-live
 
@@ -426,9 +452,6 @@ To restore it:
 
 ### Future improvements
 
-- Cloud DNS managed zone via Terraform (currently created manually)
-- DNS A records via Terraform (currently created manually via `gcloud`)
-- **Public landing site at `quill-medical.com`** — served from GCS bucket behind the staging LB (done)
 - Slack webhook for deployment notifications
 - CPU/memory/error-rate monitoring (beyond uptime checks)
 - Production database tier upgrade from `db-f1-micro`

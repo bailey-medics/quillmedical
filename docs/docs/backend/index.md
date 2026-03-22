@@ -168,7 +168,7 @@ All functions are organised under the `/api` prefix:
 ### CBAC (Competency-Based Access Control)
 
 - **View competencies** (`GET /api/cbac/my-competencies`): Get current user’s resolved competencies
-- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user competencies (admin only)
+- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user's additional/removed competencies (note: admin gate not yet enforced — see code TODO)
 
 ### External Access
 
@@ -179,8 +179,8 @@ All functions are organised under the `/api` prefix:
 
 ### Push Notifications
 
-- Register device for notifications
-- Send notifications to users
+- **Subscribe** (`POST /api/push/subscribe`): Register a push subscription for the current browser
+- **Send test** (`POST /send-test`): Send a test notification to all subscribers (development only)
 
 ## What Data is Stored Where
 
