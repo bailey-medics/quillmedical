@@ -81,6 +81,7 @@ import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage
 import AssessmentHistoryPage from "./features/teaching/pages/AssessmentHistoryPage";
 import ManageItems from "./features/teaching/pages/ManageItems";
 import AllResults from "./features/teaching/pages/AllResults";
+import SyncStatus from "./features/teaching/pages/SyncStatus";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -388,6 +389,14 @@ const router = createBrowserRouter([
         element: (
           <RequireFeature feature="teaching">
             <AllResults />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/sync",
+        element: (
+          <RequireFeature feature="teaching">
+            <SyncStatus />
           </RequireFeature>
         ),
       },

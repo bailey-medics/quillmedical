@@ -51,6 +51,6 @@ describe("AssessmentIntro", () => {
       />,
     );
 
-    expect(screen.getByText("Begin")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Begin" })).toBeDisabled();
   });
 });

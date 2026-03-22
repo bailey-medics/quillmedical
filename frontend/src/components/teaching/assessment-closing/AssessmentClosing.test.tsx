@@ -55,6 +55,6 @@ describe("AssessmentClosing", () => {
       />,
     );
 
-    expect(screen.getByText("View results")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "View results" })).toBeDisabled();
   });
 });

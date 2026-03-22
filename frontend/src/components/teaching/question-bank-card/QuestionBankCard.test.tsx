@@ -62,6 +62,8 @@ describe("QuestionBankCard", () => {
       />,
     );
 
-    expect(screen.getByText("Start assessment")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Start assessment" }),
+    ).toBeDisabled();
   });
 });

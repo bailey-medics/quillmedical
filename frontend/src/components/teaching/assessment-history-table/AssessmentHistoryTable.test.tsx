@@ -48,7 +48,9 @@ describe("AssessmentHistoryTable", () => {
   it("renders question bank IDs", () => {
     renderWithMantine(<AssessmentHistoryTable assessments={assessments} />);
 
-    expect(screen.getByText("polyp-diagnosis")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("polyp-diagnosis").length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("meds-safety")).toBeInTheDocument();
   });
 
@@ -78,7 +80,7 @@ describe("AssessmentHistoryTable", () => {
     );
 
     // Click the first row data cell
-    await user.click(screen.getByText("polyp-diagnosis"));
+    await user.click(screen.getAllByText("polyp-diagnosis")[0]);
     expect(handleSelect).toHaveBeenCalledWith(1);
   });
 });
