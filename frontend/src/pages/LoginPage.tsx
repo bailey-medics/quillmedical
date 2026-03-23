@@ -79,16 +79,21 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(email.trim(), password, requireTotp ? totp : undefined);
-      // If the user was trying to reach the app home (router path "/") or
-      // there is no 'from' path, perform a full navigation to Vite's
-      // BASE_URL. This prevents the router from producing URLs without
-      // the trailing slash. For other paths (e.g. '/about') we
-      // navigate internally so the user returns to the exact protected page.
-      if (!redirectFrom || redirectFrom === "/") {
-        window.location.assign(base);
-      } else {
+      const user = await login(
+        email.trim(),
+        password,
+        requireTotp ? totp : undefined,
+      );
+      // If the user was trying to reach a specific protected page,
+      // send them there. Otherwise go to the default landing page:
+      // /teaching when clinical services are disabled (teaching env),
+      // or the app home for clinical environments.
+      if (redirectFrom && redirectFrom !== "/") {
         navigate(redirectFrom, { replace: true });
+      } else if (!user.clinical_services_enabled) {
+        navigate("/teaching", { replace: true });
+      } else {
+        window.location.assign(base);
       }
     } catch (err: unknown) {
       function extractMessage(e: unknown): string | null {
