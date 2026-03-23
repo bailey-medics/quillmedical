@@ -47,6 +47,7 @@ def _parse_uniform_item(
     item_dir: Path,
     question_data: dict[str, Any],
     config: dict[str, Any],
+    gcs_images: set[str] | None = None,
 ) -> dict[str, Any]:
     """Parse a uniform-type item directory into DB field values."""
     images_per_item = config.get("images_per_item", 0)
@@ -54,10 +55,16 @@ def _parse_uniform_item(
     for i in range(1, images_per_item + 1):
         # Find the image file (any allowed extension)
         for ext in (".png", ".jpg", ".jpeg", ".webp"):
-            candidate = item_dir / f"image_{i}{ext}"
-            if candidate.is_file():
-                images.append({"key": f"image_{i}{ext}"})
-                break
+            filename = f"image_{i}{ext}"
+            if gcs_images is not None:
+                if filename in gcs_images:
+                    images.append({"key": filename})
+                    break
+            else:
+                candidate = item_dir / filename
+                if candidate.is_file():
+                    images.append({"key": filename})
+                    break
 
     return {
         "images": images,
@@ -224,7 +231,12 @@ def sync_question_bank(
             question_data: dict[str, Any] = yaml.safe_load(f) or {}
 
         if bank_type == "uniform":
-            fields = _parse_uniform_item(item_dir, question_data, config)
+            gcs_images = (
+                image_inventory.get(item_dir.name) if image_inventory else None
+            )
+            fields = _parse_uniform_item(
+                item_dir, question_data, config, gcs_images
+            )
         else:
             fields = _parse_variable_item(item_dir, question_data)
 

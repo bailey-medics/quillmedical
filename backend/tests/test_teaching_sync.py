@@ -242,3 +242,16 @@ class TestSyncQuestionBank:
         assert sync_record is not None
         assert sync_record.status == "success"
         assert sync_record.items_created == 2
+
+        # Verify images were populated from the inventory
+        items = (
+            db_session.execute(
+                select(QuestionBankItem).where(
+                    QuestionBankItem.question_bank_id == "test-bank"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for item in items:
+            assert item.images == [{"key": "image_1.png"}]
