@@ -102,6 +102,47 @@ resource "github_repository_ruleset" "protected_branches" {
       required_review_thread_resolution = false
     }
 
+    # Require CI status checks to pass before merging
+    required_status_checks {
+      strict_required_status_checks_policy = true
+
+      # Python (matrix: styling, unit)
+      required_check {
+        context = "Python styling"
+      }
+      required_check {
+        context = "Python unit"
+      }
+
+      # TypeScript (matrix: all tasks)
+      required_check {
+        context = "typescript_checks (eslint)"
+      }
+      required_check {
+        context = "typescript_checks (prettier)"
+      }
+      required_check {
+        context = "typescript_checks (stylelint)"
+      }
+      required_check {
+        context = "typescript_checks (typecheck:all)"
+      }
+      required_check {
+        context = "typescript_checks (unit-test:run)"
+      }
+      required_check {
+        context = "typescript_checks (storybook:build)"
+      }
+      required_check {
+        context = "typescript_checks (storybook:test:ci)"
+      }
+
+      # Security
+      required_check {
+        context = "Semgrep (frontend SAST)"
+      }
+    }
+
     # Block force pushes (rewriting history on protected branches)
     non_fast_forward = true
 
