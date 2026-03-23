@@ -758,3 +758,121 @@ class TestResolveBankPath:
         )
         result = _resolve_bank_path("my-bank")
         assert result == bank_dir
+
+
+# ------------------------------------------------------------------
+# _resolve_bank_path_or_gcs
+# ------------------------------------------------------------------
+
+
+class TestResolveBankPathOrGcs:
+    """Tests for the GCS-aware bank path resolver."""
+
+    def test_invalid_bank_id_raises_400(self):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path_or_gcs
+
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path_or_gcs("../evil")
+        assert exc.value.status_code == 400
+
+    def test_prefers_local_path(self, monkeypatch, tmp_path):
+        from app.features.teaching.router import _resolve_bank_path_or_gcs
+
+        bank_dir = tmp_path / "my-bank"
+        bank_dir.mkdir()
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            str(tmp_path),
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET",
+            "some-bucket",
+        )
+        result, is_temp = _resolve_bank_path_or_gcs("my-bank")
+        assert result == bank_dir
+        assert is_temp is False
+
+    def test_falls_back_to_gcs(self, monkeypatch, tmp_path):
+        from unittest.mock import patch
+
+        from app.features.teaching.router import _resolve_bank_path_or_gcs
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            None,
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET",
+            "test-bucket",
+        )
+
+        fake_dir = tmp_path / "downloaded" / "test-bank"
+        fake_dir.mkdir(parents=True)
+
+        with patch(
+            "app.features.teaching.router.download_bank_from_gcs",
+            return_value=fake_dir,
+        ):
+            result, is_temp = _resolve_bank_path_or_gcs("test-bank")
+            assert result == fake_dir
+            assert is_temp is True
+
+    def test_no_config_raises_400(self, monkeypatch):
+        import pytest
+        from fastapi import HTTPException
+
+        from app.features.teaching.router import _resolve_bank_path_or_gcs
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_QUESTION_BANK_PATH",
+            None,
+        )
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_GCS_BUCKET",
+            None,
+        )
+        with pytest.raises(HTTPException) as exc:
+            _resolve_bank_path_or_gcs("some-bank")
+        assert exc.value.status_code == 400
+
+
+# ------------------------------------------------------------------
+# Admin banks endpoint
+# ------------------------------------------------------------------
+
+
+class TestAdminBanks:
+    """Admin endpoints for teaching module management."""
+
+    def test_list_admin_banks_db_only(self, test_client, db_session):
+        """Lists banks from DB when no GCS configured."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        bank = data[0]
+        assert bank["bank_id"] == "test-bank"
+        assert bank["in_db"] is True
+        assert bank["title"] == "Test Bank"
+        assert bank["item_count"] == 3
+
+    def test_list_admin_banks_empty(self, test_client, db_session):
+        """Returns empty list when no banks exist."""
+        org = _make_teaching_org(db_session)
+        _make_educator(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json() == []

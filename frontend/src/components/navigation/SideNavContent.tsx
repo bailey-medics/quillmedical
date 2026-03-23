@@ -190,6 +190,15 @@ export default function SideNavContent({
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
       },
+      ...(hasTeaching
+        ? [
+            {
+              label: "Teaching",
+              href: "/admin/teaching",
+              icon: showIcons ? "teaching" : undefined,
+            },
+          ]
+        : []),
     ],
   };
 

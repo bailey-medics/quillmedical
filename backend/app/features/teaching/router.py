@@ -6,6 +6,7 @@ Educator routes additionally require ``manage_teaching_content`` competency.
 
 from __future__ import annotations
 
+import logging
 import random
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -27,6 +28,7 @@ from app.features.teaching.models import (
     TeachingOrgSettings,
 )
 from app.features.teaching.schemas import (
+    AdminBankOut,
     AnswerResultOut,
     AssessmentHistoryOut,
     AssessmentOut,
@@ -41,6 +43,7 @@ from app.features.teaching.schemas import (
     QuestionBankOut,
     StartAssessmentIn,
     SubmitAnswerIn,
+    SyncAllResultOut,
     SyncHistoryOut,
     SyncResultOut,
     TeachingOrgSettingsIn,
@@ -53,8 +56,14 @@ from app.features.teaching.scoring import (
     score_answer_uniform,
     score_answer_variable,
 )
-from app.features.teaching.storage import get_storage_backend
+from app.features.teaching.storage import (
+    download_bank_from_gcs,
+    get_storage_backend,
+    list_banks_in_gcs,
+)
 from app.models import User, organisation_staff_member
+
+logger = logging.getLogger(__name__)
 
 teaching_router = APIRouter(
     prefix="/teaching",
@@ -651,6 +660,41 @@ def _resolve_bank_path(bank_id: str) -> Path:
     return resolved
 
 
+def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
+    """Resolve bank to filesystem path or download from GCS.
+
+    Returns (path, is_temp) — caller must clean up when is_temp is True.
+    """
+    from app.config import settings
+
+    if not bank_id or "/" in bank_id or ".." in bank_id:
+        raise HTTPException(400, "Invalid bank_id")
+
+    # Try local path first
+    base = settings.TEACHING_QUESTION_BANK_PATH
+    if base:
+        resolved = Path(base) / bank_id
+        if resolved.is_dir():
+            return resolved, False
+
+    # Fall back to GCS
+    bucket = settings.TEACHING_GCS_BUCKET
+    if bucket:
+        try:
+            bank_dir = download_bank_from_gcs(bucket, bank_id)
+            return bank_dir, True
+        except FileNotFoundError:
+            raise HTTPException(
+                404, f"Question bank '{bank_id}' not found in GCS"
+            ) from None
+
+    raise HTTPException(
+        400,
+        "Neither TEACHING_QUESTION_BANK_PATH nor "
+        "TEACHING_GCS_BUCKET is configured",
+    )
+
+
 @teaching_router.post(
     "/items/validate",
     response_model=ValidationResultOut,
@@ -662,21 +706,28 @@ def validate_items(
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Dry-run validation of a question bank (no import)."""
+    import shutil
+
     from app.features.teaching.sync import sync_question_bank
 
     bank_id = body.get("bank_id", "")
     if not bank_id:
         raise HTTPException(400, "bank_id is required")
 
-    bank_path = _resolve_bank_path(bank_id)
-    org_id = _get_user_org_id(user, db)
-    result, _ = sync_question_bank(
-        bank_path,
-        org_id,
-        user.id,
-        db,
-        validate_only=True,
-    )
+    bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+    try:
+        org_id = _get_user_org_id(user, db)
+        result, _ = sync_question_bank(
+            bank_path,
+            org_id,
+            user.id,
+            db,
+            validate_only=True,
+        )
+    finally:
+        if is_temp:
+            shutil.rmtree(bank_path.parent, ignore_errors=True)
+
     return {
         "bank_id": result.bank_id,
         "version": result.version,
@@ -705,20 +756,26 @@ def sync_items(
     db: Session = _DEP_SESSION,
 ) -> QuestionBankSync:
     """Trigger sync from filesystem/GCS to database."""
+    import shutil
+
     from app.features.teaching.sync import sync_question_bank
 
     bank_id = body.get("bank_id", "")
     if not bank_id:
         raise HTTPException(400, "bank_id is required")
 
-    bank_path = _resolve_bank_path(bank_id)
-    org_id = _get_user_org_id(user, db)
-    validation, sync_record = sync_question_bank(
-        bank_path,
-        org_id,
-        user.id,
-        db,
-    )
+    bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+    try:
+        org_id = _get_user_org_id(user, db)
+        validation, sync_record = sync_question_bank(
+            bank_path,
+            org_id,
+            user.id,
+            db,
+        )
+    finally:
+        if is_temp:
+            shutil.rmtree(bank_path.parent, ignore_errors=True)
 
     if sync_record is None:
         raise HTTPException(500, "Sync failed unexpectedly")
@@ -768,6 +825,149 @@ def list_syncs(
         .scalars()
         .all()
     )
+
+
+# ------------------------------------------------------------------
+# Admin endpoints — teaching modules overview
+# ------------------------------------------------------------------
+
+
+@teaching_router.get(
+    "/admin/banks",
+    response_model=list[AdminBankOut],
+    dependencies=[_DEP_MANAGE],
+)
+def list_admin_banks(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[AdminBankOut]:
+    """List all teaching modules (from DB + GCS)."""
+    from app.config import settings
+
+    org_id = _get_user_org_id(user, db)
+
+    # DB banks — latest version per bank_id
+    db_configs = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(QuestionBankConfig.organisation_id == org_id)
+            .order_by(
+                QuestionBankConfig.question_bank_id,
+                QuestionBankConfig.version.desc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # De-duplicate: keep only the latest version per bank_id
+    seen: dict[str, QuestionBankConfig] = {}
+    for c in db_configs:
+        if c.question_bank_id not in seen:
+            seen[c.question_bank_id] = c
+
+    # Count items per bank
+    item_counts: dict[str, int] = {}
+    for bank_id, cfg in seen.items():
+        count = db.execute(
+            select(QuestionBankItem.id).where(
+                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.question_bank_id == bank_id,
+                QuestionBankItem.bank_version == cfg.version,
+            )
+        ).all()
+        item_counts[bank_id] = len(count)
+
+    # GCS banks
+    gcs_bank_ids: set[str] = set()
+    bucket = settings.TEACHING_GCS_BUCKET
+    if bucket:
+        try:
+            gcs_bank_ids = set(list_banks_in_gcs(bucket))
+        except Exception:
+            logger.exception("Failed to list GCS banks")
+
+    # Merge
+    all_bank_ids = set(seen.keys()) | gcs_bank_ids
+    result: list[AdminBankOut] = []
+
+    for bank_id in sorted(all_bank_ids):
+        bank_cfg = seen.get(bank_id)
+        result.append(
+            AdminBankOut(
+                bank_id=bank_id,
+                title=bank_cfg.title if bank_cfg else None,
+                version=bank_cfg.version if bank_cfg else None,
+                type=bank_cfg.type if bank_cfg else None,
+                synced_at=bank_cfg.synced_at if bank_cfg else None,
+                in_gcs=bank_id in gcs_bank_ids,
+                in_db=bank_id in seen,
+                item_count=item_counts.get(bank_id, 0),
+            )
+        )
+
+    return result
+
+
+@teaching_router.post(
+    "/admin/sync-all",
+    response_model=SyncAllResultOut,
+    dependencies=[_DEP_MANAGE],
+)
+def sync_all_banks(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> dict[str, Any]:
+    """Sync all question banks from GCS (or local filesystem)."""
+    import shutil
+
+    from app.config import settings
+    from app.features.teaching.sync import sync_question_bank
+
+    org_id = _get_user_org_id(user, db)
+    bucket = settings.TEACHING_GCS_BUCKET
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+
+    # Discover bank IDs
+    bank_ids: list[str] = []
+    if bucket:
+        try:
+            bank_ids = list_banks_in_gcs(bucket)
+        except Exception:
+            logger.exception("Failed to list GCS banks")
+    elif base_path:
+        base = Path(base_path)
+        if base.is_dir():
+            bank_ids = sorted(
+                d.name
+                for d in base.iterdir()
+                if d.is_dir() and (d / "config.yaml").is_file()
+            )
+
+    synced: list[QuestionBankSync] = []
+    errors: list[dict[str, str]] = []
+
+    for bank_id in bank_ids:
+        bank_path: Path | None = None
+        is_temp = False
+        try:
+            bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+            _validation, sync_record = sync_question_bank(
+                bank_path,
+                org_id,
+                user.id,
+                db,
+            )
+            if sync_record:
+                synced.append(sync_record)
+        except Exception as exc:
+            logger.exception("Failed to sync bank '%s'", bank_id)
+            errors.append({"bank_id": bank_id, "error": str(exc)})
+        finally:
+            if is_temp and bank_path:
+                shutil.rmtree(bank_path.parent, ignore_errors=True)
+
+    return {"synced": synced, "errors": errors}
 
 
 @teaching_router.put(

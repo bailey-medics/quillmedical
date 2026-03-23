@@ -210,3 +210,23 @@ export interface EducatorResult {
   score_breakdown: Record<string, unknown> | null;
   total_items: number;
 }
+
+// ------------------------------------------------------------------
+// Admin — teaching modules overview
+// ------------------------------------------------------------------
+
+export interface AdminBank {
+  bank_id: string;
+  title: string | null;
+  version: number | null;
+  type: string | null;
+  synced_at: string | null;
+  in_gcs: boolean;
+  in_db: boolean;
+  item_count: number;
+}
+
+export interface SyncAllResult {
+  synced: SyncResult[];
+  errors: Array<{ bank_id: string; error: string }>;
+}
