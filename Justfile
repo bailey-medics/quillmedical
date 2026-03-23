@@ -215,7 +215,7 @@ prune-branches:
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
     git fetch --prune
-    GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}')
+    GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' || true)
     if [ -z "$GONE" ]; then
         echo "No stale branches to remove."
     else

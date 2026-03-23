@@ -236,6 +236,7 @@ def sync_question_bank(
             # Update
             for key, value in fields.items():
                 setattr(existing_item, key, value)
+            existing_item.status = "published"
             items_updated += 1
         else:
             # Create
