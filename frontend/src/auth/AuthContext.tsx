@@ -57,7 +57,7 @@ type Ctx = {
   /** Current authentication state */
   state: State;
   /** Authenticate user with username/password and optional TOTP code */
-  login: (email: string, password: string, totp?: string) => Promise<void>;
+  login: (email: string, password: string, totp?: string) => Promise<User>;
   /** End user session and clear authentication state */
   logout: () => Promise<void>;
   /** Reload user profile from backend (re-check authentication) */
@@ -80,7 +80,7 @@ export const AuthContext = createContext<Ctx | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading", user: null });
 
-  async function reload() {
+  async function reload(): Promise<void> {
     try {
       const me = await api.get<User>("/auth/me");
       setState({ status: "authenticated", user: me });
@@ -89,7 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(username: string, password: string, totp?: string) {
+  async function login(
+    username: string,
+    password: string,
+    totp?: string,
+  ): Promise<User> {
     // Defensive programming: validate inputs
     if (!username || !username.trim()) {
       throw new Error("Username cannot be empty");
@@ -113,7 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Let errors bubble to the caller (LoginPage) so it can inspect
     // any structured `error_code` attached by the API helper.
     await api.post("/auth/login", body);
-    await reload();
+    const user = await api.get<User>("/auth/me");
+    setState({ status: "authenticated", user });
+    return user;
   }
 
   async function logout() {
