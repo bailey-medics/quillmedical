@@ -206,7 +206,7 @@ export default function AdminTable<T>({
                   verticalAlign: "middle",
                 }}
               >
-                <Text size="lg" component="span">
+                <Text size="lg" component="span" lh={1}>
                   {column.render(row)}
                 </Text>
               </Table.Td>

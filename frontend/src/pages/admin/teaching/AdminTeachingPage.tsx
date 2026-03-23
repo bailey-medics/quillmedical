@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Container, Group, Stack, Text } from "@mantine/core";
+import { Button, Container, Group, Stack, Text } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import AdminTable, { type Column } from "@/components/tables/AdminTable";
@@ -92,23 +92,6 @@ export default function AdminTeachingPage() {
     {
       header: "Items",
       render: (bank) => bank.item_count,
-    },
-    {
-      header: "Source",
-      render: (bank) => (
-        <Group gap="xs">
-          {bank.in_gcs && (
-            <Badge size="sm" variant="light" color="blue">
-              GCS
-            </Badge>
-          )}
-          {bank.in_db && (
-            <Badge size="sm" variant="light" color="green">
-              DB
-            </Badge>
-          )}
-        </Group>
-      ),
     },
     {
       header: "Last synced",

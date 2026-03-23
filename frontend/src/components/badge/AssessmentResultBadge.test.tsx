@@ -50,7 +50,7 @@ describe("AssessmentResultBadge", () => {
   });
 
   describe("Size variants", () => {
-    it("renders with default sm size", () => {
+    it("renders with default lg size", () => {
       renderWithMantine(<AssessmentResultBadge result="pass" />);
       expect(screen.getByText("Pass")).toBeInTheDocument();
     });

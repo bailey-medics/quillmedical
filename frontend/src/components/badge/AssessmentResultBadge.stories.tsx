@@ -56,7 +56,7 @@ export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "sm" ? "sm (default)" : size}>
+        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
           <AssessmentResultBadge result="pass" size={size} />
           <AssessmentResultBadge result="fail" size={size} />
           <AssessmentResultBadge result="incomplete" size={size} />
