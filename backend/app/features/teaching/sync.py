@@ -93,6 +93,7 @@ def sync_question_bank(
     db: Session,
     *,
     validate_only: bool = False,
+    image_inventory: dict[str, set[str]] | None = None,
 ) -> tuple[ValidationResult, QuestionBankSync | None]:
     """Sync a question bank from the filesystem to the database.
 
@@ -108,6 +109,10 @@ def sync_question_bank(
         SQLAlchemy session.
     validate_only:
         If True, run validation only — do not import items.
+    image_inventory:
+        Optional mapping of item directory names to sets of image
+        filenames (from GCS).  Passed through to validation so
+        image existence can be checked against the bucket.
 
     Returns
     -------
@@ -115,7 +120,9 @@ def sync_question_bank(
     The sync record is None when validate_only is True.
     """
     # Step 1: Validate
-    validation = validate_question_bank(bank_dir)
+    validation = validate_question_bank(
+        bank_dir, image_inventory=image_inventory
+    )
 
     if validate_only:
         return validation, None

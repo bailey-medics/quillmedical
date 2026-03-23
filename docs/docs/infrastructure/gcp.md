@@ -72,7 +72,7 @@ Production and staging also have:
 
 Teaching additionally has:
 
-- **Cloud Storage** — image bucket for educational content
+- **Cloud Storage** — image bucket for educational content (question bank YAML + images deployed by CI from `quill-question-bank` repo)
 
 ## What has been set up
 
@@ -415,6 +415,15 @@ db_tier                 = "db-f1-micro"
 cloud_run_max_instances = 5
 ```
 
+Teaching-specific Cloud Run backend environment variables (in addition to the standard set):
+
+| Variable                    | Value                                                  | Purpose                                    |
+| --------------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| `CLINICAL_SERVICES_ENABLED` | `false`                                                | Disables FHIR/EHRbase endpoints            |
+| `TEACHING_STORAGE_BACKEND`  | `gcs`                                                  | Use GCS for teaching image storage         |
+| `TEACHING_GCS_BUCKET`       | `quill-images-teaching`                                | GCS bucket containing question banks       |
+| `TEACHING_IMAGES_BASE_URL`  | `https://storage.googleapis.com/quill-images-teaching` | Public URL prefix for question bank images |
+
 ## Environment variable naming
 
 Terraform injects environment variables into Cloud Run services via the `env_vars` and `secret_env_vars` maps in the Cloud Run module. The variable names must **exactly match** the Pydantic Settings field names in `backend/app/config.py`.
@@ -431,6 +440,24 @@ Key mappings:
 
 If names don't match, the backend silently falls back to the Docker Compose defaults (which are unresolvable hostnames in Cloud Run), causing FHIR/EHRbase health checks to fail.
 
+## Cloud Storage IAM
+
+The teaching GCS bucket (`quill-images-teaching`) requires an explicit IAM binding for the Cloud Run backend service account. The default compute service account (`{project-number}-compute@developer.gserviceaccount.com`) does **not** automatically inherit `storage.objects.list` permission, even though it is a project editor — legacy bucket IAM grants access to `projectEditor`/`projectViewer` principal groups, but the compute SA is not automatically a member for API-level object listing.
+
+The required binding:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://quill-images-teaching \
+  --member="serviceAccount:{project-number}-compute@developer.gserviceaccount.com" \
+  --role="roles/storage.objectViewer" \
+  --project=quill-medical-teaching
+```
+
+!!! warning "Symptom of missing binding"
+The backend logs `Failed to list GCS banks` and the Admin > Teaching page shows "No teaching modules found" after clicking Sync. The underlying error is `google.api_core.exceptions.Forbidden: 403 ... does not have storage.objects.list access`.
+
+This binding should be added to the `cloud-storage` Terraform module to avoid manual steps on future environments.
+
 ## Security
 
 - **No public database IPs** — Cloud SQL is accessible only via VPC
@@ -439,6 +466,7 @@ If names don't match, the backend silently falls back to the Docker Compose defa
 - **WIF authentication** — no long-lived JSON key files, short-lived tokens only
 - **Attribute condition on WIF** — only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
 - **Least-privilege service accounts** — each environment has its own service account
+- **Explicit GCS IAM bindings** — Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
 - **Cloud Armor WAF** — rate limiting (500 req/min per IP) on all load balancers
 - **HTTPS enforced** — HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
 - **Google-managed TLS** — certificates auto-provisioned and auto-renewed, no manual cert management
@@ -503,6 +531,7 @@ The job is defined in the `cloud-run-job` Terraform module and uses a separate D
 - Production database tier upgrade from `db-f1-micro`
 - High availability for production Cloud SQL
 - Restrict Cloud Run ingress to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (once LB is confirmed working)
+- Add `roles/storage.objectViewer` binding to the `cloud-storage` Terraform module (currently applied manually)
 
 ## Production hibernation
 
