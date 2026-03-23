@@ -123,9 +123,13 @@ def _build_candidate_item(
         {"id": o.get("id"), "label": o.get("label")} for o in options
     ]
 
+    # Resolve question type (variable banks store it in metadata)
+    question_type = item.metadata_json.get("question_type", "single")
+
     return CandidateItemOut(
         answer_id=answer.id,
         display_order=answer.display_order,
+        question_type=question_type,
         images=images,
         text=item.text,
         options=safe_options,

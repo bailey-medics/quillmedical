@@ -70,6 +70,7 @@ class CandidateItemOut(BaseModel):
 
     answer_id: int
     display_order: int
+    question_type: str = "single"
     images: list[ItemImageOut]
     text: str | None = None
     options: list[dict[str, Any]]

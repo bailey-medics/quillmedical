@@ -85,3 +85,4 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
 ## MISC
 
 - [ ] Update all libraries to most recent
+- [ ] Lock value in teaching schema, once locked, same version teaching config.yaml cannot be used, you will need to iterate upwards

@@ -71,6 +71,7 @@ export interface ItemImage {
 export interface CandidateItem {
   answer_id: number;
   display_order: number;
+  question_type: "single" | "multiple";
   images: ItemImage[];
   text?: string;
   options: Array<{ id: string; label: string; tags?: string[] }>;
