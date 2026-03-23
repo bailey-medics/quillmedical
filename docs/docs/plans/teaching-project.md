@@ -976,17 +976,113 @@ Create `dev-scripts/seed-teaching-data.sh`:
 - Sync sample question bank items into the database (e.g. polyp WLI + NBI pairs with correct diagnoses for the colonoscopy bank)
 - Mark items as published (need ≥ `min_pool_size` for a valid assessment)
 
-### Step 6.5 — Question bank repo CI
+### Step 6.5 — Question bank repo CI/CD
 
 > **Note**: This step targets the separate `bailey-medics/quill-question-bank` repository and should be implemented there, not in this workspace.
 
-Add a GitHub Actions workflow to `bailey-medics/quill-question-bank`:
+The question bank repo (`bailey-medics/quill-question-bank`) gets its own CI/CD pipeline, separate from the main application. Content changes go through PR review (Git-based quality gate for clinical data), validation runs automatically, and validated content is synced to GCS on merge to `main`.
 
-- Trigger: push/PR to `main`
-- Runs `validate.py` against all question banks in the repo
-- Blocks merge on validation errors
-- Reports warnings in PR comments
-- On merge to `main`: `gsutil -m rsync -r questions/ gs://$TEACHING_GCS_BUCKET/questions/` to push images + YAML to the GCS bucket (requires WIF for the teaching GCP project)
+#### Branch protection
+
+Same pattern as quillmedical — managed via Terraform in `infra/github/branch_rules.tf`:
+
+- **Protected branches ruleset**: `main` requires pull requests (no direct pushes), dismisses stale reviews, blocks force pushes and deletion
+- **Branch naming ruleset**: all non-protected branches must match `feature/*` or `hotfix/*`
+- Add `quill-question-bank` as a second repository in the existing Terraform config (new variable or separate resource blocks with the same rules)
+
+#### Standalone validation script
+
+The backend's `validate.py` uses only the standard library + PyYAML (no FastAPI, SQLAlchemy, or other backend dependencies). Rather than pulling the full backend into the question bank repo's CI, include a **standalone copy** of the validator:
+
+- File: `scripts/validate.py` in the question bank repo
+- Dependencies: Python 3.13 + PyYAML (single `pip install pyyaml`)
+- Logic: mirrors `backend/app/features/teaching/validate.py` from quillmedical — config schema checks, item-level validation (uniform + variable), cross-item checks (pool size, answer distribution)
+- CLI interface: `python scripts/validate.py questions/` — discovers all `questions/*/config.yaml` banks and validates each one
+- Exit code: 0 if all banks pass, 1 if any errors
+- Output: structured summary per bank (item count, errors, warnings), suitable for CI logs and PR comments
+
+**Keeping in sync**: if the validation logic changes in the backend (e.g. new MCQ type, new config field), the standalone script must be updated too. A comment at the top of both files cross-references the other. Future improvement: extract into a shared Python package published to a private PyPI registry.
+
+#### GitHub Actions workflows
+
+Two workflows in `.github/workflows/`:
+
+**1. `validate.yml` — PR validation (feature branches + PRs)**
+
+```yaml
+name: Validate question banks
+on:
+  push:
+    branches: ["feature/**"]
+  pull_request:
+    branches: [main]
+```
+
+Steps:
+
+1. Checkout repo (with LFS — `lfs: true` to pull image binaries)
+2. Set up Python 3.13
+3. `pip install pyyaml`
+4. Run `python scripts/validate.py questions/`
+5. On failure: validation errors in CI log block the PR merge
+6. On warnings: logged but non-blocking
+
+This workflow is a **required status check** on the `main` branch ruleset, so PRs cannot merge if validation fails. This is the quality gate for clinical content — incorrect diagnoses, missing images, or malformed YAML are caught before they reach the GCS bucket.
+
+**2. `deploy.yml` — GCS sync (merge to main)**
+
+```yaml
+name: Deploy to GCS
+on:
+  push:
+    branches: [main]
+```
+
+Steps:
+
+1. Checkout repo (with LFS)
+2. Set up Python 3.13 + validate (belt-and-braces — re-validate even though PR already passed, in case of merge conflicts or manual main commits)
+3. Authenticate to GCP via Workload Identity Federation (same pattern as quillmedical's staging/teaching deploy)
+4. `gsutil -m rsync -r -d questions/ gs://$TEACHING_GCS_BUCKET/questions/` — mirror the `questions/` directory to the bucket. The `-d` flag deletes files from the bucket that no longer exist in the repo (keeps bucket in sync with Git).
+5. Slack notification on success/failure
+
+**GCP setup required:**
+
+- Workload Identity Federation pool + provider for `bailey-medics/quill-question-bank` repo (same teaching GCP project)
+- Service account with `roles/storage.objectAdmin` on the teaching GCS bucket
+- Repository secrets: `GCP_TEACHING_WIF_PROVIDER`, `GCP_TEACHING_SERVICE_ACCOUNT`, `GCP_TEACHING_GCS_BUCKET`, `SLACK_WEBHOOK_URL`
+
+#### Sync flow (end to end)
+
+```text
+Educator creates/updates question bank content
+        │
+        ▼
+Feature branch + PR to main
+        │
+        ▼ validate.yml (CI)
+        │
+  Validation passes? ──── No ──→ PR blocked, fix errors
+        │
+       Yes
+        │
+        ▼
+  PR merged to main
+        │
+        ▼ deploy.yml
+        │
+  gsutil rsync → GCS bucket
+        │
+        ▼
+  Educator triggers sync in teaching app
+  (POST /api/teaching/items/sync)
+        │
+        ▼
+  Backend reads YAML from bucket → DB
+  Images served via signed URLs from CDN
+```
+
+The two-step process (GCS sync + app sync) is intentional: GCS holds the validated content as a staging area, and the app sync is a deliberate educator action that imports the content into the database. This prevents automatic database changes from unexpected content updates.
 
 ### Step 6.6 — Justfile question bank commands
 

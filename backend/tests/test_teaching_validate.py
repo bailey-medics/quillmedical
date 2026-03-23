@@ -77,6 +77,7 @@ class TestValidateQuestionBank:
         q_dir = bank / "question_001"
         q_dir.mkdir()
         question = {
+            "question_type": "single",
             "text": "What is this?",
             "images": [],
             "options": [

@@ -5,6 +5,7 @@ import type { CandidateItem } from "@/features/teaching/types";
 const uniformItem: CandidateItem = {
   answer_id: 1,
   display_order: 1,
+  question_type: "single",
   images: [
     {
       key: "image_1",
@@ -34,6 +35,7 @@ const uniformItem: CandidateItem = {
 const variableItem: CandidateItem = {
   answer_id: 2,
   display_order: 5,
+  question_type: "single",
   images: [
     {
       key: "lesion",

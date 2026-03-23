@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 QUESTION_DIR_PATTERN = re.compile(r"^question_(\d+)$")
+IMAGE_FILENAME_PATTERN = re.compile(r"^image_(\d+)$")
+ALLOWED_QUESTION_TYPES = {"single", "multiple"}
 
 
 # ------------------------------------------------------------------
@@ -149,6 +151,17 @@ def _get_image_files(item_dir: Path) -> list[Path]:
     ]
 
 
+def _check_image_naming(item_dir: Path, result: ValidationResult) -> None:
+    """Check all image files follow the image_N naming convention."""
+    for img in _get_image_files(item_dir):
+        if not IMAGE_FILENAME_PATTERN.match(img.stem):
+            result.add_error(
+                str(item_dir),
+                f"image '{img.name}' must follow naming "
+                f"convention image_N (e.g. image_1.png)",
+            )
+
+
 def _validate_uniform_item(
     item_dir: Path,
     question_data: dict[str, Any],
@@ -157,6 +170,9 @@ def _validate_uniform_item(
 ) -> None:
     """Validate a single item in a uniform-type bank."""
     rel_path = str(item_dir)
+
+    # Image naming
+    _check_image_naming(item_dir, result)
 
     # Image count
     expected_images = config.get("images_per_item", 0)
@@ -206,6 +222,20 @@ def _validate_variable_item(
 ) -> None:
     """Validate a single item in a variable-type bank."""
     rel_path = str(item_dir)
+
+    # Question type
+    question_type = question_data.get("question_type")
+    if not question_type:
+        result.add_error(
+            f"{rel_path}/question.yaml",
+            "missing required 'question_type' field",
+        )
+    elif question_type not in ALLOWED_QUESTION_TYPES:
+        result.add_error(
+            f"{rel_path}/question.yaml",
+            f"question_type '{question_type}' not in "
+            f"allowed types {sorted(ALLOWED_QUESTION_TYPES)}",
+        )
 
     # Options
     options = question_data.get("options")
@@ -268,7 +298,10 @@ def _validate_variable_item(
         )
         return
 
-    # Check each declared image file exists
+    # Image naming
+    _check_image_naming(item_dir, result)
+
+    # Check each declared image file exists and follows naming convention
     for img in images:
         if not isinstance(img, dict) or "key" not in img:
             result.add_error(
@@ -277,6 +310,13 @@ def _validate_variable_item(
                 "(and optional 'label')",
             )
             continue
+        key_stem = Path(img["key"]).stem
+        if not IMAGE_FILENAME_PATTERN.match(key_stem):
+            result.add_error(
+                f"{rel_path}/question.yaml",
+                f"image key '{img['key']}' must follow naming "
+                f"convention image_N (e.g. image_1.png)",
+            )
         img_path = item_dir / img["key"]
         if not img_path.is_file():
             result.add_error(

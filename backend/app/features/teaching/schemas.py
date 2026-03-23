@@ -70,6 +70,7 @@ class CandidateItemOut(BaseModel):
 
     answer_id: int
     display_order: int
+    question_type: str = "single"
     images: list[ItemImageOut]
     text: str | None = None
     options: list[dict[str, Any]]
@@ -228,6 +229,31 @@ class SyncHistoryOut(BaseModel):
     items_updated: int
     started_at: datetime
     completed_at: datetime | None
+
+
+# ------------------------------------------------------------------
+# Admin — teaching modules overview
+# ------------------------------------------------------------------
+
+
+class AdminBankOut(BaseModel):
+    """One question bank in the admin teaching overview."""
+
+    bank_id: str
+    title: str | None = None
+    version: int | None = None
+    type: str | None = None
+    synced_at: datetime | None = None
+    in_gcs: bool = False
+    in_db: bool = False
+    item_count: int = 0
+
+
+class SyncAllResultOut(BaseModel):
+    """Aggregated result of syncing all banks."""
+
+    synced: list[SyncResultOut]
+    errors: list[dict[str, str]]
 
 
 # ------------------------------------------------------------------

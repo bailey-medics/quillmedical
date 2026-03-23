@@ -71,6 +71,7 @@ export interface ItemImage {
 export interface CandidateItem {
   answer_id: number;
   display_order: number;
+  question_type: "single" | "multiple";
   images: ItemImage[];
   text?: string;
   options: Array<{ id: string; label: string; tags?: string[] }>;
@@ -208,4 +209,24 @@ export interface EducatorResult {
   is_passed: boolean | null;
   score_breakdown: Record<string, unknown> | null;
   total_items: number;
+}
+
+// ------------------------------------------------------------------
+// Admin — teaching modules overview
+// ------------------------------------------------------------------
+
+export interface AdminBank {
+  bank_id: string;
+  title: string | null;
+  version: number | null;
+  type: string | null;
+  synced_at: string | null;
+  in_gcs: boolean;
+  in_db: boolean;
+  item_count: number;
+}
+
+export interface SyncAllResult {
+  synced: SyncResult[];
+  errors: Array<{ bank_id: string; error: string }>;
 }
