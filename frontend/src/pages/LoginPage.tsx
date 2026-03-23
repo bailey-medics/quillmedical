@@ -20,7 +20,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -65,7 +65,6 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: Location } };
   // Use Vite BASE_URL as the absolute SPA base (may or may not include a
   // trailing slash). Normalize to ensure trailing slash and use it for
@@ -84,14 +83,13 @@ export default function LoginPage() {
         password,
         requireTotp ? totp : undefined,
       );
-      // If the user was trying to reach a specific protected page,
-      // send them there. Otherwise go to the default landing page:
-      // /teaching when clinical services are disabled (teaching env),
-      // or the app home for clinical environments.
+      // Full-page redirect after login ensures the navigation fires
+      // before GuestOnly's useEffect can override it with a competing
+      // window.location.assign(base).
       if (redirectFrom && redirectFrom !== "/") {
-        navigate(redirectFrom, { replace: true });
+        window.location.assign(redirectFrom);
       } else if (!user.clinical_services_enabled) {
-        navigate("/teaching", { replace: true });
+        window.location.assign("/teaching");
       } else {
         window.location.assign(base);
       }

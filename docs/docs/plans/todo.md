@@ -86,3 +86,7 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
 
 - [ ] Update all libraries to most recent
 - [ ] Lock value in teaching schema, once locked, same version teaching config.yaml cannot be used, you will need to iterate upwards
+- [ ] Redirect `/` to `/teaching` when `CLINICAL_SERVICES_ENABLED` is false —
+      currently only the post-login redirect is handled; if an authenticated
+      user navigates directly to `/` they see the clinical home page (patient
+      list) instead of the teaching dashboard
