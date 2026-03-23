@@ -142,22 +142,36 @@ def _validate_config(
 # ------------------------------------------------------------------
 
 
-def _get_image_files(item_dir: Path) -> list[Path]:
-    """Return image files in the item directory."""
-    return [
-        f
+def _get_image_files(
+    item_dir: Path,
+    image_inventory: dict[str, set[str]] | None = None,
+) -> list[str]:
+    """Return image filenames in the item directory.
+
+    When *image_inventory* is provided (GCS sync), look up files
+    from the pre-built inventory rather than the local filesystem.
+    """
+    if image_inventory is not None:
+        return sorted(image_inventory.get(item_dir.name, set()))
+    return sorted(
+        f.name
         for f in item_dir.iterdir()
         if f.is_file() and f.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
-    ]
+    )
 
 
-def _check_image_naming(item_dir: Path, result: ValidationResult) -> None:
+def _check_image_naming(
+    item_dir: Path,
+    result: ValidationResult,
+    image_inventory: dict[str, set[str]] | None = None,
+) -> None:
     """Check all image files follow the image_N naming convention."""
-    for img in _get_image_files(item_dir):
-        if not IMAGE_FILENAME_PATTERN.match(img.stem):
+    for name in _get_image_files(item_dir, image_inventory):
+        stem = Path(name).stem
+        if not IMAGE_FILENAME_PATTERN.match(stem):
             result.add_error(
                 str(item_dir),
-                f"image '{img.name}' must follow naming "
+                f"image '{name}' must follow naming "
                 f"convention image_N (e.g. image_1.png)",
             )
 
@@ -167,16 +181,18 @@ def _validate_uniform_item(
     question_data: dict[str, Any],
     config: dict[str, Any],
     result: ValidationResult,
+    *,
+    image_inventory: dict[str, set[str]] | None = None,
 ) -> None:
     """Validate a single item in a uniform-type bank."""
     rel_path = str(item_dir)
 
     # Image naming
-    _check_image_naming(item_dir, result)
+    _check_image_naming(item_dir, result, image_inventory)
 
     # Image count
     expected_images = config.get("images_per_item", 0)
-    actual_images = _get_image_files(item_dir)
+    actual_images = _get_image_files(item_dir, image_inventory)
     if len(actual_images) != expected_images:
         result.add_error(
             rel_path,
@@ -219,6 +235,8 @@ def _validate_variable_item(
     question_data: dict[str, Any],
     config: dict[str, Any],
     result: ValidationResult,
+    *,
+    image_inventory: dict[str, set[str]] | None = None,
 ) -> None:
     """Validate a single item in a variable-type bank."""
     rel_path = str(item_dir)
@@ -299,7 +317,7 @@ def _validate_variable_item(
         return
 
     # Image naming
-    _check_image_naming(item_dir, result)
+    _check_image_naming(item_dir, result, image_inventory)
 
     # Check each declared image file exists and follows naming convention
     for img in images:
@@ -317,23 +335,33 @@ def _validate_variable_item(
                 f"image key '{img['key']}' must follow naming "
                 f"convention image_N (e.g. image_1.png)",
             )
-        img_path = item_dir / img["key"]
-        if not img_path.is_file():
-            result.add_error(
-                rel_path,
-                f"declared image '{img['key']}' not found",
-            )
+        if image_inventory is not None:
+            bucket_files = image_inventory.get(item_dir.name, set())
+            if img["key"] not in bucket_files:
+                result.add_error(
+                    rel_path,
+                    f"declared image '{img['key']}' not found in GCS",
+                )
+        else:
+            img_path = item_dir / img["key"]
+            if not img_path.is_file():
+                result.add_error(
+                    rel_path,
+                    f"declared image '{img['key']}' not found",
+                )
 
     # Check no undeclared image files
     declared_keys = {
         img["key"] for img in images if isinstance(img, dict) and "key" in img
     }
-    for actual in _get_image_files(item_dir):
-        if actual.name not in declared_keys:
+    for name in _get_image_files(item_dir, image_inventory):
+        if name not in declared_keys:
+            source = "GCS" if image_inventory is not None else "disk"
             result.add_error(
                 rel_path,
-                f"undeclared image file '{actual.name}' "
-                f"(not listed in question.yaml images)",
+                f"undeclared image file '{name}' "
+                f"(found on {source} but not listed in "
+                f"question.yaml images)",
             )
 
     # Item text
@@ -392,7 +420,11 @@ def _cross_item_checks(
 # ------------------------------------------------------------------
 
 
-def validate_question_bank(bank_dir: Path) -> ValidationResult:
+def validate_question_bank(
+    bank_dir: Path,
+    *,
+    image_inventory: dict[str, set[str]] | None = None,
+) -> ValidationResult:
     """Validate a question bank directory.
 
     Parameters
@@ -400,6 +432,12 @@ def validate_question_bank(bank_dir: Path) -> ValidationResult:
     bank_dir:
         Path to the question bank directory (e.g.
         ``questions/colonoscopy-optical-diagnosis/``).
+    image_inventory:
+        Optional mapping of item directory names to sets of image
+        filenames.  When provided (GCS sync), image existence is
+        checked against this inventory instead of the local
+        filesystem.  Build with
+        :func:`~app.features.teaching.storage.list_bank_images_in_gcs`.
 
     Returns
     -------
@@ -473,9 +511,21 @@ def validate_question_bank(bank_dir: Path) -> ValidationResult:
         all_item_data.append(question_data)
 
         if bank_type == "uniform":
-            _validate_uniform_item(item_dir, question_data, config, result)
+            _validate_uniform_item(
+                item_dir,
+                question_data,
+                config,
+                result,
+                image_inventory=image_inventory,
+            )
         elif bank_type == "variable":
-            _validate_variable_item(item_dir, question_data, config, result)
+            _validate_variable_item(
+                item_dir,
+                question_data,
+                config,
+                result,
+                image_inventory=image_inventory,
+            )
 
     result.item_count = len(item_dirs)
 

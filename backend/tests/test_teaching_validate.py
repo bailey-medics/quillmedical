@@ -288,3 +288,76 @@ class TestValidateQuestionBank:
         result = validate_question_bank(bank)
         assert "test-bank" in result.summary
         assert "VALID" in result.summary
+
+    # --- Image inventory (GCS-sourced) checks ---
+
+    def test_uniform_valid_with_image_inventory(self, tmp_path: Path) -> None:
+        """Uniform bank passes when GCS image inventory is provided."""
+        bank = self._make_uniform_bank(tmp_path)
+        # Remove local images (simulates GCS download: YAML only)
+        for q_dir in bank.iterdir():
+            if q_dir.is_dir():
+                for img in q_dir.glob("*.png"):
+                    img.unlink()
+
+        inventory = {
+            "question_001": {"image_1.png", "image_2.png"},
+            "question_002": {"image_1.png", "image_2.png"},
+        }
+        result = validate_question_bank(bank, image_inventory=inventory)
+        assert result.is_valid
+        assert result.item_count == 2
+
+    def test_uniform_fails_missing_gcs_images(self, tmp_path: Path) -> None:
+        """Uniform bank fails when GCS inventory has wrong count."""
+        bank = self._make_uniform_bank(tmp_path)
+        for q_dir in bank.iterdir():
+            if q_dir.is_dir():
+                for img in q_dir.glob("*.png"):
+                    img.unlink()
+
+        # Only 1 image per item, but config expects 2
+        inventory = {
+            "question_001": {"image_1.png"},
+            "question_002": {"image_1.png"},
+        }
+        result = validate_question_bank(bank, image_inventory=inventory)
+        assert not result.is_valid
+        assert any("expected 2 images" in e.message for e in result.errors)
+
+    def test_variable_valid_with_image_inventory(self, tmp_path: Path) -> None:
+        """Variable bank validates images from GCS inventory."""
+        bank = self._make_variable_bank(tmp_path)
+        # Add image reference to the question
+        q_yaml = bank / "question_001" / "question.yaml"
+        question = yaml.safe_load(q_yaml.read_text())
+        question["images"] = [{"key": "image_1.png", "label": "Img"}]
+        q_yaml.write_text(yaml.dump(question, default_flow_style=False))
+
+        inventory = {"question_001": {"image_1.png"}}
+        result = validate_question_bank(bank, image_inventory=inventory)
+        assert result.is_valid
+
+    def test_variable_fails_missing_gcs_image(self, tmp_path: Path) -> None:
+        """Variable bank fails when declared image not in GCS."""
+        bank = self._make_variable_bank(tmp_path)
+        q_yaml = bank / "question_001" / "question.yaml"
+        question = yaml.safe_load(q_yaml.read_text())
+        question["images"] = [{"key": "image_1.png", "label": "Img"}]
+        q_yaml.write_text(yaml.dump(question, default_flow_style=False))
+
+        inventory: dict[str, set[str]] = {
+            "question_001": set(),
+        }  # No images in GCS
+        result = validate_question_bank(bank, image_inventory=inventory)
+        assert not result.is_valid
+        assert any("not found in GCS" in e.message for e in result.errors)
+
+    def test_variable_undeclared_gcs_image(self, tmp_path: Path) -> None:
+        """Variable bank flags undeclared images found in GCS."""
+        bank = self._make_variable_bank(tmp_path)
+        # question has images: [] but GCS has an image file
+        inventory = {"question_001": {"image_1.png"}}
+        result = validate_question_bank(bank, image_inventory=inventory)
+        assert not result.is_valid
+        assert any("undeclared image file" in e.message for e in result.errors)

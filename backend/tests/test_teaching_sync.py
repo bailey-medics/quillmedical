@@ -214,3 +214,31 @@ class TestSyncQuestionBank:
         assert len(records) == 1
         assert records[0].triggered_by == admin_user.id
         assert records[0].completed_at is not None
+
+    def test_sync_with_image_inventory(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """Sync succeeds with GCS image inventory (no local images)."""
+        bank = _make_bank(tmp_path, item_count=2)
+        # Remove local images to simulate GCS download (YAML only)
+        for q_dir in bank.iterdir():
+            if q_dir.is_dir():
+                for img in q_dir.glob("*.png"):
+                    img.unlink()
+
+        # Provide image inventory as if from GCS
+        inventory = {
+            "question_001": {"image_1.png"},
+            "question_002": {"image_1.png"},
+        }
+        validation, sync_record = sync_question_bank(
+            bank,
+            organisation_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+            image_inventory=inventory,
+        )
+        assert validation.is_valid
+        assert sync_record is not None
+        assert sync_record.status == "success"
+        assert sync_record.items_created == 2

@@ -174,3 +174,60 @@ def download_bank_from_gcs(
         bank_dir,
     )
     return bank_dir
+
+
+#: Type alias for the image inventory passed to validation.
+#: Maps item directory names (e.g. ``question_001``) to the set of
+#: image filenames present (e.g. ``{"image_1.png", "image_2.jpg"}``).
+ImageInventory = dict[str, set[str]]
+
+
+def list_bank_images_in_gcs(
+    bucket_name: str,
+    bank_id: str,
+) -> ImageInventory:
+    """Build an image inventory for a question bank from GCS.
+
+    Scans all blobs under ``questions/<bank_id>/`` and returns a
+    mapping of item directory names to the set of image filenames
+    found.  Only files with allowed image extensions are included.
+    """
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not bank_id or not _SAFE_BANK_ID.match(bank_id):
+        msg = f"Invalid bank_id: {bank_id!r}"
+        raise ValueError(msg)
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+
+    prefix = f"questions/{bank_id}/"
+    blobs = bucket.list_blobs(prefix=prefix)
+
+    allowed = {".png", ".jpg", ".jpeg", ".webp"}
+    inventory: ImageInventory = {}
+
+    for blob in blobs:
+        rel_path = blob.name.removeprefix(prefix)
+        if not rel_path or "/" not in rel_path:
+            continue
+        parts = rel_path.split("/", 1)
+        item_dir_name = parts[0]
+        filename = parts[1]
+
+        # Only include image files (not nested subdirectories)
+        if "/" in filename:
+            continue
+        ext = Path(filename).suffix.lower()
+        if ext not in allowed:
+            continue
+
+        inventory.setdefault(item_dir_name, set()).add(filename)
+
+    logger.info(
+        "GCS image inventory for bank '%s': %d items, %d total images",
+        bank_id,
+        len(inventory),
+        sum(len(v) for v in inventory.values()),
+    )
+    return inventory

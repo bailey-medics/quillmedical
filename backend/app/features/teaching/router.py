@@ -59,6 +59,7 @@ from app.features.teaching.scoring import (
 from app.features.teaching.storage import (
     download_bank_from_gcs,
     get_storage_backend,
+    list_bank_images_in_gcs,
     list_banks_in_gcs,
 )
 from app.models import User, organisation_staff_member
@@ -695,6 +696,21 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     )
 
 
+def _build_image_inventory(
+    bank_id: str,
+    is_gcs: bool,
+) -> dict[str, set[str]] | None:
+    """Build an image inventory when the bank is sourced from GCS."""
+    if not is_gcs:
+        return None
+    from app.config import settings
+
+    bucket = settings.TEACHING_GCS_BUCKET
+    if not bucket:
+        return None
+    return list_bank_images_in_gcs(bucket, bank_id)
+
+
 @teaching_router.post(
     "/items/validate",
     response_model=ValidationResultOut,
@@ -717,12 +733,14 @@ def validate_items(
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
     try:
         org_id = _get_user_org_id(user, db)
+        inventory = _build_image_inventory(bank_id, is_temp)
         result, _ = sync_question_bank(
             bank_path,
             org_id,
             user.id,
             db,
             validate_only=True,
+            image_inventory=inventory,
         )
     finally:
         if is_temp:
@@ -767,11 +785,13 @@ def sync_items(
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
     try:
         org_id = _get_user_org_id(user, db)
+        inventory = _build_image_inventory(bank_id, is_temp)
         validation, sync_record = sync_question_bank(
             bank_path,
             org_id,
             user.id,
             db,
+            image_inventory=inventory,
         )
     finally:
         if is_temp:
@@ -952,11 +972,13 @@ def sync_all_banks(
         is_temp = False
         try:
             bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+            inventory = _build_image_inventory(bank_id, is_temp)
             _validation, sync_record = sync_question_bank(
                 bank_path,
                 org_id,
                 user.id,
                 db,
+                image_inventory=inventory,
             )
             if sync_record:
                 synced.append(sync_record)

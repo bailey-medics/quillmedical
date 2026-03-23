@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 from unittest.mock import MagicMock, patch
 
+import google.cloud as _gc
 import pytest
 
 from app.features.teaching.storage import (
@@ -12,8 +13,23 @@ from app.features.teaching.storage import (
     LocalStorageBackend,
     download_bank_from_gcs,
     get_storage_backend,
+    list_bank_images_in_gcs,
     list_banks_in_gcs,
 )
+
+
+def _mock_gcs_client(
+    mock_client: MagicMock,
+) -> MagicMock:
+    """Build a mock google.cloud.storage module with the given client.
+
+    Patches both ``sys.modules`` and the ``google.cloud.storage``
+    attribute so that ``from google.cloud import storage`` resolves
+    to the mock regardless of previous import ordering.
+    """
+    mock_storage = MagicMock()
+    mock_storage.Client.return_value = mock_client
+    return mock_storage
 
 
 class TestLocalStorageBackend:
@@ -103,10 +119,8 @@ class TestListBanksInGcs:
         config_blob.exists.return_value = True
         mock_bucket.blob.return_value = config_blob
 
-        mock_storage = MagicMock()
-        mock_storage.Client.return_value = mock_client
-
-        with patch.dict("sys.modules", {"google.cloud.storage": mock_storage}):
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["chest-xray", "ecg-basics"]
 
@@ -130,10 +144,8 @@ class TestListBanksInGcs:
 
         mock_bucket.blob.side_effect = blob_exists_side_effect
 
-        mock_storage = MagicMock()
-        mock_storage.Client.return_value = mock_client
-
-        with patch.dict("sys.modules", {"google.cloud.storage": mock_storage}):
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["has-config"]
 
@@ -162,10 +174,8 @@ class TestDownloadBankFromGcs:
             image_blob,
         ]
 
-        mock_storage = MagicMock()
-        mock_storage.Client.return_value = mock_client
-
-        with patch.dict("sys.modules", {"google.cloud.storage": mock_storage}):
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
             result = download_bank_from_gcs("test-bucket", "test-bank")
         try:
             assert result.name == "test-bank"
@@ -183,10 +193,8 @@ class TestDownloadBankFromGcs:
         mock_client.bucket.return_value = mock_bucket
         mock_bucket.list_blobs.return_value = []
 
-        mock_storage = MagicMock()
-        mock_storage.Client.return_value = mock_client
-
-        with patch.dict("sys.modules", {"google.cloud.storage": mock_storage}):
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
             with pytest.raises(FileNotFoundError, match="No content found"):
                 download_bank_from_gcs("test-bucket", "missing-bank")
 
@@ -197,3 +205,58 @@ class TestDownloadBankFromGcs:
     def test_empty_bank_id_raises(self) -> None:
         with pytest.raises(ValueError, match="Invalid bank_id"):
             download_bank_from_gcs("test-bucket", "")
+
+
+class TestListBankImagesInGcs:
+    """list_bank_images_in_gcs builds image inventory from GCS."""
+
+    def test_builds_inventory(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+
+        blob1 = MagicMock()
+        blob1.name = "questions/my-bank/question_001/image_1.png"
+        blob2 = MagicMock()
+        blob2.name = "questions/my-bank/question_001/image_2.jpg"
+        blob3 = MagicMock()
+        blob3.name = "questions/my-bank/question_002/image_1.webp"
+        # YAML files should be ignored
+        yaml_blob = MagicMock()
+        yaml_blob.name = "questions/my-bank/question_001/question.yaml"
+        # Config at root should be ignored
+        config_blob = MagicMock()
+        config_blob.name = "questions/my-bank/config.yaml"
+
+        mock_bucket.list_blobs.return_value = [
+            blob1,
+            blob2,
+            blob3,
+            yaml_blob,
+            config_blob,
+        ]
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = list_bank_images_in_gcs("test-bucket", "my-bank")
+
+        assert result == {
+            "question_001": {"image_1.png", "image_2.jpg"},
+            "question_002": {"image_1.webp"},
+        }
+
+    def test_empty_bucket_returns_empty(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.list_blobs.return_value = []
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = list_bank_images_in_gcs("test-bucket", "empty-bank")
+
+        assert result == {}
+
+    def test_invalid_bank_id_raises(self) -> None:
+        with pytest.raises(ValueError, match="Invalid bank_id"):
+            list_bank_images_in_gcs("test-bucket", "../escape")
