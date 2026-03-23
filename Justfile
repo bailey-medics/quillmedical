@@ -316,7 +316,7 @@ start-dev build="":
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull always; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull missing; \
     else \
         COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up; \
     fi
@@ -367,7 +367,7 @@ start-prod build="":
     #!/usr/bin/env bash
     {{initialise}} "start-prod"
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.prod.yml up --build --pull always; \
+        docker compose -f compose.yml -f compose.prod.yml up --build --pull missing; \
     else \
         docker compose -f compose.yml -f compose.prod.yml up; \
     fi
@@ -387,7 +387,7 @@ start-teaching build="":
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull always; \
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull missing; \
     else \
         CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up; \
     fi
@@ -398,7 +398,6 @@ stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
     COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
-    docker compose -f compose.prod.yml down
 
 
 alias ub := unit-tests-backend

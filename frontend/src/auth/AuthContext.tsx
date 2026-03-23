@@ -118,7 +118,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // any structured `error_code` attached by the API helper.
     await api.post("/auth/login", body);
     const user = await api.get<User>("/auth/me");
-    setState({ status: "authenticated", user });
+    // Do NOT set state here. LoginPage performs a full-page navigation
+    // (window.location.assign) after login, and the new page's
+    // AuthProvider will call reload() to pick up the session. Setting
+    // state would trigger GuestOnly's useEffect redirect to "/" which
+    // races with LoginPage's own redirect destination.
     return user;
   }
 
