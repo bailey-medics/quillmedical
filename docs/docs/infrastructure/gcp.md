@@ -470,6 +470,36 @@ This binding should be added to the `cloud-storage` Terraform module to avoid ma
 - **Cloud Armor WAF** — rate limiting (500 req/min per IP) on all load balancers
 - **HTTPS enforced** — HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
 - **Google-managed TLS** — certificates auto-provisioned and auto-renewed, no manual cert management
+- **Content Security Policy** — browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
+
+### Content Security Policy (CSP) headers
+
+The production Caddyfile (`caddy/prod/Caddyfile`) sets a `Content-Security-Policy` response header on every page. This tells the browser which origins are allowed to load each type of resource, providing defence against XSS and data-injection attacks.
+
+Current policy:
+
+```
+default-src 'self';
+script-src  'self';
+style-src   'self' 'unsafe-inline';
+img-src     'self' data: https://storage.googleapis.com;
+font-src    'self';
+connect-src 'self';
+frame-ancestors 'none'
+```
+
+| Directive         | Allowed origins                               | Notes                                           |
+| ----------------- | --------------------------------------------- | ----------------------------------------------- |
+| `default-src`     | `'self'`                                      | Fallback for any type not listed below          |
+| `script-src`      | `'self'`                                      | Only first-party JavaScript                     |
+| `style-src`       | `'self' 'unsafe-inline'`                      | Mantine injects inline styles at runtime        |
+| `img-src`         | `'self' data: https://storage.googleapis.com` | GCS signed URLs for teaching images             |
+| `font-src`        | `'self'`                                      | Only first-party fonts                          |
+| `connect-src`     | `'self'`                                      | XHR/fetch — API calls go via the same-origin LB |
+| `frame-ancestors` | `'none'`                                      | Prevents the app being embedded in an iframe    |
+
+!!! warning "Adding external image or API sources"
+If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs — only a CSP violation message in the browser console.
 
 ## Remaining steps
 
