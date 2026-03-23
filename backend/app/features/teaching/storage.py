@@ -43,26 +43,56 @@ class LocalStorageBackend(StorageBackend):
 
 
 class GCSStorageBackend(StorageBackend):
-    """Generate signed GCS URLs (production)."""
+    """Generate signed GCS URLs (production).
+
+    On Cloud Run the default compute credentials cannot sign
+    directly (no private key).  We pass ``service_account_email``
+    and ``access_token`` so the library uses the IAM ``signBlob``
+    API instead.
+    """
 
     def __init__(self, bucket_name: str) -> None:
-        # Lazy import — only needed in production
+        from google.auth import default  # type: ignore[import-untyped]
+        from google.auth.transport import (
+            requests as auth_requests,  # type: ignore[import-untyped]
+        )
         from google.cloud import storage  # type: ignore[import-untyped]
 
-        self._client = storage.Client()
+        self._credentials, _project = default()
+        self._client = storage.Client(credentials=self._credentials)
         self._bucket = self._client.bucket(bucket_name)
+
+        # Resolve the SA email for IAM-based signing
+        if hasattr(self._credentials, "service_account_email"):
+            self._sa_email: str = self._credentials.service_account_email
+        else:
+            auth_req = auth_requests.Request()
+            self._credentials.refresh(auth_req)
+            self._sa_email = self._credentials.service_account_email
 
     def get_image_url(
         self, bank_id: str, item_folder: str, filename: str
     ) -> str:
         import datetime as dt
 
+        from google.auth.transport import (
+            requests as auth_requests,  # type: ignore[import-untyped]
+        )
+
         blob = self._bucket.blob(
             f"questions/{bank_id}/{item_folder}/{filename}"
         )
+
+        # Ensure the access token is fresh
+        if not self._credentials.token:
+            self._credentials.refresh(auth_requests.Request())
+
         return blob.generate_signed_url(
+            version="v4",
             expiration=dt.timedelta(minutes=15),
             method="GET",
+            service_account_email=self._sa_email,
+            access_token=self._credentials.token,
         )
 
 

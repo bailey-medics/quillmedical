@@ -69,12 +69,24 @@ class TestGCSStorageBackend:
         mock_bucket = MagicMock()
         mock_bucket.blob.return_value = mock_blob
         backend._bucket = mock_bucket  # type: ignore[attr-defined]
+        backend._sa_email = "sa@project.iam.gserviceaccount.com"  # type: ignore[attr-defined]
+
+        mock_credentials = MagicMock()
+        mock_credentials.token = "fake-token"
+        backend._credentials = mock_credentials  # type: ignore[attr-defined]
 
         url = backend.get_image_url("bank-id", "question_1", "image_1.png")
         assert url == "https://storage.googleapis.com/signed-url"
         mock_bucket.blob.assert_called_once_with(
             "questions/bank-id/question_1/image_1.png"
         )
+        mock_blob.generate_signed_url.assert_called_once()
+        call_kwargs = mock_blob.generate_signed_url.call_args.kwargs
+        assert call_kwargs["version"] == "v4"
+        assert call_kwargs["service_account_email"] == (
+            "sa@project.iam.gserviceaccount.com"
+        )
+        assert call_kwargs["access_token"] == "fake-token"
 
 
 class TestGetStorageBackend:
