@@ -8,6 +8,7 @@ import type { CandidateItem } from "@/features/teaching/types";
 const uniformItem: CandidateItem = {
   answer_id: 1,
   display_order: 3,
+  question_type: "single",
   images: [
     { key: "img1", label: "White light", url: "/img1.png" },
     { key: "img2", label: "NBI", url: "/img2.png" },
@@ -21,6 +22,7 @@ const uniformItem: CandidateItem = {
 const textItem: CandidateItem = {
   answer_id: 2,
   display_order: 7,
+  question_type: "single",
   images: [],
   text: "A patient presents with abdominal pain.",
   options: [

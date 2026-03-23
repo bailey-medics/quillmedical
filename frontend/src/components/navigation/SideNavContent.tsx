@@ -189,14 +189,14 @@ export default function SideNavContent({
         label: "Organisations",
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
-      },
+      } satisfies NavItem,
       ...(hasTeaching
         ? [
             {
               label: "Teaching",
               href: "/admin/teaching",
               icon: showIcons ? "teaching" : undefined,
-            },
+            } satisfies NavItem,
           ]
         : []),
     ],

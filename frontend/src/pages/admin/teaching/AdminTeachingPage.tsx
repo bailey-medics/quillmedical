@@ -150,6 +150,7 @@ export default function AdminTeachingPage() {
           data={banks}
           columns={columns}
           getRowKey={(bank) => bank.bank_id}
+          onRowClick={() => {}}
           loading={loading}
           error={error}
           emptyMessage="No teaching modules found"
