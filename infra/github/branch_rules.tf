@@ -52,6 +52,12 @@ variable "github_repository" {
   default     = "quillmedical"
 }
 
+variable "question_bank_repository" {
+  description = "Name of the question bank repository"
+  type        = string
+  default     = "quill-question-bank"
+}
+
 # ---------------------------------------------------------------------------
 # Ruleset 1 — Protected branches
 # ---------------------------------------------------------------------------
@@ -132,6 +138,66 @@ resource "github_repository_ruleset" "branch_naming" {
         "refs/heads/clinical-live",
         "refs/heads/release/**",
       ]
+    }
+  }
+
+  rules {
+    branch_name_pattern {
+      operator = "regex"
+      pattern  = "^(feature|hotfix)/.+"
+      name     = "Branch names must follow feature/* or hotfix/* convention"
+      negate   = false
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Ruleset 3 — Question bank: protected branches
+# ---------------------------------------------------------------------------
+# Same pattern as quillmedical but for the question bank data repo.
+# Only main is protected (no clinical-live or release branches).
+
+resource "github_repository_ruleset" "qb_protected_branches" {
+  name        = "protected-branches"
+  repository  = var.question_bank_repository
+  target      = "branch"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["refs/heads/main"]
+      exclude = []
+    }
+  }
+
+  rules {
+    pull_request {
+      required_approving_review_count   = 0
+      dismiss_stale_reviews_on_push     = true
+      require_code_owner_review         = false
+      require_last_push_approval        = false
+      required_review_thread_resolution = false
+    }
+
+    non_fast_forward = true
+    deletion         = true
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Ruleset 4 — Question bank: branch naming convention
+# ---------------------------------------------------------------------------
+
+resource "github_repository_ruleset" "qb_branch_naming" {
+  name        = "branch-naming-convention"
+  repository  = var.question_bank_repository
+  target      = "branch"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["~ALL"]
+      exclude = ["refs/heads/main"]
     }
   }
 
