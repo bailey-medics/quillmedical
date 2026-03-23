@@ -36,7 +36,7 @@ jobs:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
       PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
       - uses: actions/setup-python@v5
@@ -148,7 +148,7 @@ jobs:
       matrix:
         task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build", "storybook:test:ci"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
       - uses: actions/setup-node@v4
@@ -250,7 +250,7 @@ jobs:
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
       - name: Install Semgrep
@@ -269,7 +269,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Open pull request
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create PR if none exists
         env:

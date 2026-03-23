@@ -30,7 +30,7 @@ jobs:
       OPENAPI_SRC: docs/docs/code/swagger/openapi.json
       OPENAPI_DST: site/code/swagger/openapi.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

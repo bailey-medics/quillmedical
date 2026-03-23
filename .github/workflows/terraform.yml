@@ -42,7 +42,7 @@ jobs:
             wif_provider_secret: GCP_PROD_WIF_PROVIDER
             service_account_secret: GCP_PROD_SERVICE_ACCOUNT
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -118,7 +118,7 @@ jobs:
             service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
     environment: ${{ matrix.environment }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -174,7 +174,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/clinical-live'
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3

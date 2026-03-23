@@ -60,6 +60,8 @@ nav:
       - Overview: infrastructure/index.md
       - Google Cloud Platform: infrastructure/gcp.md
       - Remote admin tasks: infrastructure/admin.md
+  - GitHub:
+      - Overview: github/index.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
   - Plans:
