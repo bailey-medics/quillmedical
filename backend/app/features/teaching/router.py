@@ -114,19 +114,12 @@ def _build_candidate_item(
         "_source_dir", f"question_{answer.display_order}"
     )
 
-    logger.info(
-        "Building candidate item: bank=%s folder=%s images=%s",
-        item.question_bank_id,
-        item_folder,
-        item.images,
-    )
     for idx, img in enumerate(item.images or []):
         key = img.get("key", "")
         label = img.get("label")
         if not label and idx < len(image_labels):
             label = image_labels[idx]
         url = storage.get_image_url(item.question_bank_id, item_folder, key)
-        logger.info("Generated signed URL: %s", url[:120])
         images.append(ItemImageOut(key=key, label=label, url=url))
 
     # Resolve options
