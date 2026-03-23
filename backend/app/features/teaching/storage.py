@@ -62,13 +62,12 @@ class GCSStorageBackend(StorageBackend):
         self._client = storage.Client(credentials=self._credentials)
         self._bucket = self._client.bucket(bucket_name)
 
-        # Resolve the SA email for IAM-based signing
-        if hasattr(self._credentials, "service_account_email"):
-            self._sa_email: str = self._credentials.service_account_email
-        else:
-            auth_req = auth_requests.Request()
-            self._credentials.refresh(auth_req)
-            self._sa_email = self._credentials.service_account_email
+        # Resolve the SA email for IAM-based signing.
+        # Compute-engine credentials expose service_account_email
+        # but return "default" until refreshed.
+        auth_req = auth_requests.Request()
+        self._credentials.refresh(auth_req)
+        self._sa_email: str = self._credentials.service_account_email
 
     def get_image_url(
         self, bank_id: str, item_folder: str, filename: str
