@@ -245,7 +245,7 @@ def sync_question_bank(
                     question_bank_id=bank_id,
                     bank_version=version,
                     created_by=user_id,
-                    status="draft",
+                    status="published",
                     **fields,
                 )
             )

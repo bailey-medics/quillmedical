@@ -136,7 +136,7 @@ class TestSyncQuestionBank:
             .all()
         )
         assert len(items) == 3
-        assert all(i.status == "draft" for i in items)
+        assert all(i.status == "published" for i in items)
 
     def test_sync_updates_existing_items(
         self, db_session, organisation, admin_user, tmp_path: Path
