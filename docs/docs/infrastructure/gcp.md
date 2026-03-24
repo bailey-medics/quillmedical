@@ -128,21 +128,21 @@ Production and staging WIF providers only allow `bailey-medics/quillmedical`.
 !!! warning "Adding a new repository to WIF requires two steps"
 Updating the WIF provider attribute condition is **not enough**. You must also add a `roles/iam.workloadIdentityUser` IAM binding on the service account for the new repo's principal. Without this, GitHub Actions will authenticate but fail with `iam.serviceAccounts.getAccessToken` permission denied when trying to impersonate the service account.
 
-    ```bash
-    # Step 1: Update the WIF provider attribute condition
-    gcloud iam workload-identity-pools providers update-oidc github-provider \
-      --project=quill-medical-{env} \
-      --location=global \
-      --workload-identity-pool=github-pool \
-      --attribute-condition="assertion.repository == 'bailey-medics/quillmedical' || assertion.repository == 'bailey-medics/{new-repo}'"
+  ```bash
+  # Step 1: Update the WIF provider attribute condition
+  gcloud iam workload-identity-pools providers update-oidc github-provider \
+    --project=quill-medical-{env} \
+    --location=global \
+    --workload-identity-pool=github-pool \
+    --attribute-condition="assertion.repository == 'bailey-medics/quillmedical' || assertion.repository == 'bailey-medics/{new-repo}'"
 
-    # Step 2: Grant the new repo's WIF identity permission to impersonate the SA
-    gcloud iam service-accounts add-iam-policy-binding \
-      github-actions@quill-medical-{env}.iam.gserviceaccount.com \
-      --project=quill-medical-{env} \
-      --role=roles/iam.workloadIdentityUser \
-      --member="principalSet://iam.googleapis.com/projects/{project-number}/locations/global/workloadIdentityPools/github-pool/attribute.repository/bailey-medics/{new-repo}"
-    ```
+  # Step 2: Grant the new repo's WIF identity permission to impersonate the SA
+  gcloud iam service-accounts add-iam-policy-binding \
+    github-actions@quill-medical-{env}.iam.gserviceaccount.com \
+    --project=quill-medical-{env} \
+    --role=roles/iam.workloadIdentityUser \
+    --member="principalSet://iam.googleapis.com/projects/{project-number}/locations/global/workloadIdentityPools/github-pool/attribute.repository/bailey-medics/{new-repo}"
+```
 
 The service accounts have the following IAM roles:
 

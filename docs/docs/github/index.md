@@ -58,14 +58,14 @@ Managed by Terraform in `infra/github/branch_rules.tf`. Four rulesets are define
 !!! warning "Manual apply required for GitHub rulesets"
 The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` changes to `main` does not automatically apply them. You must run `terraform apply` locally:
 
-    ```bash
-    export GITHUB_TOKEN=$(gh auth token)
-    cd infra/github/
-    terraform plan -var-file=terraform.tfvars
-    terraform apply -var-file=terraform.tfvars
-    ```
+```bash
+export GITHUB_TOKEN=$(gh auth token)
+cd infra/github/
+terraform plan -var-file=terraform.tfvars
+terraform apply -var-file=terraform.tfvars
+```
 
-    The GCP infrastructure Terraform (`infra/`) uses a remote backend and is applied automatically via the Terraform CI workflow.
+The GCP infrastructure Terraform (`infra/`) uses a remote backend and is applied automatically via the Terraform CI workflow.
 
 ### Ruleset 1 — Protected branches (quillmedical)
 

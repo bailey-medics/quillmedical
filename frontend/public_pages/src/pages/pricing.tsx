@@ -3,7 +3,7 @@ import HeroBackground from "@/components/background/HeroBackground";
 import LightBackground from "@/components/background/LightBackground";
 import PublicButton from "@/components/button/PublicButton";
 import PublicLayout from "@/components/layouts/PublicLayout";
-import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
 import { Container, Group, MantineProvider, Stack } from "@mantine/core";
