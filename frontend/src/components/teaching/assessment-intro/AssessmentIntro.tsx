@@ -17,6 +17,8 @@ interface AssessmentIntroProps {
   onBegin: () => void;
   /** Whether the begin button is disabled */
   disabled?: boolean;
+  /** Whether the assessment is being created */
+  loading?: boolean;
 }
 
 export function AssessmentIntro({
@@ -24,6 +26,7 @@ export function AssessmentIntro({
   body,
   onBegin,
   disabled = false,
+  loading = false,
 }: AssessmentIntroProps) {
   return (
     <Stack gap="lg">
@@ -31,7 +34,7 @@ export function AssessmentIntro({
       <Card withBorder p="lg">
         <MarkdownView source={body} />
       </Card>
-      <Button size="lg" onClick={onBegin} disabled={disabled}>
+      <Button size="lg" onClick={onBegin} disabled={disabled} loading={loading}>
         Begin
       </Button>
     </Stack>
