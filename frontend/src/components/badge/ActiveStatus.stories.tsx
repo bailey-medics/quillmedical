@@ -61,3 +61,20 @@ export const AllSizes: Story = {
     </VariantStack>
   ),
 };
+
+/** Loading skeleton at each size. */
+export const Loading: Story = {
+  render: () => (
+    <VariantStack>
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
+        <VariantRow
+          key={size}
+          label={size === "lg" ? "lg (default)" : size}
+          horizontal={false}
+        >
+          <ActiveStatus active={true} size={size} isLoading />
+        </VariantRow>
+      ))}
+    </VariantStack>
+  ),
+};

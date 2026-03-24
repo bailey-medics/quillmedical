@@ -76,4 +76,16 @@ describe("ActiveStatus", () => {
       expect(screen.getByText("Deactivated")).toBeInTheDocument();
     });
   });
+
+  describe("Loading state", () => {
+    it("shows skeleton when loading", () => {
+      const { container } = renderWithMantine(
+        <ActiveStatus active={true} isLoading />,
+      );
+      expect(screen.queryByText("Active")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".mantine-Skeleton-root"),
+      ).toBeInTheDocument();
+    });
+  });
 });

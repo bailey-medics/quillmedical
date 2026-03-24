@@ -72,4 +72,16 @@ describe("AssessmentResultBadge", () => {
       expect(screen.getByText("Incomplete")).toBeInTheDocument();
     });
   });
+
+  describe("Loading state", () => {
+    it("shows skeleton when loading", () => {
+      const { container } = renderWithMantine(
+        <AssessmentResultBadge result="pass" isLoading />,
+      );
+      expect(screen.queryByText("Pass")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".mantine-Skeleton-root"),
+      ).toBeInTheDocument();
+    });
+  });
 });

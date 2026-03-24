@@ -1,0 +1,30 @@
+/**
+ * BodyTextBold Storybook Stories
+ *
+ * Demonstrates the BodyTextBold component — bold body copy styling with black text.
+ */
+
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import BodyTextBold from "./BodyTextBold";
+
+const meta = {
+  title: "Typography/BodyTextBold",
+  component: BodyTextBold,
+  parameters: {
+    layout: "padded",
+  },
+  tags: ["autodocs"],
+} satisfies Meta<typeof BodyTextBold>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const sampleText =
+  "A 65-year-old patient presents with a 3mm sessile polyp in the sigmoid colon.";
+
+/** Default bold body text */
+export const Default: Story = {
+  args: {
+    children: sampleText,
+  },
+};

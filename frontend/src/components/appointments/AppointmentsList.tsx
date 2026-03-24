@@ -6,15 +6,11 @@
  * have a blue left border. Provides loading state with skeletons.
  */
 
-import {
-  Badge,
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Card, Group, Skeleton, Stack } from "@mantine/core";
+import AppointmentStatus from "@components/badge/AppointmentStatus";
+import BodyText from "@components/typography/BodyText";
+import BodyTextBold from "@components/typography/BodyTextBold";
+import HeaderText from "@components/typography/HeaderText";
 
 export type Appointment = {
   id: string;
@@ -34,21 +30,6 @@ type Props = {
   isLoading?: boolean;
 };
 
-function getStatusColour(status: Appointment["status"]): string {
-  switch (status) {
-    case "upcoming":
-      return "blue";
-    case "completed":
-      return "green";
-    case "cancelled":
-      return "red";
-    case "no-show":
-      return "orange";
-    default:
-      return "gray";
-  }
-}
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -60,11 +41,9 @@ function formatDate(iso: string): string {
 
 function AppointmentCard({
   appointment,
-  isUpcoming,
   onClick,
 }: {
   appointment: Appointment;
-  isUpcoming: boolean;
   onClick?: (appointment: Appointment) => void;
 }) {
   return (
@@ -74,36 +53,23 @@ function AppointmentCard({
       radius="md"
       withBorder
       style={{
-        ...(isUpcoming && {
-          borderLeft: "4px solid var(--mantine-color-blue-5)",
-        }),
         ...(onClick && { cursor: "pointer" }),
       }}
       onClick={onClick ? () => onClick(appointment) : undefined}
     >
       <Stack gap="sm">
         <Group justify="space-between">
-          <Title order={4}>{appointment.title}</Title>
-          <Badge
-            color={getStatusColour(appointment.status)}
-            variant="light"
-            size="lg"
-          >
-            {appointment.status}
-          </Badge>
+          <HeaderText>{appointment.title}</HeaderText>
+          <AppointmentStatus status={appointment.status} />
         </Group>
-        <Group gap="lg">
-          <Text size="sm" fw={isUpcoming ? 600 : undefined}>
-            {formatDate(appointment.date)} at {appointment.time}
-          </Text>
-          <Text size="sm" c="dimmed">
-            {appointment.location}
-          </Text>
-        </Group>
-        <Text size="sm" c="dimmed">
+        <BodyTextBold>
+          {formatDate(appointment.date)} at {appointment.time}
+        </BodyTextBold>
+        <BodyText>{appointment.location}</BodyText>
+        <BodyText>
           {appointment.clinician} — {appointment.clinicianRole}
-        </Text>
-        {appointment.notes && <Text size="md">{appointment.notes}</Text>}
+        </BodyText>
+        {appointment.notes && <BodyText>{appointment.notes}</BodyText>}
       </Stack>
     </Card>
   );
@@ -137,16 +103,19 @@ export default function AppointmentsList({
   const upcoming = appointments.filter((a) => a.status === "upcoming");
   const past = appointments.filter((a) => a.status !== "upcoming");
 
+  if (appointments.length === 0) {
+    return <BodyText>No appointments to show.</BodyText>;
+  }
+
   return (
     <Stack gap="lg">
       {upcoming.length > 0 && (
         <>
-          <Title order={3}>Upcoming</Title>
+          <HeaderText>Upcoming</HeaderText>
           {upcoming.map((appt) => (
             <AppointmentCard
               key={appt.id}
               appointment={appt}
-              isUpcoming={true}
               onClick={onAppointmentClick}
             />
           ))}
@@ -155,12 +124,11 @@ export default function AppointmentsList({
 
       {past.length > 0 && (
         <>
-          <Title order={3}>Past appointments</Title>
+          <HeaderText>Past appointments</HeaderText>
           {past.map((appt) => (
             <AppointmentCard
               key={appt.id}
               appointment={appt}
-              isUpcoming={false}
               onClick={onAppointmentClick}
             />
           ))}

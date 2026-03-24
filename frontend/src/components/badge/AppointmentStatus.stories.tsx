@@ -1,27 +1,27 @@
 /**
- * AssessmentResultBadge Storybook Stories
+ * AppointmentStatus Badge Storybook Stories
  *
- * Demonstrates the AssessmentResultBadge component in all result states
- * and size variants.
+ * Demonstrates the AppointmentStatus component across all statuses and sizes.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import AssessmentResultBadge from "./AssessmentResultBadge";
+import AppointmentStatus from "./AppointmentStatus";
+import type { AppointmentStatusType } from "./AppointmentStatus";
 
-const meta: Meta<typeof AssessmentResultBadge> = {
-  title: "Badge/AssessmentResultBadge",
-  component: AssessmentResultBadge,
+const meta: Meta<typeof AppointmentStatus> = {
+  title: "Badge/AppointmentStatus",
+  component: AppointmentStatus,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   argTypes: {
-    result: {
+    status: {
       control: "select",
-      options: ["pass", "fail", "incomplete"],
-      description: "Assessment result",
+      options: ["upcoming", "completed", "cancelled", "no-show"],
+      description: "Appointment status",
     },
     size: {
       control: "select",
@@ -32,34 +32,35 @@ const meta: Meta<typeof AssessmentResultBadge> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof AssessmentResultBadge>;
+type Story = StoryObj<typeof AppointmentStatus>;
 
-/**
- * Shows all three result states with default size.
- */
+const allStatuses: AppointmentStatusType[] = [
+  "upcoming",
+  "completed",
+  "cancelled",
+  "no-show",
+];
+
+/** Shows all statuses with default large size. */
 export const Default: Story = {
   render: () => (
     <Group gap="md">
-      <AssessmentResultBadge result="pass" />
-      <AssessmentResultBadge result="fail" />
-      <AssessmentResultBadge result="incomplete" />
+      {allStatuses.map((status) => (
+        <AppointmentStatus key={status} status={status} />
+      ))}
     </Group>
   ),
 };
 
-/**
- * All sizes comparison
- *
- * Shows all size variants side by side for comparison.
- */
+/** All sizes comparison across all statuses. */
 export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
         <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          <AssessmentResultBadge result="pass" size={size} />
-          <AssessmentResultBadge result="fail" size={size} />
-          <AssessmentResultBadge result="incomplete" size={size} />
+          {allStatuses.map((status) => (
+            <AppointmentStatus key={status} status={status} size={size} />
+          ))}
         </VariantRow>
       ))}
     </VariantStack>
@@ -76,7 +77,7 @@ export const Loading: Story = {
           label={size === "lg" ? "lg (default)" : size}
           horizontal={false}
         >
-          <AssessmentResultBadge result="pass" size={size} isLoading />
+          <AppointmentStatus status="upcoming" size={size} isLoading />
         </VariantRow>
       ))}
     </VariantStack>

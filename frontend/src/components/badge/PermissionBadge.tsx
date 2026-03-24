@@ -54,7 +54,6 @@ const PERMISSION_COLORS: Record<UserPermission, string> = {
  * Used on admin pages, user management interfaces, and permission displays.
  */
 const SKELETON_WIDTHS: Record<string, number> = {
-  xs: 55,
   sm: 65,
   md: 75,
   lg: 80,
@@ -62,7 +61,6 @@ const SKELETON_WIDTHS: Record<string, number> = {
 };
 
 const SKELETON_HEIGHTS: Record<string, number> = {
-  xs: 16,
   sm: 19,
   md: 21,
   lg: 27,

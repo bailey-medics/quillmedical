@@ -5,7 +5,7 @@
  * with appropriate colour coding.
  */
 
-import { Badge } from "@mantine/core";
+import { Badge, Skeleton } from "@mantine/core";
 
 type AssessmentResult = "pass" | "fail" | "incomplete";
 
@@ -14,6 +14,22 @@ type Props = {
   result: AssessmentResult;
   /** Badge size (default: "lg") */
   size?: "sm" | "md" | "lg" | "xl";
+  /** Show loading skeleton instead of badge */
+  isLoading?: boolean;
+};
+
+const SKELETON_WIDTHS: Record<string, number> = {
+  sm: 70,
+  md: 80,
+  lg: 95,
+  xl: 115,
+};
+
+const SKELETON_HEIGHTS: Record<string, number> = {
+  sm: 19,
+  md: 21,
+  lg: 27,
+  xl: 40,
 };
 
 const config: Record<AssessmentResult, { label: string; color: string }> = {
@@ -34,7 +50,21 @@ const config: Record<AssessmentResult, { label: string; color: string }> = {
  * <AssessmentResultBadge result="incomplete" />  // Violet "Incomplete"
  * ```
  */
-export default function AssessmentResultBadge({ result, size = "lg" }: Props) {
+export default function AssessmentResultBadge({
+  result,
+  size = "lg",
+  isLoading = false,
+}: Props) {
+  if (isLoading) {
+    return (
+      <Skeleton
+        width={SKELETON_WIDTHS[size] ?? 95}
+        height={SKELETON_HEIGHTS[size] ?? 27}
+        radius="xl"
+      />
+    );
+  }
+
   const { label, color } = config[result];
 
   return (
