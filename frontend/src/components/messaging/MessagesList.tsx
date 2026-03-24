@@ -10,6 +10,8 @@ import type { StackedParticipant } from "@/components/profile-pic";
 import { StackedProfilePics } from "@/components/profile-pic";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
+import HeaderText from "@/components/typography/HeaderText";
+import BodyText from "@/components/typography/BodyText";
 import { Card, Group, Skeleton, Stack, Text } from "@mantine/core";
 
 export type MessageThread = {
@@ -109,14 +111,10 @@ export default function MessagesList({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
                   <Group gap="xs">
-                    <Text fw={700} size="lg">
-                      {thread.displayName}
-                    </Text>
+                    <HeaderText>{thread.displayName}</HeaderText>
                     <UnreadBadge count={thread.unreadCount} />
                   </Group>
-                  <Text size="lg" c="dimmed">
-                    {formatTime(thread.lastMessageTime)}
-                  </Text>
+                  <BodyText>{formatTime(thread.lastMessageTime)}</BodyText>
                 </Group>
 
                 <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
