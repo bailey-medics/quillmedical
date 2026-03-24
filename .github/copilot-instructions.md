@@ -9,20 +9,7 @@
 
 ## Key Commands
 
-```bash
-just start-dev      # Start (or 'just start-dev b' to rebuild)  [alias: sd]
-just stop            # Stop all containers                       [alias: sc]
-just migrate "msg"  # Database migration                        [alias: m]
-just unit-tests-backend / just unit-tests-frontend               # [ub / uf]
-just create-user    # Interactive user creation                  [alias: cu]
-just storybook      # Start Storybook dev server                [alias: sb]
-just enter-backend  # Shell into backend container              [alias: eb]
-just enter-frontend # Shell into frontend container             [alias: ef]
-just poetry-install # Lock and install Poetry deps              [alias: pi]
-just yarn-install   # Install frontend deps in container        [alias: yi]
-just docs           # Build and serve docs locally              [alias: d]
-just pre-commit     # Run pre-commit hooks                      [alias: pc]
-```
+see the `Justfile` if you want to know more.
 
 ## Testing Requirements
 
