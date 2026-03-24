@@ -287,6 +287,13 @@ jobs:
             exit 0
           fi
 
+          # Check if there are any commits between this branch and main
+          COMMITS=$(git rev-list --count origin/main..HEAD)
+          if [ "$COMMITS" -eq 0 ]; then
+            echo "No commits between $GITHUB_REF_NAME and main. Skipping PR creation."
+            exit 0
+          fi
+
           # Use the latest commit message as the PR title
           TITLE=$(git log -1 --pretty=%s)
 
