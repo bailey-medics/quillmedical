@@ -64,6 +64,9 @@ nav:
       - Overview: github/index.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
+  - Dependencies:
+      - Overview: dependencies/index.md
+      - Automatic updates: dependencies/automatic-updates.md
   - Plans:
       - Overview: plans/index.md
       - GCP Launch-Ready: plans/gcp-launch-ready.md

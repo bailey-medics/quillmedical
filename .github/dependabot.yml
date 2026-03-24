@@ -1,0 +1,89 @@
+# .github/dependabot.yml
+#
+# Enables Dependabot VULNERABILITY ALERTS only — not automated PRs.
+# Automated version-bump PRs are handled by Renovate (see renovate.json).
+#
+# Targets both branches:
+#   - main          (integration / development)
+#   - clinical-live (production — ensures vulnerability alerts cover deployed code)
+#
+# Tiering strategy and response policy are documented in renovate.json.
+# DCB 0129 audit reference: docs/docs/dependencies/automatic-updates.md
+
+version: 2
+
+updates:
+  # Python / Poetry (backend)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0   # alerts only — Renovate handles PRs
+    target-branch: "main"
+
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    target-branch: "clinical-live"
+
+  # JavaScript / TypeScript (frontend via Yarn)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0   # alerts only — Renovate handles PRs
+    target-branch: "main"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    target-branch: "clinical-live"
+
+  # Docker base images (Dockerfiles and Compose services)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0   # alerts only — Renovate handles PRs
+    target-branch: "main"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    target-branch: "clinical-live"
+
+  # Terraform providers (infrastructure/)
+  - package-ecosystem: "terraform"
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0   # alerts only — Renovate handles PRs
+    target-branch: "main"
+
+  - package-ecosystem: "terraform"
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    target-branch: "clinical-live"
+
+  # GitHub Actions (pinned action versions in .github/workflows/)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0   # alerts only — Renovate handles PRs
+    target-branch: "main"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    target-branch: "clinical-live"
