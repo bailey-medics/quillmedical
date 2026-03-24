@@ -120,7 +120,7 @@ services:
 
   fhir:
     profiles: ["clinical"]
-    image: hapiproject/hapi:latest
+    image: hapiproject/hapi:v8.8.0-1
     container_name: quill_fhir
     env_file: backend/.env
     environment:
@@ -160,7 +160,7 @@ services:
 
   ehrbase:
     profiles: ["clinical"]
-    image: ehrbase/ehrbase:latest
+    image: ehrbase/ehrbase:2.30.0
     container_name: quill_ehrbase
     env_file: backend/.env
     environment:
