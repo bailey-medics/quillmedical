@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Enable Corepack
         run: corepack enable
@@ -56,7 +56,8 @@ jobs:
     name: Deploy to staging
     runs-on: ubuntu-latest
     needs: build
-    environment: staging
+    environment:
+      name: staging
 
     steps:
       - uses: actions/download-artifact@v4
@@ -65,7 +66,7 @@ jobs:
           path: public-site/
 
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_STAGING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_STAGING_SERVICE_ACCOUNT }}
