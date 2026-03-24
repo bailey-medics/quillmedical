@@ -26,5 +26,14 @@
   "terminal.integrated.tabs.description": "${sequence}",
   "terminal.integrated.tabs.title": "${process}",
 
-  "github.copilot.chat.prompts.enabled": true
+  "github.copilot.chat.prompts.enabled": true,
+
+  "json.schemaDownload.enable": true,
+  "http.systemCertificates": true,
+  "json.schemas": [
+    {
+      "fileMatch": ["renovate.json"],
+      "url": "https://docs.renovatebot.com/renovate-schema.json"
+    }
+  ]
 }

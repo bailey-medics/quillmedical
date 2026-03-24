@@ -1,7 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-
-  "//": [
+  "description": [
     "=============================================================",
     "  Quill Medical — Renovate configuration",
     "  DCB 0129 audit reference: docs/docs/dependencies/automatic-updates.md",
@@ -17,7 +16,7 @@
     "",
     "Tier 2 — Infrastructure",
     "  Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs,",
-    "            Mantine, React, React Router",
+    "            Mantine, React, React Router, Docker base images",
     "  Policy:   No automerge; code review required.",
     "            Major version bumps labelled major-version-bump.",
     "            Vulnerability alerts fire immediately, target clinical-live.",
@@ -45,107 +44,169 @@
     "  No hotfix required.",
     "============================================================="
   ],
-
-  "extends": ["config:recommended"],
-
+  "extends": [
+    "config:recommended"
+  ],
   "timezone": "Europe/London",
-
-  "schedule": ["every wednesday"],
-
+  "schedule": [
+    "every wednesday"
+  ],
   "minimumReleaseAge": "3 days",
-
-  "labels": ["dependencies"],
-
+  "labels": [
+    "dependencies"
+  ],
   "vulnerabilityAlerts": {
-    "labels": ["security"],
-    "schedule": ["at any time"],
+    "labels": [
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ],
     "prCreation": "immediate"
   },
-
   "packageRules": [
     {
-      "//": "Group all non-major npm and pip (Poetry) routine updates into one weekly PR",
-      "matchManagers": ["npm", "poetry"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "description": "Group all non-major npm and pip (Poetry) routine updates into one weekly PR",
+      "matchManagers": [
+        "npm",
+        "poetry"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "all non-major npm and pip updates",
       "groupSlug": "npm-pip-weekly",
       "automerge": false
     },
-
     {
-      "//": "Group all @types/* packages — automerge on CI pass (Tier 3)",
-      "matchManagers": ["npm"],
-      "matchPackageNames": ["@types/**"],
+      "description": "Group all @types/* packages — automerge on CI pass (Tier 3)",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPackageNames": [
+        "@types/**"
+      ],
       "groupName": "TypeScript @types packages",
       "groupSlug": "types-packages",
       "automerge": true,
       "automergeType": "pr",
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Group all devDependencies minor/patch — automerge on CI pass (Tier 3)",
-      "matchManagers": ["npm", "poetry"],
-      "matchDepTypes": ["devDependencies", "dev"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "description": "Group all devDependencies minor/patch — automerge on CI pass (Tier 3)",
+      "matchManagers": [
+        "npm",
+        "poetry"
+      ],
+      "matchDepTypes": [
+        "devDependencies",
+        "dev"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "groupName": "devDependencies (minor and patch)",
       "groupSlug": "dev-deps-minor-patch",
       "automerge": true,
       "automergeType": "pr",
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Group GitHub Actions version bumps — automerge on CI pass (Tier 3)",
-      "matchManagers": ["github-actions"],
+      "description": "Group GitHub Actions version bumps — automerge on CI pass (Tier 3)",
+      "matchManagers": [
+        "github-actions"
+      ],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
       "automerge": true,
       "automergeType": "pr",
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Pre-commit hook updates — automerge on CI pass (Tier 3)",
-      "matchManagers": ["pre-commit"],
+      "description": "Pre-commit hook updates — automerge on CI pass (Tier 3)",
+      "matchManagers": [
+        "pre-commit"
+      ],
       "groupName": "pre-commit hooks",
       "groupSlug": "pre-commit-hooks",
       "automerge": true,
       "automergeType": "pr",
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Terraform provider updates — no automerge, manual review required",
-      "matchManagers": ["terraform"],
+      "description": "Terraform provider updates — no automerge, manual review required",
+      "matchManagers": [
+        "terraform"
+      ],
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
       "automerge": false,
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Tier 1 — Clinical: fhirclient and httpx — never automerge",
-      "matchPackageNames": ["fhirclient", "httpx"],
+      "description": "Tier 2 — Docker base images: group and no automerge",
+      "matchManagers": [
+        "docker-compose",
+        "dockerfile"
+      ],
+      "groupName": "Docker base images",
+      "groupSlug": "docker-images",
       "automerge": false,
-      "labels": ["dependencies", "tier-1-clinical"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Tier 1 — Clinical: vulnerability alerts fire immediately, target clinical-live",
-      "matchPackageNames": ["fhirclient", "httpx"],
-      "matchUpdateTypes": ["patch", "minor", "major"],
+      "description": "Tier 1 — Clinical: fhirclient and httpx — never automerge",
+      "matchPackageNames": [
+        "fhirclient",
+        "httpx"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "tier-1-clinical"
+      ]
+    },
+    {
+      "description": "Tier 1 — Clinical: vulnerability alerts fire immediately, target clinical-live",
+      "matchPackageNames": [
+        "fhirclient",
+        "httpx"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor",
+        "major"
+      ],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
+      "schedule": [
+        "at any time"
+      ],
       "prCreation": "immediate",
-      "targetBranch": "clinical-live",
       "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "tier-1-clinical", "security", "hotfix"],
+      "labels": [
+        "dependencies",
+        "tier-1-clinical",
+        "security",
+        "hotfix"
+      ],
       "automerge": false
     },
-
     {
-      "//": "Tier 2 — Infrastructure packages — no automerge",
+      "description": "Tier 2 — Infrastructure packages — no automerge",
       "matchPackageNames": [
         "fastapi",
         "sqlalchemy",
@@ -166,11 +227,12 @@
         "react-router-dom"
       ],
       "automerge": false,
-      "labels": ["dependencies"]
+      "labels": [
+        "dependencies"
+      ]
     },
-
     {
-      "//": "Tier 2 — Infrastructure: major version bumps get extra label",
+      "description": "Tier 2 — Infrastructure: major version bumps get extra label",
       "matchPackageNames": [
         "fastapi",
         "sqlalchemy",
@@ -190,12 +252,16 @@
         "react-router",
         "react-router-dom"
       ],
-      "matchUpdateTypes": ["major"],
-      "labels": ["dependencies", "major-version-bump"]
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-version-bump"
+      ]
     },
-
     {
-      "//": "Tier 2 — Infrastructure: vulnerability alerts fire immediately, target clinical-live",
+      "description": "Tier 2 — Infrastructure: vulnerability alerts fire immediately, target clinical-live",
       "matchPackageNames": [
         "fastapi",
         "sqlalchemy",
@@ -216,52 +282,76 @@
         "react-router-dom"
       ],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
+      "schedule": [
+        "at any time"
+      ],
       "prCreation": "immediate",
-      "targetBranch": "clinical-live",
       "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "security", "hotfix"],
+      "labels": [
+        "dependencies",
+        "security",
+        "hotfix"
+      ],
       "automerge": false
     },
-
     {
-      "//": "Tier 3 — Tooling vulnerability alerts bypass schedule but target main, not clinical-live",
-      "matchDepTypes": ["devDependencies", "dev"],
+      "description": "Tier 3 — Tooling vulnerability alerts bypass schedule but target main, not clinical-live",
+      "matchDepTypes": [
+        "devDependencies",
+        "dev"
+      ],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
+      "schedule": [
+        "at any time"
+      ],
       "prCreation": "immediate",
-      "targetBranch": "main",
       "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "security"],
+      "labels": [
+        "dependencies",
+        "security"
+      ],
       "automerge": false
     },
-
     {
-      "//": "Tier 3 — GitHub Actions vulnerability alerts: bypass schedule, target main",
-      "matchManagers": ["github-actions", "pre-commit"],
+      "description": "Tier 3 — GitHub Actions vulnerability alerts: bypass schedule, target main",
+      "matchManagers": [
+        "github-actions",
+        "pre-commit"
+      ],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
+      "schedule": [
+        "at any time"
+      ],
       "prCreation": "immediate",
-      "targetBranch": "main",
       "branchPrefix": "hotfix/sec-",
-      "labels": ["dependencies", "security"],
+      "labels": [
+        "dependencies",
+        "security"
+      ],
       "automerge": false
     },
-
     {
-      "//": "All vulnerability alerts: never automerge regardless of tier",
+      "description": "All vulnerability alerts: never automerge regardless of tier",
+      "matchPackageNames": [
+        "*"
+      ],
       "isVulnerabilityAlert": true,
       "automerge": false,
-      "labels": ["security"]
+      "labels": [
+        "security"
+      ]
     },
-
     {
-      "//": "Task 7 — Notifications: major version bump PRs get a dedicated label",
-      "matchUpdateTypes": ["major"],
-      "labels": ["dependencies", "major-version-bump"]
+      "description": "Task 7 — Notifications: major version bump PRs get a dedicated label",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-version-bump"
+      ]
     }
   ],
-
   "pre-commit": {
     "enabled": true
   }
