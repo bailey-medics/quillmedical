@@ -10,6 +10,7 @@ import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/data/NationalNumber";
 import FormattedDate from "@/components/data";
 import { Skeleton, Text } from "@mantine/core";
+import BodyText from "@/components/typography/BodyText";
 
 /**
  * Demographics Props
@@ -53,7 +54,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
       <Text fw={700} size="lg">
         {patient.name}
       </Text>
-      <Text size="lg" c="dimmed">
+      <BodyText>
         {patient.dob && <FormattedDate date={patient.dob} span inherit />}
         {patient.age !== undefined ? `    ${patient.age}` : ""}
         {patient.sex ? ` ${patient.sex}` : ""}
@@ -68,7 +69,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
         ) : (
           ""
         )}
-      </Text>
+      </BodyText>
     </div>
   );
 }

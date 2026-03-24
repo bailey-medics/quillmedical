@@ -163,12 +163,7 @@ export default function AdminPermissionsPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Permissions management"
-          description="Manage user competencies and system permissions (superadmin only)"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Permissions management" />
 
         {!isSuperAdmin && (
           <Text c="dimmed" fs="italic">

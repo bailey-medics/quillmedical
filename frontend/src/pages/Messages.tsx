@@ -259,7 +259,7 @@ export default function Messages() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
-          <PageHeader title="Messages" size="lg" mb={0} />
+          <PageHeader title="Messages" />
           <AddButton label="New message" onClick={() => setModalOpen(true)} />
         </Group>
 

@@ -5,23 +5,15 @@
  * Always visible regardless of scroll position.
  */
 
-import { Box, Skeleton, Text, useMantineTheme } from "@mantine/core";
+import { Box, Skeleton, useMantineTheme } from "@mantine/core";
+import BodyText from "@/components/typography/BodyText";
 
 interface FooterProps {
   /** Text to display in the footer */
   text?: string;
   /** Whether footer is in loading state */
   loading?: boolean;
-  /** Size of the footer text */
-  size?: "sm" | "md" | "lg";
 }
-
-// Font size mapping (in rem)
-const SIZE_MAP = {
-  sm: "0.875rem",
-  md: "1rem",
-  lg: "1.25rem",
-};
 
 /**
  * Footer
@@ -34,13 +26,8 @@ const SIZE_MAP = {
  * @param size - Size variant (sm, md, lg)
  * @returns Footer component or null if no text and not loading
  */
-export default function Footer({
-  text,
-  loading = false,
-  size = "lg",
-}: FooterProps) {
+export default function Footer({ text, loading = false }: FooterProps) {
   const theme = useMantineTheme();
-  const fontSize = SIZE_MAP[size];
 
   // Don't show footer if no text provided and not loading
   if (!text && !loading) {
@@ -62,11 +49,9 @@ export default function Footer({
     >
       <Box style={{ display: "flex", justifyContent: "flex-end" }}>
         {loading ? (
-          <Skeleton height={fontSize} width="12rem" radius="sm" />
+          <Skeleton height="1.125rem" width="12rem" radius="sm" />
         ) : (
-          <Text size={fontSize} c="gray.7">
-            {text}
-          </Text>
+          <BodyText>{text}</BodyText>
         )}
       </Box>
     </Box>

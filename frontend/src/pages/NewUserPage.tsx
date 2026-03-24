@@ -654,10 +654,7 @@ export default function NewUserPage() {
   return (
     <>
       <Box p="xl" maw={900} mx="auto">
-        <PageHeader
-          title={isEditMode ? "Edit user" : "Create new user"}
-          size="lg"
-        />
+        <PageHeader title={isEditMode ? "Edit user" : "Create new user"} />
 
         {loading ? (
           <Center py="xl">

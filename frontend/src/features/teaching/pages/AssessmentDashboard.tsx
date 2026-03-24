@@ -7,7 +7,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import PageHeader from "@components/page-header/PageHeader";
+import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -66,11 +66,7 @@ export default function AssessmentDashboard() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Teaching"
-          description="Select a question bank to begin an assessment."
-          mb={0}
-        />
+        <PageHeader title="Teaching" />
 
         {banks.length === 0 ? (
           <Text c="dimmed">No question banks available.</Text>

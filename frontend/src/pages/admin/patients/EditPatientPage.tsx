@@ -113,12 +113,7 @@ export default function EditPatientPage() {
     return (
       <Container size="lg" pt="xl">
         <Stack gap="lg">
-          <PageHeader
-            title={`Edit ${formatName(selectedPatient.name)}`}
-            description="Modify patient demographics and information"
-            size="lg"
-            mb={0}
-          />
+          <PageHeader title={`Edit ${formatName(selectedPatient.name)}`} />
 
           {loading ? (
             <Skeleton height={400} />
@@ -151,12 +146,7 @@ export default function EditPatientPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Edit patient"
-          description="Select a patient to edit their demographics and information"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Edit patient" />
 
         {loading ? (
           <Stack gap="xs">

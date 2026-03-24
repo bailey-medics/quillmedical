@@ -42,38 +42,6 @@ describe("Footer Component", () => {
     });
   });
 
-  describe("Size variations", () => {
-    it("renders with small size (14px)", () => {
-      const { getByText } = renderWithMantine(
-        <Footer text="Small text" size="sm" />,
-      );
-      const text = getByText("Small text");
-      expect(text).toBeInTheDocument();
-    });
-
-    it("renders with medium size (16px)", () => {
-      const { getByText } = renderWithMantine(
-        <Footer text="Medium text" size="md" />,
-      );
-      const text = getByText("Medium text");
-      expect(text).toBeInTheDocument();
-    });
-
-    it("renders with large size (20px)", () => {
-      const { getByText } = renderWithMantine(
-        <Footer text="Large text" size="lg" />,
-      );
-      const text = getByText("Large text");
-      expect(text).toBeInTheDocument();
-    });
-
-    it("defaults to medium size when size not specified", () => {
-      const { getByText } = renderWithMantine(<Footer text="Default size" />);
-      const text = getByText("Default size");
-      expect(text).toBeInTheDocument();
-    });
-  });
-
   describe("Styling", () => {
     it("has border-top styling", () => {
       const { container } = renderWithMantine(<Footer text="Styled footer" />);

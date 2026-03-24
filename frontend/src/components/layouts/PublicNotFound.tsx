@@ -1,7 +1,7 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import PublicButton from "@/components/button/PublicButton";
 import PublicText from "@/components/typography/PublicText";
-import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicTitle from "@/components/typography/PublicTitle";
 import { Container, Stack } from "@mantine/core";
 
 export interface PublicNotFoundProps {

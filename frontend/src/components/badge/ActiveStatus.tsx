@@ -26,7 +26,7 @@ type Props = {
  * <ActiveStatus active={false} /> // Shows red "Deactivated"
  * ```
  */
-export default function ActiveStatus({ active, size = "md" }: Props) {
+export default function ActiveStatus({ active, size = "lg" }: Props) {
   return (
     <Badge color={active ? "green" : "red"} variant="light" size={size}>
       {active ? "Active" : "Deactivated"}

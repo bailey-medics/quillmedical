@@ -178,11 +178,7 @@ export default function MainLayout({
                 children
               )}
             </Box>
-            <Footer
-              text={footerText}
-              loading={footerLoading}
-              size={isSm ? "md" : "lg"}
-            />
+            <Footer text={footerText} loading={footerLoading} />
           </Flex>
         </Flex>
       </Flex>

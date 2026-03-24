@@ -6,6 +6,7 @@
  */
 
 import { Card, Skeleton, Stack, Text, Box } from "@mantine/core";
+import BodyText from "@/components/typography/BodyText";
 
 export interface StatCardProps {
   /** Title/label for the statistic */
@@ -29,9 +30,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
   return (
     <Card withBorder radius="md">
       <Stack gap="xs">
-        <Text size="lg" c="dimmed">
-          {title}
-        </Text>
+        <BodyText>{title}</BodyText>
         <Box style={{ height: 38 }}>
           {loading ? (
             <Skeleton height={38} width={60} />

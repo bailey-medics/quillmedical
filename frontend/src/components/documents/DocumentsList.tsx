@@ -1,5 +1,7 @@
 import React from "react";
-import { Stack, Card, Text, Group } from "@mantine/core";
+import { Stack, Card, Group } from "@mantine/core";
+import BodyText from "@/components/typography/BodyText";
+import HeaderText from "@/components/typography/HeaderText";
 import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
@@ -29,12 +31,8 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Stack gap={2}>
-              <Text fw={700} size="lg">
-                {doc.name}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {doc.url.split("/").pop()}
-              </Text>
+              <HeaderText>{doc.name}</HeaderText>
+              <BodyText>{doc.url.split("/").pop()}</BodyText>
             </Stack>
             {doc.thumbnailUrl ? (
               <DocumentThumbnail src={doc.thumbnailUrl} alt={doc.name} />

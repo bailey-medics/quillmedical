@@ -45,12 +45,7 @@ export default function Admin({
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="center">
-        <PageHeader
-          title="Administration"
-          description="Manage users, patients, and system permissions"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Administration" />
         <PermissionBadge permission={userPermissions} />
       </Group>
 

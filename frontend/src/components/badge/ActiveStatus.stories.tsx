@@ -33,7 +33,7 @@ export default meta;
 type Story = StoryObj<typeof ActiveStatus>;
 
 /**
- * Shows both active and deactivated states with default medium size.
+ * Shows both active and deactivated states with default large size.
  */
 export const Default: Story = {
   render: () => (
@@ -53,7 +53,7 @@ export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "md" ? "md (default)" : size}>
+        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
           <ActiveStatus active={true} size={size} />
           <ActiveStatus active={false} size={size} />
         </VariantRow>

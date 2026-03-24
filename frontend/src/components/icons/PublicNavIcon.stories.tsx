@@ -16,7 +16,7 @@ const iconNames: PublicNavIconName[] = [
 const sizes = ["xs", "sm", "md", "lg", "xl"] as const;
 
 const meta = {
-  title: "Icons/PublicNavIcon",
+  title: "Public/Icons/PublicNavIcon",
   component: PublicNavIcon,
   parameters: {
     layout: "padded",

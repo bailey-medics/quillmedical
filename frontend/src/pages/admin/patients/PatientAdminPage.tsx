@@ -271,12 +271,7 @@ export default function PatientAdminPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title={patientName}
-          description="Patient administrative details"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title={patientName} />
 
         {/* Linked User Section */}
         <Paper shadow="sm" p="md" withBorder>

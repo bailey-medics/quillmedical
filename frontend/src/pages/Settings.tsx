@@ -104,7 +104,7 @@ export default function Settings() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader title="Settings" size="lg" mb={0} />
+        <PageHeader title="Settings" />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <ActionCard
