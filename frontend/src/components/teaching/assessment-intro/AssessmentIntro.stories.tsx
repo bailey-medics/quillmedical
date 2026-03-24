@@ -37,3 +37,15 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+export const Loading: Story = {
+  args: {
+    title: "Before you begin",
+    body: `You will be shown 120 polyp images, each displayed as a pair:
+white light (WLI) and narrow band imaging (NBI).
+
+For each image pair, select the single best answer from the four options.`,
+    onBegin: () => {},
+    loading: true,
+  },
+};
