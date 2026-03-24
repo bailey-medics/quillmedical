@@ -16,7 +16,7 @@
     "",
     "Tier 2 — Infrastructure",
     "  Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs,",
-    "            Mantine, React, React Router",
+    "            Mantine, React, React Router, Docker base images",
     "  Policy:   No automerge; code review required.",
     "            Major version bumps labelled major-version-bump.",
     "            Vulnerability alerts fire immediately, target clinical-live.",
@@ -150,6 +150,19 @@
       ],
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
+      "automerge": false,
+      "labels": [
+        "dependencies"
+      ]
+    },
+    {
+      "description": "Tier 2 — Docker base images: group and no automerge",
+      "matchManagers": [
+        "docker-compose",
+        "dockerfile"
+      ],
+      "groupName": "Docker base images",
+      "groupSlug": "docker-images",
       "automerge": false,
       "labels": [
         "dependencies"
