@@ -6,10 +6,12 @@ on:
     branches: [main, clinical-live]
     paths:
       - "infra/**"
+      - "!infra/github/**"
   pull_request:
     branches: [main, clinical-live]
     paths:
       - "infra/**"
+      - "!infra/github/**"
 
 permissions:
   contents: read
