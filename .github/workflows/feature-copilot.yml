@@ -1,4 +1,4 @@
-# Workflow for feature/* branches:
+# Workflow for feature/* and copilot/* branches:
 # - Runs all code quality checks (fully self-contained)
 # - Opens a pull request to main (if one doesn't already exist)
 #
@@ -6,11 +6,11 @@
 # deploy-staging.yml. This workflow is intentionally self-contained
 # and does NOT share code with other pipelines — a change here
 # cannot affect release or production workflows.
-name: Feature branch
+name: Feature / Copilot branch
 
 on:
   push:
-    branches: ["feature/**"]
+    branches: ["feature/**", "copilot/**"]
 
 permissions:
   contents: read

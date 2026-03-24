@@ -293,7 +293,7 @@ Healthcare-specific authorisation layer for clinical operations.
 
 - NEVER auto-commit/push - always ask permission first
 - Stop after fixing issues, report, and wait for instruction
-- **Branch naming**: `feature/*` or `hotfix/*` only (regex: `^(feature|hotfix)/.+`)
+- **Branch naming**: `feature/*`, `hotfix/*`, or `copilot/*` (regex: `^(feature|hotfix|copilot)/.+`)
 - `main` requires a pull request — never push directly
 
 ### Markdown
