@@ -39,14 +39,14 @@ jobs:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
 
       # ---- caches (pick per task) ----
       - name: Cache pre-commit & venv (styling)
         if: matrix.task == 'styling'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .venv
@@ -87,7 +87,7 @@ jobs:
 
       - name: Cache Poetry venv & pip (unit)
         if: matrix.task == 'unit'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             backend/.venv
@@ -121,7 +121,7 @@ jobs:
 
       - name: Notify Slack on Python checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -151,9 +151,9 @@ jobs:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Enable Corepack & pin Yarn
         run: |
@@ -162,7 +162,7 @@ jobs:
           yarn --version
 
       - name: Cache Yarn
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             frontend/.yarn/cache
@@ -178,7 +178,7 @@ jobs:
 
       - name: Cache Playwright browsers
         if: matrix.task == 'storybook:test:ci'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
@@ -187,7 +187,7 @@ jobs:
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build' || matrix.task == 'storybook:test:ci'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             frontend/node_modules/.vite
@@ -198,7 +198,7 @@ jobs:
 
       - name: Cache ESLint
         if: matrix.task == 'eslint'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: frontend/.eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
@@ -226,7 +226,7 @@ jobs:
 
       - name: Notify Slack on TypeScript checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -298,7 +298,7 @@ jobs:
 
       - name: Notify Slack on PR creation failure
         if: failure()
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
