@@ -10,13 +10,15 @@ import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
 import SolidSwitch from "@/components/switch/SolidSwitch";
+import BodyText from "@/components/typography/BodyText";
+import BodyTextBold from "@/components/typography/BodyTextBold";
+import ErrorText from "@/components/typography/ErrorText";
+import HeaderText from "@/components/typography/HeaderText";
 import {
-  Group,
   Modal,
   MultiSelect,
   Select,
   Stack,
-  Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
@@ -185,23 +187,28 @@ export default function NewMessageModal({
     includePatient,
   ]);
 
+  const fieldStyles = {
+    label: {
+      fontSize: "var(--mantine-font-size-lg)",
+      color: "var(--mantine-color-dimmed)",
+      fontWeight: 400,
+    },
+    input: { fontSize: "var(--mantine-font-size-lg)" },
+  };
+
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={
-        <Text size="lg" fw={700}>
-          New message
-        </Text>
-      }
+      title={<HeaderText>New message</HeaderText>}
       size="lg"
       centered
     >
       <Stack gap="md">
         {isPatientUser ? null : lockedPatientId ? (
-          <Text size="md" fw={700}>
+          <BodyTextBold>
             Patient: {lockedPatientName ?? lockedPatientId}
-          </Text>
+          </BodyTextBold>
         ) : (
           <Select
             label="Patient"
@@ -215,25 +222,26 @@ export default function NewMessageModal({
             nothingFoundMessage={
               loadingPatients ? "Loading patients…" : "No patients found"
             }
+            styles={fieldStyles}
           />
         )}
 
         {!isPatientUser && (
           <div>
-            <Text size="sm" fw={500} mb={4}>
-              Patient as participant
-            </Text>
-            <Group gap="xs">
-              <SolidSwitch
-                checked={includePatient}
-                onChange={(e) => setIncludePatient(e.currentTarget.checked)}
-                size="lg"
-              />
-              <Text size="sm">{includePatient ? "Yes" : "No"}</Text>
-            </Group>
-            <Text size="xs" c="dimmed" mt={4}>
-              Allow the patient to reply to this conversation
-            </Text>
+            <div style={{ marginBottom: 4 }}>
+              <BodyText>Patient as participant</BodyText>
+            </div>
+            <SolidSwitch
+              checked={includePatient}
+              onChange={(e) => setIncludePatient(e.currentTarget.checked)}
+              size="lg"
+              label={includePatient ? "Yes" : "No"}
+            />
+            <div style={{ marginTop: 4 }}>
+              <BodyText>
+                Allow the patient to reply to this conversation
+              </BodyText>
+            </div>
           </div>
         )}
 
@@ -248,6 +256,7 @@ export default function NewMessageModal({
           nothingFoundMessage={
             loadingUsers ? "Loading users…" : "No users found"
           }
+          styles={fieldStyles}
         />
 
         <TextInput
@@ -256,6 +265,7 @@ export default function NewMessageModal({
           value={subject}
           onChange={(e) => setSubject(e.currentTarget.value)}
           required
+          styles={fieldStyles}
         />
 
         <Textarea
@@ -267,24 +277,23 @@ export default function NewMessageModal({
           value={initialMessage}
           onChange={(e) => setInitialMessage(e.currentTarget.value)}
           required
+          styles={fieldStyles}
         />
 
         {!canSubmit &&
           patientId === null &&
           !isPatientUser &&
           initialMessage.trim() && (
-            <Text size="sm" c="red">
-              Please select a patient
-            </Text>
+            <ErrorText>Please select a patient</ErrorText>
           )}
 
         {!canSubmit &&
           !hasRecipient &&
           patientId !== null &&
           initialMessage.trim() && (
-            <Text size="sm" c="red">
+            <ErrorText>
               Add at least one participant or include the patient
-            </Text>
+            </ErrorText>
           )}
 
         <ButtonPair

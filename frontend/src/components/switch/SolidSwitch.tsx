@@ -13,6 +13,12 @@ export default function SolidSwitch(props: SwitchProps) {
     <Switch
       {...props}
       classNames={{ thumb: classes.thumb, ...props.classNames }}
+      styles={{
+        label: {
+          fontSize: "var(--mantine-font-size-lg)",
+          color: "var(--mantine-color-dimmed)",
+        },
+      }}
     />
   );
 }
