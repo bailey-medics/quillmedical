@@ -2,7 +2,7 @@ import DarkBackground from "@/components/background/DarkBackground";
 import LightBackground from "@/components/background/LightBackground";
 import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
-import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { colours } from "@/styles/colours";
 import { theme } from "@/theme";

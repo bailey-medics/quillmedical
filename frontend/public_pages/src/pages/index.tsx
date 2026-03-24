@@ -7,7 +7,7 @@ import FeatureCardGrid from "@/components/feature-card/FeatureCardGrid";
 import PublicInfoCard from "@/components/info-card/PublicInfoCard";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
-import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
 import {

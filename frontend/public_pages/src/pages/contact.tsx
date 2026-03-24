@@ -1,7 +1,7 @@
 import DarkBackground from "@/components/background/DarkBackground";
 import HeroBackground from "@/components/background/HeroBackground";
 import PublicLayout from "@/components/layouts/PublicLayout";
-import PublicTitle from "@/components/page-header/PublicTitle";
+import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
 import { Anchor, Container, MantineProvider, Stack } from "@mantine/core";
