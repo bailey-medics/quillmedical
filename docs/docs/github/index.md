@@ -129,9 +129,9 @@ All 10 checks must pass before a PR can merge to `main`. The strict policy also 
 
 Four GitHub Actions workflows handle the full lifecycle. Each is self-contained — a change to one cannot affect the others.
 
-### Feature branch (`feature.yml`)
+### Feature and Copilot branch (`feature-copilot.yml`)
 
-**Triggers:** Push to `feature/**`
+**Triggers:** Push to `feature/**` or `copilot/**`
 
 **Jobs:**
 
@@ -247,9 +247,9 @@ The `infra/github/` Terraform manages GitHub rulesets (branch protection, naming
 
 Initially only 5 "lean" checks were configured (Python styling, Python unit, eslint, typecheck, unit tests). This was expanded to all 10 checks including prettier, stylelint, storybook build, storybook tests, and Semgrep because in a healthcare application, bad UX can lead to patient harm — every check catches a different class of issue.
 
-### Auto-PR creation on feature push
+### Auto-PR creation on feature and Copilot push
 
-The feature workflow automatically creates a PR to `main` when pushing to a `feature/*` branch. The latest commit message is used as the PR title. This reduces friction and ensures every feature branch has a visible PR for review.
+The feature-copilot workflow automatically creates a PR to `main` when pushing to a `feature/*` or `copilot/*` branch. The latest commit message is used as the PR title. This reduces friction and ensures every feature branch has a visible PR for review.
 
 ### DCB 0129 clinical safety compliance
 

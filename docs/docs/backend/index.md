@@ -180,7 +180,7 @@ All functions are organised under the `/api` prefix:
 ### Push Notifications
 
 - **Subscribe** (`POST /api/push/subscribe`): Register a push subscription for the current browser
-- **Send test** (`POST /send-test`): Send a test notification to all subscribers (development only)
+- **Send test** (`POST /api/push/send-test`): Send a test notification to all subscribers (development only)
 
 ## What Data is Stored Where
 

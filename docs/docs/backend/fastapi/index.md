@@ -49,6 +49,7 @@ app/
 ├── ehrbase_client.py    # OpenEHR integration
 ├── messaging.py         # Messaging CQRS coordination layer
 ├── organisations.py     # Organisation access control helpers
+├── patient_records.py   # File-based patient record management
 ├── logging_config.py    # Structured JSON logging configuration
 ├── push.py              # Web push notification endpoints
 ├── push_send.py         # Push notification sending logic
@@ -60,6 +61,9 @@ app/
 │   ├── competencies.py  # Competency definitions from YAML
 │   ├── base_professions.py  # Base profession definitions from YAML
 │   └── decorators.py    # has_competency(), FastAPI dependencies
+├── features/
+│   ├── __init__.py      # Feature-gating utilities (requires_feature dependency)
+│   └── teaching/        # Teaching feature module
 ├── system_permissions/
 │   ├── __init__.py      # Permission module exports
 │   ├── permissions.py   # Permission types and hierarchy validation
@@ -68,6 +72,7 @@ app/
 │   ├── __init__.py      # Schema module exports
 │   ├── auth.py          # Authentication request/response models
 │   ├── cbac.py          # CBAC request/response models
+│   ├── features.py      # Organisation feature toggle models
 │   ├── letters.py       # Letter/correspondence models
 │   └── messaging.py     # Messaging request/response models
 └── utils/
@@ -210,8 +215,14 @@ The backend implements a multi-layered permission system:
 ##### Permission hierarchy
 
 ```python
-# 4-level hierarchy: patient < staff < admin < superadmin
+# 4-level hierarchy for permission checks: patient < staff < admin < superadmin
 PERMISSION_LEVELS = ["patient", "staff", "admin", "superadmin"]
+
+# All valid permission values (includes non-hierarchical external types)
+ALL_PERMISSIONS = [
+    "patient", "external_hcp", "patient_advocate",
+    "staff", "admin", "superadmin",
+]
 
 # check_permission_level(user_permission, required_permission)
 # Returns True if user meets or exceeds required level
