@@ -1,6 +1,7 @@
 #!/bin/bash
 # startup.sh — Compute Engine startup script for FHIR + EHRbase VM
 # This is a Terraform templatefile; variables are substituted at plan time.
+# shellcheck disable=SC2154  # Terraform templatefile variables are injected at plan time
 set -euo pipefail
 
 # Container-Optimised OS (COS) ships with Docker but not Docker Compose.
