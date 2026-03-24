@@ -53,4 +53,18 @@ describe("AssessmentIntro", () => {
 
     expect(screen.getByRole("button", { name: "Begin" })).toBeDisabled();
   });
+
+  it("shows loading spinner when loading prop is true", () => {
+    renderWithMantine(
+      <AssessmentIntro
+        title="Ready"
+        body="Starting..."
+        onBegin={() => {}}
+        loading
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Begin" });
+    expect(button).toBeDisabled();
+  });
 });

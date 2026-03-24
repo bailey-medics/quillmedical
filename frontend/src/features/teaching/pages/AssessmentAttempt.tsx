@@ -106,9 +106,12 @@ export default function AssessmentAttempt() {
     init();
   }, [id, searchParams, navigate]);
 
+  const [beginning, setBeginning] = useState(false);
+
   const handleBegin = useCallback(async () => {
     const bankId = searchParams.get("bank");
     if (!bankId) return;
+    setBeginning(true);
     try {
       const result = await api.post<AssessmentWithFirstItem>(
         "/teaching/assessments",
@@ -127,6 +130,8 @@ export default function AssessmentAttempt() {
         err instanceof Error ? err.message : "Failed to start assessment",
       );
       setPhase("error");
+    } finally {
+      setBeginning(false);
     }
   }, [searchParams, navigate]);
 
@@ -204,6 +209,7 @@ export default function AssessmentAttempt() {
           title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
           body={introPage?.body ?? ""}
           onBegin={handleBegin}
+          loading={beginning}
         />
       </Container>
     );
