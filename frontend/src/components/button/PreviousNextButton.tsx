@@ -15,7 +15,8 @@
  * ```
  */
 
-import { Button, Group } from "@mantine/core";
+import { Button, Group, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 interface PreviousNextButtonProps {
   /** Called when Previous is clicked (hidden when undefined) */
@@ -37,14 +38,32 @@ export default function PreviousNextButton({
   nextDisabled = false,
   nextLoading = false,
 }: PreviousNextButtonProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const buttonSize = isMobile ? "md" : "lg";
+  const fontSize = isMobile
+    ? "var(--mantine-font-size-md)"
+    : "var(--mantine-font-size-lg)";
+
   return (
     <Group justify="flex-end">
       {onPrevious && (
-        <Button variant="outline" onClick={onPrevious}>
+        <Button
+          variant="outline"
+          onClick={onPrevious}
+          size={buttonSize}
+          styles={{ label: { fontSize } }}
+        >
           Previous
         </Button>
       )}
-      <Button onClick={onNext} disabled={nextDisabled} loading={nextLoading}>
+      <Button
+        onClick={onNext}
+        disabled={nextDisabled}
+        loading={nextLoading}
+        size={buttonSize}
+        styles={{ label: { fontSize } }}
+      >
         {nextLabel}
       </Button>
     </Group>

@@ -111,10 +111,10 @@ describe("Demographics Component", () => {
   });
 
   describe("Text styling", () => {
-    it("renders name with bold font weight", () => {
+    it("renders name as a heading", () => {
       renderWithMantine(<Demographics patient={mockPatient} />);
       const nameElement = screen.getByText("John Smith");
-      expect(nameElement).toHaveStyle({ fontWeight: "700" });
+      expect(nameElement.tagName).toBe("H3");
     });
 
     it("renders patient details in secondary text", () => {

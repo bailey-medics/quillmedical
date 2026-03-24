@@ -13,7 +13,8 @@
  * ```
  */
 
-import { Button, Group } from "@mantine/core";
+import { Button, Group, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 interface ButtonPairProps {
   /** Label for the accept/confirm button (defaults to "OK") */
@@ -35,12 +36,29 @@ export default function ButtonPair({
   onCancel,
   acceptDisabled = false,
 }: ButtonPairProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const buttonSize = isMobile ? "md" : "lg";
+  const fontSize = isMobile
+    ? "var(--mantine-font-size-md)"
+    : "var(--mantine-font-size-lg)";
+
   return (
     <Group justify="flex-end" mt="xs">
-      <Button variant="outline" onClick={onCancel}>
+      <Button
+        variant="outline"
+        onClick={onCancel}
+        size={buttonSize}
+        styles={{ label: { fontSize } }}
+      >
         {cancelLabel}
       </Button>
-      <Button onClick={onAccept} disabled={acceptDisabled}>
+      <Button
+        onClick={onAccept}
+        disabled={acceptDisabled}
+        size={buttonSize}
+        styles={{ label: { fontSize } }}
+      >
         {acceptLabel}
       </Button>
     </Group>
