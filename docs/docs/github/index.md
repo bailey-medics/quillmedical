@@ -129,16 +129,16 @@ All 10 checks must pass before a PR can merge to `main`. The strict policy also 
 
 Four GitHub Actions workflows handle the full lifecycle. Each is self-contained — a change to one cannot affect the others.
 
-### Feature and Copilot branch (`feature-copilot.yml`)
+### Branch CI (`branch-ci.yml`)
 
-**Triggers:** Push to `feature/**` or `copilot/**`
+**Triggers:** Push to any branch except `main`, `clinical-live`, `release/**`, and `hotfix/**` (covers `feature/*`, `copilot/*`, `renovate/*`, `dependabot/*`, etc.)
 
 **Jobs:**
 
 1. **`python_checks`** — Matrix: `styling` and `unit` (Python 3.13)
 2. **`typescript_checks`** — Matrix: 7 parallel tasks (eslint, prettier, stylelint, typecheck:all, unit-test:run, storybook:build, storybook:test:ci)
 3. **`frontend_security`** — Semgrep SAST scan
-4. **`open-pr`** — Auto-creates a PR to `main` if one doesn't exist (uses latest commit message as title)
+4. **`open-pr`** — Auto-creates a PR to `main` for `feature/*` and `copilot/*` branches only (Renovate/Dependabot create their own PRs)
 
 All failures send Slack notifications.
 
@@ -249,7 +249,7 @@ Initially only 5 "lean" checks were configured (Python styling, Python unit, esl
 
 ### Auto-PR creation on feature and Copilot push
 
-The feature-copilot workflow automatically creates a PR to `main` when pushing to a `feature/*` or `copilot/*` branch. The latest commit message is used as the PR title. This reduces friction and ensures every feature branch has a visible PR for review.
+The branch CI workflow automatically creates a PR to `main` when pushing to a `feature/*` or `copilot/*` branch. The latest commit message is used as the PR title. This reduces friction and ensures every feature branch has a visible PR for review. Renovate and Dependabot branches also get CI checks but create their own PRs.
 
 ### DCB 0129 clinical safety compliance
 
