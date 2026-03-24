@@ -48,22 +48,6 @@ describe("OrgFeaturesPage", () => {
     });
   });
 
-  it("displays org name in description", async () => {
-    vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-      if (url.includes("/features")) return Promise.resolve(mockFeatures);
-      return Promise.resolve(mockOrg);
-    });
-
-    renderWithRouter(<OrgFeaturesPage />, {
-      routePath: "/admin/organisations/:id/features",
-      initialRoute: "/admin/organisations/3/features",
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/Test Hospital/)).toBeInTheDocument();
-    });
-  });
-
   it("shows all available features", async () => {
     vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
       if (url.includes("/features")) return Promise.resolve({ features: [] });

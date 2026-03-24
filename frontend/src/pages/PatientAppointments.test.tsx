@@ -47,7 +47,9 @@ describe("PatientAppointments", () => {
       initialRoute: "/patients/test-patient/appointments",
     });
 
-    expect(screen.getByText("Upcoming")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Upcoming" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Gastro clinic follow-up review"),
     ).toBeInTheDocument();
@@ -71,8 +73,9 @@ describe("PatientAppointments", () => {
       initialRoute: "/patients/test-patient/appointments",
     });
 
-    expect(screen.getByText("upcoming")).toBeInTheDocument();
-    const completedBadges = screen.getAllByText("completed");
+    // "Upcoming" appears twice: once as section heading, once as badge
+    expect(screen.getAllByText("Upcoming")).toHaveLength(2);
+    const completedBadges = screen.getAllByText("Completed");
     expect(completedBadges.length).toBe(4);
   });
 

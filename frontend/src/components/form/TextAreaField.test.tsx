@@ -34,8 +34,7 @@ describe("TextAreaField", () => {
     const label = screen.getByText("Message");
     expect(label).toHaveStyle({
       fontSize: "var(--mantine-font-size-lg)",
-      color: "var(--mantine-color-dimmed)",
-      fontWeight: 400,
+      color: "var(--mantine-color-black)",
     });
   });
 

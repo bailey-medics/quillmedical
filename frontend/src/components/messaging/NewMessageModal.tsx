@@ -9,19 +9,16 @@
 import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
+import MultiSelectField from "@/components/form/MultiSelectField";
+import SelectField from "@/components/form/SelectField";
+import TextAreaField from "@/components/form/TextAreaField";
+import TextField from "@/components/form/TextField";
 import SolidSwitch from "@/components/switch/SolidSwitch";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextBold from "@/components/typography/BodyTextBold";
 import ErrorText from "@/components/typography/ErrorText";
 import HeaderText from "@/components/typography/HeaderText";
-import {
-  Modal,
-  MultiSelect,
-  Select,
-  Stack,
-  Textarea,
-  TextInput,
-} from "@mantine/core";
+import { Modal, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 
 interface PatientOption {
@@ -187,15 +184,6 @@ export default function NewMessageModal({
     includePatient,
   ]);
 
-  const fieldStyles = {
-    label: {
-      fontSize: "var(--mantine-font-size-lg)",
-      color: "var(--mantine-color-dimmed)",
-      fontWeight: 400,
-    },
-    input: { fontSize: "var(--mantine-font-size-lg)" },
-  };
-
   return (
     <Modal
       opened={opened}
@@ -210,7 +198,7 @@ export default function NewMessageModal({
             Patient: {lockedPatientName ?? lockedPatientId}
           </BodyTextBold>
         ) : (
-          <Select
+          <SelectField
             label="Patient"
             placeholder="Select a patient"
             data={patients}
@@ -220,9 +208,8 @@ export default function NewMessageModal({
             required
             disabled={loadingPatients}
             nothingFoundMessage={
-              loadingPatients ? "Loading patients…" : "No patients found"
+              loadingPatients ? "Loading patients\u2026" : "No patients found"
             }
-            styles={fieldStyles}
           />
         )}
 
@@ -245,7 +232,7 @@ export default function NewMessageModal({
           </div>
         )}
 
-        <MultiSelect
+        <MultiSelectField
           label="Participants"
           placeholder="Add staff to this conversation"
           data={users}
@@ -254,21 +241,19 @@ export default function NewMessageModal({
           searchable
           disabled={loadingUsers}
           nothingFoundMessage={
-            loadingUsers ? "Loading users…" : "No users found"
+            loadingUsers ? "Loading users\u2026" : "No users found"
           }
-          styles={fieldStyles}
         />
 
-        <TextInput
+        <TextField
           label="Subject"
           placeholder="e.g. Prescription renewal"
           value={subject}
           onChange={(e) => setSubject(e.currentTarget.value)}
           required
-          styles={fieldStyles}
         />
 
-        <Textarea
+        <TextAreaField
           label="Message"
           placeholder="Type your message…"
           minRows={3}
@@ -277,7 +262,6 @@ export default function NewMessageModal({
           value={initialMessage}
           onChange={(e) => setInitialMessage(e.currentTarget.value)}
           required
-          styles={fieldStyles}
         />
 
         {!canSubmit &&
