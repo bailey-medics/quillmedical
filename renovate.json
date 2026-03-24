@@ -52,7 +52,7 @@
 
   "schedule": ["every wednesday"],
 
-  "stabilityDays": 3,
+  "minimumReleaseAge": "3 days",
 
   "labels": ["dependencies"],
 
@@ -75,7 +75,7 @@
     {
       "//": "Group all @types/* packages — automerge on CI pass (Tier 3)",
       "matchManagers": ["npm"],
-      "matchPackagePatterns": ["^@types/"],
+      "matchPackageNames": ["@types/**"],
       "groupName": "TypeScript @types packages",
       "groupSlug": "types-packages",
       "automerge": true,
