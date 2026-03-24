@@ -154,11 +154,7 @@ export default function EditOrganisationPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Edit organisation"
-          description="Update organisation details"
-          size="lg"
-        />
+        <PageHeader title="Edit organisation" />
 
         {error && (
           <Alert

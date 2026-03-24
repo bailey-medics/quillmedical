@@ -17,11 +17,11 @@ export function AssessmentProgress({
   current,
   total,
 }: AssessmentProgressProps) {
-  const percentage = total > 0 ? ((current - 1) / total) * 100 : 0;
+  const percentage = total > 0 ? (current / total) * 100 : 0;
 
   return (
     <Group gap="sm" align="center">
-      <Progress value={percentage} size="xl" style={{ flex: 1 }} />
+      <Progress value={percentage} size="xl" radius="xl" style={{ flex: 1 }} />
       <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap" }}>
         {current} of {total}
       </Text>

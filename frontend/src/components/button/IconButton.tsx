@@ -12,16 +12,25 @@ import type { MantineColor } from "@mantine/core";
 import Icon, { type IconSize } from "@/components/icons";
 
 /**
- * Size map for ActionIcon container (needs padding around icon)
- * - sm: 36px container for 20px icon
- * - md: 44px container for 28px icon
- * - lg: 60px container for 48px icon
+ * Size map for ActionIcon container — aligned to Mantine Button heights
+ * so IconButton matches AddButton / ButtonPair at the same size level.
  */
 const actionIconSizeMap: Record<IconSize, number> = {
   sm: 36,
-  md: 44,
-  lg: 60,
-  xl: 84,
+  md: 42,
+  lg: 50,
+  xl: 60,
+};
+
+/**
+ * Icon size inside the container — keeps the icon proportional so it
+ * doesn't overflow the (now smaller) container at lg/xl.
+ */
+const iconSizeMap: Record<IconSize, IconSize> = {
+  sm: "sm",
+  md: "md",
+  lg: "md",
+  xl: "lg",
 };
 
 interface IconButtonProps {
@@ -78,7 +87,7 @@ export default function IconButton({
 
   return (
     <ActionIcon {...actionIconProps} size={actionIconSize}>
-      <Icon icon={icon} size={size} />
+      <Icon icon={icon} size={iconSizeMap[size]} />
     </ActionIcon>
   );
 }

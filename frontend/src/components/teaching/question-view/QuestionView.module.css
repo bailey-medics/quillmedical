@@ -4,6 +4,8 @@
 
 .image {
   border-radius: var(--mantine-radius-md);
+  max-height: 30rem;
+  object-fit: contain;
 }
 
 .option {

@@ -10,7 +10,10 @@ import type { StackedParticipant } from "@/components/profile-pic";
 import { StackedProfilePics } from "@/components/profile-pic";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
-import { Card, Group, Skeleton, Stack, Text } from "@mantine/core";
+import HeaderText from "@/components/typography/HeaderText";
+import BodyText from "@/components/typography/BodyText";
+import BodyTextClamp from "@/components/typography/BodyTextClamp";
+import { Card, Group, Skeleton, Stack } from "@mantine/core";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -84,6 +87,7 @@ export default function MessagesList({
 
   return (
     <Stack gap="sm">
+      {threads.length === 0 && <BodyText>No messages to show.</BodyText>}
       {threads.map((thread) => (
         <div
           key={thread.id}
@@ -109,19 +113,15 @@ export default function MessagesList({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
                   <Group gap="xs">
-                    <Text fw={700} size="lg">
-                      {thread.displayName}
-                    </Text>
+                    <HeaderText>{thread.displayName}</HeaderText>
                     <UnreadBadge count={thread.unreadCount} />
                   </Group>
-                  <Text size="lg" c="dimmed">
-                    {formatTime(thread.lastMessageTime)}
-                  </Text>
+                  <BodyText>{formatTime(thread.lastMessageTime)}</BodyText>
                 </Group>
 
-                <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
+                <BodyTextClamp lineClamp={2}>
                   {thread.lastMessage}
-                </Text>
+                </BodyTextClamp>
               </div>
             </Group>
           </Card>

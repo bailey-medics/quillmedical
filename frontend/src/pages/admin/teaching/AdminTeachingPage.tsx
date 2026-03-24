@@ -6,12 +6,11 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Container, Group, Stack, Text } from "@mantine/core";
-import { IconRefresh } from "@tabler/icons-react";
+import { Container, Group, Stack, Text } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AdminTable, { type Column } from "@/components/tables/AdminTable";
 import FormattedDate from "@/components/data/Date";
-import Icon from "@/components/icons";
+import IconTextButton from "@/components/button/IconTextButton";
 import { api } from "@/lib/api";
 import type { AdminBank, SyncAllResult } from "@/features/teaching/types";
 
@@ -94,23 +93,6 @@ export default function AdminTeachingPage() {
       render: (bank) => bank.item_count,
     },
     {
-      header: "Source",
-      render: (bank) => (
-        <Group gap="xs">
-          {bank.in_gcs && (
-            <Badge size="sm" variant="light" color="blue">
-              GCS
-            </Badge>
-          )}
-          {bank.in_db && (
-            <Badge size="sm" variant="light" color="green">
-              DB
-            </Badge>
-          )}
-        </Group>
-      ),
-    },
-    {
       header: "Last synced",
       render: (bank) =>
         bank.synced_at ? (
@@ -125,19 +107,13 @@ export default function AdminTeachingPage() {
     <Container size="lg" pt="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
-          <PageHeader
-            title="Teaching modules"
-            description="Question banks available for assessments"
-            size="lg"
-            mb={0}
-          />
-          <Button
-            leftSection={<Icon icon={<IconRefresh />} size="sm" />}
+          <PageHeader title="Teaching modules" />
+          <IconTextButton
+            icon="refresh"
+            label="Sync all"
             onClick={handleSyncAll}
-            loading={syncing}
-          >
-            Sync all
-          </Button>
+            disabled={syncing}
+          />
         </Group>
 
         {syncMessage && (

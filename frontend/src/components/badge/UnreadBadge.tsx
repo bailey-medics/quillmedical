@@ -5,6 +5,7 @@
  * Renders nothing when the count is zero or less.
  */
 
+import { Skeleton } from "@mantine/core";
 import classes from "./UnreadBadge.module.css";
 
 type Props = {
@@ -12,6 +13,15 @@ type Props = {
   count: number;
   /** Badge size (default: "lg") */
   size?: "sm" | "md" | "lg" | "xl";
+  /** Show loading skeleton instead of badge */
+  isLoading?: boolean;
+};
+
+const SKELETON_SIZES: Record<string, number> = {
+  sm: 18,
+  md: 22,
+  lg: 26,
+  xl: 32,
 };
 
 /**
@@ -27,7 +37,16 @@ type Props = {
  * <UnreadBadge count={12} />      // Shows "9+"
  * ```
  */
-export default function UnreadBadge({ count, size = "lg" }: Props) {
+export default function UnreadBadge({
+  count,
+  size = "lg",
+  isLoading = false,
+}: Props) {
+  if (isLoading) {
+    const dim = SKELETON_SIZES[size] ?? 26;
+    return <Skeleton width={dim} height={dim} circle />;
+  }
+
   if (count <= 0) return null;
 
   const label = count > 9 ? "9+" : String(count);

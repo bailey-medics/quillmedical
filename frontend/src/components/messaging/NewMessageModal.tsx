@@ -9,17 +9,16 @@
 import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
 import ButtonPair from "@/components/button/ButtonPair";
+import MultiSelectField from "@/components/form/MultiSelectField";
+import SelectField from "@/components/form/SelectField";
+import TextAreaField from "@/components/form/TextAreaField";
+import TextField from "@/components/form/TextField";
 import SolidSwitch from "@/components/switch/SolidSwitch";
-import {
-  Group,
-  Modal,
-  MultiSelect,
-  Select,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-} from "@mantine/core";
+import BodyText from "@/components/typography/BodyText";
+import BodyTextBold from "@/components/typography/BodyTextBold";
+import ErrorText from "@/components/typography/ErrorText";
+import HeaderText from "@/components/typography/HeaderText";
+import { Modal, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 
 interface PatientOption {
@@ -189,21 +188,17 @@ export default function NewMessageModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={
-        <Text size="lg" fw={700}>
-          New message
-        </Text>
-      }
+      title={<HeaderText>New message</HeaderText>}
       size="lg"
       centered
     >
       <Stack gap="md">
         {isPatientUser ? null : lockedPatientId ? (
-          <Text size="md" fw={700}>
+          <BodyTextBold>
             Patient: {lockedPatientName ?? lockedPatientId}
-          </Text>
+          </BodyTextBold>
         ) : (
-          <Select
+          <SelectField
             label="Patient"
             placeholder="Select a patient"
             data={patients}
@@ -213,31 +208,31 @@ export default function NewMessageModal({
             required
             disabled={loadingPatients}
             nothingFoundMessage={
-              loadingPatients ? "Loading patients…" : "No patients found"
+              loadingPatients ? "Loading patients\u2026" : "No patients found"
             }
           />
         )}
 
         {!isPatientUser && (
           <div>
-            <Text size="sm" fw={500} mb={4}>
-              Patient as participant
-            </Text>
-            <Group gap="xs">
-              <SolidSwitch
-                checked={includePatient}
-                onChange={(e) => setIncludePatient(e.currentTarget.checked)}
-                size="lg"
-              />
-              <Text size="sm">{includePatient ? "Yes" : "No"}</Text>
-            </Group>
-            <Text size="xs" c="dimmed" mt={4}>
-              Allow the patient to reply to this conversation
-            </Text>
+            <div style={{ marginBottom: 4 }}>
+              <BodyText>Patient as participant</BodyText>
+            </div>
+            <SolidSwitch
+              checked={includePatient}
+              onChange={(e) => setIncludePatient(e.currentTarget.checked)}
+              size="lg"
+              label={includePatient ? "Yes" : "No"}
+            />
+            <div style={{ marginTop: 4 }}>
+              <BodyText>
+                Allow the patient to reply to this conversation
+              </BodyText>
+            </div>
           </div>
         )}
 
-        <MultiSelect
+        <MultiSelectField
           label="Participants"
           placeholder="Add staff to this conversation"
           data={users}
@@ -246,11 +241,11 @@ export default function NewMessageModal({
           searchable
           disabled={loadingUsers}
           nothingFoundMessage={
-            loadingUsers ? "Loading users…" : "No users found"
+            loadingUsers ? "Loading users\u2026" : "No users found"
           }
         />
 
-        <TextInput
+        <TextField
           label="Subject"
           placeholder="e.g. Prescription renewal"
           value={subject}
@@ -258,7 +253,7 @@ export default function NewMessageModal({
           required
         />
 
-        <Textarea
+        <TextAreaField
           label="Message"
           placeholder="Type your message…"
           minRows={3}
@@ -273,18 +268,16 @@ export default function NewMessageModal({
           patientId === null &&
           !isPatientUser &&
           initialMessage.trim() && (
-            <Text size="sm" c="red">
-              Please select a patient
-            </Text>
+            <ErrorText>Please select a patient</ErrorText>
           )}
 
         {!canSubmit &&
           !hasRecipient &&
           patientId !== null &&
           initialMessage.trim() && (
-            <Text size="sm" c="red">
+            <ErrorText>
               Add at least one participant or include the patient
-            </Text>
+            </ErrorText>
           )}
 
         <ButtonPair

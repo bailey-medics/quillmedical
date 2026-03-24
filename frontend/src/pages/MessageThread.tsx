@@ -227,13 +227,7 @@ export default function MessageThread() {
     return (
       <Container size="lg" py="xl">
         <Stack gap="lg">
-          <PageHeader
-            title="Conversation not found"
-            description={
-              error ?? "This conversation does not exist or has been removed."
-            }
-            size="md"
-          />
+          <PageHeader title="Conversation not found" />
         </Stack>
       </Container>
     );

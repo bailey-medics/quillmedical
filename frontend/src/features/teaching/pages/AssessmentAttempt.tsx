@@ -1,4 +1,4 @@
-import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
+import { Alert, Container, Group, Loader, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -231,11 +231,14 @@ export default function AssessmentAttempt() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         {assessment && (
-          <Group justify="space-between" align="center">
-            <AssessmentProgress
-              current={answeredCount + 1}
-              total={assessment.total_items}
-            />
+          <AssessmentProgress
+            current={answeredCount + 1}
+            total={assessment.total_items}
+          />
+        )}
+
+        {assessment && (
+          <Group justify="flex-end" align="center">
             <AssessmentTimer
               timeLimitMinutes={assessment.time_limit_minutes}
               startedAt={assessment.started_at}
@@ -249,18 +252,14 @@ export default function AssessmentAttempt() {
             item={currentItem}
             selectedOption={selectedOption}
             onSelectOption={setSelectedOption}
+            onNext={handleSubmitAnswer}
+            onSubmit={handleSubmitAnswer}
+            isLastQuestion={
+              assessment ? answeredCount + 1 >= assessment.total_items : false
+            }
+            submitting={submitting}
           />
         )}
-
-        <Group justify="flex-end">
-          <Button
-            onClick={handleSubmitAnswer}
-            disabled={!selectedOption}
-            loading={submitting}
-          >
-            Submit answer
-          </Button>
-        </Group>
       </Stack>
     </Container>
   );

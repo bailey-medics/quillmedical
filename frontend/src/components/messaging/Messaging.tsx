@@ -12,13 +12,14 @@ import {
   Group,
   ScrollArea,
   Skeleton,
-  Text,
   Textarea,
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import React, { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic";
+import BodyText from "@/components/typography/BodyText";
+import BodyTextBlack from "@/components/typography/BodyTextBlack";
 
 /** Renders **bold** markdown syntax as <strong> elements. */
 function renderBold(text: string): React.ReactNode[] {
@@ -167,16 +168,14 @@ export default function Messaging({
                         }}
                       >
                         {displayName && (
-                          <Text
-                            size="lg"
-                            color="dimmed"
+                          <div
                             style={{
                               marginBottom: 2,
                               marginRight: avatarSizePixels + 8,
                             }}
                           >
-                            {displayName}
-                          </Text>
+                            <BodyText>{displayName}</BodyText>
+                          </div>
                         )}
                         <div
                           style={{
@@ -194,9 +193,7 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
-                              {renderBold(m.text)}
-                            </Text>
+                            <BodyTextBlack>{renderBold(m.text)}</BodyTextBlack>
                           </div>
                           <ProfilePic
                             src={m.avatar}
@@ -207,25 +204,31 @@ export default function Messaging({
                           />
                         </div>
                         {m.timestamp && (
-                          <Text
-                            size="lg"
-                            color="dimmed"
+                          <div
                             style={{
                               marginTop: 4,
                               marginRight: avatarSizePixels + 8,
                             }}
                           >
-                            {new Date(m.timestamp).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}{" "}
-                            {new Date(m.timestamp).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })}
-                          </Text>
+                            <BodyText>
+                              {new Date(m.timestamp).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                },
+                              )}{" "}
+                              {new Date(m.timestamp).toLocaleTimeString(
+                                "en-GB",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                },
+                              )}
+                            </BodyText>
+                          </div>
                         )}
                         {m.actions && m.actions.length > 0 && (
                           <Group
@@ -257,16 +260,14 @@ export default function Messaging({
                         }}
                       >
                         {displayName && (
-                          <Text
-                            size="lg"
-                            color="dimmed"
+                          <div
                             style={{
                               marginBottom: 2,
                               marginLeft: avatarSizePixels + 8,
                             }}
                           >
-                            {displayName}
-                          </Text>
+                            <BodyText>{displayName}</BodyText>
+                          </div>
                         )}
                         <div
                           style={{
@@ -291,31 +292,35 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
-                              {renderBold(m.text)}
-                            </Text>
+                            <BodyTextBlack>{renderBold(m.text)}</BodyTextBlack>
                           </div>
                         </div>
                         {m.timestamp && (
-                          <Text
-                            size="lg"
-                            color="dimmed"
+                          <div
                             style={{
                               marginTop: 4,
                               marginLeft: avatarSizePixels + 8,
                             }}
                           >
-                            {new Date(m.timestamp).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}{" "}
-                            {new Date(m.timestamp).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })}
-                          </Text>
+                            <BodyText>
+                              {new Date(m.timestamp).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                },
+                              )}{" "}
+                              {new Date(m.timestamp).toLocaleTimeString(
+                                "en-GB",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                },
+                              )}
+                            </BodyText>
+                          </div>
                         )}
                         {m.actions && m.actions.length > 0 && (
                           <Group
@@ -363,6 +368,9 @@ export default function Messaging({
           minRows={1}
           maxRows={6}
           style={{ flex: 1 }}
+          styles={{
+            input: { fontSize: "var(--mantine-font-size-lg)" },
+          }}
           disabled={isLoading}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {

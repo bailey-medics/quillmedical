@@ -118,11 +118,7 @@ export default function AddPatientToOrgPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Add patient"
-          description="Add a patient to this organisation"
-          size="lg"
-        />
+        <PageHeader title="Add patient" />
 
         {error && (
           <Alert

@@ -50,7 +50,7 @@ describe("AssessmentResultBadge", () => {
   });
 
   describe("Size variants", () => {
-    it("renders with default sm size", () => {
+    it("renders with default lg size", () => {
       renderWithMantine(<AssessmentResultBadge result="pass" />);
       expect(screen.getByText("Pass")).toBeInTheDocument();
     });
@@ -70,6 +70,18 @@ describe("AssessmentResultBadge", () => {
         <AssessmentResultBadge result="incomplete" size="xl" />,
       );
       expect(screen.getByText("Incomplete")).toBeInTheDocument();
+    });
+  });
+
+  describe("Loading state", () => {
+    it("shows skeleton when loading", () => {
+      const { container } = renderWithMantine(
+        <AssessmentResultBadge result="pass" isLoading />,
+      );
+      expect(screen.queryByText("Pass")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".mantine-Skeleton-root"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -157,12 +157,7 @@ export default function ActivatePatientPage() {
     return (
       <Container size="lg" pt="xl">
         <Stack gap="lg">
-          <PageHeader
-            title={`Activate ${formatName(specificPatient.name)}`}
-            description="Confirm activation of this patient record"
-            size="lg"
-            mb={0}
-          />
+          <PageHeader title={`Activate ${formatName(specificPatient.name)}`} />
 
           {loading ? (
             <Skeleton height={300} />
@@ -246,12 +241,7 @@ export default function ActivatePatientPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Activate patient"
-          description="Select a deactivated patient to activate"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Activate patient" />
 
         {loading ? (
           <Stack gap="xs">

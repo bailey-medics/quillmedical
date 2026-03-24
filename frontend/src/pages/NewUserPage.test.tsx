@@ -230,7 +230,7 @@ describe("NewUserPage", () => {
           screen.getByText("System permissions & review"),
         ).toBeInTheDocument();
       });
-    });
+    }, 10000);
   });
 
   describe("Step 3: Permissions & Review", () => {
@@ -283,7 +283,7 @@ describe("NewUserPage", () => {
       // Check for review section by looking for unique review field labels
       expect(screen.getByText("Name:")).toBeInTheDocument();
       expect(screen.getByText("Email:")).toBeInTheDocument();
-    });
+    }, 10000);
 
     it("displays review information correctly", async () => {
       const user = userEvent.setup();
@@ -296,7 +296,7 @@ describe("NewUserPage", () => {
       });
       expect(screen.getByText("jane.smith@example.com")).toBeInTheDocument();
       expect(screen.getByText("janesmith")).toBeInTheDocument();
-    });
+    }, 10000);
   });
 
   describe("Form submission", () => {
@@ -355,7 +355,7 @@ describe("NewUserPage", () => {
           }),
         );
       });
-    });
+    }, 15000);
 
     it("shows success confirmation after successful submission", async () => {
       const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });

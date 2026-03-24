@@ -196,11 +196,7 @@ export default function OrgFeaturesPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Features"
-          description={`Manage enabled features for ${orgName}`}
-          size="lg"
-        />
+        <PageHeader title="Features" />
 
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="lg">

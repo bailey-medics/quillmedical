@@ -17,6 +17,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import PreviousNextButton from "@components/button/PreviousNextButton";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import classes from "./QuestionView.module.css";
@@ -34,6 +35,16 @@ interface QuestionViewProps {
   currentQuestion?: number;
   /** Total number of questions for progress bar */
   totalQuestions?: number;
+  /** Called when Previous is clicked (hidden when undefined) */
+  onPrevious?: () => void;
+  /** Called when Next is clicked */
+  onNext?: () => void;
+  /** Called when Submit & finish is clicked (last question) */
+  onSubmit?: () => void;
+  /** Whether this is the last question (shows Submit & finish) */
+  isLastQuestion?: boolean;
+  /** Whether the next/submit action is in progress */
+  submitting?: boolean;
 }
 
 function ImagePanel({ image }: { image: ItemImage }) {
@@ -61,6 +72,11 @@ export function QuestionView({
   disabled = false,
   currentQuestion,
   totalQuestions,
+  onPrevious,
+  onNext,
+  onSubmit,
+  isLastQuestion = false,
+  submitting = false,
 }: QuestionViewProps) {
   return (
     <Stack gap="lg">
@@ -101,6 +117,17 @@ export function QuestionView({
           ))}
         </Stack>
       </Radio.Group>
+
+      {/* Navigation buttons */}
+      {(onPrevious || onNext || onSubmit) && (
+        <PreviousNextButton
+          onPrevious={onPrevious}
+          onNext={(isLastQuestion ? onSubmit : onNext) ?? (() => {})}
+          nextLabel={isLastQuestion ? "Submit & finish" : "Next"}
+          nextDisabled={!selectedOption}
+          nextLoading={submitting}
+        />
+      )}
     </Stack>
   );
 }

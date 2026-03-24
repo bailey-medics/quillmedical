@@ -68,9 +68,6 @@ describe("ActivatePatientPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Activate Jane Smith")).toBeInTheDocument();
-        expect(
-          screen.getByText("Confirm activation of this patient record"),
-        ).toBeInTheDocument();
         expect(screen.getByText("Jane Smith")).toBeInTheDocument();
         expect(screen.getByText("1975-03-20")).toBeInTheDocument();
         expect(screen.getByText("female")).toBeInTheDocument();
@@ -213,9 +210,6 @@ describe("ActivatePatientPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Activate patient")).toBeInTheDocument();
-        expect(
-          screen.getByText("Select a deactivated patient to activate"),
-        ).toBeInTheDocument();
 
         // Only deactivated patients should be shown
         expect(screen.getByText("John Doe")).toBeInTheDocument();

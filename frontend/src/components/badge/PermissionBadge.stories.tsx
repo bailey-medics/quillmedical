@@ -40,12 +40,12 @@ export const Default: Story = {
 /**
  * Size Variants
  *
- * Shows permission badges in different sizes: xs, sm, md, lg, xl.
+ * Shows permission badges in different sizes: sm, md, lg, xl.
  */
 export const SizeVariants: Story = {
   render: () => (
     <VariantStack>
-      {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
         <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
           <PermissionBadge permission="superadmin" size={size} />
           <PermissionBadge permission="admin" size={size} />
@@ -62,10 +62,10 @@ export const SizeVariants: Story = {
 export const Loading: Story = {
   render: () => (
     <VariantStack>
-      {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
         <VariantRow
           key={size}
-          label={size === "xl" ? "xl (default)" : size}
+          label={size === "lg" ? "lg (default)" : size}
           horizontal={false}
         >
           <PermissionBadge permission="superadmin" size={size} isLoading />

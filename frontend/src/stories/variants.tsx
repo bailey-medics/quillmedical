@@ -42,7 +42,7 @@ export function VariantRow({
       <div
         style={{
           marginBottom: "0.5rem",
-          fontSize: "0.875rem",
+          fontSize: "1.5rem",
           fontWeight: 700,
         }}
       >

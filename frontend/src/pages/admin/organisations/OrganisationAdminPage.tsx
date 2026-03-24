@@ -235,11 +235,7 @@ export default function OrganisationAdminPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title={org.name}
-          description="View and manage organisation details"
-          size="lg"
-        />
+        <PageHeader title={org.name} />
 
         {/* Organisation Information */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>

@@ -335,7 +335,7 @@ describe("MainLayout", () => {
       };
     });
 
-    it("passes correct size props to footer", () => {
+    it("renders footer component", () => {
       renderWithMantine(
         <MainLayout patient={null}>
           <div>Content</div>
@@ -343,7 +343,7 @@ describe("MainLayout", () => {
       );
 
       const footer = screen.getByTestId("footer");
-      expect(footer).toHaveAttribute("data-size");
+      expect(footer).toBeInTheDocument();
     });
   });
 

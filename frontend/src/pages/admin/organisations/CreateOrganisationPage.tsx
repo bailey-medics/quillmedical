@@ -110,11 +110,7 @@ export default function CreateOrganisationPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Create organisation"
-          description="Add a new organisation to the system"
-          size="lg"
-        />
+        <PageHeader title="Create organisation" />
 
         {error && (
           <Alert
