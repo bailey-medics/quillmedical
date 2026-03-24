@@ -97,33 +97,6 @@ export const Loading: Story = {
   },
 };
 
-export const SingleParticipant: Story = {
-  args: {
-    threads: mockThreads.filter((t) => t.profiles.length === 1),
-    onThreadClick: (thread) => {
-      console.log("Clicked thread:", thread);
-    },
-  },
-};
-
-export const MultiParticipant: Story = {
-  args: {
-    threads: mockThreads.filter((t) => t.profiles.length > 1),
-    onThreadClick: (thread) => {
-      console.log("Clicked thread:", thread);
-    },
-  },
-};
-
-export const WithUnread: Story = {
-  args: {
-    threads: mockThreads.filter((t) => t.unreadCount > 0),
-    onThreadClick: (thread) => {
-      console.log("Clicked thread:", thread);
-    },
-  },
-};
-
 export const Empty: Story = {
   args: {
     threads: [],

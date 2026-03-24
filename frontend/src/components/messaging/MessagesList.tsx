@@ -12,7 +12,8 @@ import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
 import HeaderText from "@/components/typography/HeaderText";
 import BodyText from "@/components/typography/BodyText";
-import { Card, Group, Skeleton, Stack, Text } from "@mantine/core";
+import BodyTextClamp from "@/components/typography/BodyTextClamp";
+import { Card, Group, Skeleton, Stack } from "@mantine/core";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -86,6 +87,7 @@ export default function MessagesList({
 
   return (
     <Stack gap="sm">
+      {threads.length === 0 && <BodyText>No messages to show.</BodyText>}
       {threads.map((thread) => (
         <div
           key={thread.id}
@@ -117,9 +119,9 @@ export default function MessagesList({
                   <BodyText>{formatTime(thread.lastMessageTime)}</BodyText>
                 </Group>
 
-                <Text size="lg" c="dimmed" lineClamp={2} mb="xs">
+                <BodyTextClamp lineClamp={2}>
                   {thread.lastMessage}
-                </Text>
+                </BodyTextClamp>
               </div>
             </Group>
           </Card>
