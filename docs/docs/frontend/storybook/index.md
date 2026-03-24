@@ -1,6 +1,6 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 65 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 90 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
@@ -53,7 +53,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **65 component story files** across various UI categories:
+The project includes **90 component story files** across various UI categories:
 
 ### Core Components
 
@@ -64,7 +64,15 @@ The project includes **65 component story files** across various UI categories:
 - **StackedProfilePics** - Overlapping avatar group display
 - **QuillLogo** - Brand logo component
 - **QuillName** - Brand name component
-- **Typography** - Reference story for typographic styles
+
+### Typography
+
+- **BodyText**, **BodyTextBlack**, **BodyTextBold**, **BodyTextClamp** - Body text variants
+- **ErrorText** - Error message text
+- **HeaderText** - Heading text
+- **PageHeader** - Page title and description header
+- **PlaceholderText** - Placeholder text
+- **PublicText**, **PublicTitle** - Public-facing typography
 
 ### Navigation & Layout
 
@@ -73,11 +81,15 @@ The project includes **65 component story files** across various UI categories:
 - **MainLayout** - Primary application layout
 - **NavigationDrawer** - Mobile navigation drawer
 - **NotFoundLayout** - 404 error page layout
+- **PublicLayout** - Public-facing page layout
+- **PublicNotFound** - Public 404 error page
 - **SideNav** - Sidebar navigation component
 - **TopRibbon** - Header ribbon component
+- **PublicTopRibbon** - Public-facing header ribbon
 - **NavIcon** - Navigation icon component
+- **PublicNavIcon** - Public-facing navigation icon
 - **Footer** - Application footer component
-- **PageHeader** - Page title and description header
+- **PublicFooter** - Public-facing footer component
 
 ### Patient Management
 
@@ -94,10 +106,16 @@ The project includes **65 component story files** across various UI categories:
 - **BurgerButton** - Hamburger menu toggle
 - **ButtonPair** - Paired button layout
 - **IconButton** - Icon-only button
+- **IconTextButton** - Icon with text button
+- **PreviousNextButton** - Previous/next navigation button pair
+- **PublicBurgerButton** - Public-facing hamburger menu toggle
+- **PublicButton** - Public-facing button
 
 ### Badges & Status
 
 - **ActiveStatus** - Active/inactive status badge
+- **AppointmentStatus** - Appointment status badge
+- **AssessmentResultBadge** - Assessment result badge
 - **PermissionBadge** - User permission level badge
 - **UnreadBadge** - Unread message count badge
 
@@ -131,16 +149,48 @@ The project includes **65 component story files** across various UI categories:
 - **DirtyFormNavigation** - Unsaved changes navigation guard
 - **SearchFields** - Collapsible search input component
 - **SolidSwitch** - Toggle switch component
+- **TextField** - Text input field
+- **TextAreaField** - Multi-line text input field
+- **SelectField** - Dropdown select field
+- **MultiSelectField** - Multi-value select field
 
 ### Icons & Images
 
 - **Icon** - Icon wrapper component with size variants
+- **NavIcon** - Navigation icon
+- **PublicNavIcon** - Public-facing navigation icon
+
+### Backgrounds
+
+- **DarkBackground** - Dark background component
+- **HeroBackground** - Hero section background
+- **LightBackground** - Light background component
+
+### Cards
+
+- **ActionCard** - Card with icon, title, subtitle, and action (see Actions & Buttons)
+- **FeatureCard** - Feature highlight card
+- **PublicInfoCard** - Public-facing informational card
+- **StatCard** - Statistics card component
 
 ### Tables & Data Display
 
 - **AdminTable** - Configurable admin data table
-- **StatCard** - Statistics card component
 - **Admin** - Admin dashboard component
+
+### Teaching
+
+- **AssessmentClosing** - Assessment closing/completion screen
+- **AssessmentHistoryTable** - Assessment history data table
+- **AssessmentIntro** - Assessment introduction screen
+- **AssessmentProgress** - Assessment progress indicator
+- **AssessmentResult** - Assessment result display
+- **AssessmentTimer** - Assessment countdown timer
+- **CertificateDownload** - Certificate download component
+- **ItemManagementTable** - Teaching item management table
+- **QuestionBankCard** - Question bank card component
+- **QuestionView** - Question display component
+- **ScoreBreakdown** - Score breakdown display
 
 ## Notable Stories
 
@@ -242,25 +292,33 @@ export const Default: Story = {
 
 ## Component Testing
 
-While Storybook provides visual testing, unit tests for components are located in:
+While Storybook provides visual testing, unit tests for components are co-located alongside the component files in `frontend/src/components/`. For example:
 
 ```
-frontend/src/test/
+frontend/src/components/
+└── messaging/
+    ├── Messaging.tsx
+    ├── Messaging.stories.tsx
+    └── Messaging.test.tsx
 ```
 
-Tests use **Vitest** with `@testing-library/react` and share test utilities (`renderWithMantine`, `renderWithRouter`) to ensure consistency with Storybook decorators.
+Shared test utilities (`renderWithMantine`, `renderWithRouter`, `MockAuthProvider`) are in `frontend/src/test/`.
+
+Tests use **Vitest** with `@testing-library/react` and share test utilities to ensure consistency with Storybook decorators.
 
 ## Accessibility Testing
 
-**Planned**: The `@storybook/addon-a11y` addon is installed (version 10.2.7) but not yet configured in `.storybook/main.ts`. When enabled, this addon provides:
+**Planned**: The `@storybook/addon-a11y` addon is installed (version 10.2.10) but not yet configured in `.storybook/main.ts`. When enabled, this addon provides:
 
 - WCAG violation detection
 - Colour contrast analysis
 - Keyboard navigation testing
 - Screen reader simulation
 
+The active addon is `storybook-addon-pseudo-states`, which enables testing of CSS pseudo-states (`:hover`, `:focus`, `:active`, etc.).
+
 ## Further Documentation
 
 - **Component API Docs**: See [TypeDoc documentation](../code/frontend/)
-- **Component Tests**: See individual `.test.tsx` files in `frontend/src/test/`
+- **Component Tests**: See individual `.test.tsx` files in `frontend/src/components/`
 - **Storybook Official Docs**: [storybook.js.org](https://storybook.js.org/)
