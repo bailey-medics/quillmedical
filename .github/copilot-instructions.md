@@ -279,6 +279,7 @@ Healthcare-specific authorisation layer for clinical operations.
 ### Git
 
 - NEVER auto-commit/push - always ask permission first
+- NEVER merge pull requests — merging is solely a human responsibility
 - Stop after fixing issues, report, and wait for instruction
 - **Branch naming**: `feature/*`, `hotfix/*`, or `copilot/*` (regex: `^(feature|hotfix|copilot)/.+`)
 - `main` requires a pull request — never push directly
