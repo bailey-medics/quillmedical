@@ -90,11 +90,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: ${{ matrix.changed == 'true' }}
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push to staging AR
         if: ${{ matrix.changed == 'true' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -156,7 +156,7 @@ jobs:
           service_account: ${{ secrets.GCP_STAGING_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Deploy backend to staging
         if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -206,7 +206,7 @@ jobs:
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: Deploy backend to teaching
         if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -248,7 +248,7 @@ jobs:
     steps:
       - name: Notify Slack on success
         if: ${{ needs.deploy-staging.result == 'success' && needs.deploy-teaching.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -268,7 +268,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: ${{ needs.deploy-staging.result == 'failure' || needs.deploy-teaching.result == 'failure' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
