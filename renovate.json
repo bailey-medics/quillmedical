@@ -11,7 +11,7 @@
     "Tier 1 — Clinical",
     "  Packages: fhirclient (HAPI FHIR), httpx (EHRbase direct HTTP)",
     "  Policy:   No automerge under any circumstances.",
-    "            Vulnerability alerts fire immediately and target clinical-live",
+    "            Vulnerability alerts fire immediately, targeting clinical-live",
     "            as a hotfix branch. Label: tier-1-clinical.",
     "",
     "Tier 2 — Infrastructure",
@@ -196,6 +196,7 @@
         "at any time"
       ],
       "prCreation": "immediate",
+      "baseBranches": ["clinical-live"],
       "branchPrefix": "hotfix/sec-",
       "labels": [
         "dependencies",
@@ -286,6 +287,7 @@
         "at any time"
       ],
       "prCreation": "immediate",
+      "baseBranches": ["clinical-live"],
       "branchPrefix": "hotfix/sec-",
       "labels": [
         "dependencies",
@@ -295,7 +297,7 @@
       "automerge": false
     },
     {
-      "description": "Tier 3 — Tooling vulnerability alerts bypass schedule but target main, not clinical-live",
+      "description": "Tier 3 — Tooling vulnerability alerts bypass schedule, target main",
       "matchDepTypes": [
         "devDependencies",
         "dev"
@@ -305,7 +307,6 @@
         "at any time"
       ],
       "prCreation": "immediate",
-      "branchPrefix": "hotfix/sec-",
       "labels": [
         "dependencies",
         "security"
@@ -313,7 +314,7 @@
       "automerge": false
     },
     {
-      "description": "Tier 3 — GitHub Actions vulnerability alerts: bypass schedule, target main",
+      "description": "Tier 3 — GitHub Actions and pre-commit vulnerability alerts: bypass schedule, target main",
       "matchManagers": [
         "github-actions",
         "pre-commit"
@@ -323,7 +324,6 @@
         "at any time"
       ],
       "prCreation": "immediate",
-      "branchPrefix": "hotfix/sec-",
       "labels": [
         "dependencies",
         "security"
