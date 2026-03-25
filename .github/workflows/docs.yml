@@ -36,7 +36,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       # ---------- Frontend docs (Node + Yarn) ----------
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
 
@@ -47,7 +47,7 @@ jobs:
           yarn --version
 
       - name: Cache Yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             frontend/.yarn/cache
@@ -63,7 +63,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Cache Storybook & Vite build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             frontend/node_modules/.vite
@@ -112,12 +112,12 @@ jobs:
           fi
 
       # ---------- Backend docs (MkDocs via Poetry) ----------
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
       - name: Cache Poetry dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             backend/.venv
@@ -150,7 +150,7 @@ jobs:
           poetry run mkdocs build -f ../docs/mkdocs.yml -d ../site
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
@@ -176,7 +176,7 @@ jobs:
     steps:
       - name: Notify Slack on success
         if: ${{ needs.deploy.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -196,7 +196,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: ${{ needs.deploy.result == 'failure' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
