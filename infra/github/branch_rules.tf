@@ -59,17 +59,13 @@ variable "question_bank_repository" {
 }
 
 # ---------------------------------------------------------------------------
-# Ruleset 1 — Protected branches
+# Ruleset 1a — Protected branches (main, release/**)
 # ---------------------------------------------------------------------------
-# Targets: main, clinical-live, release/**
-#
 # Purpose:
-#   Prevents direct pushes, force pushes, and branch deletion on branches that
-#   represent production-grade code or release candidates. All changes must go
-#   through a pull request with at least one approving review, and stale
-#   approvals are dismissed when new commits are pushed. This creates an
-#   auditable paper trail of who approved each change — a key requirement for
-#   DCB 0129 clinical safety compliance.
+#   Prevents direct pushes, force pushes, and branch deletion on the main
+#   integration branch and release candidates. All changes must go through
+#   a pull request. Currently 0 approvals required (solo developer); increase
+#   when additional team members join.
 #
 # No bypass actors are configured so that these rules apply to everyone,
 # including repository administrators.
@@ -84,7 +80,6 @@ resource "github_repository_ruleset" "protected_branches" {
     ref_name {
       include = [
         "refs/heads/main",
-        "refs/heads/clinical-live",
         "refs/heads/release/**",
       ]
       exclude = []
@@ -99,6 +94,95 @@ resource "github_repository_ruleset" "protected_branches" {
       dismiss_stale_reviews_on_push     = true
       require_code_owner_review         = false
       require_last_push_approval        = false
+      required_review_thread_resolution = false
+    }
+
+    # Require CI status checks to pass before merging
+    required_status_checks {
+      strict_required_status_checks_policy = true
+
+      # Python (matrix: styling, unit)
+      required_check {
+        context = "Python styling"
+      }
+      required_check {
+        context = "Python unit"
+      }
+
+      # TypeScript (matrix: all tasks)
+      required_check {
+        context = "typescript_checks (eslint)"
+      }
+      required_check {
+        context = "typescript_checks (prettier)"
+      }
+      required_check {
+        context = "typescript_checks (stylelint)"
+      }
+      required_check {
+        context = "typescript_checks (typecheck:all)"
+      }
+      required_check {
+        context = "typescript_checks (unit-test:run)"
+      }
+      required_check {
+        context = "typescript_checks (storybook:build)"
+      }
+      required_check {
+        context = "typescript_checks (storybook:test:ci)"
+      }
+
+      # Security
+      required_check {
+        context = "Semgrep (frontend SAST)"
+      }
+    }
+
+    # Block force pushes (rewriting history on protected branches)
+    non_fast_forward = true
+
+    # Block branch deletion
+    deletion = true
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Ruleset 1b — Clinical-live: production branch protection
+# ---------------------------------------------------------------------------
+# Targets: clinical-live only
+#
+# Purpose:
+#   The clinical-live branch represents production-grade code. It requires
+#   stricter controls than main: a second person must approve every PR before
+#   merge. This creates a two-person sign-off audit trail — a key requirement
+#   for DCB 0129 clinical safety compliance.
+#
+#   Code reaches clinical-live only via release/* branches (normal releases)
+#   or hotfix/* branches (emergency patches). Both paths require review.
+#
+# No bypass actors are configured so that these rules apply to everyone,
+# including repository administrators.
+
+resource "github_repository_ruleset" "clinical_live_protection" {
+  name        = "clinical-live-protection"
+  repository  = var.github_repository
+  target      = "branch"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["refs/heads/clinical-live"]
+      exclude = []
+    }
+  }
+
+  rules {
+    # Require a second person to approve before merging to clinical-live
+    pull_request {
+      required_approving_review_count   = 1
+      dismiss_stale_reviews_on_push     = true
+      require_code_owner_review         = false
+      require_last_push_approval        = true
       required_review_thread_resolution = false
     }
 
