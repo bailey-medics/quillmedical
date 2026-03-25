@@ -67,6 +67,7 @@ nav:
   - Dependencies:
       - Overview: dependencies/index.md
       - Automatic updates: dependencies/automatic-updates.md
+      - Managing Renovate PRs: dependencies/managing-renovate-prs.md
   - Plans:
       - Overview: plans/index.md
       - GCP Launch-Ready: plans/gcp-launch-ready.md
