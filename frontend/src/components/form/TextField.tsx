@@ -4,6 +4,7 @@ const fieldStyles = {
   label: {
     fontSize: "var(--mantine-font-size-lg)",
     color: "var(--mantine-color-black)",
+    marginBottom: "0.25rem",
   },
   input: { fontSize: "var(--mantine-font-size-lg)" },
 };

@@ -5,6 +5,7 @@ const fieldStyles = {
   label: {
     fontSize: "var(--mantine-font-size-lg)",
     color: "var(--mantine-color-black)",
+    marginBottom: "0.25rem",
   },
 };
 
@@ -18,6 +19,7 @@ export default function MultiSelectField(props: MultiSelectProps) {
         input: classes.input,
         pillsList: classes.pillsList,
         inputField: classes.inputField,
+        section: classes.section,
       }}
     />
   );

@@ -42,6 +42,7 @@ describe("SelectField", () => {
     expect(label).toHaveStyle({
       fontSize: "var(--mantine-font-size-lg)",
       color: "var(--mantine-color-black)",
+      marginBottom: "0.25rem",
     });
   });
 

@@ -6,12 +6,12 @@ import SolidSwitch from "./SolidSwitch";
 
 describe("SolidSwitch", () => {
   describe("Rendering", () => {
-    it("renders with a label", () => {
+    it("renders with a top label", () => {
       renderWithMantine(<SolidSwitch label="Toggle me" />);
       expect(screen.getByText("Toggle me")).toBeInTheDocument();
     });
 
-    it("renders with a description", () => {
+    it("renders with a description below the switch", () => {
       renderWithMantine(
         <SolidSwitch label="Feature" description="Enable this feature" />,
       );
@@ -26,6 +26,30 @@ describe("SolidSwitch", () => {
     it("renders checked when checked prop is true", () => {
       renderWithMantine(<SolidSwitch label="Toggle" checked readOnly />);
       expect(screen.getByRole("switch")).toBeChecked();
+    });
+
+    it("shows 'No' label when unchecked", () => {
+      renderWithMantine(<SolidSwitch label="Toggle" />);
+      expect(screen.getByText("No")).toBeInTheDocument();
+    });
+
+    it("shows 'Yes' label when checked", () => {
+      renderWithMantine(<SolidSwitch label="Toggle" checked readOnly />);
+      expect(screen.getByText("Yes")).toBeInTheDocument();
+    });
+
+    it("always renders top label", () => {
+      const { container } = renderWithMantine(<SolidSwitch label="Feature" />);
+      expect(
+        container.querySelector("[class*='topLabel']"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render description when omitted", () => {
+      const { container } = renderWithMantine(<SolidSwitch label="Feature" />);
+      expect(
+        container.querySelector("[class*='description']"),
+      ).not.toBeInTheDocument();
     });
   });
 

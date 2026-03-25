@@ -13,8 +13,7 @@ import MultiSelectField from "@/components/form/MultiSelectField";
 import SelectField from "@/components/form/SelectField";
 import TextAreaField from "@/components/form/TextAreaField";
 import TextField from "@/components/form/TextField";
-import SolidSwitch from "@/components/switch/SolidSwitch";
-import BodyText from "@/components/typography/BodyText";
+import SolidSwitch from "@/components/form/SolidSwitch";
 import BodyTextBold from "@/components/typography/BodyTextBold";
 import ErrorText from "@/components/typography/ErrorText";
 import HeaderText from "@/components/typography/HeaderText";
@@ -215,20 +214,12 @@ export default function NewMessageModal({
 
         {!isPatientUser && (
           <div>
-            <div style={{ marginBottom: 4 }}>
-              <BodyText>Patient as participant</BodyText>
-            </div>
             <SolidSwitch
+              label="Patient as participant"
+              description="Allow the patient to reply to this conversation"
               checked={includePatient}
               onChange={(e) => setIncludePatient(e.currentTarget.checked)}
-              size="lg"
-              label={includePatient ? "Yes" : "No"}
             />
-            <div style={{ marginTop: 4 }}>
-              <BodyText>
-                Allow the patient to reply to this conversation
-              </BodyText>
-            </div>
           </div>
         )}
 
