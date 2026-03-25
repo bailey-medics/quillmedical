@@ -8,6 +8,7 @@
 
 .topLabel {
   font-size: var(--mantine-font-size-lg);
+  font-weight: 500;
   color: var(--mantine-color-black);
   margin-bottom: 0.25rem;
 }
