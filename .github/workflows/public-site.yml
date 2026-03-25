@@ -28,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Enable Corepack
         run: corepack enable
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: yarn
@@ -47,7 +47,7 @@ jobs:
         working-directory: frontend
         run: yarn workspace public-pages build
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: public-site
           path: frontend/dist/public_pages/
@@ -60,7 +60,7 @@ jobs:
       name: staging
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: public-site
           path: public-site/
