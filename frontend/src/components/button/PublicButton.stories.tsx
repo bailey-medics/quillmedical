@@ -13,7 +13,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg={colours.navy} p="xl" c="white">
+      <Box bg={colours.navy} p="xl" c="white" display="inline-block">
         <Story />
       </Box>
     ),
