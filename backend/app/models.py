@@ -240,6 +240,66 @@ class Organization(Base):
         backref="organisations",
     )
 
+    # One-to-many relationship to enabled features
+    features: Mapped[list[OrganisationFeature]] = relationship(
+        back_populates="organisation",
+        cascade="all, delete-orphan",
+    )
+
+
+class OrganisationFeature(Base):
+    """Feature flag for an organisation.
+
+    Row existence = feature is enabled. Deleting the row disables the
+    feature. No separate ``enabled`` boolean — avoids ambiguity between
+    "row exists but disabled" and "row absent".
+
+    Attributes:
+        id: Primary key.
+        organisation_id: FK to the owning organisation.
+        feature_key: Feature identifier (e.g. "epr", "teaching").
+        enabled_at: When the feature was enabled.
+        enabled_by: FK to the user who enabled it.
+    """
+
+    __tablename__ = "organisation_features"
+    __table_args__ = (
+        UniqueConstraint(
+            "organisation_id",
+            "feature_key",
+            name="uq_org_feature",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    organisation_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    feature_key: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )
+    enabled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    enabled_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    organisation: Mapped[Organization] = relationship(
+        back_populates="features",
+    )
+    enabled_by_user: Mapped[User | None] = relationship(
+        foreign_keys=[enabled_by],
+        lazy="joined",
+    )
+
 
 message_organisation = Table(
     "message_organisation",

@@ -6,7 +6,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "@storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import MultiStepForm, { type StepConfig } from "./MultiStepForm";
 import { useState } from "react";
 import { TextInput, Stack, Text, Button, Group, Alert } from "@mantine/core";

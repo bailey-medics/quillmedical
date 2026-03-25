@@ -12,7 +12,7 @@ import IconButton from "./IconButton";
 import { IconPencil, IconTrash, IconCheck } from "@tabler/icons-react";
 
 describe("IconButton", () => {
-  it("renders with default medium size (44px container)", () => {
+  it("renders with default medium size (42px container)", () => {
     renderWithMantine(<IconButton icon={<IconPencil />} aria-label="Edit" />);
 
     const button = screen.getByRole("button", { name: "Edit" });
@@ -29,7 +29,7 @@ describe("IconButton", () => {
     expect(button).toBeInTheDocument();
   });
 
-  it("renders with large size (60px container)", () => {
+  it("renders with large size (50px container)", () => {
     renderWithMantine(
       <IconButton icon={<IconPencil />} size="lg" aria-label="Edit large" />,
     );

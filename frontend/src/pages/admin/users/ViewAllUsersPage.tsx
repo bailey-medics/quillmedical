@@ -63,12 +63,7 @@ export default function ViewAllUsersPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="All users"
-          description="View all registered user accounts"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="All users" />
 
         {loading ? (
           <Stack gap="xs">

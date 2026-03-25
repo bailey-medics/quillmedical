@@ -103,13 +103,13 @@ Uses **[act](https://github.com/nektos/act)** to run the exact GitHub Actions wo
 
 ## When to Use Which?
 
-### Use `run-ci-checks.sh` when:
+### Use `run-ci-checks.sh` when
 
 - Quick iteration on fixes
 - Running checks frequently during development
 - You need results in <1 minute
 
-### Use `run-github-actions-locally.sh` when:
+### Use `run-github-actions-locally.sh` when
 
 - Final verification before pushing
 - Debugging environment-specific issues

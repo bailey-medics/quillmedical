@@ -1,20 +1,21 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: ./backend/Dockerfile
       target: dev
     container_name: quill_backend
     env_file: backend/.env
     environment:
       BACKEND_ENV: development
+      TEACHING_STORAGE_BACKEND: local
+      TEACHING_QUESTION_BANK_PATH: /question-banks/questions
+      TEACHING_IMAGES_BASE_URL: /api/teaching/images
+      CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
     expose:
       - "8000"
     depends_on:
       postgres-auth:
-        condition: service_healthy
-      postgres-fhir:
-        condition: service_healthy
-      postgres-ehrbase:
         condition: service_healthy
     networks:
       - public
@@ -22,10 +23,12 @@ services:
     volumes:
       - ./backend:/app
       - ./shared:/shared
+      - ./question-bank:/question-banks
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: ./frontend/Dockerfile
       target: dev
     container_name: quill_frontend
     env_file: frontend/.env
@@ -70,6 +73,7 @@ services:
       - private
 
   postgres-fhir:
+    profiles: ["clinical"]
     image: postgres:16-alpine
     container_name: quill_postgres_fhir
     environment:
@@ -92,6 +96,7 @@ services:
       - private
 
   postgres-ehrbase:
+    profiles: ["clinical"]
     image: ehrbase/ehrbase-v2-postgres:16.2
     container_name: quill_postgres_ehrbase
     environment:
@@ -114,15 +119,19 @@ services:
       - private
 
   fhir:
-    image: hapiproject/hapi:latest
+    profiles: ["clinical"]
+    image: hapiproject/hapi:v8.8.0-1
     container_name: quill_fhir
     env_file: backend/.env
     environment:
+      # Disable C2 JIT compiler — avoids MachOper::hash() crash when running
+      # amd64 JVM under Rosetta 2 emulation on Apple Silicon
+      - JAVA_TOOL_OPTIONS=-XX:TieredStopAtLevel=1
       - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
       - spring.datasource.username=hapi_user
       - spring.datasource.password=hapi_secure_password_123
       - spring.datasource.driverClassName=org.postgresql.Driver
-      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      - spring.jpa.properties.hibernate.dialect=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
       - hapi.fhir.fhir_version=R4
       - hapi.fhir.subscription.resthook_enabled=false
       - hapi.fhir.subscription.email.enabled=false
@@ -150,7 +159,8 @@ services:
       start_period: 120s
 
   ehrbase:
-    image: ehrbase/ehrbase:latest
+    profiles: ["clinical"]
+    image: ehrbase/ehrbase:2.30.0
     container_name: quill_ehrbase
     env_file: backend/.env
     environment:

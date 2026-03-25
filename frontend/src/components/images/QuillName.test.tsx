@@ -63,10 +63,10 @@ describe("QuillName Component", () => {
   });
 
   describe("Defaults", () => {
-    it("uses default height of 1.5rem", () => {
+    it("uses default height of 2.1rem", () => {
       const { container } = renderWithMantine(<QuillName />);
       const img = container.querySelector("img");
-      expect(img).toHaveStyle({ height: "1.5rem" });
+      expect(img).toHaveStyle({ height: "2.1rem" });
     });
 
     it("uses default marginRight of 0.5rem", () => {

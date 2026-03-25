@@ -14,7 +14,7 @@ The configuration is organized into sections:
 
 from urllib.parse import quote_plus
 
-from pydantic import Field, SecretStr, computed_field
+from pydantic import Field, SecretStr, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -67,6 +67,15 @@ class Settings(BaseSettings):
     COOKIE_DOMAIN: str | None = None
     SECURE_COOKIES: bool = False
 
+    # --- Clinical services flag ---
+    CLINICAL_SERVICES_ENABLED: bool = Field(
+        True,
+        description=(
+            "Whether FHIR and EHRbase are required. "
+            "Teaching deployments set this to false."
+        ),
+    )
+
     # --- Auth Database ---
     AUTH_DB_NAME: str = Field("quill_auth", description="Auth database name")
     AUTH_DB_USER: str = Field("auth_user", description="Auth database user")
@@ -82,7 +91,8 @@ class Settings(BaseSettings):
     FHIR_DB_NAME: str = Field("hapi", description="FHIR database name")
     FHIR_DB_USER: str = Field("hapi_user", description="FHIR database user")
     FHIR_DB_PASSWORD: SecretStr = Field(
-        ..., description="FHIR database password"
+        SecretStr("fhir_password"),
+        description="FHIR database password",
     )
     FHIR_DB_HOST: str = Field(
         "postgres-fhir", description="FHIR database host"
@@ -97,7 +107,8 @@ class Settings(BaseSettings):
         "ehrbase_user", description="EHRbase database user"
     )
     EHRBASE_DB_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase database password"
+        SecretStr("ehrbase_password"),
+        description="EHRbase database password",
     )
     EHRBASE_DB_HOST: str = Field(
         "postgres-ehrbase", description="EHRbase database host"
@@ -113,14 +124,48 @@ class Settings(BaseSettings):
         "ehrbase_user", description="EHRbase API user"
     )
     EHRBASE_API_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase API password"
+        SecretStr("ehrbase_password"),
+        description="EHRbase API password",
     )
     EHRBASE_API_ADMIN_USER: str = Field(
         "ehrbase_admin", description="EHRbase API admin user"
     )
     EHRBASE_API_ADMIN_PASSWORD: SecretStr = Field(
-        ..., description="EHRbase API admin password"
+        SecretStr("ehrbase_admin_password"),
+        description="EHRbase API admin password",
     )
+
+    # --- Teaching / GCS ---
+    TEACHING_GCS_BUCKET: str | None = Field(
+        None,
+        description="GCS bucket for teaching question bank images",
+    )
+    TEACHING_IMAGES_BASE_URL: str | None = Field(
+        None,
+        description="Override for dev: local file serving base URL",
+    )
+    TEACHING_QUESTION_BANK_PATH: str | None = Field(
+        None,
+        description="Local filesystem path to question bank content",
+    )
+
+    # --- Startup validation ---
+    @model_validator(mode="after")
+    def _validate_clinical_services(self) -> "Settings":
+        """Verify FHIR/EHRbase config is present when clinical services are enabled."""
+        if not self.CLINICAL_SERVICES_ENABLED:
+            return self
+        if not self.FHIR_SERVER_URL:
+            raise ValueError(
+                "FHIR_SERVER_URL is required when "
+                "CLINICAL_SERVICES_ENABLED is true"
+            )
+        if not self.EHRBASE_URL:
+            raise ValueError(
+                "EHRBASE_URL is required when "
+                "CLINICAL_SERVICES_ENABLED is true"
+            )
+        return self
 
     # --- Computed Database URLs ---
     @computed_field  # type: ignore[prop-decorator]
@@ -146,7 +191,7 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def FHIR_DATABASE_URL(self) -> str:
+    def FHIR_DATABASE_URL(self) -> str | None:
         """FHIR Database Connection URL.
 
         Constructs a PostgreSQL connection URL for the HAPI FHIR database.
@@ -154,9 +199,10 @@ class Settings(BaseSettings):
         by the HAPI FHIR server. The password is URL-encoded for safe inclusion
         in the connection string.
 
-        Returns:
-            str: SQLAlchemy-compatible database URL for FHIR database.
+        Returns None when clinical services are disabled (e.g. teaching).
         """
+        if not self.CLINICAL_SERVICES_ENABLED:
+            return None
         return (
             f"postgresql+psycopg://{self.FHIR_DB_USER}:"
             f"{quote_plus(self.FHIR_DB_PASSWORD.get_secret_value())}@"
@@ -165,7 +211,7 @@ class Settings(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def EHRBASE_DATABASE_URL(self) -> str:
+    def EHRBASE_DATABASE_URL(self) -> str | None:
         """EHRbase Database Connection URL.
 
         Constructs a PostgreSQL connection URL for the EHRbase database.
@@ -173,9 +219,10 @@ class Settings(BaseSettings):
         managed by the EHRbase server. The password is URL-encoded and includes
         special PostgreSQL parameters required by EHRbase.
 
-        Returns:
-            str: SQLAlchemy-compatible database URL for EHRbase database.
+        Returns None when clinical services are disabled (e.g. teaching).
         """
+        if not self.CLINICAL_SERVICES_ENABLED:
+            return None
         return (
             f"postgresql+psycopg://{self.EHRBASE_DB_USER}:"
             f"{quote_plus(self.EHRBASE_DB_PASSWORD.get_secret_value())}@"

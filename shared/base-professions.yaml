@@ -309,3 +309,23 @@ base_professions:
       - access_clinic_admin
       - manage_users
     notes: "System administrators have technical access but are NOT clinical staff. All patient record access logged and restricted to support tickets only."
+
+  # ==========================================================================
+  # TEACHING PROFESSIONS
+  # ==========================================================================
+
+  - id: learner
+    display_name: "Learner"
+    description: "Teaching assessment candidate"
+    base_competencies:
+      - view_teaching_cases
+    notes: "Learners can take teaching assessments. Results are auditable and may be used for accreditation."
+
+  - id: educator
+    display_name: "Educator"
+    description: "Teaching content manager and assessment coordinator"
+    base_competencies:
+      - view_teaching_cases
+      - manage_teaching_content
+      - view_teaching_analytics
+    notes: "Educators manage question bank content, trigger syncs, view all candidate results, and coordinate assessments."

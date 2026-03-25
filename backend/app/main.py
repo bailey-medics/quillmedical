@@ -21,9 +21,12 @@ Architecture:
 - Push notifications: In-memory subscriptions (production should use database)
 """
 
+import logging
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 import httpx
 from fastapi import (
@@ -57,6 +60,7 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
+from app.logging_config import setup_logging
 from app.messaging import (
     add_participant,
     create_conversation,
@@ -70,6 +74,7 @@ from app.messaging import (
 from app.models import (
     Conversation,
     ExternalPatientAccess,
+    OrganisationFeature,
     Organization,
     PatientMetadata,
     User,
@@ -90,6 +95,7 @@ from app.schemas.cbac import (
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
+from app.schemas.features import FeatureOut, FeatureToggleIn
 from app.schemas.letters import LetterIn
 from app.schemas.messaging import (
     AcceptInviteIn,
@@ -118,7 +124,15 @@ from app.security import (
     verify_password,
     verify_totp_code,
 )
-from app.system_permissions.permissions import is_external_user
+from app.system_permissions.permissions import (
+    PERMISSION_LEVELS,
+    PERMISSION_STAFF,
+    check_permission_level,
+    is_external_user,
+)
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
@@ -148,6 +162,37 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+# --- Request logging middleware ---
+@app.middleware("http")
+async def log_requests(
+    request: Request,
+    call_next: Callable,  # type: ignore[type-arg]
+) -> Response:
+    """Log every request with timing, method, path, and status."""
+    request_id = uuid4().hex[:12]
+    start = time.monotonic()
+    response: Response = await call_next(request)
+    elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+
+    logger.info(
+        "%s %s %s %.1fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": response.status_code,
+            "duration_ms": elapsed_ms,
+            "client_ip": request.client.host if request.client else None,
+        },
+    )
+    return response
+
+
 app.include_router(push_send_router)
 
 DEP_GET_SESSION = Depends(get_session)
@@ -160,6 +205,18 @@ COOKIE_KW: dict[str, Any] = {
     "secure": settings.SECURE_COOKIES,
     "domain": settings.COOKIE_DOMAIN,
 }
+
+
+def require_clinical_services() -> None:
+    """FastAPI dependency: raises 503 when FHIR/EHRbase are disabled."""
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        raise HTTPException(
+            status_code=503,
+            detail="Clinical services are not available in this deployment",
+        )
+
+
+DEP_REQUIRE_CLINICAL = Depends(require_clinical_services)
 
 
 def check_fhir_health() -> dict[str, bool | int | str]:
@@ -175,6 +232,8 @@ def check_fhir_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        return {"available": False, "error": "Clinical services disabled"}
     try:
         # Test actual data access, not just metadata
         # This ensures database is ready and indexes are loaded
@@ -197,10 +256,12 @@ def check_ehrbase_health() -> dict[str, bool | int | str]:
     Returns:
         dict with 'available' boolean and optional 'error' message
     """
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        return {"available": False, "error": "Clinical services disabled"}
     try:
         # Use get_secret_value() to extract the actual password string
         api_user = settings.EHRBASE_API_USER
-        api_password = settings.EHRBASE_API_PASSWORD.get_secret_value()
+        api_password: str = settings.EHRBASE_API_PASSWORD.get_secret_value()
 
         response = httpx.get(
             f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4",
@@ -223,24 +284,28 @@ async def startup_event() -> None:
     print("Quill Medical Backend Starting...")
     print("=" * 60)
 
-    fhir_status = check_fhir_health()
-    ehrbase_status = check_ehrbase_health()
+    if settings.CLINICAL_SERVICES_ENABLED:
+        fhir_status = check_fhir_health()
+        if fhir_status["available"]:
+            print("✓ FHIR server is available")
+        else:
+            print(
+                f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
+            )
+            print("  Patient operations will fail until FHIR server is ready")
 
-    if fhir_status["available"]:
-        print("✓ FHIR server is available")
+        ehrbase_status = check_ehrbase_health()
+        if ehrbase_status["available"]:
+            print("✓ EHRbase server is available")
+        else:
+            print(
+                f"✗ WARNING: EHRbase not available - {ehrbase_status.get('error', 'Unknown error')}"
+            )
+            print(
+                "  Clinical letter operations will fail until EHRbase is ready"
+            )
     else:
-        print(
-            f"✗ WARNING: FHIR server not available - {fhir_status.get('error', 'Unknown error')}"
-        )
-        print("  Patient operations will fail until FHIR server is ready")
-
-    if ehrbase_status["available"]:
-        print("✓ EHRbase server is available")
-    else:
-        print(
-            f"✗ WARNING: EHRbase not available - {ehrbase_status.get('error', 'Unknown error')}"
-        )
-        print("  Clinical letter operations will fail until EHRbase is ready")
+        print("- Clinical services disabled (FHIR/EHRbase skipped)")
 
     print("=" * 60 + "\n")
 
@@ -317,20 +382,31 @@ def health_check() -> dict[str, Any]:
     Returns:
         dict: Health status with service availability details
     """
-    fhir_status = check_fhir_health()
-    ehrbase_status = check_ehrbase_health()
+    services: dict[str, dict[str, bool | int | str]] = {
+        "auth_db": {
+            "available": True
+        },  # If we can respond, auth DB is working
+    }
 
-    all_healthy = fhir_status["available"] and ehrbase_status["available"]
+    # Only check FHIR/EHRbase when clinical services are enabled
+    if settings.CLINICAL_SERVICES_ENABLED:
+        services["fhir"] = check_fhir_health()
+        services["ehrbase"] = check_ehrbase_health()
+    else:
+        services["fhir"] = {
+            "available": False,
+            "error": "Not provisioned",
+        }
+        services["ehrbase"] = {
+            "available": False,
+            "error": "Not provisioned",
+        }
+
+    all_healthy = all(s.get("available", False) for s in services.values())
 
     return {
         "status": "healthy" if all_healthy else "degraded",
-        "services": {
-            "fhir": fhir_status,
-            "ehrbase": ehrbase_status,
-            "auth_db": {
-                "available": True
-            },  # If we can respond, auth DB is working
-        },
+        "services": services,
     }
 
 
@@ -1012,16 +1088,19 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
 
 
 @router.get("/auth/me")
-def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
+def me(
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
-    email, assigned roles, system permissions, and TOTP status. Used by frontend
-    to display user information and determine available features based on roles
-    and permissions.
+    email, assigned roles, system permissions, TOTP status, and enabled
+    features from the user's primary organisation.
 
     Args:
         u: Currently authenticated user from JWT.
+        db: Database session.
 
     Returns:
         dict: User profile with keys:
@@ -1031,7 +1110,28 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
             - roles: List of assigned role names
             - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
+            - enabled_features: Features enabled on user's primary org
     """
+    # Resolve features from user's primary org
+    enabled_features: list[str] = []
+    primary_org_row = db.execute(
+        select(organisation_staff_member.c.organisation_id).where(
+            organisation_staff_member.c.user_id == u.id,
+            organisation_staff_member.c.is_primary.is_(True),
+        )
+    ).first()
+    if primary_org_row:
+        features = (
+            db.execute(
+                select(OrganisationFeature.feature_key).where(
+                    OrganisationFeature.organisation_id == primary_org_row[0],
+                )
+            )
+            .scalars()
+            .all()
+        )
+        enabled_features = list(features)
+
     return {
         "id": u.id,
         "username": u.username,
@@ -1039,12 +1139,15 @@ def me(u: User = DEP_CURRENT_USER) -> dict[str, int | str | list[str] | bool]:
         "roles": [r.name for r in u.roles],
         "system_permissions": u.system_permissions,
         "totp_enabled": u.is_totp_enabled,
+        "enabled_features": enabled_features,
+        "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
     }
 
 
 @router.get("/users")
 def list_users(
     patient_id: str | None = None,
+    permission_level: str | None = None,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -1055,9 +1158,12 @@ def list_users(
     used by the message participant picker.
 
     Without ``patient_id``, returns all users (admin/superadmin only).
+    Use ``permission_level`` to filter by minimum permission level
+    (e.g. ``staff`` returns staff, admin, and superadmin users).
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
+        permission_level: Optional minimum permission level to filter by.
         u: Currently authenticated user.
         db: Database session.
 
@@ -1066,6 +1172,7 @@ def list_users(
 
     Raises:
         HTTPException: 403 if user lacks permissions.
+        HTTPException: 400 if permission_level is invalid.
     """
     if patient_id:
         # Filtered mode: staff in patient's orgs + external with access
@@ -1112,8 +1219,20 @@ def list_users(
             detail="Requires admin or superadmin permissions",
         )
 
+    if permission_level is not None:
+        if permission_level not in PERMISSION_LEVELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid permission_level: {permission_level}",
+            )
+        min_index = PERMISSION_LEVELS.index(permission_level)
+        allowed = PERMISSION_LEVELS[min_index:]
+        stmt = select(User).where(User.system_permissions.in_(allowed))
+    else:
+        stmt = select(User)
+
     try:
-        users = db.execute(select(User)).scalars().unique().all()
+        users = db.execute(stmt).scalars().unique().all()
         return {
             "users": [
                 {
@@ -1253,7 +1372,11 @@ def refresh(
 
 @router.post(
     "/patients/verify",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def create_patient_record(patient_id: str) -> dict[str, str]:
     """Create or Verify Patient in FHIR.
@@ -1289,7 +1412,7 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients")
+@router.get("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
 def list_patients(
     include_inactive: bool = False,
     scope: str | None = None,
@@ -1354,7 +1477,11 @@ def list_patients(
 
 @router.put(
     "/patients/{patient_id}/demographics",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def upsert_demographics(
     patient_id: str, demographics: dict[str, Any], u: User = DEP_CURRENT_USER
@@ -1392,7 +1519,10 @@ def upsert_demographics(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/demographics")
+@router.get(
+    "/patients/{patient_id}/demographics",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_demographics(
     patient_id: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, str | Any]:
@@ -1428,7 +1558,11 @@ def get_demographics(
 
 @router.post(
     "/patients/{patient_id}/letters",
-    dependencies=[DEP_REQUIRE_ROLES_CLINICIAN, DEP_REQUIRE_CSRF],
+    dependencies=[
+        DEP_REQUIRE_CLINICAL,
+        DEP_REQUIRE_ROLES_CLINICIAN,
+        DEP_REQUIRE_CSRF,
+    ],
 )
 def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
     """Create Clinical Letter in OpenEHR.
@@ -1473,7 +1607,10 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/letters/{composition_uid}")
+@router.get(
+    "/patients/{patient_id}/letters/{composition_uid}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def read_letter(
     patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1513,7 +1650,10 @@ def read_letter(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients/{patient_id}/letters")
+@router.get(
+    "/patients/{patient_id}/letters",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_letters(
     patient_id: str, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1572,7 +1712,7 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-@router.post("/patients")
+@router.post("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1609,7 +1749,10 @@ def create_patient_in_fhir(
         ) from e
 
 
-@router.get("/patients/{patient_id}")
+@router.get(
+    "/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
     """Get Single Patient from FHIR.
 
@@ -1644,7 +1787,10 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
         ) from e
 
 
-@router.patch("/patients/{patient_id}")
+@router.patch(
+    "/patients/{patient_id}",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
@@ -1731,7 +1877,10 @@ def update_patient(
         ) from e
 
 
-@router.get("/patients/{patient_id}/metadata")
+@router.get(
+    "/patients/{patient_id}/metadata",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def get_patient_metadata(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -1770,7 +1919,10 @@ def get_patient_metadata(
         }
 
 
-@router.post("/patients/{patient_id}/deactivate")
+@router.post(
+    "/patients/{patient_id}/deactivate",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def deactivate_patient(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -1835,7 +1987,10 @@ def deactivate_patient(
     }
 
 
-@router.post("/patients/{patient_id}/activate")
+@router.post(
+    "/patients/{patient_id}/activate",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def activate_patient(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -1899,7 +2054,10 @@ def activate_patient(
     }
 
 
-@router.get("/patients/{patient_id}/shared-organisations")
+@router.get(
+    "/patients/{patient_id}/shared-organisations",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def shared_organisations_endpoint(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -2398,6 +2556,12 @@ def add_staff_to_organization(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if not check_permission_level(user.system_permissions, PERMISSION_STAFF):
+        raise HTTPException(
+            status_code=400,
+            detail="User must have staff-level permissions or above",
+        )
+
     # Check if already a member
     existing = db.scalar(
         select(organisation_staff_member).where(
@@ -2411,11 +2575,19 @@ def add_staff_to_organization(
             detail="User is already a staff member of this organisation",
         )
 
+    # Auto-set as primary if user has no existing primary org
+    has_primary = db.scalar(
+        select(organisation_staff_member.c.organisation_id).where(
+            organisation_staff_member.c.user_id == body.user_id,
+            organisation_staff_member.c.is_primary.is_(True),
+        )
+    )
+
     db.execute(
         organisation_staff_member.insert().values(
             organisation_id=org_id,
             user_id=body.user_id,
-            is_primary=False,
+            is_primary=has_primary is None,
         )
     )
     db.commit()
@@ -2435,7 +2607,10 @@ class AddPatientIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.post("/organizations/{org_id}/patients")
+@router.post(
+    "/organizations/{org_id}/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def add_patient_to_organization(
     org_id: int,
     body: AddPatientIn,
@@ -2590,6 +2765,89 @@ def remove_patient_from_organization(
     return {"status": "removed"}
 
 
+# ==========================================================================
+# ORGANISATION FEATURE ENDPOINTS
+# ==========================================================================
+
+
+@router.get("/organizations/{org_id}/features")
+def list_org_features(
+    org_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, list[dict[str, Any]]]:
+    """List enabled features for an organisation.
+
+    Admin/superadmin only.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    return {
+        "features": [
+            FeatureOut(
+                feature_key=f.feature_key,
+                enabled_at=f.enabled_at,
+                enabled_by=f.enabled_by,
+            ).model_dump()
+            for f in org.features
+        ]
+    }
+
+
+@router.put(
+    "/organizations/{org_id}/features/{feature_key}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def toggle_org_feature(
+    org_id: int,
+    feature_key: str,
+    body: FeatureToggleIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Enable or disable a feature on an organisation.
+
+    Admin/superadmin only.  When ``enabled=true`` a row is created;
+    when ``enabled=false`` the row is deleted.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    existing = db.scalar(
+        select(OrganisationFeature).where(
+            OrganisationFeature.organisation_id == org_id,
+            OrganisationFeature.feature_key == feature_key,
+        )
+    )
+
+    if body.enabled:
+        if existing:
+            return {"status": "already_enabled"}
+        feature = OrganisationFeature(
+            organisation_id=org_id,
+            feature_key=feature_key,
+            enabled_by=u.id,
+        )
+        db.add(feature)
+        db.commit()
+        return {"status": "enabled"}
+    else:
+        if not existing:
+            return {"status": "already_disabled"}
+        db.delete(existing)
+        db.commit()
+        return {"status": "disabled"}
+
+
 @router.patch(
     "/users/{user_id}/link-patient",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -2655,7 +2913,7 @@ def link_patient_to_user(
 
 @router.post(
     "/patients/{patient_id}/invite-external",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def invite_external_user(
     patient_id: str,
@@ -2789,7 +3047,7 @@ def accept_invite(
 
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def revoke_external_access(
     patient_id: str,
@@ -2831,7 +3089,10 @@ def revoke_external_access(
     return {"status": "revoked"}
 
 
-@router.get("/patients/{patient_id}/external-access")
+@router.get(
+    "/patients/{patient_id}/external-access",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_external_access(
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -2889,7 +3150,7 @@ def list_external_access(
 @router.post(
     "/conversations",
     response_model=ConversationDetailOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def create_conversation_endpoint(
     body: ConversationCreateIn,
@@ -2930,7 +3191,11 @@ def create_conversation_endpoint(
         ) from exc
 
 
-@router.get("/conversations", response_model=ConversationListOut)
+@router.get(
+    "/conversations",
+    response_model=ConversationListOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
+)
 def list_conversations_endpoint(
     status: str | None = None,
     patient_id: str | None = None,
@@ -2963,6 +3228,7 @@ def list_conversations_endpoint(
 @router.get(
     "/patients/{patient_id}/conversations",
     response_model=ConversationListOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def list_patient_conversations_endpoint(
     patient_id: str,
@@ -2996,6 +3262,7 @@ def list_patient_conversations_endpoint(
 @router.get(
     "/conversations/{conversation_id}",
     response_model=ConversationDetailOut,
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def get_conversation_endpoint(
     conversation_id: int,
@@ -3028,7 +3295,7 @@ def get_conversation_endpoint(
 @router.patch(
     "/conversations/{conversation_id}",
     response_model=ConversationOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def update_conversation_status_endpoint(
     conversation_id: int,
@@ -3105,7 +3372,7 @@ def update_conversation_status_endpoint(
 @router.post(
     "/conversations/{conversation_id}/messages",
     response_model=MessageOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def send_message_endpoint(
     conversation_id: int,
@@ -3153,7 +3420,7 @@ def send_message_endpoint(
 @router.post(
     "/conversations/{conversation_id}/participants",
     response_model=ParticipantOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def add_participant_endpoint(
     conversation_id: int,
@@ -3201,6 +3468,7 @@ def add_participant_endpoint(
 @router.get(
     "/conversations/{conversation_id}/participants",
     response_model=list[ParticipantOut],
+    dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def list_participants_endpoint(
     conversation_id: int,
@@ -3242,7 +3510,7 @@ def list_participants_endpoint(
 @router.post(
     "/conversations/{conversation_id}/join",
     response_model=ParticipantOut,
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def join_conversation_endpoint(
     conversation_id: int,
@@ -3280,7 +3548,7 @@ def join_conversation_endpoint(
 
 @router.post(
     "/conversations/{conversation_id}/read",
-    dependencies=[DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def mark_read_endpoint(
     conversation_id: int,
@@ -3308,4 +3576,24 @@ def mark_read_endpoint(
     return {"ok": True}
 
 
+from app.features.teaching.router import teaching_router  # noqa: E402
+
+router.include_router(teaching_router)
 app.include_router(router)
+
+# --- Conditional static file serving for local dev ---
+if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
+    from pathlib import Path
+
+    from starlette.staticfiles import StaticFiles
+
+    _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
+    _static_root = (
+        _qb_path.parent
+    )  # Serve from parent so /questions/ in URLs resolves
+    if _static_root.is_dir():
+        app.mount(
+            "/api/teaching/images",
+            StaticFiles(directory=str(_static_root)),
+            name="teaching-images",
+        )

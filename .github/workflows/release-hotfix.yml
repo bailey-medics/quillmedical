@@ -1,0 +1,378 @@
+# Workflow for release/* and hotfix/* branches.
+# Runs all code quality checks. Fully self-contained — does NOT share
+# code with feature.yml or deploy workflows. A change to this file
+# cannot affect feature branch checks or production deployments.
+name: Release and hotfix checks
+
+on:
+  push:
+    branches:
+      - "release/**"
+      - "hotfix/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-hotfix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- Python ----------
+  python_checks:
+    runs-on: ubuntu-latest
+    name: Python ${{ matrix.task }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [styling, unit]
+        python: ['3.13']
+
+    env:
+      PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
+      PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # ---- caches (pick per task) ----
+      - name: Cache pre-commit & venv (styling)
+        if: matrix.task == 'styling'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ${{ env.PRE_COMMIT_HOME }}
+            ${{ env.PIP_CACHE_DIR }}
+          key: pc-styling-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pc-styling-${{ runner.os }}-py${{ matrix.python }}-
+            pc-styling-${{ runner.os }}-
+
+      # ---- styling steps ----
+      - name: Ensure venv + pre-commit (styling)
+        if: matrix.task == 'styling'
+        run: |
+          if [ ! -x .venv/bin/python ]; then
+            echo "Creating new virtual environment..."
+            rm -rf .venv  # Remove corrupted cache
+            python -m venv .venv
+          else
+            echo "Using cached .venv"
+          fi
+          # Always ensure pre-commit is installed (quick if already present)
+          .venv/bin/python -m pip install -U pip
+          .venv/bin/python -m pip install "pre-commit>=3,<5"
+
+      - name: Warm pre-commit hooks (styling)
+        if: matrix.task == 'styling'
+        run: |
+          . .venv/bin/activate
+          pre-commit install-hooks
+
+      - name: Run pre-commit (styling)
+        if: matrix.task == 'styling'
+        run: |
+          . .venv/bin/activate
+          pre-commit run --all-files --show-diff-on-failure --color=always
+
+
+      - name: Cache Poetry venv & pip (unit)
+        if: matrix.task == 'unit'
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ${{ env.PIP_CACHE_DIR }}
+          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-unit-${{ runner.os }}-
+
+
+      - name: Install Poetry (unit)
+        if: matrix.task == 'unit'
+        run: |
+          python -m pip install -U pip poetry
+          # in-project venv to make caching deterministic
+          poetry config virtualenvs.in-project true
+
+
+      - name: Install backend deps (unit)
+        if: matrix.task == 'unit'
+        working-directory: backend
+        run: |
+          poetry install --with dev --no-interaction --no-ansi
+
+
+      - name: Pytest (unit)
+        if: matrix.task == 'unit'
+        working-directory: backend
+        run: |
+          poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
+
+      - name: Notify Slack on Python checks failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Release/hotfix python ${{ matrix.task }} checks failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Release/hotfix python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+  # ---------- JS: run multiple tools in parallel via matrix ----------
+  typescript_checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build", "storybook:test:ci"]
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack & pin Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.10.3 --activate
+          yarn --version
+
+      - name: Cache Yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.yarn/cache
+            frontend/.yarn/install-state.gz
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-nm-
+
+      - name: Install deps
+        working-directory: frontend
+        run: yarn install --immutable
+
+      - name: Cache Playwright browsers
+        if: matrix.task == 'storybook:test:ci'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Cache Storybook build artifacts
+        if: matrix.task == 'storybook:build' || matrix.task == 'storybook:test:ci'
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-
+
+      - name: Cache ESLint
+        if: matrix.task == 'eslint'
+        uses: actions/cache@v4
+        with:
+          path: frontend/.eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-
+
+      - name: Install Playwright browsers (for storybook tests)
+        if: matrix.task == 'storybook:test:ci'
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ${{ matrix.task }}
+        working-directory: frontend
+        run: |
+          case "${{ matrix.task }}" in
+            eslint)   yarn eslint ;;
+            prettier) yarn prettier ;;
+            stylelint) yarn stylelint ;;
+            typecheck) yarn typecheck ;;
+            "typecheck:all") yarn typecheck:all ;;
+            "unit-test:run") yarn unit-test:run ;;
+            "storybook:build") yarn storybook:build ;;
+            "storybook:test:ci") yarn storybook:test:ci ;;
+          esac
+
+      - name: Notify Slack on TypeScript checks failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Release/hotfix TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+  # ---------- Frontend security (Semgrep) ----------
+  frontend_security:
+    runs-on: ubuntu-latest
+    name: Semgrep (frontend SAST)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Install Semgrep
+        run: pipx install semgrep
+
+      - name: Run Semgrep
+        working-directory: frontend
+        env:
+          SEMGREP_LOG_LEVEL: error
+          SEMGREP_DISABLE_ANALYTICS: "1"
+          SEMGREP_NO_VERSION_CHECK: "1"
+        run: semgrep --config .semgrep.yml --error
+
+  # ---------- Build docs ----------
+  docs_build:
+    runs-on: ubuntu-latest
+    name: Build documentation
+    timeout-minutes: 20
+    needs: [python_checks, typescript_checks, frontend_security]
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Enable Corepack & pin Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.10.3 --activate
+          yarn --version
+
+      - name: Cache Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/.yarn/cache
+            frontend/.yarn/install-state.gz
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-docs-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-docs-
+            ${{ runner.os }}-yarn4-
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Cache Storybook & Vite build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+            frontend/storybook-static
+          key: ${{ runner.os }}-storybook-build-${{ hashFiles('frontend/src/**/*.{ts,tsx,js,jsx,json}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-build-
+
+      - name: Generate JSON from YAML for TypeScript types
+        working-directory: frontend
+        run: yarn generate:types
+
+      - name: Build Storybook static site
+        working-directory: frontend
+        run: yarn storybook:build
+
+      - name: Build frontend docs
+        working-directory: frontend
+        run: yarn docs:build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/.venv
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-docs-py3.13-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-docs-py3.13-
+            ${{ runner.os }}-poetry-
+
+      - name: Install project docs deps via Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade poetry
+          poetry config virtualenvs.in-project true
+          cd backend
+          poetry install --no-interaction --no-ansi --with dev
+
+      - name: Export OpenAPI JSON for docs
+        working-directory: backend
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Copy prompts to docs for MkDocs
+        run: |
+          mkdir -p docs/docs/llm/prompts
+          cp -r .github/prompts/* docs/docs/llm/prompts/
+
+      - name: Build MkDocs site into /site
+        run: |
+          cd backend
+          poetry run mkdocs build -f ../docs/mkdocs.yml -d ../site
+
+      - name: Notify Slack on docs build failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Release/hotfix docs build failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Release/hotfix docs build failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }

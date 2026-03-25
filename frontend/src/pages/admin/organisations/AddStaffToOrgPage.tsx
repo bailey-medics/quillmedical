@@ -21,6 +21,7 @@ import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 
 interface ApiUser {
   id: number;
@@ -31,6 +32,7 @@ interface ApiUser {
 export default function AddStaffToOrgPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { reload } = useAuth();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -42,7 +44,9 @@ export default function AddStaffToOrgPage() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const response = await api.get<{ users: ApiUser[] }>("/users");
+        const response = await api.get<{ users: ApiUser[] }>(
+          "/users?permission_level=staff",
+        );
         setUsers(response.users);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load users");
@@ -70,6 +74,7 @@ export default function AddStaffToOrgPage() {
       await api.post(`/organizations/${id}/staff`, {
         user_id: Number(selectedUserId),
       });
+      await reload();
       setSuccess(true);
       setTimeout(() => navigate(`/admin/organisations/${id}`), 1500);
     } catch (err) {
@@ -98,11 +103,7 @@ export default function AddStaffToOrgPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Add staff member"
-          description="Add a user as a staff member of this organisation"
-          size="lg"
-        />
+        <PageHeader title="Add staff member" />
 
         {error && (
           <Alert

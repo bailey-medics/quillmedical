@@ -36,7 +36,6 @@ type Story = StoryObj<typeof Footer>;
 export const Default: Story = {
   args: {
     text: "Logged in: mark.bailey",
-    size: "lg",
   },
 };
 
@@ -46,6 +45,5 @@ export const Default: Story = {
 export const Loading: Story = {
   args: {
     loading: true,
-    size: "lg",
   },
 };

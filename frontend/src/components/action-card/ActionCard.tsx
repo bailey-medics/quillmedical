@@ -5,14 +5,16 @@
  * title, description, and call-to-action button.
  */
 
-import { Card, Stack, Text, Title, Group } from "@mantine/core";
+import { Card, Stack, Group } from "@mantine/core";
 import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
+import BodyText from "@/components/typography/BodyText";
+import HeaderText from "@/components/typography/HeaderText";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
-  icon: ReactElement;
+  icon?: ReactElement;
   /** Icon size - defaults to lg (48px desktop, 32px mobile) */
   iconSize?: IconSize;
   /** Card title */
@@ -59,13 +61,15 @@ export default function ActionCard({
       h="100%"
     >
       <Stack gap="md" h="100%">
-        <Group>
-          <Icon icon={icon} size={iconSize} />
-          <Title order={3}>{title}</Title>
-        </Group>
-        <Text size="lg" c="dimmed">
-          {subtitle}
-        </Text>
+        {icon ? (
+          <Group>
+            <Icon icon={icon} size={iconSize} />
+            <HeaderText>{title}</HeaderText>
+          </Group>
+        ) : (
+          <HeaderText>{title}</HeaderText>
+        )}
+        <BodyText>{subtitle}</BodyText>
         <div
           style={{
             marginTop: "auto",

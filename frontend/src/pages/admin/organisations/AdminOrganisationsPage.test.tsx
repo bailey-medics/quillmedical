@@ -68,20 +68,6 @@ describe("AdminOrganisationsPage", () => {
       });
     });
 
-    it("displays page description", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
-
-      renderWithRouter(<AdminOrganisationsPage />, {
-        initialRoute: "/admin/organisations",
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("View and manage all organisations"),
-        ).toBeInTheDocument();
-      });
-    });
-
     it("displays add organisation button", async () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
 

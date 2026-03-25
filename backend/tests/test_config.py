@@ -16,6 +16,7 @@ class TestSettingsComputedFields:
             EHRBASE_API_PASSWORD="api_pass",
             EHRBASE_API_ADMIN_PASSWORD="admin_pass",
             VAPID_PRIVATE="vapid_key",
+            CLINICAL_SERVICES_ENABLED=True,
         )
         url = settings.FHIR_DATABASE_URL
         assert "postgresql+psycopg://" in url
@@ -35,6 +36,7 @@ class TestSettingsComputedFields:
             EHRBASE_API_PASSWORD="api_pass",
             EHRBASE_API_ADMIN_PASSWORD="admin_pass",
             VAPID_PRIVATE="vapid_key",
+            CLINICAL_SERVICES_ENABLED=True,
         )
         url = settings.EHRBASE_DATABASE_URL
         assert "postgresql+psycopg://" in url

@@ -15,6 +15,7 @@ const mockUsers: Record<string, User> = {
     email: "staff@example.com",
     roles: ["Clinician"],
     system_permissions: "staff",
+    clinical_services_enabled: true,
   },
   admin: {
     id: "3",
@@ -22,6 +23,7 @@ const mockUsers: Record<string, User> = {
     email: "admin@example.com",
     roles: ["Clinician", "Administrator"],
     system_permissions: "admin",
+    clinical_services_enabled: true,
   },
   superadmin: {
     id: "4",
@@ -29,6 +31,7 @@ const mockUsers: Record<string, User> = {
     email: "superadmin@example.com",
     roles: ["Clinician", "Administrator"],
     system_permissions: "superadmin",
+    clinical_services_enabled: true,
   },
   patient: {
     id: "1",
@@ -36,6 +39,23 @@ const mockUsers: Record<string, User> = {
     email: "patient@example.com",
     roles: ["Patient"],
     system_permissions: "patient",
+    clinical_services_enabled: true,
+  },
+  staff_no_clinical: {
+    id: "5",
+    username: "staff.teaching",
+    email: "teaching@example.com",
+    roles: ["Clinician"],
+    system_permissions: "staff",
+    clinical_services_enabled: false,
+  },
+  admin_no_clinical: {
+    id: "6",
+    username: "admin.teaching",
+    email: "admin.teaching@example.com",
+    roles: ["Clinician", "Administrator"],
+    system_permissions: "admin",
+    clinical_services_enabled: false,
   },
 };
 
@@ -451,6 +471,44 @@ describe("SideNavContent Component", () => {
 
       const divider = container.querySelector('[role="separator"]');
       expect(divider).toBeInTheDocument();
+    });
+  });
+
+  describe("Clinical services disabled", () => {
+    it("hides Home and Messages when clinical services are disabled", async () => {
+      renderWithAuth(<SideNavContent />, "staff_no_clinical");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+        expect(screen.getByText("Logout")).toBeInTheDocument();
+        expect(screen.queryByText("Home")).not.toBeInTheDocument();
+        expect(screen.queryByText("Messages")).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides Patients from Admin when clinical services are disabled", async () => {
+      renderWithAuth(<SideNavContent />, "admin_no_clinical");
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+
+      // Expand Admin to check children
+      const adminLink = screen.getByText("Admin");
+      await userEvent.click(adminLink);
+
+      expect(screen.queryByText("Patients")).not.toBeInTheDocument();
+      expect(screen.getByText("Users")).toBeInTheDocument();
+      expect(screen.getByText("Organisations")).toBeInTheDocument();
+    });
+
+    it("still shows Settings and Logout when clinical services are disabled", async () => {
+      renderWithAuth(<SideNavContent />, "staff_no_clinical");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+        expect(screen.getByText("Logout")).toBeInTheDocument();
+      });
     });
   });
 });

@@ -1,15 +1,17 @@
-# Terraform plan on PRs, apply on merge to develop (staging/teaching) or main (prod)
+# Terraform plan on PRs, apply on merge to main (staging/teaching) or clinical-live (prod)
 name: Terraform
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, clinical-live]
     paths:
       - "infra/**"
+      - "!infra/github/**"
   pull_request:
-    branches: [main, develop]
+    branches: [main, clinical-live]
     paths:
       - "infra/**"
+      - "!infra/github/**"
 
 permissions:
   contents: read
@@ -30,24 +32,27 @@ jobs:
       matrix:
         include:
           - environment: staging
+            workspace: staging
             wif_provider_secret: GCP_STAGING_WIF_PROVIDER
             service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
+            workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
             service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
           - environment: prod
+            workspace: production
             wif_provider_secret: GCP_PROD_WIF_PROVIDER
             service_account_secret: GCP_PROD_SERVICE_ACCOUNT
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "~> 1.5"
+          terraform_version: "~> 1.14"
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets[matrix.wif_provider_secret] }}
           service_account: ${{ secrets[matrix.service_account_secret] }}
@@ -55,6 +60,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select ${{ matrix.workspace }}
 
       - name: Terraform plan
         id: plan
@@ -93,31 +102,33 @@ jobs:
               body: body
             });
 
-  # ---------- Terraform apply: staging + teaching (develop branch) ----------
+  # ---------- Terraform apply: staging + teaching (main branch) ----------
   apply-staging:
     name: Apply (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
         include:
           - environment: staging
+            workspace: staging
             wif_provider_secret: GCP_STAGING_WIF_PROVIDER
             service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
+            workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
             service_account_secret: GCP_TEACHING_SERVICE_ACCOUNT
     environment: ${{ matrix.environment }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "~> 1.5"
+          terraform_version: "~> 1.14"
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets[matrix.wif_provider_secret] }}
           service_account: ${{ secrets[matrix.service_account_secret] }}
@@ -125,6 +136,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select ${{ matrix.workspace }}
 
       - name: Terraform apply
         working-directory: infra
@@ -154,22 +169,22 @@ jobs:
               ]
             }
 
-  # ---------- Terraform apply: production (main branch) ----------
+  # ---------- Terraform apply: production (clinical-live branch) ----------
   apply-production:
     name: Apply (prod)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/clinical-live'
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "~> 1.5"
+          terraform_version: "~> 1.14"
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
@@ -177,6 +192,10 @@ jobs:
       - name: Terraform init
         working-directory: infra
         run: terraform init -input=false
+
+      - name: Select workspace
+        working-directory: infra
+        run: terraform workspace select production
 
       - name: Terraform apply
         working-directory: infra

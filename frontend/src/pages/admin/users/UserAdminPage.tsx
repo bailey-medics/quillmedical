@@ -115,11 +115,7 @@ export default function UserAdminPage() {
     <Container size="lg" py="xl">
       {" "}
       <Stack gap="lg">
-        <PageHeader
-          title={`User: ${user.username}`}
-          description="View and manage user account"
-          size="lg"
-        />
+        <PageHeader title={`User: ${user.username}`} />
 
         {/* Account Information */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>

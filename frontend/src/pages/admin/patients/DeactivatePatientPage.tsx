@@ -152,9 +152,6 @@ export default function DeactivatePatientPage() {
         <Stack gap="lg">
           <PageHeader
             title={`Deactivate ${formatName(specificPatient.name)}`}
-            description="Confirm deactivation of this patient record"
-            size="lg"
-            mb={0}
           />
 
           {loading ? (
@@ -235,12 +232,7 @@ export default function DeactivatePatientPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Deactivate patient"
-          description="Select a patient to deactivate their record and restrict access"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Deactivate patient" />
 
         {loading ? (
           <Stack gap="xs">

@@ -32,6 +32,12 @@ describe("PermissionBadge", () => {
       const badge = screen.getByText("STAFF");
       expect(badge).toBeInTheDocument();
     });
+
+    it("displays PATIENT with orange color", () => {
+      renderWithMantine(<PermissionBadge permission="patient" />);
+      const badge = screen.getByText("PATIENT");
+      expect(badge).toBeInTheDocument();
+    });
   });
 
   describe("Text transformation", () => {
@@ -65,6 +71,22 @@ describe("PermissionBadge", () => {
       renderWithMantine(<PermissionBadge permission="admin" />);
       const badge = screen.getByText("ADMIN");
       expect(badge).toBeInTheDocument();
+    });
+  });
+
+  describe("Null safety", () => {
+    it("renders nothing when permission is null", () => {
+      renderWithMantine(
+        <PermissionBadge
+          permission={null as unknown as "staff"}
+          size="md"
+          variant="light"
+        />,
+      );
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/staff|admin|superadmin/i),
+      ).not.toBeInTheDocument();
     });
   });
 

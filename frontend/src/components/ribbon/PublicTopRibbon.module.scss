@@ -1,0 +1,64 @@
+@use "../../styles/breakpoints" as *;
+
+/* Make an element that *is* the query container */
+.cq {
+  /* This is the magic: children can query this element's inline size */
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm);
+  background: var(--public-navy);
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  min-height: 60px;
+}
+
+/* Optional outer wrapper for stickiness so we don't tie queries to viewport */
+.wrapper {
+  position: sticky; /* or fixed in app — see note below */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* Sections */
+.left {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: -5px;
+}
+
+.middle {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.right {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: -5px;
+}
+
+/* Public nav links (wide mode only) */
+.navLinks {
+  flex: 1;
+  margin-left: var(--mantine-spacing-xl);
+  color: #fff;
+}
+
+.navLink {
+  font-size: var(--mantine-font-size-xl);
+  font-weight: 500;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--public-gold-hover);
+  }
+}

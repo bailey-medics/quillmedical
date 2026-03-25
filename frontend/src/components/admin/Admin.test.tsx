@@ -30,13 +30,6 @@ describe("Admin", () => {
       expect(screen.getByText("Administration")).toBeInTheDocument();
     });
 
-    it("renders description text", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(
-        screen.getByText("Manage users, patients, and system permissions"),
-      ).toBeInTheDocument();
-    });
-
     it("renders permission badge for superadmin", () => {
       renderWithRouter(<Admin userPermissions="superadmin" />);
       expect(screen.getByText("SUPERADMIN")).toBeInTheDocument();

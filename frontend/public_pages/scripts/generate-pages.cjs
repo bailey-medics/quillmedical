@@ -55,7 +55,7 @@ function buildOnce() {
       .replace("<!--TITLE-->", titleFor(name))
       .replace(
         "<!--ENTRY-->",
-        `<script type="module" src="/src/pages/${rel}"></script>`
+        `<script type="module" src="/src/pages/${rel}"></script>`,
       );
 
     let outPath;

@@ -12,6 +12,8 @@ import { NavLink, Divider, Stack } from "@mantine/core";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useHasFeature } from "@lib/features";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
@@ -57,6 +59,15 @@ export default function SideNavContent({
     state.status === "authenticated" &&
     (state.user.system_permissions === "admin" ||
       state.user.system_permissions === "superadmin");
+
+  // Check if teaching feature is enabled for this user's organisation
+  const hasTeaching = useHasFeature("teaching");
+  const canManageContent = useHasCompetency("manage_teaching_content");
+
+  // Check if clinical services (FHIR/EHRbase) are available
+  const hasClinicalServices =
+    state.status === "authenticated" &&
+    (state.user.clinical_services_enabled ?? true);
 
   // Don't render nav while auth is loading to avoid layout flicker
   // (Admin link appears after auth resolves, shifting Logout down)
@@ -173,14 +184,42 @@ export default function SideNavContent({
     icon: showIcons ? "adjustments" : undefined,
     children: [
       usersNavItem,
-      patientsNavItem,
+      ...(hasClinicalServices ? [patientsNavItem] : []),
       {
         label: "Organisations",
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
-      },
+      } satisfies NavItem,
+      ...(hasTeaching
+        ? [
+            {
+              label: "Teaching",
+              href: "/admin/teaching",
+              icon: showIcons ? "teaching" : undefined,
+            } satisfies NavItem,
+          ]
+        : []),
     ],
   };
+
+  // Teaching navigation structure — only built when feature is enabled
+  // Educators get nested nav with manage/results sub-pages
+  const teachingNavItem: NavItem = canManageContent
+    ? {
+        label: "Teaching",
+        href: "/teaching",
+        icon: showIcons ? "teaching" : undefined,
+        children: [
+          { label: "Assessments", href: "/teaching" },
+          { label: "Manage items", href: "/teaching/manage" },
+          { label: "Results", href: "/teaching/results" },
+        ],
+      }
+    : {
+        label: "Teaching",
+        href: "/teaching",
+        icon: showIcons ? "teaching" : undefined,
+      };
 
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }
@@ -215,24 +254,36 @@ export default function SideNavContent({
           <Divider my="xs" />
         </>
       )}
-      <NavLink
-        label="Home"
-        styles={navLinkStyles}
-        onClick={() => {
-          navigate("/");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="home" /> : undefined}
-      />
-      <NavLink
-        label="Messages"
-        styles={navLinkStyles}
-        onClick={() => {
-          navigate("/messages");
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="message" /> : undefined}
-      />
+      {hasClinicalServices && (
+        <NavLink
+          label="Home"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="home" /> : undefined}
+        />
+      )}
+      {hasClinicalServices && (
+        <NavLink
+          label="Messages"
+          styles={navLinkStyles}
+          onClick={() => {
+            navigate("/messages");
+            if (onNavigate) onNavigate();
+          }}
+          leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+        />
+      )}
+      {hasTeaching && (
+        <NestedNavLink
+          item={teachingNavItem}
+          onNavigate={onNavigate}
+          showIcons={showIcons}
+          baseFontSize={fontSize}
+        />
+      )}
       <NavLink
         label="Settings"
         styles={navLinkStyles}

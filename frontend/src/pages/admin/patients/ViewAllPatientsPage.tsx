@@ -104,12 +104,7 @@ export default function ViewAllPatientsPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="All patients"
-          description="View all registered patient records"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="All patients" />
 
         {error ? (
           <Alert

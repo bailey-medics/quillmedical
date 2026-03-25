@@ -1,5 +1,7 @@
 import React from "react";
-import { Box, Image, Text, Stack, Paper, useMantineTheme } from "@mantine/core";
+import { Box, Image, Stack, Paper, useMantineTheme } from "@mantine/core";
+import HeaderText from "@/components/typography/HeaderText";
+import BodyText from "@/components/typography/BodyText";
 import { useMediaQuery } from "@mantine/hooks";
 
 export interface DocumentProps {
@@ -35,7 +37,7 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
 
   return (
     <Wrapper>
-      <Text fw={700}>{name}</Text>
+      <HeaderText>{name}</HeaderText>
       {type === "image" ? (
         <Image src={url} alt={name} radius="sm" />
       ) : type === "pdf" ? (
@@ -77,14 +79,14 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
         )
       ) : type === "word" ? (
         <Box>
-          <Text c="dimmed">Word document preview not available</Text>
+          <BodyText>Word document preview not available</BodyText>
           <a href={url} target="_blank" rel="noopener noreferrer">
             Download
           </a>
         </Box>
       ) : (
         <Box>
-          <Text c="dimmed">Document preview not available</Text>
+          <BodyText>Document preview not available</BodyText>
           <a href={url} target="_blank" rel="noopener noreferrer">
             Download
           </a>

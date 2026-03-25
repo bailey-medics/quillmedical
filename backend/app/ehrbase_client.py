@@ -8,8 +8,15 @@ import requests
 from app.config import settings
 
 
+def _require_clinical_services() -> None:
+    """Raise RuntimeError if clinical services are disabled."""
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        raise RuntimeError("Clinical services are disabled in this deployment")
+
+
 def get_auth_header() -> dict[str, str]:
     """Get Basic Auth header for EHRbase."""
+    _require_clinical_services()
     credentials = f"{settings.EHRBASE_API_USER}:{settings.EHRBASE_API_PASSWORD.get_secret_value()}"
     encoded = base64.b64encode(credentials.encode()).decode()
     return {"Authorization": f"Basic {encoded}"}

@@ -3,26 +3,13 @@
 ## Stack Overview
 
 - **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL auth DB
-- **Frontend**: React 19 + TypeScript + Vite + Mantine UI at `/app/` (Yarn 4, **never use npm**)
+- **Frontend**: React 19 + TypeScript + Vite + Mantine UI (Yarn 4, **never use npm**)
 - **Healthcare**: HAPI FHIR (demographics), EHRbase (clinical letters)
-- **Infrastructure**: Docker Compose, Caddy reverse proxy
+- **Infrastructure**: Docker Compose, Caddy reverse proxy, GCS (public site)
 
 ## Key Commands
 
-```bash
-just start-dev      # Start (or 'just start-dev b' to rebuild)  [alias: sd]
-just stop            # Stop all containers                       [alias: sc]
-just migrate "msg"  # Database migration                        [alias: m]
-just unit-tests-backend / just unit-tests-frontend               # [ub / uf]
-just create-user    # Interactive user creation                  [alias: cu]
-just storybook      # Start Storybook dev server                [alias: sb]
-just enter-backend  # Shell into backend container              [alias: eb]
-just enter-frontend # Shell into frontend container             [alias: ef]
-just poetry-install # Lock and install Poetry deps              [alias: pi]
-just yarn-install   # Install frontend deps in container        [alias: yi]
-just docs           # Build and serve docs locally              [alias: d]
-just pre-commit     # Run pre-commit hooks                      [alias: pc]
-```
+see the `Justfile` if you want to know more.
 
 ## Testing Requirements
 
@@ -63,7 +50,7 @@ just pre-commit     # Run pre-commit hooks                      [alias: pc]
 
 - **API**: Use `frontend/src/lib/api.ts` client (auto-retry on 401, never raw `fetch`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
-- **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`, `basename` from `import.meta.env.BASE_URL` for `/app/` mount
+- **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
@@ -293,6 +280,8 @@ Healthcare-specific authorisation layer for clinical operations.
 
 - NEVER auto-commit/push - always ask permission first
 - Stop after fixing issues, report, and wait for instruction
+- **Branch naming**: `feature/*`, `hotfix/*`, or `copilot/*` (regex: `^(feature|hotfix|copilot)/.+`)
+- `main` requires a pull request — never push directly
 
 ### Markdown
 

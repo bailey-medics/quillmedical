@@ -1,0 +1,77 @@
+/**
+ * IconTextButton Component
+ *
+ * A button with a leading icon and text label. Icons are restricted to a
+ * known set — passing an unlisted icon name causes a TypeScript error.
+ * Mirrors the AddButton pattern for consistent sizing and responsiveness.
+ *
+ * @example
+ * ```tsx
+ * <IconTextButton icon="refresh" label="Sync all" onClick={handleSync} />
+ * ```
+ */
+
+import { Button, useMantineTheme } from "@mantine/core";
+import type { MantineColor } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import { IconRefresh } from "@tabler/icons-react";
+import type { ReactElement } from "react";
+import Icon from "@/components/icons";
+
+/** Allowed icon names — add new entries here to extend the component. */
+const iconMap = {
+  refresh: <IconRefresh />,
+} as const satisfies Record<string, ReactElement>;
+
+type IconName = keyof typeof iconMap;
+
+interface IconTextButtonProps {
+  /** Icon to display (must be a registered name) */
+  icon: IconName;
+  /** Button label text */
+  label: string;
+  /** Click handler */
+  onClick?: () => void;
+  /** Disabled state */
+  disabled?: boolean;
+  /** Button colour (default: Mantine primary) */
+  color?: MantineColor;
+}
+
+/**
+ * IconTextButton displays a button with a leading icon and text.
+ *
+ * Features:
+ * - Responsive sizing (lg desktop, md mobile)
+ * - Type-safe icon selection via string literal union
+ * - Consistent with AddButton sizing
+ */
+export default function IconTextButton({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+  color,
+}: IconTextButtonProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
+  return (
+    <Button
+      leftSection={<Icon icon={iconMap[icon]} size={isMobile ? "sm" : "md"} />}
+      onClick={onClick}
+      size={isMobile ? "md" : "lg"}
+      color={color}
+      disabled={disabled}
+      styles={{
+        label: {
+          fontSize: isMobile
+            ? "var(--mantine-font-size-md)"
+            : "var(--mantine-font-size-lg)",
+        },
+      }}
+    >
+      {label}
+    </Button>
+  );
+}

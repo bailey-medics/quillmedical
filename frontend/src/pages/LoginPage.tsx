@@ -20,7 +20,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -65,7 +65,6 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: Location } };
   // Use Vite BASE_URL as the absolute SPA base (may or may not include a
   // trailing slash). Normalize to ensure trailing slash and use it for
@@ -79,17 +78,20 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(email.trim(), password, requireTotp ? totp : undefined);
-      // If the user was trying to reach the app home (router path "/") or
-      // there is no 'from' path, perform a full navigation to Vite's
-      // BASE_URL (which usually includes a trailing slash, e.g. '/app/').
-      // This prevents the router basename from producing URLs like '/app'
-      // without the trailing slash. For other paths (e.g. '/about') we
-      // navigate internally so the user returns to the exact protected page.
-      if (!redirectFrom || redirectFrom === "/") {
-        window.location.assign(base);
+      const user = await login(
+        email.trim(),
+        password,
+        requireTotp ? totp : undefined,
+      );
+      // Full-page redirect after login ensures the navigation fires
+      // before GuestOnly's useEffect can override it with a competing
+      // window.location.assign(base).
+      if (redirectFrom && redirectFrom !== "/") {
+        window.location.assign(redirectFrom);
+      } else if (!user.clinical_services_enabled) {
+        window.location.assign("/teaching");
       } else {
-        navigate(redirectFrom, { replace: true });
+        window.location.assign(base);
       }
     } catch (err: unknown) {
       function extractMessage(e: unknown): string | null {

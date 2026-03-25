@@ -86,3 +86,9 @@ variable "pitr_days" {
   type        = number
   default     = 7
 }
+
+variable "secret_depends_on" {
+  description = "Resource to depend on before writing secret versions (e.g. secrets module output)"
+  type        = any
+  default     = null
+}

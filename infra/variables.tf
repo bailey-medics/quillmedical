@@ -54,11 +54,40 @@ variable "cloud_run_max_instances" {
 variable "backend_image" {
   description = "Container image for the backend service"
   type        = string
-  default     = "ghcr.io/bailey-medics/quillmedical/backend:latest"
+  default     = "gcr.io/cloudrun/hello:latest"
 }
 
 variable "frontend_image" {
   description = "Container image for the frontend service"
   type        = string
-  default     = "ghcr.io/bailey-medics/quillmedical/frontend:latest"
+  default     = "gcr.io/cloudrun/hello:latest"
+}
+
+variable "admin_image" {
+  description = "Container image for the admin Cloud Run Job (built from Dockerfile admin target)"
+  type        = string
+  default     = "gcr.io/cloudrun/hello:latest"
+}
+
+variable "lb_domains" {
+  description = "Domain names for the load balancer SSL certificate and routing"
+  type        = list(string)
+}
+
+variable "landing_domain" {
+  description = "Apex domain for the static landing page (optional, production only)"
+  type        = string
+  default     = null
+}
+
+variable "monitored_hostnames" {
+  description = "Hostnames to create uptime checks for (e.g. api, app subdomains)"
+  type        = list(string)
+  default     = []
+}
+
+variable "alert_email" {
+  description = "Email address to receive uptime failure alerts"
+  type        = string
+  default     = ""
 }

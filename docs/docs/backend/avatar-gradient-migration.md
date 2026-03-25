@@ -52,24 +52,12 @@ gradient_index = generate_avatar_gradient_index()
 
 ### Updated FHIR Extension
 
-**New Extension Format:**
+**Extension Format:**
 
 ```python
 {
   "url": "urn:quillmedical:avatar-gradient",
   "valueInteger": 12  # Gradient index
-}
-```
-
-**Legacy Extension Format** (backwards compatibility):
-
-```python
-{
-  "url": "urn:quillmedical:avatar-gradient-legacy",
-  "extension": [
-    {"url": "colorFrom", "valueString": "#F44336"},
-    {"url": "colorTo", "valueString": "#E57373"}
-  ]
 }
 ```
 
@@ -82,16 +70,6 @@ from app.fhir_client import add_avatar_gradient_extension
 
 patient = Patient()
 add_avatar_gradient_extension(patient, gradient_index=5)  # Or None for random
-```
-
-**Legacy API** (for backwards compatibility):
-
-```python
-from app.fhir_client import add_avatar_gradient_extension_legacy
-
-patient = Patient()
-gradient = {"colorFrom": "#F44336", "colorTo": "#E57373"}
-add_avatar_gradient_extension_legacy(patient, gradient)
 ```
 
 ## Migration Strategy
@@ -108,16 +86,13 @@ add_avatar_gradient_extension(patient)  # Random index 0-29
 
 ### For Existing Patients
 
-Existing patients with `colorFrom`/`colorTo` extensions will continue to work, but should be migrated to gradient indices using a backfill script.
+Existing patients with `colorFrom`/`colorTo` extensions will need migrating to gradient indices using a backfill script.
 
 **Backfill Script** (to be created):
 
 ```python
 # Pseudo-code for migration script
 for patient in get_all_patients():
-    # Remove old extension
-    remove_extension(patient, "urn:quillmedical:avatar-gradient-legacy")
-
     # Add new gradient index extension
     gradient_index = generate_avatar_gradient_index()
     add_avatar_gradient_extension(patient, gradient_index)
@@ -186,11 +161,11 @@ poetry run pytest tests/test_colors.py -v
 
 ## Rollback Plan
 
-If migration causes issues, the legacy system can still be used:
+If migration causes issues:
 
-1. Revert to `add_avatar_gradient_extension_legacy()` in backend
-2. Update frontend to accept `colorFrom`/`colorTo` props again
-3. Continue using `urn:quillmedical:avatar-gradient-legacy` extension
+1. Revert frontend to accept `colorFrom`/`colorTo` props again
+2. Revert backend to store colour pairs instead of indices
+3. Patients without the new extension will get a random gradient on next update
 
 ## Next Steps
 

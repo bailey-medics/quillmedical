@@ -201,9 +201,12 @@ export default function AdminTable<T>({
             {columns.map((column, index) => (
               <Table.Td
                 key={index}
-                style={{ textAlign: column.align || "left" }}
+                style={{
+                  textAlign: column.align || "left",
+                  verticalAlign: "middle",
+                }}
               >
-                <Text size="lg" component="span">
+                <Text size="lg" component="span" lh={1}>
                   {column.render(row)}
                 </Text>
               </Table.Td>

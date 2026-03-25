@@ -43,16 +43,40 @@ The backend is organised in `backend/app/`:
 app/
 ├── main.py              # Application entry point, route definitions
 ├── config.py            # Configuration and environment variables
-├── db.py                # Database session management
-├── models.py            # SQLAlchemy ORM models (User, etc.)
-├── security.py          # Authentication, JWT, password hashing
+├── models.py            # SQLAlchemy ORM models (User, Organization, etc.)
+├── security.py          # Authentication, JWT, password hashing, CSRF, TOTP
 ├── fhir_client.py       # FHIR integration
 ├── ehrbase_client.py    # OpenEHR integration
+├── messaging.py         # Messaging CQRS coordination layer
+├── organisations.py     # Organisation access control helpers
+├── patient_records.py   # File-based patient record management
+├── logging_config.py    # Structured JSON logging configuration
 ├── push.py              # Web push notification endpoints
 ├── push_send.py         # Push notification sending logic
-└── schemas/
-    ├── auth.py          # Authentication request/response models
-    └── letters.py       # Letter/correspondence models
+├── db/
+│   ├── __init__.py      # Database module exports
+│   └── auth_db.py       # Auth database engine and session management
+├── cbac/
+│   ├── __init__.py      # CBAC module exports
+│   ├── competencies.py  # Competency definitions from YAML
+│   ├── base_professions.py  # Base profession definitions from YAML
+│   └── decorators.py    # has_competency(), FastAPI dependencies
+├── features/
+│   ├── __init__.py      # Feature-gating utilities (requires_feature dependency)
+│   └── teaching/        # Teaching feature module
+├── system_permissions/
+│   ├── __init__.py      # Permission module exports
+│   ├── permissions.py   # Permission types and hierarchy validation
+│   └── decorators.py    # requires_staff(), requires_admin() dependencies
+├── schemas/
+│   ├── __init__.py      # Schema module exports
+│   ├── auth.py          # Authentication request/response models
+│   ├── cbac.py          # CBAC request/response models
+│   ├── features.py      # Organisation feature toggle models
+│   ├── letters.py       # Letter/correspondence models
+│   └── messaging.py     # Messaging request/response models
+└── utils/
+    └── colors.py        # Avatar gradient colour utilities
 ```
 
 ### Key Components
@@ -63,10 +87,9 @@ app/
 from fastapi import FastAPI
 
 app = FastAPI(
-    title="Quill Medical API",
-    version="1.0.0",
-    docs_url="/api/docs",      # Swagger UI
-    redoc_url="/api/redoc"     # ReDoc
+    title="Quill API",
+    docs_url="/api/docs",      # Swagger UI (dev only)
+    redoc_url="/api/redoc"     # ReDoc (dev only)
 )
 
 router = APIRouter(prefix="/api")
@@ -114,28 +137,38 @@ def create_letter(patient_id: str, letter: LetterIn):
 
 All API endpoints are prefixed with `/api`:
 
-- `/api/auth/*` - Authentication endpoints
+- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout)
+- `/api/users/*` - User management (admin CRUD, profile)
 - `/api/patients/*` - Patient management (backed by FHIR)
+- `/api/patients/{id}/letters/*` - Clinical letters (backed by OpenEHR)
+- `/api/patients/{id}/conversations/*` - Patient-scoped conversations
+- `/api/patients/{id}/invite-external` - External access invitations
+- `/api/patients/{id}/external-access/*` - External access management
+- `/api/conversations/*` - Messaging (conversations and messages)
+- `/api/organizations/*` - Organisation management (admin)
+- `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications
+- `/api/health` - Service health check
 
 ### Authentication & Security
 
 #### JWT-Based Authentication
 
 ```python
-# Login returns JWT tokens
+# Login with credentials and optional TOTP
 POST /api/auth/login
 {
   "username": "user@example.com",
-  "password": "password123"
+  "password": "password123",
+  "totp_code": "123456"  # Optional, required if 2FA enabled
 }
 
-# Response includes tokens
+# Response body
 {
-  "access_token": "eyJ...",
-  "refresh_token": "eyJ...",
-  "user": { ... }
+  "detail": "ok",
+  "user": { "username": "...", "roles": [...] }
 }
+# JWT access/refresh tokens and CSRF token set as HTTP-only cookies
 ```
 
 #### Protected Endpoints
@@ -151,7 +184,7 @@ def list_patients(u: User = DEP_CURRENT_USER):
 def create_letter(
     patient_id: str,
     letter: LetterIn,
-    u: User = Depends(require_roles(["clinician"]))
+    u: User = DEP_REQUIRE_ROLES_CLINICIAN,
 ):
     pass
 ```
@@ -182,12 +215,18 @@ The backend implements a multi-layered permission system:
 ##### Permission hierarchy
 
 ```python
-SYSTEM_PERMISSIONS = {
-    "patient": 0,      # Lowest privileges
-    "staff": 1,        # Clinical staff
-    "admin": 2,        # Administrators
-    "superadmin": 3    # Highest privileges
-}
+# 4-level hierarchy for permission checks: patient < staff < admin < superadmin
+PERMISSION_LEVELS = ["patient", "staff", "admin", "superadmin"]
+
+# All valid permission values (includes non-hierarchical external types)
+ALL_PERMISSIONS = [
+    "patient", "external_hcp", "patient_advocate",
+    "staff", "admin", "superadmin",
+]
+
+# check_permission_level(user_permission, required_permission)
+# Returns True if user meets or exceeds required level
+# External types (external_hcp, patient_advocate) treated as patient level
 ```
 
 ##### Usage in endpoints
@@ -202,21 +241,16 @@ def list_users(
         raise HTTPException(403, "Insufficient permissions")
     # ... list users
 
-# Multiple permission checks
-@router.post("/patients/{id}/letters")
+# CBAC-protected endpoint
+@router.post(
+    "/patients/{id}/letters",
+    dependencies=[DEP_REQUIRE_CSRF]
+)
 def create_letter(
     patient_id: str,
     letter: LetterIn,
-    user: User = Depends(get_current_user)
+    u: User = DEP_REQUIRE_ROLES_CLINICIAN,
 ):
-    # Permission check
-    if not has_permission(user, "create_letter"):
-        raise HTTPException(403)
-
-    # Assignment check
-    if not is_assigned_to_patient(user, patient_id):
-        raise HTTPException(403, "Not assigned to patient")
-
     # ... create letter
 ```
 
@@ -239,30 +273,19 @@ The backend permission system works with frontend route guards:
 
 ### Dependency Injection
 
-FastAPI's dependency injection provides:
+FastAPI's dependency injection provides clean, testable code. The backend uses pre-built dependency constants:
 
 ```python
-# Database sessions
-def get_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# Current user from JWT
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_session)
-) -> User:
-    payload = verify_token(token)
-    user = db.get(User, payload["sub"])
-    return user
+# Standard dependency constants (defined in main.py)
+DEP_GET_SESSION    # Database session via get_auth_db
+DEP_CURRENT_USER   # Authenticated user from JWT cookie
+DEP_REQUIRE_ROLES_CLINICIAN  # Clinician role gate
+DEP_REQUIRE_CSRF   # CSRF token validation (mutating endpoints)
 
 # Use in routes
 @router.get("/profile")
-def get_profile(user: User = Depends(get_current_user)):
-    return user
+def get_profile(u: User = DEP_CURRENT_USER):
+    return u
 ```
 
 ## API Documentation

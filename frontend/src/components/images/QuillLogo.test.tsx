@@ -19,6 +19,26 @@ describe("QuillLogo Component", () => {
       );
     });
 
+    it("uses light-grey src when colour is light-grey", () => {
+      const { container } = renderWithMantine(
+        <QuillLogo colour="light-grey" />,
+      );
+      const img = container.querySelector("img");
+      expect(img).toHaveAttribute(
+        "src",
+        expect.stringContaining("quill-light-grey.png"),
+      );
+    });
+
+    it("uses white src when colour is white", () => {
+      const { container } = renderWithMantine(<QuillLogo colour="white" />);
+      const img = container.querySelector("img");
+      expect(img).toHaveAttribute(
+        "src",
+        expect.stringContaining("quill-white.png"),
+      );
+    });
+
     it("has correct default alt text", () => {
       const { container } = renderWithMantine(<QuillLogo />);
       const img = container.querySelector("img");

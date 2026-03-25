@@ -355,3 +355,37 @@ competencies:
     requires_supervision: false
     audit_retention_days: 2555  # 7 years
     clinical_safety_notes: "Requires ECG interpretation training. Risks: Missed acute coronary syndrome, arrhythmias."
+
+  # ==========================================================================
+  # TEACHING COMPETENCIES
+  # ==========================================================================
+
+  - id: view_teaching_cases
+    display_name: "Take Teaching Assessments"
+    description: "Ability to take teaching MCQ assessments (e.g. optical diagnosis accreditation)"
+    category: teaching
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Low risk. Grants access to take assessments. Results are auditable."
+
+  - id: manage_teaching_content
+    display_name: "Manage Teaching Content"
+    description: "Ability to manage question bank items, trigger syncs, and view all candidate results"
+    category: teaching
+    risk_level: medium
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Medium risk. Incorrect question bank content could result in candidates being accredited incorrectly."
+
+  - id: view_teaching_analytics
+    display_name: "View Teaching Analytics"
+    description: "Ability to view aggregated assessment results and analytics"
+    category: teaching
+    risk_level: low
+    requires_registration: false
+    requires_supervision: false
+    audit_retention_days: 2555  # 7 years
+    clinical_safety_notes: "Low risk. Read-only access to aggregated assessment data."

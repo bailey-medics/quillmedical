@@ -77,7 +77,9 @@ describe("AppointmentsList", () => {
     it("shows Upcoming heading when upcoming appointments exist", () => {
       renderWithMantine(<AppointmentsList appointments={mockAppointments} />);
 
-      expect(screen.getByText("Upcoming")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Upcoming" }),
+      ).toBeInTheDocument();
     });
 
     it("shows Past appointments heading when past appointments exist", () => {
@@ -158,8 +160,9 @@ describe("AppointmentsList", () => {
     it("displays status badge for each appointment", () => {
       renderWithMantine(<AppointmentsList appointments={mockAppointments} />);
 
-      expect(screen.getByText("upcoming")).toBeInTheDocument();
-      expect(screen.getAllByText("completed")).toHaveLength(2);
+      // "Upcoming" appears twice: once as section heading, once as badge
+      expect(screen.getAllByText("Upcoming")).toHaveLength(2);
+      expect(screen.getAllByText("Completed")).toHaveLength(2);
     });
   });
 

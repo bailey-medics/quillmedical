@@ -618,7 +618,6 @@ export default function NewPatientPage() {
       <Box p="xl" maw={900} mx="auto">
         <PageHeader
           title={isEditMode ? "Edit patient" : "Create new patient"}
-          size="lg"
         />
 
         {loading ? (

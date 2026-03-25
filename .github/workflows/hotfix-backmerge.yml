@@ -1,0 +1,121 @@
+# .github/workflows/hotfix-backmerge.yml
+#
+# Triggered whenever a hotfix/* branch is pushed to clinical-live.
+# Automatically raises a PR merging clinical-live → main so that the fix
+# is not lost when the next release is cut.
+#
+# DCB 0129 audit reference: docs/docs/dependencies/automatic-updates.md
+# Tiering strategy: see renovate.json
+
+name: Hotfix back-merge to main
+
+on:
+  push:
+    branches:
+      - "clinical-live"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  back-merge:
+    name: Create back-merge PR (clinical-live → main)
+    runs-on: ubuntu-latest
+    # Only run when the push originated from a hotfix/* branch.
+    # The GITHUB_REF for the push to clinical-live is always
+    # refs/heads/clinical-live, so we check the commit message or
+    # use the merge commit's parent branch name via the API.
+    # We detect the source branch from the head commit's merge message.
+    steps:
+      - name: Check whether this is a hotfix merge
+        id: detect
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          # Extract the source branch from a typical merge commit message:
+          # "Merge pull request #N from owner/hotfix/sec-foo" or
+          # "Merge branch 'hotfix/sec-foo' into clinical-live"
+          if echo "$COMMIT_MESSAGE" | grep -qE "hotfix/"; then
+            HOTFIX_BRANCH=$(echo "$COMMIT_MESSAGE" \
+              | grep -oE "hotfix/[a-zA-Z0-9._/-]+" \
+              | head -1)
+            echo "is_hotfix=true" >> "$GITHUB_OUTPUT"
+            echo "hotfix_branch=${HOTFIX_BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_hotfix=false" >> "$GITHUB_OUTPUT"
+            echo "hotfix_branch=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.detect.outputs.is_hotfix == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect merge conflicts (dry-run)
+        if: steps.detect.outputs.is_hotfix == 'true'
+        id: conflict_check
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git fetch origin main
+          # Attempt a no-commit merge of clinical-live INTO main to detect
+          # conflicts in the same direction as the back-merge PR (head: clinical-live → base: main).
+          git checkout -b temp-backmerge-check origin/main
+          if git merge --no-commit --no-ff origin/clinical-live 2>&1 | grep -q "CONFLICT"; then
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Always abort — we just needed the conflict check
+          git merge --abort 2>/dev/null || true
+
+      - name: Create back-merge PR
+        if: steps.detect.outputs.is_hotfix == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOTFIX_BRANCH: ${{ steps.detect.outputs.hotfix_branch }}
+          HAS_CONFLICTS: ${{ steps.conflict_check.outputs.has_conflicts }}
+          REPO: ${{ github.repository }}
+        run: |
+          DRAFT_FLAG=""
+          CONFLICT_NOTE=""
+          if [ "$HAS_CONFLICTS" = "true" ]; then
+            DRAFT_FLAG="--draft"
+            CONFLICT_NOTE="
+
+          > ⚠️ **Merge conflicts detected.** This PR has been opened as a draft.
+          > Manual conflict resolution is required before this PR can be merged.
+          > Please resolve conflicts locally, push to this branch, and then mark the PR as ready for review."
+          fi
+
+          PR_BODY="## Automated back-merge after hotfix
+
+          This PR was created automatically by the \`hotfix-backmerge\` workflow after a hotfix was merged into \`clinical-live\`.
+
+          **Hotfix branch:** \`${HOTFIX_BRANCH}\`
+
+          ### Why this PR exists
+
+          After a hotfix is applied to \`clinical-live\`, \`main\` must be updated to include the fix so it is not lost when the next release is cut.
+
+          ### Reviewer checklist
+
+          - [ ] Confirm the hotfix changes are present in this diff.
+          - [ ] Check for merge conflicts and resolve any if present.
+          - [ ] Ensure no unintended changes are included.
+          - [ ] Approve and merge — **do not use automerge**.
+          ${CONFLICT_NOTE}"
+
+          gh pr create \
+            --base main \
+            --head clinical-live \
+            --title "Back-merge: ${HOTFIX_BRANCH} → main" \
+            --body "$PR_BODY" \
+            --label "hotfix" \
+            --label "back-merge" \
+            --assignee "${{ github.repository_owner }}" \
+            $DRAFT_FLAG \
+            --repo "$REPO" || true

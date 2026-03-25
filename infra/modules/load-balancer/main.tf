@@ -1,100 +1,216 @@
-# modules/load-balancer/main.tf — Global HTTPS LB with Cloud Run backends
+# modules/load-balancer/main.tf — Global HTTPS Load Balancer with Cloud Run NEGs
 #
-# Creates:
-#   - Serverless NEGs for each Cloud Run service
-#   - Backend services
-#   - URL map (host-based routing)
-#   - Google-managed SSL certificates
-#   - HTTPS proxy + global forwarding rule
+# Enterprise-grade external Application Load Balancer per environment:
+#   - Path-based routing: /api/* → backend Cloud Run, /* → frontend Cloud Run
+#   - Google-managed SSL certificate (auto-renewing)
 #   - HTTP → HTTPS redirect
-#   - DNS A records pointing to the LB IP
+#   - Cloud Armor WAF with rate limiting
+#   - Full request logging
 
-# ---------- Reserve a global static IP ----------
+# ---------- Static IP ----------
 resource "google_compute_global_address" "lb_ip" {
   project = var.project_id
-  name    = "quill-lb-ip"
+  name    = "quill-lb-ip-${var.environment}"
 }
 
-# ---------- Serverless NEGs (one per Cloud Run service) ----------
-resource "google_compute_region_network_endpoint_group" "neg" {
-  for_each = var.services
+# ---------- Cloud Armor security policy ----------
+resource "google_compute_security_policy" "waf" {
+  project = var.project_id
+  name    = "quill-waf-${var.environment}"
 
-  project               = each.value.cloud_run_project
-  name                  = "quill-neg-${replace(each.key, ".", "-")}"
-  region                = each.value.cloud_run_region
+  # Rate limiting: 500 requests/min per IP
+  rule {
+    action   = "throttle"
+    priority = 1000
+
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+
+    rate_limit_options {
+      rate_limit_threshold {
+        count        = 500
+        interval_sec = 60
+      }
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+    }
+
+    description = "Rate limit: 500 req/min per IP"
+  }
+
+  # Default: allow all traffic
+  rule {
+    action   = "allow"
+    priority = 2147483647
+
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+
+    description = "Default: allow all traffic"
+  }
+}
+
+# ---------- Serverless NEGs (Cloud Run) ----------
+resource "google_compute_region_network_endpoint_group" "backend" {
+  project               = var.project_id
+  name                  = "quill-neg-backend-${var.environment}"
+  region                = var.region
   network_endpoint_type = "SERVERLESS"
 
   cloud_run {
-    service = each.value.cloud_run_service_name
+    service = var.backend_service_name
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "frontend" {
+  project               = var.project_id
+  name                  = "quill-neg-frontend-${var.environment}"
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+
+  cloud_run {
+    service = var.frontend_service_name
   }
 }
 
 # ---------- Backend services ----------
 resource "google_compute_backend_service" "backend" {
-  for_each = var.services
-
-  project     = var.project_id
-  name        = "quill-bs-${replace(each.key, ".", "-")}"
-  protocol    = "HTTP"
-  timeout_sec = 30
+  project         = var.project_id
+  name            = "quill-bs-backend-${var.environment}"
+  protocol        = "HTTP"
+  timeout_sec     = 30
+  security_policy = google_compute_security_policy.waf.id
 
   backend {
-    group = google_compute_region_network_endpoint_group.neg[each.key].id
+    group = google_compute_region_network_endpoint_group.backend.id
   }
 
   log_config {
     enable      = true
-    sample_rate = 1.0
+    sample_rate = var.log_sample_rate
   }
 }
 
-# ---------- URL map (host-based routing) ----------
+resource "google_compute_backend_service" "frontend" {
+  project         = var.project_id
+  name            = "quill-bs-frontend-${var.environment}"
+  protocol        = "HTTP"
+  timeout_sec     = 30
+  security_policy = google_compute_security_policy.waf.id
+
+  backend {
+    group = google_compute_region_network_endpoint_group.frontend.id
+  }
+
+  log_config {
+    enable      = true
+    sample_rate = var.log_sample_rate
+  }
+}
+
+# ---------- URL map (path-based routing) ----------
 resource "google_compute_url_map" "https" {
-  project = var.project_id
-  name    = "quill-url-map"
+  project         = var.project_id
+  name            = "quill-url-map-${var.environment}"
+  default_service = google_compute_backend_service.frontend.id
 
-  # Default to the root domain service
-  default_service = google_compute_backend_service.backend[var.domain].id
+  host_rule {
+    hosts        = var.domains
+    path_matcher = "quill-paths"
+  }
 
+  path_matcher {
+    name            = "quill-paths"
+    default_service = google_compute_backend_service.frontend.id
+
+    path_rule {
+      paths   = ["/api", "/api/*"]
+      service = google_compute_backend_service.backend.id
+    }
+  }
+
+  # Landing page host rule (when landing_domain is set)
   dynamic "host_rule" {
-    for_each = var.services
+    for_each = var.landing_domain != null ? [var.landing_domain] : []
     content {
-      hosts        = [host_rule.key]
-      path_matcher = replace(host_rule.key, ".", "-")
+      hosts        = [host_rule.value, "www.${host_rule.value}"]
+      path_matcher = "landing"
     }
   }
 
   dynamic "path_matcher" {
-    for_each = var.services
+    for_each = var.landing_domain != null ? [1] : []
     content {
-      name            = replace(path_matcher.key, ".", "-")
-      default_service = google_compute_backend_service.backend[path_matcher.key].id
+      name            = "landing"
+      default_service = google_compute_backend_bucket.landing[0].id
     }
   }
 }
 
-# ---------- Google-managed SSL certificates ----------
+# ---------- Landing page: GCS bucket + backend bucket ----------
+resource "google_storage_bucket" "landing" {
+  count    = var.landing_domain != null ? 1 : 0
+  project  = var.project_id
+  name     = "${var.project_id}-landing"
+  location = "EU"
+
+  website {
+    main_page_suffix = "index.html"
+    not_found_page   = "not-found.html"
+  }
+
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+resource "google_storage_bucket_iam_member" "landing_public" {
+  count  = var.landing_domain != null ? 1 : 0
+  bucket = google_storage_bucket.landing[0].name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_compute_backend_bucket" "landing" {
+  count       = var.landing_domain != null ? 1 : 0
+  project     = var.project_id
+  name        = "quill-landing-${var.environment}"
+  bucket_name = google_storage_bucket.landing[0].name
+  enable_cdn  = true
+}
+
+# ---------- Google-managed SSL certificate ----------
 resource "google_compute_managed_ssl_certificate" "cert" {
   project = var.project_id
-  name    = "quill-cert"
+  name    = "quill-cert-v4-${var.environment}"
 
   managed {
-    domains = keys(var.services)
+    domains = concat(var.domains, var.landing_domain != null ? [var.landing_domain, "www.${var.landing_domain}"] : [])
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
-# ---------- HTTPS proxy ----------
+# ---------- HTTPS proxy + forwarding rule ----------
 resource "google_compute_target_https_proxy" "https" {
   project          = var.project_id
-  name             = "quill-https-proxy"
+  name             = "quill-https-proxy-${var.environment}"
   url_map          = google_compute_url_map.https.id
   ssl_certificates = [google_compute_managed_ssl_certificate.cert.id]
 }
 
-# ---------- HTTPS forwarding rule ----------
 resource "google_compute_global_forwarding_rule" "https" {
   project    = var.project_id
-  name       = "quill-https-rule"
+  name       = "quill-https-rule-${var.environment}"
   target     = google_compute_target_https_proxy.https.id
   port_range = "443"
   ip_address = google_compute_global_address.lb_ip.address
@@ -103,7 +219,7 @@ resource "google_compute_global_forwarding_rule" "https" {
 # ---------- HTTP → HTTPS redirect ----------
 resource "google_compute_url_map" "http_redirect" {
   project = var.project_id
-  name    = "quill-http-redirect"
+  name    = "quill-http-redirect-${var.environment}"
 
   default_url_redirect {
     https_redirect         = true
@@ -114,26 +230,14 @@ resource "google_compute_url_map" "http_redirect" {
 
 resource "google_compute_target_http_proxy" "http" {
   project = var.project_id
-  name    = "quill-http-proxy"
+  name    = "quill-http-proxy-${var.environment}"
   url_map = google_compute_url_map.http_redirect.id
 }
 
 resource "google_compute_global_forwarding_rule" "http" {
   project    = var.project_id
-  name       = "quill-http-rule"
+  name       = "quill-http-rule-${var.environment}"
   target     = google_compute_target_http_proxy.http.id
   port_range = "80"
   ip_address = google_compute_global_address.lb_ip.address
-}
-
-# ---------- DNS A records ----------
-resource "google_dns_record_set" "a_records" {
-  for_each = var.services
-
-  project      = var.project_id
-  managed_zone = var.dns_zone_name
-  name         = "${each.key}."
-  type         = "A"
-  ttl          = 300
-  rrdatas      = [google_compute_global_address.lb_ip.address]
 }

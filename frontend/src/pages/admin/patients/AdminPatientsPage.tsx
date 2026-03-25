@@ -152,12 +152,7 @@ export default function AdminPatientsPage() {
     <Container size="lg" pt="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
-          <PageHeader
-            title="Patient management"
-            description="View and manage all patient records"
-            size="lg"
-            mb={0}
-          />
+          <PageHeader title="Patient management" />
           <AddButton
             label="Add patient"
             onClick={() => navigate("/admin/patients/new")}

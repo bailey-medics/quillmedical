@@ -87,5 +87,11 @@ variable "service_account_email" {
 variable "ingress" {
   description = "Ingress setting: INGRESS_TRAFFIC_ALL, INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER, INGRESS_TRAFFIC_INTERNAL_ONLY"
   type        = string
-  default     = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  default     = "INGRESS_TRAFFIC_ALL"
+}
+
+variable "health_check_path" {
+  description = "HTTP path for startup and liveness probes"
+  type        = string
+  default     = "/"
 }

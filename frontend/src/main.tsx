@@ -6,8 +6,7 @@
  * component tree including AuthProvider, MantineProvider, and React Router.
  *
  * Architecture:
- * - React Router with base URL support (for /app/ mounting)
- * - Mantine UI for styling and components
+ * - React Router with Mantine UI for styling and components
  * - Auth context wrapping all routes
  * - Service worker for PWA functionality
  *
@@ -20,6 +19,7 @@
 // src/main.tsx
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "./styles/colours.css";
 import "./styles/typography.css";
 import ReactDOM from "react-dom/client";
 
@@ -48,6 +48,7 @@ import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisati
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
+import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
@@ -71,283 +72,349 @@ import { AuthProvider } from "./auth/AuthContext";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
+import { RequireFeature } from "./auth/RequireFeature";
 import LoginPage from "./pages/LoginPage";
 
-// Use Vite's BASE_URL so the client router knows it's served under `/app/`.
-// `import.meta.env.BASE_URL` typically ends with a trailing slash (e.g. '/app/'),
-// so normalize it to a form acceptable as a basename (no trailing slash, or
-// undefined for root).
-const rawBase = (import.meta.env.BASE_URL as string) || "/";
-const basename = rawBase === "/" ? undefined : rawBase.replace(/\/$/, "");
+// Teaching pages
+import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
+import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
+import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
+import ManageItems from "./features/teaching/pages/ManageItems";
+import AllResults from "./features/teaching/pages/AllResults";
+import SyncStatus from "./features/teaching/pages/SyncStatus";
+import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 
-const router = createBrowserRouter(
-  [
-    // Public routes (login, register) — placed before protected routes so
-    // they are matched directly and not captured by the authenticated
-    // parent route.
-    {
-      path: "/login",
-      element: (
-        <GuestOnly>
-          <LoginPage />
-        </GuestOnly>
-      ),
-    },
-    {
-      path: "/register",
-      element: (
-        <GuestOnly>
-          <RegisterPage />
-        </GuestOnly>
-      ),
-    },
+const router = createBrowserRouter([
+  // Public routes (login, register) — placed before protected routes so
+  // they are matched directly and not captured by the authenticated
+  // parent route.
+  {
+    path: "/login",
+    element: (
+      <GuestOnly>
+        <LoginPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/register",
+    element: (
+      <GuestOnly>
+        <RegisterPage />
+      </GuestOnly>
+    ),
+  },
 
-    // Everything below here requires auth
-    {
-      element: (
-        <RequireAuth>
-          <RootLayout />
-        </RequireAuth>
-      ),
-      children: [
-        { path: "/", element: <Home /> },
-        { path: "/patients/:id", element: <Patient /> },
-        { path: "/patients/:id/letters", element: <PatientLetters /> },
-        {
-          path: "/patients/:id/letters/:letterId",
-          element: <PatientLetterView />,
-        },
-        { path: "/patients/:id/messages", element: <PatientMessages /> },
-        {
-          path: "/patients/:id/messages/:conversationId",
-          element: <PatientMessageThread />,
-        },
-        { path: "/patients/:id/documents", element: <PatientDocuments /> },
-        {
-          path: "/patients/:id/documents/:documentId",
-          element: <PatientDocumentView />,
-        },
-        { path: "/patients/:id/notes", element: <PatientNotes /> },
-        {
-          path: "/patients/:id/appointments",
-          element: <PatientAppointments />,
-        },
-        { path: "/messages", element: <Messages /> },
-        { path: "/messages/:conversationId", element: <MessageThread /> },
-        {
-          path: "/admin",
-          element: (
-            <RequirePermission level="admin">
-              <AdminPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users",
-          element: (
-            <RequirePermission level="admin">
-              <AdminUsersPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/new",
-          element: (
-            <RequirePermission level="admin">
-              <NewUserPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/list",
-          element: (
-            <RequirePermission level="admin">
-              <ViewAllUsersPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/edit",
-          element: (
-            <RequirePermission level="admin">
-              <EditUserPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/deactivate",
-          element: (
-            <RequirePermission level="admin">
-              <DeactivateUserPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/:id",
-          element: (
-            <RequirePermission level="admin">
-              <UserAdminPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/users/:id/edit",
-          element: (
-            <RequirePermission level="admin">
-              <NewUserPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients",
-          element: (
-            <RequirePermission level="admin">
-              <AdminPatientsPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/new",
-          element: (
-            <RequirePermission level="admin">
-              <NewPatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/list",
-          element: (
-            <RequirePermission level="admin">
-              <ViewAllPatientsPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/:patientId",
-          element: (
-            <RequirePermission level="admin">
-              <PatientAdminPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/:patientId/edit",
-          element: (
-            <RequirePermission level="admin">
-              <EditPatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/:patientId/deactivate",
-          element: (
-            <RequirePermission level="admin">
-              <DeactivatePatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/:patientId/activate",
-          element: (
-            <RequirePermission level="admin">
-              <ActivatePatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/edit",
-          element: (
-            <RequirePermission level="admin">
-              <EditPatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/deactivate",
-          element: (
-            <RequirePermission level="admin">
-              <DeactivatePatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/patients/:id/edit",
-          element: (
-            <RequirePermission level="admin">
-              <NewPatientPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations",
-          element: (
-            <RequirePermission level="admin">
-              <AdminOrganisationsPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations/new",
-          element: (
-            <RequirePermission level="admin">
-              <CreateOrganisationPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations/:id",
-          element: (
-            <RequirePermission level="admin">
-              <OrganisationAdminPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations/:id/edit",
-          element: (
-            <RequirePermission level="admin">
-              <EditOrganisationPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations/:id/add-staff",
-          element: (
-            <RequirePermission level="admin">
-              <AddStaffToOrgPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/organisations/:id/add-patient",
-          element: (
-            <RequirePermission level="admin">
-              <AddPatientToOrgPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/admin/permissions",
-          element: (
-            <RequirePermission level="admin">
-              <AdminPermissionsPage />
-            </RequirePermission>
-          ),
-        },
-        {
-          path: "/settings",
-          element: import("./pages/Settings").then((m) => <m.default />),
-        },
-        { path: "/settings/totp", element: <TotpSetup /> },
-        { path: "/about", element: <About /> },
-      ],
-    },
+  // Everything below here requires auth
+  {
+    element: (
+      <RequireAuth>
+        <RootLayout />
+      </RequireAuth>
+    ),
+    children: [
+      { path: "/", element: <Home /> },
+      { path: "/patients/:id", element: <Patient /> },
+      { path: "/patients/:id/letters", element: <PatientLetters /> },
+      {
+        path: "/patients/:id/letters/:letterId",
+        element: <PatientLetterView />,
+      },
+      { path: "/patients/:id/messages", element: <PatientMessages /> },
+      {
+        path: "/patients/:id/messages/:conversationId",
+        element: <PatientMessageThread />,
+      },
+      { path: "/patients/:id/documents", element: <PatientDocuments /> },
+      {
+        path: "/patients/:id/documents/:documentId",
+        element: <PatientDocumentView />,
+      },
+      { path: "/patients/:id/notes", element: <PatientNotes /> },
+      {
+        path: "/patients/:id/appointments",
+        element: <PatientAppointments />,
+      },
+      { path: "/messages", element: <Messages /> },
+      { path: "/messages/:conversationId", element: <MessageThread /> },
+      {
+        path: "/admin",
+        element: (
+          <RequirePermission level="admin">
+            <AdminPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users",
+        element: (
+          <RequirePermission level="admin">
+            <AdminUsersPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/new",
+        element: (
+          <RequirePermission level="admin">
+            <NewUserPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/list",
+        element: (
+          <RequirePermission level="admin">
+            <ViewAllUsersPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/edit",
+        element: (
+          <RequirePermission level="admin">
+            <EditUserPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/deactivate",
+        element: (
+          <RequirePermission level="admin">
+            <DeactivateUserPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/:id",
+        element: (
+          <RequirePermission level="admin">
+            <UserAdminPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/users/:id/edit",
+        element: (
+          <RequirePermission level="admin">
+            <NewUserPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients",
+        element: (
+          <RequirePermission level="admin">
+            <AdminPatientsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/new",
+        element: (
+          <RequirePermission level="admin">
+            <NewPatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/list",
+        element: (
+          <RequirePermission level="admin">
+            <ViewAllPatientsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/:patientId",
+        element: (
+          <RequirePermission level="admin">
+            <PatientAdminPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/:patientId/edit",
+        element: (
+          <RequirePermission level="admin">
+            <EditPatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/:patientId/deactivate",
+        element: (
+          <RequirePermission level="admin">
+            <DeactivatePatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/:patientId/activate",
+        element: (
+          <RequirePermission level="admin">
+            <ActivatePatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/edit",
+        element: (
+          <RequirePermission level="admin">
+            <EditPatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/deactivate",
+        element: (
+          <RequirePermission level="admin">
+            <DeactivatePatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/patients/:id/edit",
+        element: (
+          <RequirePermission level="admin">
+            <NewPatientPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations",
+        element: (
+          <RequirePermission level="admin">
+            <AdminOrganisationsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/new",
+        element: (
+          <RequirePermission level="admin">
+            <CreateOrganisationPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id",
+        element: (
+          <RequirePermission level="admin">
+            <OrganisationAdminPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id/edit",
+        element: (
+          <RequirePermission level="admin">
+            <EditOrganisationPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id/add-staff",
+        element: (
+          <RequirePermission level="admin">
+            <AddStaffToOrgPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id/add-patient",
+        element: (
+          <RequirePermission level="admin">
+            <AddPatientToOrgPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/organisations/:id/features",
+        element: (
+          <RequirePermission level="admin">
+            <OrgFeaturesPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/permissions",
+        element: (
+          <RequirePermission level="admin">
+            <AdminPermissionsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching",
+        element: (
+          <RequirePermission level="admin">
+            <AdminTeachingPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/settings",
+        element: import("./pages/Settings").then((m) => <m.default />),
+      },
+      { path: "/settings/totp", element: <TotpSetup /> },
+      { path: "/about", element: <About /> },
 
-    // Fallback -> show 404 page instead of redirecting to home
-    { path: "*", element: <NotFound /> },
-  ],
-  { basename },
-);
+      // Teaching routes — gated by "teaching" feature flag
+      {
+        path: "/teaching",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentDashboard />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/assessment/:id",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentAttempt />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/assessment/:id/result",
+        element: (
+          <RequireFeature feature="teaching">
+            <AssessmentResultPage />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/manage",
+        element: (
+          <RequireFeature feature="teaching">
+            <ManageItems />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/results",
+        element: (
+          <RequireFeature feature="teaching">
+            <AllResults />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/sync",
+        element: (
+          <RequireFeature feature="teaching">
+            <SyncStatus />
+          </RequireFeature>
+        ),
+      },
+    ],
+  },
+
+  // Fallback -> show 404 page instead of redirecting to home
+  { path: "*", element: <NotFound /> },
+]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme}>
@@ -360,8 +427,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const base = import.meta.env.BASE_URL ?? "/"; // usually "/app/"
-      const swUrl = `${base}sw.js`; // -> "/app/sw.js"
+      const swUrl = "/sw.js";
       console.log("Registering service worker at", swUrl);
 
       const reg = await navigator.serviceWorker.register(swUrl);

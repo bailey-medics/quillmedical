@@ -16,6 +16,15 @@ provider "google-beta" {
   region  = var.region
 }
 
+# ---------- Artifact Registry ----------
+resource "google_artifact_registry_repository" "docker" {
+  project       = var.project_id
+  location      = var.region
+  repository_id = "quill"
+  format        = "DOCKER"
+  description   = "Container images for Quill Medical (${var.environment})"
+}
+
 # ---------- Secrets (created first, values set manually) ----------
 module "secrets" {
   source     = "./modules/secrets"
@@ -59,6 +68,7 @@ module "cloud_sql_auth" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   # Production gets longer backup retention
   backup_retained_count = var.environment == "prod" ? 30 : 7
@@ -82,6 +92,7 @@ module "cloud_sql_fhir" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   backup_retained_count = var.environment == "prod" ? 30 : 7
   pitr_enabled          = var.environment == "prod"
@@ -104,6 +115,7 @@ module "cloud_sql_ehrbase" {
   enable_ha             = var.enable_ha
   vpc_network_id        = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
+  secret_depends_on      = module.secrets.secret_ids
 
   backup_retained_count = var.environment == "prod" ? 30 : 7
   pitr_enabled          = var.environment == "prod"
@@ -128,6 +140,42 @@ module "compute_fhir" {
   ehrbase_admin_password_secret = "ehrbase-admin-password"
 }
 
+# ---------- IAM: Cloud Run → Secret Manager ----------
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+resource "google_project_iam_member" "cloudrun_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# ---------- Initial secret values (jwt-secret, vapid-private) ----------
+# These are generated once by Terraform. Replace vapid-private with a real
+# VAPID key via `gcloud secrets versions add` before going live.
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = true
+}
+
+resource "google_secret_manager_secret_version" "jwt_secret" {
+  secret      = "projects/${var.project_id}/secrets/jwt-secret"
+  secret_data = random_password.jwt_secret.result
+  depends_on  = [module.secrets]
+}
+
+resource "random_password" "vapid_placeholder" {
+  length  = 32
+  special = false
+}
+
+resource "google_secret_manager_secret_version" "vapid_private" {
+  secret      = "projects/${var.project_id}/secrets/vapid-private"
+  secret_data = random_password.vapid_placeholder.result
+  depends_on  = [module.secrets]
+}
+
 # ---------- Cloud Run: backend ----------
 module "cloud_run_backend" {
   source      = "./modules/cloud-run"
@@ -142,6 +190,7 @@ module "cloud_run_backend" {
   cpu              = "1"
   max_instances    = var.cloud_run_max_instances
   vpc_connector_id = module.networking.vpc_connector_id
+  health_check_path = "/api/health"
 
   env_vars = merge(
     {
@@ -153,16 +202,76 @@ module "cloud_run_backend" {
       AUTH_DB_USER   = module.cloud_sql_auth.database_user
     },
     var.enable_fhir ? {
-      FHIR_BASE_URL    = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
-      EHRBASE_BASE_URL = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
+      FHIR_SERVER_URL  = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
+      EHRBASE_URL      = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
+      FHIR_DB_HOST     = module.cloud_sql_fhir[0].private_ip
+      FHIR_DB_NAME     = module.cloud_sql_fhir[0].database_name
+      FHIR_DB_USER     = module.cloud_sql_fhir[0].database_user
+      EHRBASE_DB_HOST  = module.cloud_sql_ehrbase[0].private_ip
+      EHRBASE_DB_NAME  = module.cloud_sql_ehrbase[0].database_name
+      EHRBASE_DB_USER  = module.cloud_sql_ehrbase[0].database_user
+    } : {},
+    var.environment == "teaching" ? {
+      CLINICAL_SERVICES_ENABLED    = "false"
+      TEACHING_STORAGE_BACKEND     = "gcs"
+      TEACHING_GCS_BUCKET          = module.cloud_storage[0].bucket_name
+      TEACHING_IMAGES_BASE_URL     = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
     } : {}
   )
 
-  secret_env_vars = {
-    JWT_SECRET       = "jwt-secret"
-    AUTH_DB_PASSWORD  = "auth-db-password"
-    VAPID_PRIVATE    = "vapid-private"
+  secret_env_vars = merge(
+    {
+      JWT_SECRET       = "jwt-secret"
+      AUTH_DB_PASSWORD  = "auth-db-password"
+      VAPID_PRIVATE    = "vapid-private"
+    },
+    var.enable_fhir ? {
+      FHIR_DB_PASSWORD           = "fhir-db-password"
+      EHRBASE_DB_PASSWORD        = "ehrbase-db-password"
+      EHRBASE_API_PASSWORD       = "ehrbase-api-password"
+      EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
+    } : {}
+  )
+
+  depends_on = [
+    google_secret_manager_secret_version.jwt_secret,
+    google_secret_manager_secret_version.vapid_private,
+    google_project_iam_member.cloudrun_secret_accessor,
+    module.cloud_sql_auth, # writes auth-db-password version
+  ]
+}
+
+# ---------- Cloud Run Job: admin tasks ----------
+import {
+  to = module.cloud_run_admin_job.google_cloud_run_v2_job.job
+  id = "projects/${var.project_id}/locations/${var.region}/jobs/quill-admin-${var.environment}"
+}
+
+module "cloud_run_admin_job" {
+  source      = "./modules/cloud-run-job"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  job_name         = "admin"
+  image            = var.admin_image
+  vpc_connector_id = module.networking.vpc_connector_id
+
+  env_vars = {
+    AUTH_DB_HOST = module.cloud_sql_auth.private_ip
+    AUTH_DB_NAME = module.cloud_sql_auth.database_name
+    AUTH_DB_USER = module.cloud_sql_auth.database_user
   }
+
+  secret_env_vars = {
+    AUTH_DB_PASSWORD = "auth-db-password"
+    JWT_SECRET      = "jwt-secret"
+  }
+
+  depends_on = [
+    google_project_iam_member.cloudrun_secret_accessor,
+    module.cloud_sql_auth,
+  ]
 }
 
 # ---------- Cloud Run: frontend ----------
@@ -175,10 +284,24 @@ module "cloud_run_frontend" {
   service_name     = "frontend"
   image            = var.frontend_image
   port             = 80
-  memory           = "256Mi"
-  cpu              = "0.5"
+  memory           = "512Mi"
+  cpu              = "1"
   max_instances    = var.cloud_run_max_instances
   vpc_connector_id = module.networking.vpc_connector_id
+  health_check_path = "/healthz"
+}
+
+# ---------- Global HTTPS Load Balancer ----------
+module "load_balancer" {
+  source      = "./modules/load-balancer"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  domains               = var.lb_domains
+  landing_domain        = var.landing_domain
+  backend_service_name  = module.cloud_run_backend.service_name
+  frontend_service_name = module.cloud_run_frontend.service_name
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
@@ -188,4 +311,14 @@ module "cloud_storage" {
   project_id  = var.project_id
   region      = var.region
   environment = var.environment
+}
+
+# ---------- Monitoring: uptime checks + alerting ----------
+module "monitoring" {
+  source      = "./modules/monitoring"
+  project_id  = var.project_id
+  environment = var.environment
+
+  monitored_hostnames = var.monitored_hostnames
+  alert_email         = var.alert_email
 }

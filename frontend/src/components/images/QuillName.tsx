@@ -34,7 +34,7 @@ type Props = {
  */
 export default function QuillName({
   alt = "Quill Medical",
-  height = 1.5,
+  height = 2.1,
   className,
   style = { marginRight: "0.5rem" },
 }: Props) {

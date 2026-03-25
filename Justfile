@@ -138,6 +138,56 @@ port-8000:
     lsof -i :8000
 
 
+alias qbc := question-bank-clone
+# Clone the question bank repo into question-bank/
+question-bank-clone:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-clone"
+    if [ -d "question-bank/.git" ]; then
+        echo "question-bank/ already exists — use 'just question-bank-pull' to update"
+        exit 1
+    fi
+    git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
+    echo "Cloned into question-bank/"
+
+alias qbpu := question-bank-pull
+# Pull the latest question bank content
+question-bank-pull:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-pull"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank pull
+
+alias qbps := question-bank-push
+# Push question bank changes
+question-bank-push:
+    #!/usr/bin/env bash
+    {{initialise}} "question-bank-push"
+    if [ ! -d "question-bank/.git" ]; then
+        echo "question-bank/ not found — run 'just question-bank-clone' first"
+        exit 1
+    fi
+    git -C question-bank push
+
+alias sdt := seed-teaching
+# Seed teaching data (org, users, feature, sync) for a fresh DB
+seed-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "seed-teaching"
+    ./dev-scripts/seed-teaching-data.sh
+
+
+alias syt := sync-teaching
+# Sync all local question banks into the DB (no restart needed)
+sync-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "sync-teaching"
+    ./dev-scripts/sync-teaching-data.sh
+
+
 alias m := migrate
 # Run the database migrations
 migrate message:
@@ -159,6 +209,38 @@ pre-commit:
     pre-commit run --all-files
 
 
+alias pb := prune-branches
+# Remove local branches whose remote tracking branch is gone
+prune-branches:
+    #!/usr/bin/env bash
+    {{initialise}} "prune-branches"
+    git fetch --prune
+    GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' || true)
+    if [ -z "$GONE" ]; then
+        echo "No stale branches to remove."
+    else
+        echo "$GONE" | xargs git branch -d
+    fi
+
+
+alias rb := rebase
+# Rebase current feature branch onto an up-to-date main
+rebase:
+    #!/usr/bin/env bash
+    {{initialise}} "rebase"
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$BRANCH" = "main" ]; then
+        echo "Already on main — switch to a feature branch first"
+        exit 1
+    fi
+    echo "Updating main and rebasing $BRANCH onto it..."
+    git checkout main
+    git pull
+    git checkout "$BRANCH"
+    git rebase main
+    git push --force-with-lease
+
+
 alias pi := poetry-install
 # Install the poetry dependencies
 poetry-install:
@@ -169,7 +251,7 @@ poetry-install:
     poetry install
 
 
-alias pp := poetry-path
+alias pop := poetry-path
 # Show the poetry path
 poetry-path:
     #!/usr/bin/env bash
@@ -178,6 +260,32 @@ poetry-path:
     poetry env info -p
     echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
+
+alias tf-gh := terraform-github
+# Apply GitHub rulesets via Terraform (branch naming, protection rules)
+terraform-github:
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-github"
+    set -euo pipefail
+    cd infra/github
+    export GITHUB_TOKEN=$(gh auth token)
+    terraform init -input=false
+    terraform plan -var-file=terraform.tfvars
+    read -rp "Apply these changes? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file=terraform.tfvars -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
+alias pup := public-pages
+# Run public pages dev server
+public-pages:
+    #!/usr/bin/env bash
+    {{initialise}} "public-pages"
+    cd frontend
+    yarn workspace public-pages dev
 
 alias sb := storybook
 # Run storybook dev server
@@ -222,13 +330,13 @@ start-dev build="":
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.dev.yml down
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
         cd frontend && yarn install && cd ..
         cd backend && poetry lock && poetry install && cd ..
-        docker compose -f compose.dev.yml up --build; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up --build --pull missing; \
     else \
-        docker compose -f compose.dev.yml up; \
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up; \
     fi
 
 
@@ -277,9 +385,29 @@ start-prod build="":
     #!/usr/bin/env bash
     {{initialise}} "start-prod"
     if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.prod.yml up --build; \
+        docker compose -f compose.yml -f compose.prod.yml up --build --pull missing; \
     else \
         docker compose -f compose.yml -f compose.prod.yml up; \
+    fi
+
+alias st := start-teaching
+# Start dev without clinical services (FHIR/EHRbase) for teaching work
+start-teaching build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-teaching"
+
+    just _start-docker-daemon
+    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+    echo "Clinical services (FHIR/EHRbase) disabled"
+
+    if [ "{{build}}" = "b" ]; then \
+        docker compose -f compose.dev.yml down
+        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
+        cd frontend && yarn install && cd ..
+        cd backend && poetry lock && poetry install && cd ..
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up --build --pull missing; \
+    else \
+        CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up; \
     fi
 
 alias sc := stop
@@ -287,8 +415,7 @@ alias sc := stop
 stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
-    docker compose -f compose.dev.yml down
-    docker compose -f compose.prod.yml down
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
 
 
 alias ub := unit-tests-backend
@@ -315,6 +442,7 @@ vapid-key:
     cd frontend
     yarn dlx web-push generate-vapid-keys
 
+
 alias yi := yarn-install
 # Run yarn install in the frontend container
 yarn-install:
@@ -322,3 +450,134 @@ yarn-install:
     {{initialise}} "yarn-install"
     cd frontend
     yarn install
+
+
+# ── Cloud Run Admin Job (remote environments) ──────────────────────────
+
+_gcp_env_project env:
+    #!/usr/bin/env bash
+    case "{{env}}" in
+        staging)  echo "quill-medical-staging"  ;;
+        teaching) echo "quill-medical-teaching" ;;
+        prod)     echo "quill-medical-production" ;;
+        *)        echo "ERROR: env must be staging, teaching, or prod" >&2; exit 1 ;;
+    esac
+
+
+alias ba := build-admin
+# Build and push the admin Docker image to a remote environment (staging/teaching/prod)
+build-admin env:
+    #!/usr/bin/env bash
+    {{initialise}} "build-admin ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/admin:latest"
+
+    echo "Building admin image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
+
+    docker build \
+        --target admin \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile \
+        .
+
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Admin image pushed to ${IMAGE}"
+
+    # Deploy the Cloud Run Job (creates if new, updates if existing)
+    # Look up the Cloud SQL auth database private IP
+    echo "Looking up database connection..."
+    AUTH_DB_HOST=$(gcloud sql instances describe "quill-auth-{{env}}" \
+        --project="$PROJECT" \
+        --format='value(ipAddresses[0].ipAddress)')
+
+    echo "Deploying Cloud Run Job..."
+    gcloud run jobs deploy "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --vpc-connector="quill-vpc-cx-{{env}}" \
+        --vpc-egress=private-ranges-only \
+        --max-retries=0 \
+        --task-timeout=300s \
+        --set-env-vars "AUTH_DB_HOST=${AUTH_DB_HOST},AUTH_DB_NAME=quill_auth,AUTH_DB_USER=quill" \
+        --set-secrets "AUTH_DB_PASSWORD=auth-db-password:latest,JWT_SECRET=jwt-secret:latest" \
+        --quiet
+    echo "✓ Cloud Run Job deployed"
+
+
+alias cs := create-superadmin
+# Create a superadmin on a remote environment via Cloud Run Job
+create-superadmin env:
+    #!/usr/bin/env bash
+    {{initialise}} "create-superadmin ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Create superadmin on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    read -rp "Email: " email
+    read -rsp "Password: " password
+    echo
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=create-superadmin,ADMIN_USERNAME=${username},ADMIN_EMAIL=${email},ADMIN_PASSWORD=${password}" \
+        --wait
+
+
+alias up := update-permissions-remote
+# Update a user's system permissions on a remote environment
+update-permissions-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "update-permissions ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Update permissions on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    echo "Permission levels: patient, staff, admin, superadmin"
+    read -rp "Permission: " permission
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=update-permissions,ADMIN_USERNAME=${username},ADMIN_PERMISSION=${permission}" \
+        --wait
+
+
+alias ar := add-role-remote
+# Add a role to a user on a remote environment
+add-role-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "add-role ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Add role on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    echo "Roles: System Administrator, Clinical Administrator, Clinician,"
+    echo "       Clinical Support Staff, Patient, Patient Advocate"
+    read -rp "Role: " role
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
+        --wait

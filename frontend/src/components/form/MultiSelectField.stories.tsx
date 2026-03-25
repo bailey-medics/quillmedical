@@ -1,0 +1,64 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import MultiSelectField from "./MultiSelectField";
+
+const meta: Meta<typeof MultiSelectField> = {
+  title: "Form/MultiSelectField",
+  component: MultiSelectField,
+  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+};
+
+export default meta;
+type Story = StoryObj<typeof MultiSelectField>;
+
+const staffData = [
+  { value: "1", label: "Dr Corbett" },
+  { value: "2", label: "Nurse Adams" },
+  { value: "3", label: "Dr Patel" },
+  { value: "4", label: "Dr Okonkwo" },
+  { value: "5", label: "Nurse Williams" },
+  { value: "6", label: "Dr Chen" },
+  { value: "7", label: "Dr Fernandez" },
+  { value: "8", label: "Nurse Taylor" },
+  { value: "9", label: "Dr Nowak" },
+  { value: "10", label: "Nurse Brown" },
+  { value: "11", label: "Dr Singh" },
+  { value: "12", label: "Nurse O'Brien" },
+  { value: "13", label: "Dr Takahashi" },
+  { value: "14", label: "Nurse Clarke" },
+  { value: "15", label: "Dr Abrams" },
+  { value: "16", label: "Nurse Kowalski" },
+  { value: "17", label: "Dr Mensah" },
+  { value: "18", label: "Nurse Reid" },
+  { value: "19", label: "Dr Johansson" },
+  { value: "20", label: "Nurse Kapoor" },
+];
+
+export const Default: Story = {
+  args: {
+    label: "Participants",
+    placeholder: "Add staff to this conversation",
+    data: staffData,
+  },
+};
+
+export const Searchable: Story = {
+  args: {
+    label: "Participants",
+    placeholder: "Search staff…",
+    data: staffData,
+    searchable: true,
+  },
+};
+
+export const Disabled: Story = {
+  args: {
+    label: "Participants",
+    data: [
+      { value: "1", label: "Dr Corbett" },
+      { value: "2", label: "Nurse Adams" },
+    ],
+    value: ["1"],
+    disabled: true,
+  },
+};

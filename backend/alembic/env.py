@@ -8,6 +8,8 @@ from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 
+# Import teaching models so Alembic detects them for autogenerate
+import app.features.teaching.models  # noqa: F401
 from alembic import context
 from app.config import settings
 from app.models import Base

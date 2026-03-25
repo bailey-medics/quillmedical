@@ -50,7 +50,7 @@ services:
       - internal
 
   fhir:
-    image: hapiproject/hapi:latest
+    image: hapiproject/hapi:v8.8.0-1
     container_name: quill_fhir
     environment:
       - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
@@ -87,7 +87,7 @@ services:
       - external
 
   ehrbase:
-    image: ehrbase/ehrbase:latest
+    image: ehrbase/ehrbase:2.30.0
     container_name: quill_ehrbase
     environment:
       - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/ehrbase

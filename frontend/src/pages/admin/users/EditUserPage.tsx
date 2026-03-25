@@ -71,12 +71,7 @@ export default function EditUserPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Edit user"
-          description="Select a user to edit their details, competencies, and permissions"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Edit user" />
 
         {loading ? (
           <Stack gap="xs">

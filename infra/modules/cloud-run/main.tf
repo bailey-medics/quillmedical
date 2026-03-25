@@ -61,17 +61,18 @@ resource "google_cloud_run_v2_service" "service" {
       # Startup probe — give container time to boot
       startup_probe {
         http_get {
-          path = var.service_name == "backend" ? "/api/health" : "/"
+          path = var.health_check_path
         }
         initial_delay_seconds = 5
-        period_seconds        = 10
-        failure_threshold     = 3
+        timeout_seconds       = 10
+        period_seconds        = 15
+        failure_threshold     = 6
       }
 
       # Liveness probe
       liveness_probe {
         http_get {
-          path = var.service_name == "backend" ? "/api/health" : "/"
+          path = var.health_check_path
         }
         period_seconds = 30
       }
@@ -82,6 +83,13 @@ resource "google_cloud_run_v2_service" "service" {
   traffic {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
     percent = 100
+  }
+
+  # CI deploys images via `gcloud run services update`; don't revert them
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+    ]
   }
 }
 

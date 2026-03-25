@@ -1,0 +1,1 @@
+"""Quill Medical backend application."""

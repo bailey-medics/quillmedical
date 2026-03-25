@@ -63,4 +63,16 @@ describe("UnreadBadge", () => {
       expect(screen.getByText("1")).toBeInTheDocument();
     });
   });
+
+  describe("Loading state", () => {
+    it("shows skeleton when loading", () => {
+      const { container } = renderWithMantine(
+        <UnreadBadge count={3} isLoading />,
+      );
+      expect(screen.queryByText("3")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".mantine-Skeleton-root"),
+      ).toBeInTheDocument();
+    });
+  });
 });

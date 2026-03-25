@@ -98,12 +98,7 @@ export default function DeactivateUserPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <PageHeader
-          title="Deactivate user"
-          description="Select a user to deactivate their account and revoke access"
-          size="lg"
-          mb={0}
-        />
+        <PageHeader title="Deactivate user" />
 
         {loading ? (
           <Stack gap="xs">

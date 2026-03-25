@@ -79,23 +79,6 @@ describe("AdminPatientsPage", () => {
       });
     });
 
-    it("displays page description", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        patients: [],
-        fhir_ready: true,
-      });
-
-      renderWithRouter(<AdminPatientsPage />, {
-        initialRoute: "/admin/patients",
-      });
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("View and manage all patient records"),
-        ).toBeInTheDocument();
-      });
-    });
-
     it("displays add patient button", async () => {
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
         patients: [],

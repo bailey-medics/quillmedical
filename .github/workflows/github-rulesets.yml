@@ -1,0 +1,57 @@
+# GitHub rulesets — change detection and Slack notification
+#
+# This workflow fires when infra/github/** files change. It alerts via Slack
+# that a manual `terraform apply` is needed to sync the rulesets to GitHub.
+#
+# Why no automatic apply?
+#   1. No remote backend — Terraform state is local, so CI has no prior state
+#      and would attempt to recreate resources on every run.
+#   2. Security — exposing an admin-scoped PAT to PR workflows risks token
+#      exfiltration via malicious Terraform data sources.
+#
+# When a remote backend (e.g. GCS) is configured, this workflow can be
+# extended to run plan on PRs and apply on merge to main.
+#
+# Manual workflow:
+#   export GITHUB_TOKEN=$(gh auth token)
+#   cd infra/github/
+#   terraform init
+#   terraform plan -var-file=terraform.tfvars
+#   terraform apply -var-file=terraform.tfvars
+
+name: GitHub rulesets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/github/**"
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------- Notify that manual apply is needed ----------
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warn via Slack that manual apply is required
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          errors: true
+          payload: |
+            {
+              "text": "⚠️ GitHub rulesets changed — manual terraform apply required",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*⚠️ GITHUB RULESETS CHANGED — MANUAL TERRAFORM APPLY REQUIRED*\n\nFiles under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.\n\n*Action required:*\n```\njust terraform-github\n```\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }

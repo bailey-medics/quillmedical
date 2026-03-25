@@ -50,13 +50,47 @@ nav:
           - Overview: backend/payments/index.md
   - Frontend:
       - Overview: frontend/index.md
+      - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
       - Accessibility: frontend/accessibility.md
       - Storybook: frontend/storybook/index.md
       - Test Infrastructure: frontend/test-infrastructure-setup.md
+  - Infrastructure:
+      - Overview: infrastructure/index.md
+      - Google Cloud Platform: infrastructure/gcp.md
+      - Remote admin tasks: infrastructure/admin.md
+  - GitHub:
+      - Overview: github/index.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
+  - Dependencies:
+      - Overview: dependencies/index.md
+      - Automatic updates: dependencies/automatic-updates.md
+  - Plans:
+      - Overview: plans/index.md
+      - GCP Launch-Ready: plans/gcp-launch-ready.md
+      - Organisations, Messaging & External Access: plans/orgs-and-messaging-and-external-access.md
+      - Teaching Module: plans/teaching-project.md
+      - Branch Protection Rules: plans/branching-rules.md
+      - Public Pages Separation: plans/public-pages.md
+      - Email Subscriptions: plans/subscriptions.md
+      - To-Do List: plans/todo.md
+  - Learnings:
+      - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
+  - LLM Prompts:
+      - Code Documentation: llm/prompts/code-documentation.prompt.md
+      - Commit & Push: llm/prompts/commit-push.prompt.md
+      - Create Architecture: llm/prompts/create-architecture.prompt.md
+      - Create Roadmap: llm/prompts/create-roadmap.prompt.md
+      - Create Spec: llm/prompts/create-spec.prompt.md
+      - FastAPI Docs: llm/prompts/fast-api-docs.prompt.md
+      - Play Finished Sound: llm/prompts/play-finished-sound.prompt.md
+      - Read Copilot Instructions: llm/prompts/read-copilot-instructions.prompt.md
+      - Run All Tests: llm/prompts/run-all-tests.prompt.md
+      - Strong Static Typing: llm/prompts/strong-static-typing-defensive-programming.prompt.md
+      - Update Docs: llm/prompts/update-docs-docs.prompt.md
+      - Update Nav: llm/prompts/update-nav.prompt.md
   - Code Documentation:
       - Frontend TypeDoc: code/frontend/README.md
       - Storybook: code/storybook/index.html
@@ -132,7 +166,6 @@ nav:
           - Hazard-0044: safety/hazards/Hazard-0044.md
           - Hazard-0045: safety/hazards/Hazard-0045.md
           - Hazard-0046: safety/hazards/Hazard-0046.md
-          - Hazard-0047: safety/hazards/Hazard-0047.md
           - Hazard-0047: safety/hazards/Hazard-0047.md
 
 

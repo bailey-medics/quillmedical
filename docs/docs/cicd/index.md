@@ -1,53 +1,52 @@
 # CI/CD pipeline
 
-**Last updated:** 16 March 2026
+**Last updated:** 24 March 2026
 
-Quill Medical uses a GitFlow branching strategy with GitHub Actions workflows that automatically validate, test, and deploy code changes. Feature branches merge into `develop`, which auto-deploys to staging and teaching. Release branches are cut from `develop` and merged to `main` via PR, which triggers production deployment.
+Quill Medical uses a trunk-based branching strategy with GitHub Actions workflows that automatically validate, test, and deploy code changes. Feature and Copilot branches open PRs to `main`, which auto-deploys to staging and teaching. Production deploys from `clinical-live`.
 
 ## Branching strategy
 
 ```mermaid
 graph LR
-    A[feature/*] -->|merge| B[develop]
-    B -->|cut| C[release/*]
-    C -->|PR| D[main]
-    D -->|back-merge| B
+    A["feature/** / copilot/**"] -->|PR| B[main]
+    C[hotfix/**] -->|PR| B
+    B -->|merge| D[clinical-live]
 ```
 
-- **`feature/*`** — individual feature/fix branches, merge into `develop`
-- **`develop`** — integration branch; auto-deploys to staging + teaching
-- **`release/*`** — cut from `develop` when ready for production; bug-fixes only
-- **`main`** — production-ready code; only receives merges from `release/*` via PR
+- **`feature/*`** — individual feature/fix branches; CI runs checks and opens a PR to `main`
+- **`copilot/*`** — AI-generated branches; same CI pipeline as `feature/*`
+- **`hotfix/*`** — urgent production fixes; same CI pipeline with additional docs build
+- **`release/**`** — release candidate branches; CI runs the release-hotfix workflow, but releases typically promote via `main`→`clinical-live`
+- **`main`** — integration branch; auto-deploys to staging + teaching on merge
+- **`clinical-live`** — production-ready code; only receives merges from `main`; auto-deploys to production
 
 ## Pipeline overview
 
 ```mermaid
 graph TD
-    A[Push to feature branch] --> B[Feature workflow]
+    A["Push to feature/* or copilot/*"] --> B[Feature / Copilot workflow]
     B --> C{All checks pass?}
-    C -->|Yes| D[Auto-merge to develop]
+    C -->|Yes| D[Open PR to main]
     C -->|No| E[Notify via Slack]
-    D --> F[Develop workflow]
-    F --> G[Build Docker images]
-    G --> H[Deploy to staging + teaching]
-    F --> I[Build docs + Storybook]
-    I --> J[Deploy to GitHub Pages]
-    K[PR: release/* → main] --> L[Main workflow]
-    L --> M[Build Docker images]
-    M --> N[Deploy to production]
-    L --> O[Notify via Slack]
+    D -->|PR merged| F[Push to main]
+    F --> G[Deploy staging + teaching workflow]
+    G --> H[Build Docker images]
+    H --> I[Deploy to staging + teaching]
+    J[Merge main to clinical-live] --> K[Deploy production workflow]
+    K --> L[Build Docker images]
+    L --> M[Deploy to production]
 ```
 
 ## Workflows
 
-### Feature workflow
+### Branch CI workflow
 
-**File:** [`.github/workflows/non-main.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/non-main.yml)
+**File:** [`.github/workflows/branch-ci.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/branch-ci.yml)
 
 **Triggers:**
 
-- Push to any branch except `main` and `develop`
-- Pull requests to `develop`
+- Push to any branch except `main`, `clinical-live`, `release/**`, and `hotfix/**`
+- Covers: `feature/*`, `copilot/*`, `renovate/*`, `dependabot/*`, and any other development branch
 
 **Jobs:**
 
@@ -72,18 +71,12 @@ graph TD
    - Semgrep SAST (Static Application Security Testing)
    - Runs against frontend code with custom rules (`.semgrep.yml`)
 
-4. **Documentation build**
-   - Validates that docs build successfully before merging
-   - Builds both frontend docs (TypeDoc, Storybook) and backend docs (MkDocs)
-   - Ensures OpenAPI schema generation works
-   - Depends on: `python_checks`, `typescript_checks`, `frontend_security`
-
-5. **Merge to develop**
+4. **Open PR**
    - **Only runs on push events** (not PRs)
-   - Automatically merges passing branches into `develop` with no-fast-forward merge
+   - Automatically opens a pull request to `main` if one doesn't already exist
+   - Uses latest commit message as the PR title
    - Configured git user: `github-actions[bot]`
-   - Aborts on merge conflicts
-   - Depends on: `docs_build`
+   - Depends on: all checks passing
 
 **Concurrency:**
 
@@ -93,32 +86,94 @@ graph TD
 **Notifications:**
 
 - Slack webhooks on failure at each job level
-- Slack notification on successful merge to `develop`
 - Messages include commit SHA, author, and GitHub Actions run link
 
-### Develop workflow
+### Release and hotfix workflow
 
-**File:** [`.github/workflows/develop.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/develop.yml)
+**File:** [`.github/workflows/release-hotfix.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/release-hotfix.yml)
 
 **Triggers:**
 
-- Push to `develop` branch
+- Push to `release/**` or `hotfix/**`
+
+**Jobs:**
+
+Same checks as the feature workflow (python_checks, typescript_checks, frontend_security), plus:
+
+- **Documentation build** — Validates that docs build successfully; builds both frontend docs (TypeDoc, Storybook) and backend docs (MkDocs); ensures OpenAPI schema generation works
+
+### Deploy staging and teaching
+
+**File:** [`.github/workflows/deploy-staging-teaching.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/deploy-staging-teaching.yml)
+
+**Triggers:**
+
+- Push to `main` branch
 - Workflow dispatch (manual trigger)
 
 **Jobs:**
 
 1. **Build Docker images**
    - Detect which services changed → only build affected images
-   - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:develop-<sha>`
+   - Build and push to GCP Artifact Registry (staging + teaching registries)
+   - Uses `target: prod` Dockerfile stage
    - Skip if only docs changed
 
-2. **Deploy to staging and teaching**
+2. **Deploy to staging**
    - Authenticate to GCP via Workload Identity Federation
-   - Deploy updated Cloud Run services to staging and teaching
-   - Run Alembic migrations against staging DB and teaching DB
-   - Smoke test `staging.quill-medical.com/api/health` and `teaching.quill-medical.com/api/health`
+   - Deploy updated Cloud Run services to staging
+   - Smoke test `staging.quill-medical.com/api/health` (5 retries, 10 second intervals)
 
-3. **Build docs**
+3. **Deploy to teaching**
+   - Authenticate to GCP via Workload Identity Federation
+   - Deploy updated Cloud Run services to teaching
+   - Smoke test `teaching.quill-medical.com/api/health` (5 retries, 10 second intervals)
+
+4. **Notify** — Slack notification on success or failure
+
+**Concurrency:**
+
+- Group: `deploy-staging`
+- Cancel in-progress: `true`
+
+### Deploy production
+
+**File:** [`.github/workflows/deploy-production.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/deploy-production.yml)
+
+**Triggers:**
+
+- Push to `clinical-live` branch
+- Workflow dispatch (manual trigger)
+- Ignores changes to `docs/**`, `*.md`, `safety/**`, `.github/prompts/**`
+
+**Jobs:**
+
+1. **Build Docker images**
+   - Build and push to GCP Artifact Registry (production registry)
+   - Images tagged as `clinical-live-<sha>` and `latest`
+   - Uses `target: prod` Dockerfile stage
+
+2. **Deploy to production**
+   - Authenticate to GCP via Workload Identity Federation
+   - Deploy updated Cloud Run services to production
+   - Smoke test `app.quill-medical.com/api/health`
+
+**Concurrency:**
+
+- Group: `deploy-production`
+- Cancel in-progress: `false` (never cancel a production deploy)
+
+### Documentation workflow
+
+**File:** [`.github/workflows/docs.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/docs.yml)
+
+**Triggers:**
+
+- Push to `main` when backend, frontend, docs, shared, or prompt files change
+
+**Jobs:**
+
+1. **Build docs**
    - Builds MkDocs documentation site
    - Builds Storybook static site
    - Generates TypeDoc API documentation
@@ -126,216 +181,51 @@ graph TD
    - Copies LLM prompts to docs
    - Creates unified site in `/site` directory
    - Uploads artifact for GitHub Pages
-   - Caches: Yarn dependencies, Poetry dependencies, Storybook artifacts
 
-4. **Deploy docs**
+2. **Deploy docs**
    - Deploys built site to GitHub Pages
-   - Extracts commit info (handles merge commits specially)
    - Environment: `github-pages`
-   - Depends on: `build_docs`
 
-**Concurrency:**
+### Terraform workflow
 
-- Group: `develop`
-- Cancel in-progress: `true`
-
-**Notifications:**
-
-- Slack notification on staging/teaching deploy success
-- Slack notification on build or deployment failure
-- Messages extract original commit info from merge commits
-
-### Main workflow (production)
-
-**File:** [`.github/workflows/main.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/main.yml)
+**File:** [`.github/workflows/terraform.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/terraform.yml)
 
 **Triggers:**
 
-- Push to `main` branch (via merged PR from `release/*`)
-- Workflow dispatch (manual trigger)
+- Pull requests to `main` or `clinical-live` (changes to `infra/`)
+- Push to `main` or `clinical-live` (changes to `infra/`)
 
 **Jobs:**
 
-1. **Build Docker images**
-   - Build and push to `ghcr.io/bailey-medics/quill-{backend,frontend,public-pages}:sha-<commit>` and `:latest`
+1. **Plan** (on PRs) — runs `terraform plan` for staging, teaching, and production; posts plan output as a PR comment
+2. **Apply staging + teaching** (on push to `main`) — runs `terraform apply` for both environments
+3. **Apply production** (on push to `clinical-live`) — runs `terraform apply` for production
 
-2. **Deploy to production**
-   - Authenticate to GCP via Workload Identity Federation
-   - Deploy updated Cloud Run services to production
-   - Run Alembic migrations against prod DB
-   - Smoke test `app.quill-medical.com/api/health`
-
-**Concurrency:**
-
-- Group: `production`
-- Cancel in-progress: `false` (never cancel a production deploy)
-
-**Notifications:**
-
-- Slack notification on production deploy success
-- Slack notification on build or deployment failure
-
-## Running checks locally
-
-You can run the same CI checks locally before pushing to GitHub using two complementary approaches:
-
-### Quick iteration (native execution)
-
-**Script:** [`scripts/run-ci-checks.sh`](../../scripts/README.md)
-
-Runs checks natively on your machine without Docker. Fast but may have slight environment differences from GitHub Actions runners.
-
-```bash
-# Run all checks
-./scripts/run-ci-checks.sh
-
-# Run specific category
-./scripts/run-ci-checks.sh python
-./scripts/run-ci-checks.sh typescript
-
-# Run individual check
-./scripts/run-ci-checks.sh eslint
-./scripts/run-ci-checks.sh python-unit
-./scripts/run-ci-checks.sh typecheck
-```
-
-**Requirements:**
-
-- Python 3.13+
-- Node.js 22+
-- Yarn 4.10.3
-- Poetry (auto-installed if missing)
-
-**Available checks:**
-
-- `all` - All checks (default)
-- `python` - All Python checks
-- `python-styling` - Pre-commit hooks
-- `python-unit` - Pytest unit tests
-- `typescript` - All TypeScript checks
-- `eslint`, `prettier`, `stylelint` - Individual linters
-- `typecheck` - TypeScript type checking
-- `unit-tests` - Frontend unit tests
-- `storybook-build` - Storybook build
-- `storybook-tests` - Storybook visual tests
-- `semgrep` - Security scan
-- `docs` - Documentation build
-
-### Exact CI environment (Docker via act)
-
-**Script:** [`scripts/run-github-actions-locally.sh`](../../scripts/README.md)
-
-Uses [act](https://github.com/nektos/act) to run the actual GitHub Actions workflows in Docker containers. This is the most accurate way to test, matching the CI environment almost exactly.
-
-```bash
-# Install act (macOS)
-brew install act
-
-# Ensure Docker is running
-open /Applications/Docker.app
-
-# Run entire non-main workflow
-./scripts/run-github-actions-locally.sh non-main
-
-# Run specific job
-./scripts/run-github-actions-locally.sh non-main python-styling
-./scripts/run-github-actions-locally.sh non-main ts-unit
-
-# Run main workflow
-./scripts/run-github-actions-locally.sh main
-```
-
-**Requirements:**
-
-- Docker Desktop running
-- `act` installed (`brew install act`)
-
-**Available jobs:**
-
-Non-main workflow jobs:
-
-- `python-styling` - Pre-commit checks
-- `python-unit` - Python unit tests
-- `ts-eslint` - ESLint
-- `ts-prettier` - Prettier
-- `ts-stylelint` - Stylelint
-- `ts-typecheck` - TypeScript type checking
-- `ts-unit` - Frontend unit tests
-- `ts-storybook-build` - Storybook build
-- `ts-storybook-test` - Storybook tests
-- `semgrep` - Security scan
-- `docs` - Documentation build
-
-**Notes:**
-
-- First run downloads container images (~2GB)
-- Subsequent runs use cached images
-- Secrets in GitHub aren't available locally (use `.secrets` file if needed)
-
-### When to use which approach
-
-| Scenario                              | Use                             |
-| ------------------------------------- | ------------------------------- |
-| Quick feedback during development     | `run-ci-checks.sh`              |
-| Final check before pushing            | `run-ci-checks.sh`              |
-| Debugging environment-specific issues | `run-github-actions-locally.sh` |
-| CI passes locally but fails on GitHub | `run-github-actions-locally.sh` |
-| Need exact parity with CI             | `run-github-actions-locally.sh` |
-
-## Caching strategy
-
-The pipeline uses aggressive caching to improve performance:
-
-### Python checks
-
-- **Pre-commit cache:** Hook installations and environments
-- **Poetry venv:** Python dependencies installed via Poetry
-- **Pip cache:** Package downloads
-
-**Cache keys:**
-
-- Styling: `pc-styling-{os}-py{version}-{pre-commit-config-hash}`
-- Unit: `pc-unit-{os}-py{version}-{poetry-lock-hash}`
-
-### TypeScript checks
-
-- **Yarn cache:** Package downloads and install state
-- **node_modules:** Installed dependencies
-- **Playwright browsers:** Chromium for Storybook tests
-- **Storybook artifacts:** Build cache for faster rebuilds
-- **ESLint cache:** Linting results for unchanged files
-
-**Cache keys:**
-
-- Yarn: `{os}-yarn4-nm-{yarn-lock-hash}`
-- Playwright: `{os}-playwright-{package-json-hash}`
-- Storybook: `{os}-storybook-{src-and-config-hash}`
-- ESLint: `{os}-eslint-{files-hash}`
-
-### Documentation builds
-
-- **Yarn dependencies:** Frontend docs tooling
-- **Poetry dependencies:** MkDocs and plugins
-- **Storybook build:** Reused from TypeScript checks
-
-**Cache keys:**
-
-- Yarn: `{os}-yarn4-docs-{yarn-lock-hash}`
-- Poetry: `{os}-poetry-docs-py{version}-{poetry-lock-hash}`
-- Storybook: `{os}-storybook-build-{src-hash}`
+Each job authenticates via Workload Identity Federation with the environment-specific service account.
 
 ## Permissions
 
-### Feature workflow
+### Feature / Copilot workflow
 
 ```yaml
 permissions:
-  contents: write
+  contents: read
+  pull-requests: write
 ```
 
-Required for auto-merge functionality (pushing to `develop` branch).
+Read-only contents access; write access to pull requests required for auto-PR creation.
 
-### Develop workflow
+### Deploy staging and teaching / Deploy production workflows
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Required for GCP deployment via Workload Identity Federation (OIDC).
+
+### Documentation workflow
 
 ```yaml
 permissions:
@@ -344,33 +234,64 @@ permissions:
   id-token: write
 ```
 
-Required for GitHub Pages deployment (OIDC authentication) and GCP deployment.
+Required for GitHub Pages deployment (OIDC authentication).
 
-### Main workflow
+## Docker build targets
+
+The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is the **last stage**, which means building without an explicit `--target` produces the admin CLI image instead of the web server.
+
+All deploy workflows **must** specify `target: prod` in the Docker build step:
 
 ```yaml
-permissions:
-  contents: read
-  id-token: write
+- name: Build image
+  uses: docker/build-push-action@v6
+  with:
+    target: prod # Must be explicit — default (admin) is not the web server
 ```
-
-Required for GCP production deployment via Workload Identity Federation.
 
 ## Branch protection
 
-### `develop` branch
-
-1. **Required checks:** All jobs in feature workflow must pass before merge
-2. **Automatic merging:** Feature branches auto-merge to `develop` when checks pass
-3. **Merge commit strategy:** Always uses `--no-ff` to preserve branch history
-4. **Conflict detection:** Aborts merge and fails workflow on conflicts
-
 ### `main` branch
 
-1. **PR required:** Only `release/*` branches may PR to `main`
-2. **No direct pushes:** All changes must come through a reviewed PR
-3. **Required reviews:** At least one approval before merge
-4. **Back-merge:** After merging to `main`, changes are merged back into `develop`
+1. **PR required:** All changes must come through a reviewed pull request
+2. **Required status checks:** All 10 CI checks must pass (strict — branch must be up-to-date)
+3. **No direct pushes:** Enforced via GitHub ruleset
+4. **Auto-deploy:** Push to `main` triggers staging + teaching deploy
+
+### `clinical-live` branch
+
+1. **PR required:** Receives merges from `main` only
+2. **No direct pushes:** Enforced via GitHub ruleset
+3. **Auto-deploy:** Push to `clinical-live` triggers production deploy
+
+## Required status checks
+
+All 10 checks must pass before a PR can merge to `main`:
+
+### Python checks
+
+| Check name       | What it does                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| `Python styling` | Runs pre-commit hooks (ruff, black, mypy, bandit, cspell, trailing whitespace, YAML/TOML/JSON validation) |
+| `Python unit`    | Runs `pytest` (excludes integration and e2e markers)                                                      |
+
+### TypeScript checks
+
+| Check name                              | What it does                                      |
+| --------------------------------------- | ------------------------------------------------- |
+| `typescript_checks (eslint)`            | ESLint on frontend source                         |
+| `typescript_checks (prettier)`          | Prettier formatting check                         |
+| `typescript_checks (stylelint)`         | CSS/SCSS linting                                  |
+| `typescript_checks (typecheck:all)`     | TypeScript strict mode compilation                |
+| `typescript_checks (unit-test:run)`     | Vitest unit tests                                 |
+| `typescript_checks (storybook:build)`   | Storybook static build succeeds                   |
+| `typescript_checks (storybook:test:ci)` | Storybook interaction tests (Playwright/Chromium) |
+
+### Security checks
+
+| Check name                | What it does                                      |
+| ------------------------- | ------------------------------------------------- |
+| `Semgrep (frontend SAST)` | Static analysis security testing on frontend code |
 
 ## Slack notifications
 
@@ -380,9 +301,8 @@ All workflows send notifications to a Slack channel on both success and failure:
 
 - ❌ Python checks failure (per matrix job)
 - ❌ TypeScript checks failure (per matrix job)
-- ❌ Docs build failure
-- ❌ Merge failure
-- ✅ Successful merge to `develop`
+- ❌ Frontend security failure
+- ❌ Documentation build failure
 - ✅ Successful staging + teaching deployment
 - ✅ Successful production deployment
 - ✅ Successful docs deployment
@@ -396,7 +316,6 @@ All workflows send notifications to a Slack channel on both success and failure:
 - Commit author
 - Commit SHA (with link to GitHub)
 - GitHub Actions run link
-- For merge commits: Original branch SHA (not merge commit SHA)
 
 **Setup:**
 
@@ -410,38 +329,48 @@ All jobs have explicit timeouts to prevent hung workflows:
 - TypeScript checks: 15 minutes
 - Frontend security: 10 minutes
 - Documentation build: 20 minutes
-- Merge to main: Default (360 minutes)
-- Main workflow build: Default (360 minutes)
-- Main workflow deploy: Default (360 minutes)
+- Deploy jobs: Default (360 minutes)
 
 ## Troubleshooting
 
 ### Checks fail locally but pass in CI
 
-Run the exact CI environment locally:
+Check that you are running the same commands as CI:
 
 ```bash
-./scripts/run-github-actions-locally.sh non-main [job-name]
+# Python styling
+pre-commit run --all-files
+
+# Python unit tests
+cd backend && poetry run pytest -m "not integration and not e2e"
+
+# TypeScript checks
+cd frontend && yarn eslint && yarn prettier:check && yarn typecheck:all && yarn unit-test:run
 ```
 
-### Checks pass locally but fail in CI
+### PR not created automatically
 
-Common causes:
+The `open-pr` job only runs on push events to `feature/**` or `copilot/**`. Check:
 
-1. **Uncommitted changes:** CI runs against committed code only
-2. **Cache differences:** CI uses GitHub's cache, local uses your machine's
-3. **Environment variables:** Check `.env` files aren't in `.gitignore`
-4. **Node/Python versions:** Ensure local versions match CI (Node 22/24, Python 3.13)
+1. Branch name matches `feature/**` or `copilot/**`
+2. All CI checks passed
+3. No existing open PR from the same branch to `main`
 
-### Merge conflicts
+### Staging/teaching not deploying
 
-The auto-merge job will abort on conflicts. To resolve:
+The deploy workflow only triggers on push to `main`. Check:
 
-1. Fetch latest develop: `git fetch origin develop`
-2. Merge develop into your branch: `git merge origin/develop`
-3. Resolve conflicts locally
-4. Push resolved branch: `git push`
-5. Workflow will retry merge automatically
+1. PR was merged to `main` (not just closed)
+2. Changes were to `backend/**`, `frontend/**`, or `shared/**` (not docs-only)
+3. Workflow shows in GitHub Actions → `Deploy to staging and teaching`
+
+### Production not deploying
+
+The production deploy triggers on push to `clinical-live`. Check:
+
+1. `main` changes were merged forward to `clinical-live`
+2. Changes were not docs-only
+3. Workflow shows in GitHub Actions → `Deploy to production`
 
 ### Documentation build failures
 
@@ -452,30 +381,28 @@ Check that all required files exist:
 - Storybook: `yarn storybook:build` in `frontend/`
 - MkDocs: `mkdocs build` from `backend/` with `-f ../docs/mkdocs.yml`
 
-### Cache issues
+## Release process
 
-If caches become corrupted:
-
-1. **GitHub UI:** Go to Actions → Caches → Delete specific cache
-2. **Force rebuild:** Push with `[skip cache]` in commit message (not implemented, delete cache manually)
-3. **Local:** Delete `.venv`, `node_modules`, `.yarn/cache` and reinstall
+1. **Feature development:** Create `feature/my-feature` branch, develop, push → CI runs, PR opens to `main`
+2. **Code review:** Review and merge PR to `main` → staging + teaching deploy automatically
+3. **Verify on staging:** Test changes on staging environment
+4. **Promote to production:** Merge `main` into `clinical-live` → production deploy automatically
 
 ## Workflow dependencies
 
 ```mermaid
 graph LR
-    A[python_checks] --> D[docs_build]
+    A[python_checks] --> D[open-pr]
     B[typescript_checks] --> D
     C[frontend_security] --> D
-    D --> E[merge-to-develop]
-    E --> F[develop workflow]
-    F --> G[build images]
-    G --> H[deploy staging + teaching]
-    F --> I[build docs]
-    I --> J[deploy GitHub Pages]
-    K[PR: release → main] --> L[main workflow]
-    L --> M[build images]
-    M --> N[deploy production]
+    D --> E[PR to main]
+    E -->|merged| F[push to main]
+    F --> G[deploy-staging-teaching]
+    G --> H[staging + teaching deployed]
+    F --> I[docs workflow]
+    I --> J[GitHub Pages updated]
+    K[merge main to clinical-live] --> L[deploy-production]
+    L --> M[production deployed]
 ```
 
 ## Performance metrics
@@ -486,14 +413,14 @@ Typical run times (with warm caches):
 - **Python unit tests:** ~1m
 - **TypeScript checks:** ~1-3m per job (7 parallel)
 - **Frontend security:** ~30s
-- **Documentation build:** ~3-5m
 - **Total feature workflow:** ~5-8m
-- **Develop workflow (build + deploy):** ~5-10m
-- **Main workflow (build + prod deploy):** ~5-10m
+- **Deploy staging + teaching:** ~5-10m
+- **Deploy production:** ~5-10m
+- **Documentation build + deploy:** ~3-5m
 
 **Cold cache times:**
 
-- First run can take 10-15m for non-main workflow
+- First run can take 10-15m for the feature/copilot workflow
 - Package installation dominates cold cache time
 - Subsequent runs benefit from GitHub Actions cache
 
@@ -506,25 +433,9 @@ Typical run times (with warm caches):
 5. **Dependency scanning:** Semgrep runs on every push
 6. **Code analysis:** Pre-commit hooks include bandit (Python security linter)
 
-## Release process
-
-1. **Cut release branch:** `git checkout develop && git checkout -b release/x.y.z`
-2. **Bug-fixes only:** Commit fixes directly to the release branch
-3. **Open PR:** `release/x.y.z` → `main`
-4. **Review and merge:** On merge, CI builds and deploys to production
-5. **Back-merge:** Merge `main` back into `develop` to sync fixes: `git checkout develop && git merge main`
-
-## Future improvements
-
-- [ ] Add integration tests to pipeline
-- [ ] Add E2E tests with Playwright
-- [ ] Add performance benchmarking (Lighthouse CI)
-- [ ] Add coverage reporting (Codecov or similar)
-- [ ] Add dependency vulnerability scanning (Dependabot/Snyk)
-
 ## Related documentation
 
-- [Local CI testing scripts](../../scripts/README.md)
+- [GitHub configuration and rulesets](../github/)
 - [Pre-commit hooks configuration](https://github.com/bailey-medics/quillmedical/blob/main/.pre-commit-config.yaml)
 - [Semgrep rules](https://github.com/bailey-medics/quillmedical/blob/main/frontend/.semgrep.yml)
 - [MkDocs configuration](https://github.com/bailey-medics/quillmedical/blob/main/docs/mkdocs.yml)
