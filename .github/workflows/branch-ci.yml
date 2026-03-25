@@ -135,14 +135,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              ${{ startsWith(github.ref_name, 'renovate/') && '"icon_url": "https://avatars.githubusercontent.com/in/2740",' || '' }}
-              "text": "❌ ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'Feature' }} python ${{ matrix.task }} checks failed",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'Feature' }} python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -241,14 +240,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              ${{ startsWith(github.ref_name, 'renovate/') && '"icon_url": "https://avatars.githubusercontent.com/in/2740",' || '' }}
-              "text": "❌ ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'Feature' }} TypeScript ${{ matrix.task }} checks failed",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'Feature' }} TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -316,14 +314,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              ${{ startsWith(github.ref_name, 'renovate/') && '"icon_url": "https://avatars.githubusercontent.com/in/2740",' || '' }}
-              "text": "❌ Failed to create PR for ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'feature' }} branch",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*❌ Failed to create PR for ${{ startsWith(github.ref_name, 'renovate/') && 'Renovate' || 'feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
