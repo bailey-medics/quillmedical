@@ -39,7 +39,7 @@ pytest = "^9.0.0"
 pytest-cov = "^7.0.0"
 mkdocstrings = {extras = ["python"], version = "^1.0.0"}
 mkdocs-material = "^9.6.20"
-griffe = "^1.14.0"
+griffe = "^2.0.0"
 mkdocs-gen-files = "^0.6.0"
 mkdocs-section-index = "^0.3.10"
 types-pyyaml = "^6.0.0"
