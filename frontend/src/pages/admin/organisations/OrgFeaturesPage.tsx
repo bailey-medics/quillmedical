@@ -220,7 +220,6 @@ export default function OrgFeaturesPage() {
                 </Stack>
 
                 <SolidSwitch
-                  label={feature.label}
                   checked={draftKeys.has(feature.key)}
                   disabled={saving}
                   onChange={() => toggleDraft(feature.key)}

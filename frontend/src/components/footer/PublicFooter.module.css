@@ -16,6 +16,14 @@
   }
 }
 
+.logoImage {
+  height: 1.5rem;
+
+  @media (max-width: $mantine-breakpoint-md) {
+    height: 1.05rem;
+  }
+}
+
 .description {
   margin-top: var(--mantine-spacing-xs);
 
@@ -27,6 +35,7 @@
 .inner {
   display: flex;
   justify-content: space-between;
+  gap: var(--mantine-spacing-xl);
 
   @media (max-width: $mantine-breakpoint-sm) {
     flex-direction: column;

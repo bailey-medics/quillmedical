@@ -162,14 +162,14 @@ The project includes **90 component story files** across various UI categories:
 
 ### Backgrounds
 
-- **DarkBackground** - Dark background component
-- **HeroBackground** - Hero section background
-- **LightBackground** - Light background component
+- **PublicDarkBackground** - Dark background component
+- **PublicHeroBackground** - Hero section background
+- **PublicLightBackground** - Light background component
 
 ### Cards
 
 - **ActionCard** - Card with icon, title, subtitle, and action (see Actions & Buttons)
-- **FeatureCard** - Feature highlight card
+- **PublicFeatureCard** - Feature highlight card
 - **PublicInfoCard** - Public-facing informational card
 - **StatCard** - Statistics card component
 

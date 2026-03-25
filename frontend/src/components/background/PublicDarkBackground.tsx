@@ -2,11 +2,13 @@ import { colours } from "@/styles/colours";
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 
-interface DarkBackgroundProps {
+interface PublicDarkBackgroundProps {
   children?: ReactNode;
 }
 
-export default function DarkBackground({ children }: DarkBackgroundProps) {
+export default function PublicDarkBackground({
+  children,
+}: PublicDarkBackgroundProps) {
   return (
     <Box
       data-testid="dark-background"

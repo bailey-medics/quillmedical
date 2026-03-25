@@ -1,23 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import DarkBackground from "./DarkBackground";
 import { Container, Stack } from "@mantine/core";
+import PublicHeroBackground from "./PublicHeroBackground";
 import PublicTitle from "@/components/typography/PublicTitle";
 
-const meta = {
-  title: "Public/Background/DarkBackground",
-  component: DarkBackground,
+const meta: Meta<typeof PublicHeroBackground> = {
+  title: "Public/Background/PublicHeroBackground",
+  component: PublicHeroBackground,
   parameters: {
     layout: "fullscreen",
   },
-} satisfies Meta<typeof DarkBackground>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof PublicHeroBackground>;
 
 export const WithContent: Story = {
-  args: { children: undefined },
   render: () => (
-    <DarkBackground>
+    <PublicHeroBackground>
       <Container size="lg" py="xl">
         <Stack align="center" justify="center" style={{ minHeight: "60vh" }}>
           <PublicTitle
@@ -27,6 +26,6 @@ export const WithContent: Story = {
           />
         </Stack>
       </Container>
-    </DarkBackground>
+    </PublicHeroBackground>
   ),
 };

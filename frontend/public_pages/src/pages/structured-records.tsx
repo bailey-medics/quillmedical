@@ -1,5 +1,5 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
@@ -14,7 +14,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <div style={{ color: colours.amber }}>
@@ -29,9 +29,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Semantically rich data" c="white" />
@@ -49,9 +49,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Built on open standards" c="white" />
@@ -68,7 +68,7 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
     </PublicLayout>
   </MantineProvider>,
 );

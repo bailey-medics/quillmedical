@@ -11,7 +11,7 @@ import classes from "./SolidSwitch.module.css";
 
 interface SolidSwitchProps extends Omit<SwitchProps, "label" | "description"> {
   /** Label displayed above the switch (matches form field style) */
-  label: string;
+  label?: string;
   /** Helper text displayed below the switch */
   description?: string;
 }
@@ -26,7 +26,7 @@ export default function SolidSwitch({
 }: SolidSwitchProps) {
   return (
     <div>
-      <Text className={classes.topLabel}>{label}</Text>
+      {label && <Text className={classes.topLabel}>{label}</Text>}
       <Switch
         {...rest}
         checked={checked}

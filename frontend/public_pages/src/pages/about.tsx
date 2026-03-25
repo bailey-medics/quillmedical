@@ -1,6 +1,6 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import HeroBackground from "@/components/background/HeroBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicHeroBackground from "@/components/background/PublicHeroBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
@@ -12,7 +12,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <HeroBackground>
+      <PublicHeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="About Quill Medical" />
@@ -25,9 +25,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </HeroBackground>
+      </PublicHeroBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Built by clinicians" c="white" />
@@ -46,9 +46,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Our commitment" c="white" />
@@ -65,7 +65,7 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
     </PublicLayout>
   </MantineProvider>,
 );

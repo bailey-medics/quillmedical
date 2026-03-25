@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import Icon from "@/components/icons/Icon";
-import classes from "./FeatureCard.module.css";
+import classes from "./PublicFeatureCard.module.css";
 
-export interface FeatureCardProps {
+export interface PublicFeatureCardProps {
   /** Tabler icon component displayed at the top */
   icon: ComponentType;
   /** Card title */
@@ -13,12 +13,12 @@ export interface FeatureCardProps {
   href?: string;
 }
 
-export function FeatureCard({
+export function PublicFeatureCard({
   icon: IconComponent,
   title,
   body,
   href,
-}: FeatureCardProps) {
+}: PublicFeatureCardProps) {
   const content = (
     <>
       <div className={classes.icon}>
@@ -48,4 +48,4 @@ export function FeatureCard({
   );
 }
 
-export default FeatureCard;
+export default PublicFeatureCard;

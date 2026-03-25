@@ -1,34 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
-import HeroBackground from "./HeroBackground";
+import PublicHeroBackground from "./PublicHeroBackground";
 
-describe("HeroBackground", () => {
+describe("PublicHeroBackground", () => {
   it("renders children", () => {
     renderWithMantine(
-      <HeroBackground>
+      <PublicHeroBackground>
         <p>Hello world</p>
-      </HeroBackground>,
+      </PublicHeroBackground>,
     );
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
   it("renders the outer container", () => {
-    renderWithMantine(<HeroBackground />);
+    renderWithMantine(<PublicHeroBackground />);
     expect(screen.getByTestId("hero-background")).toBeInTheDocument();
   });
 
   it("renders two decorative layers", () => {
-    renderWithMantine(<HeroBackground />);
+    renderWithMantine(<PublicHeroBackground />);
     expect(screen.getByTestId("hero-glow")).toBeInTheDocument();
     expect(screen.getByTestId("hero-grid")).toBeInTheDocument();
   });
 
   it("renders the content slot", () => {
     renderWithMantine(
-      <HeroBackground>
+      <PublicHeroBackground>
         <p>Content</p>
-      </HeroBackground>,
+      </PublicHeroBackground>,
     );
     expect(screen.getByTestId("hero-content")).toBeInTheDocument();
     expect(screen.getByText("Content")).toBeInTheDocument();
