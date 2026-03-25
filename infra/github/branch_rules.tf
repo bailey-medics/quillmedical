@@ -159,8 +159,9 @@ resource "github_repository_ruleset" "protected_branches" {
 # Purpose:
 #   Enforces a consistent naming convention across the repository. Any branch
 #   that is not in the protected set (main, clinical-live, release/**) must
-#   match the pattern feature/*, hotfix/*, or copilot/* (GitHub Copilot
-#   coding agent). Branches that don't conform are rejected at creation time.
+#   match the pattern feature/*, hotfix/*, copilot/*, or renovate/*
+#   (automated dependency updates). Branches that don't conform are
+#   rejected at creation time.
 #
 #   This keeps the commit graph clean and predictable, making it easier to
 #   trace changes during clinical safety audits and incident investigations.
@@ -185,8 +186,8 @@ resource "github_repository_ruleset" "branch_naming" {
   rules {
     branch_name_pattern {
       operator = "regex"
-      pattern  = "^(feature|hotfix|copilot)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, or copilot/* convention"
+      pattern  = "^(feature|hotfix|copilot|renovate)/.+"
+      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
       negate   = false
     }
   }
@@ -245,8 +246,8 @@ resource "github_repository_ruleset" "qb_branch_naming" {
   rules {
     branch_name_pattern {
       operator = "regex"
-      pattern  = "^(feature|hotfix|copilot)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, or copilot/* convention"
+      pattern  = "^(feature|hotfix|copilot|renovate)/.+"
+      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
       negate   = false
     }
   }

@@ -26,10 +26,6 @@ on:
     branches: [main]
     paths:
       - "infra/github/**"
-  pull_request:
-    branches: [main]
-    paths:
-      - "infra/github/**"
 
 permissions:
   contents: read
@@ -41,11 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Warn via Slack that manual apply is required
-        if: github.event_name == 'push'
         uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
+          errors: true
           payload: |
             {
               "text": "⚠️ GitHub rulesets changed — manual terraform apply required",
@@ -54,7 +50,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*⚠️ GITHUB RULESETS CHANGED — MANUAL TERRAFORM APPLY REQUIRED*\n\nFiles under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.\n\n*Action required:*\n```\nexport GITHUB_TOKEN=$(gh auth token)\ncd infra/github/\nterraform plan -var-file=terraform.tfvars\nterraform apply -var-file=terraform.tfvars\n```\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*⚠️ GITHUB RULESETS CHANGED — MANUAL TERRAFORM APPLY REQUIRED*\n\nFiles under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.\n\n*Action required:*\n```\njust terraform-github\n```\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]

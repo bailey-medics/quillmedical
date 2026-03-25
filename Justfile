@@ -261,6 +261,24 @@ poetry-path:
     echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
 
+alias tf-gh := terraform-github
+# Apply GitHub rulesets via Terraform (branch naming, protection rules)
+terraform-github:
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-github"
+    set -euo pipefail
+    cd infra/github
+    export GITHUB_TOKEN=$(gh auth token)
+    terraform init -input=false
+    terraform plan -var-file=terraform.tfvars
+    read -rp "Apply these changes? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file=terraform.tfvars -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
 alias pup := public-pages
 # Run public pages dev server
 public-pages:

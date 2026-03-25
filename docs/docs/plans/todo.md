@@ -82,6 +82,18 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
       Option 1 is recommended as a first step; option 3 may be worth investing
       in later as the app grows.
 
+## Dependency management (Renovate / Dependabot)
+
+- [ ] Enable **Dependabot alerts** in repo Settings → Security & analysis
+- [ ] Ensure the `info@quill-medical.com` GitHub account **Watches** the repo
+      (All activity or Custom → Security alerts)
+- [ ] Configure **email routing** in that account's Settings → Notifications →
+      Custom routing to route `bailey-medics/quillmedical` notifications to
+      `info@quill-medical.com`
+- [ ] Create the following repo labels if they don't already exist:
+      `dependencies`, `security`, `major-version-bump`, `hotfix`,
+      `tier-1-clinical`, `back-merge`
+
 ## MISC
 
 - [ ] Update all libraries to most recent

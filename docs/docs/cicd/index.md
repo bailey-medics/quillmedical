@@ -16,7 +16,7 @@ graph LR
 - **`feature/*`** — individual feature/fix branches; CI runs checks and opens a PR to `main`
 - **`copilot/*`** — AI-generated branches; same CI pipeline as `feature/*`
 - **`hotfix/*`** — urgent production fixes; same CI pipeline with additional docs build
-- **`release/**`** — release candidate branches; CI runs the release-hotfix workflow, but releases typically promote via `main` → `clinical-live`
+- **`release/**`** — release candidate branches; CI runs the release-hotfix workflow, but releases typically promote via `main`→`clinical-live`
 - **`main`** — integration branch; auto-deploys to staging + teaching on merge
 - **`clinical-live`** — production-ready code; only receives merges from `main`; auto-deploys to production
 
@@ -39,13 +39,14 @@ graph TD
 
 ## Workflows
 
-### Feature / Copilot workflow
+### Branch CI workflow
 
-**File:** [`.github/workflows/feature-copilot.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/feature-copilot.yml)
+**File:** [`.github/workflows/branch-ci.yml`](https://github.com/bailey-medics/quillmedical/blob/main/.github/workflows/branch-ci.yml)
 
 **Triggers:**
 
-- Push to `feature/**` or `copilot/**`
+- Push to any branch except `main`, `clinical-live`, `release/**`, and `hotfix/**`
+- Covers: `feature/*`, `copilot/*`, `renovate/*`, `dependabot/*`, and any other development branch
 
 **Jobs:**
 
@@ -245,7 +246,7 @@ All deploy workflows **must** specify `target: prod` in the Docker build step:
 - name: Build image
   uses: docker/build-push-action@v6
   with:
-    target: prod   # Must be explicit — default (admin) is not the web server
+    target: prod # Must be explicit — default (admin) is not the web server
 ```
 
 ## Branch protection
