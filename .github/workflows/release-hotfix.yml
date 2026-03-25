@@ -118,7 +118,7 @@ jobs:
 
       - name: Notify Slack on Python checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -223,7 +223,7 @@ jobs:
 
       - name: Notify Slack on TypeScript checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -359,7 +359,7 @@ jobs:
 
       - name: Notify Slack on docs build failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
