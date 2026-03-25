@@ -47,14 +47,14 @@ jobs:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
       # ---- caches (pick per task) ----
       - name: Cache pre-commit & venv (styling)
         if: matrix.task == 'styling'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             .venv
@@ -95,7 +95,7 @@ jobs:
 
       - name: Cache Poetry venv & pip (unit)
         if: matrix.task == 'unit'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             backend/.venv
@@ -129,19 +129,19 @@ jobs:
 
       - name: Notify Slack on Python checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -159,9 +159,9 @@ jobs:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
 
       - name: Enable Corepack & pin Yarn
         run: |
@@ -170,7 +170,7 @@ jobs:
           yarn --version
 
       - name: Cache Yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             frontend/.yarn/cache
@@ -186,7 +186,7 @@ jobs:
 
       - name: Cache Playwright browsers
         if: matrix.task == 'storybook:test:ci'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
@@ -195,7 +195,7 @@ jobs:
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build' || matrix.task == 'storybook:test:ci'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             frontend/node_modules/.vite
@@ -206,7 +206,7 @@ jobs:
 
       - name: Cache ESLint
         if: matrix.task == 'eslint'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: frontend/.eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
@@ -234,19 +234,19 @@ jobs:
 
       - name: Notify Slack on TypeScript checks failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
@@ -308,19 +308,19 @@ jobs:
 
       - name: Notify Slack on PR creation failure
         if: failure()
-        uses: slackapi/slack-github-action@v3.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch",
+              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
