@@ -2,11 +2,13 @@ import { colours } from "@/styles/colours";
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 
-interface HeroBackgroundProps {
+interface PublicHeroBackgroundProps {
   children?: ReactNode;
 }
 
-export default function HeroBackground({ children }: HeroBackgroundProps) {
+export default function PublicHeroBackground({
+  children,
+}: PublicHeroBackgroundProps) {
   return (
     <Box
       data-testid="hero-background"

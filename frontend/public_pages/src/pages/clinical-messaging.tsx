@@ -1,6 +1,6 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import HeroBackground from "@/components/background/HeroBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicHeroBackground from "@/components/background/PublicHeroBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
@@ -15,7 +15,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <HeroBackground>
+      <PublicHeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <div style={{ color: colours.amber }}>
@@ -39,9 +39,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </HeroBackground>
+      </PublicHeroBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Clinical messaging" c="white" />
@@ -54,9 +54,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Governance without friction" c="white" />
@@ -73,9 +73,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Designed for clinical workflows" c="white" />
@@ -93,7 +93,7 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
     </PublicLayout>
   </MantineProvider>,
 );

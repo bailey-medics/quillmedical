@@ -4,7 +4,7 @@ import { Box } from "@mantine/core";
 import { colours } from "@/styles/colours";
 
 const meta = {
-  title: "Public/PageHeader/PublicTitle",
+  title: "Public/Typography/PublicTitle",
   component: PublicTitle,
   parameters: {
     layout: "padded",

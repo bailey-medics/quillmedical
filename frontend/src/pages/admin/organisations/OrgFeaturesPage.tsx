@@ -24,7 +24,7 @@ import {
 import { IconAlertCircle } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
-import SolidSwitch from "@/components/switch/SolidSwitch";
+import SolidSwitch from "@/components/form/SolidSwitch";
 import DirtyFormNavigation from "@/components/warnings";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";

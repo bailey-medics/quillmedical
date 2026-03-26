@@ -66,7 +66,7 @@ export default function PublicFooter() {
             <img
               src="/quill-name-long-white-amber.png"
               alt="Quill Medical"
-              style={{ height: "1.5rem" }}
+              className={classes.logoImage}
             />
             <Text size="xs" c="dimmed">
               A modern, secure platform for patients and clinics to communicate

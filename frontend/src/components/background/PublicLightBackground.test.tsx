@@ -1,25 +1,25 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
-import LightBackground from "./LightBackground";
+import PublicLightBackground from "./PublicLightBackground";
 
-describe("LightBackground", () => {
+describe("PublicLightBackground", () => {
   it("renders children", () => {
     renderWithMantine(
-      <LightBackground>
+      <PublicLightBackground>
         <p>Hello</p>
-      </LightBackground>,
+      </PublicLightBackground>,
     );
     expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 
   it("renders the outer container with data-testid", () => {
-    renderWithMantine(<LightBackground />);
+    renderWithMantine(<PublicLightBackground />);
     expect(screen.getByTestId("light-background")).toBeInTheDocument();
   });
 
   it("renders without children", () => {
-    renderWithMantine(<LightBackground />);
+    renderWithMantine(<PublicLightBackground />);
     expect(screen.getByTestId("light-background")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import PublicButton from "@/components/button/PublicButton";
 import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
@@ -15,7 +15,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <div style={{ color: colours.amber }}>
@@ -31,9 +31,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle
@@ -55,9 +55,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Built for every specialty" c="white" />
@@ -76,9 +76,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Try it now" c="white" />
@@ -92,7 +92,7 @@ createRoot(document.getElementById("root")!).render(
             </PublicButton>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
     </PublicLayout>
   </MantineProvider>,
 );

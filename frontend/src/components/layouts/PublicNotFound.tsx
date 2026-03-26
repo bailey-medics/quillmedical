@@ -1,4 +1,4 @@
-import DarkBackground from "@/components/background/DarkBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
 import PublicButton from "@/components/button/PublicButton";
 import PublicText from "@/components/typography/PublicText";
 import PublicTitle from "@/components/typography/PublicTitle";
@@ -13,7 +13,7 @@ export default function PublicNotFound({
   homeHref = "/",
 }: PublicNotFoundProps) {
   return (
-    <DarkBackground>
+    <PublicDarkBackground>
       <Container size="lg" py="xl">
         <Stack align="center" gap="md" py="xl" style={{ minHeight: "50dvh" }}>
           <PublicTitle title="404 — Page not found" c="white" />
@@ -24,6 +24,6 @@ export default function PublicNotFound({
           <PublicButton href={homeHref}>Go to home</PublicButton>
         </Stack>
       </Container>
-    </DarkBackground>
+    </PublicDarkBackground>
   );
 }

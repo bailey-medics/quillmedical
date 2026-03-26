@@ -3,16 +3,16 @@ import { VariantRow, VariantStack } from "@/stories/variants";
 import SolidSwitch from "./SolidSwitch";
 
 const meta: Meta<typeof SolidSwitch> = {
-  title: "Switch/SolidSwitch",
+  title: "Form/SolidSwitch",
   component: SolidSwitch,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
   argTypes: {
     checked: { control: "boolean", description: "Whether the switch is on" },
-    label: { control: "text", description: "Switch label" },
+    label: { control: "text", description: "Label above the switch" },
     description: {
       control: "text",
-      description: "Description text below the label",
+      description: "Helper text below the switch",
     },
     disabled: {
       control: "boolean",
@@ -41,13 +41,6 @@ export const WithDescription: Story = {
   },
 };
 
-export const Checked: Story = {
-  args: {
-    label: "Enabled",
-    checked: true,
-  },
-};
-
 export const Disabled: Story = {
   render: () => (
     <VariantStack>
@@ -65,9 +58,9 @@ export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "md" ? "md (default)" : size}>
-          <SolidSwitch label="Off" size={size} />
-          <SolidSwitch label="On" size={size} checked />
+        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
+          <SolidSwitch label="Toggle" size={size} />
+          <SolidSwitch label="Toggle" size={size} checked />
         </VariantRow>
       ))}
     </VariantStack>

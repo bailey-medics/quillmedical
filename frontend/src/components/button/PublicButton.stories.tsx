@@ -13,7 +13,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg={colours.navy} p="xl">
+      <Box bg={colours.navy} p="xl" c="white" display="inline-block">
         <Story />
       </Box>
     ),
@@ -26,13 +26,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     children: "Get started",
-  },
-};
-
-export const WithLink: Story = {
-  args: {
-    children: "Teaching",
-    href: "https://teaching.quill-medical.com",
   },
 };
 

@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FeatureCard } from "./FeatureCard";
-import FeatureCardGrid from "./FeatureCardGrid";
+import { PublicFeatureCard } from "./PublicFeatureCard";
+import PublicFeatureCardGrid from "./PublicFeatureCardGrid";
 import { Box } from "@mantine/core";
 import { IconMessage } from "@tabler/icons-react";
 import { colours } from "@/styles/colours";
 
 const meta = {
-  title: "Public/FeatureCard/FeatureCard",
-  component: FeatureCard,
+  title: "Public/FeatureCard/PublicFeatureCard",
+  component: PublicFeatureCard,
   parameters: {
     layout: "padded",
     backgrounds: { default: "dark" },
@@ -19,7 +19,7 @@ const meta = {
       </Box>
     ),
   ],
-} satisfies Meta<typeof FeatureCard>;
+} satisfies Meta<typeof PublicFeatureCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -71,9 +71,9 @@ const features = [
 export const Grid: Story = {
   args: { icon: IconMessage, title: "", body: "" },
   render: () => (
-    <FeatureCardGrid>
+    <PublicFeatureCardGrid>
       {features.map((f) => (
-        <FeatureCard
+        <PublicFeatureCard
           key={f.title}
           icon={IconMessage}
           title={f.title}
@@ -81,6 +81,6 @@ export const Grid: Story = {
           href="/features"
         />
       ))}
-    </FeatureCardGrid>
+    </PublicFeatureCardGrid>
   ),
 };

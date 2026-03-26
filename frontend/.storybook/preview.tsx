@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "../src/styles/colours.css";
 import "../src/styles/typography.css";
 import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
@@ -33,6 +34,37 @@ import { theme } from "../src/theme";
   // Mock /auth/refresh to prevent the api client from redirecting to login
   if (url.includes("/auth/refresh")) {
     return new Response(null, { status: 401, statusText: "Unauthorised" });
+  }
+  // Mock /patients endpoint for NewMessageModal
+  if (url.includes("/patients")) {
+    return new Response(
+      JSON.stringify({
+        patients: [
+          { id: "p-1", name: [{ given: ["James"], family: "Green" }] },
+          { id: "p-2", name: [{ given: ["Sarah"], family: "Mitchell" }] },
+          { id: "p-3", name: [{ given: ["Robert"], family: "Chen" }] },
+          { id: "p-4", name: [{ given: ["Emily"], family: "Okonkwo" }] },
+          { id: "p-5", name: [{ given: ["David"], family: "Patel" }] },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  // Mock /users endpoint for NewMessageModal
+  if (url.includes("/users")) {
+    return new Response(
+      JSON.stringify({
+        users: [
+          { id: 1, username: "Dr Corbett" },
+          { id: 2, username: "Nurse Adams" },
+          { id: 3, username: "Dr Patel" },
+          { id: 4, username: "Dr Okonkwo" },
+          { id: 5, username: "Nurse Williams" },
+          { id: 6, username: "Dr Chen" },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   }
   // Mock other endpoints as needed
   console.log("[Storybook Mock] No mock for URL, returning 404");

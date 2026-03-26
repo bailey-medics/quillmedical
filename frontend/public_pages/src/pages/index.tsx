@@ -1,9 +1,9 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import HeroBackground from "@/components/background/HeroBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicHeroBackground from "@/components/background/PublicHeroBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import PublicButton from "@/components/button/PublicButton";
-import { FeatureCard } from "@/components/feature-card/FeatureCard";
-import FeatureCardGrid from "@/components/feature-card/FeatureCardGrid";
+import { PublicFeatureCard } from "@/components/feature-card/PublicFeatureCard";
+import PublicFeatureCardGrid from "@/components/feature-card/PublicFeatureCardGrid";
 import PublicInfoCard from "@/components/info-card/PublicInfoCard";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
@@ -32,7 +32,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <HeroBackground>
+      <PublicHeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
             <QuillLogo height={8} colour="light-grey" />
@@ -75,9 +75,9 @@ createRoot(document.getElementById("root")!).render(
             />
           </SimpleGrid>
         </Container>
-      </HeroBackground>
+      </PublicHeroBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle
@@ -100,9 +100,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle
@@ -115,46 +115,46 @@ createRoot(document.getElementById("root")!).render(
               — modular by design, so you deploy only what you need.
             </PublicText>
           </Stack>
-          <FeatureCardGrid>
-            <FeatureCard
+          <PublicFeatureCardGrid>
+            <PublicFeatureCard
               icon={IconMessage}
               title="Clinical messaging"
               body="FHIR Communication resources underpin a secure, threaded messaging layer — with governance metadata kept cleanly separate from clinical content."
               href="/clinical-messaging.html"
             />
-            <FeatureCard
+            <PublicFeatureCard
               icon={IconDatabase}
               title="Structured clinical records"
               body="OpenEHR archetypes ensure clinical data is semantically rich, queryable, and portable — not free-text trapped in a notes field."
               href="/structured-records.html"
             />
-            <FeatureCard
+            <PublicFeatureCard
               icon={IconStack2}
               title="Modular deployment"
               body="Deploy Quill as a full EPR or activate only the modules your organisation needs — runtime feature gating means you grow the system alongside your workflows."
               href="/modular-deployment.html"
             />
-            <FeatureCard
+            <PublicFeatureCard
               icon={IconSlice}
               title="Competency-based access"
               body="CBAC models real NHS clinical hierarchies — locums, trainees, and consultants — with fine-grained, auditable permissions that reflect actual clinical practice."
               href="/competency-access.html"
             />
-            <FeatureCard
+            <PublicFeatureCard
               icon={IconPhoneRinging}
               title="External referrals made easy"
               body="Refer a patient and the receiving clinician gets immediate, structured access to their record. No faxes, no lost letters, no repeating history."
               href="/external-referrals.html"
             />
-            <FeatureCard
+            <PublicFeatureCard
               icon={IconChalkboardTeacher}
               title="Clinical teaching platform"
               body="A structured MCQ-based learning platform for trainees across every specialty — built on the same clinical foundation as the EPR, not bolted on as an afterthought."
               href="/clinical-teaching.html"
             />
-          </FeatureCardGrid>
+          </PublicFeatureCardGrid>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
     </PublicLayout>
   </MantineProvider>,
 );

@@ -51,6 +51,33 @@ export const Searchable: Story = {
   },
 };
 
+const mixedLengthData = [
+  { value: "1", label: "Dr Li" },
+  { value: "2", label: "Nurse Adams" },
+  { value: "3", label: "Dr Alexander Richardson-Pemberton" },
+  { value: "4", label: "Dr Wu" },
+  { value: "5", label: "Nurse Jacqueline Worthington-Smythe" },
+  { value: "6", label: "Dr Fernandez" },
+  { value: "7", label: "Nurse K" },
+  { value: "8", label: "Dr Christopher Montgomery-Hamilton" },
+  { value: "9", label: "Dr Ay" },
+  { value: "10", label: "Nurse Patricia Elizabeth Okonkwo-Robertson" },
+  { value: "11", label: "Dr Patel" },
+  { value: "12", label: "Nurse Brown" },
+  { value: "13", label: "Dr Bartholomew Henderson-Warner" },
+  { value: "14", label: "Dr Jo" },
+  { value: "15", label: "Nurse Williams" },
+];
+
+export const ManySelected: Story = {
+  args: {
+    label: "Participants",
+    placeholder: "Add staff to this conversation",
+    data: mixedLengthData,
+    defaultValue: mixedLengthData.map((s) => s.value),
+  },
+};
+
 export const Disabled: Story = {
   args: {
     label: "Participants",

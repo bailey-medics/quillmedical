@@ -1,6 +1,6 @@
-import { colours } from "@/styles/colours";
 import { Button } from "@mantine/core";
 import type { ReactNode } from "react";
+import classes from "./PublicButton.module.css";
 
 export interface PublicButtonProps {
   /** Button label */
@@ -25,36 +25,18 @@ export default function PublicButton({
   variant = "filled",
   onClick,
 }: PublicButtonProps) {
-  const filled = variant === "filled";
-
   // Map sizes up one level for ~30% larger buttons
   const sizeMap = { sm: "md", md: "lg", lg: "xl" } as const;
   const mantineSize = sizeMap[size];
 
-  const baseStyles = {
-    fontSize: "calc(var(--button-fz) * 1.3)",
-    paddingInline: "calc(var(--button-padding-x) * 1.3)",
+  const sizeStyles = {
+    root: {
+      fontSize: "calc(var(--button-fz) * 1.3)",
+      paddingInline: "calc(var(--button-padding-x) * 1.3)",
+    },
   };
 
-  const styles = filled
-    ? {
-        root: {
-          ...baseStyles,
-          backgroundColor: colours.amber,
-          color: "#333",
-          border: "none",
-          "&:hover": { backgroundColor: colours.amberHover },
-        },
-      }
-    : {
-        root: {
-          ...baseStyles,
-          backgroundColor: "transparent",
-          color: colours.amber,
-          border: `1px solid ${colours.amber}`,
-          "&:hover": { backgroundColor: "rgba(200,150,62,0.1)" },
-        },
-      };
+  const className = variant === "filled" ? classes.filled : classes.outline;
 
   if (href && !disabled) {
     return (
@@ -62,7 +44,8 @@ export default function PublicButton({
         component="a"
         href={href}
         size={mantineSize}
-        styles={styles}
+        styles={sizeStyles}
+        className={className}
         onClick={onClick}
       >
         {children}
@@ -74,7 +57,8 @@ export default function PublicButton({
     <Button
       size={mantineSize}
       disabled={disabled}
-      styles={styles}
+      styles={sizeStyles}
+      className={className}
       onClick={onClick}
     >
       {children}

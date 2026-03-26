@@ -1,0 +1,39 @@
+.filled {
+  background-color: #c8963e;
+  color: #333;
+  border: none;
+}
+
+.filled:disabled {
+  background-color: #c8963e;
+  opacity: 0.5;
+}
+
+.filled:hover:not(:disabled) {
+  background-color: #b5862f;
+  color: #333;
+}
+
+.filled:active:not(:disabled) {
+  background-color: #a07728;
+  color: #333;
+}
+
+.outline {
+  background-color: transparent;
+  color: #c8963e;
+  border: 1px solid #c8963e;
+}
+
+.outline:disabled {
+  opacity: 0.5;
+}
+
+.outline:hover:not(:disabled) {
+  background-color: rgb(200 150 62 / 10%);
+  color: #d4a854;
+}
+
+.outline:active:not(:disabled) {
+  background-color: rgb(200 150 62 / 20%);
+}

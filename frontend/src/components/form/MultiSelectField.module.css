@@ -1,19 +1,26 @@
 .input {
   font-size: var(--mantine-font-size-lg);
-  padding-top: 0;
-  padding-bottom: 0;
+  min-height: var(--input-height);
+  height: auto;
   display: flex;
   align-items: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .pillsList {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  gap: 4px;
   width: 100%;
 }
 
 .inputField {
   min-width: 0;
   flex: 0 0 0;
+}
+
+.section {
+  transform: scale(1.5);
 }
 
 /* Only expand to full width when no pills are selected (inputField is the only child) */

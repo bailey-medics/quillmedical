@@ -1,6 +1,6 @@
-import DarkBackground from "@/components/background/DarkBackground";
-import HeroBackground from "@/components/background/HeroBackground";
-import LightBackground from "@/components/background/LightBackground";
+import PublicDarkBackground from "@/components/background/PublicDarkBackground";
+import PublicHeroBackground from "@/components/background/PublicHeroBackground";
+import PublicLightBackground from "@/components/background/PublicLightBackground";
 import PublicButton from "@/components/button/PublicButton";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 createRoot(document.getElementById("root")!).render(
   <MantineProvider theme={theme} defaultColorScheme="light">
     <PublicLayout>
-      <HeroBackground>
+      <PublicHeroBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Pricing" />
@@ -24,9 +24,9 @@ createRoot(document.getElementById("root")!).render(
             </PublicText>
           </Stack>
         </Container>
-      </HeroBackground>
+      </PublicHeroBackground>
 
-      <LightBackground>
+      <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="App coming soon" c="white" />
@@ -51,9 +51,9 @@ createRoot(document.getElementById("root")!).render(
             </Group>
           </Stack>
         </Container>
-      </LightBackground>
+      </PublicLightBackground>
 
-      <DarkBackground>
+      <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Get in touch" c="white" />
@@ -67,7 +67,7 @@ createRoot(document.getElementById("root")!).render(
             </Group>
           </Stack>
         </Container>
-      </DarkBackground>
+      </PublicDarkBackground>
     </PublicLayout>
   </MantineProvider>,
 );
