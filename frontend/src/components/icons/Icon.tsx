@@ -32,6 +32,8 @@ interface IconProps {
   icon: ReactElement;
   /** Size variant - defaults to md */
   size?: IconSize;
+  /** Icon colour — any valid CSS colour value */
+  colour?: string;
   /** Optional class name for additional styling */
   className?: string;
 }
@@ -65,7 +67,12 @@ const mobileSizeMap: Record<IconSize, number> = {
  * <Icon icon={<IconUserPlus />} size="lg" />
  * ```
  */
-export default function Icon({ icon, size = "md", className }: IconProps) {
+export default function Icon({
+  icon,
+  size = "md",
+  colour,
+  className,
+}: IconProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(
     `(max-width: ${theme.breakpoints.sm})`,
@@ -77,10 +84,11 @@ export default function Icon({ icon, size = "md", className }: IconProps) {
   const sizeMap = isMobile ? mobileSizeMap : desktopSizeMap;
   const pixelSize = sizeMap[size];
 
-  // Clone the icon element and pass size and className props
+  // Clone the icon element and pass size, colour and className props
   // Type assertion needed because cloneElement doesn't know about Tabler icon props
   return cloneElement(icon, {
     size: pixelSize,
+    ...(colour ? { color: colour } : {}),
     className,
   } as Partial<typeof icon.props>);
 }

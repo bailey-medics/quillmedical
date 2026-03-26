@@ -6,5 +6,5 @@ export interface HeaderTextProps {
 }
 
 export default function HeaderText({ children }: HeaderTextProps) {
-  return <Title order={3}>{children}</Title>;
+  return <Title order={2}>{children}</Title>;
 }

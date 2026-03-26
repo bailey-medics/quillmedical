@@ -156,3 +156,41 @@ export const AllSizes: Story = {
     </Card>
   ),
 };
+
+/**
+ * Icons with custom colours.
+ */
+export const WithColour: Story = {
+  args: {
+    icon: <IconPencil />,
+    size: "lg",
+  },
+  render: () => (
+    <SimpleGrid cols={4} spacing="lg">
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconPencil />} size="lg" colour="red" />
+        <Text size="xs" c="dimmed">
+          Red
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconPencil />} size="lg" colour="blue" />
+        <Text size="xs" c="dimmed">
+          Blue
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconPencil />} size="lg" colour="green" />
+        <Text size="xs" c="dimmed">
+          Green
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconPencil />} size="lg" />
+        <Text size="xs" c="dimmed">
+          Default
+        </Text>
+      </Stack>
+    </SimpleGrid>
+  ),
+};

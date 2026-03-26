@@ -96,4 +96,22 @@ describe("Icon Component", () => {
     icon = screen.getByTestId("icon");
     expect(icon).toHaveAttribute("width", "48");
   });
+
+  it("applies colour when provided", () => {
+    renderWithMantine(
+      <Icon icon={<IconPencil data-testid="coloured-icon" />} colour="red" />,
+    );
+
+    const icon = screen.getByTestId("coloured-icon");
+    expect(icon).toHaveAttribute("stroke", "red");
+  });
+
+  it("does not override stroke when colour is not provided", () => {
+    renderWithMantine(
+      <Icon icon={<IconPencil data-testid="no-colour-icon" />} />,
+    );
+
+    const icon = screen.getByTestId("no-colour-icon");
+    expect(icon).toHaveAttribute("stroke", "currentColor");
+  });
 });
