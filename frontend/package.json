@@ -86,7 +86,9 @@
     "lint-staged": "^16.0.0",
     "playwright": "^1.58.2",
     "postcss": "^8.5.6",
+    "postcss-preset-mantine": "^1.18.0",
     "postcss-scss": "^4.0.9",
+    "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
     "sass": "^1.92.1",
     "storybook": "10.3.3",
@@ -101,7 +103,7 @@
     "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.7",
+    "vite": "^8.0.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
     "wait-on": "^9.0.4"
