@@ -14,6 +14,11 @@ see the `Justfile` if you want to know more.
 ## Testing Requirements
 
 - **ALWAYS create/update tests** when changing code
+- **ALWAYS run tests inside Docker containers** — never run tests directly on the host
+  - Backend: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"` (or `just ub`)
+  - Frontend: `docker exec quill_frontend sh -lc "yarn unit-test:run"` (or `just uf`)
+  - Storybook build: `docker exec quill_frontend sh -lc "yarn storybook:build"`
+  - This ensures tests run in the same Linux environment as CI
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states
