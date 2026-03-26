@@ -10,13 +10,13 @@ authors = ["Cotswoldsmaker <mark@letsdodigital.org>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.13.2"
+python = "^3.13.3"
 fastapi = "0.115.2"
 uvicorn = {extras = ["standard"], version = "0.30.6"}
 pydantic = "2.9.2"
 sqlalchemy = "2.0.35"
 psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
-python-dotenv = "1.1.1"
+python-dotenv = "1.2.0"
 httpx = "0.27.0"
 python-jose = {extras = ["cryptography"], version = ">=3.5.0,<4.0.0"}
 passlib = {extras = ["argon2"], version = ">=1.7.4,<2.0.0"}
