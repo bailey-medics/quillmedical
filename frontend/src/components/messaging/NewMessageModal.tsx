@@ -96,6 +96,7 @@ export default function NewMessageModal({
     if (!opened) return;
 
     if (!lockedPatientId) {
+      /* eslint-disable react-hooks/set-state-in-effect -- data fetching loading states */
       setLoadingPatients(true);
       api
         .get<{ patients: ApiPatient[] }>("/patients")
@@ -119,6 +120,7 @@ export default function NewMessageModal({
     }
 
     setLoadingUsers(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     api
       .get<{ users: ApiUser[] }>("/users")
       .then((res) => {
@@ -138,6 +140,7 @@ export default function NewMessageModal({
   // Set locked patient ID when provided
   useEffect(() => {
     if (opened && lockedPatientId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync prop to local state
       setPatientId(lockedPatientId);
     }
   }, [opened, lockedPatientId]);
@@ -145,11 +148,13 @@ export default function NewMessageModal({
   // Reset form when modal closes
   useEffect(() => {
     if (!opened) {
+      /* eslint-disable react-hooks/set-state-in-effect -- resetting form state on modal close */
       setPatientId(null);
       setParticipantIds([]);
       setSubject("");
       setInitialMessage("");
       setIncludePatient(false);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [opened]);
 

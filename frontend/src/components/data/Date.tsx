@@ -43,6 +43,7 @@ export default function FormattedDate({
     return null;
   }
 
+  /* eslint-disable react-hooks/error-boundaries -- try/catch guards date parsing, not React rendering */
   try {
     const dateObj = new globalThis.Date(date);
 
@@ -94,4 +95,5 @@ export default function FormattedDate({
       </Text>
     );
   }
+  /* eslint-enable react-hooks/error-boundaries */
 }

@@ -167,6 +167,7 @@ export default function Messages() {
   useEffect(() => {
     if (!isFhirReady) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching loading state
     setIsLoading(true);
 
     Promise.all([

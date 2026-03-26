@@ -54,6 +54,7 @@ export default function PatientMessageThread() {
   useEffect(() => {
     if (!conversationId) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching loading state
     setIsLoading(true);
 
     fetchConversation(Number(conversationId))

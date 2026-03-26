@@ -58,8 +58,10 @@ export default function RootLayout() {
     const isPatientRoute = /^\/patients\/[^/]+/.test(location.pathname);
     const isMessageThread = /^\/messages\/[^/]+/.test(location.pathname);
     if (!isPatientRoute && !isMessageThread) {
+      /* eslint-disable react-hooks/set-state-in-effect -- legitimate navigation side effect: clearing patient context on route change */
       setPatient(null);
       setPatientNav([]);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [location.pathname]);
 

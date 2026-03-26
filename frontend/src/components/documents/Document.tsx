@@ -27,16 +27,17 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
       ? `${url}#toolbar=0&navpanes=0&view=FitH`
       : url;
 
-  const Wrapper = isSmallScreen
-    ? Stack
-    : ({ children }: { children: React.ReactNode }) => (
-        <Paper withBorder p="md" radius="md">
-          <Stack>{children}</Stack>
-        </Paper>
-      );
+  const content = (innerChildren: React.ReactNode) =>
+    isSmallScreen ? (
+      <Stack>{innerChildren}</Stack>
+    ) : (
+      <Paper withBorder p="md" radius="md">
+        <Stack>{innerChildren}</Stack>
+      </Paper>
+    );
 
-  return (
-    <Wrapper>
+  return content(
+    <>
       <HeaderText>{name}</HeaderText>
       {type === "image" ? (
         <Image src={url} alt={name} radius="sm" />
@@ -92,7 +93,7 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
           </a>
         </Box>
       )}
-    </Wrapper>
+    </>,
   );
 };
 
