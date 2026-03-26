@@ -302,6 +302,7 @@ export default function Home() {
   useEffect(() => {
     if (!isFhirReady) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchPatients sets loading state
     const cleanup = fetchPatients();
     return cleanup;
   }, [isFhirReady]);
