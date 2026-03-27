@@ -13,11 +13,14 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyotp
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from itsdangerous import URLSafeSerializer
 from jose import jwt  # type: ignore[import-untyped]
-from passlib.hash import argon2  # type: ignore[import-untyped]
 
 from app.config import settings
+
+_ph = PasswordHasher()
 
 
 def _now() -> datetime:
@@ -35,9 +38,9 @@ def _now() -> datetime:
 def hash_password(p: str) -> str:
     """Hash Password with Argon2.
 
-    Hashes a plain text password using the Argon2 algorithm, which is
-    recommended by OWASP for password storage. Uses passlib's default
-    Argon2 parameters (time_cost=2, memory_cost=512MB, parallelism=2).
+    Hashes a plain text password using the Argon2id algorithm, which is
+    recommended by OWASP for password storage. Uses argon2-cffi's default
+    parameters (time_cost=3, memory_cost=65536, parallelism=4).
 
     Args:
         p: Plain text password to hash.
@@ -51,7 +54,7 @@ def hash_password(p: str) -> str:
     # Defensive programming: validate input
     if not p:
         raise ValueError("Password cannot be empty")
-    return argon2.hash(p)  # type: ignore[no-any-return]
+    return _ph.hash(p)
 
 
 def verify_password(p: str, h: str) -> bool:
@@ -75,7 +78,10 @@ def verify_password(p: str, h: str) -> bool:
         raise ValueError("Password cannot be empty")
     if not h:
         raise ValueError("Hash cannot be empty")
-    return argon2.verify(p, h)  # type: ignore[no-any-return]
+    try:
+        return _ph.verify(h, p)
+    except VerifyMismatchError:
+        return False
 
 
 def create_access_token(sub: str, roles: list[str]) -> str:
