@@ -1,7 +1,7 @@
 /**
- * AdminTable Component Tests
+ * DataTable Component Tests
  *
- * Tests for the AdminTable component covering:
+ * Tests for the DataTable component covering:
  * - Rendering with data
  * - Column rendering with custom render functions
  * - Row click interactions
@@ -14,7 +14,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { Text, Badge } from "@mantine/core";
-import AdminTable, { type Column } from "./AdminTable";
+import DataTable, { type Column } from "./DataTable";
 
 interface TestUser {
   id: number;
@@ -28,7 +28,7 @@ interface TestPatient {
   status: "active" | "inactive";
 }
 
-describe("AdminTable", () => {
+describe("DataTable", () => {
   describe("Rendering with data", () => {
     it("renders table with headers and data rows", () => {
       const users: TestUser[] = [
@@ -42,7 +42,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -83,7 +83,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={patients}
           columns={columns}
           onRowClick={vi.fn()}
@@ -112,7 +112,7 @@ describe("AdminTable", () => {
       const handleRowClick = vi.fn();
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={handleRowClick}
@@ -137,7 +137,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -157,7 +157,7 @@ describe("AdminTable", () => {
       ];
 
       const { container } = renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -181,7 +181,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -202,7 +202,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -225,7 +225,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -246,7 +246,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -263,7 +263,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -288,7 +288,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -312,7 +312,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}

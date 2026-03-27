@@ -1,5 +1,5 @@
 /**
- * AdminTable Component
+ * DataTable Component
  *
  * A reusable, generic table component for admin pages with responsive layouts.
  * On mobile: displays data in card format with all information visible.
@@ -8,7 +8,7 @@
  *
  * @example
  * ```tsx
- * <AdminTable
+ * <DataTable
  *   data={users}
  *   columns={[
  *     { header: "Name", render: (user) => user.name },
@@ -28,7 +28,6 @@ import {
   Skeleton,
   Stack,
   Center,
-  Text,
   Alert,
   Card,
   Divider,
@@ -37,9 +36,10 @@ import {
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
 
 /**
- * Column definition for AdminTable
+ * Column definition for DataTable
  */
 export interface Column<T> {
   /** Column header text */
@@ -53,9 +53,9 @@ export interface Column<T> {
 }
 
 /**
- * AdminTable Props
+ * DataTable Props
  */
-export interface AdminTableProps<T> {
+export interface DataTableProps<T> {
   /** Array of data rows */
   data: T[];
   /** Column definitions */
@@ -75,7 +75,7 @@ export interface AdminTableProps<T> {
 }
 
 /**
- * AdminTable displays data in a responsive layout optimized for all screen sizes.
+ * DataTable displays data in a responsive layout optimized for all screen sizes.
  *
  * Features:
  * - Generic type support for any data structure
@@ -94,7 +94,7 @@ export interface AdminTableProps<T> {
  *
  * Used on admin pages for users, patients, and other resources.
  */
-export default function AdminTable<T>({
+export default function DataTable<T>({
   data,
   columns,
   onRowClick,
@@ -103,7 +103,7 @@ export default function AdminTable<T>({
   emptyMessage = "No data found",
   getRowKey,
   breakpoint = "sm",
-}: AdminTableProps<T>) {
+}: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(
     `(max-width: ${theme.breakpoints[breakpoint]})`,
@@ -138,7 +138,7 @@ export default function AdminTable<T>({
   if (data.length === 0) {
     return (
       <Center p="xl">
-        <Text c="dimmed">{emptyMessage}</Text>
+        <BodyText>{emptyMessage}</BodyText>
       </Center>
     );
   }
@@ -159,10 +159,8 @@ export default function AdminTable<T>({
             <Stack gap="sm">
               {columns.map((column, index) => (
                 <div key={index}>
-                  <Text size="xs" c="dimmed" fw={500} mb={4}>
-                    {column.header}
-                  </Text>
-                  <Text size="lg">{column.render(row)}</Text>
+                  <BodyTextBold>{column.header}</BodyTextBold>
+                  <BodyTextBlack>{column.render(row)}</BodyTextBlack>
                   {index < columns.length - 1 && <Divider mt="sm" />}
                 </div>
               ))}
@@ -186,7 +184,7 @@ export default function AdminTable<T>({
                 textAlign: column.align || "left",
               }}
             >
-              {column.header}
+              <BodyTextBold>{column.header}</BodyTextBold>
             </Table.Th>
           ))}
         </Table.Tr>
@@ -206,9 +204,7 @@ export default function AdminTable<T>({
                   verticalAlign: "middle",
                 }}
               >
-                <Text size="lg" component="span" lh={1}>
-                  {column.render(row)}
-                </Text>
+                <BodyTextBlack>{column.render(row)}</BodyTextBlack>
               </Table.Td>
             ))}
           </Table.Tr>

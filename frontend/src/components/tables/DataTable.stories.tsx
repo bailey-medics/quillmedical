@@ -1,14 +1,15 @@
 /**
- * AdminTable Storybook Stories
+ * DataTable Storybook Stories
  *
- * Demonstrates the AdminTable component with different data types,
+ * Demonstrates the DataTable component with different data types,
  * states, and column configurations.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
-import { Container, Text, Badge } from "@mantine/core";
-import AdminTable, { type Column } from "./AdminTable";
+import { Container } from "@mantine/core";
+import { ActiveStatus } from "@/components/badge";
+import DataTable, { type Column } from "./DataTable";
 
 interface User {
   id: number;
@@ -24,9 +25,9 @@ interface Patient {
   status: "active" | "inactive";
 }
 
-const meta: Meta<typeof AdminTable<User>> = {
-  title: "Tables/AdminTable",
-  component: AdminTable,
+const meta: Meta<typeof DataTable<User>> = {
+  title: "Tables/DataTable",
+  component: DataTable,
   parameters: {
     layout: "padded",
   },
@@ -41,7 +42,7 @@ const meta: Meta<typeof AdminTable<User>> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof AdminTable<User>>;
+type Story = StoryObj<typeof DataTable<User>>;
 
 const sampleUsers: User[] = [
   { id: 1, username: "alice.smith", email: "alice@example.com" },
@@ -53,7 +54,7 @@ const sampleUsers: User[] = [
 const userColumns: Column<User>[] = [
   {
     header: "Username",
-    render: (user) => <Text fw={500}>{user.username}</Text>,
+    render: (user) => user.username,
   },
   {
     header: "Email",
@@ -61,16 +62,12 @@ const userColumns: Column<User>[] = [
   },
   {
     header: "User ID",
-    render: (user) => (
-      <Text size="lg" c="dimmed">
-        {user.id}
-      </Text>
-    ),
+    render: (user) => String(user.id),
   },
 ];
 
 /**
- * Default AdminTable
+ * Default DataTable
  *
  * Shows the table with user data and basic columns.
  */
@@ -88,7 +85,7 @@ export const Default: Story = {
  *
  * Demonstrates the table with patient data including a status badge column.
  */
-export const WithPatientData: StoryObj<typeof AdminTable<Patient>> = {
+export const WithPatientData: StoryObj<typeof DataTable<Patient>> = {
   args: {
     data: [
       {
@@ -116,7 +113,7 @@ export const WithPatientData: StoryObj<typeof AdminTable<Patient>> = {
     columns: [
       {
         header: "Name",
-        render: (patient) => <Text fw={500}>{patient.name}</Text>,
+        render: (patient) => patient.name,
       },
       {
         header: "Birth date",
@@ -128,22 +125,12 @@ export const WithPatientData: StoryObj<typeof AdminTable<Patient>> = {
       },
       {
         header: "Patient ID",
-        render: (patient) => (
-          <Text size="lg" c="dimmed">
-            {patient.id}
-          </Text>
-        ),
+        render: (patient) => patient.id,
       },
       {
         header: "Status",
         render: (patient) => (
-          <Badge
-            color={patient.status === "active" ? "green" : "red"}
-            variant="light"
-            size="sm"
-          >
-            {patient.status === "active" ? "Active" : "Inactive"}
-          </Badge>
+          <ActiveStatus active={patient.status === "active"} />
         ),
       },
     ],
@@ -208,7 +195,7 @@ export const CustomAlignment: Story = {
     columns: [
       {
         header: "Username",
-        render: (user) => <Text fw={500}>{user.username}</Text>,
+        render: (user) => user.username,
         align: "left",
       },
       {
@@ -218,11 +205,7 @@ export const CustomAlignment: Story = {
       },
       {
         header: "User ID",
-        render: (user) => (
-          <Text size="lg" c="dimmed">
-            {user.id}
-          </Text>
-        ),
+        render: (user) => String(user.id),
         align: "right",
       },
     ],

@@ -2,11 +2,11 @@
  * AssessmentHistoryTable Component
  *
  * Table of past assessment attempts with date, question bank, scores,
- * and pass/fail badge. Uses AdminTable for consistent responsive layout.
+ * and pass/fail badge. Uses DataTable for consistent responsive layout.
  */
 
 import AssessmentResultBadge from "@components/badge/AssessmentResultBadge";
-import AdminTable, { type Column } from "@components/tables/AdminTable";
+import DataTable, { type Column } from "@components/tables/DataTable";
 import type { AssessmentHistory } from "@/features/teaching/types";
 
 interface AssessmentHistoryTableProps {
@@ -51,7 +51,7 @@ export function AssessmentHistoryTable({
   onSelect,
 }: AssessmentHistoryTableProps) {
   return (
-    <AdminTable
+    <DataTable
       data={assessments}
       columns={columns}
       onRowClick={(a) => onSelect?.(a.id)}

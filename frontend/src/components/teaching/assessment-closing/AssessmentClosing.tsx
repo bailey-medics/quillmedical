@@ -6,8 +6,7 @@
  */
 
 import { Button, Card, Stack } from "@mantine/core";
-import { HeaderText } from "@/components/typography";
-import MarkdownView from "@/components/markdown/MarkdownView";
+import { BodyTextBlack, PageHeader } from "@/components/typography";
 
 interface AssessmentClosingProps {
   /** Closing page title from config */
@@ -28,9 +27,9 @@ export function AssessmentClosing({
 }: AssessmentClosingProps) {
   return (
     <Stack gap="lg">
-      <HeaderText>{title}</HeaderText>
+      <PageHeader title={title} />
       <Card withBorder p="lg">
-        <MarkdownView source={body} />
+        <BodyTextBlack>{body}</BodyTextBlack>
       </Card>
       <Button size="lg" onClick={onViewResults} disabled={disabled}>
         View results

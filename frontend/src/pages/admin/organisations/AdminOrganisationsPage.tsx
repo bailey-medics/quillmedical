@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
-import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import FormattedDate from "@/components/data/Date";
 import { api } from "@/lib/api";
 
@@ -95,7 +95,7 @@ export default function AdminOrganisationsPage() {
           />
         </Group>
 
-        <AdminTable
+        <DataTable
           data={organizations}
           columns={columns}
           onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}

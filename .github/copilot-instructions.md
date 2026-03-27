@@ -114,7 +114,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Search | SearchField | `components/search/` |
 | StateMessages | StateMessage | `components/state-message/` |
 | StatCards | StatCard | `components/stats-card/` |
-| Tables | AdminTable | `components/tables/` |
+| Tables | DataTable | `components/tables/` |
 | Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.

@@ -266,7 +266,7 @@ describe("AdminOrganisationsPage", () => {
         ).toBeInTheDocument();
       });
 
-      // The AdminTable should display the error
+      // The DataTable should display the error
       // Note: We're just checking that the page loaded without crashing
     });
   });

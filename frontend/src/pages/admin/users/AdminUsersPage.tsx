@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Stack, Text, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
-import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import { api } from "@/lib/api";
 
 interface User {
@@ -79,7 +79,7 @@ export default function AdminUsersPage() {
           />
         </Group>
 
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
