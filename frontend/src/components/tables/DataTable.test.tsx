@@ -166,12 +166,15 @@ describe("DataTable", () => {
         />,
       );
 
-      // Check that table is not shown during loading
+      // Loading state shows a table with skeleton rows
       const table = container.querySelector("table");
-      expect(table).not.toBeInTheDocument();
+      expect(table).toBeInTheDocument();
+
+      // Headers are visible but no real data
+      expect(screen.getByText("Name")).toBeInTheDocument();
     });
 
-    it("does not show table when loading", () => {
+    it("does not show data rows when loading", () => {
       const users: TestUser[] = [
         { id: 1, name: "Alice", email: "alice@example.com" },
       ];
@@ -190,7 +193,8 @@ describe("DataTable", () => {
         />,
       );
 
-      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+      // Headers shown, but data content is not rendered
+      expect(screen.getByText("Name")).toBeInTheDocument();
       expect(screen.queryByText("Alice")).not.toBeInTheDocument();
     });
   });

@@ -103,7 +103,6 @@ export default function AdminOrganisationsPage() {
           loading={loading}
           error={error}
           emptyMessage="No organisations found"
-          breakpoint="md"
         />
       </Stack>
     </Container>

@@ -130,7 +130,6 @@ export default function AdminTeachingPage() {
           loading={loading}
           error={error}
           emptyMessage="No teaching modules found"
-          breakpoint="md"
         />
       </Stack>
     </Container>

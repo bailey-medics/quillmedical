@@ -172,7 +172,6 @@ export default function AdminPatientsPage() {
             loading={loading}
             error={error}
             emptyMessage="No patients found"
-            breakpoint="md"
           />
         )}
       </Stack>

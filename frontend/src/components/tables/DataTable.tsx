@@ -18,24 +18,16 @@
  *   getRowKey={(user) => user.id}
  *   loading={loading}
  *   error={error}
- *   breakpoint="md"  // Optional: use "md" for wider tables
  * />
  * ```
  */
 
-import {
-  Table,
-  Skeleton,
-  Stack,
-  Center,
-  Alert,
-  useMantineTheme,
-} from "@mantine/core";
+import { Table, Skeleton, Stack, Center, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconAlertCircle } from "@tabler/icons-react";
-import Icon from "@/components/icons";
 import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
+import StateMessage from "@/components/state-message";
 import DataCard from "./DataCard";
+import classes from "./DataTable.module.css";
 
 /**
  * Column definition for DataTable
@@ -67,8 +59,6 @@ export interface DataTableProps<T> {
   emptyMessage?: string;
   /** Unique key extractor from row data */
   getRowKey: (row: T) => string | number;
-  /** Breakpoint for switching to mobile card layout (default: "sm" / 768px) */
-  breakpoint?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 /**
@@ -85,8 +75,7 @@ export interface DataTableProps<T> {
  * - Hover highlighting on both layouts
  * - Clickable rows/cards with pointer cursor
  *
- * Breakpoint: Uses theme.breakpoints.sm (768px) by default to switch between layouts.
- * This can be customized via the breakpoint prop (xs/sm/md/lg/xl) for wider tables.
+ * Breakpoint: Uses theme.breakpoints.sm (768px) to switch between layouts.
  * This ensures critical patient/user information is never hidden on small screens.
  *
  * Used on admin pages for users, patients, and other resources.
@@ -99,35 +88,56 @@ export default function DataTable<T>({
   error = null,
   emptyMessage = "No data found",
   getRowKey,
-  breakpoint = "sm",
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
-  const isMobile = useMediaQuery(
-    `(max-width: ${theme.breakpoints[breakpoint]})`,
-  );
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   // Error state
   if (error) {
-    return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-        title="Error loading data"
-        color="red"
-      >
-        {error}
-      </Alert>
-    );
+    return <StateMessage type="error" message={error} />;
   }
 
   // Loading state
   if (loading) {
+    if (isMobile) {
+      return (
+        <Stack gap="md">
+          {Array.from({ length: 3 }, (_, i) => (
+            <DataCard
+              key={i}
+              row={{} as T}
+              columns={columns}
+              onClick={() => {}}
+              loading
+            />
+          ))}
+        </Stack>
+      );
+    }
+
     return (
-      <Stack gap="xs">
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-      </Stack>
+      <Table striped>
+        <Table.Thead>
+          <Table.Tr>
+            {columns.map((column, index) => (
+              <Table.Th key={index} style={{ width: column.width }}>
+                <BodyTextBold>{column.header}</BodyTextBold>
+              </Table.Th>
+            ))}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {Array.from({ length: 4 }, (_, rowIndex) => (
+            <Table.Tr key={rowIndex}>
+              {columns.map((_, colIndex) => (
+                <Table.Td key={colIndex}>
+                  <Skeleton height={25} mt={4} mb={4} />
+                </Table.Td>
+              ))}
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
     );
   }
 
@@ -176,7 +186,11 @@ export default function DataTable<T>({
             style={{ cursor: "pointer" }}
           >
             {columns.map((column, index) => (
-              <Table.Td key={index} style={{ verticalAlign: "middle" }}>
+              <Table.Td
+                key={index}
+                className={classes.cell}
+                style={{ verticalAlign: "middle" }}
+              >
                 <BodyTextBlack>{column.render(row)}</BodyTextBlack>
               </Table.Td>
             ))}

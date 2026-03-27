@@ -40,9 +40,9 @@ describe("DataCard", () => {
         <DataCard row={sampleUser} columns={userColumns} onClick={vi.fn()} />,
       );
 
-      expect(screen.getByText("Name")).toBeInTheDocument();
+      expect(screen.getByText("Name:")).toBeInTheDocument();
       expect(screen.getByText("Alice")).toBeInTheDocument();
-      expect(screen.getByText("Email")).toBeInTheDocument();
+      expect(screen.getByText("Email:")).toBeInTheDocument();
       expect(screen.getByText("alice@example.com")).toBeInTheDocument();
     });
 
@@ -126,7 +126,7 @@ describe("DataCard", () => {
         />,
       );
 
-      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+      expect(screen.queryByText("Name:")).not.toBeInTheDocument();
       expect(screen.queryByText("Alice")).not.toBeInTheDocument();
       expect(
         container.querySelectorAll(".mantine-Skeleton-root").length,

@@ -140,50 +140,6 @@ export const WithPatientData: StoryObj<typeof DataTable<Patient>> = {
 };
 
 /**
- * Error State
- *
- * Shows an error alert when data fails to load.
- */
-export const Error: Story = {
-  args: {
-    data: [],
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-    error: "Failed to load users from the server",
-  },
-};
-
-/**
- * Empty State
- *
- * Shows a message when there is no data to display.
- */
-export const Empty: Story = {
-  args: {
-    data: [],
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-    emptyMessage: "No users found",
-  },
-};
-
-/**
- * Single Row
- *
- * Shows the table with just one data row.
- */
-export const SingleRow: Story = {
-  args: {
-    data: [sampleUsers[0]],
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-  },
-};
-
-/**
  * Many Rows
  *
  * Shows the table with more data to demonstrate scrolling behavior.
@@ -202,19 +158,66 @@ export const ManyRows: Story = {
 };
 
 /**
- * Custom Breakpoint
+ * Long Text
  *
- * Demonstrates using a custom breakpoint for wider tables.
- * Set to "md" (900px) instead of default "sm" (768px) to maintain
- * table layout longer before switching to cards on smaller screens.
+ * Tests how the table handles cells with very long text content.
  */
-export const CustomBreakpoint: Story = {
+// cspell:disable
+export const LongText: Story = {
   args: {
-    data: sampleUsers,
+    data: [
+      {
+        id: 1,
+        username: "superlongusernamethatjustkeepsgoingandgoingwithoutanybreaks",
+        email:
+          "a.very.long.email.address.that.goes.on.and.on@extremely-long-domain-name-example.co.uk",
+      },
+      {
+        id: 2,
+        username: "normaluser",
+        email: "normal@example.com",
+      },
+      {
+        id: 3,
+        username: "Dr. Bartholomew Featherstonehaugh-Worthington III",
+        email:
+          "bartholomew.featherstonehaugh-worthington@prestigious-medical-institution.nhs.uk",
+      },
+    ],
     columns: userColumns,
     onRowClick: fn(),
     getRowKey: (user) => user.id,
-    breakpoint: "md",
+  },
+};
+// cspell:enable
+
+/**
+ * Empty State
+ *
+ * Shows a message when there is no data to display.
+ */
+export const Empty: Story = {
+  args: {
+    data: [],
+    columns: userColumns,
+    onRowClick: fn(),
+    getRowKey: (user) => user.id,
+    emptyMessage: "No users found",
+  },
+};
+
+/**
+ * Error State
+ *
+ * Shows an error alert when data fails to load.
+ */
+export const Error: Story = {
+  args: {
+    data: [],
+    columns: userColumns,
+    onRowClick: fn(),
+    getRowKey: (user) => user.id,
+    error: "Failed to load users from the server",
   },
 };
 

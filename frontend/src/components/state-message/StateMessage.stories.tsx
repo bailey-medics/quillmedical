@@ -1,9 +1,10 @@
 /**
  * StateMessage Component Stories
  *
- * Demonstrates informational alert messages for different patient list states:
+ * Demonstrates informational alert messages for different application states:
  * - Database initialising: Blue alert with clock icon when FHIR is loading
- * - No patients: Gray alert with user-off icon when list is empty
+ * - No patients: Grey alert with user-off icon when list is empty
+ * - Error: Red alert with alert-circle icon for error conditions
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import StateMessage from "./StateMessage";
@@ -13,7 +14,7 @@ const meta: Meta<typeof StateMessage> = {
   component: StateMessage,
   tags: ["autodocs"],
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
 };
 
@@ -30,5 +31,12 @@ export const DatabaseInitialising: Story = {
 export const NoPatients: Story = {
   args: {
     type: "no-patients",
+  },
+};
+
+export const Error: Story = {
+  args: {
+    type: "error",
+    message: "Failed to load data from the server",
   },
 };
