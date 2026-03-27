@@ -7,9 +7,12 @@
  * @module DirtyFormNavigation
  */
 
-import { Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { Button, Group, Modal, Stack } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
+
+import BodyTextBold from "@/components/typography/BodyTextBold";
+import Icon from "@/components/icons/Icon";
 
 /**
  * Props for DirtyFormNavigation component
@@ -70,11 +73,11 @@ export default function DirtyFormNavigation({
       }}
     >
       <Stack gap="md" align="center" pt="xl">
-        <IconAlertTriangle size={48} />
-        <Text ta="center">
+        <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
+        <BodyTextBold justify="centre">
           You have unsaved changes. Are you sure you want to leave this page?
-        </Text>
-        <Group justify="flex-end" style={{ width: "100%" }}>
+        </BodyTextBold>
+        <Group justify="flex-end" mt="0.5rem" style={{ width: "100%" }}>
           <Button variant="default" onClick={() => blocker.reset?.()}>
             Stay on Page
           </Button>

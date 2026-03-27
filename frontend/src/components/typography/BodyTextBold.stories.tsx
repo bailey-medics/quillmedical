@@ -28,3 +28,19 @@ export const Default: Story = {
     children: sampleText,
   },
 };
+
+/** Centre-justified text */
+export const Centre: Story = {
+  args: {
+    children: sampleText,
+    justify: "centre",
+  },
+};
+
+/** Right-justified text */
+export const Right: Story = {
+  args: {
+    children: sampleText,
+    justify: "right",
+  },
+};
