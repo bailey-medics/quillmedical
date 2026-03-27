@@ -20,9 +20,10 @@
  * ```
  */
 
-import { Card, Divider, Stack } from "@mantine/core";
+import { Card, Divider, Group, Skeleton, Stack } from "@mantine/core";
 import { BodyTextBlack, BodyTextBold } from "@/components/typography";
 import type { Column } from "./DataTable";
+import classes from "./DataCard.module.css";
 
 export interface DataCardProps<T> {
   /** The data row to display */
@@ -31,6 +32,8 @@ export interface DataCardProps<T> {
   columns: Column<T>[];
   /** Click handler — receives the row data */
   onClick: (row: T) => void;
+  /** Loading state — shows skeleton placeholders */
+  loading?: boolean;
 }
 
 /**
@@ -43,7 +46,22 @@ export default function DataCard<T>({
   row,
   columns,
   onClick,
+  loading = false,
 }: DataCardProps<T>) {
+  if (loading) {
+    return (
+      <Card shadow="sm" padding="md" withBorder>
+        <Stack gap="sm">
+          <Skeleton height={30} mt={1} mb={1} />
+          <Divider />
+          <Skeleton height={30} mt={1} mb={1} />
+          <Divider />
+          <Skeleton height={30} mt={1} mb={1} />
+        </Stack>
+      </Card>
+    );
+  }
+
   return (
     <Card
       shadow="sm"
@@ -53,13 +71,24 @@ export default function DataCard<T>({
       style={{ cursor: "pointer" }}
     >
       <Stack gap="sm">
-        {columns.map((column, index) => (
-          <div key={index}>
-            <BodyTextBold>{column.header}</BodyTextBold>
-            <BodyTextBlack>{column.render(row)}</BodyTextBlack>
-            {index < columns.length - 1 && <Divider mt="sm" />}
-          </div>
-        ))}
+        {columns.map((column, index) => {
+          const content = column.render(row);
+          return (
+            <div key={index} className={classes.field}>
+              <Group gap="xs" wrap="nowrap" align="center">
+                <span className={classes.header}>
+                  <BodyTextBold>{column.header}:</BodyTextBold>
+                </span>
+                {typeof content === "string" || typeof content === "number" ? (
+                  <BodyTextBlack>{content}</BodyTextBlack>
+                ) : (
+                  content
+                )}
+              </Group>
+              {index < columns.length - 1 && <Divider mt="sm" />}
+            </div>
+          );
+        })}
       </Stack>
     </Card>
   );

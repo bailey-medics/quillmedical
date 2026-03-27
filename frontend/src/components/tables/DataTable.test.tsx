@@ -277,30 +277,6 @@ describe("DataTable", () => {
   });
 
   describe("Column configuration", () => {
-    it("applies custom column alignment", () => {
-      const users: TestUser[] = [
-        { id: 1, name: "Alice", email: "alice@example.com" },
-      ];
-
-      const columns: Column<TestUser>[] = [
-        { header: "Name", render: (u) => u.name, align: "left" },
-        { header: "Email", render: (u) => u.email, align: "right" },
-      ];
-
-      renderWithMantine(
-        <DataTable
-          data={users}
-          columns={columns}
-          onRowClick={vi.fn()}
-          getRowKey={(u) => u.id}
-        />,
-      );
-
-      const headers = screen.getAllByRole("columnheader");
-      expect(headers[0]).toHaveStyle({ textAlign: "left" });
-      expect(headers[1]).toHaveStyle({ textAlign: "right" });
-    });
-
     it("applies custom column width", () => {
       const users: TestUser[] = [
         { id: 1, name: "Alice", email: "alice@example.com" },

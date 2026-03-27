@@ -24,3 +24,4 @@ applyTo: "frontend/src/components/**"
 
 - Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils` in all tests.
 - Use `VariantStack` and `VariantRow` from `src/stories/variants.tsx` for "all sizes" or "all variants" stories.
+- Loading/skeleton stories should be placed **last** in the stories file.

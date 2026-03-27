@@ -140,21 +140,6 @@ export const WithPatientData: StoryObj<typeof DataTable<Patient>> = {
 };
 
 /**
- * Loading State
- *
- * Shows skeleton loaders while data is being fetched.
- */
-export const Loading: Story = {
-  args: {
-    data: [],
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-    loading: true,
-  },
-};
-
-/**
  * Error State
  *
  * Shows an error alert when data fails to load.
@@ -181,36 +166,6 @@ export const Empty: Story = {
     onRowClick: fn(),
     getRowKey: (user) => user.id,
     emptyMessage: "No users found",
-  },
-};
-
-/**
- * Custom Column Alignment
- *
- * Demonstrates custom text alignment for different columns.
- */
-export const CustomAlignment: Story = {
-  args: {
-    data: sampleUsers,
-    columns: [
-      {
-        header: "Username",
-        render: (user) => user.username,
-        align: "left",
-      },
-      {
-        header: "Email",
-        render: (user) => user.email,
-        align: "center",
-      },
-      {
-        header: "User ID",
-        render: (user) => String(user.id),
-        align: "right",
-      },
-    ],
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
   },
 };
 
@@ -260,5 +215,20 @@ export const CustomBreakpoint: Story = {
     onRowClick: fn(),
     getRowKey: (user) => user.id,
     breakpoint: "md",
+  },
+};
+
+/**
+ * Loading State
+ *
+ * Shows skeleton loaders while data is being fetched.
+ */
+export const Loading: Story = {
+  args: {
+    data: [],
+    columns: userColumns,
+    onRowClick: fn(),
+    getRowKey: (user) => user.id,
+    loading: true,
   },
 };

@@ -47,8 +47,6 @@ export interface Column<T> {
   render: (row: T) => React.ReactNode;
   /** Optional: custom width */
   width?: string;
-  /** Optional: text alignment (default: left) */
-  align?: "left" | "center" | "right";
 }
 
 /**
@@ -164,13 +162,7 @@ export default function DataTable<T>({
       <Table.Thead>
         <Table.Tr>
           {columns.map((column, index) => (
-            <Table.Th
-              key={index}
-              style={{
-                width: column.width,
-                textAlign: column.align || "left",
-              }}
-            >
+            <Table.Th key={index} style={{ width: column.width }}>
               <BodyTextBold>{column.header}</BodyTextBold>
             </Table.Th>
           ))}
@@ -184,13 +176,7 @@ export default function DataTable<T>({
             style={{ cursor: "pointer" }}
           >
             {columns.map((column, index) => (
-              <Table.Td
-                key={index}
-                style={{
-                  textAlign: column.align || "left",
-                  verticalAlign: "middle",
-                }}
-              >
+              <Table.Td key={index} style={{ verticalAlign: "middle" }}>
                 <BodyTextBlack>{column.render(row)}</BodyTextBlack>
               </Table.Td>
             ))}

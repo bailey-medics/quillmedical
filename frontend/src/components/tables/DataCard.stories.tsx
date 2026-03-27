@@ -95,14 +95,46 @@ export const WithPatientData: StoryObj<typeof DataCard<Patient>> = {
 };
 
 /**
- * Single field
+ * Long text
  *
- * A card with only one column — no dividers shown.
+ * Shows how the card handles very long content in a cell.
  */
-export const SingleField: Story = {
+export const LongText: Story = {
   args: {
-    row: { id: 1, username: "alice.smith", email: "alice@example.com" },
-    columns: [{ header: "Username", render: (user) => user.username }],
+    row: {
+      id: 1,
+      username: "alice.smith",
+      email:
+        "alice.very-long-email-address-that-goes-on-and-on-and-on-and-keeps-going@extremely-long-domain-name-example.co.uk",
+    },
+    columns: [
+      { header: "Username", render: (user) => user.username },
+      { header: "Email", render: (user) => user.email },
+      {
+        header: "Notes",
+        render: () =>
+          "This is a very long piece of text that might appear in a cell. It keeps going and going to test how the card layout handles overflow and wrapping behaviour when the content is much longer than expected.",
+      },
+      {
+        header: "Reference",
+        render: () =>
+          "Pneumonoultramicroscopicsilicovolcanoconiosis-with-additional-hyphenated-words-that-make-it-even-longer",
+      },
+    ],
     onClick: fn(),
+  },
+};
+
+/**
+ * Loading
+ *
+ * Shows skeleton placeholders while data is being fetched.
+ */
+export const Loading: Story = {
+  args: {
+    row: { id: 0, username: "", email: "" },
+    columns: userColumns,
+    onClick: fn(),
+    loading: true,
   },
 };

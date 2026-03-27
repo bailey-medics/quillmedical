@@ -114,4 +114,23 @@ describe("DataCard", () => {
       expect(card).toHaveStyle({ cursor: "pointer" });
     });
   });
+
+  describe("Loading state", () => {
+    it("shows skeleton placeholders when loading", () => {
+      const { container } = renderWithMantine(
+        <DataCard
+          row={sampleUser}
+          columns={userColumns}
+          onClick={vi.fn()}
+          loading
+        />,
+      );
+
+      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+      expect(
+        container.querySelectorAll(".mantine-Skeleton-root").length,
+      ).toBeGreaterThan(0);
+    });
+  });
 });
