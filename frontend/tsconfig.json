@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@lib/*": ["src/lib/*"],
-      "@components/*": ["src/components/*"],
-      "@utils/*": [".storybook/utils/*"],
-      "@design/*": ["src/design/*"],
-      "@domains/*": ["src/domains/*"],
-      "@test/*": ["src/test/*"]
+      "@/*": ["./src/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@components/*": ["./src/components/*"],
+      "@utils/*": ["./.storybook/utils/*"],
+      "@design/*": ["./src/design/*"],
+      "@domains/*": ["./src/domains/*"],
+      "@test/*": ["./src/test/*"]
     }
   },
   "files": [],
