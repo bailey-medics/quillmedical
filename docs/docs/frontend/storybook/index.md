@@ -25,20 +25,20 @@ Storybook is configured with:
 All stories are wrapped with essential providers via a `createMemoryRouter`:
 
 ```tsx
-<RouterProvider router={createMemoryRouter([
-  {
-    path: "*",
-    element: (
-      <AuthProvider>
-        <MantineProvider theme={theme}>
-          <AuthWrapper>
-            {Story()}
-          </AuthWrapper>
-        </MantineProvider>
-      </AuthProvider>
-    ),
-  },
-])} />
+<RouterProvider
+  router={createMemoryRouter([
+    {
+      path: "*",
+      element: (
+        <AuthProvider>
+          <MantineProvider theme={theme}>
+            <AuthWrapper>{Story()}</AuthWrapper>
+          </MantineProvider>
+        </AuthProvider>
+      ),
+    },
+  ])}
+/>
 ```
 
 This ensures components have access to:
@@ -175,7 +175,7 @@ The project includes **90 component story files** across various UI categories:
 
 ### Tables & Data Display
 
-- **AdminTable** - Configurable admin data table
+- **DataTable** - Configurable responsive data table
 - **Admin** - Admin dashboard component
 
 ### Teaching

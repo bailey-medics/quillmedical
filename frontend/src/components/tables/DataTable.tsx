@@ -29,14 +29,13 @@ import {
   Stack,
   Center,
   Alert,
-  Card,
-  Divider,
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
+import DataCard from "./DataCard";
 
 /**
  * Column definition for DataTable
@@ -148,24 +147,12 @@ export default function DataTable<T>({
     return (
       <Stack gap="md">
         {data.map((row) => (
-          <Card
+          <DataCard
             key={getRowKey(row)}
-            shadow="sm"
-            padding="md"
-            withBorder
-            onClick={() => onRowClick(row)}
-            style={{ cursor: "pointer" }}
-          >
-            <Stack gap="sm">
-              {columns.map((column, index) => (
-                <div key={index}>
-                  <BodyTextBold>{column.header}</BodyTextBold>
-                  <BodyTextBlack>{column.render(row)}</BodyTextBlack>
-                  {index < columns.length - 1 && <Divider mt="sm" />}
-                </div>
-              ))}
-            </Stack>
-          </Card>
+            row={row}
+            columns={columns}
+            onClick={onRowClick}
+          />
         ))}
       </Stack>
     );
