@@ -41,6 +41,13 @@ create-user:
     {{initialise}} "create-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
+alias csu := create-super-user
+# Create a superadmin user locally (for dev setup)
+create-super-user:
+    #!/usr/bin/env bash
+    {{initialise}} "create-super-user"
+    docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
+
 alias cur := create-user-with-role
 # Create a new user with role assignment (supports Clinician role)
 create-user-with-role:
