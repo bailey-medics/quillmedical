@@ -5,7 +5,8 @@
  * from config + "View results" button.
  */
 
-import { Button, Card, Stack, Title } from "@mantine/core";
+import { Button, Card, Stack } from "@mantine/core";
+import { HeaderText } from "@/components/typography";
 import MarkdownView from "@/components/markdown/MarkdownView";
 
 interface AssessmentClosingProps {
@@ -27,7 +28,7 @@ export function AssessmentClosing({
 }: AssessmentClosingProps) {
   return (
     <Stack gap="lg">
-      <Title order={2}>{title}</Title>
+      <HeaderText>{title}</HeaderText>
       <Card withBorder p="lg">
         <MarkdownView source={body} />
       </Card>

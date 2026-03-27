@@ -5,7 +5,8 @@
  * and a "Start assessment" button.
  */
 
-import { Button, Card, Stack, Text, Title } from "@mantine/core";
+import { Button, Card, Stack } from "@mantine/core";
+import { BodyTextBold, BodyTextClamp } from "@/components/typography";
 
 interface QuestionBankCardProps {
   /** Question bank title */
@@ -27,10 +28,8 @@ export function QuestionBankCard({
   return (
     <Card withBorder p="lg" radius="md" h="100%">
       <Stack gap="sm" h="100%">
-        <Title order={4}>{title}</Title>
-        <Text size="sm" c="dimmed" lineClamp={3}>
-          {description}
-        </Text>
+        <BodyTextBold>{title}</BodyTextBold>
+        <BodyTextClamp lineClamp={3}>{description}</BodyTextClamp>
         <div style={{ marginTop: "auto" }} />
         <Button size="sm" onClick={onStart} disabled={disabled}>
           Start assessment

@@ -4,9 +4,10 @@
  * Displays the overall pass/fail result with config-driven score breakdown.
  */
 
-import { Alert, Card, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Alert, Card, Stack, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import { BodyText, BodyTextBold } from "@/components/typography";
 import { ScoreBreakdown } from "../score-breakdown/ScoreBreakdown";
 import type { CriterionResult } from "@/features/teaching/types";
 
@@ -40,19 +41,13 @@ export function AssessmentResult({
           </ThemeIcon>
         }
       >
-        <Title order={3}>{isPassed ? "Passed" : "Not passed"}</Title>
-        {bankTitle && (
-          <Text size="sm" mt={4}>
-            {bankTitle}
-          </Text>
-        )}
+        <BodyTextBold>{isPassed ? "Passed" : "Not passed"}</BodyTextBold>
+        {bankTitle && <BodyText>{bankTitle}</BodyText>}
       </Alert>
 
       <Card withBorder p="md">
         <Stack gap="sm">
-          <Text fw={600} size="sm">
-            Score breakdown
-          </Text>
+          <BodyTextBold>Score breakdown</BodyTextBold>
           <ScoreBreakdown criteria={criteria} />
         </Stack>
       </Card>

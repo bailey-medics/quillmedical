@@ -7,10 +7,11 @@
  * @module DirtyFormNavigation
  */
 
-import { Button, Group, Modal, Stack } from "@mantine/core";
+import { Modal, Stack } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import type { Blocker } from "react-router-dom";
 
+import { ButtonPairRed } from "@/components/button";
 import BodyTextBold from "@/components/typography/BodyTextBold";
 import Icon from "@/components/icons/Icon";
 
@@ -77,14 +78,12 @@ export default function DirtyFormNavigation({
         <BodyTextBold justify="centre">
           You have unsaved changes. Are you sure you want to leave this page?
         </BodyTextBold>
-        <Group justify="flex-end" mt="0.5rem" style={{ width: "100%" }}>
-          <Button variant="default" onClick={() => blocker.reset?.()}>
-            Stay on Page
-          </Button>
-          <Button color="red" onClick={handleProceed}>
-            Leave Page
-          </Button>
-        </Group>
+        <ButtonPairRed
+          cancelLabel="Stay on page"
+          acceptLabel="Leave page"
+          onCancel={() => blocker.reset?.()}
+          onAccept={handleProceed}
+        />
       </Stack>
     </Modal>
   );

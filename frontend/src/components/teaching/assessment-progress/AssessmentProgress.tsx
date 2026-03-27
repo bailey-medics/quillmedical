@@ -4,7 +4,8 @@
  * Progress bar showing question X of N (from config items_per_attempt).
  */
 
-import { Group, Progress, Text } from "@mantine/core";
+import { Group, Progress } from "@mantine/core";
+import { BodyText } from "@/components/typography";
 
 interface AssessmentProgressProps {
   /** Current question number (1-based) */
@@ -22,9 +23,9 @@ export function AssessmentProgress({
   return (
     <Group gap="sm" align="center">
       <Progress value={percentage} size="xl" radius="xl" style={{ flex: 1 }} />
-      <Text size="sm" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+      <BodyText>
         {current} of {total}
-      </Text>
+      </BodyText>
     </Group>
   );
 }

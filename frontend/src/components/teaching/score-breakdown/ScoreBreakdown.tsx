@@ -5,9 +5,10 @@
  * Each criterion shows name, value vs threshold, and visual pass/fail.
  */
 
-import { Badge, Group, Stack, Text, ThemeIcon } from "@mantine/core";
+import { Badge, Group, Stack, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import { BodyText, BodyTextBold } from "@/components/typography";
 import type { CriterionResult } from "@/features/teaching/types";
 
 interface ScoreBreakdownProps {
@@ -29,15 +30,11 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
             >
               <Icon icon={c.passed ? <IconCheck /> : <IconX />} size="sm" />
             </ThemeIcon>
-            <Text size="sm">{c.name}</Text>
+            <BodyText>{c.name}</BodyText>
           </Group>
           <Group gap="xs">
-            <Text size="sm" fw={600}>
-              {(c.value * 100).toFixed(1)}%
-            </Text>
-            <Text size="xs" c="dimmed">
-              / {(c.threshold * 100).toFixed(0)}%
-            </Text>
+            <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>
+            <BodyText>/ {(c.threshold * 100).toFixed(0)}%</BodyText>
             <Badge size="xs" color={c.passed ? "green" : "red"} variant="light">
               {c.passed ? "Pass" : "Fail"}
             </Badge>
