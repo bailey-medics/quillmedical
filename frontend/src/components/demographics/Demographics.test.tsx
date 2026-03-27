@@ -114,7 +114,7 @@ describe("Demographics Component", () => {
     it("renders name as a heading", () => {
       renderWithMantine(<Demographics patient={mockPatient} />);
       const nameElement = screen.getByText("John Smith");
-      expect(nameElement.tagName).toBe("H3");
+      expect(nameElement.tagName).toBe("H2");
     });
 
     it("renders patient details in secondary text", () => {

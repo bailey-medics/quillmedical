@@ -13,8 +13,8 @@ describe("HeaderText", () => {
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
-  it("renders as an h3 element", () => {
+  it("renders as an h2 element", () => {
     renderWithMantine(<HeaderText>Heading</HeaderText>);
-    expect(screen.getByText("Heading").tagName).toBe("H3");
+    expect(screen.getByText("Heading").tagName).toBe("H2");
   });
 });
