@@ -69,10 +69,6 @@ export function QuestionView({
 }: QuestionViewProps) {
   return (
     <Stack gap="lg">
-      {/* Progress bar */}
-      {currentQuestion != null && totalQuestions != null && (
-        <AssessmentProgress current={currentQuestion} total={totalQuestions} />
-      )}
       {/* Images */}
       {item.images.length > 0 && (
         <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
@@ -106,6 +102,11 @@ export function QuestionView({
           ))}
         </Stack>
       </Radio.Group>
+
+      {/* Progress bar */}
+      {currentQuestion != null && totalQuestions != null && (
+        <AssessmentProgress current={currentQuestion} total={totalQuestions} />
+      )}
 
       {/* Navigation buttons */}
       {(onPrevious || onNext || onSubmit) && (

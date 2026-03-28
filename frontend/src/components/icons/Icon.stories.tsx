@@ -6,8 +6,8 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { SimpleGrid, Stack, Text, Card } from "@mantine/core";
-import { IconPencil } from "@tabler/icons-react";
+import { Group, SimpleGrid, Stack, Text, Card } from "@mantine/core";
+import { IconPencil, IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "./Icon";
 import appIcons from "./appIcons";
 
@@ -161,12 +161,13 @@ export const AllSizes: Story = {
  * Icons with custom colours.
  */
 export const WithColour: Story = {
+  parameters: { layout: "padded" },
   args: {
     icon: <IconPencil />,
     size: "lg",
   },
   render: () => (
-    <SimpleGrid cols={4} spacing="lg">
+    <Group gap="lg">
       <Stack gap="xs" align="center">
         <Icon icon={<IconPencil />} size="lg" colour="red" />
         <Text size="xs" c="dimmed">
@@ -191,6 +192,49 @@ export const WithColour: Story = {
           Default
         </Text>
       </Stack>
-    </SimpleGrid>
+    </Group>
+  ),
+};
+
+/**
+ * Icons with a circular container background.
+ */
+export const WithContainer: Story = {
+  parameters: { layout: "padded" },
+  args: {
+    icon: <IconPencil />,
+    size: "md",
+  },
+  render: () => (
+    <Group gap="lg">
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconCheck />} container="green" />
+        <Text size="xs" c="dimmed">
+          Light green
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconX />} container="red" />
+        <Text size="xs" c="dimmed">
+          Light red
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon
+          icon={<IconCheck />}
+          container="green"
+          containerVariant="filled"
+        />
+        <Text size="xs" c="dimmed">
+          Filled green
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconX />} container="red" containerVariant="filled" />
+        <Text size="xs" c="dimmed">
+          Filled red
+        </Text>
+      </Stack>
+    </Group>
   ),
 };

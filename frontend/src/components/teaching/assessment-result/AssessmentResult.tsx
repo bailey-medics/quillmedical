@@ -4,10 +4,9 @@
  * Displays the overall pass/fail result with config-driven score breakdown.
  */
 
-import { Alert, Card, Stack, ThemeIcon } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
-import Icon from "@/components/icons";
-import { BodyText, BodyTextBold } from "@/components/typography";
+import { Card, Stack } from "@mantine/core";
+import { PageHeader, HeaderText } from "@/components/typography";
+import ResultMessage from "@/components/result-message/ResultMessage";
 import { ScoreBreakdown } from "../score-breakdown/ScoreBreakdown";
 import type { CriterionResult } from "@/features/teaching/types";
 
@@ -27,27 +26,17 @@ export function AssessmentResult({
 }: AssessmentResultProps) {
   return (
     <Stack gap="lg">
-      <Alert
-        color={isPassed ? "green" : "red"}
-        variant="light"
-        icon={
-          <ThemeIcon
-            color={isPassed ? "green" : "red"}
-            variant="filled"
-            size="lg"
-            radius="xl"
-          >
-            <Icon icon={isPassed ? <IconCheck /> : <IconX />} />
-          </ThemeIcon>
-        }
-      >
-        <BodyTextBold>{isPassed ? "Passed" : "Not passed"}</BodyTextBold>
-        {bankTitle && <BodyText>{bankTitle}</BodyText>}
-      </Alert>
+      <PageHeader title={isPassed ? "Passed" : "Not passed"} />
+
+      <ResultMessage
+        variant={isPassed ? "success" : "error"}
+        title={isPassed ? "Passed" : "Not passed"}
+        subtitle={bankTitle}
+      />
 
       <Card withBorder p="md">
         <Stack gap="sm">
-          <BodyTextBold>Score breakdown</BodyTextBold>
+          <HeaderText>Score breakdown</HeaderText>
           <ScoreBreakdown criteria={criteria} />
         </Stack>
       </Card>
