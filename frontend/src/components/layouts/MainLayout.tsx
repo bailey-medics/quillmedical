@@ -31,6 +31,8 @@ type Props = {
   patientNav?: NavItem[];
   /** Page content to render in main area */
   children?: ReactNode;
+  /** When true, hides burger, sidebar, drawer, search, and patient info */
+  examMode?: boolean;
 };
 
 /**
@@ -50,6 +52,7 @@ export default function MainLayout({
   isLoading = false,
   patientNav,
   children,
+  examMode = false,
 }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
@@ -120,28 +123,31 @@ export default function MainLayout({
           isNarrow={isSm}
           onPatientClick={handlePatientClick}
           onPatientDoubleClick={handlePatientDoubleClick}
+          examMode={examMode}
         />
       </Box>
 
       <Flex flex={1} style={{ overflow: "hidden", position: "relative" }}>
-        <NavigationDrawer
-          opened={opened}
-          onClose={close}
-          topOffset={0}
-          width={`${DRAWER_W}px`}
-        >
-          <div style={{ width: DRAWER_W }}>
-            <SideNav
-              showSearch={isSm}
-              showIcons
-              onNavigate={close}
-              patientNav={patientNav}
-            />
-          </div>
-        </NavigationDrawer>
+        {!examMode && (
+          <NavigationDrawer
+            opened={opened}
+            onClose={close}
+            topOffset={0}
+            width={`${DRAWER_W}px`}
+          >
+            <div style={{ width: DRAWER_W }}>
+              <SideNav
+                showSearch={isSm}
+                showIcons
+                onNavigate={close}
+                patientNav={patientNav}
+              />
+            </div>
+          </NavigationDrawer>
+        )}
 
         <Flex style={{ flex: 1, height: "100%" }}>
-          {!isSm && (
+          {!isSm && !examMode && (
             <Box
               component="aside"
               style={{

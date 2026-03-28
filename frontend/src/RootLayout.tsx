@@ -28,6 +28,10 @@ export type LayoutCtx = {
   patientNav: NavItem[];
   /** Function to update patient navigation breadcrumbs */
   setPatientNav: React.Dispatch<React.SetStateAction<NavItem[]>>;
+  /** Whether the layout should enter exam mode (hide nav, burger, search) */
+  examMode: boolean;
+  /** Function to toggle exam mode from child pages */
+  setExamMode: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 /**
@@ -51,6 +55,7 @@ export type LayoutCtx = {
 export default function RootLayout() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientNav, setPatientNav] = useState<NavItem[]>([]);
+  const [examMode, setExamMode] = useState(false);
   const location = useLocation();
 
   // Clear patient context when navigating away from patient-specific routes
@@ -67,7 +72,12 @@ export default function RootLayout() {
 
   return (
     <>
-      <MainLayout patient={patient} isLoading={false} patientNav={patientNav}>
+      <MainLayout
+        patient={patient}
+        isLoading={false}
+        patientNav={patientNav}
+        examMode={examMode}
+      >
         <Outlet
           context={
             {
@@ -75,6 +85,8 @@ export default function RootLayout() {
               setPatient,
               patientNav,
               setPatientNav,
+              examMode,
+              setExamMode,
             } satisfies LayoutCtx
           }
         />

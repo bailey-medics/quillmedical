@@ -1,10 +1,16 @@
 import { Alert, Container, Loader, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useNavigate,
+  useOutletContext,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { api } from "@/lib/api";
 import { QuestionView } from "@/components/teaching/question-view/QuestionView";
 import { AssessmentIntro } from "@/components/teaching/assessment-intro/AssessmentIntro";
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
+import type { LayoutCtx } from "@/RootLayout";
 import type {
   AnswerResult,
   Assessment,
@@ -20,6 +26,13 @@ export default function AssessmentAttempt() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setExamMode } = useOutletContext<LayoutCtx>();
+
+  // Enter exam mode on mount, exit on unmount
+  useEffect(() => {
+    setExamMode(true);
+    return () => setExamMode(false);
+  }, [setExamMode]);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);

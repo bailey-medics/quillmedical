@@ -37,6 +37,8 @@ type Props = {
   onPatientClick?: () => void;
   /** Callback when patient demographics are double-clicked */
   onPatientDoubleClick?: () => void;
+  /** When true, hides burger, patient info, and search — shows only branding */
+  examMode?: boolean;
 };
 
 /**
@@ -129,8 +131,27 @@ export default function TopRibbon({
   fontSize = "1.25rem",
   onPatientClick,
   onPatientDoubleClick,
+  examMode = false,
 }: Props) {
-  const showBrand = !isNarrow;
+  const showBrand = !isNarrow || examMode;
+
+  if (examMode) {
+    return (
+      <div className={classes.cq}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            paddingTop: 3,
+            marginLeft: "0.8rem",
+          }}
+        >
+          <QuillName />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* This inner div is the query container */}
