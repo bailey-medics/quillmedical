@@ -1,10 +1,21 @@
-import { Alert, Container, Loader, Stack } from "@mantine/core";
+import { Alert, Container, Loader, Modal, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useBlocker,
+  useNavigate,
+  useOutletContext,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { api } from "@/lib/api";
 import { QuestionView } from "@/components/teaching/question-view/QuestionView";
 import { AssessmentIntro } from "@/components/teaching/assessment-intro/AssessmentIntro";
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
+import { ButtonPairRed } from "@/components/button";
+import { IconAlertTriangle } from "@tabler/icons-react";
+import Icon from "@/components/icons/Icon";
+import BodyTextBold from "@/components/typography/BodyTextBold";
+import type { LayoutCtx } from "@/RootLayout";
 import type {
   AnswerResult,
   Assessment,
@@ -20,8 +31,34 @@ export default function AssessmentAttempt() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setExamMode } = useOutletContext<LayoutCtx>();
+
+  // Enter exam mode on mount, exit on unmount
+  useEffect(() => {
+    setExamMode(true);
+    return () => setExamMode(false);
+  }, [setExamMode]);
 
   const [phase, setPhase] = useState<Phase>("loading");
+
+  const isActive = phase === "questions" || phase === "intro";
+
+  // Block React Router navigation during active exam
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isActive && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // Block browser tab close / refresh during active exam
+  useEffect(() => {
+    if (!isActive) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isActive]);
+
   const [error, setError] = useState<string | null>(null);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [bankDetail, setBankDetail] = useState<QuestionBankDetail | null>(null);
@@ -240,85 +277,108 @@ export default function AssessmentAttempt() {
     setPhase("closing");
   }, []);
 
-  if (phase === "loading") {
-    return (
-      <Container size="lg" py="xl">
-        <Loader />
-      </Container>
-    );
-  }
+  const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
+  const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
-  if (phase === "error") {
-    return (
-      <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
-      </Container>
-    );
-  }
-
-  if (phase === "intro") {
-    const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
-    return (
-      <Container size="lg" py="xl">
-        <AssessmentIntro
-          title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
-          body={introPage?.body ?? ""}
-          onBegin={handleBegin}
-          loading={beginning}
-        />
-      </Container>
-    );
-  }
-
-  if (phase === "closing") {
-    const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
-    return (
-      <Container size="lg" py="xl">
-        <AssessmentClosing
-          title={closingPage?.title ?? "Assessment complete"}
-          body={
-            closingPage?.body ??
-            "You have completed all questions. Click below to view your results."
-          }
-          onViewResults={handleComplete}
-          disabled={completing}
-        />
-      </Container>
-    );
-  }
-
-  // phase === "questions"
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        {currentItem && (
-          <QuestionView
-            item={currentItem}
-            selectedOption={selectedOption}
-            onSelectOption={setSelectedOption}
-            currentQuestion={currentItem.display_order}
-            totalQuestions={assessment?.total_items}
-            timeLimitMinutes={assessment?.time_limit_minutes}
-            startedAt={assessment?.started_at}
-            onExpire={handleExpire}
-            onPrevious={
-              currentItem.display_order > 1 ? handlePrevious : undefined
-            }
-            onNext={viewingPrevious ? handleNextPrevious : handleSubmitAnswer}
-            onSubmit={viewingPrevious ? undefined : handleSubmitAnswer}
-            isLastQuestion={
-              viewingPrevious
-                ? false
-                : assessment
-                  ? answeredCount + 1 >= assessment.total_items
-                  : false
-            }
-            submitting={submitting}
+    <>
+      {/* Blocker modal — warns when navigating away during active exam */}
+      <Modal
+        opened={blocker.state === "blocked"}
+        onClose={() => blocker.reset?.()}
+        centered
+        withCloseButton={false}
+        radius="md"
+        styles={{ content: { border: "1px solid rgba(0, 0, 0, 0.1)" } }}
+      >
+        <Stack gap="md" align="center" pt="xl">
+          <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
+          <BodyTextBold justify="centre">
+            You have an active exam. Are you sure you want to leave? Your
+            progress will be submitted.
+          </BodyTextBold>
+          <ButtonPairRed
+            cancelLabel="Continue exam"
+            acceptLabel="Leave exam"
+            onCancel={() => blocker.reset?.()}
+            onAccept={() => blocker.proceed?.()}
           />
-        )}
-      </Stack>
-    </Container>
+        </Stack>
+      </Modal>
+
+      {phase === "loading" && (
+        <Container size="lg" py="xl">
+          <Loader />
+        </Container>
+      )}
+
+      {phase === "error" && (
+        <Container size="lg" py="xl">
+          <Alert color="red" title="Error">
+            {error}
+          </Alert>
+        </Container>
+      )}
+
+      {phase === "intro" && (
+        <Container size="lg" py="xl">
+          <AssessmentIntro
+            title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
+            body={introPage?.body ?? ""}
+            onBegin={handleBegin}
+            loading={beginning}
+          />
+        </Container>
+      )}
+
+      {phase === "closing" && (
+        <Container size="lg" py="xl">
+          <AssessmentClosing
+            title={closingPage?.title ?? "Assessment complete"}
+            body={
+              closingPage?.body ??
+              "You have completed all questions. Click below to view your results."
+            }
+            onViewResults={handleComplete}
+            disabled={completing}
+          />
+        </Container>
+      )}
+
+      {phase === "questions" && (
+        <Container size="lg" py="xl">
+          <Stack gap="lg">
+            {currentItem && (
+              <QuestionView
+                item={currentItem}
+                selectedOption={selectedOption}
+                onSelectOption={setSelectedOption}
+                currentQuestion={currentItem.display_order}
+                totalQuestions={assessment?.total_items}
+                timeLimitMinutes={assessment?.time_limit_minutes}
+                startedAt={assessment?.started_at}
+                onExpire={handleExpire}
+                onCloseExam={handleComplete}
+                onPrevious={
+                  currentItem.display_order > 1 ? handlePrevious : undefined
+                }
+                onNext={
+                  viewingPrevious ? handleNextPrevious : handleSubmitAnswer
+                }
+                onSubmit={viewingPrevious ? undefined : handleSubmitAnswer}
+                isLastQuestion={
+                  viewingPrevious
+                    ? false
+                    : assessment
+                      ? answeredCount + 1 >= assessment.total_items
+                      : false
+                }
+                submitting={submitting}
+              />
+            )}
+          </Stack>
+        </Container>
+      )}
+    </>
   );
 }

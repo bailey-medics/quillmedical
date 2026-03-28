@@ -15,12 +15,21 @@
  * 7. Previous/Next navigation buttons
  */
 
-import { Card, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
+import {
+  Card,
+  Group,
+  Image,
+  Radio,
+  SimpleGrid,
+  Stack,
+  rem,
+} from "@mantine/core";
 import PreviousNextButton from "@components/button/PreviousNextButton";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
+import ExamCloseButton from "@components/teaching/exam-close-button/ExamCloseButton";
 import classes from "./QuestionView.module.css";
 
 interface QuestionViewProps {
@@ -52,6 +61,8 @@ interface QuestionViewProps {
   startedAt?: string;
   /** Called when the timer expires */
   onExpire?: () => void;
+  /** Called when the user confirms ending the exam early */
+  onCloseExam?: () => void;
 }
 
 function ImagePanel({ image }: { image: ItemImage }) {
@@ -83,17 +94,21 @@ export function QuestionView({
   timeLimitMinutes,
   startedAt,
   onExpire,
+  onCloseExam,
 }: QuestionViewProps) {
   return (
     <Stack gap="lg" pt={timeLimitMinutes != null ? rem(48) : undefined}>
-      {/* Fixed timer */}
+      {/* Fixed timer + close exam button */}
       {timeLimitMinutes != null && startedAt && onExpire && (
         <div className={classes.timer}>
-          <AssessmentTimer
-            timeLimitMinutes={timeLimitMinutes}
-            startedAt={startedAt}
-            onExpire={onExpire}
-          />
+          <Group gap="sm">
+            <AssessmentTimer
+              timeLimitMinutes={timeLimitMinutes}
+              startedAt={startedAt}
+              onExpire={onExpire}
+            />
+            {onCloseExam && <ExamCloseButton onConfirm={onCloseExam} />}
+          </Group>
         </div>
       )}
       {/* Images */}

@@ -89,6 +89,7 @@ const meta: Meta<typeof QuestionView> = {
     timeLimitMinutes: 75,
     startedAt: new Date().toISOString(),
     onExpire: () => {},
+    onCloseExam: () => {},
   },
 };
 
