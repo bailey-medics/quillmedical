@@ -35,26 +35,14 @@ export const Success: Story = {
 };
 
 /**
- * Error
+ * Fail
  *
  * Red alert with X icon for negative outcomes.
  */
-export const Error: Story = {
+export const Fail: Story = {
   args: {
-    variant: "error",
+    variant: "fail",
     title: "Not passed",
     subtitle: "Optical diagnosis of diminutive colorectal polyps",
-  },
-};
-
-/**
- * Without subtitle
- *
- * Alert with title only, no subtitle.
- */
-export const WithoutSubtitle: Story = {
-  args: {
-    variant: "success",
-    title: "Operation completed successfully",
   },
 };

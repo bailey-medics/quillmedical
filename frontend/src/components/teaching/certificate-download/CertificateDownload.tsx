@@ -5,11 +5,11 @@
  * has passed and certificate_download is enabled in the config.
  */
 
-import { Button } from "@mantine/core";
-import { IconDownload } from "@tabler/icons-react";
-import Icon from "@/components/icons";
 import { api } from "@/lib/api";
 import { useState } from "react";
+import { Stack } from "@mantine/core";
+import IconTextButton from "@/components/button/IconTextButton";
+import { PageHeader, BodyText } from "@/components/typography";
 
 interface CertificateDownloadProps {
   /** Assessment ID for the certificate */
@@ -42,13 +42,18 @@ export function CertificateDownload({
   }
 
   return (
-    <Button
-      variant="light"
-      leftSection={<Icon icon={<IconDownload />} size="sm" />}
-      loading={loading}
-      onClick={handleDownload}
-    >
-      Download certificate
-    </Button>
+    <Stack gap="lg">
+      <PageHeader title="Download certificate" />
+      <BodyText>
+        You have passed this assessment. Download your certificate below as a
+        PDF to keep for your records.
+      </BodyText>
+      <IconTextButton
+        icon="download"
+        label="Download certificate"
+        loading={loading}
+        onClick={handleDownload}
+      />
+    </Stack>
   );
 }

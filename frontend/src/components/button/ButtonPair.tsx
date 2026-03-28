@@ -27,6 +27,8 @@ interface ButtonPairProps {
   onCancel: () => void;
   /** Disables the accept button */
   acceptDisabled?: boolean;
+  /** Shows loading spinner on the accept button */
+  acceptLoading?: boolean;
 }
 
 export default function ButtonPair({
@@ -35,6 +37,7 @@ export default function ButtonPair({
   onAccept,
   onCancel,
   acceptDisabled = false,
+  acceptLoading = false,
 }: ButtonPairProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -56,6 +59,7 @@ export default function ButtonPair({
       <Button
         onClick={onAccept}
         disabled={acceptDisabled}
+        loading={acceptLoading}
         size={buttonSize}
         styles={{ label: { fontSize } }}
       >

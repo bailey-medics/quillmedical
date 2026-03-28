@@ -1,8 +1,15 @@
 /**
  * AssessmentTimer Component
  *
- * Countdown timer for assessments. Shows remaining time from the
- * config-defined time_limit_minutes. Visual warning at 5 minutes.
+ * Countdown timer for timed assessments. Calculates remaining time from
+ * the startedAt timestamp and the config-driven time limit.
+ *
+ * Colour states:
+ * - Blue: normal — more than 5 minutes remaining
+ * - Orange: warning — 5 minutes or less remaining
+ * - Red: expired — time has run out, displays "Time up"
+ *
+ * Calls onExpire when the countdown reaches zero.
  */
 
 import { Badge, Group, Text } from "@mantine/core";
@@ -66,13 +73,13 @@ export function AssessmentTimer({
 
   return (
     <Badge
-      size="lg"
+      size="xl"
       variant="light"
       color={colour}
       leftSection={<Icon icon={<IconClock />} size="sm" />}
     >
       <Group gap={4}>
-        <Text size="sm" fw={600}>
+        <Text size="lg" fw={600}>
           {isExpired ? "Time up" : formatTime(remainingSeconds)}
         </Text>
       </Group>

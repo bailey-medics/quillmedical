@@ -29,7 +29,7 @@ export function AssessmentResult({
       <PageHeader title={isPassed ? "Passed" : "Not passed"} />
 
       <ResultMessage
-        variant={isPassed ? "success" : "error"}
+        variant={isPassed ? "success" : "fail"}
         title={isPassed ? "Passed" : "Not passed"}
         subtitle={bankTitle}
       />

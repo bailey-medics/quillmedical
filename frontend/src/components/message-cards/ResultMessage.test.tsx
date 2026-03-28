@@ -9,8 +9,8 @@ describe("ResultMessage", () => {
     expect(screen.getByText("Passed")).toBeInTheDocument();
   });
 
-  it("renders error variant with title", () => {
-    renderWithMantine(<ResultMessage variant="error" title="Not passed" />);
+  it("renders fail variant with title", () => {
+    renderWithMantine(<ResultMessage variant="fail" title="Not passed" />);
     expect(screen.getByText("Not passed")).toBeInTheDocument();
   });
 
@@ -40,9 +40,9 @@ describe("ResultMessage", () => {
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
-  it("shows icon for error", () => {
+  it("shows icon for fail", () => {
     const { container } = renderWithMantine(
-      <ResultMessage variant="error" title="Failed" />,
+      <ResultMessage variant="fail" title="Failed" />,
     );
     expect(container.querySelector("svg")).toBeInTheDocument();
   });

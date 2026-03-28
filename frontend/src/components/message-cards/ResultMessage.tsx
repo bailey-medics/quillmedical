@@ -12,7 +12,7 @@ import Icon from "@/components/icons";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import classes from "./ResultMessage.module.css";
 
-type ResultMessageVariant = "success" | "error";
+type ResultMessageVariant = "success" | "fail";
 
 interface ResultMessageProps {
   /** Visual variant controlling colour and icon */
@@ -28,7 +28,7 @@ const variantConfig: Record<
   { color: string; icon: React.ReactNode }
 > = {
   success: { color: "green", icon: <IconCheck /> },
-  error: { color: "red", icon: <IconX /> },
+  fail: { color: "red", icon: <IconX /> },
 };
 
 const alertStyles = {

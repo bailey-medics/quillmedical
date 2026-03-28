@@ -14,7 +14,6 @@ import {
   Stack,
   Paper,
   Text,
-  Title,
   Skeleton,
   Alert,
   Group,
@@ -24,6 +23,13 @@ import {
 import { IconAlertCircle } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
+import ButtonPair from "@/components/button/ButtonPair";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+} from "@/components/typography";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import DirtyFormNavigation from "@/components/warnings";
 import { useAuth } from "@/auth/AuthContext";
@@ -200,23 +206,19 @@ export default function OrgFeaturesPage() {
 
         <Paper shadow="sm" p="lg" radius="md" withBorder>
           <Stack gap="lg">
-            <Title order={2} size="lg">
-              Available features
-            </Title>
+            <HeaderText>Available features</HeaderText>
 
-            <Text size="lg">
+            <BodyTextBlack>
               You are about to make organisation-wide changes. Please do so with
               care. You will need to press &ldquo;Save changes&rdquo; below for
               these changes to take effect.
-            </Text>
+            </BodyTextBlack>
 
             {AVAILABLE_FEATURES.map((feature) => (
               <Group key={feature.key} justify="space-between" wrap="nowrap">
                 <Stack gap={2}>
-                  <Text fw={500}>{feature.label}</Text>
-                  <Text size="sm" c="dimmed">
-                    {feature.description}
-                  </Text>
+                  <BodyTextBold>{feature.label}</BodyTextBold>
+                  <BodyText>{feature.description}</BodyText>
                 </Stack>
 
                 <SolidSwitch
@@ -230,21 +232,14 @@ export default function OrgFeaturesPage() {
           </Stack>
         </Paper>
 
-        <Group justify="flex-end">
-          <Button
-            variant="default"
-            onClick={() => navigate(`/admin/organisations/${id}`)}
-          >
-            Cancel
-          </Button>
-          <Button
-            loading={saving}
-            disabled={!hasChanges}
-            onClick={() => setConfirmOpen(true)}
-          >
-            Save changes
-          </Button>
-        </Group>
+        <ButtonPair
+          cancelLabel="Cancel"
+          acceptLabel="Save changes"
+          onCancel={() => navigate(`/admin/organisations/${id}`)}
+          onAccept={() => setConfirmOpen(true)}
+          acceptDisabled={!hasChanges}
+          acceptLoading={saving}
+        />
 
         <Modal
           opened={confirmOpen}
@@ -253,19 +248,17 @@ export default function OrgFeaturesPage() {
           centered
         >
           <Stack gap="md">
-            <Text>
+            <BodyTextBlack>
               You are about to make the following changes for{" "}
               <Text span fw={700}>
                 {orgName}
               </Text>
               :
-            </Text>
+            </BodyTextBlack>
             <List>
               {pendingChanges.map((change) => (
                 <List.Item key={change.key}>
-                  <Text span fw={500}>
-                    {change.label}
-                  </Text>
+                  <BodyTextBold>{change.label}</BodyTextBold>
                   {" — "}
                   {change.enabled ? "enable" : "disable"}
                 </List.Item>
