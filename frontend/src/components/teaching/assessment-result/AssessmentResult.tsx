@@ -6,7 +6,7 @@
 
 import { Card, Stack } from "@mantine/core";
 import { PageHeader, HeaderText } from "@/components/typography";
-import ResultMessage from "@/components/result-message/ResultMessage";
+import { ResultMessage } from "@/components/message-cards";
 import { ScoreBreakdown } from "../score-breakdown/ScoreBreakdown";
 import type { CriterionResult } from "@/features/teaching/types";
 

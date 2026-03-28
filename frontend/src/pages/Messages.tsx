@@ -11,7 +11,7 @@ import NewMessageModal, {
 } from "@/components/messaging/NewMessageModal";
 import AddButton from "@/components/button/AddButton";
 import PageHeader from "@/components/page-header";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import {
   createConversation,
   fetchConversations,

@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Text, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import NationalNumber from "@/components/data/NationalNumber";

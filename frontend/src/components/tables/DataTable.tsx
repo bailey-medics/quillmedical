@@ -25,7 +25,7 @@
 import { Table, Skeleton, Stack, Center, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import DataCard from "./DataCard";
 import classes from "./DataTable.module.css";
 

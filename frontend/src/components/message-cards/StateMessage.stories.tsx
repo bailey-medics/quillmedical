@@ -10,7 +10,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import StateMessage from "./StateMessage";
 
 const meta: Meta<typeof StateMessage> = {
-  title: "StateMessages/StateMessage",
+  title: "MessageCards/StateMessage",
   component: StateMessage,
   tags: ["autodocs"],
   parameters: {

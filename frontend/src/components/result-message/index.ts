@@ -1,1 +1,1 @@
-export { default as ResultMessage } from "./ResultMessage";
+export { ResultMessage } from "@/components/message-cards";

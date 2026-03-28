@@ -32,6 +32,7 @@ const variantConfig: Record<
 };
 
 const alertStyles = {
+  root: classes.root,
   icon: classes.icon,
   title: classes.title,
 };
