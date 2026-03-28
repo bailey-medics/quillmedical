@@ -13,7 +13,7 @@
 import { Alert } from "@mantine/core";
 import { IconAlertCircle, IconClock, IconUserOff } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import { BodyTextBlack } from "@/components/typography";
+import { BodyTextBlack, HeaderText } from "@/components/typography";
 import classes from "./StateMessage.module.css";
 
 /**
@@ -49,7 +49,7 @@ export default function StateMessage(props: Props) {
     return (
       <Alert
         icon={<Icon icon={<IconAlertCircle />} size="xl" />}
-        title="Error loading data"
+        title={<HeaderText>Error loading data</HeaderText>}
         color="red"
         variant="light"
         classNames={alertStyles}
@@ -63,7 +63,7 @@ export default function StateMessage(props: Props) {
     return (
       <Alert
         icon={<Icon icon={<IconUserOff />} size="xl" />}
-        title="No patients to show"
+        title={<HeaderText>No patients to show</HeaderText>}
         color="gray"
         variant="light"
         classNames={alertStyles}
@@ -79,7 +79,7 @@ export default function StateMessage(props: Props) {
   return (
     <Alert
       icon={<Icon icon={<IconClock />} size="xl" />}
-      title="Database is initialising"
+      title={<HeaderText>Database is initialising</HeaderText>}
       color="blue"
       variant="light"
       classNames={alertStyles}

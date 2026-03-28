@@ -66,4 +66,34 @@ describe("AssessmentTimer", () => {
 
     expect(handleExpire).toHaveBeenCalled();
   });
+
+  it("displays countdown when more than 1 minute remains", () => {
+    // 72 minutes ago → 3 minutes left
+    const start = new Date(Date.now() - 72 * 60 * 1000).toISOString();
+
+    renderWithMantine(
+      <AssessmentTimer
+        timeLimitMinutes={75}
+        startedAt={start}
+        onExpire={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("03:00")).toBeInTheDocument();
+  });
+
+  it("displays countdown when 1 minute or less remains", () => {
+    // 74.5 minutes ago → 30 seconds left
+    const start = new Date(Date.now() - 74.5 * 60 * 1000).toISOString();
+
+    renderWithMantine(
+      <AssessmentTimer
+        timeLimitMinutes={75}
+        startedAt={start}
+        onExpire={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("00:30")).toBeInTheDocument();
+  });
 });

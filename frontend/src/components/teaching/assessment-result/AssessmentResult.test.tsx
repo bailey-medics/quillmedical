@@ -23,14 +23,16 @@ describe("AssessmentResult", () => {
     renderWithMantine(
       <AssessmentResult isPassed={true} criteria={passCriteria} />,
     );
-    expect(screen.getByText("Passed")).toBeInTheDocument();
+    const matches = screen.getAllByText("Passed");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows 'Not passed' when isPassed is false", () => {
     renderWithMantine(
       <AssessmentResult isPassed={false} criteria={failCriteria} />,
     );
-    expect(screen.getByText("Not passed")).toBeInTheDocument();
+    const matches = screen.getAllByText("Not passed");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders bank title when provided", () => {

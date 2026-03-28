@@ -13,7 +13,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
-import { Text, Badge } from "@mantine/core";
+import { Badge } from "@mantine/core";
 import DataTable, { type Column } from "./DataTable";
 
 interface TestUser {
@@ -70,7 +70,7 @@ describe("DataTable", () => {
       const columns: Column<TestPatient>[] = [
         {
           header: "Name",
-          render: (patient) => <Text fw={500}>{patient.name}</Text>,
+          render: (patient) => patient.name,
         },
         {
           header: "Status",

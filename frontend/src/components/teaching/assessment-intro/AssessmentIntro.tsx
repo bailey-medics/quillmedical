@@ -6,7 +6,7 @@
  */
 
 import { Button, Card, Stack } from "@mantine/core";
-import { HeaderText } from "@/components/typography";
+import { PageHeader } from "@/components/typography";
 import MarkdownView from "@/components/typography/MarkdownView";
 
 interface AssessmentIntroProps {
@@ -31,7 +31,7 @@ export function AssessmentIntro({
 }: AssessmentIntroProps) {
   return (
     <Stack gap="lg">
-      <HeaderText>{title}</HeaderText>
+      <PageHeader title={title} />
       <Card withBorder p="lg">
         <MarkdownView source={body} />
       </Card>

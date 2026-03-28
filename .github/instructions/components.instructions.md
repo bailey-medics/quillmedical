@@ -6,6 +6,7 @@ applyTo: "frontend/src/components/**"
 
 - **Reuse existing components** from this `components/` folder. Always check what already exists before creating anything new.
 - Use **typography components** from `components/typography/` for **all** text — Never use raw Mantine `<Text>`, `<Title>`, or plain HTML text elements. If none of the existing typography components fit, ask a human before creating a new one.
+- Use **`<PageHeader>`** for page-level titles and component section headings displayed on pages.
 - Use the **`<Icon>`** component from `components/icons/Icon.tsx` to wrap **all** Tabler icons — never render Tabler icons directly in JSX (e.g. `<IconPencil />` on its own is not allowed). Always use `<Icon icon={<IconPencil />} />`. Register any new icons in `components/icons/appIcons.tsx` first.
 - If you need a new component that does not have existing atomic components to compose from, **stop and ask a human for help** — do not create new atomic components on your own.
 - Every new component must have a `.stories.tsx` and `.test.tsx` file alongside it.
@@ -18,6 +19,7 @@ applyTo: "frontend/src/components/**"
 ## Styling
 
 - **No inline styles** — use Mantine component props or CSS modules only.
+- **Use `rem` instead of `px`** in CSS modules where possible for better scalability.
 - **Responsive**: always use `theme.breakpoints.sm` (`48em` / 768px) for mobile/desktop splits via `useMediaQuery`.
 
 ## Testing and stories

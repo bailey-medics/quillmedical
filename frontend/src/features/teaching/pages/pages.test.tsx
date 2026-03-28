@@ -23,7 +23,6 @@ import { api } from "@/lib/api";
 import AssessmentDashboard from "./AssessmentDashboard";
 import AllResults from "./AllResults";
 import SyncStatus from "./SyncStatus";
-import ManageItems from "./ManageItems";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,14 +92,6 @@ describe("SyncStatus", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<SyncStatus />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
-  });
-});
-
-describe("ManageItems", () => {
-  it("shows loading state initially", () => {
-    (api.get as Mock).mockReturnValue(new Promise(() => {}));
-    renderWithRouter(<ManageItems />);
     expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
   });
 });

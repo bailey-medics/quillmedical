@@ -19,7 +19,7 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic";
 import Demographics from "@/components/demographics";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import { Group, Text, UnstyledButton, Skeleton } from "@mantine/core";
 
 /**

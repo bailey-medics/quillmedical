@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Text, Group } from "@mantine/core";
+import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
   const columns: Column<User>[] = [
     {
       header: "Username",
-      render: (user) => <Text fw={500}>{user.username}</Text>,
+      render: (user) => user.username,
     },
     {
       header: "Email",
@@ -64,7 +64,7 @@ export default function AdminUsersPage() {
     },
     {
       header: "User ID",
-      render: (user) => <Text c="dimmed">{user.id}</Text>,
+      render: (user) => user.id,
     },
   ];
 

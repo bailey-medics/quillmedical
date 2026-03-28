@@ -8,9 +8,9 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Text, Center, Group } from "@mantine/core";
+import { Container, Stack, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import NationalNumber from "@/components/data/NationalNumber";
@@ -104,7 +104,7 @@ export default function AdminPatientsPage() {
   const columns: Column<Patient>[] = [
     {
       header: "Name",
-      render: (patient) => <Text fw={500}>{formatName(patient.name)}</Text>,
+      render: (patient) => formatName(patient.name),
     },
     {
       header: "Birth date",
@@ -128,15 +128,13 @@ export default function AdminPatientsPage() {
             id.value !== "",
         );
         if (!nhsIdentifier) {
-          return <Text c="dimmed">N/A</Text>;
+          return "N/A";
         }
         return (
-          <Text c="dimmed">
-            <NationalNumber
-              nationalNumber={nhsIdentifier.value!}
-              nationalNumberSystem={nhsIdentifier.system}
-            />
-          </Text>
+          <NationalNumber
+            nationalNumber={nhsIdentifier.value!}
+            nationalNumberSystem={nhsIdentifier.system}
+          />
         );
       },
     },

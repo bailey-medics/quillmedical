@@ -5,6 +5,9 @@ const meta: Meta<typeof CertificateDownload> = {
   title: "Teaching/CertificateDownload",
   component: CertificateDownload,
   tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+  },
 };
 
 export default meta;

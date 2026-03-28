@@ -25,7 +25,7 @@
 import { Table, Skeleton, Stack, Center, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
-import StateMessage from "@/components/state-message";
+import { StateMessage } from "@/components/message-cards";
 import DataCard from "./DataCard";
 import classes from "./DataTable.module.css";
 
@@ -35,7 +35,14 @@ import classes from "./DataTable.module.css";
 export interface Column<T> {
   /** Column header text */
   header: string;
-  /** Render function for cell content */
+  /**
+   * Render function for cell content.
+   *
+   * Return plain text (string/number) or a simple component (Badge,
+   * FormattedDate, ActiveStatus, etc.). Do NOT wrap output in Text or
+   * other typography components — cells are already styled via
+   * BodyTextBlack.
+   */
   render: (row: T) => React.ReactNode;
   /** Optional: custom width */
   width?: string;

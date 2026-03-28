@@ -51,12 +51,3 @@ export const Failed: Story = {
     ],
   },
 };
-
-export const NoTitle: Story = {
-  args: {
-    isPassed: true,
-    criteria: [
-      { name: "Overall accuracy", value: 0.85, threshold: 0.8, passed: true },
-    ],
-  },
-};

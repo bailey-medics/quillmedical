@@ -1,10 +1,8 @@
-import { Alert, Container, Group, Loader, Stack } from "@mantine/core";
+import { Alert, Container, Loader, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { QuestionView } from "@/components/teaching/question-view/QuestionView";
-import { AssessmentTimer } from "@/components/teaching/assessment-timer/AssessmentTimer";
-import { AssessmentProgress } from "@/components/teaching/assessment-progress/AssessmentProgress";
 import { AssessmentIntro } from "@/components/teaching/assessment-intro/AssessmentIntro";
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
 import type {
@@ -32,6 +30,8 @@ export default function AssessmentAttempt() {
   const [answeredCount, setAnsweredCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [viewingPrevious, setViewingPrevious] = useState(false);
+  const [furthestItem, setFurthestItem] = useState<CandidateItem | null>(null);
 
   // Initialise assessment — either create new or resume existing
   useEffect(() => {
@@ -160,6 +160,63 @@ export default function AssessmentAttempt() {
     }
   }, [assessment, currentItem, selectedOption]);
 
+  const handlePrevious = useCallback(async () => {
+    if (!assessment || !currentItem || currentItem.display_order <= 1) return;
+
+    if (!viewingPrevious) {
+      setFurthestItem(currentItem);
+    }
+
+    try {
+      const item = await api.get<CandidateItem>(
+        `/teaching/assessments/${assessment.id}/item/${currentItem.display_order - 1}`,
+      );
+      setCurrentItem(item);
+      setSelectedOption(item.selected_option ?? null);
+      setViewingPrevious(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load previous item",
+      );
+      setPhase("error");
+    }
+  }, [assessment, currentItem, viewingPrevious]);
+
+  const handleNextPrevious = useCallback(async () => {
+    if (!assessment || !currentItem || !selectedOption) return;
+
+    setSubmitting(true);
+    try {
+      // Save updated answer
+      await api.put<CandidateItem>(
+        `/teaching/assessments/${assessment.id}/answer/${currentItem.answer_id}`,
+        { selected_option: selectedOption },
+      );
+
+      const nextOrder = currentItem.display_order + 1;
+
+      // Back to the furthest unanswered item
+      if (nextOrder > answeredCount) {
+        setCurrentItem(furthestItem);
+        setSelectedOption(null);
+        setViewingPrevious(false);
+        setFurthestItem(null);
+        return;
+      }
+
+      const item = await api.get<CandidateItem>(
+        `/teaching/assessments/${assessment.id}/item/${nextOrder}`,
+      );
+      setCurrentItem(item);
+      setSelectedOption(item.selected_option ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save answer");
+      setPhase("error");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [assessment, currentItem, selectedOption, answeredCount, furthestItem]);
+
   const handleComplete = useCallback(async () => {
     if (!assessment) return;
     setCompleting(true);
@@ -236,32 +293,27 @@ export default function AssessmentAttempt() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        {assessment && (
-          <AssessmentProgress
-            current={answeredCount + 1}
-            total={assessment.total_items}
-          />
-        )}
-
-        {assessment && (
-          <Group justify="flex-end" align="center">
-            <AssessmentTimer
-              timeLimitMinutes={assessment.time_limit_minutes}
-              startedAt={assessment.started_at}
-              onExpire={handleExpire}
-            />
-          </Group>
-        )}
-
         {currentItem && (
           <QuestionView
             item={currentItem}
             selectedOption={selectedOption}
             onSelectOption={setSelectedOption}
-            onNext={handleSubmitAnswer}
-            onSubmit={handleSubmitAnswer}
+            currentQuestion={currentItem.display_order}
+            totalQuestions={assessment?.total_items}
+            timeLimitMinutes={assessment?.time_limit_minutes}
+            startedAt={assessment?.started_at}
+            onExpire={handleExpire}
+            onPrevious={
+              currentItem.display_order > 1 ? handlePrevious : undefined
+            }
+            onNext={viewingPrevious ? handleNextPrevious : handleSubmitAnswer}
+            onSubmit={viewingPrevious ? undefined : handleSubmitAnswer}
             isLastQuestion={
-              assessment ? answeredCount + 1 >= assessment.total_items : false
+              viewingPrevious
+                ? false
+                : assessment
+                  ? answeredCount + 1 >= assessment.total_items
+                  : false
             }
             submitting={submitting}
           />

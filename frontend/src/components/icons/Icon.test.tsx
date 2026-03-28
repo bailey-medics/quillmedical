@@ -114,4 +114,29 @@ describe("Icon Component", () => {
     const icon = screen.getByTestId("no-colour-icon");
     expect(icon).toHaveAttribute("stroke", "currentColor");
   });
+
+  it("wraps icon in ThemeIcon when container is set", () => {
+    const { container } = renderWithMantine(
+      <Icon
+        icon={<IconPencil data-testid="contained-icon" />}
+        container="green"
+      />,
+    );
+
+    const icon = screen.getByTestId("contained-icon");
+    expect(icon).toBeInTheDocument();
+    // ThemeIcon renders a div wrapper around the icon
+    const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
+    expect(themeIcon).toBeInTheDocument();
+  });
+
+  it("does not wrap in ThemeIcon when container is not set", () => {
+    const { container } = renderWithMantine(
+      <Icon icon={<IconPencil data-testid="no-container-icon" />} />,
+    );
+
+    expect(screen.getByTestId("no-container-icon")).toBeInTheDocument();
+    const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
+    expect(themeIcon).not.toBeInTheDocument();
+  });
 });

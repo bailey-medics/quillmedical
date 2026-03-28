@@ -143,6 +143,7 @@ def _build_candidate_item(
         images=images,
         text=item.text,
         options=safe_options,
+        selected_option=answer.selected_option,
     )
 
 
@@ -409,6 +410,57 @@ def get_current_item(
     )
 
 
+@teaching_router.get(
+    "/assessments/{assessment_id}/item/{display_order}",
+    response_model=CandidateItemOut,
+)
+def get_item_by_order(
+    assessment_id: int,
+    display_order: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> CandidateItemOut:
+    """Get a specific item by display order (for navigating back)."""
+    assessment = db.get(Assessment, assessment_id)
+    if not assessment or assessment.user_id != user.id:
+        raise HTTPException(404, "Assessment not found")
+    if assessment.completed_at:
+        raise HTTPException(409, "Assessment already completed")
+
+    answer = (
+        db.execute(
+            select(AssessmentAnswer).where(
+                AssessmentAnswer.assessment_id == assessment_id,
+                AssessmentAnswer.display_order == display_order,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not answer:
+        raise HTTPException(404, "Item not found")
+
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id
+                == assessment.organisation_id,
+                QuestionBankConfig.question_bank_id
+                == assessment.question_bank_id,
+                QuestionBankConfig.version == assessment.bank_version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not config_row:
+        raise HTTPException(500, "Config not found for assessment")
+
+    return _build_candidate_item(
+        answer, config_row.config_yaml, config_row.type
+    )
+
+
 @teaching_router.post(
     "/assessments/{assessment_id}/answer",
     response_model=AnswerResultOut,
@@ -515,6 +567,83 @@ def submit_answer(
         "next_item": next_item,
         "all_answered": all_answered,
     }
+
+
+@teaching_router.put(
+    "/assessments/{assessment_id}/answer/{answer_id}",
+    response_model=CandidateItemOut,
+)
+def update_answer(
+    assessment_id: int,
+    answer_id: int,
+    body: SubmitAnswerIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> CandidateItemOut:
+    """Update an already-answered item (before assessment completion)."""
+    assessment = db.get(Assessment, assessment_id)
+    if not assessment or assessment.user_id != user.id:
+        raise HTTPException(404, "Assessment not found")
+    if assessment.completed_at:
+        raise HTTPException(409, "Assessment already completed")
+
+    now = datetime.now(UTC)
+    deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=assessment.time_limit_minutes
+    )
+    if now > deadline:
+        raise HTTPException(409, "Time limit exceeded")
+
+    answer = (
+        db.execute(
+            select(AssessmentAnswer).where(
+                AssessmentAnswer.id == answer_id,
+                AssessmentAnswer.assessment_id == assessment_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not answer:
+        raise HTTPException(404, "Answer not found")
+
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id
+                == assessment.organisation_id,
+                QuestionBankConfig.question_bank_id
+                == assessment.question_bank_id,
+                QuestionBankConfig.version == assessment.bank_version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not config_row:
+        raise HTTPException(500, "Config not found for assessment")
+
+    config = config_row.config_yaml
+    item = answer.item
+
+    if config_row.type == "uniform":
+        is_correct, resolved_tags = score_answer_uniform(
+            body.selected_option, config, item.metadata_json
+        )
+    else:
+        is_correct, resolved_tags = score_answer_variable(
+            body.selected_option,
+            item.options or [],
+            item.correct_option_id or "",
+        )
+
+    answer.selected_option = body.selected_option
+    answer.is_correct = is_correct
+    answer.resolved_tags = resolved_tags
+    answer.answered_at = now
+    db.commit()
+
+    return _build_candidate_item(answer, config, config_row.type)
 
 
 @teaching_router.post(

@@ -7,7 +7,12 @@ interface BodyTextBlackProps {
 
 export default function BodyTextBlack({ children }: BodyTextBlackProps) {
   return (
-    <Text size="lg" c="black" style={{ whiteSpace: "pre-wrap" }}>
+    <Text
+      component="span"
+      size="lg"
+      c="black"
+      style={{ whiteSpace: "pre-wrap" }}
+    >
       {children}
     </Text>
   );

@@ -1,3 +1,10 @@
+.timer {
+  position: fixed;
+  top: calc(60px + var(--mantine-spacing-md));
+  right: var(--mantine-spacing-md);
+  z-index: 100;
+}
+
 .imagePanel {
   flex: 1;
 }
@@ -12,6 +19,11 @@
   padding: var(--mantine-spacing-xs);
   border-radius: var(--mantine-radius-sm);
   transition: background-color 150ms ease;
+}
+
+.option label {
+  font-size: var(--mantine-font-size-lg);
+  color: var(--mantine-color-black);
 }
 
 .option:hover {

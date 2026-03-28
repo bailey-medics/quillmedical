@@ -8,7 +8,8 @@
 
 import type { ReactElement } from "react";
 import { cloneElement } from "react";
-import { useMantineTheme } from "@mantine/core";
+import { ThemeIcon, useMantineTheme } from "@mantine/core";
+import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
 /**
@@ -36,6 +37,10 @@ interface IconProps {
   colour?: string;
   /** Optional class name for additional styling */
   className?: string;
+  /** Wrap the icon in a circular ThemeIcon container with this colour */
+  container?: MantineColor;
+  /** ThemeIcon variant when container is set (default: "light") */
+  containerVariant?: "light" | "filled" | "outline";
 }
 
 /** Desktop size map (≥768px) */
@@ -57,6 +62,7 @@ const mobileSizeMap: Record<IconSize, number> = {
 /**
  * Icon component that wraps Tabler icons with consistent sizing.
  * Automatically scales down on mobile devices.
+ * Optionally wraps in a circular ThemeIcon container.
  *
  * @param props - Component props
  * @returns Cloned icon element with size applied
@@ -65,6 +71,8 @@ const mobileSizeMap: Record<IconSize, number> = {
  * ```tsx
  * <Icon icon={<IconPencil />} size="sm" />
  * <Icon icon={<IconUserPlus />} size="lg" />
+ * <Icon icon={<IconCheck />} container="green" />
+ * <Icon icon={<IconX />} container="red" containerVariant="filled" />
  * ```
  */
 export default function Icon({
@@ -72,6 +80,8 @@ export default function Icon({
   size = "md",
   colour,
   className,
+  container,
+  containerVariant = "light",
 }: IconProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(
@@ -86,9 +96,32 @@ export default function Icon({
 
   // Clone the icon element and pass size, colour and className props
   // Type assertion needed because cloneElement doesn't know about Tabler icon props
-  return cloneElement(icon, {
+  const clonedIcon = cloneElement(icon, {
     size: pixelSize,
     ...(colour ? { color: colour } : {}),
     className,
   } as Partial<typeof icon.props>);
+
+  if (container) {
+    const containerIconSize = Math.round(pixelSize * 1.3);
+    const containerIcon = cloneElement(icon, {
+      size: containerIconSize,
+      stroke: 2.5,
+      ...(colour ? { color: colour } : {}),
+      className,
+    } as Partial<typeof icon.props>);
+
+    return (
+      <ThemeIcon
+        color={container}
+        variant={containerVariant}
+        size={pixelSize + 16}
+        radius="xl"
+      >
+        {containerIcon}
+      </ThemeIcon>
+    );
+  }
+
+  return clonedIcon;
 }
