@@ -79,7 +79,6 @@ import LoginPage from "./pages/LoginPage";
 import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
 import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
-import ManageItems from "./features/teaching/pages/ManageItems";
 import AllResults from "./features/teaching/pages/AllResults";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
@@ -382,14 +381,6 @@ const router = createBrowserRouter([
         element: (
           <RequireFeature feature="teaching">
             <AssessmentResultPage />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/manage",
-        element: (
-          <RequireFeature feature="teaching">
-            <ManageItems />
           </RequireFeature>
         ),
       },
