@@ -1,60 +1,73 @@
 /**
  * Registration Page Module
  *
- * User registration page for creating new accounts. Validates password
- * confirmation, submits registration data to backend, and redirects to
- * login page on success.
+ * User registration page for creating new accounts. Delegates form rendering
+ * to the RegistrationForm component and handles API submission and navigation.
  */
+
+/* eslint-disable no-restricted-syntax */
+// Auth pages use centred form layout, not Container
 
 import { api } from "@/lib/api";
 import {
-  Button,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-} from "@mantine/core";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+  RegistrationForm,
+  type RegistrationFormData,
+} from "@components/registration";
+import { useEffect, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
 
-/**
- * Registration Page
- *
- * Provides account registration form with username, email, and password fields.
- * Validates password confirmation locally before submitting to backend.
- * Displays error messages for validation failures or backend errors.
- *
- * @returns Registration form page component
- */
+interface Organisation {
+  id: number;
+  name: string;
+}
+
 export default function RegisterPage() {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const { login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [organisations, setOrganisations] = useState<
+    { value: string; label: string }[]
+  >([]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    fetch("/api/auth/organizations")
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data: { organizations: Organisation[] }) => {
+        setOrganisations(
+          data.organizations.map((o) => ({
+            value: String(o.id),
+            label: o.name,
+          })),
+        );
+      })
+      .catch(() => {
+        /* organisations will remain empty if the endpoint is unavailable */
+      });
+  }, []);
+
+  async function handleSubmit(data: RegistrationFormData) {
     setSubmitting(true);
     setError(null);
-    if (password !== confirm) {
-      setError("Passwords do not match");
-      setSubmitting(false);
-      return;
-    }
     try {
       await api.post("/auth/register", {
-        username: username.trim(),
-        email: email.trim(),
-        password,
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        organisation_id: Number(data.organisation),
       });
-      // On success, navigate to login page
-      navigate("/login", { replace: true });
+
+      // Auto-login with the credentials just registered
+      const user = await login(data.username, data.password);
+
+      // Redirect based on deployment mode
+      if (!user.clinical_services_enabled) {
+        window.location.assign("/teaching");
+      } else {
+        const rawBase = (import.meta.env.BASE_URL as string) || "/";
+        const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
+        window.location.assign(base);
+      }
     } catch (err: unknown) {
-      // Reuse simple error extraction like LoginPage
       let msg = "Registration failed";
       if (err instanceof Error && err.message) msg = err.message;
       else if (typeof err === "object" && err !== null) {
@@ -71,43 +84,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <Paper maw={480} mx="auto" p="lg" mt="xl" radius="md" withBorder>
-      <form onSubmit={onSubmit}>
-        <Stack>
-          <Title order={3}>Create an account</Title>
-          <TextInput
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.currentTarget.value)}
-            required
-          />
-          <TextInput
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.currentTarget.value)}
-            required
-            autoComplete="email"
-          />
-          <PasswordInput
-            label="Password"
-            value={password}
-            onChange={(e) => setPassword(e.currentTarget.value)}
-            required
-            autoComplete="new-password"
-          />
-          <PasswordInput
-            label="Confirm password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.currentTarget.value)}
-            required
-            autoComplete="new-password"
-          />
-          {error && <div style={{ color: "crimson" }}>{error}</div>}
-          <Button type="submit" loading={submitting}>
-            Register
-          </Button>
-        </Stack>
-      </form>
-    </Paper>
+    <RegistrationForm
+      organisations={organisations}
+      onSubmit={handleSubmit}
+      submitting={submitting}
+      error={error}
+    />
   );
 }

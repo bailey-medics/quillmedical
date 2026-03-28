@@ -28,3 +28,4 @@ applyTo: "frontend/src/components/**"
 - Use `VariantStack` and `VariantRow` from `src/stories/variants.tsx` for "all sizes" or "all variants" stories.
 - Loading/skeleton stories should be placed **last** in the stories file.
 - Use `layout: "padded"` (not `"centered"`) so stories render top-left. Exception: layout components (e.g. `MainLayout`, `NotFoundLayout`).
+- **Do NOT wrap stories in `MemoryRouter`** — Storybook's `preview.tsx` already provides a `RouterProvider` context. Adding a `MemoryRouter` decorator causes a "cannot render a Router inside another Router" error.

@@ -2,90 +2,34 @@
  * Login Page Module
  *
  * User authentication page with username/password login and optional TOTP
- * two-factor authentication. Handles automatic redirection after successful
- * login and displays contextual error messages for common failure cases.
+ * two-factor authentication. Delegates form rendering to LoginForm component
+ * and handles auth context integration, error parsing, and redirection.
  */
 
 /* eslint-disable no-restricted-syntax */
-// Login page uses Paper with maw instead of Container for centered layout
+// Auth pages use centred form layout, not Container
 
-import { QuillLogo } from "@/components/images";
-import {
-  Anchor,
-  Button,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { LoginForm, type LoginFormData } from "@components/registration";
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-/**
- * Login Page
- *
- * Authentication page component that handles user login with optional TOTP
- * two-factor authentication. Provides intelligent error handling with structured
- * error code parsing from backend responses.
- *
- * Authentication Flow:
- * 1. User enters username and password
- * 2. On submission, calls login() from AuthContext
- * 3. If backend requires TOTP, shows 6-digit code input
- * 4. On success, redirects to intended destination or home
- * 5. On failure, displays contextual error message
- *
- * Error Handling:
- * - Detects error_code from backend (invalid_totp, two_factor_required)
- * - Falls back to regex parsing for legacy error messages
- * - Automatically shows TOTP input when 2FA is required
- * - Provides helpful messages for wrong TOTP codes
- *
- * Redirection Logic:
- * - Redirects to location.state.from after login (intended destination)
- * - Uses full navigation (window.location.assign) for home to ensure base URL
- * - Uses React Router navigate() for other protected routes
- *
- * @example
- * // Routing configuration
- * <Route path="/login" element={
- *   <GuestOnly>
- *     <LoginPage />
- *   </GuestOnly>
- * } />
- */
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [totp, setTotp] = useState("");
   const [requireTotp, setRequireTotp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const location = useLocation() as { state?: { from?: Location } };
-  // Use Vite BASE_URL as the absolute SPA base (may or may not include a
-  // trailing slash). Normalize to ensure trailing slash and use it for
-  // full browser navigation when appropriate.
   const rawBase = (import.meta.env.BASE_URL as string) || "/";
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
   const redirectFrom = location.state?.from?.pathname;
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(data: LoginFormData) {
     setSubmitting(true);
     setError(null);
     try {
-      const user = await login(
-        email.trim(),
-        password,
-        requireTotp ? totp : undefined,
-      );
-      // Full-page redirect after login ensures the navigation fires
-      // before GuestOnly's useEffect can override it with a competing
-      // window.location.assign(base).
+      const user = await login(data.username, data.password, data.totp);
       if (redirectFrom && redirectFrom !== "/") {
         window.location.assign(redirectFrom);
       } else if (!user.clinical_services_enabled) {
@@ -97,19 +41,13 @@ export default function LoginPage() {
       function extractMessage(e: unknown): string | null {
         if (typeof e === "string") return e;
         if (e instanceof Error) {
-          // Some Errors may carry an attached `error_code` (set by api helper)
           const anyErr = e as Error & { error_code?: string };
           if (anyErr.message && typeof anyErr.message === "string") {
-            // message may itself be the string '[object Object]'; try to
-            // detect and fall back to other fields below.
             if (anyErr.message !== "[object Object]") return anyErr.message;
           }
         }
-
         if (typeof e === "object" && e !== null) {
           const obj = e as Record<string, unknown>;
-          // Common shapes: { message: string }, { detail: string },
-          // { detail: { message: string, error_code: string } }
           if (typeof obj["message"] === "string")
             return obj["message"] as string;
           if (typeof obj["detail"] === "string") return obj["detail"] as string;
@@ -119,10 +57,8 @@ export default function LoginPage() {
             if (typeof d["message"] === "string") return d["message"] as string;
             if (typeof d["detail"] === "string") return d["detail"] as string;
           }
-          // If there is an error_code, show a readable fallback
           if (typeof obj["error_code"] === "string")
             return (obj["error_code"] as string).replace(/_/g, " ");
-          // As a last resort, stringify the object so UI gets a useful value
           try {
             return JSON.stringify(obj);
           } catch {
@@ -133,8 +69,6 @@ export default function LoginPage() {
       }
 
       const message = extractMessage(err) ?? "Login failed";
-      // Prefer structured error_code from the thrown Error when available.
-      // Our API attaches `error_code` to the Error object for newer responses.
       const errObj = err as Error & { error_code?: string };
       const code = errObj.error_code;
 
@@ -142,32 +76,25 @@ export default function LoginPage() {
       const requiresTwoFactorRegex = /two[ -]?factor|two[ -]?factor required/i;
 
       if (code === "invalid_totp") {
-        if (requireTotp) {
-          setRequireTotp(true);
-          setError(
-            "Wrong code entered, please try entering your 6-digit authenticator code again",
-          );
-        } else {
-          setRequireTotp(true);
-          setError("Enter the 6-digit authenticator code");
-        }
+        setRequireTotp(true);
+        setError(
+          requireTotp
+            ? "Wrong code entered, please try entering your 6-digit authenticator code again"
+            : "Enter the 6-digit authenticator code",
+        );
       } else if (code === "two_factor_required") {
         setRequireTotp(true);
         setError("Enter the 6-digit authenticator code");
       } else {
-        // Fallback to legacy message parsing
         const invalidCode = invalidCodeRegex.test(message);
         const requiresTwoFactor = requiresTwoFactorRegex.test(message);
         if (invalidCode) {
-          if (requireTotp) {
-            setRequireTotp(true);
-            setError(
-              "Wrong code entered, please try entering your 6-digit authenticator code again",
-            );
-          } else {
-            setRequireTotp(true);
-            setError("Enter the 6-digit authenticator code");
-          }
+          setRequireTotp(true);
+          setError(
+            requireTotp
+              ? "Wrong code entered, please try entering your 6-digit authenticator code again"
+              : "Enter the 6-digit authenticator code",
+          );
         } else if (requiresTwoFactor) {
           setRequireTotp(true);
           setError("Enter the 6-digit authenticator code");
@@ -181,53 +108,11 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <Stack align="center" justify="center" style={{ marginTop: "1.875rem" }}>
-        <QuillLogo height={8} />
-      </Stack>
-
-      <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
-        <form onSubmit={onSubmit}>
-          <Stack>
-            <Title order={3}>Sign in to Quill</Title>
-            <TextInput
-              label="Username"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-              required
-              autoComplete="username"
-            />
-            <PasswordInput
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-              required
-              autoComplete="current-password"
-            />
-            {requireTotp && (
-              <TextInput
-                label="Authenticator code"
-                value={totp}
-                onChange={(e) => setTotp(e.currentTarget.value)}
-                placeholder="123456"
-                required
-              />
-            )}
-            {error && <div style={{ color: "crimson" }}>{error}</div>}
-            <Button
-              type="submit"
-              loading={submitting}
-              disabled={!email || !password || (requireTotp && !totp)}
-            >
-              Sign in
-            </Button>
-            {/* Use router-relative path so react-router's basename is applied once */}
-            <Anchor component={Link} to="/register">
-              Create an account
-            </Anchor>
-          </Stack>
-        </form>
-      </Paper>
-    </>
+    <LoginForm
+      onSubmit={handleSubmit}
+      submitting={submitting}
+      error={error}
+      requireTotp={requireTotp}
+    />
   );
 }

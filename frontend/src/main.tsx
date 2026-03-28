@@ -49,7 +49,6 @@ import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
-import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -74,6 +73,7 @@ import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import LoginPage from "./pages/LoginPage";
+import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
 import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
@@ -112,7 +112,7 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { path: "/", element: <Home /> },
+      { path: "/", element: <HomeRedirect /> },
       { path: "/patients/:id", element: <Patient /> },
       { path: "/patients/:id/letters", element: <PatientLetters /> },
       {

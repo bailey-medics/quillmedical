@@ -30,6 +30,7 @@ const ORGANISATION_TYPE_OPTIONS = [
   { value: "gp_practice", label: "GP practice" },
   { value: "private_clinic", label: "Private clinic" },
   { value: "department", label: "Department" },
+  { value: "teaching_establishment", label: "Teaching establishment" },
 ];
 
 interface OrganisationData {
