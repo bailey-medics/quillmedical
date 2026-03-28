@@ -12,7 +12,7 @@ import { Container, Stack, Text, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import StateMessage from "@/components/state-message";
 import AddButton from "@/components/button/AddButton";
-import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import NationalNumber from "@/components/data/NationalNumber";
 import FormattedDate from "@/components/data/Date";
 import ActiveStatus from "@/components/badge/ActiveStatus";
@@ -164,7 +164,7 @@ export default function AdminPatientsPage() {
             <StateMessage type="database-initialising" />
           </Center>
         ) : (
-          <AdminTable
+          <DataTable
             data={patients}
             columns={columns}
             onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
@@ -172,7 +172,6 @@ export default function AdminPatientsPage() {
             loading={loading}
             error={error}
             emptyMessage="No patients found"
-            breakpoint="md"
           />
         )}
       </Stack>

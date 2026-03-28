@@ -5,8 +5,9 @@
  * from the question bank config + "Begin" button.
  */
 
-import { Button, Card, Stack, Title } from "@mantine/core";
-import MarkdownView from "@/components/markdown/MarkdownView";
+import { Button, Card, Stack } from "@mantine/core";
+import { HeaderText } from "@/components/typography";
+import MarkdownView from "@/components/typography/MarkdownView";
 
 interface AssessmentIntroProps {
   /** Intro page title from config */
@@ -30,7 +31,7 @@ export function AssessmentIntro({
 }: AssessmentIntroProps) {
   return (
     <Stack gap="lg">
-      <Title order={2}>{title}</Title>
+      <HeaderText>{title}</HeaderText>
       <Card withBorder p="lg">
         <MarkdownView source={body} />
       </Card>

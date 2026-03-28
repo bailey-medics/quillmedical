@@ -1,0 +1,7 @@
+.field {
+  overflow-wrap: anywhere;
+}
+
+.header {
+  flex-shrink: 0;
+}

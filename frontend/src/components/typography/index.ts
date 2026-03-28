@@ -4,6 +4,7 @@ export { default as BodyTextBold } from "./BodyTextBold";
 export { default as BodyTextClamp } from "./BodyTextClamp";
 export { default as ErrorText } from "./ErrorText";
 export { default as HeaderText } from "./HeaderText";
+export { default as MarkdownView } from "./MarkdownView";
 export { default as PageHeader } from "./PageHeader";
 export { default as PlaceholderText } from "./PlaceholderText";
 export { default as PublicText } from "./PublicText";

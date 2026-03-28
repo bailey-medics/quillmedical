@@ -1,1 +1,2 @@
-export { default as AdminTable } from "./AdminTable";
+export { default as DataCard } from "./DataCard";
+export { default as DataTable } from "./DataTable";

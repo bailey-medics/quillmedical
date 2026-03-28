@@ -3,13 +3,15 @@
  *
  * Safe markdown-to-HTML renderer with XSS protection using DOMPurify.
  * Supports rich text formatting (bold, italic, lists, links, code blocks)
- * with strict allowlist of HTML tags. Used for clinical letters and messages.
+ * with strict allowlist of HTML tags. Styled to match the app typography
+ * system via CSS module. Used for clinical letters and messages.
  */
 
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import DOMPurify from "dompurify";
 import { Skeleton, Stack } from "@mantine/core";
+import classes from "./MarkdownView.module.css";
 
 /**
  * MarkdownView Props
@@ -268,9 +270,13 @@ export default function MarkdownView({
     }
   }
 
+  const combinedClassName = [classes.markdown, className]
+    .filter(Boolean)
+    .join(" ");
+
   if (asPlainText) {
     return (
-      <div className={className}>
+      <div className={combinedClassName}>
         <pre style={{ whiteSpace: "pre-wrap" }}>{rawHtml}</pre>
         {children}
       </div>
@@ -279,7 +285,7 @@ export default function MarkdownView({
 
   return (
     <div
-      className={className}
+      className={combinedClassName}
       onClick={handleClick}
       // eslint-disable-next-line react/no-danger -- Sanitised via DOMPurify with strict ALLOWED_TAGS/ATTR above.
       dangerouslySetInnerHTML={{ __html: sanitizedHtml }}

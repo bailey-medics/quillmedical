@@ -1,5 +1,5 @@
 /**
- * AdminTable Component
+ * DataTable Component
  *
  * A reusable, generic table component for admin pages with responsive layouts.
  * On mobile: displays data in card format with all information visible.
@@ -8,7 +8,7 @@
  *
  * @example
  * ```tsx
- * <AdminTable
+ * <DataTable
  *   data={users}
  *   columns={[
  *     { header: "Name", render: (user) => user.name },
@@ -18,28 +18,19 @@
  *   getRowKey={(user) => user.id}
  *   loading={loading}
  *   error={error}
- *   breakpoint="md"  // Optional: use "md" for wider tables
  * />
  * ```
  */
 
-import {
-  Table,
-  Skeleton,
-  Stack,
-  Center,
-  Text,
-  Alert,
-  Card,
-  Divider,
-  useMantineTheme,
-} from "@mantine/core";
+import { Table, Skeleton, Stack, Center, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconAlertCircle } from "@tabler/icons-react";
-import Icon from "@/components/icons";
+import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
+import StateMessage from "@/components/state-message";
+import DataCard from "./DataCard";
+import classes from "./DataTable.module.css";
 
 /**
- * Column definition for AdminTable
+ * Column definition for DataTable
  */
 export interface Column<T> {
   /** Column header text */
@@ -48,14 +39,12 @@ export interface Column<T> {
   render: (row: T) => React.ReactNode;
   /** Optional: custom width */
   width?: string;
-  /** Optional: text alignment (default: left) */
-  align?: "left" | "center" | "right";
 }
 
 /**
- * AdminTable Props
+ * DataTable Props
  */
-export interface AdminTableProps<T> {
+export interface DataTableProps<T> {
   /** Array of data rows */
   data: T[];
   /** Column definitions */
@@ -70,12 +59,10 @@ export interface AdminTableProps<T> {
   emptyMessage?: string;
   /** Unique key extractor from row data */
   getRowKey: (row: T) => string | number;
-  /** Breakpoint for switching to mobile card layout (default: "sm" / 768px) */
-  breakpoint?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 /**
- * AdminTable displays data in a responsive layout optimized for all screen sizes.
+ * DataTable displays data in a responsive layout optimized for all screen sizes.
  *
  * Features:
  * - Generic type support for any data structure
@@ -88,13 +75,12 @@ export interface AdminTableProps<T> {
  * - Hover highlighting on both layouts
  * - Clickable rows/cards with pointer cursor
  *
- * Breakpoint: Uses theme.breakpoints.sm (768px) by default to switch between layouts.
- * This can be customized via the breakpoint prop (xs/sm/md/lg/xl) for wider tables.
+ * Breakpoint: Uses theme.breakpoints.sm (768px) to switch between layouts.
  * This ensures critical patient/user information is never hidden on small screens.
  *
  * Used on admin pages for users, patients, and other resources.
  */
-export default function AdminTable<T>({
+export default function DataTable<T>({
   data,
   columns,
   onRowClick,
@@ -102,35 +88,56 @@ export default function AdminTable<T>({
   error = null,
   emptyMessage = "No data found",
   getRowKey,
-  breakpoint = "sm",
-}: AdminTableProps<T>) {
+}: DataTableProps<T>) {
   const theme = useMantineTheme();
-  const isMobile = useMediaQuery(
-    `(max-width: ${theme.breakpoints[breakpoint]})`,
-  );
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   // Error state
   if (error) {
-    return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-        title="Error loading data"
-        color="red"
-      >
-        {error}
-      </Alert>
-    );
+    return <StateMessage type="error" message={error} />;
   }
 
   // Loading state
   if (loading) {
+    if (isMobile) {
+      return (
+        <Stack gap="md">
+          {Array.from({ length: 3 }, (_, i) => (
+            <DataCard
+              key={i}
+              row={{} as T}
+              columns={columns}
+              onClick={() => {}}
+              loading
+            />
+          ))}
+        </Stack>
+      );
+    }
+
     return (
-      <Stack gap="xs">
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-        <Skeleton height={50} />
-      </Stack>
+      <Table striped>
+        <Table.Thead>
+          <Table.Tr>
+            {columns.map((column, index) => (
+              <Table.Th key={index} style={{ width: column.width }}>
+                <BodyTextBold>{column.header}</BodyTextBold>
+              </Table.Th>
+            ))}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {Array.from({ length: 4 }, (_, rowIndex) => (
+            <Table.Tr key={rowIndex}>
+              {columns.map((_, colIndex) => (
+                <Table.Td key={colIndex}>
+                  <Skeleton height={25} mt={4} mb={4} />
+                </Table.Td>
+              ))}
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
     );
   }
 
@@ -138,7 +145,7 @@ export default function AdminTable<T>({
   if (data.length === 0) {
     return (
       <Center p="xl">
-        <Text c="dimmed">{emptyMessage}</Text>
+        <BodyText>{emptyMessage}</BodyText>
       </Center>
     );
   }
@@ -148,26 +155,12 @@ export default function AdminTable<T>({
     return (
       <Stack gap="md">
         {data.map((row) => (
-          <Card
+          <DataCard
             key={getRowKey(row)}
-            shadow="sm"
-            padding="md"
-            withBorder
-            onClick={() => onRowClick(row)}
-            style={{ cursor: "pointer" }}
-          >
-            <Stack gap="sm">
-              {columns.map((column, index) => (
-                <div key={index}>
-                  <Text size="xs" c="dimmed" fw={500} mb={4}>
-                    {column.header}
-                  </Text>
-                  <Text size="lg">{column.render(row)}</Text>
-                  {index < columns.length - 1 && <Divider mt="sm" />}
-                </div>
-              ))}
-            </Stack>
-          </Card>
+            row={row}
+            columns={columns}
+            onClick={onRowClick}
+          />
         ))}
       </Stack>
     );
@@ -179,14 +172,8 @@ export default function AdminTable<T>({
       <Table.Thead>
         <Table.Tr>
           {columns.map((column, index) => (
-            <Table.Th
-              key={index}
-              style={{
-                width: column.width,
-                textAlign: column.align || "left",
-              }}
-            >
-              {column.header}
+            <Table.Th key={index} style={{ width: column.width }}>
+              <BodyTextBold>{column.header}</BodyTextBold>
             </Table.Th>
           ))}
         </Table.Tr>
@@ -201,14 +188,10 @@ export default function AdminTable<T>({
             {columns.map((column, index) => (
               <Table.Td
                 key={index}
-                style={{
-                  textAlign: column.align || "left",
-                  verticalAlign: "middle",
-                }}
+                className={classes.cell}
+                style={{ verticalAlign: "middle" }}
               >
-                <Text size="lg" component="span" lh={1}>
-                  {column.render(row)}
-                </Text>
+                <BodyTextBlack>{column.render(row)}</BodyTextBlack>
               </Table.Td>
             ))}
           </Table.Tr>

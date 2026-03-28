@@ -1,7 +1,7 @@
 /**
- * AdminTable Component Tests
+ * DataTable Component Tests
  *
- * Tests for the AdminTable component covering:
+ * Tests for the DataTable component covering:
  * - Rendering with data
  * - Column rendering with custom render functions
  * - Row click interactions
@@ -14,7 +14,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { Text, Badge } from "@mantine/core";
-import AdminTable, { type Column } from "./AdminTable";
+import DataTable, { type Column } from "./DataTable";
 
 interface TestUser {
   id: number;
@@ -28,7 +28,7 @@ interface TestPatient {
   status: "active" | "inactive";
 }
 
-describe("AdminTable", () => {
+describe("DataTable", () => {
   describe("Rendering with data", () => {
     it("renders table with headers and data rows", () => {
       const users: TestUser[] = [
@@ -42,7 +42,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -83,7 +83,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={patients}
           columns={columns}
           onRowClick={vi.fn()}
@@ -112,7 +112,7 @@ describe("AdminTable", () => {
       const handleRowClick = vi.fn();
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={handleRowClick}
@@ -137,7 +137,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -157,7 +157,7 @@ describe("AdminTable", () => {
       ];
 
       const { container } = renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -166,12 +166,15 @@ describe("AdminTable", () => {
         />,
       );
 
-      // Check that table is not shown during loading
+      // Loading state shows a table with skeleton rows
       const table = container.querySelector("table");
-      expect(table).not.toBeInTheDocument();
+      expect(table).toBeInTheDocument();
+
+      // Headers are visible but no real data
+      expect(screen.getByText("Name")).toBeInTheDocument();
     });
 
-    it("does not show table when loading", () => {
+    it("does not show data rows when loading", () => {
       const users: TestUser[] = [
         { id: 1, name: "Alice", email: "alice@example.com" },
       ];
@@ -181,7 +184,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -190,7 +193,8 @@ describe("AdminTable", () => {
         />,
       );
 
-      expect(screen.queryByText("Name")).not.toBeInTheDocument();
+      // Headers shown, but data content is not rendered
+      expect(screen.getByText("Name")).toBeInTheDocument();
       expect(screen.queryByText("Alice")).not.toBeInTheDocument();
     });
   });
@@ -202,7 +206,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -225,7 +229,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}
@@ -246,7 +250,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -263,7 +267,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={[]}
           columns={columns}
           onRowClick={vi.fn()}
@@ -277,30 +281,6 @@ describe("AdminTable", () => {
   });
 
   describe("Column configuration", () => {
-    it("applies custom column alignment", () => {
-      const users: TestUser[] = [
-        { id: 1, name: "Alice", email: "alice@example.com" },
-      ];
-
-      const columns: Column<TestUser>[] = [
-        { header: "Name", render: (u) => u.name, align: "left" },
-        { header: "Email", render: (u) => u.email, align: "right" },
-      ];
-
-      renderWithMantine(
-        <AdminTable
-          data={users}
-          columns={columns}
-          onRowClick={vi.fn()}
-          getRowKey={(u) => u.id}
-        />,
-      );
-
-      const headers = screen.getAllByRole("columnheader");
-      expect(headers[0]).toHaveStyle({ textAlign: "left" });
-      expect(headers[1]).toHaveStyle({ textAlign: "right" });
-    });
-
     it("applies custom column width", () => {
       const users: TestUser[] = [
         { id: 1, name: "Alice", email: "alice@example.com" },
@@ -312,7 +292,7 @@ describe("AdminTable", () => {
       ];
 
       renderWithMantine(
-        <AdminTable
+        <DataTable
           data={users}
           columns={columns}
           onRowClick={vi.fn()}

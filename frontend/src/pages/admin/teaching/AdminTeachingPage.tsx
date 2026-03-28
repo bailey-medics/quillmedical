@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Container, Group, Stack, Text } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import FormattedDate from "@/components/data/Date";
 import IconTextButton from "@/components/button/IconTextButton";
 import { api } from "@/lib/api";
@@ -122,7 +122,7 @@ export default function AdminTeachingPage() {
           </Text>
         )}
 
-        <AdminTable
+        <DataTable
           data={banks}
           columns={columns}
           getRowKey={(bank) => bank.bank_id}
@@ -130,7 +130,6 @@ export default function AdminTeachingPage() {
           loading={loading}
           error={error}
           emptyMessage="No teaching modules found"
-          breakpoint="md"
         />
       </Stack>
     </Container>

@@ -1,0 +1,69 @@
+.markdown {
+  font-size: var(--mantine-font-size-lg);
+  color: black;
+  line-height: 1.55;
+}
+
+.markdown p {
+  margin: 0 0 0.75em;
+  white-space: pre-wrap;
+}
+
+.markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown strong {
+  font-weight: 700;
+}
+
+.markdown em {
+  font-style: italic;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.5em;
+}
+
+.markdown li {
+  margin-bottom: 0.25em;
+}
+
+.markdown code {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.9em;
+  background: var(--mantine-color-gray-1);
+  padding: 0.125em 0.25em;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.markdown pre {
+  margin: 0 0 0.75em;
+  padding: 0.75em;
+  background: var(--mantine-color-gray-1);
+  border-radius: var(--mantine-radius-sm);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown a {
+  color: var(--mantine-color-blue-6);
+  text-decoration: underline;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  color: black;
+  font-weight: 700;
+  margin: 0 0 0.5em;
+}

@@ -5,7 +5,8 @@
  * image thumbnails, and publish/unpublish toggle.
  */
 
-import { Badge, Switch, Table, Text } from "@mantine/core";
+import { Badge, Switch, Table } from "@mantine/core";
+import { PlaceholderText } from "@/components/typography";
 import type { QuestionBankItem } from "@/features/teaching/types";
 
 interface ItemManagementTableProps {
@@ -28,11 +29,7 @@ export function ItemManagementTable({
   onTogglePublish,
 }: ItemManagementTableProps) {
   if (items.length === 0) {
-    return (
-      <Text c="dimmed" size="sm">
-        No items synced yet.
-      </Text>
-    );
+    return <PlaceholderText>No items synced yet.</PlaceholderText>;
   }
 
   return (

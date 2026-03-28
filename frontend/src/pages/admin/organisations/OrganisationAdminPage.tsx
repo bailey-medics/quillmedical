@@ -33,7 +33,7 @@ import {
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
-import AdminTable, { type Column } from "@/components/tables/AdminTable";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
 import { api } from "@/lib/api";
 
@@ -327,7 +327,7 @@ export default function OrganisationAdminPage() {
               />
             </Group>
 
-            <AdminTable<StaffMember>
+            <DataTable<StaffMember>
               data={org.staff_members}
               columns={staffColumns}
               onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
@@ -352,7 +352,7 @@ export default function OrganisationAdminPage() {
               />
             </Group>
 
-            <AdminTable<PatientMember>
+            <DataTable<PatientMember>
               data={org.patient_members}
               columns={patientColumns}
               onRowClick={(patient) =>

@@ -1,0 +1,12 @@
+.root {
+  max-width: 600px;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+}
+
+.title {
+  font-size: var(--mantine-h2-font-size);
+}

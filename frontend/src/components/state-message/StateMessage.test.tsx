@@ -88,4 +88,36 @@ describe("StateMessage Component", () => {
       expect(alert).toBeInTheDocument();
     });
   });
+
+  describe("Error message", () => {
+    it('renders "Error loading data" title', () => {
+      renderWithMantine(
+        <StateMessage type="error" message="Something went wrong" />,
+      );
+      expect(screen.getByText("Error loading data")).toBeInTheDocument();
+    });
+
+    it("displays the error message", () => {
+      renderWithMantine(
+        <StateMessage type="error" message="Failed to load data" />,
+      );
+      expect(screen.getByText("Failed to load data")).toBeInTheDocument();
+    });
+
+    it("shows alert-circle icon", () => {
+      const { container } = renderWithMantine(
+        <StateMessage type="error" message="Error" />,
+      );
+      const icon = container.querySelector("svg");
+      expect(icon).toBeInTheDocument();
+    });
+
+    it("renders as alert element", () => {
+      const { container } = renderWithMantine(
+        <StateMessage type="error" message="Error" />,
+      );
+      const alert = container.querySelector('[role="alert"]');
+      expect(alert).toBeInTheDocument();
+    });
+  });
 });

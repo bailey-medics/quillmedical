@@ -8,16 +8,9 @@
  * Optional text block shown below images when present.
  */
 
-import {
-  Card,
-  Image,
-  Radio,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Card, Image, Radio, SimpleGrid, Stack } from "@mantine/core";
 import PreviousNextButton from "@components/button/PreviousNextButton";
+import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import classes from "./QuestionView.module.css";
@@ -56,11 +49,7 @@ function ImagePanel({ image }: { image: ItemImage }) {
         radius="md"
         className={classes.image}
       />
-      {image.label && (
-        <Text size="sm" c="dimmed">
-          {image.label}
-        </Text>
-      )}
+      {image.label && <BodyText>{image.label}</BodyText>}
     </Stack>
   );
 }
@@ -96,12 +85,12 @@ export function QuestionView({
       {/* Optional item text */}
       {item.text && (
         <Card withBorder p="md">
-          <Text>{item.text}</Text>
+          <BodyTextBlack>{item.text}</BodyTextBlack>
         </Card>
       )}
 
       {/* Question number */}
-      <Title order={4}>Question {item.display_order}</Title>
+      <BodyTextBold>Question {item.display_order}</BodyTextBold>
 
       {/* Options */}
       <Radio.Group value={selectedOption ?? ""} onChange={onSelectOption}>

@@ -7,7 +7,7 @@ export interface PageHeaderProps {
 
 export default function PageHeader({ title }: PageHeaderProps) {
   return (
-    <Box mb="xl">
+    <Box>
       <Title order={1} className={classes.lgTitle}>
         {title}
       </Title>

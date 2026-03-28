@@ -1,50 +1,76 @@
 /**
  * State Message Component
  *
- * Displays informational alert messages for different patient list states.
- * Used to indicate database initialization status and empty patient lists.
+ * Displays informational alert messages for different application states.
+ * Used to indicate database initialisation, empty lists, and error conditions.
  *
  * States:
  * - database-initialising: Blue alert with clock icon when FHIR is loading
- * - no-patients: Gray alert with user-off icon when list is empty
+ * - no-patients: Grey alert with user-off icon when list is empty
+ * - error: Red alert with alert-circle icon for error conditions
  */
 
-import { Alert, Text } from "@mantine/core";
-import { IconClock, IconUserOff } from "@tabler/icons-react";
+import { Alert } from "@mantine/core";
+import { IconAlertCircle, IconClock, IconUserOff } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import { BodyTextBlack } from "@/components/typography";
+import classes from "./StateMessage.module.css";
 
 /**
  * StateMessage Props
  */
-type Props = {
-  /** Type of message to display */
-  type: "database-initialising" | "no-patients";
+type Props =
+  | {
+      /** Type of message to display */
+      type: "database-initialising" | "no-patients";
+    }
+  | {
+      /** Error type requires a message */
+      type: "error";
+      /** Error message to display */
+      message: string;
+    };
+
+const alertStyles = {
+  root: classes.root,
+  icon: classes.icon,
+  title: classes.title,
 };
 
 /**
  * State Message
  *
- * Renders context-aware alert messages for patient list states.
- * Uses appropriate icons and colors to distinguish between
- * system initialization and empty state conditions.
- *
- * @param props - Component props
- * @returns Alert component with state-specific message
+ * Renders context-aware alert messages for application states.
+ * Uses appropriate icons and colours to distinguish between
+ * system initialisation, empty state, and error conditions.
  */
-export default function StateMessage({ type }: Props) {
-  if (type === "no-patients") {
+export default function StateMessage(props: Props) {
+  if (props.type === "error") {
     return (
       <Alert
-        icon={<IconUserOff size={48} />}
+        icon={<Icon icon={<IconAlertCircle />} size="xl" />}
+        title="Error loading data"
+        color="red"
+        variant="light"
+        classNames={alertStyles}
+      >
+        <BodyTextBlack>{props.message}</BodyTextBlack>
+      </Alert>
+    );
+  }
+
+  if (props.type === "no-patients") {
+    return (
+      <Alert
+        icon={<Icon icon={<IconUserOff />} size="xl" />}
         title="No patients to show"
         color="gray"
         variant="light"
-        styles={{
-          root: { maxWidth: 600 },
-          icon: { width: 48, height: 48 },
-          title: { fontSize: "var(--mantine-h2-font-size)" },
-        }}
+        classNames={alertStyles}
       >
-        <Text size="lg">There are currently no patients in the system.</Text>
+        <BodyTextBlack>
+          There are currently no patients in the system.
+        </BodyTextBlack>
       </Alert>
     );
   }
@@ -52,20 +78,16 @@ export default function StateMessage({ type }: Props) {
   // type === "database-initialising"
   return (
     <Alert
-      icon={<IconClock size={48} />}
+      icon={<Icon icon={<IconClock />} size="xl" />}
       title="Database is initialising"
       color="blue"
       variant="light"
-      styles={{
-        root: { maxWidth: 600 },
-        icon: { width: 48, height: 48 },
-        title: { fontSize: "var(--mantine-h2-font-size)" },
-      }}
+      classNames={alertStyles}
     >
-      <Text size="lg">
+      <BodyTextBlack>
         The Quill databases are just warming up. This may take a few moments.
         The patient list will appear automatically once available.
-      </Text>
+      </BodyTextBlack>
     </Alert>
   );
 }

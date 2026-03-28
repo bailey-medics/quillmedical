@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PageHeader from "./PageHeader";
-import { Box } from "@mantine/core";
+import BodyText from "./BodyText";
+import { Box, Stack } from "@mantine/core";
 
 const meta = {
   title: "Typography/PageHeader",
@@ -11,7 +12,13 @@ const meta = {
   decorators: [
     (Story) => (
       <Box maw={800}>
-        <Story />
+        <Stack gap="sm">
+          <Story />
+          <BodyText>
+            This is body text underneath the page header to show relative
+            sizing.
+          </BodyText>
+        </Stack>
       </Box>
     ),
   ],
