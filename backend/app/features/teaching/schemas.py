@@ -162,6 +162,7 @@ class AssessmentHistoryOut(BaseModel):
 
     id: int
     question_bank_id: str
+    bank_title: str
     bank_version: int
     started_at: datetime
     completed_at: datetime | None

@@ -327,18 +327,39 @@ def start_assessment(
 def assessment_history(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> list[Assessment]:
+) -> list[AssessmentHistoryOut]:
     """List the current user's past assessments."""
-    results = (
-        db.execute(
-            select(Assessment)
-            .where(Assessment.user_id == user.id)
-            .order_by(Assessment.started_at.desc())
+    rows = db.execute(
+        select(Assessment, QuestionBankConfig.title)
+        .outerjoin(
+            QuestionBankConfig,
+            (
+                QuestionBankConfig.question_bank_id
+                == Assessment.question_bank_id
+            )
+            & (QuestionBankConfig.version == Assessment.bank_version)
+            & (
+                QuestionBankConfig.organisation_id
+                == Assessment.organisation_id
+            ),
         )
-        .scalars()
-        .all()
-    )
-    return list(results)
+        .where(Assessment.user_id == user.id)
+        .order_by(Assessment.started_at.desc())
+    ).all()
+    return [
+        AssessmentHistoryOut(
+            id=a.id,
+            question_bank_id=a.question_bank_id,
+            bank_title=title or a.question_bank_id,
+            bank_version=a.bank_version,
+            started_at=a.started_at,
+            completed_at=a.completed_at,
+            is_passed=a.is_passed,
+            score_breakdown=a.score_breakdown,
+            total_items=a.total_items,
+        )
+        for a, title in rows
+    ]
 
 
 @teaching_router.get(

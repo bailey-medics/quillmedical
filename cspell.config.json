@@ -282,6 +282,7 @@
     "ossp",
     "OSTYPE",
     "otpauth",
+    "outerjoin",
     "passlib",
     "passthrough",
     "pathlib",

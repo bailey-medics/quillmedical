@@ -1,6 +1,6 @@
 import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { AssessmentResult } from "@/components/teaching/assessment-result/AssessmentResult";
 import { CertificateDownload } from "@/components/teaching/certificate-download/CertificateDownload";
@@ -99,7 +99,7 @@ export default function AssessmentResultPage() {
               Try again
             </Button>
           )}
-          <Button variant="subtle" onClick={() => navigate("/teaching")}>
+          <Button variant="subtle" component={Link} to="/teaching">
             Back to dashboard
           </Button>
         </Group>

@@ -129,6 +129,7 @@ export interface CompletionResult {
 export interface AssessmentHistory {
   id: number;
   question_bank_id: string;
+  bank_title: string;
   bank_version: number;
   started_at: string;
   completed_at: string | null;
