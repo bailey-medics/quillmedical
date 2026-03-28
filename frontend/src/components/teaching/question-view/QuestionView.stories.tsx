@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Container } from "@mantine/core";
 import { QuestionView } from "./QuestionView";
 import type { CandidateItem } from "@/features/teaching/types";
 
@@ -55,6 +56,40 @@ const meta: Meta<typeof QuestionView> = {
   title: "Teaching/QuestionView",
   component: QuestionView,
   tags: ["autodocs"],
+  parameters: {
+    layout: "fullscreen",
+  },
+  decorators: [
+    (Story) => (
+      <>
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            minHeight: 60,
+            background: "#e6f7ff",
+            display: "flex",
+            alignItems: "center",
+            padding: "var(--mantine-spacing-sm)",
+            fontWeight: 600,
+          }}
+        >
+          Quill Medical — ribbon placeholder
+        </div>
+        <Container size="lg" py="xl">
+          <Story />
+        </Container>
+      </>
+    ),
+  ],
+  args: {
+    timeLimitMinutes: 75,
+    startedAt: new Date().toISOString(),
+    onExpire: () => {},
+  },
 };
 
 export default meta;
@@ -74,7 +109,7 @@ export const UniformType: Story = {
 
 export const UniformWithSelection: Story = {
   args: {
-    item: uniformItem,
+    item: { ...uniformItem, display_order: 3 },
     selectedOption: "high_confidence_adenoma",
     onSelectOption: () => {},
     currentQuestion: 3,
@@ -87,7 +122,7 @@ export const UniformWithSelection: Story = {
 
 export const VariableType: Story = {
   args: {
-    item: variableItem,
+    item: { ...variableItem, display_order: 5 },
     selectedOption: null,
     onSelectOption: () => {},
     currentQuestion: 5,
@@ -100,7 +135,7 @@ export const VariableType: Story = {
 
 export const LastQuestion: Story = {
   args: {
-    item: uniformItem,
+    item: { ...uniformItem, display_order: 20 },
     selectedOption: "low_confidence_adenoma",
     onSelectOption: () => {},
     currentQuestion: 20,
@@ -113,7 +148,7 @@ export const LastQuestion: Story = {
 
 export const Disabled: Story = {
   args: {
-    item: uniformItem,
+    item: { ...uniformItem, display_order: 20 },
     selectedOption: "low_confidence_adenoma",
     onSelectOption: () => {},
     disabled: true,

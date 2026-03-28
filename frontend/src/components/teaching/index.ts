@@ -5,6 +5,5 @@ export { AssessmentProgress } from "./assessment-progress";
 export { AssessmentResult } from "./assessment-result";
 export { AssessmentTimer } from "./assessment-timer";
 export { CertificateDownload } from "./certificate-download";
-export { QuestionBankCard } from "./question-bank-card";
 export { QuestionView } from "./question-view";
 export { ScoreBreakdown } from "./score-breakdown";

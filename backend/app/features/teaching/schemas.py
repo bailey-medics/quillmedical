@@ -74,6 +74,7 @@ class CandidateItemOut(BaseModel):
     images: list[ItemImageOut]
     text: str | None = None
     options: list[dict[str, Any]]
+    selected_option: str | None = None
 
 
 # ------------------------------------------------------------------

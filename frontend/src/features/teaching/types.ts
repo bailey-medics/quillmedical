@@ -75,6 +75,7 @@ export interface CandidateItem {
   images: ItemImage[];
   text?: string;
   options: Array<{ id: string; label: string; tags?: string[] }>;
+  selected_option?: string | null;
 }
 
 // ------------------------------------------------------------------

@@ -1,1 +1,0 @@
-export { QuestionBankCard } from "./QuestionBankCard";

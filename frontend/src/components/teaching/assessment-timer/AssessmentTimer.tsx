@@ -7,7 +7,7 @@
  * Colour states:
  * - Blue: normal — more than 5 minutes remaining
  * - Orange: warning — 5 minutes or less remaining
- * - Red: expired — time has run out, displays "Time up"
+ * - Red: critical — 1 minute or less remaining, or expired ("Time up")
  *
  * Calls onExpire when the countdown reaches zero.
  */
@@ -66,15 +66,17 @@ export function AssessmentTimer({
     return () => clearInterval(interval);
   }, [remainingSeconds, onExpire]);
 
-  const isWarning = remainingSeconds > 0 && remainingSeconds <= 300;
   const isExpired = remainingSeconds <= 0;
+  const isCritical = remainingSeconds > 0 && remainingSeconds <= 60;
+  const isWarning = remainingSeconds > 60 && remainingSeconds <= 300;
 
-  const colour = isExpired ? "red" : isWarning ? "orange" : "blue";
+  const colour =
+    isExpired || isCritical ? "red" : isWarning ? "orange" : "blue";
 
   return (
     <Badge
       size="xl"
-      variant="light"
+      variant="filled"
       color={colour}
       leftSection={<Icon icon={<IconClock />} size="sm" />}
     >

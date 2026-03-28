@@ -73,7 +73,6 @@ describe("AdminTeachingPage", () => {
     renderWithRouter(<AdminTeachingPage />);
     await waitFor(() => {
       expect(screen.getByText("Chest X-ray interpretation")).toBeTruthy();
-      expect(screen.getByText("chest-xray")).toBeTruthy();
       expect(screen.getByText("variable")).toBeTruthy();
     });
   });

@@ -6,11 +6,12 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Container, Group, Stack, Text } from "@mantine/core";
+import { Container, Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import FormattedDate from "@/components/data/Date";
 import IconTextButton from "@/components/button/IconTextButton";
+import { BodyText } from "@/components/typography";
 import { api } from "@/lib/api";
 import type { AdminBank, SyncAllResult } from "@/features/teaching/types";
 
@@ -69,31 +70,27 @@ export default function AdminTeachingPage() {
   const columns: Column<AdminBank>[] = [
     {
       header: "Module",
-      render: (bank) => (
-        <div>
-          <Text fw={500}>{bank.title ?? bank.bank_id}</Text>
-          {bank.title && (
-            <Text size="xs" c="dimmed">
-              {bank.bank_id}
-            </Text>
-          )}
-        </div>
-      ),
+      width: "40%",
+      render: (bank) => bank.title ?? bank.bank_id,
     },
     {
       header: "Type",
+      width: "15%",
       render: (bank) => bank.type ?? "—",
     },
     {
       header: "Version",
+      width: "10%",
       render: (bank) => bank.version ?? "—",
     },
     {
       header: "Items",
+      width: "10%",
       render: (bank) => bank.item_count,
     },
     {
       header: "Last synced",
+      width: "15%",
       render: (bank) =>
         bank.synced_at ? (
           <FormattedDate date={bank.synced_at} locale="en-GB" />
@@ -116,11 +113,7 @@ export default function AdminTeachingPage() {
           />
         </Group>
 
-        {syncMessage && (
-          <Text size="sm" c="green">
-            {syncMessage}
-          </Text>
-        )}
+        {syncMessage && <BodyText>{syncMessage}</BodyText>}
 
         <DataTable
           data={banks}

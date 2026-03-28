@@ -5,14 +5,22 @@
  * - uniform: N images with config-defined labels + config-defined options
  * - variable: item-provided images, text, and options
  *
- * Optional text block shown below images when present.
+ * Layout order:
+ * 1. Sticky timer (top-left, stays visible on scroll)
+ * 2. Images (max 2 per row on desktop, stacked on mobile)
+ * 3. Question title (e.g. "Question 1")
+ * 4. Patient history text (if any)
+ * 5. Answer options
+ * 6. Progress bar
+ * 7. Previous/Next navigation buttons
  */
 
-import { Card, Image, Radio, SimpleGrid, Stack } from "@mantine/core";
+import { Card, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
 import PreviousNextButton from "@components/button/PreviousNextButton";
-import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
+import { BodyTextBlack, HeaderText } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
+import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
 import classes from "./QuestionView.module.css";
 
 interface QuestionViewProps {
@@ -38,6 +46,12 @@ interface QuestionViewProps {
   isLastQuestion?: boolean;
   /** Whether the next/submit action is in progress */
   submitting?: boolean;
+  /** Total time limit in minutes (shows timer when provided) */
+  timeLimitMinutes?: number;
+  /** When the assessment started — ISO string (required with timeLimitMinutes) */
+  startedAt?: string;
+  /** Called when the timer expires */
+  onExpire?: () => void;
 }
 
 function ImagePanel({ image }: { image: ItemImage }) {
@@ -49,7 +63,7 @@ function ImagePanel({ image }: { image: ItemImage }) {
         radius="md"
         className={classes.image}
       />
-      {image.label && <BodyText>{image.label}</BodyText>}
+      {image.label && <BodyTextBlack>{image.label}</BodyTextBlack>}
     </Stack>
   );
 }
@@ -66,9 +80,22 @@ export function QuestionView({
   onSubmit,
   isLastQuestion = false,
   submitting = false,
+  timeLimitMinutes,
+  startedAt,
+  onExpire,
 }: QuestionViewProps) {
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" pt={timeLimitMinutes != null ? rem(48) : undefined}>
+      {/* Fixed timer */}
+      {timeLimitMinutes != null && startedAt && onExpire && (
+        <div className={classes.timer}>
+          <AssessmentTimer
+            timeLimitMinutes={timeLimitMinutes}
+            startedAt={startedAt}
+            onExpire={onExpire}
+          />
+        </div>
+      )}
       {/* Images */}
       {item.images.length > 0 && (
         <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
@@ -78,15 +105,15 @@ export function QuestionView({
         </SimpleGrid>
       )}
 
-      {/* Optional item text */}
+      {/* Question title */}
+      <HeaderText>Question {item.display_order}</HeaderText>
+
+      {/* Patient history */}
       {item.text && (
         <Card withBorder p="md">
           <BodyTextBlack>{item.text}</BodyTextBlack>
         </Card>
       )}
-
-      {/* Question number */}
-      <BodyTextBold>Question {item.display_order}</BodyTextBold>
 
       {/* Options */}
       <Radio.Group value={selectedOption ?? ""} onChange={onSelectOption}>
