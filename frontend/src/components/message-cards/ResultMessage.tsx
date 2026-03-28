@@ -25,7 +25,7 @@ interface ResultMessageProps {
 
 const variantConfig: Record<
   ResultMessageVariant,
-  { color: string; icon: React.ReactNode }
+  { color: string; icon: React.ReactElement }
 > = {
   success: { color: "green", icon: <IconCheck /> },
   fail: { color: "red", icon: <IconX /> },
