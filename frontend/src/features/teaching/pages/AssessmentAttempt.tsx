@@ -358,6 +358,7 @@ export default function AssessmentAttempt() {
                 timeLimitMinutes={assessment?.time_limit_minutes}
                 startedAt={assessment?.started_at}
                 onExpire={handleExpire}
+                onCloseExam={handleComplete}
                 onPrevious={
                   currentItem.display_order > 1 ? handlePrevious : undefined
                 }
