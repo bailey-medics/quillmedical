@@ -1,1 +1,1 @@
-export { default } from "./MarkdownView";
+export { default } from "@/components/typography/MarkdownView";

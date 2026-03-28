@@ -102,7 +102,6 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Images | QuillLogo, QuillName | `components/images/` |
 | Layouts | MainLayout, NotFoundLayout, Complete, Complete.PatientList | `components/layouts/` |
 | Letters | LetterList, LetterView | `components/letters/` |
-| Markdown | MarkdownView | `components/markdown/` |
 | Messaging | Messaging, MessagesList, MessagingTriagePayment | `components/messaging/` |
 | MultiStepForm | MultiStepForm | `components/multi-step-form/` |
 | Navigation | SideNav, SideNavContent, NestedNavLink | `components/navigation/` |
@@ -115,6 +114,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | StateMessages | StateMessage | `components/state-message/` |
 | StatCards | StatCard | `components/stats-card/` |
 | Tables | DataTable | `components/tables/` |
+| Typography | MarkdownView | `components/typography/` |
 | Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.

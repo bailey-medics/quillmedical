@@ -7,7 +7,7 @@
 
 import { Button, Card, Stack } from "@mantine/core";
 import { HeaderText } from "@/components/typography";
-import MarkdownView from "@/components/markdown/MarkdownView";
+import MarkdownView from "@/components/typography/MarkdownView";
 
 interface AssessmentIntroProps {
   /** Intro page title from config */
