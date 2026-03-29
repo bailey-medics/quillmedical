@@ -300,3 +300,55 @@ class EducatorResultOut(BaseModel):
     is_passed: bool | None
     score_breakdown: dict[str, Any] | None
     total_items: int
+
+
+# ------------------------------------------------------------------
+# Bank status (live / closed)
+# ------------------------------------------------------------------
+
+
+class QuestionBankOrgStatusIn(BaseModel):
+    """Toggle live/closed status for a bank."""
+
+    is_live: bool
+
+
+class QuestionBankOrgStatusOut(BaseModel):
+    """Current live/closed status for a bank."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    question_bank_id: str
+    is_live: bool
+
+
+# ------------------------------------------------------------------
+# Email templates (read-only preview)
+# ------------------------------------------------------------------
+
+
+class EmailTemplateOut(BaseModel):
+    """Read-only preview of an email template YAML file."""
+
+    subject: str
+    body: str
+    attach_certificate: bool = True
+
+
+# ------------------------------------------------------------------
+# Admin bank detail
+# ------------------------------------------------------------------
+
+
+class AdminBankDetailOut(BaseModel):
+    """Detailed admin view of a single question bank."""
+
+    bank_id: str
+    title: str | None = None
+    version: int | None = None
+    type: str | None = None
+    item_count: int = 0
+    is_live: bool = False
+    email_on_pass: bool = False
+    coordinator_email_template: EmailTemplateOut | None = None
+    student_email_template: EmailTemplateOut | None = None

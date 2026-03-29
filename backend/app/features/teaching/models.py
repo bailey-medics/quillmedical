@@ -237,6 +237,41 @@ class TeachingOrgSettings(Base):
 
 
 # ------------------------------------------------------------------
+# QuestionBankOrgStatus
+# ------------------------------------------------------------------
+
+
+class QuestionBankOrgStatus(Base):
+    """Per-bank-per-org live/closed status.
+
+    Banks default to closed until an admin explicitly sets them live.
+    When ``email_on_pass`` is enabled in the bank config, the
+    coordinator email must be set before the bank can go live.
+    """
+
+    __tablename__ = "question_bank_org_status"
+    __table_args__ = (
+        UniqueConstraint(
+            "organisation_id",
+            "question_bank_id",
+            name="uq_qb_org_status_org_bank",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    organisation_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_live: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
+
+# ------------------------------------------------------------------
 # QuestionBankSync
 # ------------------------------------------------------------------
 

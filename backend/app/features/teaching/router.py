@@ -24,10 +24,12 @@ from app.features.teaching.models import (
     AssessmentAnswer,
     QuestionBankConfig,
     QuestionBankItem,
+    QuestionBankOrgStatus,
     QuestionBankSync,
     TeachingOrgSettings,
 )
 from app.features.teaching.schemas import (
+    AdminBankDetailOut,
     AdminBankOut,
     AnswerResultOut,
     AssessmentHistoryOut,
@@ -37,9 +39,12 @@ from app.features.teaching.schemas import (
     CompletionResultOut,
     CriterionResult,
     EducatorResultOut,
+    EmailTemplateOut,
     ItemImageOut,
     QuestionBankDetailOut,
     QuestionBankItemOut,
+    QuestionBankOrgStatusIn,
+    QuestionBankOrgStatusOut,
     QuestionBankOut,
     StartAssessmentIn,
     SubmitAnswerIn,
@@ -1272,3 +1277,194 @@ def update_settings(
     db.commit()
     db.refresh(settings_row)
     return settings_row
+
+
+@teaching_router.get(
+    "/settings",
+    response_model=TeachingOrgSettingsOut,
+    dependencies=[_DEP_MANAGE],
+)
+def get_settings(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> TeachingOrgSettings:
+    """Return teaching settings for the educator's organisation."""
+    org_id = _get_user_org_id(user, db)
+    settings_row = db.execute(
+        select(TeachingOrgSettings).where(
+            TeachingOrgSettings.organisation_id == org_id
+        )
+    ).scalar_one_or_none()
+    if not settings_row:
+        raise HTTPException(404, "Teaching settings not found")
+    return settings_row
+
+
+# ------------------------------------------------------------------
+# Admin — bank detail & status
+# ------------------------------------------------------------------
+
+
+@teaching_router.get(
+    "/admin/banks/{bank_id}",
+    response_model=AdminBankDetailOut,
+    dependencies=[_DEP_MANAGE],
+)
+def get_admin_bank_detail(
+    bank_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> AdminBankDetailOut:
+    """Return detailed admin view of a single question bank."""
+    from app.config import settings as app_settings
+
+    org_id = _get_user_org_id(user, db)
+
+    # Get bank config from DB
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+            .order_by(QuestionBankConfig.version.desc())
+        )
+        .scalars()
+        .first()
+    )
+    if not config_row:
+        raise HTTPException(404, "Question bank not found")
+
+    # Item count
+    item_count = (
+        db.execute(
+            select(QuestionBankItem.id).where(
+                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Live/closed status
+    status_row = db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.organisation_id == org_id,
+            QuestionBankOrgStatus.question_bank_id == bank_id,
+        )
+    ).scalar_one_or_none()
+
+    config = config_row.config_yaml
+    email_on_pass: bool = config.get("results", {}).get("email_on_pass", False)
+
+    # Load email templates if email_on_pass is enabled
+    coordinator_template: EmailTemplateOut | None = None
+    student_template: EmailTemplateOut | None = None
+
+    if email_on_pass:
+        bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
+        if bank_path_str:
+            bank_path = Path(bank_path_str)
+            from app.features.teaching.email_templates import (
+                load_email_template,
+            )
+
+            ct = load_email_template(bank_path, bank_id, "coordinator-email")
+            if ct:
+                coordinator_template = EmailTemplateOut(
+                    subject=ct["subject"],
+                    body=ct["body"],
+                    attach_certificate=ct.get("attach_certificate", True),
+                )
+            st = load_email_template(bank_path, bank_id, "student-email")
+            if st:
+                student_template = EmailTemplateOut(
+                    subject=st["subject"],
+                    body=st["body"],
+                    attach_certificate=st.get("attach_certificate", True),
+                )
+
+    return AdminBankDetailOut(
+        bank_id=bank_id,
+        title=config_row.title,
+        version=config_row.version,
+        type=config_row.type,
+        item_count=len(item_count),
+        is_live=status_row.is_live if status_row else False,
+        email_on_pass=email_on_pass,
+        coordinator_email_template=coordinator_template,
+        student_email_template=student_template,
+    )
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/status",
+    response_model=QuestionBankOrgStatusOut,
+    dependencies=[_DEP_MANAGE],
+)
+def update_bank_status(
+    bank_id: str,
+    body: QuestionBankOrgStatusIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> QuestionBankOrgStatusOut:
+    """Toggle live/closed status for a question bank."""
+    org_id = _get_user_org_id(user, db)
+
+    # Verify bank exists
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not config_row:
+        raise HTTPException(404, "Question bank not found")
+
+    # If going live and email_on_pass is enabled, check coordinator email
+    if body.is_live:
+        config = config_row.config_yaml
+        email_on_pass = config.get("results", {}).get("email_on_pass", False)
+        if email_on_pass:
+            org_settings = db.execute(
+                select(TeachingOrgSettings).where(
+                    TeachingOrgSettings.organisation_id == org_id
+                )
+            ).scalar_one_or_none()
+            if not org_settings or not org_settings.coordinator_email:
+                raise HTTPException(
+                    400,
+                    "Coordinator email must be set before "
+                    "going live with email-on-pass enabled",
+                )
+
+    # Upsert status
+    status_row = db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.organisation_id == org_id,
+            QuestionBankOrgStatus.question_bank_id == bank_id,
+        )
+    ).scalar_one_or_none()
+
+    if status_row:
+        status_row.is_live = body.is_live
+    else:
+        status_row = QuestionBankOrgStatus(
+            organisation_id=org_id,
+            question_bank_id=bank_id,
+            is_live=body.is_live,
+        )
+        db.add(status_row)
+
+    db.commit()
+    db.refresh(status_row)
+    return QuestionBankOrgStatusOut(
+        question_bank_id=bank_id,
+        is_live=status_row.is_live,
+    )
