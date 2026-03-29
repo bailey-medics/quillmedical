@@ -754,6 +754,104 @@ def complete_assessment(
 
 
 # ------------------------------------------------------------------
+# Certificate
+# ------------------------------------------------------------------
+
+
+@teaching_router.get(
+    "/assessments/{assessment_id}/certificate",
+)
+def download_certificate(
+    assessment_id: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> Any:
+    """Generate and return a PDF certificate for a passed assessment."""
+    from fastapi.responses import Response
+
+    from app.config import settings
+    from app.features.teaching.certificate import (
+        find_certificate_background,
+        generate_certificate_pdf,
+    )
+
+    assessment = db.get(Assessment, assessment_id)
+    if not assessment or assessment.user_id != user.id:
+        raise HTTPException(404, "Assessment not found")
+
+    if not assessment.completed_at or not assessment.is_passed:
+        raise HTTPException(
+            400, "Certificate only available for passed assessments"
+        )
+
+    # Load config to check certificate_download is enabled
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.organisation_id
+                == assessment.organisation_id,
+                QuestionBankConfig.question_bank_id
+                == assessment.question_bank_id,
+                QuestionBankConfig.version == assessment.bank_version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not config_row:
+        raise HTTPException(500, "Config not found for assessment")
+
+    config = config_row.config_yaml
+    if not config.get("results", {}).get("certificate_download"):
+        raise HTTPException(404, "Certificates not enabled for this bank")
+
+    # Find background image
+    bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
+    if not bank_path_str:
+        raise HTTPException(500, "TEACHING_QUESTION_BANK_PATH not configured")
+
+    bank_path = Path(bank_path_str)
+    bg = find_certificate_background(bank_path, assessment.question_bank_id)
+    if not bg:
+        raise HTTPException(
+            404, "No certificate background found for this bank"
+        )
+
+    # Build pass summary from score breakdown
+    criteria = (assessment.score_breakdown or {}).get("criteria", [])
+    summary_parts: list[str] = []
+    for c in criteria:
+        pct = round(c.get("value", 0) * 100)
+        summary_parts.append(f"{c.get('name', '')}: {pct}%")
+    pass_summary = (
+        "Pass — " + ", ".join(summary_parts) if summary_parts else "Pass"
+    )
+
+    # Format date
+    completion_date = assessment.completed_at.strftime("%-d %B %Y")
+
+    # Candidate name
+    candidate_name = user.username
+
+    pdf_bytes = generate_certificate_pdf(
+        background_path=bg,
+        exam_title=config_row.title,
+        candidate_name=candidate_name,
+        pass_summary=pass_summary,
+        completion_date=completion_date,
+    )
+
+    filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+# ------------------------------------------------------------------
 # Educator endpoints
 # ------------------------------------------------------------------
 

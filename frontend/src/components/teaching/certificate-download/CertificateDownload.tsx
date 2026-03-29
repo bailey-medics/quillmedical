@@ -5,7 +5,6 @@
  * has passed and certificate_download is enabled in the config.
  */
 
-import { api } from "@/lib/api";
 import { useState } from "react";
 import { Stack } from "@mantine/core";
 import IconTextButton from "@/components/button/IconTextButton";
@@ -24,10 +23,12 @@ export function CertificateDownload({
   async function handleDownload() {
     setLoading(true);
     try {
-      const blob = await api.get<Blob>(
-        `/teaching/assessments/${assessmentId}/certificate`,
-        { responseType: "blob" } as never,
+      const res = await fetch(
+        `/api/teaching/assessments/${assessmentId}/certificate`,
+        { credentials: "include" },
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
