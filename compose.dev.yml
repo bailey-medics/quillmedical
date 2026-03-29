@@ -12,6 +12,7 @@ services:
       TEACHING_QUESTION_BANK_PATH: /question-banks/questions
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
+      EMAIL_DRY_RUN: "true"
     expose:
       - "8000"
     depends_on:

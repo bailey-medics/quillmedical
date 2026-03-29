@@ -149,6 +149,23 @@ class Settings(BaseSettings):
         description="Local filesystem path to question bank content",
     )
 
+    # --- Email ---
+    RESEND_API_KEY: SecretStr | None = Field(
+        None,
+        description="Resend API key for sending emails",
+    )
+    EMAIL_FROM: str = Field(
+        "noreply@quillmedical.com",
+        description="Sender address for outgoing emails",
+    )
+    EMAIL_DRY_RUN: bool = Field(
+        True,
+        description=(
+            "When True, log emails instead of sending. "
+            "Defaults to True for development safety."
+        ),
+    )
+
     # --- Startup validation ---
     @model_validator(mode="after")
     def _validate_clinical_services(self) -> "Settings":
