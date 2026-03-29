@@ -82,6 +82,7 @@ import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage
 import AllResults from "./features/teaching/pages/AllResults";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
+import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -349,6 +350,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <AdminTeachingPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching/:bankId",
+        element: (
+          <RequirePermission level="admin">
+            <AdminBankDetailPage />
           </RequirePermission>
         ),
       },

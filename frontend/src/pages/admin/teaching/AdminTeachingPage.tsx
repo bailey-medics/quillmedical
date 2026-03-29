@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Container, Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import DataTable, { type Column } from "@/components/tables/DataTable";
@@ -16,6 +17,7 @@ import { api } from "@/lib/api";
 import type { AdminBank, SyncAllResult } from "@/features/teaching/types";
 
 export default function AdminTeachingPage() {
+  const navigate = useNavigate();
   const [banks, setBanks] = useState<AdminBank[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -119,7 +121,7 @@ export default function AdminTeachingPage() {
           data={banks}
           columns={columns}
           getRowKey={(bank) => bank.bank_id}
-          onRowClick={() => {}}
+          onRowClick={(bank) => navigate(`/admin/teaching/${bank.bank_id}`)}
           loading={loading}
           error={error}
           emptyMessage="No teaching modules found"
