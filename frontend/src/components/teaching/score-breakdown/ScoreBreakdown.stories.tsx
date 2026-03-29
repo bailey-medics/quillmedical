@@ -5,6 +5,9 @@ const meta: Meta<typeof ScoreBreakdown> = {
   title: "Teaching/ScoreBreakdown",
   component: ScoreBreakdown,
   tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+  },
 };
 
 export default meta;

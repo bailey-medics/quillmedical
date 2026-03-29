@@ -1,9 +1,8 @@
-import { Anchor, Button, Paper, Stack } from "@mantine/core";
+import { Button, Group, Paper, Stack } from "@mantine/core";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { PasswordField, TextField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { ErrorText, HeaderText } from "@components/typography";
+import { ErrorText, HeaderText, HyperlinkText } from "@components/typography";
 
 export interface LoginFormData {
   username: string;
@@ -84,14 +83,11 @@ export default function LoginForm({
               Sign in
             </Button>
             {registerPath && (
-              <Anchor
-                component={Link}
-                to={registerPath}
-                size="sm"
-                style={{ alignSelf: "flex-end" }}
-              >
-                Don&apos;t have an account? Register
-              </Anchor>
+              <Group justify="flex-end">
+                <HyperlinkText to={registerPath}>
+                  Don&apos;t have an account? Register
+                </HyperlinkText>
+              </Group>
             )}
           </Stack>
         </form>

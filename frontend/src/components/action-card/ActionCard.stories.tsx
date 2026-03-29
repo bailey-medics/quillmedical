@@ -65,6 +65,23 @@ export const LongContent: Story = {
 };
 
 /**
+ * Full width
+ *
+ * ActionCard without max-width, filling the available container width.
+ * Useful for standalone call-to-action sections like certificate downloads.
+ */
+export const FullWidth: Story = {
+  args: {
+    title: "Certificate",
+    subtitle:
+      "You have passed this assessment. Download your certificate below as a PDF to keep for your records.",
+    buttonLabel: "Download certificate",
+    fullWidth: true,
+    buttonVariant: "filled",
+  },
+};
+
+/**
  * Patient page
  *
  * The four action cards shown on the patient detail page, arranged

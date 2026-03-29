@@ -31,6 +31,23 @@ type Story = StoryObj<typeof IconTextButton>;
 /** Default interactive IconTextButton. */
 export const Default: Story = {};
 
+/** Arrow-left icon variant for back navigation. */
+export const ArrowLeft: Story = {
+  args: {
+    icon: "arrowLeft",
+    label: "Back to dashboard",
+  },
+};
+
+/** Light variant for secondary actions. */
+export const LightVariant: Story = {
+  args: {
+    icon: "arrowLeft",
+    label: "Back to dashboard",
+    variant: "light",
+  },
+};
+
 /** All interaction states side-by-side. */
 export const States: Story = {
   render: () => (

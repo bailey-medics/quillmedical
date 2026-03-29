@@ -129,7 +129,10 @@ export default function AssessmentAttempt() {
           setBankDetail(detail);
 
           if (existing.completed_at) {
-            navigate(`/teaching/assessment/${id}/result`, { replace: true });
+            navigate(`/teaching/assessment/${id}/result`, {
+              replace: true,
+              state: { fromExam: true },
+            });
             return;
           }
 
@@ -282,7 +285,9 @@ export default function AssessmentAttempt() {
       await api.post<CompletionResult>(
         `/teaching/assessments/${assessment.id}/complete`,
       );
-      navigate(`/teaching/assessment/${assessment.id}/result`);
+      navigate(`/teaching/assessment/${assessment.id}/result`, {
+        state: { fromExam: true },
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to complete assessment",

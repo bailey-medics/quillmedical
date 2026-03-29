@@ -29,6 +29,10 @@ interface ActionCardProps {
   onClick?: () => void;
   /** Optional disabled state for the button */
   disabled?: boolean;
+  /** Remove max-width constraint so the card fills its container */
+  fullWidth?: boolean;
+  /** Button variant (default: "light") */
+  buttonVariant?: "light" | "filled";
 }
 
 /**
@@ -50,6 +54,8 @@ export default function ActionCard({
   buttonUrl = "#",
   onClick,
   disabled = false,
+  fullWidth = false,
+  buttonVariant = "light",
 }: ActionCardProps) {
   return (
     <Card
@@ -57,7 +63,7 @@ export default function ActionCard({
       padding="lg"
       radius="md"
       withBorder
-      maw="37.05rem"
+      maw={fullWidth ? undefined : "37.05rem"}
       h="100%"
     >
       <Stack gap="md" h="100%">
@@ -81,6 +87,7 @@ export default function ActionCard({
           url={buttonUrl}
           onClick={onClick}
           disabled={disabled}
+          variant={buttonVariant}
         />
       </Stack>
     </Card>

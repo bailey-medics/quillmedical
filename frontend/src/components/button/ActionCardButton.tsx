@@ -23,6 +23,8 @@ interface ActionCardButtonProps {
   onClick?: () => void;
   /** Disabled state */
   disabled?: boolean;
+  /** Mantine button variant (default: "light") */
+  variant?: "light" | "filled";
 }
 
 export default function ActionCardButton({
@@ -30,12 +32,13 @@ export default function ActionCardButton({
   url = "#",
   onClick,
   disabled = false,
+  variant = "light",
 }: ActionCardButtonProps) {
   if (onClick) {
     return (
       <Button
         onClick={onClick}
-        variant="light"
+        variant={variant}
         fullWidth
         disabled={disabled}
         size="lg"
@@ -49,7 +52,7 @@ export default function ActionCardButton({
     <Button
       component={Link}
       to={url}
-      variant="light"
+      variant={variant}
       fullWidth
       disabled={disabled}
       size="lg"

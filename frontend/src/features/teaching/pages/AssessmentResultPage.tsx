@@ -1,9 +1,8 @@
-import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
+import { Alert, Container, Loader, Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { AssessmentResult } from "@/components/teaching/assessment-result/AssessmentResult";
-import { CertificateDownload } from "@/components/teaching/certificate-download/CertificateDownload";
 import type {
   Assessment,
   CriterionResult,
@@ -14,6 +13,9 @@ import type {
 export default function AssessmentResultPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromExam =
+    (location.state as { fromExam?: boolean })?.fromExam === true;
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [bankDetail, setBankDetail] = useState<QuestionBankDetail | null>(null);
@@ -81,28 +83,17 @@ export default function AssessmentResultPage() {
           isPassed={assessment.is_passed}
           criteria={criteria}
           bankTitle={bankDetail?.title}
+          assessmentId={assessment.id}
+          showCertificate={!!showCertificate}
+          showTryAgain={fromExam && allowRetry && !assessment.is_passed}
+          showBackToDashboard={fromExam}
+          onTryAgain={() =>
+            navigate(
+              `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
+            )
+          }
+          onBackToDashboard={() => navigate("/teaching")}
         />
-
-        <Group>
-          {showCertificate && (
-            <CertificateDownload assessmentId={assessment.id} />
-          )}
-          {allowRetry && (
-            <Button
-              variant="light"
-              onClick={() =>
-                navigate(
-                  `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
-                )
-              }
-            >
-              Try again
-            </Button>
-          )}
-          <Button variant="subtle" component={Link} to="/teaching">
-            Back to dashboard
-          </Button>
-        </Group>
       </Stack>
     </Container>
   );
