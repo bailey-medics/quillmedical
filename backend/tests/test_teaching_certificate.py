@@ -22,35 +22,31 @@ from app.features.teaching.certificate import (
 
 
 class TestFindCertificateBackground:
-    def test_returns_none_when_no_certificates_dir(
+    def test_returns_none_when_no_certificate_file(
         self, tmp_path: Path
     ) -> None:
         bank_dir = tmp_path / "my-bank"
         bank_dir.mkdir()
         assert find_certificate_background(tmp_path, "my-bank") is None
 
-    def test_returns_none_when_certificates_dir_empty(
-        self, tmp_path: Path
-    ) -> None:
-        cert_dir = tmp_path / "my-bank" / "certificates"
-        cert_dir.mkdir(parents=True)
+    def test_returns_none_when_bank_dir_missing(self, tmp_path: Path) -> None:
         assert find_certificate_background(tmp_path, "my-bank") is None
 
-    def test_returns_first_png(self, tmp_path: Path) -> None:
-        cert_dir = tmp_path / "my-bank" / "certificates"
-        cert_dir.mkdir(parents=True)
-        # Create two PNGs — should return the first alphabetically
-        (cert_dir / "alpha.png").write_bytes(b"fake-png")
-        (cert_dir / "beta.png").write_bytes(b"fake-png")
+    def test_returns_path_when_certificate_exists(
+        self, tmp_path: Path
+    ) -> None:
+        bank_dir = tmp_path / "my-bank"
+        bank_dir.mkdir()
+        cert = bank_dir / "certificate-blank.png"
+        cert.write_bytes(b"fake-png")
         result = find_certificate_background(tmp_path, "my-bank")
         assert result is not None
-        assert result.name == "alpha.png"
+        assert result.name == "certificate-blank.png"
 
-    def test_ignores_non_png_files(self, tmp_path: Path) -> None:
-        cert_dir = tmp_path / "my-bank" / "certificates"
-        cert_dir.mkdir(parents=True)
-        (cert_dir / "readme.txt").write_text("not a certificate")
-        (cert_dir / "cert.jpg").write_bytes(b"fake-jpg")
+    def test_ignores_other_png_files(self, tmp_path: Path) -> None:
+        bank_dir = tmp_path / "my-bank"
+        bank_dir.mkdir()
+        (bank_dir / "other.png").write_bytes(b"fake-png")
         assert find_certificate_background(tmp_path, "my-bank") is None
 
 

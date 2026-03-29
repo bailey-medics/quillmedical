@@ -1,7 +1,7 @@
 """Certificate PDF generation for teaching assessments.
 
-Generates a PDF certificate by compositing text over a background
-PNG image from the question bank's ``certificates/`` directory.
+Generates a PDF certificate by compositing text over a
+``certificate-blank.png`` background image in the question bank.
 """
 
 # cspell:words pagesizes pdfgen pagesize fontname fontsize
@@ -25,16 +25,13 @@ def find_certificate_background(
     bank_path: Path,
     bank_id: str,
 ) -> Path | None:
-    """Find the first PNG in ``<bank_path>/<bank_id>/certificates/``.
+    """Find ``<bank_path>/<bank_id>/certificate-blank.png``.
 
-    Returns None if no certificate image is found.
+    Returns None if the file does not exist.
     """
-    cert_dir = bank_path / bank_id / "certificates"
-    if not cert_dir.is_dir():
-        return None
-    for f in sorted(cert_dir.iterdir()):
-        if f.suffix.lower() == ".png" and f.is_file():
-            return f
+    cert_file = bank_path / bank_id / "certificate-blank.png"
+    if cert_file.is_file():
+        return cert_file
     return None
 
 
