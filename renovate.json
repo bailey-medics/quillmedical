@@ -61,6 +61,7 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "all non-major npm and pip updates",
       "groupSlug": "npm-pip-weekly",
+      "branchPrefix": "renovate/",
       "automerge": false
     },
     {
