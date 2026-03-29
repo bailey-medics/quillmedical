@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -164,7 +164,7 @@ def _build_candidate_item(
 def list_question_banks(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> list[QuestionBankConfig]:
+) -> list[dict[str, Any]]:
     """List question bank configs for the user's organisation."""
     org_id = _get_user_org_id(user, db)
     configs = (
@@ -176,7 +176,34 @@ def list_question_banks(
         .scalars()
         .all()
     )
-    return list(configs)
+
+    # Look up is_live status for each bank
+    statuses = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    live_map: dict[str, bool] = {
+        s.question_bank_id: s.is_live for s in statuses
+    }
+
+    return [
+        {
+            "id": c.id,
+            "question_bank_id": c.question_bank_id,
+            "version": c.version,
+            "title": c.title,
+            "description": c.description,
+            "type": c.type,
+            "synced_at": c.synced_at,
+            "is_live": live_map.get(c.question_bank_id, False),
+        }
+        for c in configs
+    ]
 
 
 @teaching_router.get(
@@ -239,6 +266,21 @@ def start_assessment(
     )
     if not config_row:
         raise HTTPException(404, "Question bank not found")
+
+    # Block assessment start when bank is not live
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id
+                == body.question_bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not status_row or not status_row.is_live:
+        raise HTTPException(403, "This assessment is not currently open")
 
     config = config_row.config_yaml
     assessment_cfg = config.get("assessment", {})
@@ -672,12 +714,148 @@ def update_answer(
     return _build_candidate_item(answer, config, config_row.type)
 
 
+# ------------------------------------------------------------------
+# Certificate email helper
+# ------------------------------------------------------------------
+
+
+def _maybe_enqueue_certificate_emails(
+    *,
+    background_tasks: BackgroundTasks,
+    assessment: Assessment,
+    config_row: QuestionBankConfig,
+    user: User,
+    db: Session,
+    criteria_results: list[dict[str, Any]],
+) -> None:
+    """Enqueue certificate emails if the bank is live and email_on_pass is set."""
+    from app.config import settings as app_settings
+    from app.email_send import Attachment as EmailAttachment
+    from app.email_send import send_email
+    from app.features.teaching.certificate import (
+        find_certificate_background,
+        generate_certificate_pdf,
+    )
+    from app.features.teaching.email_templates import (
+        load_email_template,
+        render_email,
+    )
+
+    config = config_row.config_yaml
+    if not config.get("results", {}).get("email_on_pass"):
+        return
+
+    # Only send for live exams
+    status_row = db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.organisation_id
+            == assessment.organisation_id,
+            QuestionBankOrgStatus.question_bank_id
+            == assessment.question_bank_id,
+        )
+    ).scalar_one_or_none()
+    if not status_row or not status_row.is_live:
+        return
+
+    bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
+    if not bank_path_str:
+        return
+
+    bank_path = Path(bank_path_str)
+    bank_id = assessment.question_bank_id
+
+    # Build context for template rendering
+    summary_parts: list[str] = []
+    for c in criteria_results:
+        pct = round(c.get("value", 0) * 100)
+        summary_parts.append(f"{c.get('name', '')}: {pct}%")
+    score_summary = ", ".join(summary_parts) if summary_parts else "Pass"
+
+    completion_date = ""
+    if assessment.completed_at:
+        completion_date = assessment.completed_at.strftime("%-d %B %Y")
+
+    # Look up org settings for coordinator email + institution name
+    org_settings = db.execute(
+        select(TeachingOrgSettings).where(
+            TeachingOrgSettings.organisation_id == assessment.organisation_id
+        )
+    ).scalar_one_or_none()
+
+    context: dict[str, str] = {
+        "exam_title": config_row.title,
+        "student_name": user.username,
+        "completion_date": completion_date,
+        "score_summary": score_summary,
+        "institution_name": (
+            org_settings.institution_name if org_settings else ""
+        ),
+        "recipient_name": "",
+    }
+
+    # Generate certificate PDF for attachment
+    bg = find_certificate_background(bank_path, bank_id)
+    pdf_bytes: bytes | None = None
+    if bg:
+        pass_text = "Pass — " + score_summary if score_summary else "Pass"
+        pdf_bytes = generate_certificate_pdf(
+            background_path=bg,
+            exam_title=config_row.title,
+            candidate_name=user.username,
+            pass_summary=pass_text,
+            completion_date=completion_date,
+        )
+
+    attachments: list[EmailAttachment] = []
+    if pdf_bytes:
+        attachments.append(
+            EmailAttachment(
+                filename=f"certificate-{bank_id}.pdf",
+                content=pdf_bytes,
+            )
+        )
+
+    # Student email
+    student_template = load_email_template(bank_path, bank_id, "student-email")
+    if student_template and user.email:
+        ctx = {**context, "recipient_name": user.username}
+        rendered = render_email(student_template, ctx)
+        att = attachments if student_template["attach_certificate"] else []
+        background_tasks.add_task(
+            send_email,
+            to=user.email,
+            subject=rendered["subject"],
+            html_body=rendered["html_body"],
+            attachments=att,
+        )
+
+    # Coordinator email
+    coord_template = load_email_template(
+        bank_path, bank_id, "coordinator-email"
+    )
+    if coord_template and org_settings and org_settings.coordinator_email:
+        ctx = {
+            **context,
+            "recipient_name": (org_settings.coordinator_email.split("@")[0]),
+        }
+        rendered = render_email(coord_template, ctx)
+        att = attachments if coord_template["attach_certificate"] else []
+        background_tasks.add_task(
+            send_email,
+            to=org_settings.coordinator_email,
+            subject=rendered["subject"],
+            html_body=rendered["html_body"],
+            attachments=att,
+        )
+
+
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
     response_model=CompletionResultOut,
 )
 def complete_assessment(
     assessment_id: int,
+    background_tasks: BackgroundTasks,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
@@ -742,6 +920,17 @@ def complete_assessment(
     assessment.score_breakdown = score_breakdown
     assessment.is_passed = overall_passed
     db.commit()
+
+    # --- Email certificate on pass ---
+    if overall_passed:
+        _maybe_enqueue_certificate_emails(
+            background_tasks=background_tasks,
+            assessment=assessment,
+            config_row=config_row,
+            user=user,
+            db=db,
+            criteria_results=criteria_results,
+        )
 
     return {
         "is_passed": overall_passed,

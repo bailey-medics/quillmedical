@@ -24,6 +24,7 @@ class QuestionBankOut(BaseModel):
     description: str
     type: str
     synced_at: datetime
+    is_live: bool = False
 
 
 class QuestionBankDetailOut(QuestionBankOut):
