@@ -39,7 +39,9 @@ describe("AssessmentDashboard", () => {
     (api.get as Mock).mockResolvedValue([]);
     renderWithRouter(<AssessmentDashboard />);
     await waitFor(() => {
-      expect(screen.getByText("No question banks available.")).toBeTruthy();
+      expect(
+        screen.getByText("No assessments are currently open."),
+      ).toBeTruthy();
     });
   });
 
@@ -52,6 +54,7 @@ describe("AssessmentDashboard", () => {
             question_bank_id: "test-bank",
             title: "Test Bank",
             description: "A test bank",
+            is_live: true,
           },
         ]);
       }
@@ -61,6 +64,30 @@ describe("AssessmentDashboard", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
+  });
+
+  it("hides closed banks from action cards", async () => {
+    (api.get as Mock).mockImplementation((path: string) => {
+      if (path.includes("question-banks")) {
+        return Promise.resolve([
+          {
+            id: 1,
+            question_bank_id: "test-bank",
+            title: "Closed Bank",
+            description: "A closed bank",
+            is_live: false,
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    renderWithRouter(<AssessmentDashboard />);
+    await waitFor(() => {
+      expect(
+        screen.getByText("No assessments are currently open."),
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText("Closed Bank")).toBeNull();
   });
 
   it("shows history section with heading", async () => {

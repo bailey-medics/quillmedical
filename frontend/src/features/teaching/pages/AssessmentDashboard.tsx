@@ -68,23 +68,25 @@ export default function AssessmentDashboard() {
       <Stack gap="lg">
         <PageHeader title="Teaching" />
 
-        {banks.length === 0 ? (
-          <Text c="dimmed">No question banks available.</Text>
+        {banks.filter((bank) => bank.is_live).length === 0 ? (
+          <Text c="dimmed">No assessments are currently open.</Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {banks.map((bank) => (
-              <ActionCard
-                key={bank.id}
-                title={bank.title}
-                subtitle={bank.description}
-                buttonLabel="Start assessment"
-                onClick={() =>
-                  navigate(
-                    `/teaching/assessment/new?bank=${bank.question_bank_id}`,
-                  )
-                }
-              />
-            ))}
+            {banks
+              .filter((bank) => bank.is_live)
+              .map((bank) => (
+                <ActionCard
+                  key={bank.id}
+                  title={bank.title}
+                  subtitle={bank.description}
+                  buttonLabel="Start assessment"
+                  onClick={() =>
+                    navigate(
+                      `/teaching/assessment/new?bank=${bank.question_bank_id}`,
+                    )
+                  }
+                />
+              ))}
           </SimpleGrid>
         )}
 

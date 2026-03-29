@@ -73,6 +73,7 @@ export default function AssessmentResultPage() {
     (assessment.score_breakdown?.criteria as CriterionResult[]) ?? [];
   const config: QuestionBankConfigYaml = bankDetail?.config_yaml ?? {};
   const allowRetry = config?.assessment?.allow_immediate_retry !== false;
+  const bankIsLive = bankDetail?.is_live ?? false;
   const showCertificate =
     assessment.is_passed && config?.results?.certificate_download === true;
 
@@ -85,7 +86,9 @@ export default function AssessmentResultPage() {
           bankTitle={bankDetail?.title}
           assessmentId={assessment.id}
           showCertificate={!!showCertificate}
-          showTryAgain={fromExam && allowRetry && !assessment.is_passed}
+          showTryAgain={
+            fromExam && allowRetry && bankIsLive && !assessment.is_passed
+          }
           showBackToDashboard={fromExam}
           onTryAgain={() =>
             navigate(

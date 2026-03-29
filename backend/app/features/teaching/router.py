@@ -214,7 +214,7 @@ def get_question_bank(
     bank_id: str,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> QuestionBankConfig:
+) -> dict[str, Any]:
     """Get full detail for a question bank config."""
     org_id = _get_user_org_id(user, db)
     config = (
@@ -231,7 +231,29 @@ def get_question_bank(
     )
     if not config:
         raise HTTPException(404, "Question bank not found")
-    return config
+
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    return {
+        "id": config.id,
+        "question_bank_id": config.question_bank_id,
+        "version": config.version,
+        "title": config.title,
+        "description": config.description,
+        "type": config.type,
+        "synced_at": config.synced_at,
+        "config_yaml": config.config_yaml,
+        "is_live": status_row.is_live if status_row else False,
+    }
 
 
 # ------------------------------------------------------------------
