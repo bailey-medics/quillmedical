@@ -7,19 +7,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
-import {
-  Alert,
-  Button,
-  Container,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-  TextInput,
-} from "@mantine/core";
+import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
+import BaseCard from "@/components/base-card/BaseCard";
+import TextField from "@/components/form/TextField";
 import DirtyFormNavigation from "@/components/warnings/DirtyFormNavigation";
 import { api } from "@/lib/api";
 import type {
@@ -125,9 +118,9 @@ export default function TeachingOrgSettingsPage() {
           <PageHeader title="Teaching settings" />
         </Group>
 
-        <Paper p="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
-            <TextInput
+            <TextField
               label="Coordinator email"
               description="Receives certificate copies when students pass"
               placeholder="coordinator@example.com"
@@ -136,7 +129,7 @@ export default function TeachingOrgSettingsPage() {
               onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
             />
 
-            <TextInput
+            <TextField
               label="Institution name"
               description="Appears on certificates and emails"
               placeholder="e.g. Royal Devon University Healthcare"
@@ -161,7 +154,7 @@ export default function TeachingOrgSettingsPage() {
               </Button>
             </Group>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         <DirtyFormNavigation blocker={blocker} />
       </Stack>

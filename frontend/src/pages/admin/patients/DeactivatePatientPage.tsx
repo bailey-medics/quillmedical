@@ -14,15 +14,21 @@ import {
   Stack,
   Button,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
   Modal,
-  Paper,
   Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  PlaceholderText,
+} from "@/components/typography";
 import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
@@ -158,17 +164,17 @@ export default function DeactivatePatientPage() {
             <Skeleton height={300} />
           ) : error ? (
             <Alert
-              icon={<IconAlertCircle size={16} />}
+              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
               color="red"
             >
               {error}
             </Alert>
           ) : (
-            <Paper shadow="sm" p="md" withBorder>
+            <BaseCard>
               <Stack gap="md">
                 <Alert
-                  icon={<IconAlertCircle size={16} />}
+                  icon={<Icon icon={<IconAlertCircle />} size="sm" />}
                   title="Warning"
                   color="orange"
                 >
@@ -178,28 +184,27 @@ export default function DeactivatePatientPage() {
 
                 <Stack gap="xs">
                   <Group>
-                    <Text fw={500}>Name:</Text>
-                    <Text>{formatName(specificPatient.name)}</Text>
+                    <BodyTextBold>Name:</BodyTextBold>
+                    <BodyTextBlack>
+                      {formatName(specificPatient.name)}
+                    </BodyTextBlack>
                   </Group>
                   {specificPatient.birthDate && (
                     <Group>
-                      <Text fw={500}>Birth date:</Text>
-                      <Text>{specificPatient.birthDate}</Text>
+                      <BodyTextBold>Birth date:</BodyTextBold>
+                      <BodyTextBlack>{specificPatient.birthDate}</BodyTextBlack>
                     </Group>
                   )}
                   {specificPatient.gender && (
                     <Group>
-                      <Text fw={500}>Gender:</Text>
-                      <Text style={{ textTransform: "capitalize" }}>
-                        {specificPatient.gender}
-                      </Text>
+                      <BodyTextBold>Gender:</BodyTextBold>
+                      <BodyTextBlack>{specificPatient.gender}</BodyTextBlack>
                     </Group>
                   )}
                   <Group>
-                    <Text fw={500}>Patient ID:</Text>
-                    <Text ff="monospace" size="lg">
-                      {specificPatient.id}
-                    </Text>
+                    <BodyTextBold>Patient ID:</BodyTextBold>
+                    <BodyText>{specificPatient.id}</BodyText>
+                    <BodyText>{specificPatient.id}</BodyText>
                   </Group>
                 </Stack>
 
@@ -208,7 +213,7 @@ export default function DeactivatePatientPage() {
                     color="red"
                     onClick={handleDeactivateConfirm}
                     loading={deactivating}
-                    leftSection={<IconUserMinus size={18} />}
+                    leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                   >
                     Confirm deactivation
                   </Button>
@@ -221,7 +226,7 @@ export default function DeactivatePatientPage() {
                   </Button>
                 </Stack>
               </Stack>
-            </Paper>
+            </BaseCard>
           )}
         </Stack>
       </Container>
@@ -244,7 +249,7 @@ export default function DeactivatePatientPage() {
           </Stack>
         ) : error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
             color="red"
           >
@@ -252,7 +257,7 @@ export default function DeactivatePatientPage() {
           </Alert>
         ) : patients.length === 0 ? (
           <Center p="xl">
-            <Text c="dimmed">No patients found</Text>
+            <PlaceholderText>No patients found</PlaceholderText>
           </Center>
         ) : (
           <Table striped highlightOnHover>
@@ -270,7 +275,7 @@ export default function DeactivatePatientPage() {
               {patients.map((patient) => (
                 <Table.Tr key={patient.id}>
                   <Table.Td>
-                    <Text fw={500}>{formatName(patient.name)}</Text>
+                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
                   </Table.Td>
                   <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
                   <Table.Td>{patient.gender || "N/A"}</Table.Td>
@@ -279,7 +284,7 @@ export default function DeactivatePatientPage() {
                       variant="light"
                       color="red"
                       size="xs"
-                      leftSection={<IconUserMinus size={16} />}
+                      leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(patient)}
                     >
                       Deactivate
@@ -298,23 +303,23 @@ export default function DeactivatePatientPage() {
           centered
         >
           <Stack gap="md">
-            <Text>
+            <BodyTextBlack>
               Are you sure you want to deactivate patient{" "}
               <strong>
                 {selectedPatient ? formatName(selectedPatient.name) : ""}
               </strong>
               ?
-            </Text>
-            <Text size="lg" c="dimmed">
+            </BodyTextBlack>
+            <BodyText>
               This will restrict access to their records. This action can be
               reversed later.
-            </Text>
+            </BodyText>
             <Stack gap="sm">
               <Button
                 color="red"
                 onClick={handleDeactivateConfirm}
                 loading={deactivating}
-                leftSection={<IconUserMinus size={18} />}
+                leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
               >
                 Deactivate patient
               </Button>

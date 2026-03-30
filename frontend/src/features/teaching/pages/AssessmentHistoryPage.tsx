@@ -1,8 +1,9 @@
-import { Alert, Container, Loader, Stack, Title } from "@mantine/core";
+import { Alert, Container, Loader, Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
+import { HeaderText } from "@/components/typography";
 import type { AssessmentHistory } from "@/features/teaching/types";
 
 export default function AssessmentHistoryPage() {
@@ -48,7 +49,7 @@ export default function AssessmentHistoryPage() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Assessment history</Title>
+        <HeaderText>Assessment history</HeaderText>
         <AssessmentHistoryTable
           assessments={history}
           onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}

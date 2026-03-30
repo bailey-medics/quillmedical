@@ -13,15 +13,20 @@ import {
   Container,
   Stack,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
-  ActionIcon,
-  Paper,
-  Title,
 } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import IconButton from "@/components/button/IconButton";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBold,
+  HeaderText,
+  PlaceholderText,
+} from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
 interface Patient {
@@ -119,23 +124,21 @@ export default function EditPatientPage() {
             <Skeleton height={400} />
           ) : error ? (
             <Alert
-              icon={<IconAlertCircle size={16} />}
+              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
               color="red"
             >
               {error}
             </Alert>
           ) : (
-            <Paper shadow="sm" p="md" withBorder>
-              <Title order={3} size="h4" mb="md">
-                TODO: Patient Edit Form
-              </Title>
-              <Text c="dimmed">
+            <BaseCard>
+              <HeaderText>TODO: Patient edit form</HeaderText>
+              <BodyText>
                 Patient edit functionality is not yet implemented. This page
                 will contain a form to edit patient demographics including name,
                 birth date, gender, and identifiers.
-              </Text>
-            </Paper>
+              </BodyText>
+            </BaseCard>
           )}
         </Stack>
       </Container>
@@ -158,7 +161,7 @@ export default function EditPatientPage() {
           </Stack>
         ) : error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
             color="red"
           >
@@ -166,7 +169,7 @@ export default function EditPatientPage() {
           </Alert>
         ) : patients.length === 0 ? (
           <Center p="xl">
-            <Text c="dimmed">No patients found</Text>
+            <PlaceholderText>No patients found</PlaceholderText>
           </Center>
         ) : (
           <Table striped highlightOnHover>
@@ -184,19 +187,18 @@ export default function EditPatientPage() {
               {patients.map((patient) => (
                 <Table.Tr key={patient.id}>
                   <Table.Td>
-                    <Text fw={500}>{formatName(patient.name)}</Text>
+                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
                   </Table.Td>
                   <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
                   <Table.Td>{patient.gender || "N/A"}</Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
-                    <ActionIcon
+                    <IconButton
+                      icon={<IconEdit />}
                       variant="light"
                       color="blue"
                       onClick={() => handleEditPatient(patient.id)}
                       aria-label="Edit patient"
-                    >
-                      <IconEdit size={18} />
-                    </ActionIcon>
+                    />
                   </Table.Td>
                 </Table.Tr>
               ))}

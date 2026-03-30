@@ -10,13 +10,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ActionIcon,
   Container,
   Stack,
-  Paper,
   Group,
-  Text,
-  Title,
   Skeleton,
   Alert,
   Badge,
@@ -24,6 +20,14 @@ import {
   Modal,
   Button,
 } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+  PlaceholderText,
+} from "@/components/typography";
 import {
   IconPencil,
   IconAlertCircle,
@@ -199,14 +203,13 @@ export default function OrganisationAdminPage() {
       render: (member) => (
         <Menu position="bottom-end" shadow="md">
           <Menu.Target>
-            <ActionIcon
+            <IconButton
+              icon={<IconDots />}
               variant="subtle"
               color="gray"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
               aria-label={`Actions for ${member.username}`}
-            >
-              <Icon icon={<IconDots />} size="sm" />
-            </ActionIcon>
+            />
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item
@@ -244,12 +247,10 @@ export default function OrganisationAdminPage() {
         <PageHeader title={org.name} />
 
         {/* Organisation Information */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Organisation information
-              </Title>
+              <HeaderText>Organisation information</HeaderText>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/edit`)}
@@ -259,76 +260,54 @@ export default function OrganisationAdminPage() {
 
             <Stack gap="xs">
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Name:
-                </Text>
-                <Text size="lg">{org.name}</Text>
+                <BodyTextBold>Name:</BodyTextBold>
+                <BodyTextBlack>{org.name}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Type:
-                </Text>
-                <Text size="lg">{formatType(org.type)}</Text>
+                <BodyTextBold>Type:</BodyTextBold>
+                <BodyTextBlack>{formatType(org.type)}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Location:
-                </Text>
-                <Text size="lg">{org.location || "Not specified"}</Text>
+                <BodyTextBold>Location:</BodyTextBold>
+                <BodyTextBlack>{org.location || "Not specified"}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Organisation ID:
-                </Text>
-                <Text size="lg" c="dimmed">
-                  {org.id}
-                </Text>
+                <BodyTextBold>Organisation ID:</BodyTextBold>
+                <BodyText>{org.id}</BodyText>
               </Group>
             </Stack>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Statistics */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
-            <Title order={2} size="lg">
-              Statistics
-            </Title>
+            <HeaderText>Statistics</HeaderText>
 
             <Group gap="xl">
               <Stack gap={4}>
-                <Text size="sm" c="dimmed">
-                  Staff members
-                </Text>
-                <Text size="xl" fw={700}>
-                  {org.staff_count}
-                </Text>
+                <BodyText>Staff members</BodyText>
+                <BodyTextBold>{org.staff_count}</BodyTextBold>
               </Stack>
 
               {clinicalServicesEnabled && (
                 <Stack gap={4}>
-                  <Text size="sm" c="dimmed">
-                    Patients
-                  </Text>
-                  <Text size="xl" fw={700}>
-                    {org.patient_count}
-                  </Text>
+                  <BodyText>Patients</BodyText>
+                  <BodyTextBold>{org.patient_count}</BodyTextBold>
                 </Stack>
               )}
             </Group>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Staff Members */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Staff members
-              </Title>
+              <HeaderText>Staff members</HeaderText>
               <AddButton
                 label="Add staff member"
                 onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
@@ -343,16 +322,14 @@ export default function OrganisationAdminPage() {
               emptyMessage="No staff members assigned"
             />
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Patient Members */}
         {clinicalServicesEnabled && (
-          <Paper shadow="sm" p="lg" radius="md" withBorder>
+          <BaseCard>
             <Stack gap="md">
               <Group justify="space-between" align="center">
-                <Title order={2} size="lg">
-                  Patients
-                </Title>
+                <HeaderText>Patients</HeaderText>
                 <AddButton
                   label="Add patient"
                   onClick={() =>
@@ -371,16 +348,14 @@ export default function OrganisationAdminPage() {
                 emptyMessage="No patients assigned"
               />
             </Stack>
-          </Paper>
+          </BaseCard>
         )}
 
         {/* Enabled Features */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Enabled features
-              </Title>
+              <HeaderText>Enabled features</HeaderText>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/features`)}
@@ -397,10 +372,10 @@ export default function OrganisationAdminPage() {
                 ))}
               </Group>
             ) : (
-              <Text c="dimmed">No features enabled</Text>
+              <PlaceholderText>No features enabled</PlaceholderText>
             )}
           </Stack>
-        </Paper>
+        </BaseCard>
 
         <Modal
           opened={removingMember !== null}
@@ -409,13 +384,11 @@ export default function OrganisationAdminPage() {
           centered
         >
           <Stack gap="md">
-            <Text>
+            <BodyTextBlack>
               Are you sure you want to remove{" "}
-              <Text span fw={700}>
-                {removingMember?.username}
-              </Text>{" "}
-              from this organisation?
-            </Text>
+              <strong>{removingMember?.username}</strong> from this
+              organisation?
+            </BodyTextBlack>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setRemovingMember(null)}>
                 Cancel

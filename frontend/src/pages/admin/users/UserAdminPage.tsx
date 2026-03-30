@@ -12,15 +12,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
   Stack,
-  Paper,
   Group,
   SimpleGrid,
-  Text,
-  Title,
   Skeleton,
   Alert,
   Badge,
 } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+} from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
 import {
   IconPencil,
@@ -118,62 +122,48 @@ export default function UserAdminPage() {
         <PageHeader title={`User: ${user.username}`} />
 
         {/* Account Information */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between">
-              <Title order={2} size="lg">
-                Account information
-              </Title>
+              <HeaderText>Account information</HeaderText>
               <PermissionBadge permission={user.system_permissions} />
             </Group>
 
             <Stack gap="xs">
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Username:
-                </Text>
-                <Text size="lg">{user.username}</Text>
+                <BodyTextBold>Username:</BodyTextBold>
+                <BodyTextBlack>{user.username}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Email:
-                </Text>
-                <Text size="lg">{user.email}</Text>
+                <BodyTextBold>Email:</BodyTextBold>
+                <BodyTextBlack>{user.email}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  User ID:
-                </Text>
-                <Text size="lg" c="dimmed">
-                  {user.id}
-                </Text>
+                <BodyTextBold>User ID:</BodyTextBold>
+                <BodyText>{user.id}</BodyText>
               </Group>
             </Stack>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* CBAC Settings */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
-            <Title order={2} size="lg">
-              CBAC settings
-            </Title>
+            <HeaderText>CBAC settings</HeaderText>
 
             <Stack gap="xs">
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Base profession:
-                </Text>
-                <Text size="lg">{user.base_profession || "Not set"}</Text>
+                <BodyTextBold>Base profession:</BodyTextBold>
+                <BodyTextBlack>
+                  {user.base_profession || "Not set"}
+                </BodyTextBlack>
               </Group>
 
               {user.additional_competencies.length > 0 && (
                 <Stack gap="xs">
-                  <Text fw={500} size="lg">
-                    Additional competencies:
-                  </Text>
+                  <BodyTextBold>Additional competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.additional_competencies.map((comp) => (
                       <Badge key={comp} variant="light" color="teal">
@@ -186,9 +176,7 @@ export default function UserAdminPage() {
 
               {user.removed_competencies.length > 0 && (
                 <Stack gap="xs">
-                  <Text fw={500} size="lg">
-                    Removed competencies:
-                  </Text>
+                  <BodyTextBold>Removed competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.removed_competencies.map((comp) => (
                       <Badge key={comp} variant="light" color="red">
@@ -202,19 +190,15 @@ export default function UserAdminPage() {
               {!user.base_profession &&
                 user.additional_competencies.length === 0 &&
                 user.removed_competencies.length === 0 && (
-                  <Text size="lg" c="dimmed">
-                    No CBAC settings configured
-                  </Text>
+                  <BodyText>No CBAC settings configured</BodyText>
                 )}
             </Stack>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Action Cards */}
         <Stack gap="md">
-          <Title order={2} size="lg">
-            Actions
-          </Title>
+          <HeaderText>Actions</HeaderText>
 
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <ActionCard

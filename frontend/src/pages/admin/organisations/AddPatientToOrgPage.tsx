@@ -8,17 +8,11 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Paper,
-  Select,
-  Button,
-  Group,
-  Alert,
-} from "@mantine/core";
+import { Container, Stack, Button, Group, Alert } from "@mantine/core";
 import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 
@@ -130,10 +124,10 @@ export default function AddPatientToOrgPage() {
           </Alert>
         )}
 
-        <Paper withBorder p="xl">
+        <BaseCard>
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              <Select
+              <SelectField
                 label="Patient"
                 placeholder="Search for a patient"
                 data={patients.map((p) => ({
@@ -166,7 +160,7 @@ export default function AddPatientToOrgPage() {
               </Group>
             </Stack>
           </form>
-        </Paper>
+        </BaseCard>
       </Stack>
     </Container>
   );

@@ -1,18 +1,11 @@
-import {
-  Alert,
-  Container,
-  Loader,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Container, Loader, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
+import { HeaderText, PlaceholderText } from "@/components/typography";
 import type {
   AssessmentHistory,
   QuestionBank,
@@ -69,7 +62,7 @@ export default function AssessmentDashboard() {
         <PageHeader title="Teaching" />
 
         {banks.filter((bank) => bank.is_live).length === 0 ? (
-          <Text c="dimmed">No assessments are currently open.</Text>
+          <PlaceholderText>No assessments are currently open.</PlaceholderText>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {banks
@@ -90,9 +83,7 @@ export default function AssessmentDashboard() {
           </SimpleGrid>
         )}
 
-        <Title order={3} mt="md">
-          My history
-        </Title>
+        <HeaderText mt="md">My history</HeaderText>
         <AssessmentHistoryTable
           assessments={history}
           onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}

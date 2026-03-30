@@ -8,7 +8,8 @@
 import DocumentsList from "@/components/documents/DocumentsList";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Container, Stack, Title } from "@mantine/core";
+import { HeaderText } from "@/components/typography";
+import { Container, Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -29,7 +30,7 @@ export default function PatientDocuments() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Documents</Title>
+        <HeaderText>Documents</HeaderText>
 
         <DocumentsList
           documents={fakeDocuments}

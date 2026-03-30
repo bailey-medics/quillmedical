@@ -6,7 +6,10 @@
  * scanning with authenticator apps (Google Authenticator, Authy, etc.).
  */
 
-import { Button, Paper, Stack, TextInput, Title } from "@mantine/core";
+import { Button, Container, Stack } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
+import TextField from "@/components/form/TextField";
+import { BodyText, ErrorText, HeaderText } from "@/components/typography";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
@@ -63,37 +66,37 @@ export default function TotpSetup() {
   }
 
   return (
-    <Paper maw={480} mx="auto" p="lg" mt="xl" radius="md" withBorder>
-      <Stack>
-        <Title order={3}>Set up Two-Factor Authentication</Title>
-        <div>
-          <p>
-            Scan the QR code below with your authenticator app (or copy the
-            provided URL into your app).
-          </p>
-          <canvas ref={canvasRef} />
-          {provisionUri && (
-            <p style={{ wordBreak: "break-all" }}>{provisionUri}</p>
-          )}
-        </div>
+    <Container size="lg" py="xl">
+      <BaseCard maw={480} mx="auto">
+        <Stack>
+          <HeaderText>Set up two-factor authentication</HeaderText>
+          <div>
+            <BodyText>
+              Scan the QR code below with your authenticator app (or copy the
+              provided URL into your app).
+            </BodyText>
+            <canvas ref={canvasRef} />
+            {provisionUri && <BodyText>{provisionUri}</BodyText>}
+          </div>
 
-        <form onSubmit={onVerify}>
-          <Stack>
-            <TextInput
-              label="6-digit code"
-              value={code}
-              onChange={(e) => setCode(e.currentTarget.value)}
-              placeholder="123456"
-              required
-            />
-            {error && <div style={{ color: "crimson" }}>{error}</div>}
-            {success && <div style={{ color: "green" }}>{success}</div>}
-            <Button type="submit" loading={loading} disabled={!code}>
-              Verify and enable
-            </Button>
-          </Stack>
-        </form>
-      </Stack>
-    </Paper>
+          <form onSubmit={onVerify}>
+            <Stack>
+              <TextField
+                label="6-digit code"
+                value={code}
+                onChange={(e) => setCode(e.currentTarget.value)}
+                placeholder="123456"
+                required
+              />
+              {error && <ErrorText>{error}</ErrorText>}
+              {success && <BodyText>{success}</BodyText>}
+              <Button type="submit" loading={loading} disabled={!code}>
+                Verify and enable
+              </Button>
+            </Stack>
+          </form>
+        </Stack>
+      </BaseCard>
+    </Container>
   );
 }

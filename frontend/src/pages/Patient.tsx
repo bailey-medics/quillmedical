@@ -8,7 +8,8 @@
 
 import ActionCard from "@/components/action-card";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Container, SimpleGrid, Text } from "@mantine/core";
+import { ErrorText, HyperlinkText } from "@/components/typography";
+import { Container, SimpleGrid } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   IconCalendarWeek,
@@ -18,11 +19,9 @@ import {
   IconFileText,
 } from "@tabler/icons-react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 export default function Patient() {
   const { id, patient, error, setPatientNav } = usePatientLoader();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (patient && id) {
@@ -34,19 +33,8 @@ export default function Patient() {
     return (
       <Container size="lg" py="xl">
         <BaseCard>
-          <Text c="red">{error}</Text>
-          <Text
-            component="button"
-            onClick={() => navigate("/")}
-            style={{
-              cursor: "pointer",
-              marginTop: "1rem",
-              color: "blue",
-              textDecoration: "underline",
-            }}
-          >
-            ← Back to patient list
-          </Text>
+          <ErrorText>{error}</ErrorText>
+          <HyperlinkText to="/">← Back to patient list</HyperlinkText>
         </BaseCard>
       </Container>
     );

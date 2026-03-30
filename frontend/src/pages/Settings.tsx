@@ -138,7 +138,7 @@ export default function Settings() {
               <IconTextButton
                 icon="settings"
                 label="Configure TOTP"
-                variant="outline"
+                variant="filled"
                 disabled={!useTotp}
                 onClick={() => navigate("/settings/totp")}
               />

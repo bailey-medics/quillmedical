@@ -12,8 +12,6 @@ import {
   Button,
   Container,
   Stack,
-  Paper,
-  Text,
   Skeleton,
   Alert,
   Group,
@@ -23,6 +21,7 @@ import {
 import { IconAlertCircle } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
 import {
   BodyText,
@@ -204,7 +203,7 @@ export default function OrgFeaturesPage() {
       <Stack gap="lg">
         <PageHeader title="Features" />
 
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="lg">
             <HeaderText>Available features</HeaderText>
 
@@ -230,7 +229,7 @@ export default function OrgFeaturesPage() {
               </Group>
             ))}
           </Stack>
-        </Paper>
+        </BaseCard>
 
         <ButtonPair
           cancelLabel="Cancel"
@@ -250,10 +249,7 @@ export default function OrgFeaturesPage() {
           <Stack gap="md">
             <BodyTextBlack>
               You are about to make the following changes for{" "}
-              <Text span fw={700}>
-                {orgName}
-              </Text>
-              :
+              <strong>{orgName}</strong>:
             </BodyTextBlack>
             <List>
               {pendingChanges.map((change) => (
