@@ -280,13 +280,17 @@ function Step3Confirmation({
               ? "Patient updated successfully"
               : "Patient created successfully"}
           </HeaderText>
-          <BodyText ta="center">
-            {isEditMode
-              ? "The patient record has been updated in the FHIR system."
-              : "The new patient record has been created in the FHIR system."}
-          </BodyText>
+          <Box ta="center">
+            <BodyText>
+              {isEditMode
+                ? "The patient record has been updated in the FHIR system."
+                : "The new patient record has been created in the FHIR system."}
+            </BodyText>
+          </Box>
           {patientId && (
-            <BodyText ta="center">Patient ID: {patientId}</BodyText>
+            <Box ta="center">
+              <BodyText>Patient ID: {patientId}</BodyText>
+            </Box>
           )}
           <Button onClick={onCancel} mt="lg">
             Return to Admin
@@ -300,11 +304,13 @@ function Step3Confirmation({
               ? "Failed to update patient"
               : "Failed to create patient"}
           </HeaderText>
-          <BodyText ta="center">
-            {isEditMode
-              ? "There was an error updating the patient record. Please try again."
-              : "There was an error creating the patient record. Please try again."}
-          </BodyText>
+          <Box ta="center">
+            <BodyText>
+              {isEditMode
+                ? "There was an error updating the patient record. Please try again."
+                : "There was an error creating the patient record. Please try again."}
+            </BodyText>
+          </Box>
           <Button onClick={onCancel} mt="lg">
             Return to Admin
           </Button>

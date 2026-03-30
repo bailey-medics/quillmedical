@@ -23,7 +23,6 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
       {documents.map((doc) => (
         <BaseCard
           key={doc.url}
-          padding="md"
           onClick={onSelect ? () => onSelect(doc) : undefined}
           style={{ cursor: onSelect ? "pointer" : undefined }}
         >

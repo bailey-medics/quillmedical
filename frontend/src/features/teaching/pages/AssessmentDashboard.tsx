@@ -1,4 +1,4 @@
-import { Container, Loader, SimpleGrid, Stack } from "@mantine/core";
+import { Box, Container, Loader, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -82,7 +82,9 @@ export default function AssessmentDashboard() {
           </SimpleGrid>
         )}
 
-        <HeaderText mt="md">My history</HeaderText>
+        <Box mt="md">
+          <HeaderText>My history</HeaderText>
+        </Box>
         <AssessmentHistoryTable
           assessments={history}
           onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}

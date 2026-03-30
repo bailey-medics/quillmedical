@@ -71,7 +71,7 @@ export default function MessagesList({
     return (
       <Stack gap="sm">
         {[1, 2, 3].map((i) => (
-          <BaseCard key={i} padding="md">
+          <BaseCard key={i}>
             <Group wrap="nowrap" align="flex-start">
               <Skeleton height={64} circle />
               <div style={{ flex: 1 }}>

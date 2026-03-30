@@ -50,12 +50,7 @@ export const Default: Story = {
   render: () => (
     <SimpleGrid cols={5} spacing="lg" style={{ maxWidth: 700 }}>
       {appIcons.map(({ name, icon }) => (
-        <BaseCard
-          key={name}
-          shadow="xs"
-          padding="md"
-          style={{ textAlign: "center" }}
-        >
+        <BaseCard key={name} style={{ textAlign: "center" }}>
           <Stack gap="xs" align="center">
             <Icon icon={icon} size="lg" />
             <Text
