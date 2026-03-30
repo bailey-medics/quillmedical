@@ -9,6 +9,11 @@ describe("ScoreBreakdown", () => {
     { name: "Accuracy", value: 0.6, threshold: 0.85, passed: false },
   ];
 
+  it("renders the Score breakdown heading", () => {
+    renderWithMantine(<ScoreBreakdown criteria={criteria} />);
+    expect(screen.getByText("Score breakdown")).toBeInTheDocument();
+  });
+
   it("renders all criterion names", () => {
     renderWithMantine(<ScoreBreakdown criteria={criteria} />);
     expect(screen.getByText("High confidence rate")).toBeInTheDocument();

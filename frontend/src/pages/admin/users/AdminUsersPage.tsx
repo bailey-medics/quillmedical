@@ -72,7 +72,7 @@ export default function AdminUsersPage() {
     <Container size="lg" pt="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
-          <PageHeader title="User management" />
+          <PageHeader title="Users" />
           <AddButton
             label="Add user"
             onClick={() => navigate("/admin/users/new")}

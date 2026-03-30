@@ -14,14 +14,21 @@
 import { Button, useMantineTheme } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconDownload, IconRefresh } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconDownload,
+  IconRefresh,
+  IconSettings,
+} from "@tabler/icons-react";
 import type { ReactElement } from "react";
 import Icon from "@/components/icons";
 
 /** Allowed icon names — add new entries here to extend the component. */
 const iconMap = {
+  arrowLeft: <IconArrowLeft />,
   download: <IconDownload />,
   refresh: <IconRefresh />,
+  settings: <IconSettings />,
 } as const satisfies Record<string, ReactElement>;
 
 type IconName = keyof typeof iconMap;
@@ -39,6 +46,8 @@ interface IconTextButtonProps {
   loading?: boolean;
   /** Button colour (default: Mantine primary) */
   color?: MantineColor;
+  /** Mantine button variant (default: "filled") */
+  variant?: "filled" | "light" | "outline" | "subtle";
 }
 
 /**
@@ -56,6 +65,7 @@ export default function IconTextButton({
   disabled = false,
   loading = false,
   color,
+  variant = "filled",
 }: IconTextButtonProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -65,6 +75,7 @@ export default function IconTextButton({
       leftSection={<Icon icon={iconMap[icon]} size={isMobile ? "sm" : "md"} />}
       onClick={onClick}
       size={isMobile ? "md" : "lg"}
+      variant={variant}
       color={color}
       disabled={disabled}
       loading={loading}

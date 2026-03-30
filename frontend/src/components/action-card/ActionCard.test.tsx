@@ -186,4 +186,41 @@ describe("ActionCard", () => {
       expect(link).toHaveAccessibleName("Click Me");
     });
   });
+
+  describe("Full width", () => {
+    it("removes max-width when fullWidth is true", () => {
+      const { container } = renderWithRouter(
+        <ActionCard {...defaultProps} fullWidth />,
+      );
+      const card = container.querySelector(".mantine-Card-root");
+      expect(card).not.toHaveStyle({ maxWidth: "37.05rem" });
+    });
+
+    it("renders without icon when none provided", () => {
+      renderWithRouter(
+        <ActionCard
+          title="Certificate"
+          subtitle="Download your certificate"
+          buttonLabel="Download"
+          fullWidth
+        />,
+      );
+      expect(screen.getByText("Certificate")).toBeInTheDocument();
+      expect(screen.getByText("Download your certificate")).toBeInTheDocument();
+    });
+
+    it("renders filled button variant when specified", () => {
+      const { container } = renderWithRouter(
+        <ActionCard
+          title="Certificate"
+          subtitle="Download your certificate"
+          buttonLabel="Download"
+          fullWidth
+          buttonVariant="filled"
+        />,
+      );
+      const button = container.querySelector('[data-variant="filled"]');
+      expect(button).toBeInTheDocument();
+    });
+  });
 });

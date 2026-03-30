@@ -1,1 +1,0 @@
-export { CertificateDownload } from "./CertificateDownload";

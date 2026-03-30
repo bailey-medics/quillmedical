@@ -87,5 +87,10 @@ describe("IconTextButton", () => {
       rerender(<IconTextButton icon="refresh" label="Refresh data" />);
       expect(screen.getByText("Refresh data")).toBeInTheDocument();
     });
+
+    it("renders with arrowLeft icon", () => {
+      renderWithMantine(<IconTextButton icon="arrowLeft" label="Back" />);
+      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+    });
   });
 });

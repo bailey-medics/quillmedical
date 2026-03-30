@@ -16,11 +16,7 @@ import {
   Box,
   Button,
   Group,
-  Select,
   Stack,
-  Text,
-  TextInput,
-  Title,
   Alert,
   Checkbox,
   Divider,
@@ -30,6 +26,10 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import TextField from "@/components/form/TextField";
+import SelectField from "@/components/form/SelectField";
+import { BodyText, BodyTextBlack, HeaderText } from "@/components/typography";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -89,13 +89,13 @@ function Step1Demographics({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Patient demographics</Title>
-      <Text size="lg" c="dimmed">
+      <HeaderText>Patient demographics</HeaderText>
+      <BodyText>
         Enter the patient's demographic information for their FHIR record.
-      </Text>
+      </BodyText>
 
       <Group grow>
-        <TextInput
+        <TextField
           label="First name"
           placeholder="Jane"
           required
@@ -106,7 +106,7 @@ function Step1Demographics({
           error={errors.firstName}
         />
 
-        <TextInput
+        <TextField
           label="Last name"
           placeholder="Smith"
           required
@@ -119,7 +119,7 @@ function Step1Demographics({
       </Group>
 
       <Group grow>
-        <TextInput
+        <TextField
           label="Date of birth"
           placeholder="YYYY-MM-DD"
           required
@@ -131,7 +131,7 @@ function Step1Demographics({
           error={errors.dob}
         />
 
-        <Select
+        <SelectField
           label="Sex"
           placeholder="Select sex"
           data={sexOptions}
@@ -144,7 +144,7 @@ function Step1Demographics({
         />
       </Group>
 
-      <Select
+      <SelectField
         label="National number system"
         placeholder="Select national number system"
         data={nationalNumberSystemOptions}
@@ -160,7 +160,7 @@ function Step1Demographics({
         searchable
       />
 
-      <TextInput
+      <TextField
         label="National number"
         placeholder="1234567890"
         required
@@ -188,10 +188,10 @@ function Step2UserAccount({
 }) {
   return (
     <Stack gap="md">
-      <Title order={3}>User account (optional)</Title>
-      <Text size="lg" c="dimmed">
+      <HeaderText>User account (optional)</HeaderText>
+      <BodyText>
         Create a user account for this patient to enable portal access.
-      </Text>
+      </BodyText>
 
       <Checkbox
         label="Create user account for patient portal access"
@@ -209,12 +209,12 @@ function Step2UserAccount({
           <Divider my="sm" />
 
           <Alert variant="light" color="blue">
-            <Text size="lg">
+            <BodyTextBlack>
               Patient will be able to log in and access their health records.
-            </Text>
+            </BodyTextBlack>
           </Alert>
 
-          <TextInput
+          <TextField
             label="Email"
             placeholder="jane.smith@example.com"
             required
@@ -226,7 +226,7 @@ function Step2UserAccount({
             error={errors.userEmail}
           />
 
-          <TextInput
+          <TextField
             label="Username"
             placeholder="janesmith"
             required
@@ -237,7 +237,7 @@ function Step2UserAccount({
             error={errors.userUsername}
           />
 
-          <TextInput
+          <TextField
             label="Initial password"
             placeholder="Must be at least 8 characters"
             required
@@ -274,21 +274,23 @@ function Step3Confirmation({
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
-          <IconCheck size={64} color="green" />
-          <Title order={2}>
+          <Icon icon={<IconCheck />} size="xl" colour="green" />
+          <HeaderText>
             {isEditMode
               ? "Patient updated successfully"
               : "Patient created successfully"}
-          </Title>
-          <Text size="lg" c="dimmed" ta="center">
-            {isEditMode
-              ? "The patient record has been updated in the FHIR system."
-              : "The new patient record has been created in the FHIR system."}
-          </Text>
+          </HeaderText>
+          <Box ta="center">
+            <BodyText>
+              {isEditMode
+                ? "The patient record has been updated in the FHIR system."
+                : "The new patient record has been created in the FHIR system."}
+            </BodyText>
+          </Box>
           {patientId && (
-            <Text size="lg" c="dimmed" ta="center">
-              Patient ID: {patientId}
-            </Text>
+            <Box ta="center">
+              <BodyText>Patient ID: {patientId}</BodyText>
+            </Box>
           )}
           <Button onClick={onCancel} mt="lg">
             Return to Admin
@@ -296,17 +298,19 @@ function Step3Confirmation({
         </>
       ) : (
         <>
-          <IconAlertCircle size={64} color="red" />
-          <Title order={2}>
+          <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
+          <HeaderText>
             {isEditMode
               ? "Failed to update patient"
               : "Failed to create patient"}
-          </Title>
-          <Text size="lg" c="dimmed" ta="center">
-            {isEditMode
-              ? "There was an error updating the patient record. Please try again."
-              : "There was an error creating the patient record. Please try again."}
-          </Text>
+          </HeaderText>
+          <Box ta="center">
+            <BodyText>
+              {isEditMode
+                ? "There was an error updating the patient record. Please try again."
+                : "There was an error creating the patient record. Please try again."}
+            </BodyText>
+          </Box>
           <Button onClick={onCancel} mt="lg">
             Return to Admin
           </Button>
@@ -624,12 +628,12 @@ export default function NewPatientPage() {
           <Center py="xl">
             <Stack align="center" gap="md">
               <Loader size="lg" />
-              <Text c="dimmed">Loading patient data...</Text>
+              <BodyText>Loading patient data...</BodyText>
             </Stack>
           </Center>
         ) : loadError ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patient"
             color="red"
             mt="md"

@@ -27,12 +27,11 @@ function formatDate(iso: string): string {
 const columns: Column<AssessmentHistory>[] = [
   {
     header: "Date",
-    render: (a) =>
-      a.completed_at ? formatDate(a.completed_at) : "In progress",
+    render: (a) => formatDate(a.started_at),
   },
   {
     header: "Question bank",
-    render: (a) => a.question_bank_id,
+    render: (a) => a.bank_title,
   },
   {
     header: "Result",

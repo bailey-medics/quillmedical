@@ -10,13 +10,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ActionIcon,
   Container,
   Stack,
-  Paper,
   Group,
-  Text,
-  Title,
   Skeleton,
   Alert,
   Badge,
@@ -24,6 +20,14 @@ import {
   Modal,
   Button,
 } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+  PlaceholderText,
+} from "@/components/typography";
 import {
   IconPencil,
   IconAlertCircle,
@@ -35,6 +39,7 @@ import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
+import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
 /**
@@ -98,6 +103,11 @@ const FEATURE_LABELS: Record<string, string> = {
 export default function OrganisationAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const clinicalServicesEnabled =
+    state.status === "authenticated"
+      ? state.user.clinical_services_enabled !== false
+      : true;
   const [org, setOrg] = useState<OrganizationDetails | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,14 +203,13 @@ export default function OrganisationAdminPage() {
       render: (member) => (
         <Menu position="bottom-end" shadow="md">
           <Menu.Target>
-            <ActionIcon
+            <IconButton
+              icon={<IconDots />}
               variant="subtle"
               color="gray"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
               aria-label={`Actions for ${member.username}`}
-            >
-              <Icon icon={<IconDots />} size="sm" />
-            </ActionIcon>
+            />
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item
@@ -238,12 +247,10 @@ export default function OrganisationAdminPage() {
         <PageHeader title={org.name} />
 
         {/* Organisation Information */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Organisation information
-              </Title>
+              <HeaderText>Organisation information</HeaderText>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/edit`)}
@@ -253,74 +260,54 @@ export default function OrganisationAdminPage() {
 
             <Stack gap="xs">
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Name:
-                </Text>
-                <Text size="lg">{org.name}</Text>
+                <BodyTextBold>Name:</BodyTextBold>
+                <BodyTextBlack>{org.name}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Type:
-                </Text>
-                <Text size="lg">{formatType(org.type)}</Text>
+                <BodyTextBold>Type:</BodyTextBold>
+                <BodyTextBlack>{formatType(org.type)}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Location:
-                </Text>
-                <Text size="lg">{org.location || "Not specified"}</Text>
+                <BodyTextBold>Location:</BodyTextBold>
+                <BodyTextBlack>{org.location || "Not specified"}</BodyTextBlack>
               </Group>
 
               <Group gap="xs">
-                <Text fw={500} size="lg">
-                  Organisation ID:
-                </Text>
-                <Text size="lg" c="dimmed">
-                  {org.id}
-                </Text>
+                <BodyTextBold>Organisation ID:</BodyTextBold>
+                <BodyText>{org.id}</BodyText>
               </Group>
             </Stack>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Statistics */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
-            <Title order={2} size="lg">
-              Statistics
-            </Title>
+            <HeaderText>Statistics</HeaderText>
 
             <Group gap="xl">
               <Stack gap={4}>
-                <Text size="sm" c="dimmed">
-                  Staff members
-                </Text>
-                <Text size="xl" fw={700}>
-                  {org.staff_count}
-                </Text>
+                <BodyText>Staff members</BodyText>
+                <BodyTextBold>{org.staff_count}</BodyTextBold>
               </Stack>
 
-              <Stack gap={4}>
-                <Text size="sm" c="dimmed">
-                  Patients
-                </Text>
-                <Text size="xl" fw={700}>
-                  {org.patient_count}
-                </Text>
-              </Stack>
+              {clinicalServicesEnabled && (
+                <Stack gap={4}>
+                  <BodyText>Patients</BodyText>
+                  <BodyTextBold>{org.patient_count}</BodyTextBold>
+                </Stack>
+              )}
             </Group>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Staff Members */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Staff members
-              </Title>
+              <HeaderText>Staff members</HeaderText>
               <AddButton
                 label="Add staff member"
                 onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
@@ -335,42 +322,40 @@ export default function OrganisationAdminPage() {
               emptyMessage="No staff members assigned"
             />
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Patient Members */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Patients
-              </Title>
-              <AddButton
-                label="Add patient"
-                onClick={() =>
-                  navigate(`/admin/organisations/${id}/add-patient`)
-                }
-              />
-            </Group>
+        {clinicalServicesEnabled && (
+          <BaseCard>
+            <Stack gap="md">
+              <Group justify="space-between" align="center">
+                <HeaderText>Patients</HeaderText>
+                <AddButton
+                  label="Add patient"
+                  onClick={() =>
+                    navigate(`/admin/organisations/${id}/add-patient`)
+                  }
+                />
+              </Group>
 
-            <DataTable<PatientMember>
-              data={org.patient_members}
-              columns={patientColumns}
-              onRowClick={(patient) =>
-                navigate(`/admin/patients/${patient.patient_id}`)
-              }
-              getRowKey={(patient) => patient.patient_id}
-              emptyMessage="No patients assigned"
-            />
-          </Stack>
-        </Paper>
+              <DataTable<PatientMember>
+                data={org.patient_members}
+                columns={patientColumns}
+                onRowClick={(patient) =>
+                  navigate(`/admin/patients/${patient.patient_id}`)
+                }
+                getRowKey={(patient) => patient.patient_id}
+                emptyMessage="No patients assigned"
+              />
+            </Stack>
+          </BaseCard>
+        )}
 
         {/* Enabled Features */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
+        <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Enabled features
-              </Title>
+              <HeaderText>Enabled features</HeaderText>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/features`)}
@@ -387,10 +372,10 @@ export default function OrganisationAdminPage() {
                 ))}
               </Group>
             ) : (
-              <Text c="dimmed">No features enabled</Text>
+              <PlaceholderText>No features enabled</PlaceholderText>
             )}
           </Stack>
-        </Paper>
+        </BaseCard>
 
         <Modal
           opened={removingMember !== null}
@@ -399,13 +384,11 @@ export default function OrganisationAdminPage() {
           centered
         >
           <Stack gap="md">
-            <Text>
+            <BodyTextBlack>
               Are you sure you want to remove{" "}
-              <Text span fw={700}>
-                {removingMember?.username}
-              </Text>{" "}
-              from this organisation?
-            </Text>
+              <strong>{removingMember?.username}</strong> from this
+              organisation?
+            </BodyTextBlack>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setRemovingMember(null)}>
                 Cancel

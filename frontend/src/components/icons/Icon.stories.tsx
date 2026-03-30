@@ -6,10 +6,11 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Group, SimpleGrid, Stack, Text, Card } from "@mantine/core";
+import { Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconPencil, IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "./Icon";
 import appIcons from "./appIcons";
+import BaseCard from "@/components/base-card/BaseCard";
 
 /**
  * Icon component provides consistent sizing for Tabler icons.
@@ -49,14 +50,7 @@ export const Default: Story = {
   render: () => (
     <SimpleGrid cols={5} spacing="lg" style={{ maxWidth: 700 }}>
       {appIcons.map(({ name, icon }) => (
-        <Card
-          key={name}
-          shadow="xs"
-          padding="md"
-          radius="md"
-          withBorder
-          style={{ textAlign: "center" }}
-        >
+        <BaseCard key={name} style={{ textAlign: "center" }}>
           <Stack gap="xs" align="center">
             <Icon icon={icon} size="lg" />
             <Text
@@ -72,7 +66,7 @@ export const Default: Story = {
               {name.replace(/([A-Z])/g, " $1").trim()}
             </Text>
           </Stack>
-        </Card>
+        </BaseCard>
       ))}
     </SimpleGrid>
   ),
@@ -87,7 +81,7 @@ export const AllSizes: Story = {
     size: "md",
   },
   render: () => (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <BaseCard>
       <Stack gap="xl">
         <div>
           <Text size="sm" fw={700} mb="xs">
@@ -153,7 +147,7 @@ export const AllSizes: Story = {
           </SimpleGrid>
         </div>
       </Stack>
-    </Card>
+    </BaseCard>
   ),
 };
 

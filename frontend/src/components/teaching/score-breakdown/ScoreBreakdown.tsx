@@ -8,7 +8,13 @@
 import { Group, Stack } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import { BodyText, BodyTextBlack, BodyTextBold } from "@/components/typography";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+} from "@/components/typography";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import type { CriterionResult } from "@/features/teaching/types";
 
@@ -19,24 +25,27 @@ interface ScoreBreakdownProps {
 
 export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
   return (
-    <Stack gap="sm">
-      {criteria.map((c) => (
-        <Group key={c.name} justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
-            <Icon
-              icon={c.passed ? <IconCheck /> : <IconX />}
-              size="sm"
-              container={c.passed ? "green" : "red"}
-            />
-            <BodyTextBlack>{c.name}</BodyTextBlack>
+    <BaseCard>
+      <Stack gap="sm">
+        <HeaderText>Score breakdown</HeaderText>
+        {criteria.map((c) => (
+          <Group key={c.name} justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <Icon
+                icon={c.passed ? <IconCheck /> : <IconX />}
+                size="sm"
+                container={c.passed ? "green" : "red"}
+              />
+              <BodyTextBlack>{c.name}</BodyTextBlack>
+            </Group>
+            <Group gap="xs">
+              <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>
+              <BodyText>/ {(c.threshold * 100).toFixed(0)}%</BodyText>
+              <AssessmentResultBadge result={c.passed ? "pass" : "fail"} />
+            </Group>
           </Group>
-          <Group gap="xs">
-            <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>
-            <BodyText>/ {(c.threshold * 100).toFixed(0)}%</BodyText>
-            <AssessmentResultBadge result={c.passed ? "pass" : "fail"} />
-          </Group>
-        </Group>
-      ))}
-    </Stack>
+        ))}
+      </Stack>{" "}
+    </BaseCard>
   );
 }

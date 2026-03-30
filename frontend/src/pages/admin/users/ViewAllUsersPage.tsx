@@ -10,12 +10,17 @@ import {
   Container,
   Stack,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
 } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import {
+  BodyText,
+  BodyTextBold,
+  PlaceholderText,
+} from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
 interface User {
@@ -75,7 +80,7 @@ export default function ViewAllUsersPage() {
           </Stack>
         ) : error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading users"
             color="red"
           >
@@ -83,7 +88,7 @@ export default function ViewAllUsersPage() {
           </Alert>
         ) : users.length === 0 ? (
           <Center p="xl">
-            <Text c="dimmed">No users found</Text>
+            <PlaceholderText>No users found</PlaceholderText>
           </Center>
         ) : (
           <Table striped highlightOnHover>
@@ -98,13 +103,11 @@ export default function ViewAllUsersPage() {
               {users.map((user) => (
                 <Table.Tr key={user.id}>
                   <Table.Td>
-                    <Text fw={500}>{user.username}</Text>
+                    <BodyTextBold>{user.username}</BodyTextBold>
                   </Table.Td>
                   <Table.Td>{user.email}</Table.Td>
                   <Table.Td>
-                    <Text size="lg" c="dimmed">
-                      {user.id}
-                    </Text>
+                    <BodyText>{user.id}</BodyText>
                   </Table.Td>
                 </Table.Tr>
               ))}

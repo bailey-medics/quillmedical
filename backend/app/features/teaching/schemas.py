@@ -24,6 +24,7 @@ class QuestionBankOut(BaseModel):
     description: str
     type: str
     synced_at: datetime
+    is_live: bool = False
 
 
 class QuestionBankDetailOut(QuestionBankOut):
@@ -162,6 +163,7 @@ class AssessmentHistoryOut(BaseModel):
 
     id: int
     question_bank_id: str
+    bank_title: str
     bank_version: int
     started_at: datetime
     completed_at: datetime | None
@@ -269,6 +271,12 @@ class TeachingOrgSettingsIn(BaseModel):
     institution_name: str
 
 
+class CoordinatorEmailIn(BaseModel):
+    """Update coordinator email for an organisation."""
+
+    coordinator_email: str
+
+
 class TeachingOrgSettingsOut(BaseModel):
     """Teaching settings for an organisation."""
 
@@ -299,3 +307,64 @@ class EducatorResultOut(BaseModel):
     is_passed: bool | None
     score_breakdown: dict[str, Any] | None
     total_items: int
+
+
+# ------------------------------------------------------------------
+# Bank status (live / closed)
+# ------------------------------------------------------------------
+
+
+class QuestionBankOrgStatusIn(BaseModel):
+    """Toggle live/closed status for a bank."""
+
+    is_live: bool
+
+
+class QuestionBankOrgStatusOut(BaseModel):
+    """Current live/closed status for a bank."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    question_bank_id: str
+    is_live: bool
+
+
+# ------------------------------------------------------------------
+# Email templates (read-only preview)
+# ------------------------------------------------------------------
+
+
+class EmailTemplateOut(BaseModel):
+    """Read-only preview of an email template YAML file."""
+
+    subject: str
+    body: str
+    attach_certificate: bool = True
+
+
+# ------------------------------------------------------------------
+# Admin bank detail
+# ------------------------------------------------------------------
+
+
+class AdminBankDetailOut(BaseModel):
+    """Detailed admin view of a single question bank."""
+
+    bank_id: str
+    title: str | None = None
+    version: int | None = None
+    type: str | None = None
+    item_count: int = 0
+    email_student_on_pass: bool = False
+    email_coordinator_on_pass: bool = False
+    coordinator_email_template: EmailTemplateOut | None = None
+    student_email_template: EmailTemplateOut | None = None
+
+
+class BankOrgRow(BaseModel):
+    """One organisation's status for a question bank."""
+
+    organisation_id: int
+    organisation_name: str
+    is_live: bool = False
+    coordinator_email: str | None = None

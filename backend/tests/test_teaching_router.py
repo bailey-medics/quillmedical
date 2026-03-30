@@ -15,6 +15,7 @@ from app.features.teaching.models import (
     AssessmentAnswer,
     QuestionBankConfig,
     QuestionBankItem,
+    QuestionBankOrgStatus,
 )
 from app.models import (
     OrganisationFeature,
@@ -150,7 +151,11 @@ SAMPLE_CONFIG_YAML = {
 
 
 def _seed_bank(
-    db: Session, org_id: int, user_id: int, n_items: int = 3
+    db: Session,
+    org_id: int,
+    user_id: int,
+    n_items: int = 3,
+    is_live: bool = True,
 ) -> QuestionBankConfig:
     """Create a question bank config + published items."""
     config = QuestionBankConfig(
@@ -165,6 +170,15 @@ def _seed_bank(
     )
     db.add(config)
     db.flush()
+
+    # Set the bank as live (or closed) for the org
+    db.add(
+        QuestionBankOrgStatus(
+            organisation_id=org_id,
+            question_bank_id="test-bank",
+            is_live=is_live,
+        )
+    )
 
     diagnoses = ["adenoma", "serrated", "adenoma", "serrated", "adenoma"]
     for i in range(n_items):
@@ -367,6 +381,23 @@ class TestAssessmentLifecycle:
         )
         assert resp.status_code == 409
         assert "Insufficient" in resp.json()["detail"]
+
+    def test_closed_bank_returns_403(self, test_client, db_session):
+        """Cannot start assessment when bank is not live."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id, is_live=False)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            json={"question_bank_id": "test-bank"},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+        assert "not currently open" in resp.json()["detail"]
 
     def test_full_lifecycle(self, test_client, db_session):
         """Start → answer all items → complete → verify scoring."""

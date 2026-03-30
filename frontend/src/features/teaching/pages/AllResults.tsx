@@ -1,18 +1,17 @@
 import {
-  Alert,
   Badge,
   Button,
   Container,
   Group,
   Loader,
-  Select,
   Stack,
   Table,
-  Text,
-  Title,
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { HeaderText, PlaceholderText } from "@/components/typography";
+import { StateMessage } from "@/components/message-cards";
+import SelectField from "@/components/form/SelectField";
 import type { EducatorResult, QuestionBank } from "@/features/teaching/types";
 
 function formatDate(iso: string): string {
@@ -93,9 +92,7 @@ export default function AllResults() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }
@@ -104,7 +101,7 @@ export default function AllResults() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="center">
-          <Title order={2}>All results</Title>
+          <HeaderText>All results</HeaderText>
           {results.length > 0 && (
             <Button variant="light" onClick={() => exportCsv(results)}>
               Export CSV
@@ -113,7 +110,7 @@ export default function AllResults() {
         </Group>
 
         {banks.length > 0 && (
-          <Select
+          <SelectField
             label="Filter by question bank"
             placeholder="All banks"
             clearable
@@ -127,7 +124,7 @@ export default function AllResults() {
         )}
 
         {results.length === 0 ? (
-          <Text c="dimmed">No completed results found.</Text>
+          <PlaceholderText>No completed results found.</PlaceholderText>
         ) : (
           <Table highlightOnHover>
             <Table.Thead>

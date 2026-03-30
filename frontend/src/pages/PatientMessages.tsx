@@ -12,12 +12,14 @@ import NewMessageModal, {
 } from "@/components/messaging/NewMessageModal";
 import AddButton from "@/components/button/AddButton";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
+import { PlaceholderText } from "@/components/typography";
 import {
   createConversation,
   fetchPatientConversations,
   type ConversationResponse,
 } from "@lib/messaging";
-import { Card, Container, Group, Loader, Stack, Text } from "@mantine/core";
+import { Container, Group, Loader, Stack } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -120,11 +122,9 @@ export default function PatientMessages() {
         />
 
         {conversations.length === 0 ? (
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
-            <Text c="dimmed" ta="center">
-              No conversations yet
-            </Text>
-          </Card>
+          <BaseCard>
+            <PlaceholderText>No conversations yet</PlaceholderText>
+          </BaseCard>
         ) : (
           <MessagesList
             threads={conversations.map((conv) => ({

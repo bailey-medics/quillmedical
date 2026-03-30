@@ -18,6 +18,7 @@ import { Container, Loader, Stack, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import classes from "./PatientMessageThread.module.css";
 
 /** Map a backend MessageResponse to the UI Message shape. */
 function toUiMessage(m: MessageResponse): Message {
@@ -133,14 +134,10 @@ export default function PatientMessageThread() {
       pt={isSmall ? 0 : "xs"}
       pb={0}
       px={isSmall ? 0 : undefined}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-      }}
+      className={classes.threadContainer}
     >
-      <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <Stack gap="sm" className={classes.threadStack}>
+        <div className={classes.messagingWrapper}>
           <Messaging
             messages={messages}
             currentUserId={currentUserId}

@@ -1,5 +1,6 @@
-import { Alert, Container, Loader, Modal, Stack } from "@mantine/core";
-import { useCallback, useEffect, useState } from "react";
+import { Container, Loader, Modal, Stack } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useBlocker,
   useNavigate,
@@ -43,10 +44,24 @@ export default function AssessmentAttempt() {
 
   const isActive = phase === "questions" || phase === "intro";
 
+  // Also clear exam mode if we leave an active phase without unmounting
+  // (e.g. error during exam, or closing phase after timer expires)
+  const wasActive = useRef(false);
+  useEffect(() => {
+    if (isActive) {
+      wasActive.current = true;
+    } else if (wasActive.current) {
+      setExamMode(false);
+    }
+  }, [isActive, setExamMode]);
+
   // Block React Router navigation during active exam
+  // Allow the /new → /assessment/:id replace navigation on begin
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      isActive && currentLocation.pathname !== nextLocation.pathname,
+      isActive &&
+      currentLocation.pathname !== nextLocation.pathname &&
+      !nextLocation.pathname.startsWith("/teaching/assessment/"),
   );
 
   // Block browser tab close / refresh during active exam
@@ -115,7 +130,10 @@ export default function AssessmentAttempt() {
           setBankDetail(detail);
 
           if (existing.completed_at) {
-            navigate(`/teaching/assessment/${id}/result`, { replace: true });
+            navigate(`/teaching/assessment/${id}/result`, {
+              replace: true,
+              state: { fromExam: true },
+            });
             return;
           }
 
@@ -145,6 +163,11 @@ export default function AssessmentAttempt() {
 
   const [beginning, setBeginning] = useState(false);
 
+  /** Scroll the main content area to the top */
+  const scrollToTop = useCallback(() => {
+    document.querySelector("main")?.scrollTo(0, 0);
+  }, []);
+
   const handleBegin = useCallback(async () => {
     const bankId = searchParams.get("bank");
     if (!bankId) return;
@@ -162,6 +185,7 @@ export default function AssessmentAttempt() {
         replace: true,
       });
       setPhase("questions");
+      scrollToTop();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to start assessment",
@@ -170,7 +194,7 @@ export default function AssessmentAttempt() {
     } finally {
       setBeginning(false);
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, scrollToTop]);
 
   const handleSubmitAnswer = useCallback(async () => {
     if (!assessment || !currentItem || !selectedOption) return;
@@ -188,6 +212,7 @@ export default function AssessmentAttempt() {
         setPhase("closing");
       } else {
         setCurrentItem(result.next_item);
+        scrollToTop();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit answer");
@@ -195,7 +220,7 @@ export default function AssessmentAttempt() {
     } finally {
       setSubmitting(false);
     }
-  }, [assessment, currentItem, selectedOption]);
+  }, [assessment, currentItem, selectedOption, scrollToTop]);
 
   const handlePrevious = useCallback(async () => {
     if (!assessment || !currentItem || currentItem.display_order <= 1) return;
@@ -261,7 +286,9 @@ export default function AssessmentAttempt() {
       await api.post<CompletionResult>(
         `/teaching/assessments/${assessment.id}/complete`,
       );
-      navigate(`/teaching/assessment/${assessment.id}/result`);
+      navigate(`/teaching/assessment/${assessment.id}/result`, {
+        state: { fromExam: true },
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to complete assessment",
@@ -314,9 +341,10 @@ export default function AssessmentAttempt() {
 
       {phase === "error" && (
         <Container size="lg" py="xl">
-          <Alert color="red" title="Error">
-            {error}
-          </Alert>
+          <StateMessage
+            type="error"
+            message={error ?? "An unexpected error occurred"}
+          />
         </Container>
       )}
 

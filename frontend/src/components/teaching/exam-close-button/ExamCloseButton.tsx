@@ -5,7 +5,7 @@
  * Placed next to the timer in QuestionView during assessments.
  */
 
-import { Button, Modal, Stack } from "@mantine/core";
+import { Badge, Modal, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { ButtonPairRed } from "@/components/button";
@@ -22,9 +22,17 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
 
   return (
     <>
-      <Button variant="subtle" color="red" size="compact-sm" onClick={open}>
-        End exam
-      </Button>
+      <Badge
+        color="red"
+        variant="filled"
+        size="xl"
+        style={{ cursor: "pointer", textTransform: "none" }}
+        onClick={open}
+      >
+        <Text size="lg" fw={600}>
+          End exam
+        </Text>
+      </Badge>
 
       <Modal
         opened={opened}

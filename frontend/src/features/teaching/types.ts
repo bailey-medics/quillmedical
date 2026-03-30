@@ -17,6 +17,7 @@ export interface QuestionBank {
   description: string;
   type: "uniform" | "variable";
   synced_at: string;
+  is_live: boolean;
 }
 
 export interface AssessmentPageConfig {
@@ -37,7 +38,11 @@ export interface AssessmentConfigYaml {
 
 export interface QuestionBankConfigYaml {
   assessment?: AssessmentConfigYaml;
-  results?: { certificate_download?: boolean };
+  results?: {
+    certificate_download?: boolean;
+    email_student_on_pass?: boolean;
+    email_coordinator_on_pass?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -129,6 +134,7 @@ export interface CompletionResult {
 export interface AssessmentHistory {
   id: number;
   question_bank_id: string;
+  bank_title: string;
   bank_version: number;
   started_at: string;
   completed_at: string | null;
@@ -194,6 +200,43 @@ export interface TeachingOrgSettings {
 export interface TeachingOrgSettingsInput {
   coordinator_email: string;
   institution_name: string;
+}
+
+// ------------------------------------------------------------------
+// Admin bank detail
+// ------------------------------------------------------------------
+
+export interface EmailTemplate {
+  subject: string;
+  body: string;
+  attach_certificate: boolean;
+}
+
+export interface AdminBankDetail {
+  bank_id: string;
+  title: string;
+  version: number;
+  type: string;
+  item_count: number;
+  email_student_on_pass: boolean;
+  email_coordinator_on_pass: boolean;
+  coordinator_email_template: EmailTemplate | null;
+  student_email_template: EmailTemplate | null;
+}
+
+export interface BankOrganisation {
+  organisation_id: number;
+  organisation_name: string;
+  is_live: boolean;
+  coordinator_email: string | null;
+}
+
+export interface CoordinatorEmailInput {
+  coordinator_email: string;
+}
+
+export interface QuestionBankOrgStatusInput {
+  is_live: boolean;
 }
 
 // ------------------------------------------------------------------

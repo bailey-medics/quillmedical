@@ -20,7 +20,9 @@ import {
 import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
-import { Card, Container, Group, Stack, Text } from "@mantine/core";
+import { Container, Group, Stack } from "@mantine/core";
+import { ErrorText, PlaceholderText } from "@/components/typography";
+import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -272,9 +274,9 @@ export default function Messages() {
         />
 
         {error && (
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
-            <Text c="red">{error}</Text>
-          </Card>
+          <BaseCard>
+            <ErrorText>{error}</ErrorText>
+          </BaseCard>
         )}
 
         {isLoading ? (
@@ -282,11 +284,9 @@ export default function Messages() {
         ) : !fhirAvailable ? (
           <StateMessage type="database-initialising" />
         ) : conversations.length === 0 ? (
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
-            <Text c="dimmed" ta="center">
-              No conversations yet
-            </Text>
-          </Card>
+          <BaseCard>
+            <PlaceholderText>No conversations yet</PlaceholderText>
+          </BaseCard>
         ) : (
           <MessagesList
             threads={conversations.map((conv) => ({

@@ -5,15 +5,8 @@
  * date, author, and summary. Provides loading state with skeletons.
  */
 
-import {
-  Badge,
-  Card,
-  Group,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
+import BaseCard from "@/components/base-card/BaseCard";
 
 export type LetterSummary = {
   /** Unique letter identifier */
@@ -68,7 +61,7 @@ export default function LetterList({
     return (
       <Stack gap="lg">
         {[1, 2, 3].map((i) => (
-          <Card key={i} shadow="sm" padding="lg" radius="md" withBorder>
+          <BaseCard key={i}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Skeleton height={24} width="60%" />
@@ -78,7 +71,7 @@ export default function LetterList({
               <Skeleton height={16} width="100%" />
               <Skeleton height={16} width="80%" />
             </Stack>
-          </Card>
+          </BaseCard>
         ))}
       </Stack>
     );
@@ -87,12 +80,8 @@ export default function LetterList({
   return (
     <Stack gap="lg">
       {letters.map((letter) => (
-        <Card
+        <BaseCard
           key={letter.id}
-          shadow="sm"
-          padding="lg"
-          radius="md"
-          withBorder
           style={{ cursor: "pointer" }}
           onClick={() => onLetterClick(letter)}
         >
@@ -117,7 +106,7 @@ export default function LetterList({
             </Group>
             <Text size="md">{letter.summary}</Text>
           </Stack>
-        </Card>
+        </BaseCard>
       ))}
     </Stack>
   );

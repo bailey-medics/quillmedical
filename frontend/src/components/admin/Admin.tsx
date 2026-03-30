@@ -19,6 +19,8 @@ import PermissionBadge, {
 interface AdminProps {
   /** Current user's system permissions */
   userPermissions: UserPermission;
+  /** Whether clinical services (FHIR/EHRbase) are enabled */
+  clinicalServicesEnabled?: boolean;
   /** Loading state for users statistics */
   usersLoading?: boolean;
   /** Loading state for patients statistics */
@@ -35,6 +37,7 @@ interface AdminProps {
 
 export default function Admin({
   userPermissions,
+  clinicalServicesEnabled = true,
   usersLoading = false,
   patientsLoading = false,
   organisationsLoading = false,
@@ -55,11 +58,13 @@ export default function Admin({
           value={existingUsers.length}
           loading={usersLoading}
         />
-        <StatCard
-          title="Total patients"
-          value={existingPatients.length}
-          loading={patientsLoading}
-        />
+        {clinicalServicesEnabled && (
+          <StatCard
+            title="Total patients"
+            value={existingPatients.length}
+            loading={patientsLoading}
+          />
+        )}
         <StatCard
           title="Total organisations"
           value={organisationCount}

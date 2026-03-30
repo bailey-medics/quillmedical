@@ -5,8 +5,9 @@
  * Shows a skeleton loader when in loading state.
  */
 
-import { Card, Skeleton, Stack, Text, Box } from "@mantine/core";
+import { Skeleton, Stack, Text, Box } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
+import BaseCard from "@/components/base-card/BaseCard";
 
 export interface StatCardProps {
   /** Title/label for the statistic */
@@ -28,7 +29,7 @@ export interface StatCardProps {
  */
 export function StatCard({ title, value, loading = false }: StatCardProps) {
   return (
-    <Card withBorder radius="md">
+    <BaseCard>
       <Stack gap="xs">
         <BodyText>{title}</BodyText>
         <Box style={{ height: 38 }}>
@@ -41,7 +42,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
           )}
         </Box>
       </Stack>
-    </Card>
+    </BaseCard>
   );
 }
 

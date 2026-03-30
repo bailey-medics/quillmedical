@@ -8,7 +8,8 @@
 import { AppointmentsList } from "@/components/appointments";
 import { fakeAppointments } from "@/data/fakeAppointments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { Container, Stack, Title } from "@mantine/core";
+import { HeaderText } from "@/components/typography";
+import { Container, Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
@@ -28,7 +29,7 @@ export default function PatientAppointments() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Appointments</Title>
+        <HeaderText>Appointments</HeaderText>
         <AppointmentsList appointments={fakeAppointments} />
       </Stack>
     </Container>

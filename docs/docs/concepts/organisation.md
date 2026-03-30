@@ -24,7 +24,7 @@
 - Staff and patients can belong to zero or more Organisations
 - `is_primary` on staff membership — default login landing context
 - `is_primary` on patient membership — primary responsible Organisation
-- Organisation types: `hospital_team | gp_practice | private_clinic | department`
+- Organisation types: `hospital_team | gp_practice | private_clinic | department | teaching_establishment`
 
 ## 5. API Endpoints
 

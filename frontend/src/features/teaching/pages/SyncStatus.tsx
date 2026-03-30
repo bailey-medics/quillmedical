@@ -1,15 +1,8 @@
-import {
-  Alert,
-  Badge,
-  Container,
-  Loader,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Badge, Container, Loader, Stack, Table } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { HeaderText, PlaceholderText } from "@/components/typography";
 import type { SyncHistory } from "@/features/teaching/types";
 
 function formatDate(iso: string): string {
@@ -54,9 +47,7 @@ export default function SyncStatus() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }
@@ -64,10 +55,10 @@ export default function SyncStatus() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <Title order={2}>Sync status</Title>
+        <HeaderText>Sync status</HeaderText>
 
         {syncs.length === 0 ? (
-          <Text c="dimmed">No syncs have been performed yet.</Text>
+          <PlaceholderText>No syncs have been performed yet.</PlaceholderText>
         ) : (
           <Table highlightOnHover>
             <Table.Thead>

@@ -207,7 +207,8 @@ class Organization(Base):
     Attributes:
         id: Primary key.
         name: Organisation name (e.g., "Great Eastern Hospital").
-        type: Organisation type (hospital_team, gp_practice, private_clinic, department).
+        type: Organisation type (hospital_team, gp_practice, private_clinic,
+            department, teaching_establishment).
         location: Optional location/address information.
         created_at: Timestamp when organisation was created.
         updated_at: Timestamp when organisation was last updated.

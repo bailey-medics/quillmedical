@@ -5,19 +5,16 @@
  * Provides actions for managing user competencies and system permissions.
  */
 
-import { Container, SimpleGrid, Stack, Text } from "@mantine/core";
+import { BodyText } from "@/components/typography";
+import SelectField from "@/components/form/SelectField";
+import MultiSelectField from "@/components/form/MultiSelectField";
+import TextField from "@/components/form/TextField";
+import { Container, SimpleGrid, Stack } from "@mantine/core";
 import { IconShieldCheck } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import { useState, useEffect } from "react";
-import {
-  Modal,
-  Select,
-  TextInput,
-  MultiSelect,
-  Button,
-  Group,
-} from "@mantine/core";
+import { Modal, Button, Group } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import type {
@@ -166,9 +163,7 @@ export default function AdminPermissionsPage() {
         <PageHeader title="Permissions management" />
 
         {!isSuperAdmin && (
-          <Text c="dimmed" fs="italic">
-            Only super administrators can access this page.
-          </Text>
+          <BodyText>Only super administrators can access this page.</BodyText>
         )}
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -192,7 +187,7 @@ export default function AdminPermissionsPage() {
           withinPortal={false}
         >
           <Stack gap="md">
-            <Select
+            <SelectField
               label="Select user"
               placeholder="Choose user to manage"
               data={users.map((u) => ({
@@ -209,17 +204,17 @@ export default function AdminPermissionsPage() {
 
             {permissionsForm.userId && (
               <>
-                <TextInput
+                <TextField
                   label="Username"
                   value={permissionsForm.username}
                   disabled
                 />
-                <TextInput
+                <TextField
                   label="Email"
                   value={permissionsForm.email}
                   disabled
                 />
-                <Select
+                <SelectField
                   label="Base profession"
                   placeholder="Select profession"
                   data={professionOptions}
@@ -233,7 +228,7 @@ export default function AdminPermissionsPage() {
                   searchable
                   disabled={!isSuperAdmin}
                 />
-                <MultiSelect
+                <MultiSelectField
                   label="Additional competencies"
                   placeholder="Select competencies"
                   data={competencyOptions}
@@ -247,7 +242,7 @@ export default function AdminPermissionsPage() {
                   searchable
                   disabled={!isSuperAdmin}
                 />
-                <MultiSelect
+                <MultiSelectField
                   label="Removed competencies"
                   placeholder="Select competencies to remove"
                   data={competencyOptions}
@@ -261,7 +256,7 @@ export default function AdminPermissionsPage() {
                   searchable
                   disabled={!isSuperAdmin}
                 />
-                <Select
+                <SelectField
                   label="System permissions"
                   placeholder="Select permission level"
                   data={systemPermissionOptions}
@@ -276,9 +271,9 @@ export default function AdminPermissionsPage() {
                 />
 
                 {!isSuperAdmin && (
-                  <Text size="lg" c="dimmed" fs="italic">
+                  <BodyText>
                     Only super admins can modify user permissions
-                  </Text>
+                  </BodyText>
                 )}
               </>
             )}

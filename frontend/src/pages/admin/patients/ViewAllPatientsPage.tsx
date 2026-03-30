@@ -11,12 +11,13 @@ import {
   Container,
   Stack,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
 } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import { BodyText, BodyTextBold } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
@@ -108,7 +109,7 @@ export default function ViewAllPatientsPage() {
 
         {error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
             color="red"
           >
@@ -147,14 +148,12 @@ export default function ViewAllPatientsPage() {
                   style={{ cursor: "pointer" }}
                 >
                   <Table.Td>
-                    <Text fw={500}>{formatName(patient.name)}</Text>
+                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
                   </Table.Td>
                   <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
                   <Table.Td>{patient.gender || "N/A"}</Table.Td>
                   <Table.Td>
-                    <Text size="lg" c="dimmed">
-                      {patient.id}
-                    </Text>
+                    <BodyText>{patient.id}</BodyText>
                   </Table.Td>
                 </Table.Tr>
               ))}

@@ -14,15 +14,21 @@ import {
   Stack,
   Button,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
   Modal,
-  Paper,
   Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserCheck } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  PlaceholderText,
+} from "@/components/typography";
 import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
@@ -163,17 +169,17 @@ export default function ActivatePatientPage() {
             <Skeleton height={300} />
           ) : error ? (
             <Alert
-              icon={<IconAlertCircle size={16} />}
+              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
               color="red"
             >
               {error}
             </Alert>
           ) : (
-            <Paper shadow="sm" p="md" withBorder>
+            <BaseCard>
               <Stack gap="md">
                 <Alert
-                  icon={<IconAlertCircle size={16} />}
+                  icon={<Icon icon={<IconAlertCircle />} size="sm" />}
                   title="Confirmation"
                   color="blue"
                 >
@@ -183,26 +189,26 @@ export default function ActivatePatientPage() {
 
                 <Stack gap="xs">
                   <Group>
-                    <Text fw={500}>Name:</Text>
-                    <Text>{formatName(specificPatient.name)}</Text>
+                    <BodyTextBold>Name:</BodyTextBold>
+                    <BodyTextBlack>
+                      {formatName(specificPatient.name)}
+                    </BodyTextBlack>
                   </Group>
                   {specificPatient.birthDate && (
                     <Group>
-                      <Text fw={500}>Birth date:</Text>
-                      <Text>{specificPatient.birthDate}</Text>
+                      <BodyTextBold>Birth date:</BodyTextBold>
+                      <BodyTextBlack>{specificPatient.birthDate}</BodyTextBlack>
                     </Group>
                   )}
                   {specificPatient.gender && (
                     <Group>
-                      <Text fw={500}>Gender:</Text>
-                      <Text style={{ textTransform: "capitalize" }}>
-                        {specificPatient.gender}
-                      </Text>
+                      <BodyTextBold>Gender:</BodyTextBold>
+                      <BodyTextBlack>{specificPatient.gender}</BodyTextBlack>
                     </Group>
                   )}
                   <Group>
-                    <Text fw={500}>Patient ID:</Text>
-                    <Text ff="monospace">{specificPatient.id}</Text>
+                    <BodyTextBold>Patient ID:</BodyTextBold>
+                    <BodyText>{specificPatient.id}</BodyText>
                   </Group>
                 </Stack>
 
@@ -222,7 +228,7 @@ export default function ActivatePatientPage() {
                   </Button>
                   <Button
                     color="green"
-                    leftSection={<IconUserCheck size={16} />}
+                    leftSection={<Icon icon={<IconUserCheck />} size="sm" />}
                     onClick={handleActivateConfirm}
                     loading={activating}
                   >
@@ -230,7 +236,7 @@ export default function ActivatePatientPage() {
                   </Button>
                 </Group>
               </Stack>
-            </Paper>
+            </BaseCard>
           )}
         </Stack>
       </Container>
@@ -251,7 +257,7 @@ export default function ActivatePatientPage() {
           </Stack>
         ) : error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
             color="red"
           >
@@ -260,8 +266,8 @@ export default function ActivatePatientPage() {
         ) : patients.length === 0 ? (
           <Center h={300}>
             <Stack align="center" gap="xs">
-              <IconUserCheck size={48} color="gray" />
-              <Text c="dimmed">No deactivated patients found</Text>
+              <Icon icon={<IconUserCheck />} size="lg" />
+              <PlaceholderText>No deactivated patients found</PlaceholderText>
             </Stack>
           </Center>
         ) : (
@@ -307,10 +313,10 @@ export default function ActivatePatientPage() {
             >
               {selectedPatient && (
                 <Stack gap="md">
-                  <Text>
+                  <BodyTextBlack>
                     Are you sure you want to activate{" "}
                     <strong>{formatName(selectedPatient.name)}</strong>?
-                  </Text>
+                  </BodyTextBlack>
                   <Group justify="flex-end">
                     <Button
                       variant="subtle"

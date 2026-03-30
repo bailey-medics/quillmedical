@@ -20,9 +20,10 @@
  * ```
  */
 
-import { Card, Divider, Group, Skeleton, Stack } from "@mantine/core";
+import { Divider, Group, Skeleton, Stack } from "@mantine/core";
 import { BodyTextBlack, BodyTextBold } from "@/components/typography";
 import type { Column } from "./DataTable";
+import BaseCard from "@/components/base-card/BaseCard";
 import classes from "./DataCard.module.css";
 
 export interface DataCardProps<T> {
@@ -50,7 +51,7 @@ export default function DataCard<T>({
 }: DataCardProps<T>) {
   if (loading) {
     return (
-      <Card shadow="sm" padding="md" withBorder>
+      <BaseCard>
         <Stack gap="sm">
           <Skeleton height={30} mt={1} mb={1} />
           <Divider />
@@ -58,18 +59,12 @@ export default function DataCard<T>({
           <Divider />
           <Skeleton height={30} mt={1} mb={1} />
         </Stack>
-      </Card>
+      </BaseCard>
     );
   }
 
   return (
-    <Card
-      shadow="sm"
-      padding="md"
-      withBorder
-      onClick={() => onClick(row)}
-      style={{ cursor: "pointer" }}
-    >
+    <BaseCard onClick={() => onClick(row)} style={{ cursor: "pointer" }}>
       <Stack gap="sm">
         {columns.map((column, index) => {
           const content = column.render(row);
@@ -90,6 +85,6 @@ export default function DataCard<T>({
           );
         })}
       </Stack>
-    </Card>
+    </BaseCard>
   );
 }

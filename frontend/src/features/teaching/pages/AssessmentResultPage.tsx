@@ -1,9 +1,9 @@
-import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
+import { Alert, Container, Loader, Stack } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { AssessmentResult } from "@/components/teaching/assessment-result/AssessmentResult";
-import { CertificateDownload } from "@/components/teaching/certificate-download/CertificateDownload";
 import type {
   Assessment,
   CriterionResult,
@@ -14,6 +14,9 @@ import type {
 export default function AssessmentResultPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromExam =
+    (location.state as { fromExam?: boolean })?.fromExam === true;
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [bankDetail, setBankDetail] = useState<QuestionBankDetail | null>(null);
@@ -50,9 +53,7 @@ export default function AssessmentResultPage() {
   if (error || !assessment) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error ?? "Assessment not found"}
-        </Alert>
+        <StateMessage type="error" message={error ?? "Assessment not found"} />
       </Container>
     );
   }
@@ -60,8 +61,8 @@ export default function AssessmentResultPage() {
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="yellow" title="In progress">
-          This assessment has not been completed yet.
+        <Alert color="yellow" title="Incomplete">
+          This assessment was not completed. Please try again.
         </Alert>
       </Container>
     );
@@ -71,6 +72,7 @@ export default function AssessmentResultPage() {
     (assessment.score_breakdown?.criteria as CriterionResult[]) ?? [];
   const config: QuestionBankConfigYaml = bankDetail?.config_yaml ?? {};
   const allowRetry = config?.assessment?.allow_immediate_retry !== false;
+  const bankIsLive = bankDetail?.is_live ?? false;
   const showCertificate =
     assessment.is_passed && config?.results?.certificate_download === true;
 
@@ -81,28 +83,19 @@ export default function AssessmentResultPage() {
           isPassed={assessment.is_passed}
           criteria={criteria}
           bankTitle={bankDetail?.title}
+          assessmentId={assessment.id}
+          showCertificate={!!showCertificate}
+          showTryAgain={
+            fromExam && allowRetry && bankIsLive && !assessment.is_passed
+          }
+          showBackToDashboard={fromExam}
+          onTryAgain={() =>
+            navigate(
+              `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
+            )
+          }
+          onBackToDashboard={() => navigate("/teaching")}
         />
-
-        <Group>
-          {showCertificate && (
-            <CertificateDownload assessmentId={assessment.id} />
-          )}
-          {allowRetry && (
-            <Button
-              variant="light"
-              onClick={() =>
-                navigate(
-                  `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
-                )
-              }
-            >
-              Try again
-            </Button>
-          )}
-          <Button variant="subtle" onClick={() => navigate("/teaching")}>
-            Back to dashboard
-          </Button>
-        </Group>
       </Stack>
     </Container>
   );

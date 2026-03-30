@@ -1,7 +1,8 @@
 import React from "react";
-import { Stack, Card, Group } from "@mantine/core";
+import { Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
+import BaseCard from "@/components/base-card/BaseCard";
 import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
@@ -20,12 +21,8 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
   return (
     <Stack gap="md">
       {documents.map((doc) => (
-        <Card
+        <BaseCard
           key={doc.url}
-          shadow="sm"
-          padding="md"
-          radius="md"
-          withBorder
           onClick={onSelect ? () => onSelect(doc) : undefined}
           style={{ cursor: onSelect ? "pointer" : undefined }}
         >
@@ -38,7 +35,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
               <DocumentThumbnail src={doc.thumbnailUrl} alt={doc.name} />
             ) : null}
           </Group>
-        </Card>
+        </BaseCard>
       ))}
     </Stack>
   );

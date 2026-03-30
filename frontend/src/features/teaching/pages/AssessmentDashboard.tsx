@@ -1,18 +1,12 @@
-import {
-  Alert,
-  Container,
-  Loader,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Box, Container, Loader, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
+import { StateMessage } from "@/components/message-cards";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
+import { HeaderText, PlaceholderText } from "@/components/typography";
 import type {
   AssessmentHistory,
   QuestionBank,
@@ -56,9 +50,7 @@ export default function AssessmentDashboard() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }
@@ -68,29 +60,31 @@ export default function AssessmentDashboard() {
       <Stack gap="lg">
         <PageHeader title="Teaching" />
 
-        {banks.length === 0 ? (
-          <Text c="dimmed">No question banks available.</Text>
+        {banks.filter((bank) => bank.is_live).length === 0 ? (
+          <PlaceholderText>No assessments are currently open.</PlaceholderText>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {banks.map((bank) => (
-              <ActionCard
-                key={bank.id}
-                title={bank.title}
-                subtitle={bank.description}
-                buttonLabel="Start assessment"
-                onClick={() =>
-                  navigate(
-                    `/teaching/assessment/new?bank=${bank.question_bank_id}`,
-                  )
-                }
-              />
-            ))}
+            {banks
+              .filter((bank) => bank.is_live)
+              .map((bank) => (
+                <ActionCard
+                  key={bank.id}
+                  title={bank.title}
+                  subtitle={bank.description}
+                  buttonLabel="Start assessment"
+                  onClick={() =>
+                    navigate(
+                      `/teaching/assessment/new?bank=${bank.question_bank_id}`,
+                    )
+                  }
+                />
+              ))}
           </SimpleGrid>
         )}
 
-        <Title order={3} mt="md">
-          My history
-        </Title>
+        <Box mt="md">
+          <HeaderText>My history</HeaderText>
+        </Box>
         <AssessmentHistoryTable
           assessments={history}
           onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}

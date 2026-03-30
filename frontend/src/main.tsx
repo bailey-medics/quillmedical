@@ -49,7 +49,6 @@ import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
-import Home from "./pages/Home";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -73,7 +72,9 @@ import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
+import RequireClinical from "./auth/RequireClinical";
 import LoginPage from "./pages/LoginPage";
+import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
 import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
@@ -82,6 +83,9 @@ import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage
 import AllResults from "./features/teaching/pages/AllResults";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
+import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
+import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
+import TeachingOrgSettingsPage from "./pages/admin/teaching/TeachingOrgSettingsPage";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -112,30 +116,95 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { path: "/", element: <Home /> },
-      { path: "/patients/:id", element: <Patient /> },
-      { path: "/patients/:id/letters", element: <PatientLetters /> },
+      { path: "/", element: <HomeRedirect /> },
+      {
+        path: "/patients/:id",
+        element: (
+          <RequireClinical>
+            <Patient />
+          </RequireClinical>
+        ),
+      },
+      {
+        path: "/patients/:id/letters",
+        element: (
+          <RequireClinical>
+            <PatientLetters />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/letters/:letterId",
-        element: <PatientLetterView />,
+        element: (
+          <RequireClinical>
+            <PatientLetterView />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/messages", element: <PatientMessages /> },
+      {
+        path: "/patients/:id/messages",
+        element: (
+          <RequireClinical>
+            <PatientMessages />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/messages/:conversationId",
-        element: <PatientMessageThread />,
+        element: (
+          <RequireClinical>
+            <PatientMessageThread />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/documents", element: <PatientDocuments /> },
+      {
+        path: "/patients/:id/documents",
+        element: (
+          <RequireClinical>
+            <PatientDocuments />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/documents/:documentId",
-        element: <PatientDocumentView />,
+        element: (
+          <RequireClinical>
+            <PatientDocumentView />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/notes", element: <PatientNotes /> },
+      {
+        path: "/patients/:id/notes",
+        element: (
+          <RequireClinical>
+            <PatientNotes />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/appointments",
-        element: <PatientAppointments />,
+        element: (
+          <RequireClinical>
+            <PatientAppointments />
+          </RequireClinical>
+        ),
       },
-      { path: "/messages", element: <Messages /> },
-      { path: "/messages/:conversationId", element: <MessageThread /> },
+      {
+        path: "/messages",
+        element: (
+          <RequireClinical>
+            <Messages />
+          </RequireClinical>
+        ),
+      },
+      {
+        path: "/messages/:conversationId",
+        element: (
+          <RequireClinical>
+            <MessageThread />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/admin",
         element: (
@@ -349,6 +418,30 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <AdminTeachingPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching/settings",
+        element: (
+          <RequirePermission level="admin">
+            <TeachingOrgSettingsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching/:bankId",
+        element: (
+          <RequirePermission level="admin">
+            <AdminBankDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching/:bankId/org/:orgId",
+        element: (
+          <RequirePermission level="admin">
+            <AdminBankOrgSettingsPage />
           </RequirePermission>
         ),
       },

@@ -64,7 +64,7 @@ describe("AdminOrganisationsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Organisation management")).toBeInTheDocument();
+        expect(screen.getByText("Organisations")).toBeInTheDocument();
       });
     });
 
@@ -247,7 +247,7 @@ describe("AdminOrganisationsPage", () => {
         initialRoute: "/admin/organisations",
       });
 
-      expect(screen.getByText("Organisation management")).toBeInTheDocument();
+      expect(screen.getByText("Organisations")).toBeInTheDocument();
     });
   });
 
@@ -261,9 +261,7 @@ describe("AdminOrganisationsPage", () => {
 
       // Wait for error state to be set (loading to finish)
       await waitFor(() => {
-        expect(
-          screen.queryByText("Organisation management"),
-        ).toBeInTheDocument();
+        expect(screen.queryByText("Organisations")).toBeInTheDocument();
       });
 
       // The DataTable should display the error

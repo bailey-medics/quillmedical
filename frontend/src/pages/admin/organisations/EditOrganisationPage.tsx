@@ -11,9 +11,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Container,
   Stack,
-  Paper,
-  TextInput,
-  Select,
   Button,
   Group,
   Alert,
@@ -21,6 +18,9 @@ import {
 } from "@mantine/core";
 import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import TextField from "@/components/form/TextField";
+import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 
@@ -30,6 +30,7 @@ const ORGANISATION_TYPE_OPTIONS = [
   { value: "gp_practice", label: "GP practice" },
   { value: "private_clinic", label: "Private clinic" },
   { value: "department", label: "Department" },
+  { value: "teaching_establishment", label: "Teaching establishment" },
 ];
 
 interface OrganisationData {
@@ -166,10 +167,10 @@ export default function EditOrganisationPage() {
           </Alert>
         )}
 
-        <Paper withBorder p="xl">
+        <BaseCard>
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              <TextInput
+              <TextField
                 label="Organisation name"
                 placeholder="e.g. Great Eastern Hospital"
                 value={name}
@@ -178,7 +179,7 @@ export default function EditOrganisationPage() {
                 withAsterisk
               />
 
-              <Select
+              <SelectField
                 label="Organisation type"
                 placeholder="Select a type"
                 data={ORGANISATION_TYPE_OPTIONS}
@@ -188,7 +189,7 @@ export default function EditOrganisationPage() {
                 withAsterisk
               />
 
-              <TextInput
+              <TextField
                 label="Location"
                 placeholder="e.g. London"
                 value={location}
@@ -209,7 +210,7 @@ export default function EditOrganisationPage() {
               </Group>
             </Stack>
           </form>
-        </Paper>
+        </BaseCard>
       </Stack>
     </Container>
   );

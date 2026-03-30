@@ -17,22 +17,27 @@ import {
   Box,
   Button,
   Group,
-  MultiSelect,
-  Select,
   Stack,
-  Text,
-  TextInput,
-  Title,
   Alert,
   Badge,
   Divider,
-  Paper,
   Loader,
   Center,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import TextField from "@/components/form/TextField";
+import SelectField from "@/components/form/SelectField";
+import MultiSelectField from "@/components/form/MultiSelectField";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+} from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
 import MultiStepForm, {
   type StepConfig,
@@ -89,12 +94,12 @@ function Step1BasicDetails({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Basic details</Title>
-      <Text size="lg" c="dimmed">
+      <HeaderText>Basic details</HeaderText>
+      <BodyText>
         Enter the user's basic information and select their base profession.
-      </Text>
+      </BodyText>
 
-      <TextInput
+      <TextField
         label="Full name"
         placeholder="Dr Jane Smith"
         required
@@ -105,7 +110,7 @@ function Step1BasicDetails({
         error={errors.name}
       />
 
-      <TextInput
+      <TextField
         label="Email"
         placeholder="jane.smith@example.com"
         required
@@ -117,7 +122,7 @@ function Step1BasicDetails({
         error={errors.email}
       />
 
-      <TextInput
+      <TextField
         label="Username"
         placeholder="janesmith"
         required
@@ -128,7 +133,7 @@ function Step1BasicDetails({
         error={errors.username}
       />
 
-      <TextInput
+      <TextField
         label={isEditMode ? "New password (optional)" : "Initial password"}
         placeholder={
           isEditMode
@@ -149,7 +154,7 @@ function Step1BasicDetails({
         }
       />
 
-      <Select
+      <SelectField
         label="Base profession"
         placeholder="Select base profession"
         data={professionOptions}
@@ -193,23 +198,23 @@ function Step2Competencies({
 
   return (
     <Stack gap="md">
-      <Title order={3}>Competency configuration</Title>
-      <Text size="lg" c="dimmed">
+      <HeaderText>Competency configuration</HeaderText>
+      <BodyText>
         Configure additional or removed competencies for this user.
-      </Text>
+      </BodyText>
 
       {profession && (
         <Alert variant="light" color="blue">
-          <Text size="lg" fw={500}>
-            Base Profession: {profession.display_name}
-          </Text>
-          <Text size="lg" c="dimmed" mt={4}>
+          <BodyTextBold>
+            Base profession: {profession.display_name}
+          </BodyTextBold>
+          <BodyText>
             Default competencies: {baseCompetencyIds.length} included
-          </Text>
+          </BodyText>
         </Alert>
       )}
 
-      <MultiSelect
+      <MultiSelectField
         label="Additional competencies"
         description="Add competencies beyond the base profession"
         placeholder="Select additional competencies"
@@ -225,7 +230,7 @@ function Step2Competencies({
         clearable
       />
 
-      <MultiSelect
+      <MultiSelectField
         label="Removed competencies"
         description="Remove competencies from the base profession"
         placeholder="Select competencies to remove"
@@ -269,12 +274,10 @@ function Step3Permissions({
 
   return (
     <Stack gap="md">
-      <Title order={3}>System permissions & review</Title>
-      <Text size="lg" c="dimmed">
-        Set system permissions and review the user details.
-      </Text>
+      <HeaderText>System permissions & review</HeaderText>
+      <BodyText>Set system permissions and review the user details.</BodyText>
 
-      <Select
+      <SelectField
         label="System permission level"
         data={permissionOptions}
         value={formData.systemPermissions}
@@ -291,26 +294,26 @@ function Step3Permissions({
 
       <Divider label="Review" labelPosition="center" mt="lg" />
 
-      <Paper p="md" withBorder>
+      <BaseCard>
         <Stack gap="sm">
           <Group justify="space-between">
-            <Text fw={500}>Name:</Text>
-            <Text>{formData.name}</Text>
+            <BodyTextBold>Name:</BodyTextBold>
+            <BodyTextBlack>{formData.name}</BodyTextBlack>
           </Group>
           <Group justify="space-between">
-            <Text fw={500}>Email:</Text>
-            <Text>{formData.email}</Text>
+            <BodyTextBold>Email:</BodyTextBold>
+            <BodyTextBlack>{formData.email}</BodyTextBlack>
           </Group>
           <Group justify="space-between">
-            <Text fw={500}>Username:</Text>
-            <Text>{formData.username}</Text>
+            <BodyTextBold>Username:</BodyTextBold>
+            <BodyTextBlack>{formData.username}</BodyTextBlack>
           </Group>
           <Group justify="space-between">
-            <Text fw={500}>Base Profession:</Text>
-            <Text>{profession?.display_name || "None"}</Text>
+            <BodyTextBold>Base profession:</BodyTextBold>
+            <BodyTextBlack>{profession?.display_name || "None"}</BodyTextBlack>
           </Group>
           <Group justify="space-between">
-            <Text fw={500}>System Permissions:</Text>
+            <BodyTextBold>System permissions:</BodyTextBold>
             <PermissionBadge
               permission={
                 formData.systemPermissions as "admin" | "superadmin" | "staff"
@@ -321,9 +324,7 @@ function Step3Permissions({
           </Group>
           {formData.additionalCompetencies.length > 0 && (
             <Box>
-              <Text fw={500} mb={4}>
-                Additional Competencies:
-              </Text>
+              <BodyTextBold>Additional competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.additionalCompetencies.map((id) => (
                   <Badge key={id} variant="light" color="blue">
@@ -337,9 +338,7 @@ function Step3Permissions({
           )}
           {formData.removedCompetencies.length > 0 && (
             <Box>
-              <Text fw={500} mb={4}>
-                Removed Competencies:
-              </Text>
+              <BodyTextBold>Removed competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.removedCompetencies.map((id) => (
                   <Badge key={id} variant="light" color="red">
@@ -352,7 +351,7 @@ function Step3Permissions({
             </Box>
           )}
         </Stack>
-      </Paper>
+      </BaseCard>
     </Stack>
   );
 }
@@ -372,34 +371,34 @@ function Step4Confirmation({
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
-          <IconCheck size={64} color="green" />
-          <Title order={2}>
+          <Icon icon={<IconCheck />} size="xl" colour="green" />
+          <HeaderText>
             {isEditMode
               ? "User updated successfully"
               : "User created successfully"}
-          </Title>
-          <Text size="lg" c="dimmed" ta="center">
+          </HeaderText>
+          <BodyText>
             {isEditMode
               ? "The user's details have been updated."
               : "The new user has been created and can now log in to the system."}
-          </Text>
+          </BodyText>
           <Button onClick={onCancel} mt="lg">
-            Return to Admin
+            Return to admin
           </Button>
         </>
       ) : (
         <>
-          <IconAlertCircle size={64} color="red" />
-          <Title order={2}>
+          <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
+          <HeaderText>
             {isEditMode ? "Failed to update user" : "Failed to create user"}
-          </Title>
-          <Text size="lg" c="dimmed" ta="center">
+          </HeaderText>
+          <BodyText>
             {isEditMode
               ? "There was an error updating the user. Please try again."
               : "There was an error creating the user. Please try again."}
-          </Text>
+          </BodyText>
           <Button onClick={onCancel} mt="lg">
-            Return to Admin
+            Return to admin
           </Button>
         </>
       )}
@@ -660,12 +659,12 @@ export default function NewUserPage() {
           <Center py="xl">
             <Stack align="center" gap="md">
               <Loader size="lg" />
-              <Text c="dimmed">Loading user data...</Text>
+              <BodyText>Loading user data...</BodyText>
             </Stack>
           </Center>
         ) : loadError ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading user"
             color="red"
             mt="md"

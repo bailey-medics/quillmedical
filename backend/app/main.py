@@ -594,6 +594,28 @@ def login(
     }
 
 
+@router.get("/auth/organizations")
+def list_organizations_public(
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, list[dict[str, Any]]]:
+    """List organisations for registration.
+
+    Public endpoint that returns organisation names and IDs for the
+    registration form dropdown. No authentication required. Only exposes
+    the minimum fields needed (id and name).
+
+    Returns:
+        dict with key ``organizations`` containing a list of
+        ``{id, name}`` objects.
+    """
+    organizations = db.execute(select(Organization)).scalars().all()
+    return {
+        "organizations": [
+            {"id": org.id, "name": org.name} for org in organizations
+        ]
+    }
+
+
 @router.post("/auth/register")
 @limiter.limit("3/minute")
 def register(
@@ -652,7 +674,35 @@ def register(
         email=email,
         password_hash=hash_password(payload.password),
     )
+
+    # When clinical services are disabled (teaching-only deployment),
+    # auto-assign the "learner" base profession so the user can
+    # immediately take teaching assessments.
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        user.base_profession = "learner"
+
     db.add(user)
+    db.flush()  # Assigns user.id so we can create the org membership
+
+    # Add the user to the selected organisation as a primary member
+    if payload.organisation_id is not None:
+        org = db.scalar(
+            select(Organization).where(
+                Organization.id == payload.organisation_id
+            )
+        )
+        if org is None:
+            raise HTTPException(
+                status_code=400, detail="Organisation not found"
+            )
+        db.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=user.id,
+                is_primary=True,
+            )
+        )
+
     db.commit()
     return {"detail": "created"}
 
@@ -2419,6 +2469,7 @@ def update_organization(
         "gp_practice",
         "private_clinic",
         "department",
+        "teaching_establishment",
     ]
 
     if body.name is not None:
@@ -2481,6 +2532,7 @@ def create_organization(
         "gp_practice",
         "private_clinic",
         "department",
+        "teaching_establishment",
     ]
     if body.type not in valid_types:
         raise HTTPException(

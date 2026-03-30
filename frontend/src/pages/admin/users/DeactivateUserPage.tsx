@@ -11,13 +11,19 @@ import {
   Stack,
   Button,
   Table,
-  Text,
   Skeleton,
   Center,
   Alert,
   Modal,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import Icon from "@/components/icons";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  PlaceholderText,
+} from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
 interface User {
@@ -110,7 +116,7 @@ export default function DeactivateUserPage() {
           </Stack>
         ) : error ? (
           <Alert
-            icon={<IconAlertCircle size={16} />}
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading users"
             color="red"
           >
@@ -118,7 +124,7 @@ export default function DeactivateUserPage() {
           </Alert>
         ) : users.length === 0 ? (
           <Center p="xl">
-            <Text c="dimmed">No users found</Text>
+            <PlaceholderText>No users found</PlaceholderText>
           </Center>
         ) : (
           <Table striped highlightOnHover>
@@ -135,7 +141,7 @@ export default function DeactivateUserPage() {
               {users.map((user) => (
                 <Table.Tr key={user.id}>
                   <Table.Td>
-                    <Text fw={500}>{user.username}</Text>
+                    <BodyTextBold>{user.username}</BodyTextBold>
                   </Table.Td>
                   <Table.Td>{user.email}</Table.Td>
                   <Table.Td style={{ textAlign: "right" }}>
@@ -143,7 +149,7 @@ export default function DeactivateUserPage() {
                       variant="light"
                       color="red"
                       size="xs"
-                      leftSection={<IconUserMinus size={16} />}
+                      leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(user)}
                     >
                       Deactivate
@@ -162,20 +168,20 @@ export default function DeactivateUserPage() {
           centered
         >
           <Stack gap="md">
-            <Text>
+            <BodyTextBlack>
               Are you sure you want to deactivate user{" "}
               <strong>{selectedUser?.username}</strong>?
-            </Text>
-            <Text size="lg" c="dimmed">
+            </BodyTextBlack>
+            <BodyText>
               This will revoke their access to the system. This action can be
               reversed later.
-            </Text>
+            </BodyText>
             <Stack gap="sm">
               <Button
                 color="red"
                 onClick={handleDeactivateConfirm}
                 loading={deactivating}
-                leftSection={<IconUserMinus size={18} />}
+                leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
               >
                 Deactivate user
               </Button>
