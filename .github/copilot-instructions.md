@@ -59,6 +59,7 @@ see the `Justfile` if you want to know more.
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
+- **Button alignment**: ALWAYS right-justify buttons — wrap in `<Group justify="flex-end">`
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
 - **Page Layout**: ALWAYS wrap page content in `<Container size="lg">` for consistent max-width (1140px)

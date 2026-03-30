@@ -138,7 +138,7 @@ export default function AdminBankOrgSettingsPage() {
             onClick={() => navigate(`/admin/teaching/${bankId}`)}
             aria-label="Back to bank detail"
           />
-          <PageHeader title={org.organisation_name} />
+          <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
         </Group>
 
         {/* Exam status */}
@@ -154,11 +154,7 @@ export default function AdminBankOrgSettingsPage() {
               onChange={(e) => handleToggleLive(e.currentTarget.checked)}
               disabled={toggling}
             />
-            {toggleError && (
-              <Alert color="red" title="Error">
-                {toggleError}
-              </Alert>
-            )}
+            {toggleError && <StateMessage type="error" message={toggleError} />}
           </Stack>
         </BaseCard>
 
@@ -176,18 +172,14 @@ export default function AdminBankOrgSettingsPage() {
                 onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
               />
 
-              {saveError && (
-                <Alert color="red" title="Error">
-                  {saveError}
-                </Alert>
-              )}
+              {saveError && <StateMessage type="error" message={saveError} />}
               {saved && (
                 <Alert color="green" title="Saved">
                   Coordinator email updated.
                 </Alert>
               )}
 
-              <Group>
+              <Group justify="flex-end">
                 <Button
                   onClick={handleSaveEmail}
                   loading={saving}

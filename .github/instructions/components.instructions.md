@@ -22,6 +22,7 @@ applyTo: "frontend/src/components/**"
 - **No inline styles** — use Mantine component props or CSS modules only.
 - **Use `rem` instead of `px`** in CSS modules where possible for better scalability.
 - **Responsive**: always use `theme.breakpoints.sm` (`48em` / 768px) for mobile/desktop splits via `useMediaQuery`.
+- **Right-justify all buttons** — wrap buttons in `<Group justify="flex-end">` so they align to the right of their container.
 
 ## Testing and stories
 

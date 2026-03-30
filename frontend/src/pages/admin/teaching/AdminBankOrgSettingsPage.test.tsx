@@ -79,7 +79,7 @@ describe("AdminBankOrgSettingsPage", () => {
     mockApiCalls();
     renderWithRouter(<AdminBankOrgSettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText("Test Hospital")).toBeTruthy();
+      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
     });
     expect(screen.getByText("Exam status")).toBeTruthy();
     expect(screen.getByText("Deactivated")).toBeTruthy();
@@ -104,7 +104,7 @@ describe("AdminBankOrgSettingsPage", () => {
     });
     renderWithRouter(<AdminBankOrgSettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText("Test Hospital")).toBeTruthy();
+      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
     });
     expect(screen.queryByText("Coordinator email")).toBeNull();
   });
