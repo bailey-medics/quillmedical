@@ -807,10 +807,20 @@ def _maybe_enqueue_certificate_emails(
     if assessment.completed_at:
         completion_date = assessment.completed_at.strftime("%-d %B %Y")
 
-    # Look up org settings for coordinator email + institution name
+    # Look up org settings for institution name
     org_settings = db.execute(
         select(TeachingOrgSettings).where(
             TeachingOrgSettings.organisation_id == assessment.organisation_id
+        )
+    ).scalar_one_or_none()
+
+    # Look up per-bank coordinator email
+    bank_status = db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.organisation_id
+            == assessment.organisation_id,
+            QuestionBankOrgStatus.question_bank_id
+            == assessment.question_bank_id,
         )
     ).scalar_one_or_none()
 
@@ -869,18 +879,18 @@ def _maybe_enqueue_certificate_emails(
         coord_template = load_email_template(
             bank_path, bank_id, "coordinator-email"
         )
-        if coord_template and org_settings and org_settings.coordinator_email:
+        if coord_template and bank_status and bank_status.coordinator_email:
             ctx = {
                 **context,
                 "recipient_name": (
-                    org_settings.coordinator_email.split("@")[0]
+                    bank_status.coordinator_email.split("@")[0]
                 ),
             }
             rendered = render_email(coord_template, ctx)
             att = attachments if coord_template["attach_certificate"] else []
             background_tasks.add_task(
                 send_email,
-                to=org_settings.coordinator_email,
+                to=bank_status.coordinator_email,
                 subject=rendered["subject"],
                 html_body=rendered["html_body"],
                 attachments=att,
@@ -1666,29 +1676,16 @@ def list_bank_organisations(
         .all()
     }
 
-    # Get coordinator emails for these orgs
-    settings_map = {
-        row.organisation_id: row
-        for row in db.execute(
-            select(TeachingOrgSettings).where(
-                TeachingOrgSettings.organisation_id.in_(org_ids),
-            )
-        )
-        .scalars()
-        .all()
-    }
-
     rows: list[BankOrgRow] = []
     for org in orgs:
         status = statuses.get(org.id)
-        org_settings = settings_map.get(org.id)
         rows.append(
             BankOrgRow(
                 organisation_id=org.id,
                 organisation_name=org.name,
                 is_live=status.is_live if status else False,
                 coordinator_email=(
-                    org_settings.coordinator_email if org_settings else None
+                    status.coordinator_email if status else None
                 ),
             )
         )
@@ -1707,31 +1704,33 @@ def update_org_coordinator(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, str]:
-    """Update coordinator email for an organisation."""
+    """Update coordinator email for an organisation + bank."""
     _get_user_org_id(user, db)
 
     org = db.get(Organization, org_id)
     if not org:
         raise HTTPException(404, "Organisation not found")
 
-    settings_row = db.execute(
-        select(TeachingOrgSettings).where(
-            TeachingOrgSettings.organisation_id == org_id
+    status_row = db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.organisation_id == org_id,
+            QuestionBankOrgStatus.question_bank_id == bank_id,
         )
     ).scalar_one_or_none()
 
-    if settings_row:
-        settings_row.coordinator_email = body.coordinator_email
+    if status_row:
+        status_row.coordinator_email = body.coordinator_email
     else:
-        settings_row = TeachingOrgSettings(
+        status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
+            question_bank_id=bank_id,
+            is_live=False,
             coordinator_email=body.coordinator_email,
-            institution_name=org.name,
         )
-        db.add(settings_row)
+        db.add(status_row)
 
     db.commit()
-    return {"coordinator_email": settings_row.coordinator_email}
+    return {"coordinator_email": body.coordinator_email}
 
 
 @teaching_router.put(
@@ -1777,12 +1776,13 @@ def update_bank_status(
             "email_coordinator_on_pass", False
         )
         if email_coordinator:
-            org_settings = db.execute(
-                select(TeachingOrgSettings).where(
-                    TeachingOrgSettings.organisation_id == org_id
+            existing_status = db.execute(
+                select(QuestionBankOrgStatus).where(
+                    QuestionBankOrgStatus.organisation_id == org_id,
+                    QuestionBankOrgStatus.question_bank_id == bank_id,
                 )
             ).scalar_one_or_none()
-            if not org_settings or not org_settings.coordinator_email:
+            if not existing_status or not existing_status.coordinator_email:
                 raise HTTPException(
                     400,
                     "Coordinator email must be set before "
