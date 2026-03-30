@@ -295,7 +295,7 @@ Add to both test banks (quill-question-bank repo):
 | **Email templates are read-only in admin UI** | Authored by bank creators in YAML, not editable by admins                           |
 | **`email_on_pass` in config.yaml**            | Per-bank setting, controlled by bank author                                         |
 | **Two admin pages**                           | Bank detail (`/admin/teaching/:bankId`) + org settings (`/admin/teaching/settings`) |
-| **`string.Template`** for email templates     | Stdlib, zero deps, safe `$variable` syntax, no injection risk unlike `str.format` |
+| **`string.Template`** for email templates     | Stdlib, zero deps, safe `$variable` syntax, no injection risk unlike `str.format`   |
 
 ---
 
