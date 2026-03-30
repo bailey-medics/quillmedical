@@ -5,9 +5,10 @@
  * Each criterion shows name, value vs threshold, and visual pass/fail.
  */
 
-import { Card, Group, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import QuillCard from "@/components/quill-card/QuillCard";
 import {
   BodyText,
   BodyTextBlack,
@@ -24,7 +25,7 @@ interface ScoreBreakdownProps {
 
 export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <QuillCard>
       <Stack gap="sm">
         <HeaderText>Score breakdown</HeaderText>
         {criteria.map((c) => (
@@ -45,6 +46,6 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
           </Group>
         ))}
       </Stack>{" "}
-    </Card>
+    </QuillCard>
   );
 }

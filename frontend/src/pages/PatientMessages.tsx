@@ -17,7 +17,8 @@ import {
   fetchPatientConversations,
   type ConversationResponse,
 } from "@lib/messaging";
-import { Card, Container, Group, Loader, Stack, Text } from "@mantine/core";
+import { Container, Group, Loader, Stack, Text } from "@mantine/core";
+import QuillCard from "@/components/quill-card/QuillCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -120,11 +121,11 @@ export default function PatientMessages() {
         />
 
         {conversations.length === 0 ? (
-          <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <QuillCard>
             <Text c="dimmed" ta="center">
               No conversations yet
             </Text>
-          </Card>
+          </QuillCard>
         ) : (
           <MessagesList
             threads={conversations.map((conv) => ({

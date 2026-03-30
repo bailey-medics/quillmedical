@@ -5,12 +5,13 @@
  * title, description, and call-to-action button.
  */
 
-import { Card, Stack, Group } from "@mantine/core";
+import { Stack, Group } from "@mantine/core";
 import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
+import QuillCard from "@/components/quill-card/QuillCard";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
@@ -58,14 +59,7 @@ export default function ActionCard({
   buttonVariant = "light",
 }: ActionCardProps) {
   return (
-    <Card
-      shadow="sm"
-      padding="lg"
-      radius="md"
-      withBorder
-      maw={fullWidth ? undefined : "37.05rem"}
-      h="100%"
-    >
+    <QuillCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
       <Stack gap="md" h="100%">
         {icon ? (
           <Group>
@@ -90,6 +84,6 @@ export default function ActionCard({
           variant={buttonVariant}
         />
       </Stack>
-    </Card>
+    </QuillCard>
   );
 }

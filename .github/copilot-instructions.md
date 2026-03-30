@@ -92,6 +92,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Avatars | ProfilePic, StackedProfilePics | `components/profile-pic/` |
 | Badge | ActiveStatus, PermissionBadge, UnreadBadge | `components/badge/` |
 | Button | ActionCardButton, AddButton, BurgerButton, IconButton | `components/button/` |
+| Cards | QuillCard | `components/quill-card/` |
 | Data | Date, NationalNumber | `components/data/` |
 | Demographics | Demographics | `components/demographics/` |
 | Documents | Document, DocumentThumbnail, DocumentsList | `components/documents/` |
@@ -139,6 +140,10 @@ import { VariantRow, VariantStack } from "@/stories/variants";
 - `VariantStack` wraps rows with consistent vertical spacing
 - `VariantRow` wraps children in a horizontal `Group` with a label underneath
 - Set `horizontal={false}` for single-item rows (e.g. loading skeletons)
+
+#### Cards
+
+All cards MUST use the `<QuillCard>` component from `components/quill-card/` — never use Mantine's `<Card>` directly. QuillCard enforces consistent `shadow="sm"`, `radius="md"`, and `withBorder` across the app. Override `padding` when needed (default is `"lg"`, use `"md"` for compact lists).
 
 #### Icons
 

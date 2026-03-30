@@ -5,8 +5,9 @@
  * from config + "View results" button.
  */
 
-import { Button, Card, Stack } from "@mantine/core";
+import { Button, Stack } from "@mantine/core";
 import { BodyTextBlack, PageHeader } from "@/components/typography";
+import QuillCard from "@/components/quill-card/QuillCard";
 
 interface AssessmentClosingProps {
   /** Closing page title from config */
@@ -28,9 +29,9 @@ export function AssessmentClosing({
   return (
     <Stack gap="lg">
       <PageHeader title={title} />
-      <Card withBorder p="lg">
+      <QuillCard>
         <BodyTextBlack>{body}</BodyTextBlack>
-      </Card>
+      </QuillCard>
       <Button size="lg" onClick={onViewResults} disabled={disabled}>
         View results
       </Button>

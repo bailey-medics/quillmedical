@@ -60,7 +60,11 @@ describe("TeachingOrgSettingsPage", () => {
   });
 
   it("renders empty form when no settings exist (404)", async () => {
-    (api.get as Mock).mockRejectedValue(new Error("404: Not found"));
+    const err = new Error("Teaching settings not found") as Error & {
+      status?: number;
+    };
+    err.status = 404;
+    (api.get as Mock).mockRejectedValue(err);
     renderWithRouter(<TeachingOrgSettingsPage />);
     await waitFor(() => {
       expect(screen.getByText("Teaching settings")).toBeTruthy();

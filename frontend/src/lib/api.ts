@@ -131,8 +131,10 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     }
     const err = new Error(message || `HTTP ${res.status}`) as Error & {
       error_code?: string;
+      status?: number;
     };
     if (errorCode) err.error_code = errorCode;
+    err.status = res.status;
     throw err;
   }
 

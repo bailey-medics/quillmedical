@@ -6,8 +6,9 @@
  * have a blue left border. Provides loading state with skeletons.
  */
 
-import { Card, Group, Skeleton, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
 import AppointmentStatus from "@components/badge/AppointmentStatus";
+import QuillCard from "@/components/quill-card/QuillCard";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
 import HeaderText from "@components/typography/HeaderText";
@@ -47,11 +48,7 @@ function AppointmentCard({
   onClick?: (appointment: Appointment) => void;
 }) {
   return (
-    <Card
-      shadow="sm"
-      padding="lg"
-      radius="md"
-      withBorder
+    <QuillCard
       style={{
         ...(onClick && { cursor: "pointer" }),
       }}
@@ -71,7 +68,7 @@ function AppointmentCard({
         </BodyText>
         {appointment.notes && <BodyText>{appointment.notes}</BodyText>}
       </Stack>
-    </Card>
+    </QuillCard>
   );
 }
 
@@ -84,7 +81,7 @@ export default function AppointmentsList({
     return (
       <Stack gap="lg">
         {[1, 2, 3].map((i) => (
-          <Card key={i} shadow="sm" padding="lg" radius="md" withBorder>
+          <QuillCard key={i}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Skeleton height={24} width="60%" />
@@ -94,7 +91,7 @@ export default function AppointmentsList({
               <Skeleton height={16} width="40%" />
               <Skeleton height={16} width="100%" />
             </Stack>
-          </Card>
+          </QuillCard>
         ))}
       </Stack>
     );

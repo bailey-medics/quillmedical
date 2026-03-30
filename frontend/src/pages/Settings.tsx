@@ -1,6 +1,5 @@
 import {
   Button,
-  Card,
   Container,
   Group,
   SimpleGrid,
@@ -12,6 +11,7 @@ import { IconBell, IconUser } from "@tabler/icons-react";
 import { useState } from "react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
+import QuillCard from "@/components/quill-card/QuillCard";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -127,7 +127,7 @@ export default function Settings() {
           />
         </SimpleGrid>
 
-        <Card shadow="sm">
+        <QuillCard>
           <div
             style={{
               display: "flex",
@@ -166,7 +166,7 @@ export default function Settings() {
               Save
             </Button>
           </Group>
-        </Card>
+        </QuillCard>
       </Stack>
     </Container>
   );

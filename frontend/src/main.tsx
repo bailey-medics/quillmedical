@@ -72,6 +72,7 @@ import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
+import RequireClinical from "./auth/RequireClinical";
 import LoginPage from "./pages/LoginPage";
 import HomeRedirect from "./pages/HomeRedirect";
 
@@ -115,29 +116,94 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <HomeRedirect /> },
-      { path: "/patients/:id", element: <Patient /> },
-      { path: "/patients/:id/letters", element: <PatientLetters /> },
+      {
+        path: "/patients/:id",
+        element: (
+          <RequireClinical>
+            <Patient />
+          </RequireClinical>
+        ),
+      },
+      {
+        path: "/patients/:id/letters",
+        element: (
+          <RequireClinical>
+            <PatientLetters />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/letters/:letterId",
-        element: <PatientLetterView />,
+        element: (
+          <RequireClinical>
+            <PatientLetterView />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/messages", element: <PatientMessages /> },
+      {
+        path: "/patients/:id/messages",
+        element: (
+          <RequireClinical>
+            <PatientMessages />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/messages/:conversationId",
-        element: <PatientMessageThread />,
+        element: (
+          <RequireClinical>
+            <PatientMessageThread />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/documents", element: <PatientDocuments /> },
+      {
+        path: "/patients/:id/documents",
+        element: (
+          <RequireClinical>
+            <PatientDocuments />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/documents/:documentId",
-        element: <PatientDocumentView />,
+        element: (
+          <RequireClinical>
+            <PatientDocumentView />
+          </RequireClinical>
+        ),
       },
-      { path: "/patients/:id/notes", element: <PatientNotes /> },
+      {
+        path: "/patients/:id/notes",
+        element: (
+          <RequireClinical>
+            <PatientNotes />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/patients/:id/appointments",
-        element: <PatientAppointments />,
+        element: (
+          <RequireClinical>
+            <PatientAppointments />
+          </RequireClinical>
+        ),
       },
-      { path: "/messages", element: <Messages /> },
-      { path: "/messages/:conversationId", element: <MessageThread /> },
+      {
+        path: "/messages",
+        element: (
+          <RequireClinical>
+            <Messages />
+          </RequireClinical>
+        ),
+      },
+      {
+        path: "/messages/:conversationId",
+        element: (
+          <RequireClinical>
+            <MessageThread />
+          </RequireClinical>
+        ),
+      },
       {
         path: "/admin",
         element: (

@@ -15,15 +15,8 @@
  * 7. Previous/Next navigation buttons
  */
 
-import {
-  Card,
-  Group,
-  Image,
-  Radio,
-  SimpleGrid,
-  Stack,
-  rem,
-} from "@mantine/core";
+import { Group, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
+import QuillCard from "@/components/quill-card/QuillCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
@@ -125,9 +118,9 @@ export function QuestionView({
 
       {/* Patient history */}
       {item.text && (
-        <Card withBorder p="md">
+        <QuillCard padding="md">
           <BodyTextBlack>{item.text}</BodyTextBlack>
-        </Card>
+        </QuillCard>
       )}
 
       {/* Options */}

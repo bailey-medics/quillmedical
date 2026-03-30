@@ -55,7 +55,8 @@ export default function TeachingOrgSettingsPage() {
       setOriginalName(data.institution_name);
     } catch (err) {
       // 404 is fine — means no settings yet
-      if (err instanceof Error && err.message.includes("404")) {
+      const status = (err as Error & { status?: number }).status;
+      if (status === 404) {
         // Leave form empty for first-time setup
       } else {
         setError(

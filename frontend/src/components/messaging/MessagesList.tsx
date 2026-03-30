@@ -13,7 +13,8 @@ import UnreadBadge from "@/components/badge/UnreadBadge";
 import HeaderText from "@/components/typography/HeaderText";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextClamp from "@/components/typography/BodyTextClamp";
-import { Card, Group, Skeleton, Stack } from "@mantine/core";
+import QuillCard from "@/components/quill-card/QuillCard";
+import { Group, Skeleton, Stack } from "@mantine/core";
 
 export type MessageThread = {
   /** Unique thread identifier */
@@ -70,7 +71,7 @@ export default function MessagesList({
     return (
       <Stack gap="sm">
         {[1, 2, 3].map((i) => (
-          <Card key={i} shadow="sm" padding="md" radius="md" withBorder>
+          <QuillCard key={i} padding="md">
             <Group wrap="nowrap" align="flex-start">
               <Skeleton height={64} circle />
               <div style={{ flex: 1 }}>
@@ -79,7 +80,7 @@ export default function MessagesList({
                 <Skeleton height={14} width="40%" />
               </div>
             </Group>
-          </Card>
+          </QuillCard>
         ))}
       </Stack>
     );
@@ -94,7 +95,7 @@ export default function MessagesList({
           onClick={() => onThreadClick(thread)}
           style={{ cursor: "pointer" }}
         >
-          <Card shadow="sm" padding="md" radius="md" withBorder>
+          <QuillCard padding="md">
             <Group wrap="nowrap" align="flex-start">
               {thread.profiles.length > 1 ? (
                 <StackedProfilePics
@@ -124,7 +125,7 @@ export default function MessagesList({
                 </BodyTextClamp>
               </div>
             </Group>
-          </Card>
+          </QuillCard>
         </div>
       ))}
     </Stack>
