@@ -271,6 +271,12 @@ class TeachingOrgSettingsIn(BaseModel):
     institution_name: str
 
 
+class CoordinatorEmailIn(BaseModel):
+    """Update coordinator email for an organisation."""
+
+    coordinator_email: str
+
+
 class TeachingOrgSettingsOut(BaseModel):
     """Teaching settings for an organisation."""
 
@@ -349,8 +355,16 @@ class AdminBankDetailOut(BaseModel):
     version: int | None = None
     type: str | None = None
     item_count: int = 0
-    is_live: bool = False
     email_student_on_pass: bool = False
     email_coordinator_on_pass: bool = False
     coordinator_email_template: EmailTemplateOut | None = None
     student_email_template: EmailTemplateOut | None = None
+
+
+class BankOrgRow(BaseModel):
+    """One organisation's status for a question bank."""
+
+    organisation_id: int
+    organisation_name: str
+    is_live: bool = False
+    coordinator_email: str | None = None

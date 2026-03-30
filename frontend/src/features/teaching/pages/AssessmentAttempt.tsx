@@ -1,4 +1,5 @@
-import { Alert, Container, Loader, Modal, Stack } from "@mantine/core";
+import { Container, Loader, Modal, Stack } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useBlocker,
@@ -340,9 +341,10 @@ export default function AssessmentAttempt() {
 
       {phase === "error" && (
         <Container size="lg" py="xl">
-          <Alert color="red" title="Error">
-            {error}
-          </Alert>
+          <StateMessage
+            type="error"
+            message={error ?? "An unexpected error occurred"}
+          />
         </Container>
       )}
 

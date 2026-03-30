@@ -1,26 +1,19 @@
 /**
  * Admin Bank Detail Page
  *
- * Shows detail for a single question bank with live/closed toggle
- * and email template preview.
+ * Shows detail for a single question bank with an organisations table
+ * showing live/closed status per org, and email template preview.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Alert,
-  Badge,
-  Container,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-} from "@mantine/core";
+import { Container, Group, Loader, Paper, Stack, Table } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
-import SolidSwitch from "@/components/form/SolidSwitch";
+import ActiveStatus from "@/components/badge/ActiveStatus";
+import { StateMessage } from "@/components/message-cards";
 import {
   BodyText,
   BodyTextBlack,
@@ -28,24 +21,30 @@ import {
   HeaderText,
 } from "@/components/typography";
 import { api } from "@/lib/api";
-import type { AdminBankDetail } from "@/features/teaching/types";
+import type {
+  AdminBankDetail,
+  BankOrganisation,
+} from "@/features/teaching/types";
 
 export default function AdminBankDetailPage() {
   const { bankId } = useParams<{ bankId: string }>();
   const navigate = useNavigate();
   const [bank, setBank] = useState<AdminBankDetail | null>(null);
+  const [orgs, setOrgs] = useState<BankOrganisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toggling, setToggling] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
 
-  const fetchBank = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const data = await api.get<AdminBankDetail>(
-        `/teaching/admin/banks/${bankId}`,
-      );
-      setBank(data);
+      const [bankData, orgsData] = await Promise.all([
+        api.get<AdminBankDetail>(`/teaching/admin/banks/${bankId}`),
+        api.get<BankOrganisation[]>(
+          `/teaching/admin/banks/${bankId}/organisations`,
+        ),
+      ]);
+      setBank(bankData);
+      setOrgs(orgsData);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load bank detail",
@@ -56,25 +55,8 @@ export default function AdminBankDetailPage() {
   }, [bankId]);
 
   useEffect(() => {
-    fetchBank();
-  }, [fetchBank]);
-
-  const handleToggleLive = async (checked: boolean) => {
-    setToggling(true);
-    setToggleError(null);
-    try {
-      await api.put(`/teaching/admin/banks/${bankId}/status`, {
-        is_live: checked,
-      });
-      setBank((prev) => (prev ? { ...prev, is_live: checked } : prev));
-    } catch (err) {
-      setToggleError(
-        err instanceof Error ? err.message : "Failed to update status",
-      );
-    } finally {
-      setToggling(false);
-    }
-  };
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -87,9 +69,7 @@ export default function AdminBankDetailPage() {
   if (error || !bank) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error ?? "Bank not found"}
-        </Alert>
+        <StateMessage type="error" message={error ?? "Bank not found"} />
       </Container>
     );
   }
@@ -125,37 +105,53 @@ export default function AdminBankDetailPage() {
           </Stack>
         </BaseCard>
 
-        {/* Exam status */}
+        {/* Organisations */}
         <BaseCard>
           <Stack gap="sm">
-            <Group justify="space-between">
-              <HeaderText>Exam status</HeaderText>
-              <Badge
-                color={bank.is_live ? "teal" : "pink"}
-                variant="filled"
-                size="lg"
-              >
-                {bank.is_live ? "Live" : "Closed"}
-              </Badge>
-            </Group>
-            <SolidSwitch
-              label="Open for assessments"
-              checked={bank.is_live}
-              onChange={(e) => handleToggleLive(e.currentTarget.checked)}
-              disabled={toggling}
-            />
-            {toggleError && (
-              <Alert color="red" title="Error">
-                {toggleError}
-              </Alert>
-            )}
-            {bank.email_coordinator_on_pass && !bank.is_live && (
-              <Alert color="yellow" title="Coordinator email on pass enabled">
-                This bank sends certificates to the coordinator by email. Ensure
-                a coordinator email is set in{" "}
-                <a href="/admin/teaching/settings">teaching settings</a> before
-                going live.
-              </Alert>
+            <HeaderText>Organisations</HeaderText>
+            {orgs.length === 0 ? (
+              <BodyText>
+                No organisations have the teaching feature enabled.
+              </BodyText>
+            ) : (
+              <Table highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Organisation</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    {bank.email_coordinator_on_pass && (
+                      <Table.Th>Coordinator</Table.Th>
+                    )}
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {orgs.map((org) => (
+                    <Table.Tr
+                      key={org.organisation_id}
+                      onClick={() =>
+                        navigate(
+                          `/admin/teaching/${bankId}/org/${org.organisation_id}`,
+                        )
+                      }
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Table.Td>
+                        <BodyTextBlack>{org.organisation_name}</BodyTextBlack>
+                      </Table.Td>
+                      <Table.Td>
+                        <ActiveStatus active={org.is_live} size="md" />
+                      </Table.Td>
+                      {bank.email_coordinator_on_pass && (
+                        <Table.Td>
+                          <BodyText>
+                            {org.coordinator_email ?? "Not set"}
+                          </BodyText>
+                        </Table.Td>
+                      )}
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
             )}
           </Stack>
         </BaseCard>

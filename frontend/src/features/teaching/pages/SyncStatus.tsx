@@ -1,4 +1,5 @@
-import { Alert, Badge, Container, Loader, Stack, Table } from "@mantine/core";
+import { Badge, Container, Loader, Stack, Table } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { HeaderText, PlaceholderText } from "@/components/typography";
@@ -46,9 +47,7 @@ export default function SyncStatus() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }

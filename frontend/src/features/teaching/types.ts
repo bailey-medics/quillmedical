@@ -218,11 +218,21 @@ export interface AdminBankDetail {
   version: number;
   type: string;
   item_count: number;
-  is_live: boolean;
   email_student_on_pass: boolean;
   email_coordinator_on_pass: boolean;
   coordinator_email_template: EmailTemplate | null;
   student_email_template: EmailTemplate | null;
+}
+
+export interface BankOrganisation {
+  organisation_id: number;
+  organisation_name: string;
+  is_live: boolean;
+  coordinator_email: string | null;
+}
+
+export interface CoordinatorEmailInput {
+  coordinator_email: string;
 }
 
 export interface QuestionBankOrgStatusInput {

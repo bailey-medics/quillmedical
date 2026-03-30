@@ -84,6 +84,7 @@ import AllResults from "./features/teaching/pages/AllResults";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
+import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 import TeachingOrgSettingsPage from "./pages/admin/teaching/TeachingOrgSettingsPage";
 
 const router = createBrowserRouter([
@@ -433,6 +434,14 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <AdminBankDetailPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "/admin/teaching/:bankId/org/:orgId",
+        element: (
+          <RequirePermission level="admin">
+            <AdminBankOrgSettingsPage />
           </RequirePermission>
         ),
       },

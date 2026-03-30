@@ -1,9 +1,10 @@
-import { Alert, Container, Loader, SimpleGrid, Stack } from "@mantine/core";
+import { Container, Loader, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
+import { StateMessage } from "@/components/message-cards";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
 import { HeaderText, PlaceholderText } from "@/components/typography";
 import type {
@@ -49,9 +50,7 @@ export default function AssessmentDashboard() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }

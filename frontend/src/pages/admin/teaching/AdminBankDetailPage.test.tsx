@@ -28,7 +28,6 @@ const mockBank = {
   version: 1,
   type: "uniform",
   item_count: 10,
-  is_live: false,
   email_student_on_pass: true,
   email_coordinator_on_pass: true,
   coordinator_email_template: {
@@ -42,6 +41,21 @@ const mockBank = {
     attach_certificate: true,
   },
 };
+
+const mockOrgs = [
+  {
+    organisation_id: 1,
+    organisation_name: "Test Hospital",
+    is_live: true,
+    coordinator_email: "coord@test.com",
+  },
+  {
+    organisation_id: 2,
+    organisation_name: "Another Clinic",
+    is_live: false,
+    coordinator_email: null,
+  },
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -62,34 +76,51 @@ describe("AdminBankDetailPage", () => {
     });
   });
 
-  it("renders bank detail", async () => {
-    (api.get as Mock).mockResolvedValue(mockBank);
+  it("renders bank detail and organisations table", async () => {
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve(mockBank);
+    });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
     expect(screen.getByText("uniform")).toBeTruthy();
     expect(screen.getByText("10")).toBeTruthy();
+    expect(screen.getByText("Organisations")).toBeTruthy();
+    expect(screen.getByText("Test Hospital")).toBeTruthy();
+    expect(screen.getByText("Another Clinic")).toBeTruthy();
   });
 
-  it("shows closed badge when not live", async () => {
-    (api.get as Mock).mockResolvedValue(mockBank);
+  it("shows Active/Deactivated badges per org", async () => {
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve(mockBank);
+    });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {
-      expect(screen.getByText("Closed")).toBeTruthy();
+      expect(screen.getByText("Active")).toBeTruthy();
     });
+    expect(screen.getByText("Deactivated")).toBeTruthy();
   });
 
-  it("shows live badge when live", async () => {
-    (api.get as Mock).mockResolvedValue({ ...mockBank, is_live: true });
+  it("shows coordinator email column when email_coordinator_on_pass", async () => {
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve(mockBank);
+    });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {
-      expect(screen.getByText("Live")).toBeTruthy();
+      expect(screen.getByText("coord@test.com")).toBeTruthy();
     });
+    expect(screen.getByText("Not set")).toBeTruthy();
   });
 
   it("shows email template previews when email flags enabled", async () => {
-    (api.get as Mock).mockResolvedValue(mockBank);
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve(mockBank);
+    });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {
       expect(screen.getByText("Email templates")).toBeTruthy();
@@ -99,10 +130,13 @@ describe("AdminBankDetailPage", () => {
   });
 
   it("hides email templates when email flags are false", async () => {
-    (api.get as Mock).mockResolvedValue({
-      ...mockBank,
-      email_student_on_pass: false,
-      email_coordinator_on_pass: false,
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve({
+        ...mockBank,
+        email_student_on_pass: false,
+        email_coordinator_on_pass: false,
+      });
     });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {

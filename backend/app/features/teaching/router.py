@@ -35,8 +35,10 @@ from app.features.teaching.schemas import (
     AssessmentHistoryOut,
     AssessmentOut,
     AssessmentWithFirstItem,
+    BankOrgRow,
     CandidateItemOut,
     CompletionResultOut,
+    CoordinatorEmailIn,
     CriterionResult,
     EducatorResultOut,
     EmailTemplateOut,
@@ -67,7 +69,12 @@ from app.features.teaching.storage import (
     list_bank_images_in_gcs,
     list_banks_in_gcs,
 )
-from app.models import User, organisation_staff_member
+from app.models import (
+    OrganisationFeature,
+    Organization,
+    User,
+    organisation_staff_member,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1568,14 +1575,6 @@ def get_admin_bank_detail(
         .all()
     )
 
-    # Live/closed status
-    status_row = db.execute(
-        select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id == org_id,
-            QuestionBankOrgStatus.question_bank_id == bank_id,
-        )
-    ).scalar_one_or_none()
-
     config = config_row.config_yaml
     results = config.get("results", {})
     email_student_on_pass: bool = results.get("email_student_on_pass", False)
@@ -1616,7 +1615,6 @@ def get_admin_bank_detail(
         version=config_row.version,
         type=config_row.type,
         item_count=len(item_count),
-        is_live=status_row.is_live if status_row else False,
         email_student_on_pass=email_student_on_pass,
         email_coordinator_on_pass=email_coordinator_on_pass,
         coordinator_email_template=coordinator_template,
@@ -1624,25 +1622,145 @@ def get_admin_bank_detail(
     )
 
 
+@teaching_router.get(
+    "/admin/banks/{bank_id}/organisations",
+    response_model=list[BankOrgRow],
+    dependencies=[_DEP_MANAGE],
+)
+def list_bank_organisations(
+    bank_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[BankOrgRow]:
+    """List all organisations with teaching enabled and their status for this bank."""
+    # Verify caller has a primary org (i.e. is an educator)
+    _get_user_org_id(user, db)
+
+    # All orgs that have the "teaching" feature enabled
+    orgs = (
+        db.execute(
+            select(Organization)
+            .join(
+                OrganisationFeature,
+                OrganisationFeature.organisation_id == Organization.id,
+            )
+            .where(OrganisationFeature.feature_key == "teaching")
+            .order_by(Organization.name)
+        )
+        .scalars()
+        .all()
+    )
+
+    org_ids = [o.id for o in orgs]
+
+    # Get bank status rows for these orgs
+    statuses = {
+        row.organisation_id: row
+        for row in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    # Get coordinator emails for these orgs
+    settings_map = {
+        row.organisation_id: row
+        for row in db.execute(
+            select(TeachingOrgSettings).where(
+                TeachingOrgSettings.organisation_id.in_(org_ids),
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    rows: list[BankOrgRow] = []
+    for org in orgs:
+        status = statuses.get(org.id)
+        org_settings = settings_map.get(org.id)
+        rows.append(
+            BankOrgRow(
+                organisation_id=org.id,
+                organisation_name=org.name,
+                is_live=status.is_live if status else False,
+                coordinator_email=(
+                    org_settings.coordinator_email if org_settings else None
+                ),
+            )
+        )
+
+    return rows
+
+
 @teaching_router.put(
-    "/admin/banks/{bank_id}/status",
+    "/admin/banks/{bank_id}/organisations/{org_id}/coordinator",
+    dependencies=[_DEP_MANAGE],
+)
+def update_org_coordinator(
+    bank_id: str,
+    org_id: int,
+    body: CoordinatorEmailIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> dict[str, str]:
+    """Update coordinator email for an organisation."""
+    _get_user_org_id(user, db)
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Organisation not found")
+
+    settings_row = db.execute(
+        select(TeachingOrgSettings).where(
+            TeachingOrgSettings.organisation_id == org_id
+        )
+    ).scalar_one_or_none()
+
+    if settings_row:
+        settings_row.coordinator_email = body.coordinator_email
+    else:
+        settings_row = TeachingOrgSettings(
+            organisation_id=org_id,
+            coordinator_email=body.coordinator_email,
+            institution_name=org.name,
+        )
+        db.add(settings_row)
+
+    db.commit()
+    return {"coordinator_email": settings_row.coordinator_email}
+
+
+@teaching_router.put(
+    "/admin/banks/{bank_id}/organisations/{org_id}/status",
     response_model=QuestionBankOrgStatusOut,
     dependencies=[_DEP_MANAGE],
 )
 def update_bank_status(
     bank_id: str,
+    org_id: int,
     body: QuestionBankOrgStatusIn,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgStatusOut:
-    """Toggle live/closed status for a question bank."""
-    org_id = _get_user_org_id(user, db)
+    """Toggle live/closed status for a question bank for a specific org."""
+    # Verify caller is an educator
+    _get_user_org_id(user, db)
 
-    # Verify bank exists
+    # Verify target org exists and has teaching feature
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(404, "Organisation not found")
+
+    # Verify bank exists (check the caller's org for config)
+    caller_org_id = _get_user_org_id(user, db)
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.organisation_id == caller_org_id,
                 QuestionBankConfig.question_bank_id == bank_id,
             )
         )

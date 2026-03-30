@@ -1,4 +1,5 @@
-import { Alert, Container, Loader, Stack } from "@mantine/core";
+import { Container, Loader, Stack } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -39,9 +40,7 @@ export default function AssessmentHistoryPage() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }

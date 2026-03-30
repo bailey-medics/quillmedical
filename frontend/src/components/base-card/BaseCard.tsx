@@ -14,12 +14,13 @@
 import { Card, type CardProps } from "@mantine/core";
 import { forwardRef, type ReactNode, type Ref } from "react";
 
-export interface BaseCardProps extends Omit<
+export type BaseCardProps = Omit<
   CardProps,
   "children" | "shadow" | "padding" | "radius" | "withBorder"
-> {
-  children: ReactNode;
-}
+> &
+  Omit<React.HTMLAttributes<HTMLDivElement>, keyof CardProps> & {
+    children: ReactNode;
+  };
 
 const BaseCard = forwardRef(function BaseCard(
   { children, ...rest }: BaseCardProps,

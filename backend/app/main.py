@@ -2469,6 +2469,7 @@ def update_organization(
         "gp_practice",
         "private_clinic",
         "department",
+        "teaching_establishment",
     ]
 
     if body.name is not None:
@@ -2531,6 +2532,7 @@ def create_organization(
         "gp_practice",
         "private_clinic",
         "department",
+        "teaching_establishment",
     ]
     if body.type not in valid_types:
         raise HTTPException(

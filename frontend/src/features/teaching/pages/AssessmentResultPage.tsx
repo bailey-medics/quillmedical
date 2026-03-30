@@ -1,4 +1,5 @@
 import { Alert, Container, Loader, Stack } from "@mantine/core";
+import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -52,9 +53,7 @@ export default function AssessmentResultPage() {
   if (error || !assessment) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error ?? "Assessment not found"}
-        </Alert>
+        <StateMessage type="error" message={error ?? "Assessment not found"} />
       </Container>
     );
   }

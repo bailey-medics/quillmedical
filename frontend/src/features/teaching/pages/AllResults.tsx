@@ -1,5 +1,4 @@
 import {
-  Alert,
   Badge,
   Button,
   Container,
@@ -11,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { HeaderText, PlaceholderText } from "@/components/typography";
+import { StateMessage } from "@/components/message-cards";
 import SelectField from "@/components/form/SelectField";
 import type { EducatorResult, QuestionBank } from "@/features/teaching/types";
 
@@ -92,9 +92,7 @@ export default function AllResults() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
-          {error}
-        </Alert>
+        <StateMessage type="error" message={error} />
       </Container>
     );
   }

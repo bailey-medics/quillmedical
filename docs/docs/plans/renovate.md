@@ -122,7 +122,7 @@ Configure Renovate to notify via GitHub for:
 - Any vulnerability alert PRs raised outside the normal schedule
 - Any major version bump PRs
   Note: Renovate does not send emails directly. After generating these files, explain
-  what manual steps are needed to ensure info@quill-medical.com receives GitHub
+  what manual steps are needed to ensure <info@quill-medical.com> receives GitHub
   notifications for security and major-version-bump labelled PRs.
 
 ### Task 8: Docs
