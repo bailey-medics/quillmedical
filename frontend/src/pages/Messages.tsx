@@ -21,7 +21,7 @@ import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import { Container, Group, Stack, Text } from "@mantine/core";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -273,9 +273,9 @@ export default function Messages() {
         />
 
         {error && (
-          <QuillCard>
+          <BaseCard>
             <Text c="red">{error}</Text>
-          </QuillCard>
+          </BaseCard>
         )}
 
         {isLoading ? (
@@ -283,11 +283,11 @@ export default function Messages() {
         ) : !fhirAvailable ? (
           <StateMessage type="database-initialising" />
         ) : conversations.length === 0 ? (
-          <QuillCard>
+          <BaseCard>
             <Text c="dimmed" ta="center">
               No conversations yet
             </Text>
-          </QuillCard>
+          </BaseCard>
         ) : (
           <MessagesList
             threads={conversations.map((conv) => ({

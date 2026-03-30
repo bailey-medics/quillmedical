@@ -11,7 +11,7 @@ import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
@@ -59,7 +59,7 @@ export default function ActionCard({
   buttonVariant = "light",
 }: ActionCardProps) {
   return (
-    <QuillCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
+    <BaseCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
       <Stack gap="md" h="100%">
         {icon ? (
           <Group>
@@ -84,6 +84,6 @@ export default function ActionCard({
           variant={buttonVariant}
         />
       </Stack>
-    </QuillCard>
+    </BaseCard>
   );
 }

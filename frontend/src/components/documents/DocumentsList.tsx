@@ -2,7 +2,7 @@ import React from "react";
 import { Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
@@ -21,7 +21,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
   return (
     <Stack gap="md">
       {documents.map((doc) => (
-        <QuillCard
+        <BaseCard
           key={doc.url}
           padding="md"
           onClick={onSelect ? () => onSelect(doc) : undefined}
@@ -36,7 +36,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
               <DocumentThumbnail src={doc.thumbnailUrl} alt={doc.name} />
             ) : null}
           </Group>
-        </QuillCard>
+        </BaseCard>
       ))}
     </Stack>
   );

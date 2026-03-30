@@ -88,7 +88,7 @@ export default function AdminOrganisationsPage() {
     <Container size="lg" pt="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
-          <PageHeader title="Organisation management" />
+          <PageHeader title="Organisations" />
           <AddButton
             label="Add organisation"
             onClick={() => navigate("/admin/organisations/new")}

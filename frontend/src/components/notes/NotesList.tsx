@@ -7,7 +7,7 @@
  */
 
 import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 
 export type ClinicalNote = {
   id: string;
@@ -53,7 +53,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
     return (
       <Stack gap="lg">
         {[1, 2, 3].map((i) => (
-          <QuillCard key={i}>
+          <BaseCard key={i}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Skeleton height={24} width="60%" />
@@ -64,7 +64,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
               <Skeleton height={16} width="100%" />
               <Skeleton height={16} width="80%" />
             </Stack>
-          </QuillCard>
+          </BaseCard>
         ))}
       </Stack>
     );
@@ -73,7 +73,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
   return (
     <Stack gap="lg">
       {notes.map((note) => (
-        <QuillCard
+        <BaseCard
           key={note.id}
           style={onNoteClick ? { cursor: "pointer" } : undefined}
           onClick={onNoteClick ? () => onNoteClick(note) : undefined}
@@ -101,7 +101,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
               {note.content}
             </Text>
           </Stack>
-        </QuillCard>
+        </BaseCard>
       ))}
     </Stack>
   );

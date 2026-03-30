@@ -59,6 +59,11 @@ export default function AdminPage() {
   const [patientsLoading, setPatientsLoading] = useState(true);
   const [organisationsLoading, setOrganisationsLoading] = useState(true);
 
+  const clinicalServicesEnabled =
+    state.status === "authenticated"
+      ? state.user.clinical_services_enabled !== false
+      : true;
+
   // Extract system permissions from auth state
   const userPermissions: SystemPermission =
     state.status === "authenticated"
@@ -216,6 +221,7 @@ export default function AdminPage() {
     <Container size="lg" pt="xl">
       <Admin
         userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
+        clinicalServicesEnabled={clinicalServicesEnabled}
         existingUsers={users}
         existingPatients={patients}
         usersLoading={usersLoading}

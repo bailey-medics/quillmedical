@@ -35,6 +35,7 @@ import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
+import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
 /**
@@ -98,6 +99,11 @@ const FEATURE_LABELS: Record<string, string> = {
 export default function OrganisationAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const clinicalServicesEnabled =
+    state.status === "authenticated"
+      ? state.user.clinical_services_enabled !== false
+      : true;
   const [org, setOrg] = useState<OrganizationDetails | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,14 +308,16 @@ export default function OrganisationAdminPage() {
                 </Text>
               </Stack>
 
-              <Stack gap={4}>
-                <Text size="sm" c="dimmed">
-                  Patients
-                </Text>
-                <Text size="xl" fw={700}>
-                  {org.patient_count}
-                </Text>
-              </Stack>
+              {clinicalServicesEnabled && (
+                <Stack gap={4}>
+                  <Text size="sm" c="dimmed">
+                    Patients
+                  </Text>
+                  <Text size="xl" fw={700}>
+                    {org.patient_count}
+                  </Text>
+                </Stack>
+              )}
             </Group>
           </Stack>
         </Paper>
@@ -338,31 +346,33 @@ export default function OrganisationAdminPage() {
         </Paper>
 
         {/* Patient Members */}
-        <Paper shadow="sm" p="lg" radius="md" withBorder>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Title order={2} size="lg">
-                Patients
-              </Title>
-              <AddButton
-                label="Add patient"
-                onClick={() =>
-                  navigate(`/admin/organisations/${id}/add-patient`)
-                }
-              />
-            </Group>
+        {clinicalServicesEnabled && (
+          <Paper shadow="sm" p="lg" radius="md" withBorder>
+            <Stack gap="md">
+              <Group justify="space-between" align="center">
+                <Title order={2} size="lg">
+                  Patients
+                </Title>
+                <AddButton
+                  label="Add patient"
+                  onClick={() =>
+                    navigate(`/admin/organisations/${id}/add-patient`)
+                  }
+                />
+              </Group>
 
-            <DataTable<PatientMember>
-              data={org.patient_members}
-              columns={patientColumns}
-              onRowClick={(patient) =>
-                navigate(`/admin/patients/${patient.patient_id}`)
-              }
-              getRowKey={(patient) => patient.patient_id}
-              emptyMessage="No patients assigned"
-            />
-          </Stack>
-        </Paper>
+              <DataTable<PatientMember>
+                data={org.patient_members}
+                columns={patientColumns}
+                onRowClick={(patient) =>
+                  navigate(`/admin/patients/${patient.patient_id}`)
+                }
+                getRowKey={(patient) => patient.patient_id}
+                emptyMessage="No patients assigned"
+              />
+            </Stack>
+          </Paper>
+        )}
 
         {/* Enabled Features */}
         <Paper shadow="sm" p="lg" radius="md" withBorder>

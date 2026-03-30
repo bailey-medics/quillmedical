@@ -14,7 +14,12 @@
 import { Button, useMantineTheme } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconArrowLeft, IconDownload, IconRefresh } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconDownload,
+  IconRefresh,
+  IconSettings,
+} from "@tabler/icons-react";
 import type { ReactElement } from "react";
 import Icon from "@/components/icons";
 
@@ -23,6 +28,7 @@ const iconMap = {
   arrowLeft: <IconArrowLeft />,
   download: <IconDownload />,
   refresh: <IconRefresh />,
+  settings: <IconSettings />,
 } as const satisfies Record<string, ReactElement>;
 
 type IconName = keyof typeof iconMap;

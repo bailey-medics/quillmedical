@@ -62,8 +62,8 @@ export default function AssessmentResultPage() {
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="yellow" title="In progress">
-          This assessment has not been completed yet.
+        <Alert color="yellow" title="Incomplete">
+          This assessment was not completed. Please try again.
         </Alert>
       </Container>
     );

@@ -10,7 +10,7 @@ import { Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconPencil, IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "./Icon";
 import appIcons from "./appIcons";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 
 /**
  * Icon component provides consistent sizing for Tabler icons.
@@ -50,7 +50,7 @@ export const Default: Story = {
   render: () => (
     <SimpleGrid cols={5} spacing="lg" style={{ maxWidth: 700 }}>
       {appIcons.map(({ name, icon }) => (
-        <QuillCard
+        <BaseCard
           key={name}
           shadow="xs"
           padding="md"
@@ -71,7 +71,7 @@ export const Default: Story = {
               {name.replace(/([A-Z])/g, " $1").trim()}
             </Text>
           </Stack>
-        </QuillCard>
+        </BaseCard>
       ))}
     </SimpleGrid>
   ),
@@ -86,7 +86,7 @@ export const AllSizes: Story = {
     size: "md",
   },
   render: () => (
-    <QuillCard>
+    <BaseCard>
       <Stack gap="xl">
         <div>
           <Text size="sm" fw={700} mb="xs">
@@ -152,7 +152,7 @@ export const AllSizes: Story = {
           </SimpleGrid>
         </div>
       </Stack>
-    </QuillCard>
+    </BaseCard>
   ),
 };
 

@@ -6,7 +6,7 @@
  */
 
 import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 
 export type LetterSummary = {
   /** Unique letter identifier */
@@ -61,7 +61,7 @@ export default function LetterList({
     return (
       <Stack gap="lg">
         {[1, 2, 3].map((i) => (
-          <QuillCard key={i}>
+          <BaseCard key={i}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Skeleton height={24} width="60%" />
@@ -71,7 +71,7 @@ export default function LetterList({
               <Skeleton height={16} width="100%" />
               <Skeleton height={16} width="80%" />
             </Stack>
-          </QuillCard>
+          </BaseCard>
         ))}
       </Stack>
     );
@@ -80,7 +80,7 @@ export default function LetterList({
   return (
     <Stack gap="lg">
       {letters.map((letter) => (
-        <QuillCard
+        <BaseCard
           key={letter.id}
           style={{ cursor: "pointer" }}
           onClick={() => onLetterClick(letter)}
@@ -106,7 +106,7 @@ export default function LetterList({
             </Group>
             <Text size="md">{letter.summary}</Text>
           </Stack>
-        </QuillCard>
+        </BaseCard>
       ))}
     </Stack>
   );

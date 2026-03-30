@@ -15,12 +15,18 @@ import {
   Loader,
   Paper,
   Stack,
-  Switch,
 } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
-import { BodyText, BodyTextBold } from "@/components/typography";
+import BaseCard from "@/components/base-card/BaseCard";
+import SolidSwitch from "@/components/form/SolidSwitch";
+import {
+  BodyText,
+  BodyTextBlack,
+  BodyTextBold,
+  HeaderText,
+} from "@/components/typography";
 import { api } from "@/lib/api";
 import type { AdminBankDetail } from "@/features/teaching/types";
 
@@ -102,33 +108,37 @@ export default function AdminBankDetailPage() {
         </Group>
 
         {/* Bank info */}
-        <Paper p="md" withBorder>
+        <BaseCard>
           <Stack gap="xs">
             <Group>
               <BodyTextBold>Type:</BodyTextBold>
-              <BodyText>{bank.type}</BodyText>
+              <BodyTextBlack>{bank.type}</BodyTextBlack>
             </Group>
             <Group>
               <BodyTextBold>Version:</BodyTextBold>
-              <BodyText>{bank.version}</BodyText>
+              <BodyTextBlack>{bank.version}</BodyTextBlack>
             </Group>
             <Group>
               <BodyTextBold>Items:</BodyTextBold>
-              <BodyText>{bank.item_count}</BodyText>
+              <BodyTextBlack>{bank.item_count}</BodyTextBlack>
             </Group>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Exam status */}
-        <Paper p="md" withBorder>
+        <BaseCard>
           <Stack gap="sm">
             <Group justify="space-between">
-              <BodyTextBold>Exam status</BodyTextBold>
-              <Badge color={bank.is_live ? "green" : "gray"}>
+              <HeaderText>Exam status</HeaderText>
+              <Badge
+                color={bank.is_live ? "teal" : "pink"}
+                variant="filled"
+                size="lg"
+              >
                 {bank.is_live ? "Live" : "Closed"}
               </Badge>
             </Group>
-            <Switch
+            <SolidSwitch
               label="Open for assessments"
               checked={bank.is_live}
               onChange={(e) => handleToggleLive(e.currentTarget.checked)}
@@ -148,13 +158,13 @@ export default function AdminBankDetailPage() {
               </Alert>
             )}
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Email templates preview */}
         {(bank.email_student_on_pass || bank.email_coordinator_on_pass) && (
-          <Paper p="md" withBorder>
+          <BaseCard>
             <Stack gap="sm">
-              <BodyTextBold>Email templates</BodyTextBold>
+              <HeaderText>Email templates</HeaderText>
 
               {bank.email_student_on_pass &&
                 (bank.student_email_template ? (
@@ -194,7 +204,7 @@ export default function AdminBankDetailPage() {
                   <BodyText>No coordinator email template configured.</BodyText>
                 ))}
             </Stack>
-          </Paper>
+          </BaseCard>
         )}
       </Stack>
     </Container>

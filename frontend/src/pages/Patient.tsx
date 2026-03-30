@@ -9,7 +9,7 @@
 import ActionCard from "@/components/action-card";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Container, SimpleGrid, Text } from "@mantine/core";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import {
   IconCalendarWeek,
   IconMessage,
@@ -33,7 +33,7 @@ export default function Patient() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <QuillCard>
+        <BaseCard>
           <Text c="red">{error}</Text>
           <Text
             component="button"
@@ -47,7 +47,7 @@ export default function Patient() {
           >
             ← Back to patient list
           </Text>
-        </QuillCard>
+        </BaseCard>
       </Container>
     );
   }

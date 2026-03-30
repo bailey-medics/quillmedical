@@ -23,7 +23,7 @@
 import { Divider, Group, Skeleton, Stack } from "@mantine/core";
 import { BodyTextBlack, BodyTextBold } from "@/components/typography";
 import type { Column } from "./DataTable";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import classes from "./DataCard.module.css";
 
 export interface DataCardProps<T> {
@@ -51,7 +51,7 @@ export default function DataCard<T>({
 }: DataCardProps<T>) {
   if (loading) {
     return (
-      <QuillCard padding="md">
+      <BaseCard>
         <Stack gap="sm">
           <Skeleton height={30} mt={1} mb={1} />
           <Divider />
@@ -59,16 +59,12 @@ export default function DataCard<T>({
           <Divider />
           <Skeleton height={30} mt={1} mb={1} />
         </Stack>
-      </QuillCard>
+      </BaseCard>
     );
   }
 
   return (
-    <QuillCard
-      padding="md"
-      onClick={() => onClick(row)}
-      style={{ cursor: "pointer" }}
-    >
+    <BaseCard onClick={() => onClick(row)} style={{ cursor: "pointer" }}>
       <Stack gap="sm">
         {columns.map((column, index) => {
           const content = column.render(row);
@@ -89,6 +85,6 @@ export default function DataCard<T>({
           );
         })}
       </Stack>
-    </QuillCard>
+    </BaseCard>
   );
 }

@@ -8,7 +8,7 @@
 import { Group, Stack } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
   BodyTextBlack,
@@ -25,7 +25,7 @@ interface ScoreBreakdownProps {
 
 export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
   return (
-    <QuillCard>
+    <BaseCard>
       <Stack gap="sm">
         <HeaderText>Score breakdown</HeaderText>
         {criteria.map((c) => (
@@ -46,6 +46,6 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
           </Group>
         ))}
       </Stack>{" "}
-    </QuillCard>
+    </BaseCard>
   );
 }

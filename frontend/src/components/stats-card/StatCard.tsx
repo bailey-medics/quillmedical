@@ -7,7 +7,7 @@
 
 import { Skeleton, Stack, Text, Box } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 
 export interface StatCardProps {
   /** Title/label for the statistic */
@@ -29,7 +29,7 @@ export interface StatCardProps {
  */
 export function StatCard({ title, value, loading = false }: StatCardProps) {
   return (
-    <QuillCard>
+    <BaseCard>
       <Stack gap="xs">
         <BodyText>{title}</BodyText>
         <Box style={{ height: 38 }}>
@@ -42,7 +42,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
           )}
         </Box>
       </Stack>
-    </QuillCard>
+    </BaseCard>
   );
 }
 

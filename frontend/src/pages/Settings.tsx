@@ -1,17 +1,13 @@
-import {
-  Button,
-  Container,
-  Group,
-  SimpleGrid,
-  Stack,
-  Switch,
-  Text,
-} from "@mantine/core";
+import { Container, Group, SimpleGrid, Stack } from "@mantine/core";
 import { IconBell, IconUser } from "@tabler/icons-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
+import IconTextButton from "@/components/button/IconTextButton";
+import SolidSwitch from "@/components/form/SolidSwitch";
+import { BodyText, HeaderText } from "@/components/typography";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -38,11 +34,7 @@ export default function Settings() {
    * TOTP-based two-factor authentication.
    */
   const [useTotp, setUseTotp] = useState(false);
-  /**
-   * Tracks whether the settings are currently being saved.
-   * Used to show a loading state on the Save button.
-   */
-  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
   /**
    * Tracks the state of push notification enabling
    */
@@ -127,46 +119,32 @@ export default function Settings() {
           />
         </SimpleGrid>
 
-        <QuillCard>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div>
-              <Text fw={700}>Two-factor authentication (TOTP)</Text>
-              <Text size="lg" color="dimmed">
-                Use an authenticator app to add a second factor to your account.
-              </Text>
-            </div>
-            <Switch
-              checked={useTotp}
-              onChange={(e) => setUseTotp(e.currentTarget.checked)}
-            />
-          </div>
-          <div style={{ height: 12 }} />
-          <Group>
-            <Button
-              disabled={!useTotp}
-              variant="outline"
-              component="a"
-              href="/settings/totp"
-            >
-              Configure TOTP
-            </Button>
-            <Button
-              loading={saving}
-              onClick={() => {
-                setSaving(true);
-                setTimeout(() => setSaving(false), 600);
-              }}
-            >
-              Save
-            </Button>
-          </Group>
-        </QuillCard>
+        <BaseCard>
+          <Stack gap="md">
+            <Group justify="space-between" wrap="nowrap">
+              <Stack gap={4}>
+                <HeaderText>Two-factor authentication (TOTP)</HeaderText>
+                <BodyText>
+                  Use an authenticator app to add a second factor to your
+                  account.
+                </BodyText>
+              </Stack>
+              <SolidSwitch
+                checked={useTotp}
+                onChange={(e) => setUseTotp(e.currentTarget.checked)}
+              />
+            </Group>
+            <Group justify="flex-end">
+              <IconTextButton
+                icon="settings"
+                label="Configure TOTP"
+                variant="outline"
+                disabled={!useTotp}
+                onClick={() => navigate("/settings/totp")}
+              />
+            </Group>
+          </Stack>
+        </BaseCard>
       </Stack>
     </Container>
   );

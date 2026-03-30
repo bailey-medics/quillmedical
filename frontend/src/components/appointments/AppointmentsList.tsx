@@ -8,7 +8,7 @@
 
 import { Group, Skeleton, Stack } from "@mantine/core";
 import AppointmentStatus from "@components/badge/AppointmentStatus";
-import QuillCard from "@/components/quill-card/QuillCard";
+import BaseCard from "@/components/base-card/BaseCard";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
 import HeaderText from "@components/typography/HeaderText";
@@ -48,7 +48,7 @@ function AppointmentCard({
   onClick?: (appointment: Appointment) => void;
 }) {
   return (
-    <QuillCard
+    <BaseCard
       style={{
         ...(onClick && { cursor: "pointer" }),
       }}
@@ -68,7 +68,7 @@ function AppointmentCard({
         </BodyText>
         {appointment.notes && <BodyText>{appointment.notes}</BodyText>}
       </Stack>
-    </QuillCard>
+    </BaseCard>
   );
 }
 
@@ -81,7 +81,7 @@ export default function AppointmentsList({
     return (
       <Stack gap="lg">
         {[1, 2, 3].map((i) => (
-          <QuillCard key={i}>
+          <BaseCard key={i}>
             <Stack gap="sm">
               <Group justify="space-between">
                 <Skeleton height={24} width="60%" />
@@ -91,7 +91,7 @@ export default function AppointmentsList({
               <Skeleton height={16} width="40%" />
               <Skeleton height={16} width="100%" />
             </Stack>
-          </QuillCard>
+          </BaseCard>
         ))}
       </Stack>
     );
