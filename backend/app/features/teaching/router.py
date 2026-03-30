@@ -750,7 +750,7 @@ def _maybe_enqueue_certificate_emails(
     db: Session,
     criteria_results: list[dict[str, Any]],
 ) -> None:
-    """Enqueue certificate emails if the bank is live and email_on_pass is set."""
+    """Enqueue certificate emails if the bank is live and email sending is enabled."""
     from app.config import settings as app_settings
     from app.email_send import Attachment as EmailAttachment
     from app.email_send import send_email
@@ -764,7 +764,10 @@ def _maybe_enqueue_certificate_emails(
     )
 
     config = config_row.config_yaml
-    if not config.get("results", {}).get("email_on_pass"):
+    results = config.get("results", {})
+    email_student = results.get("email_student_on_pass", False)
+    email_coordinator = results.get("email_coordinator_on_pass", False)
+    if not email_student and not email_coordinator:
         return
 
     # Only send for live exams
@@ -838,37 +841,43 @@ def _maybe_enqueue_certificate_emails(
         )
 
     # Student email
-    student_template = load_email_template(bank_path, bank_id, "student-email")
-    if student_template and user.email:
-        ctx = {**context, "recipient_name": user.username}
-        rendered = render_email(student_template, ctx)
-        att = attachments if student_template["attach_certificate"] else []
-        background_tasks.add_task(
-            send_email,
-            to=user.email,
-            subject=rendered["subject"],
-            html_body=rendered["html_body"],
-            attachments=att,
+    if email_student:
+        student_template = load_email_template(
+            bank_path, bank_id, "student-email"
         )
+        if student_template and user.email:
+            ctx = {**context, "recipient_name": user.username}
+            rendered = render_email(student_template, ctx)
+            att = attachments if student_template["attach_certificate"] else []
+            background_tasks.add_task(
+                send_email,
+                to=user.email,
+                subject=rendered["subject"],
+                html_body=rendered["html_body"],
+                attachments=att,
+            )
 
     # Coordinator email
-    coord_template = load_email_template(
-        bank_path, bank_id, "coordinator-email"
-    )
-    if coord_template and org_settings and org_settings.coordinator_email:
-        ctx = {
-            **context,
-            "recipient_name": (org_settings.coordinator_email.split("@")[0]),
-        }
-        rendered = render_email(coord_template, ctx)
-        att = attachments if coord_template["attach_certificate"] else []
-        background_tasks.add_task(
-            send_email,
-            to=org_settings.coordinator_email,
-            subject=rendered["subject"],
-            html_body=rendered["html_body"],
-            attachments=att,
+    if email_coordinator:
+        coord_template = load_email_template(
+            bank_path, bank_id, "coordinator-email"
         )
+        if coord_template and org_settings and org_settings.coordinator_email:
+            ctx = {
+                **context,
+                "recipient_name": (
+                    org_settings.coordinator_email.split("@")[0]
+                ),
+            }
+            rendered = render_email(coord_template, ctx)
+            att = attachments if coord_template["attach_certificate"] else []
+            background_tasks.add_task(
+                send_email,
+                to=org_settings.coordinator_email,
+                subject=rendered["subject"],
+                html_body=rendered["html_body"],
+                attachments=att,
+            )
 
 
 @teaching_router.post(
@@ -1568,13 +1577,17 @@ def get_admin_bank_detail(
     ).scalar_one_or_none()
 
     config = config_row.config_yaml
-    email_on_pass: bool = config.get("results", {}).get("email_on_pass", False)
+    results = config.get("results", {})
+    email_student_on_pass: bool = results.get("email_student_on_pass", False)
+    email_coordinator_on_pass: bool = results.get(
+        "email_coordinator_on_pass", False
+    )
 
-    # Load email templates if email_on_pass is enabled
+    # Load email templates if either email flag is enabled
     coordinator_template: EmailTemplateOut | None = None
     student_template: EmailTemplateOut | None = None
 
-    if email_on_pass:
+    if email_student_on_pass or email_coordinator_on_pass:
         bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
         if bank_path_str:
             bank_path = Path(bank_path_str)
@@ -1604,7 +1617,8 @@ def get_admin_bank_detail(
         type=config_row.type,
         item_count=len(item_count),
         is_live=status_row.is_live if status_row else False,
-        email_on_pass=email_on_pass,
+        email_student_on_pass=email_student_on_pass,
+        email_coordinator_on_pass=email_coordinator_on_pass,
         coordinator_email_template=coordinator_template,
         student_email_template=student_template,
     )
@@ -1638,11 +1652,13 @@ def update_bank_status(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # If going live and email_on_pass is enabled, check coordinator email
+    # If going live and coordinator email is enabled, check it's set
     if body.is_live:
         config = config_row.config_yaml
-        email_on_pass = config.get("results", {}).get("email_on_pass", False)
-        if email_on_pass:
+        email_coordinator = config.get("results", {}).get(
+            "email_coordinator_on_pass", False
+        )
+        if email_coordinator:
             org_settings = db.execute(
                 select(TeachingOrgSettings).where(
                     TeachingOrgSettings.organisation_id == org_id

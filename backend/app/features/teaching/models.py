@@ -245,7 +245,7 @@ class QuestionBankOrgStatus(Base):
     """Per-bank-per-org live/closed status.
 
     Banks default to closed until an admin explicitly sets them live.
-    When ``email_on_pass`` is enabled in the bank config, the
+    When ``email_coordinator_on_pass`` is enabled in the bank config, the
     coordinator email must be set before the bank can go live.
     """
 

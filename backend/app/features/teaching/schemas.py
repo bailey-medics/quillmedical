@@ -350,6 +350,7 @@ class AdminBankDetailOut(BaseModel):
     type: str | None = None
     item_count: int = 0
     is_live: bool = False
-    email_on_pass: bool = False
+    email_student_on_pass: bool = False
+    email_coordinator_on_pass: bool = False
     coordinator_email_template: EmailTemplateOut | None = None
     student_email_template: EmailTemplateOut | None = None

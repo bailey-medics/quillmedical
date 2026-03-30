@@ -2,7 +2,7 @@
 
 ## Summary
 
-When a student passes an assessment and the bank's `config.yaml` enables `email_on_pass`, automatically email the certificate PDF to:
+When a student passes an assessment and the bank's `config.yaml` enables `email_student_on_pass` and/or `email_coordinator_on_pass`, automatically email the certificate PDF to:
 
 1. The **student** (`User.email`)
 2. The organisation's **coordinator** (`TeachingOrgSettings.coordinator_email`)
@@ -86,28 +86,29 @@ Tracks per-bank-per-org live/closed status separately from `config.yaml`.
 
 ### 2.3 Config.yaml schema addition
 
-Add `email_on_pass` under `results:` in question bank config:
+Add `email_student_on_pass` and `email_coordinator_on_pass` under `results:` in question bank config:
 
 ```yaml
 results:
   certificate_download: true
-  email_on_pass: true # triggers emailing on pass
+  email_student_on_pass: true
+  email_coordinator_on_pass: true
 ```
 
-Sync validation: if `email_on_pass` is true, the bank must have `coordinator-email.yaml` and/or `student-email.yaml` present.
+Sync validation: if `email_coordinator_on_pass` is true, the bank must have `coordinator-email.yaml` present. If `email_student_on_pass` is true, `student-email.yaml` must be present.
 
 ### 2.4 New endpoints
 
-| Method | Path                                              | Purpose                                                                            | Gate                             |
-| ------ | ------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------- |
-| `GET`  | `/teaching/settings`                              | Return org settings (currently only PUT exists)                                    | `manage_teaching_content`        |
-| `GET`  | `/teaching/admin/banks/{bank_id}`                 | Bank info + `is_live` + `email_on_pass` + template previews                        | `manage_teaching_content`        |
-| `PUT`  | `/teaching/admin/banks/{bank_id}/status`          | Toggle `is_live`. Validates: if `email_on_pass=true`, coordinator email must exist | `manage_teaching_content` + CSRF |
-| `GET`  | `/teaching/admin/banks/{bank_id}/email-templates` | Read-only preview of YAML template content                                         | `manage_teaching_content`        |
+| Method | Path                                              | Purpose                                                                     | Gate                             |
+| ------ | ------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------- |
+| `GET`  | `/teaching/settings`                              | Return org settings (currently only PUT exists)                             | `manage_teaching_content`        |
+| `GET`  | `/teaching/admin/banks/{bank_id}`                 | Bank info + `is_live` + email flags + template previews                     | `manage_teaching_content`        |
+| `PUT`  | `/teaching/admin/banks/{bank_id}/status`          | Toggle `is_live`. Validates: if coordinator email enabled, email must exist | `manage_teaching_content` + CSRF |
+| `GET`  | `/teaching/admin/banks/{bank_id}/email-templates` | Read-only preview of YAML template content                                  | `manage_teaching_content`        |
 
 ### 2.5 New schemas
 
-- `AdminBankDetailOut` — bank info, is_live, email_on_pass, email template previews
+- `AdminBankDetailOut` — bank info, is_live, email_student_on_pass, email_coordinator_on_pass, email template previews
 - `QuestionBankOrgStatusIn` — `{ is_live: bool }`
 - `EmailTemplateOut` — subject, body, attach_certificate
 
@@ -154,7 +155,7 @@ New file: `backend/app/features/teaching/email_templates.py`
 
 In `POST /assessments/{id}/complete` (after `db.commit()`):
 
-1. Check `is_passed` and `results.email_on_pass` in config
+1. Check `is_passed` and `results.email_student_on_pass` / `results.email_coordinator_on_pass` in config
 2. Check `QuestionBankOrgStatus.is_live` is True (only send for live exams)
 3. Load email templates from bank directory
 4. Generate certificate PDF (reuse `generate_certificate_pdf`)
@@ -220,8 +221,8 @@ Sections:
 1. **PageHeader** with bank title and back link to `/admin/teaching`
 2. **Bank info** — read-only display of type, version, item count
 3. **Exam status** — `Switch` for live/closed, calls `PUT .../status`
-   - If `email_on_pass` is true and no coordinator email set: show warning with link to org settings page
-4. **Email templates** — if `email_on_pass` is true, read-only preview of coordinator and student templates (subject + body)
+   - If `email_coordinator_on_pass` is true and no coordinator email set: show warning with link to org settings page
+4. **Email templates** — if either email flag is true, read-only preview of coordinator and student templates (subject + body)
 
 ### 5.2 Wire DataTable row click
 
@@ -278,24 +279,24 @@ Add to both test banks (quill-question-bank repo):
 
 - `coordinator-email.yaml`
 - `student-email.yaml`
-- `email_on_pass: true` under `results:` in `config.yaml`
+- `email_student_on_pass: true` and `email_coordinator_on_pass: true` under `results:` in `config.yaml`
 
 ---
 
 ## Decisions
 
-| Decision                                      | Rationale                                                                           |
-| --------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **Resend** over SendGrid                      | Modern DX, simpler API, free 100/day, HTTP-only                                     |
-| **FastAPI BackgroundTasks**                   | Simplest async, no extra Docker services; upgrade to Celery later if needed         |
-| **Student email → `User.email`**              | Existing field, no new data needed                                                  |
-| **Centre email → `coordinator_email`**        | Existing field on `TeachingOrgSettings`                                             |
-| **Default closed**                            | Banks are closed until explicitly toggled live by admin                             |
-| **Closed semantics**                          | Hides start ActionCard, shows past attempts, never shows "Try again"                |
-| **Email templates are read-only in admin UI** | Authored by bank creators in YAML, not editable by admins                           |
-| **`email_on_pass` in config.yaml**            | Per-bank setting, controlled by bank author                                         |
-| **Two admin pages**                           | Bank detail (`/admin/teaching/:bankId`) + org settings (`/admin/teaching/settings`) |
-| **`string.Template`** for email templates     | Stdlib, zero deps, safe `$variable` syntax, no injection risk unlike `str.format`   |
+| Decision                                                  | Rationale                                                                           |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Resend** over SendGrid                                  | Modern DX, simpler API, free 100/day, HTTP-only                                     |
+| **FastAPI BackgroundTasks**                               | Simplest async, no extra Docker services; upgrade to Celery later if needed         |
+| **Student email → `User.email`**                          | Existing field, no new data needed                                                  |
+| **Centre email → `coordinator_email`**                    | Existing field on `TeachingOrgSettings`                                             |
+| **Default closed**                                        | Banks are closed until explicitly toggled live by admin                             |
+| **Closed semantics**                                      | Hides start ActionCard, shows past attempts, never shows "Try again"                |
+| **Email templates are read-only in admin UI**             | Authored by bank creators in YAML, not editable by admins                           |
+| **`email_student_on_pass` / `email_coordinator_on_pass`** | Per-bank settings, controlled by bank author — can be toggled independently         |
+| **Two admin pages**                                       | Bank detail (`/admin/teaching/:bankId`) + org settings (`/admin/teaching/settings`) |
+| **`string.Template`** for email templates                 | Stdlib, zero deps, safe `$variable` syntax, no injection risk unlike `str.format`   |
 
 ---
 

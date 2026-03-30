@@ -29,7 +29,8 @@ const mockBank = {
   type: "uniform",
   item_count: 10,
   is_live: false,
-  email_on_pass: true,
+  email_student_on_pass: true,
+  email_coordinator_on_pass: true,
   coordinator_email_template: {
     subject: "Certificate: $exam_title",
     body: "Dear $recipient_name, $student_name has passed.",
@@ -87,7 +88,7 @@ describe("AdminBankDetailPage", () => {
     });
   });
 
-  it("shows email template previews when email_on_pass", async () => {
+  it("shows email template previews when email flags enabled", async () => {
     (api.get as Mock).mockResolvedValue(mockBank);
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {
@@ -97,10 +98,11 @@ describe("AdminBankDetailPage", () => {
     expect(screen.getByText("Coordinator email")).toBeTruthy();
   });
 
-  it("hides email templates when email_on_pass is false", async () => {
+  it("hides email templates when email flags are false", async () => {
     (api.get as Mock).mockResolvedValue({
       ...mockBank,
-      email_on_pass: false,
+      email_student_on_pass: false,
+      email_coordinator_on_pass: false,
     });
     renderWithRouter(<AdminBankDetailPage />);
     await waitFor(() => {

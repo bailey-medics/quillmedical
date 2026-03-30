@@ -38,7 +38,11 @@ export interface AssessmentConfigYaml {
 
 export interface QuestionBankConfigYaml {
   assessment?: AssessmentConfigYaml;
-  results?: { certificate_download?: boolean; email_on_pass?: boolean };
+  results?: {
+    certificate_download?: boolean;
+    email_student_on_pass?: boolean;
+    email_coordinator_on_pass?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -215,7 +219,8 @@ export interface AdminBankDetail {
   type: string;
   item_count: number;
   is_live: boolean;
-  email_on_pass: boolean;
+  email_student_on_pass: boolean;
+  email_coordinator_on_pass: boolean;
   coordinator_email_template: EmailTemplate | null;
   student_email_template: EmailTemplate | null;
 }

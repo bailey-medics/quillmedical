@@ -139,10 +139,10 @@ export default function AdminBankDetailPage() {
                 {toggleError}
               </Alert>
             )}
-            {bank.email_on_pass && !bank.is_live && (
-              <Alert color="yellow" title="Email on pass enabled">
-                This bank sends certificates by email. Ensure a coordinator
-                email is set in{" "}
+            {bank.email_coordinator_on_pass && !bank.is_live && (
+              <Alert color="yellow" title="Coordinator email on pass enabled">
+                This bank sends certificates to the coordinator by email. Ensure
+                a coordinator email is set in{" "}
                 <a href="/admin/teaching/settings">teaching settings</a> before
                 going live.
               </Alert>
@@ -151,42 +151,48 @@ export default function AdminBankDetailPage() {
         </Paper>
 
         {/* Email templates preview */}
-        {bank.email_on_pass && (
+        {(bank.email_student_on_pass || bank.email_coordinator_on_pass) && (
           <Paper p="md" withBorder>
             <Stack gap="sm">
               <BodyTextBold>Email templates</BodyTextBold>
 
-              {bank.student_email_template ? (
-                <Paper p="sm" bg="gray.0" withBorder>
-                  <Stack gap="xs">
-                    <BodyTextBold>Student email</BodyTextBold>
-                    <Group>
-                      <BodyTextBold>Subject:</BodyTextBold>
-                      <BodyText>{bank.student_email_template.subject}</BodyText>
-                    </Group>
-                    <BodyText>{bank.student_email_template.body}</BodyText>
-                  </Stack>
-                </Paper>
-              ) : (
-                <BodyText>No student email template configured.</BodyText>
-              )}
+              {bank.email_student_on_pass &&
+                (bank.student_email_template ? (
+                  <Paper p="sm" bg="gray.0" withBorder>
+                    <Stack gap="xs">
+                      <BodyTextBold>Student email</BodyTextBold>
+                      <Group>
+                        <BodyTextBold>Subject:</BodyTextBold>
+                        <BodyText>
+                          {bank.student_email_template.subject}
+                        </BodyText>
+                      </Group>
+                      <BodyText>{bank.student_email_template.body}</BodyText>
+                    </Stack>
+                  </Paper>
+                ) : (
+                  <BodyText>No student email template configured.</BodyText>
+                ))}
 
-              {bank.coordinator_email_template ? (
-                <Paper p="sm" bg="gray.0" withBorder>
-                  <Stack gap="xs">
-                    <BodyTextBold>Coordinator email</BodyTextBold>
-                    <Group>
-                      <BodyTextBold>Subject:</BodyTextBold>
+              {bank.email_coordinator_on_pass &&
+                (bank.coordinator_email_template ? (
+                  <Paper p="sm" bg="gray.0" withBorder>
+                    <Stack gap="xs">
+                      <BodyTextBold>Coordinator email</BodyTextBold>
+                      <Group>
+                        <BodyTextBold>Subject:</BodyTextBold>
+                        <BodyText>
+                          {bank.coordinator_email_template.subject}
+                        </BodyText>
+                      </Group>
                       <BodyText>
-                        {bank.coordinator_email_template.subject}
+                        {bank.coordinator_email_template.body}
                       </BodyText>
-                    </Group>
-                    <BodyText>{bank.coordinator_email_template.body}</BodyText>
-                  </Stack>
-                </Paper>
-              ) : (
-                <BodyText>No coordinator email template configured.</BodyText>
-              )}
+                    </Stack>
+                  </Paper>
+                ) : (
+                  <BodyText>No coordinator email template configured.</BodyText>
+                ))}
             </Stack>
           </Paper>
         )}
