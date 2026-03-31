@@ -88,6 +88,29 @@ REQUIRED_ASSESSMENT_FIELDS = {
     "min_pool_size",
 }
 
+VALID_ORIENTATIONS = {"portrait", "landscape"}
+
+CERTIFICATE_TEXT_FIELDS = {
+    "title",
+    "subtitle",
+    "candidate_name",
+    "pass_summary",
+    "date",
+}
+
+VALID_FONTS = {
+    "Helvetica",
+    "Helvetica-Bold",
+    "Times-Roman",
+    "Times-Bold",
+    "Courier",
+    "Courier-Bold",
+}
+
+HEX_COLOUR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+EMAIL_REQUIRED_FIELDS = {"subject", "body"}
+
 
 def _validate_config(
     config: dict[str, Any], config_path: str, result: ValidationResult
@@ -135,6 +158,145 @@ def _validate_config(
             )
 
     return result.is_valid
+
+
+def _validate_certificate_section(
+    config: dict[str, Any],
+    bank_dir: Path,
+    config_path: str,
+    result: ValidationResult,
+    *,
+    image_inventory: dict[str, set[str]] | None = None,
+) -> None:
+    """Validate the certificate section and required files."""
+    results = config.get("results", {})
+    cert_enabled = results.get("certificate_download", False)
+
+    if not cert_enabled:
+        return
+
+    # certificate-blank.png must exist
+    if image_inventory is not None:
+        root_files = image_inventory.get(".", set())
+        if "certificate-blank.png" not in root_files:
+            result.add_error(
+                config_path,
+                "certificate_download is enabled but "
+                "certificate-blank.png is missing",
+            )
+    else:
+        bg_path = bank_dir / "certificate-blank.png"
+        if not bg_path.is_file():
+            result.add_error(
+                config_path,
+                "certificate_download is enabled but "
+                "certificate-blank.png is missing",
+            )
+
+    # certificate section must exist
+    cert = config.get("certificate")
+    if not isinstance(cert, dict):
+        result.add_error(
+            config_path,
+            "certificate_download is enabled but "
+            "'certificate' section is missing",
+        )
+        return
+
+    # orientation
+    orientation = cert.get("orientation", "portrait")
+    if orientation not in VALID_ORIENTATIONS:
+        result.add_error(
+            config_path,
+            f"certificate orientation '{orientation}' "
+            f"must be one of {VALID_ORIENTATIONS}",
+        )
+
+    # text fields
+    for field_name in CERTIFICATE_TEXT_FIELDS:
+        field_data = cert.get(field_name)
+        if not isinstance(field_data, dict):
+            result.add_error(
+                config_path,
+                f"certificate section missing '{field_name}' field",
+            )
+            continue
+
+        # font
+        font = field_data.get("font", "Helvetica")
+        if font not in VALID_FONTS:
+            result.add_error(
+                config_path,
+                f"certificate.{field_name}.font '{font}' "
+                f"not in allowed fonts {VALID_FONTS}",
+            )
+
+        # size
+        size = field_data.get("size")
+        if not isinstance(size, (int, float)) or size < 6 or size > 72:
+            result.add_error(
+                config_path,
+                f"certificate.{field_name}.size must be "
+                f"a number between 6 and 72",
+            )
+
+        # colour
+        colour = field_data.get("colour")
+        if colour and not HEX_COLOUR_PATTERN.match(str(colour)):
+            result.add_error(
+                config_path,
+                f"certificate.{field_name}.colour '{colour}' "
+                f"must be a hex colour (e.g. #404040)",
+            )
+
+        # y position
+        y = field_data.get("y")
+        if not isinstance(y, (int, float)) or y < 0 or y > 1:
+            result.add_error(
+                config_path,
+                f"certificate.{field_name}.y must be "
+                f"a number between 0 and 1",
+            )
+
+
+def _validate_email_section(
+    config: dict[str, Any],
+    section_name: str,
+    config_path: str,
+    result: ValidationResult,
+) -> None:
+    """Validate a coordinator_email or student_email section."""
+    data = config.get(section_name)
+    if not isinstance(data, dict):
+        result.add_error(
+            config_path,
+            f"'{section_name}' section is missing",
+        )
+        return
+
+    for req_field in EMAIL_REQUIRED_FIELDS:
+        if req_field not in data or not data[req_field]:
+            result.add_error(
+                config_path,
+                f"{section_name} missing required field '{req_field}'",
+            )
+
+
+def _validate_email_sections(
+    config: dict[str, Any],
+    config_path: str,
+    result: ValidationResult,
+) -> None:
+    """Validate email template sections when emails are enabled."""
+    results = config.get("results", {})
+
+    if results.get("email_coordinator_on_pass", False):
+        _validate_email_section(
+            config, "coordinator_email", config_path, result
+        )
+
+    if results.get("email_student_on_pass", False):
+        _validate_email_section(config, "student_email", config_path, result)
 
 
 # ------------------------------------------------------------------
@@ -466,13 +628,23 @@ def validate_question_bank(
         result.finalise()
         return result
 
+    # --- Certificate and email validation ---
+    _validate_certificate_section(
+        config,
+        bank_dir,
+        str(config_path),
+        result,
+        image_inventory=image_inventory,
+    )
+    _validate_email_sections(config, str(config_path), result)
+
     bank_type = config["type"]
 
     # --- Stray file check ---
     allowed_root_files = {
         "config.yaml",
         "config.yml",
-        "certificate_background.pdf",
+        "certificate-blank.png",
     }
     for entry in bank_dir.iterdir():
         if entry.is_file() and entry.name not in allowed_root_files:

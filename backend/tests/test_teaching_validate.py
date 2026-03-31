@@ -361,3 +361,227 @@ class TestValidateQuestionBank:
         result = validate_question_bank(bank, image_inventory=inventory)
         assert not result.is_valid
         assert any("undeclared image file" in e.message for e in result.errors)
+
+    # --- Certificate section validation ---
+
+    def test_certificate_enabled_missing_png(self, tmp_path: Path) -> None:
+        """Fails when certificate_download is true but PNG is missing."""
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"certificate_download": True}
+        config["certificate"] = {
+            "orientation": "portrait",
+            "title": {
+                "font": "Helvetica",
+                "size": 22,
+                "bold": True,
+                "colour": "#404040",
+                "y": 0.62,
+            },
+            "subtitle": {
+                "font": "Helvetica",
+                "size": 13,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.56,
+                "text": "This certifies that",
+            },
+            "candidate_name": {
+                "font": "Helvetica",
+                "size": 26,
+                "bold": True,
+                "colour": "#262626",
+                "y": 0.50,
+            },
+            "pass_summary": {
+                "font": "Helvetica",
+                "size": 15,
+                "bold": False,
+                "colour": "#338033",
+                "y": 0.44,
+            },
+            "date": {
+                "font": "Helvetica",
+                "size": 12,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.39,
+            },
+            "margin": 30,
+        }
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any(
+            "certificate-blank.png is missing" in e.message
+            for e in result.errors
+        )
+
+    def test_certificate_enabled_missing_section(self, tmp_path: Path) -> None:
+        """Fails when certificate_download is true but section is missing."""
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"certificate_download": True}
+        self._write_config(bank, config)
+        (bank / "certificate-blank.png").write_bytes(b"fake")
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any(
+            "'certificate' section is missing" in e.message
+            for e in result.errors
+        )
+
+    def test_certificate_invalid_orientation(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"certificate_download": True}
+        config["certificate"] = {
+            "orientation": "diagonal",
+            "title": {
+                "font": "Helvetica",
+                "size": 22,
+                "bold": True,
+                "colour": "#404040",
+                "y": 0.62,
+            },
+            "subtitle": {
+                "font": "Helvetica",
+                "size": 13,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.56,
+            },
+            "candidate_name": {
+                "font": "Helvetica",
+                "size": 26,
+                "bold": True,
+                "colour": "#262626",
+                "y": 0.50,
+            },
+            "pass_summary": {
+                "font": "Helvetica",
+                "size": 15,
+                "bold": False,
+                "colour": "#338033",
+                "y": 0.44,
+            },
+            "date": {
+                "font": "Helvetica",
+                "size": 12,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.39,
+            },
+        }
+        self._write_config(bank, config)
+        (bank / "certificate-blank.png").write_bytes(b"fake")
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any("orientation" in e.message for e in result.errors)
+
+    def test_certificate_invalid_colour(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"certificate_download": True}
+        config["certificate"] = {
+            "orientation": "portrait",
+            "title": {
+                "font": "Helvetica",
+                "size": 22,
+                "bold": True,
+                "colour": "red",
+                "y": 0.62,
+            },
+            "subtitle": {
+                "font": "Helvetica",
+                "size": 13,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.56,
+            },
+            "candidate_name": {
+                "font": "Helvetica",
+                "size": 26,
+                "bold": True,
+                "colour": "#262626",
+                "y": 0.50,
+            },
+            "pass_summary": {
+                "font": "Helvetica",
+                "size": 15,
+                "bold": False,
+                "colour": "#338033",
+                "y": 0.44,
+            },
+            "date": {
+                "font": "Helvetica",
+                "size": 12,
+                "bold": False,
+                "colour": "#666666",
+                "y": 0.39,
+            },
+        }
+        self._write_config(bank, config)
+        (bank / "certificate-blank.png").write_bytes(b"fake")
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any("hex colour" in e.message for e in result.errors)
+
+    def test_certificate_disabled_skips_validation(
+        self, tmp_path: Path
+    ) -> None:
+        """No errors when certificate_download is false/absent."""
+        bank = self._make_uniform_bank(tmp_path)
+        result = validate_question_bank(bank)
+        assert result.is_valid
+
+    # --- Email section validation ---
+
+    def test_email_coordinator_missing_section(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_coordinator_on_pass": True}
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any(
+            "'coordinator_email' section is missing" in e.message
+            for e in result.errors
+        )
+
+    def test_email_student_missing_section(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_student_on_pass": True}
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any(
+            "'student_email' section is missing" in e.message
+            for e in result.errors
+        )
+
+    def test_email_section_missing_subject(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_student_on_pass": True}
+        config["student_email"] = {"body": "Some body text"}
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+        assert not result.is_valid
+        assert any(
+            "missing required field 'subject'" in e.message
+            for e in result.errors
+        )
+
+    def test_email_valid_section_passes(self, tmp_path: Path) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_student_on_pass": True}
+        config["student_email"] = {
+            "subject": "Your cert",
+            "body": "Well done!",
+        }
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+        assert result.is_valid

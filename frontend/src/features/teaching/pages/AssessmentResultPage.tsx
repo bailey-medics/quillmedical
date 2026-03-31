@@ -1,5 +1,6 @@
-import { Alert, Container, Loader, Stack } from "@mantine/core";
-import { StateMessage } from "@/components/message-cards";
+import { Container, Loader, Stack } from "@mantine/core";
+import { ResultMessage, StateMessage } from "@/components/message-cards";
+import { PageHeader } from "@/components/typography";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -61,9 +62,14 @@ export default function AssessmentResultPage() {
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="yellow" title="Incomplete">
-          This assessment was not completed. Please try again.
-        </Alert>
+        <Stack gap="lg">
+          <PageHeader title="Incomplete" />
+          <ResultMessage
+            variant="warning"
+            title="Incomplete"
+            subtitle={bankDetail?.title}
+          />
+        </Stack>
       </Container>
     );
   }
