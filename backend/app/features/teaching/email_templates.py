@@ -1,7 +1,7 @@
 """Email template loading and rendering for teaching certificates.
 
-Templates are per-bank YAML files (``coordinator-email.yaml``,
-``student-email.yaml``) stored alongside question-bank content.
+Templates are stored in the ``coordinator_email`` and
+``student_email`` sections of each bank's ``config.yaml``.
 Variables use ``string.Template`` syntax (``$variable``).
 Body Markdown is converted to HTML via the ``markdown`` package.
 """
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmailTemplate(TypedDict):
-    """Parsed contents of an email template YAML file."""
+    """Parsed contents of an email template section."""
 
     subject: str
     body: str
@@ -39,26 +39,29 @@ def load_email_template(
     bank_id: str,
     template_name: str,
 ) -> EmailTemplate | None:
-    """Load and parse an email template YAML file.
+    """Load an email template from the bank's config.yaml.
 
     Args:
         bank_path: Root path to all question banks.
         bank_id: Question bank identifier (directory name).
-        template_name: Template name without ``.yaml`` extension,
-            e.g. ``"coordinator-email"`` or ``"student-email"``.
+        template_name: Section key in config.yaml, e.g.
+            ``"coordinator_email"`` or ``"student_email"``.
 
     Returns:
-        Parsed template dict, or None if file not found.
+        Parsed template dict, or None if section not found.
     """
-    path = bank_path / bank_id / f"{template_name}.yaml"
-    if not path.is_file():
+    config_path = bank_path / bank_id / "config.yaml"
+    if not config_path.is_file():
         return None
 
-    with open(path, encoding="utf-8") as f:
-        data: dict[str, Any] = yaml.safe_load(f)
+    with open(config_path, encoding="utf-8") as f:
+        config: dict[str, Any] = yaml.safe_load(f) or {}
+
+    # Normalise legacy hyphenated keys to underscores
+    key = template_name.replace("-", "_")
+    data = config.get(key)
 
     if not isinstance(data, dict):
-        logger.warning("Invalid email template %s: expected mapping", path)
         return None
 
     return EmailTemplate(

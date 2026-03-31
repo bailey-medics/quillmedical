@@ -860,7 +860,7 @@ def _maybe_enqueue_certificate_emails(
     # Student email
     if email_student:
         student_template = load_email_template(
-            bank_path, bank_id, "student-email"
+            bank_path, bank_id, "student_email"
         )
         if student_template and user.email:
             ctx = {**context, "recipient_name": user.username}
@@ -877,7 +877,7 @@ def _maybe_enqueue_certificate_emails(
     # Coordinator email
     if email_coordinator:
         coord_template = load_email_template(
-            bank_path, bank_id, "coordinator-email"
+            bank_path, bank_id, "coordinator_email"
         )
         if coord_template and bank_status and bank_status.coordinator_email:
             ctx = {
@@ -1015,6 +1015,7 @@ def download_certificate(
     from app.features.teaching.certificate import (
         find_certificate_background,
         generate_certificate_pdf,
+        parse_certificate_style,
     )
 
     assessment = db.get(Assessment, assessment_id)
@@ -1075,12 +1076,16 @@ def download_certificate(
     # Candidate name
     candidate_name = user.username
 
+    # Parse certificate style from config
+    style = parse_certificate_style(config.get("certificate"))
+
     pdf_bytes = generate_certificate_pdf(
         background_path=bg,
         exam_title=config_row.title,
         candidate_name=candidate_name,
         pass_summary=pass_summary,
         completion_date=completion_date,
+        style=style,
     )
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"
@@ -1604,14 +1609,14 @@ def get_admin_bank_detail(
                 load_email_template,
             )
 
-            ct = load_email_template(bank_path, bank_id, "coordinator-email")
+            ct = load_email_template(bank_path, bank_id, "coordinator_email")
             if ct:
                 coordinator_template = EmailTemplateOut(
                     subject=ct["subject"],
                     body=ct["body"],
                     attach_certificate=ct.get("attach_certificate", True),
                 )
-            st = load_email_template(bank_path, bank_id, "student-email")
+            st = load_email_template(bank_path, bank_id, "student_email")
             if st:
                 student_template = EmailTemplateOut(
                     subject=st["subject"],

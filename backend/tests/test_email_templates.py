@@ -20,51 +20,72 @@ def bank_dir(tmp_path: Path) -> Path:
     return bank
 
 
-@pytest.fixture()
-def coordinator_template_file(bank_dir: Path) -> Path:
-    """Write a coordinator email template YAML."""
-    content = {
-        "subject": "Certificate: $exam_title",
-        "body": (
-            "Dear $recipient_name,\n\n"
-            "$student_name has passed **$exam_title** "
-            "on $completion_date.\n\n"
-            "The certificate is attached."
-        ),
-        "attach_certificate": True,
+def _write_config(bank_dir: Path, extra: dict) -> None:  # type: ignore[type-arg]
+    """Write a config.yaml with merged email sections."""
+    base = {
+        "id": "test-bank",
+        "version": 1,
+        "title": "Test",
+        "description": "Test bank",
+        "type": "uniform",
     }
-    path = bank_dir / "coordinator-email.yaml"
-    path.write_text(yaml.dump(content), encoding="utf-8")
-    return path
+    base.update(extra)
+    (bank_dir / "config.yaml").write_text(
+        yaml.dump(base, default_flow_style=False), encoding="utf-8"
+    )
 
 
 @pytest.fixture()
-def student_template_file(bank_dir: Path) -> Path:
-    """Write a student email template YAML."""
-    content = {
-        "subject": "Your certificate for $exam_title",
-        "body": (
-            "Hi $student_name,\n\n"
-            "Congratulations on passing **$exam_title**!\n\n"
-            "Your certificate is attached."
-        ),
-        "attach_certificate": True,
-    }
-    path = bank_dir / "student-email.yaml"
-    path.write_text(yaml.dump(content), encoding="utf-8")
-    return path
+def coordinator_config(bank_dir: Path) -> Path:
+    """Write config.yaml with a coordinator_email section."""
+    _write_config(
+        bank_dir,
+        {
+            "coordinator_email": {
+                "subject": "Certificate: $exam_title",
+                "body": (
+                    "Dear $recipient_name,\n\n"
+                    "$student_name has passed **$exam_title** "
+                    "on $completion_date.\n\n"
+                    "The certificate is attached."
+                ),
+                "attach_certificate": True,
+            },
+        },
+    )
+    return bank_dir
+
+
+@pytest.fixture()
+def student_config(bank_dir: Path) -> Path:
+    """Write config.yaml with a student_email section."""
+    _write_config(
+        bank_dir,
+        {
+            "student_email": {
+                "subject": "Your certificate for $exam_title",
+                "body": (
+                    "Hi $student_name,\n\n"
+                    "Congratulations on passing **$exam_title**!\n\n"
+                    "Your certificate is attached."
+                ),
+                "attach_certificate": True,
+            },
+        },
+    )
+    return bank_dir
 
 
 class TestLoadEmailTemplate:
-    """Test loading email templates from YAML files."""
+    """Test loading email templates from config.yaml sections."""
 
     def test_loads_coordinator_template(
         self,
         tmp_path: Path,
-        coordinator_template_file: Path,
+        coordinator_config: Path,
     ) -> None:
         result = load_email_template(
-            tmp_path, "test-bank", "coordinator-email"
+            tmp_path, "test-bank", "coordinator_email"
         )
         assert result is not None
         assert "$exam_title" in result["subject"]
@@ -74,35 +95,47 @@ class TestLoadEmailTemplate:
     def test_loads_student_template(
         self,
         tmp_path: Path,
-        student_template_file: Path,
+        student_config: Path,
     ) -> None:
-        result = load_email_template(tmp_path, "test-bank", "student-email")
+        result = load_email_template(tmp_path, "test-bank", "student_email")
         assert result is not None
         assert "$exam_title" in result["subject"]
         assert "$student_name" in result["body"]
 
-    def test_returns_none_for_missing_file(
+    def test_returns_none_for_missing_section(
         self, tmp_path: Path, bank_dir: Path
     ) -> None:
+        _write_config(bank_dir, {})
         result = load_email_template(tmp_path, "test-bank", "nonexistent")
         assert result is None
 
     def test_returns_none_for_missing_bank(self, tmp_path: Path) -> None:
         result = load_email_template(
-            tmp_path, "no-such-bank", "coordinator-email"
+            tmp_path, "no-such-bank", "coordinator_email"
         )
         assert result is None
 
     def test_defaults_attach_certificate_to_true(
         self, tmp_path: Path, bank_dir: Path
     ) -> None:
-        content = {"subject": "Test", "body": "Body"}
-        path = bank_dir / "minimal-email.yaml"
-        path.write_text(yaml.dump(content), encoding="utf-8")
-
-        result = load_email_template(tmp_path, "test-bank", "minimal-email")
+        _write_config(
+            bank_dir,
+            {"minimal_email": {"subject": "Test", "body": "Body"}},
+        )
+        result = load_email_template(tmp_path, "test-bank", "minimal_email")
         assert result is not None
         assert result["attach_certificate"] is True
+
+    def test_normalises_hyphenated_key(
+        self,
+        tmp_path: Path,
+        coordinator_config: Path,
+    ) -> None:
+        """Legacy hyphenated key names are normalised to underscores."""
+        result = load_email_template(
+            tmp_path, "test-bank", "coordinator-email"
+        )
+        assert result is not None
 
 
 class TestRenderEmail:
