@@ -7,12 +7,12 @@
  */
 
 import { Alert } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import classes from "./ResultMessage.module.css";
 
-type ResultMessageVariant = "success" | "fail";
+type ResultMessageVariant = "success" | "fail" | "warning";
 
 interface ResultMessageProps {
   /** Visual variant controlling colour and icon */
@@ -29,6 +29,7 @@ const variantConfig: Record<
 > = {
   success: { color: "green", icon: <IconCheck /> },
   fail: { color: "red", icon: <IconX /> },
+  warning: { color: "yellow", icon: <IconAlertTriangle /> },
 };
 
 const alertStyles = {

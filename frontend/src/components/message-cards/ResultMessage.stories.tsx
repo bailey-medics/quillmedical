@@ -4,6 +4,7 @@
  * Demonstrates result alert banners mirroring the StateMessage pattern:
  * - Success: green with check icon
  * - Error: red with X icon
+ * - Warning: yellow with alert triangle icon
  * - With and without subtitle
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -43,6 +44,19 @@ export const Fail: Story = {
   args: {
     variant: "fail",
     title: "Not passed",
+    subtitle: "Optical diagnosis of diminutive colorectal polyps",
+  },
+};
+
+/**
+ * Warning
+ *
+ * Yellow alert with triangle icon for incomplete or cautionary outcomes.
+ */
+export const Warning: Story = {
+  args: {
+    variant: "warning",
+    title: "Incomplete",
     subtitle: "Optical diagnosis of diminutive colorectal polyps",
   },
 };

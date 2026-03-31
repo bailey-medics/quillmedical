@@ -14,6 +14,11 @@ describe("ResultMessage", () => {
     expect(screen.getByText("Not passed")).toBeInTheDocument();
   });
 
+  it("renders warning variant with title", () => {
+    renderWithMantine(<ResultMessage variant="warning" title="Incomplete" />);
+    expect(screen.getByText("Incomplete")).toBeInTheDocument();
+  });
+
   it("renders subtitle when provided", () => {
     renderWithMantine(
       <ResultMessage variant="success" title="Passed" subtitle="Polyp test" />,
@@ -43,6 +48,13 @@ describe("ResultMessage", () => {
   it("shows icon for fail", () => {
     const { container } = renderWithMantine(
       <ResultMessage variant="fail" title="Failed" />,
+    );
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("shows icon for warning", () => {
+    const { container } = renderWithMantine(
+      <ResultMessage variant="warning" title="Incomplete" />,
     );
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
