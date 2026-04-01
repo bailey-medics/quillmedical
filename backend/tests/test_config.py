@@ -45,3 +45,54 @@ class TestSettingsComputedFields:
         assert "postgres-ehrbase" in url
         assert "5432" in url
         assert "ehrbase" in url
+
+    def test_production_rejects_default_ehrbase_api_password(self):
+        """Test that production mode rejects the default EHRbase API password."""
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="EHRBASE_API_PASSWORD"):
+            Settings(
+                JWT_SECRET="test_secret_long_enough_32_chars_min",
+                AUTH_DB_PASSWORD="auth_pass",
+                BACKEND_ENV="production",
+                CLINICAL_SERVICES_ENABLED=True,
+                # EHRBASE_API_PASSWORD not set — falls back to insecure default
+            )
+
+    def test_production_rejects_default_ehrbase_admin_password(self):
+        """Test that production mode rejects the default EHRbase admin password."""
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="EHRBASE_API_ADMIN_PASSWORD"):
+            Settings(
+                JWT_SECRET="test_secret_long_enough_32_chars_min",
+                AUTH_DB_PASSWORD="auth_pass",
+                BACKEND_ENV="production",
+                CLINICAL_SERVICES_ENABLED=True,
+                EHRBASE_API_PASSWORD="custom_secure_password_123",
+                # EHRBASE_API_ADMIN_PASSWORD not set — falls back to insecure default
+            )
+
+    def test_development_allows_default_credentials(self):
+        """Test that development mode allows default EHRbase credentials."""
+        settings = Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            AUTH_DB_PASSWORD="auth_pass",
+            BACKEND_ENV="development",
+            CLINICAL_SERVICES_ENABLED=True,
+            # No EHRBASE passwords set — uses insecure defaults (OK in dev)
+        )
+        assert settings.EHRBASE_API_PASSWORD.get_secret_value() == "ehrbase_password"
+
+    def test_clinical_services_disabled_skips_password_validation(self):
+        """Test that disabling clinical services skips password validation."""
+        settings = Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            AUTH_DB_PASSWORD="auth_pass",
+            BACKEND_ENV="production",
+            CLINICAL_SERVICES_ENABLED=False,
+            # No EHRBASE passwords set — should not raise when services disabled
+        )
+        assert not settings.CLINICAL_SERVICES_ENABLED

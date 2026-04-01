@@ -413,7 +413,7 @@ class TestOrganizationEndpoints:
         assert data["location"] == "Manchester"
 
     def test_create_organization_without_csrf(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_admin_client: TestClient
     ):
         """Test creating organisation without CSRF token is rejected."""
         response = authenticated_admin_client.post(
@@ -535,7 +535,7 @@ class TestOrganizationEndpoints:
         assert data["location"] == "London"
 
     def test_update_organization_without_csrf(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_admin_client: TestClient
     ):
         """Test updating organisation without CSRF token is rejected."""
         response = authenticated_admin_client.put(
@@ -752,7 +752,7 @@ class TestOrganizationEndpoints:
         assert "staff-level permissions" in response.json()["detail"]
 
     def test_add_staff_without_csrf(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_admin_client: TestClient
     ):
         """Test adding staff without CSRF token is rejected."""
         response = authenticated_admin_client.post(

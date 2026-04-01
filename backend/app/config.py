@@ -182,6 +182,28 @@ class Settings(BaseSettings):
                 "EHRBASE_URL is required when "
                 "CLINICAL_SERVICES_ENABLED is true"
             )
+        # Reject known-insecure default credentials in production environments
+        if not self.BACKEND_ENV.lower().startswith("dev"):
+            _insecure_defaults = {
+                "ehrbase_password",
+                "ehrbase_admin_password",
+            }
+            if (
+                self.EHRBASE_API_PASSWORD.get_secret_value()
+                in _insecure_defaults
+            ):
+                raise ValueError(
+                    "EHRBASE_API_PASSWORD must not use the default value "
+                    "in non-development environments"
+                )
+            if (
+                self.EHRBASE_API_ADMIN_PASSWORD.get_secret_value()
+                in _insecure_defaults
+            ):
+                raise ValueError(
+                    "EHRBASE_API_ADMIN_PASSWORD must not use the default "
+                    "value in non-development environments"
+                )
         return self
 
     # --- Computed Database URLs ---

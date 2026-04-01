@@ -38,7 +38,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -722,7 +722,7 @@ class AdminUserCreateIn(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=200)
     username: str | None = Field(None, max_length=150)
-    email: str
+    email: EmailStr
     password: str = Field(..., min_length=8)
     base_profession: str = "patient"
     additional_competencies: list[str] = []
@@ -751,7 +751,7 @@ class AdminUserUpdateIn(BaseModel):
 
     name: str | None = Field(None, max_length=200)
     username: str | None = Field(None, max_length=150)
-    email: str | None = None
+    email: EmailStr | None = None
     password: str | None = Field(None, min_length=8)
     base_profession: str | None = None
     additional_competencies: list[str] | None = None

@@ -1,13 +1,19 @@
 """Legacy file-based patient record management.
 
+.. deprecated::
+    This module is unused and scheduled for removal.
+    Patient demographics are stored in FHIR (via HAPI FHIR server).
+    Clinical documents are stored in OpenEHR (via EHRbase).
+    Do not add new functionality to this module.
+
 This module provides file-based storage operations for patient records
 mounted at /patient_data in Docker containers. Each patient has their own
 subdirectory identified by a sanitized patient ID.
 
 Note:
     This is a legacy system. Current implementation stores patient demographics
-    in FHIR and clinical documents in OpenEHR (EHRbase). This module may be
-    deprecated in future releases.
+    in FHIR and clinical documents in OpenEHR (EHRbase). This module is not
+    imported anywhere and is pending removal.
 
 Attributes:
     PATIENT_DATA_ROOT: Mount point for patient data volume (/patient_data).
