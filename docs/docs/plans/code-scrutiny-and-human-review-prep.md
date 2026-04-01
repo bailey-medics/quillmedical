@@ -6,8 +6,9 @@ Your job is not to fix anything just yet — it is to audit and critique.
 ## Context you must hold throughout this review
 
 Approximately 95% of this code was LLM-generated. The human who owns this codebase
-is a senior engineer and clinician who acts as the reasoning and judgement layer. The will be reading all of the code in its entirety fairly soon. Their time is the scarcest resource in this development
-cycle. That has two consequences:
+is a senior engineer and clinician who acts as the reasoning and judgement layer. They
+will be reading all of the code in its entirety fairly soon. Their time is the scarcest
+resource in this development cycle. That has two consequences:
 
 1. Code must be self-documenting to the highest possible standard. If a human cannot
    understand what a function does, what it must not do, and why it exists — from
