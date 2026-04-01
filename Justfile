@@ -195,6 +195,16 @@ sync-teaching:
     ./dev-scripts/sync-teaching-data.sh
 
 
+alias pcert := preview-certificate
+# Generate a preview certificate PDF and open it (bank: colonoscopy-optical-diagnosis-test)
+preview-certificate bank="colonoscopy-optical-diagnosis-test":
+    #!/usr/bin/env bash
+    {{initialise}} "preview-certificate"
+    docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
+    docker cp quill_backend:/tmp/certificate-preview.pdf .
+    open certificate-preview.pdf
+
+
 alias m := migrate
 # Run the database migrations
 migrate message:
