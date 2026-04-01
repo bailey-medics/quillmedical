@@ -3045,20 +3045,20 @@ __metadata:
   linkType: hard
 
 "@tabler/icons-react@npm:^3.34.1":
-  version: 3.40.0
-  resolution: "@tabler/icons-react@npm:3.40.0"
+  version: 3.41.1
+  resolution: "@tabler/icons-react@npm:3.41.1"
   dependencies:
-    "@tabler/icons": "npm:3.40.0"
+    "@tabler/icons": "npm:3.41.1"
   peerDependencies:
     react: ">= 16"
-  checksum: 10c0/a6985c9e8d1986c14594f5bc7007d2398b7b1efd2202304a24e23eb1fa6a48a23f9a6aaa3c5626781990cc0f0a46773c0a0cb747b6984dde26f03ba4ebd1d9cf
+  checksum: 10c0/d103816d91df212ef6a4fc05e9f8d5f01deec2197d3accc4a398d325d1cfa8910e06b4daaf82cd08749f242c3908885ac60b21c4129b21094ece9fe0ecd46e4c
   languageName: node
   linkType: hard
 
-"@tabler/icons@npm:3.40.0":
-  version: 3.40.0
-  resolution: "@tabler/icons@npm:3.40.0"
-  checksum: 10c0/d335323695dff9218b486bb84a79893f86d5c284dc022c86bfdcfc550605c48ddffe72161c93f6fcab47ba6d828311c101fc5e306fb698b5b5104cf6250ed314
+"@tabler/icons@npm:3.41.1":
+  version: 3.41.1
+  resolution: "@tabler/icons@npm:3.41.1"
+  checksum: 10c0/b1238157fe6e57c0202f1f7153621ad937a6f73ff7c0f0af5a71fcbdace18a3281cddd6632229029c3a3df7c530ae8bcefa75c18e35db4b65e7f884282762cf1
   languageName: node
   linkType: hard
 
@@ -4240,13 +4240,13 @@ __metadata:
   linkType: hard
 
 "axios@npm:^1.12.2, axios@npm:^1.13.5, axios@npm:^1.6.1":
-  version: 1.13.6
-  resolution: "axios@npm:1.13.6"
+  version: 1.14.0
+  resolution: "axios@npm:1.14.0"
   dependencies:
     follow-redirects: "npm:^1.15.11"
     form-data: "npm:^4.0.5"
-    proxy-from-env: "npm:^1.1.0"
-  checksum: 10c0/51fb5af055c3b85662fa97df17d986ae2c37d13bf86d50b6bb36b6b3a2dec6966a1d3a14ab3774b71707b155ae3597ed9b7babdf1a1a863d1a31840cb8e7ec71
+    proxy-from-env: "npm:^2.1.0"
+  checksum: 10c0/2541f4aa215a7d1842429dad006fc682d82bc0e74bd14500823f7d8cce3bbae0e0a8c328c8538946718f366ab8ce5a4c12e9ad40e5a0f3482ff8bff0cd115d45
   languageName: node
   linkType: hard
 
@@ -10051,10 +10051,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"proxy-from-env@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "proxy-from-env@npm:1.1.0"
-  checksum: 10c0/fe7dd8b1bdbbbea18d1459107729c3e4a2243ca870d26d34c2c1bcd3e4425b7bcc5112362df2d93cc7fb9746f6142b5e272fd1cc5c86ddf8580175186f6ad42b
+"proxy-from-env@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "proxy-from-env@npm:2.1.0"
+  checksum: 10c0/ed01729fd4d094eab619cd7e17ce3698b3413b31eb102c4904f9875e677cd207392795d5b4adee9cec359dfd31c44d5ad7595a3a3ad51c40250e141512281c58
   languageName: node
   linkType: hard
 
