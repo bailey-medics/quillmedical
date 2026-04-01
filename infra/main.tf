@@ -35,6 +35,7 @@ module "secrets" {
       "jwt-secret",
       "auth-db-password",
       "vapid-private",
+      "resend-api-key",
     ],
     var.enable_fhir ? [
       "fhir-db-password",
@@ -216,7 +217,11 @@ module "cloud_run_backend" {
       TEACHING_STORAGE_BACKEND     = "gcs"
       TEACHING_GCS_BUCKET          = module.cloud_storage[0].bucket_name
       TEACHING_IMAGES_BASE_URL     = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
-    } : {}
+    } : {},
+    {
+      EMAIL_FROM    = "info@quill-medical.com"
+      EMAIL_DRY_RUN = "false"
+    }
   )
 
   secret_env_vars = merge(
@@ -224,6 +229,7 @@ module "cloud_run_backend" {
       JWT_SECRET       = "jwt-secret"
       AUTH_DB_PASSWORD  = "auth-db-password"
       VAPID_PRIVATE    = "vapid-private"
+      RESEND_API_KEY   = "resend-api-key"
     },
     var.enable_fhir ? {
       FHIR_DB_PASSWORD           = "fhir-db-password"
