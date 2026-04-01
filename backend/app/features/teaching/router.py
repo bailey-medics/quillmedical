@@ -826,9 +826,14 @@ def _maybe_enqueue_certificate_emails(
         )
     ).scalar_one_or_none()
 
+    display_name = user.full_name or user.username
     context: dict[str, str] = {
         "exam_title": config_row.title,
-        "student_name": user.username,
+        "student_name": (
+            f"{display_name} ({user.username})"
+            if user.full_name
+            else user.username
+        ),
         "completion_date": completion_date,
         "score_summary": score_summary,
         "institution_name": (
@@ -870,7 +875,7 @@ def _maybe_enqueue_certificate_emails(
             bank_path, bank_id, "student_email"
         )
         if student_template and user.email:
-            ctx = {**context, "recipient_name": user.username}
+            ctx = {**context, "recipient_name": display_name}
             rendered = render_email(student_template, ctx)
             att = attachments if student_template["attach_certificate"] else []
             background_tasks.add_task(
