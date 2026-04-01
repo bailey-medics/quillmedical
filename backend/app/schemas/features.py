@@ -17,3 +17,5 @@ class FeatureToggleIn(BaseModel):
     """Request schema: enable or disable a feature on an org."""
 
     enabled: bool
+
+    model_config = {"extra": "forbid"}

@@ -4,7 +4,7 @@ This module defines request and response models for user authentication,
 registration, and two-factor authentication (TOTP) operations.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginIn(BaseModel):
@@ -16,9 +16,11 @@ class LoginIn(BaseModel):
         totp_code: Optional 6-digit TOTP code if 2FA is enabled.
     """
 
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=150)
+    password: str = Field(..., min_length=1)
     totp_code: str | None = None
+
+    model_config = {"extra": "forbid"}
 
 
 class RegisterIn(BaseModel):
@@ -26,12 +28,14 @@ class RegisterIn(BaseModel):
 
     Attributes:
         username: Desired username (must be unique).
-        email: Email address (must be unique).
-        password: Desired password (min 6 characters).
+        email: Email address (must be unique, validated format).
+        password: Desired password (min 8 characters).
         organisation_id: ID of the organisation to join (optional).
     """
 
-    username: str
-    email: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=150)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
     organisation_id: int | None = None
+
+    model_config = {"extra": "forbid"}

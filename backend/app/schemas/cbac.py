@@ -10,6 +10,8 @@ class CompetencyCheck(BaseModel):
     user_id: int
     competency: str
 
+    model_config = {"extra": "forbid"}
+
 
 class CompetencyCheckResponse(BaseModel):
     """Response for competency check."""
@@ -23,6 +25,8 @@ class UpdateCompetenciesRequest(BaseModel):
 
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
+
+    model_config = {"extra": "forbid"}
 
 
 class UserCompetenciesResponse(BaseModel):
@@ -54,6 +58,8 @@ class ProfessionalRegistration(BaseModel):
         description="When this registration was last verified (ISO format)",
     )
 
+    model_config = {"extra": "forbid"}
+
 
 class PrescriptionRequest(BaseModel):
     """Example prescription request schema."""
@@ -62,3 +68,5 @@ class PrescriptionRequest(BaseModel):
     medication: str
     dose: str
     duration_days: int
+
+    model_config = {"extra": "forbid"}

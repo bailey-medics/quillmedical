@@ -174,3 +174,19 @@ def authenticated_admin_client(
     )
     assert response.status_code == 200
     return test_client
+
+
+@pytest.fixture
+def admin_csrf_headers(authenticated_admin_client: TestClient) -> dict[str, str]:
+    """Return CSRF headers for use with authenticated admin requests."""
+    csrf_token = authenticated_admin_client.cookies.get("XSRF-TOKEN")
+    assert csrf_token, "CSRF token not found in admin client cookies"
+    return {"X-CSRF-Token": csrf_token}
+
+
+@pytest.fixture
+def user_csrf_headers(authenticated_client: TestClient) -> dict[str, str]:
+    """Return CSRF headers for use with authenticated user requests."""
+    csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
+    assert csrf_token, "CSRF token not found in authenticated client cookies"
+    return {"X-CSRF-Token": csrf_token}

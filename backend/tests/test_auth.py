@@ -53,17 +53,53 @@ class TestRegister:
         assert "email already" in response.json()["detail"].lower()
 
     def test_register_password_too_short(self, test_client: TestClient):
-        """Test registration with password too short."""
+        """Test registration with password too short (schema validation)."""
         response = test_client.post(
             "/api/auth/register",
             json={
                 "username": "newuser",
                 "email": "newuser@example.com",
-                "password": "12345",  # Too short
+                "password": "12345",  # Too short (< 8 chars)
             },
         )
-        assert response.status_code == 400
-        assert "password too short" in response.json()["detail"].lower()
+        assert response.status_code == 422  # Pydantic validation error
+
+    def test_register_password_7_chars(self, test_client: TestClient):
+        """Test registration with 7-char password is rejected."""
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "newuser",
+                "email": "newuser@example.com",
+                "password": "1234567",  # 7 chars, under minimum
+            },
+        )
+        assert response.status_code == 422
+
+    def test_register_invalid_email(self, test_client: TestClient):
+        """Test registration with an invalid email address."""
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "newuser",
+                "email": "not-an-email",
+                "password": "SecurePassword123!",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_register_extra_fields_rejected(self, test_client: TestClient):
+        """Test registration with unexpected extra fields is rejected."""
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "newuser",
+                "email": "newuser@example.com",
+                "password": "SecurePassword123!",
+                "is_admin": True,  # Extra field — should be forbidden
+            },
+        )
+        assert response.status_code == 422
 
     def test_register_missing_fields(self, test_client: TestClient):
         """Test registration with missing required fields."""
@@ -235,7 +271,10 @@ class TestTOTPSetup:
 
     def test_totp_setup_success(self, authenticated_client: TestClient):
         """Test TOTP setup returns provisioning URI."""
-        response = authenticated_client.post("/api/auth/totp/setup")
+        csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers={"X-CSRF-Token": csrf_token}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "provision_uri" in data
@@ -246,6 +285,11 @@ class TestTOTPSetup:
         response = test_client.post("/api/auth/totp/setup")
         assert response.status_code == 401
 
+    def test_totp_setup_without_csrf(self, authenticated_client: TestClient):
+        """Test TOTP setup without CSRF token is rejected."""
+        response = authenticated_client.post("/api/auth/totp/setup")
+        assert response.status_code == 403
+
 
 class TestTOTPVerify:
     """Test TOTP verification endpoint."""
@@ -254,8 +298,13 @@ class TestTOTPVerify:
         self, authenticated_client: TestClient, test_user: User, db_session
     ):
         """Test successful TOTP verification."""
+        csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
+        headers = {"X-CSRF-Token": csrf_token}
+
         # Setup TOTP
-        response = authenticated_client.post("/api/auth/totp/setup")
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers=headers
+        )
         provision_uri = response.json()["provision_uri"]
 
         # Extract secret from provision_uri
@@ -273,7 +322,9 @@ class TestTOTPVerify:
 
         # Verify code
         response = authenticated_client.post(
-            "/api/auth/totp/verify", json={"code": valid_code}
+            "/api/auth/totp/verify",
+            json={"code": valid_code},
+            headers=headers,
         )
         assert response.status_code == 200
         assert response.json()["detail"] == "enabled"
@@ -285,12 +336,17 @@ class TestTOTPVerify:
 
     def test_totp_verify_invalid_code(self, authenticated_client: TestClient):
         """Test TOTP verification with invalid code."""
+        csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
+        headers = {"X-CSRF-Token": csrf_token}
+
         # Setup TOTP first
-        authenticated_client.post("/api/auth/totp/setup")
+        authenticated_client.post("/api/auth/totp/setup", headers=headers)
 
         # Try to verify with wrong code
         response = authenticated_client.post(
-            "/api/auth/totp/verify", json={"code": "000000"}
+            "/api/auth/totp/verify",
+            json={"code": "000000"},
+            headers=headers,
         )
         assert response.status_code == 400
         detail = response.json()["detail"]
@@ -299,6 +355,13 @@ class TestTOTPVerify:
             assert detail.get("error_code") == "invalid_totp"
         else:
             assert "invalid" in str(detail).lower()
+
+    def test_totp_verify_without_csrf(self, authenticated_client: TestClient):
+        """Test TOTP verification without CSRF token is rejected."""
+        response = authenticated_client.post(
+            "/api/auth/totp/verify", json={"code": "123456"}
+        )
+        assert response.status_code == 403
 
     def test_totp_verify_unauthenticated(self, test_client: TestClient):
         """Test TOTP verification without authentication."""

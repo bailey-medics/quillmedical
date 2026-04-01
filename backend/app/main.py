@@ -38,7 +38,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -633,7 +633,7 @@ def register(
 
     Validation Rules:
     - Username and email must not be empty after stripping whitespace
-    - Password must be at least 6 characters long
+    - Password must be at least 8 characters long (enforced by schema)
     - Username must be unique across all users
     - Email must be unique across all users
 
@@ -646,18 +646,14 @@ def register(
 
     Raises:
         HTTPException: 400 if validation fails or constraints violated:
-            - "Missing fields" if username, email, or password empty
-            - "Password too short" if password < 6 characters
+            - "Missing fields" if username or email empty after stripping
             - "Username already exists" if username taken
             - "Email already exists" if email taken
     """
     username = payload.username.strip()
-    email = payload.email.strip()
-    if not username or not email or not payload.password:
+    email = str(payload.email).strip()
+    if not username or not email:
         raise HTTPException(status_code=400, detail="Missing fields")
-
-    if len(payload.password) < 6:
-        raise HTTPException(status_code=400, detail="Password too short")
 
     existing = db.scalar(select(User).where(User.username == username))
 
@@ -715,23 +711,25 @@ class AdminUserCreateIn(BaseModel):
 
     Attributes:
         name: User's full name (stored as username if username not provided).
-        username: Unique username for login.
-        email: Unique email address.
-        password: Plain text password (will be hashed).
+        username: Unique username for login (max 150 characters).
+        email: Unique email address (validated format).
+        password: Plain text password (min 8 characters, will be hashed).
         base_profession: Base profession template (e.g., "consultant", "patient").
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         system_permissions: System permission level (patient, staff, admin, superadmin).
     """
 
-    name: str
-    username: str | None = None
+    name: str = Field(..., min_length=1, max_length=200)
+    username: str | None = Field(None, max_length=150)
     email: str
-    password: str
+    password: str = Field(..., min_length=8)
     base_profession: str = "patient"
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
     system_permissions: str = "patient"
+
+    model_config = {"extra": "forbid"}
 
 
 class AdminUserUpdateIn(BaseModel):
@@ -741,27 +739,29 @@ class AdminUserUpdateIn(BaseModel):
     All fields are optional - only provided fields will be updated.
 
     Attributes:
-        name: Full name (optional).
-        username: Unique username (optional).
+        name: Full name (optional, max 200 characters).
+        username: Unique username (optional, max 150 characters).
         email: Email address (optional).
-        password: New password (optional, only if changing).
+        password: New password (optional, min 8 characters if changing).
         base_profession: Base profession ID (optional).
         additional_competencies: Competencies to add (optional).
         removed_competencies: Competencies to remove (optional).
         system_permissions: System permission level (optional).
     """
 
-    name: str | None = None
-    username: str | None = None
+    name: str | None = Field(None, max_length=200)
+    username: str | None = Field(None, max_length=150)
     email: str | None = None
-    password: str | None = None
+    password: str | None = Field(None, min_length=8)
     base_profession: str | None = None
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
     system_permissions: str | None = None
 
+    model_config = {"extra": "forbid"}
 
-@router.post("/users")
+
+@router.post("/users", dependencies=[DEP_REQUIRE_CSRF])
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
     current_user: User = DEP_CURRENT_USER,
@@ -845,7 +845,7 @@ def create_user_with_cbac(
     }
 
 
-@router.patch("/users/{user_id}")
+@router.patch("/users/{user_id}", dependencies=[DEP_REQUIRE_CSRF])
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
@@ -967,7 +967,11 @@ class TotpSetupOut(BaseModel):
     provision_uri: str
 
 
-@router.post("/auth/totp/setup", response_model=TotpSetupOut)
+@router.post(
+    "/auth/totp/setup",
+    response_model=TotpSetupOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
 def totp_setup(
     u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> TotpSetupOut:
@@ -1030,7 +1034,7 @@ class TotpVerifyIn(BaseModel):
     code: str
 
 
-@router.post("/auth/totp/verify")
+@router.post("/auth/totp/verify", dependencies=[DEP_REQUIRE_CSRF])
 def totp_verify(
     payload: TotpVerifyIn,
     u: User = DEP_CURRENT_USER,
@@ -2222,28 +2226,36 @@ async def prescribe_controlled(
     "/cbac/my-competencies",
     response_model=UserCompetenciesResponse,
     tags=["cbac"],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 async def update_my_competencies(
     data: UpdateCompetenciesRequest,
     user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> UserCompetenciesResponse:
-    """Update user's additional/removed competencies.
+    """Update a user's additional/removed competencies.
 
-    Allows system administrators to add or remove competencies from a user's
-    base profession template. This endpoint should be protected with additional
-    authorization in production (e.g., require "Administrator" role).
-
-    NOTE: In production, this should require Administrator role and CSRF token.
+    Allows administrators to add or remove competencies from a user's
+    base profession template. Requires admin or superadmin permissions
+    and a valid CSRF token.
 
     Args:
-        data: Additional and removed competencies to update
-        user: Authenticated user
-        db: Database session
+        data: Additional and removed competencies to update.
+        user: Authenticated admin/superadmin user.
+        db: Database session.
 
     Returns:
-        UserCompetenciesResponse: Updated user competency information
+        UserCompetenciesResponse: Updated user competency information.
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
     """
+    if user.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required to update competencies",
+        )
+
     # Update user's competencies
     if data.additional_competencies is not None:
         user.additional_competencies = data.additional_competencies
@@ -2428,7 +2440,7 @@ class UpdateOrganizationIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.put("/organizations/{org_id}")
+@router.put("/organizations/{org_id}", dependencies=[DEP_REQUIRE_CSRF])
 def update_organization(
     org_id: int,
     body: UpdateOrganizationIn,
@@ -2497,7 +2509,7 @@ def update_organization(
     }
 
 
-@router.post("/organizations")
+@router.post("/organizations", dependencies=[DEP_REQUIRE_CSRF])
 def create_organization(
     body: CreateOrganizationIn,
     u: User = DEP_CURRENT_USER,
@@ -2567,7 +2579,7 @@ class AddStaffIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.post("/organizations/{org_id}/staff")
+@router.post("/organizations/{org_id}/staff", dependencies=[DEP_REQUIRE_CSRF])
 def add_staff_to_organization(
     org_id: int,
     body: AddStaffIn,
@@ -2661,7 +2673,7 @@ class AddPatientIn(BaseModel):
 
 @router.post(
     "/organizations/{org_id}/patients",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def add_patient_to_organization(
     org_id: int,

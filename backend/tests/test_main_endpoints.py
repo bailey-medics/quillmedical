@@ -322,7 +322,10 @@ class TestOrganizationEndpoints:
         assert response.status_code == 403
 
     def test_create_organization_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test creating a new organisation."""
         response = authenticated_admin_client.post(
@@ -332,6 +335,7 @@ class TestOrganizationEndpoints:
                 "type": "hospital_team",
                 "location": "London",
             },
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -342,12 +346,16 @@ class TestOrganizationEndpoints:
         assert "created_at" in data
 
     def test_create_organization_without_location(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test creating organisation without optional location."""
         response = authenticated_admin_client.post(
             "/api/organizations",
             json={"name": "Remote Clinic", "type": "private_clinic"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -355,28 +363,39 @@ class TestOrganizationEndpoints:
         assert data["location"] is None
 
     def test_create_organization_invalid_type(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test creating organisation with invalid type."""
         response = authenticated_admin_client.post(
             "/api/organizations",
             json={"name": "Bad Org", "type": "invalid_type"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 400
         assert "Invalid organisation type" in response.json()["detail"]
 
     def test_create_organization_missing_name(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test creating organisation without required name field."""
         response = authenticated_admin_client.post(
             "/api/organizations",
             json={"type": "hospital_team"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 422
 
     def test_create_organization_strips_whitespace(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test that name and location are trimmed of whitespace."""
         response = authenticated_admin_client.post(
@@ -386,11 +405,22 @@ class TestOrganizationEndpoints:
                 "type": "gp_practice",
                 "location": "  Manchester  ",
             },
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Spaced Hospital"
         assert data["location"] == "Manchester"
+
+    def test_create_organization_without_csrf(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test creating organisation without CSRF token is rejected."""
+        response = authenticated_admin_client.post(
+            "/api/organizations",
+            json={"name": "Test Org", "type": "hospital_team"},
+        )
+        assert response.status_code == 403
 
     def test_update_organization_unauthenticated(
         self, test_client: TestClient
@@ -411,16 +441,23 @@ class TestOrganizationEndpoints:
         assert response.status_code == 403
 
     def test_update_organization_not_found(
-        self, authenticated_admin_client: TestClient
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
     ):
         """Test updating non-existent organisation."""
         response = authenticated_admin_client.put(
-            "/api/organizations/999", json={"name": "New Name"}
+            "/api/organizations/999",
+            json={"name": "New Name"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 404
 
     def test_update_organization_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test successfully updating an organisation."""
         # Create an organisation first
@@ -431,6 +468,7 @@ class TestOrganizationEndpoints:
                 "type": "hospital_team",
                 "location": "London",
             },
+            headers=admin_csrf_headers,
         )
         org_id = create_response.json()["id"]
 
@@ -438,6 +476,7 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.put(
             f"/api/organizations/{org_id}",
             json={"name": "Updated Hospital", "location": "Manchester"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -446,22 +485,31 @@ class TestOrganizationEndpoints:
         assert data["location"] == "Manchester"
 
     def test_update_organization_invalid_type(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test updating organisation with invalid type."""
         create_response = authenticated_admin_client.post(
             "/api/organizations",
             json={"name": "Test Org", "type": "hospital_team"},
+            headers=admin_csrf_headers,
         )
         org_id = create_response.json()["id"]
 
         response = authenticated_admin_client.put(
-            f"/api/organizations/{org_id}", json={"type": "invalid_type"}
+            f"/api/organizations/{org_id}",
+            json={"type": "invalid_type"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 400
 
     def test_update_organization_partial(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test partial update only changes specified fields."""
         create_response = authenticated_admin_client.post(
@@ -471,17 +519,29 @@ class TestOrganizationEndpoints:
                 "type": "hospital_team",
                 "location": "London",
             },
+            headers=admin_csrf_headers,
         )
         org_id = create_response.json()["id"]
 
         response = authenticated_admin_client.put(
-            f"/api/organizations/{org_id}", json={"name": "New Name"}
+            f"/api/organizations/{org_id}",
+            json={"name": "New Name"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "New Name"
         assert data["type"] == "hospital_team"
         assert data["location"] == "London"
+
+    def test_update_organization_without_csrf(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test updating organisation without CSRF token is rejected."""
+        response = authenticated_admin_client.put(
+            "/api/organizations/1", json={"name": "New Name"}
+        )
+        assert response.status_code == 403
 
     def test_add_staff_unauthenticated(self, test_client: TestClient):
         """Test adding staff without authentication."""
@@ -498,16 +558,23 @@ class TestOrganizationEndpoints:
         assert response.status_code == 403
 
     def test_add_staff_org_not_found(
-        self, authenticated_admin_client: TestClient
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
     ):
         """Test adding staff to non-existent organisation."""
         response = authenticated_admin_client.post(
-            "/api/organizations/999/staff", json={"user_id": 1}
+            "/api/organizations/999/staff",
+            json={"user_id": 1},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 404
 
     def test_add_staff_user_not_found(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test adding non-existent user as staff."""
         from app.models import Organization
@@ -517,7 +584,9 @@ class TestOrganizationEndpoints:
         db_session.commit()
 
         response = authenticated_admin_client.post(
-            f"/api/organizations/{org.id}/staff", json={"user_id": 9999}
+            f"/api/organizations/{org.id}/staff",
+            json={"user_id": 9999},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 404
         assert "User not found" in response.json()["detail"]
@@ -525,6 +594,7 @@ class TestOrganizationEndpoints:
     def test_add_staff_success(
         self,
         authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
         db_session,
         test_admin: User,
     ):
@@ -538,6 +608,7 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
             json={"user_id": test_admin.id},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -548,6 +619,7 @@ class TestOrganizationEndpoints:
     def test_add_staff_auto_sets_primary(
         self,
         authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
         db_session,
         test_admin: User,
     ):
@@ -563,6 +635,7 @@ class TestOrganizationEndpoints:
         authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
             json={"user_id": test_admin.id},
+            headers=admin_csrf_headers,
         )
 
         row = db_session.execute(
@@ -577,6 +650,7 @@ class TestOrganizationEndpoints:
     def test_add_staff_does_not_override_primary(
         self,
         authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
         db_session,
         test_admin: User,
     ):
@@ -602,6 +676,7 @@ class TestOrganizationEndpoints:
         authenticated_admin_client.post(
             f"/api/organizations/{org2.id}/staff",
             json={"user_id": test_admin.id},
+            headers=admin_csrf_headers,
         )
 
         row = db_session.execute(
@@ -616,6 +691,7 @@ class TestOrganizationEndpoints:
     def test_add_staff_duplicate(
         self,
         authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
         db_session,
         test_admin: User,
     ):
@@ -639,6 +715,7 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
             json={"user_id": test_admin.id},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 409
         assert "already a staff member" in response.json()["detail"]
@@ -646,6 +723,7 @@ class TestOrganizationEndpoints:
     def test_add_staff_rejects_patient_user(
         self,
         authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
         db_session,
     ):
         """Test adding a patient-level user as staff is rejected."""
@@ -668,9 +746,19 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
             json={"user_id": patient_user.id},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 400
         assert "staff-level permissions" in response.json()["detail"]
+
+    def test_add_staff_without_csrf(
+        self, authenticated_admin_client: TestClient, db_session
+    ):
+        """Test adding staff without CSRF token is rejected."""
+        response = authenticated_admin_client.post(
+            "/api/organizations/1/staff", json={"user_id": 1}
+        )
+        assert response.status_code == 403
 
     def test_list_users_permission_level_filter(
         self,
@@ -733,17 +821,23 @@ class TestOrganizationEndpoints:
         assert response.status_code == 403
 
     def test_add_patient_org_not_found(
-        self, authenticated_admin_client: TestClient
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
     ):
         """Test adding patient to non-existent organisation."""
         response = authenticated_admin_client.post(
             "/api/organizations/999/patients",
             json={"patient_id": "fhir-123"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 404
 
     def test_add_patient_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test successfully adding a patient."""
         from app.models import Organization
@@ -755,6 +849,7 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/patients",
             json={"patient_id": "fhir-456"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -762,7 +857,10 @@ class TestOrganizationEndpoints:
         assert data["patient_id"] == "fhir-456"
 
     def test_add_patient_duplicate(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        admin_csrf_headers: dict,
+        db_session,
     ):
         """Test adding patient who is already a member."""
         from sqlalchemy import insert
@@ -784,6 +882,7 @@ class TestOrganizationEndpoints:
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/patients",
             json={"patient_id": "fhir-789"},
+            headers=admin_csrf_headers,
         )
         assert response.status_code == 409
         assert "already a member" in response.json()["detail"]
