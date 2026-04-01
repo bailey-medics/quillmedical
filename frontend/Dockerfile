@@ -46,6 +46,9 @@ COPY shared/ /shared/
 ARG VITE_VAPID_PUBLIC
 ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 
+# Generate TypeScript types from shared YAML (Yarn 4 skips pre* hooks)
+RUN yarn generate:types
+
 # Build SPA (outputs to dist/)
 RUN yarn build
 
