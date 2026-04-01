@@ -51,6 +51,7 @@ export default function RegisterPage() {
     try {
       await api.post("/auth/register", {
         username: data.username,
+        full_name: data.fullName || undefined,
         email: data.email,
         password: data.password,
         organisation_id: Number(data.organisation),

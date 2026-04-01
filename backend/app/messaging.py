@@ -105,7 +105,7 @@ def _user_has_conversation_access(
 
 
 def _user_display_name(user: User) -> str:
-    return user.username
+    return user.full_name or user.username
 
 
 def _participant_out(cp: ConversationParticipant) -> ParticipantOut:

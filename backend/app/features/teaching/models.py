@@ -161,6 +161,9 @@ class Assessment(Base):
     total_items: Mapped[int] = mapped_column(Integer, nullable=False)
     score_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     is_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    exam_ref: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, unique=True, index=True
+    )
 
     answers: Mapped[list[AssessmentAnswer]] = relationship(
         back_populates="assessment",

@@ -431,6 +431,7 @@ def assessment_history(
             started_at=a.started_at,
             completed_at=a.completed_at,
             is_passed=a.is_passed,
+            exam_ref=a.exam_ref,
             score_breakdown=a.score_breakdown,
             total_items=a.total_items,
         )
@@ -756,6 +757,7 @@ def _maybe_enqueue_certificate_emails(
     user: User,
     db: Session,
     criteria_results: list[dict[str, Any]],
+    exam_ref: str | None = None,
 ) -> None:
     """Enqueue certificate emails if the bank is live and email sending is enabled."""
     from app.config import settings as app_settings
@@ -824,9 +826,14 @@ def _maybe_enqueue_certificate_emails(
         )
     ).scalar_one_or_none()
 
+    display_name = user.full_name or user.username
     context: dict[str, str] = {
         "exam_title": config_row.title,
-        "student_name": user.username,
+        "student_name": (
+            f"{display_name} ({user.username})"
+            if user.full_name
+            else user.username
+        ),
         "completion_date": completion_date,
         "score_summary": score_summary,
         "institution_name": (
@@ -839,13 +846,18 @@ def _maybe_enqueue_certificate_emails(
     bg = find_certificate_background(bank_path, bank_id)
     pdf_bytes: bytes | None = None
     if bg:
-        pass_text = "Pass — " + score_summary if score_summary else "Pass"
+        pass_text = (
+            "Pass\n" + "\n".join(score_summary.split(", "))
+            if score_summary
+            else "Pass"
+        )
         pdf_bytes = generate_certificate_pdf(
             background_path=bg,
             exam_title=config_row.title,
-            candidate_name=user.username,
+            candidate_name=user.full_name or user.username,
             pass_summary=pass_text,
             completion_date=completion_date,
+            exam_ref=exam_ref,
         )
 
     attachments: list[EmailAttachment] = []
@@ -863,7 +875,7 @@ def _maybe_enqueue_certificate_emails(
             bank_path, bank_id, "student_email"
         )
         if student_template and user.email:
-            ctx = {**context, "recipient_name": user.username}
+            ctx = {**context, "recipient_name": display_name}
             rendered = render_email(student_template, ctx)
             att = attachments if student_template["attach_certificate"] else []
             background_tasks.add_task(
@@ -967,6 +979,12 @@ def complete_assessment(
     assessment.completed_at = datetime.now(UTC)
     assessment.score_breakdown = score_breakdown
     assessment.is_passed = overall_passed
+
+    # Generate exam reference from prefix in config
+    exam_ref_prefix = config.get("results", {}).get("exam_ref_prefix", "")
+    if exam_ref_prefix:
+        assessment.exam_ref = f"{exam_ref_prefix}{assessment.id}"
+
     db.commit()
 
     # --- Email certificate on pass ---
@@ -978,6 +996,7 @@ def complete_assessment(
             user=user,
             db=db,
             criteria_results=criteria_results,
+            exam_ref=assessment.exam_ref,
         )
 
     return {
@@ -1067,14 +1086,23 @@ def download_certificate(
         pct = round(c.get("value", 0) * 100)
         summary_parts.append(f"{c.get('name', '')}: {pct}%")
     pass_summary = (
-        "Pass — " + ", ".join(summary_parts) if summary_parts else "Pass"
+        "Pass\n" + "\n".join(summary_parts) if summary_parts else "Pass"
     )
 
     # Format date
     completion_date = assessment.completed_at.strftime("%-d %B %Y")
 
     # Candidate name
-    candidate_name = user.username
+    candidate_name = user.full_name or user.username
+
+    # Lazily generate exam_ref for assessments completed before the feature
+    exam_ref = assessment.exam_ref
+    if not exam_ref:
+        prefix = config.get("results", {}).get("exam_ref_prefix", "")
+        if prefix:
+            exam_ref = f"{prefix}{assessment.id}"
+            assessment.exam_ref = exam_ref
+            db.commit()
 
     # Parse certificate style from config
     style = parse_certificate_style(config.get("certificate"))
@@ -1086,6 +1114,7 @@ def download_certificate(
         pass_summary=pass_summary,
         completion_date=completion_date,
         style=style,
+        exam_ref=exam_ref,
     )
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"

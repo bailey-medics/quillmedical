@@ -37,8 +37,11 @@ _OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108
 # Dummy data for preview — tweak these to test different lengths
 _EXAM_TITLE = "Optical Diagnosis of Diminutive Colorectal Polyps MCQ Online"
 _CANDIDATE_NAME = "Dr Alexandra Hamilton-Fairfax"
-_PASS_SUMMARY = "Pass — High confidence rate: 78%, Accuracy of high-confidence answers: 91%"
+_PASS_SUMMARY = (
+    "Pass\nHigh confidence rate: 78%\nAccuracy of high-confidence answers: 91%"
+)
 _COMPLETION_DATE = "31 March 2026"
+_EXAM_REF = "eoeeta-1-42"
 
 
 def main() -> None:
@@ -74,6 +77,11 @@ def main() -> None:
             config = yaml.safe_load(f) or {}
     style = parse_certificate_style(config.get("certificate"))
 
+    # Build preview exam ref from config prefix
+    results = config.get("results", {})
+    exam_ref_prefix = results.get("exam_ref_prefix", "")
+    exam_ref = f"{exam_ref_prefix}42" if exam_ref_prefix else _EXAM_REF
+
     pdf_bytes = generate_certificate_pdf(
         background_path=bg,
         exam_title=_EXAM_TITLE,
@@ -81,6 +89,7 @@ def main() -> None:
         pass_summary=_PASS_SUMMARY,
         completion_date=_COMPLETION_DATE,
         style=style,
+        exam_ref=exam_ref,
     )
 
     out = Path(args.output)
