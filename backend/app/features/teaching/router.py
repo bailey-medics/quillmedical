@@ -841,7 +841,11 @@ def _maybe_enqueue_certificate_emails(
     bg = find_certificate_background(bank_path, bank_id)
     pdf_bytes: bytes | None = None
     if bg:
-        pass_text = "Pass — " + score_summary if score_summary else "Pass"
+        pass_text = (
+            "Pass\n" + "\n".join(score_summary.split(", "))
+            if score_summary
+            else "Pass"
+        )
         pdf_bytes = generate_certificate_pdf(
             background_path=bg,
             exam_title=config_row.title,
@@ -1077,7 +1081,7 @@ def download_certificate(
         pct = round(c.get("value", 0) * 100)
         summary_parts.append(f"{c.get('name', '')}: {pct}%")
     pass_summary = (
-        "Pass — " + ", ".join(summary_parts) if summary_parts else "Pass"
+        "Pass\n" + "\n".join(summary_parts) if summary_parts else "Pass"
     )
 
     # Format date

@@ -279,3 +279,12 @@ class TestWrapText:
         )
         # Returns the word even though it overflows (graceful fallback)
         assert len(result) >= 1
+
+    def test_explicit_newlines_honoured(self, _canvas: canvas.Canvas) -> None:
+        text = "Pass\nHigh confidence rate: 78%\nAccuracy: 91%"
+        result = _wrap_text(_canvas, text, "Helvetica", 12, 500)
+        assert result == [
+            "Pass",
+            "High confidence rate: 78%",
+            "Accuracy: 91%",
+        ]

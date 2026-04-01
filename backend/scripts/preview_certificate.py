@@ -37,7 +37,9 @@ _OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108
 # Dummy data for preview — tweak these to test different lengths
 _EXAM_TITLE = "Optical Diagnosis of Diminutive Colorectal Polyps MCQ Online"
 _CANDIDATE_NAME = "Dr Alexandra Hamilton-Fairfax"
-_PASS_SUMMARY = "Pass — High confidence rate: 78%, Accuracy of high-confidence answers: 91%"
+_PASS_SUMMARY = (
+    "Pass\nHigh confidence rate: 78%\nAccuracy of high-confidence answers: 91%"
+)
 _COMPLETION_DATE = "31 March 2026"
 _EXAM_REF = "eoeeta-1-42"
 

@@ -308,20 +308,31 @@ def _wrap_text(
     font_size: float,
     max_width: float,
 ) -> list[str]:
-    """Split *text* into lines that fit within *max_width*."""
-    if c.stringWidth(text, font_name, font_size) <= max_width:
-        return [text]
-    words = text.split()
+    """Split *text* into lines that fit within *max_width*.
+
+    Explicit newlines in *text* are always honoured.  Each resulting
+    paragraph is then word-wrapped to *max_width*.
+    """
+    paragraphs = text.split("\n")
     lines: list[str] = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if c.stringWidth(candidate, font_name, font_size) <= max_width:
-            current = candidate
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            lines.append("")
+            continue
+        if c.stringWidth(para, font_name, font_size) <= max_width:
+            lines.append(para)
+            continue
+        words = para.split()
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if c.stringWidth(candidate, font_name, font_size) <= max_width:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
     return lines or [text]
