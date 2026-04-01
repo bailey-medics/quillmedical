@@ -40,7 +40,7 @@
     "  Include in next release if imminent.",
     "",
     "Low severity or any Tier 3:",
-    "  Pick up in next scheduled Wednesday Renovate run.",
+    "  Pick up in next scheduled Wednesday Renovate run (vuln alerts included).",
     "  No hotfix required.",
     "============================================================="
   ],
@@ -215,20 +215,20 @@
       "automerge": false
     },
     {
-      "description": "Tier 3 — Tooling vulnerability alerts bypass schedule, target main",
+      "description": "Tier 3 — Tooling vulnerability alerts: weekly schedule, target main",
       "matchDepTypes": ["devDependencies", "dev"],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
-      "prCreation": "immediate",
+      "schedule": ["every wednesday"],
+      "prCreation": "not-pending",
       "labels": ["dependencies", "security"],
       "automerge": false
     },
     {
-      "description": "Tier 3 — GitHub Actions and pre-commit vulnerability alerts: bypass schedule, target main",
+      "description": "Tier 3 — GitHub Actions and pre-commit vulnerability alerts: weekly schedule, target main",
       "matchManagers": ["github-actions", "pre-commit"],
       "isVulnerabilityAlert": true,
-      "schedule": ["at any time"],
-      "prCreation": "immediate",
+      "schedule": ["every wednesday"],
+      "prCreation": "not-pending",
       "labels": ["dependencies", "security"],
       "automerge": false
     },
