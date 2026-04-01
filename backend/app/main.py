@@ -671,6 +671,11 @@ def register(
 
     user = User(
         username=username,
+        full_name=(
+            payload.full_name.strip()
+            if payload.full_name and payload.full_name.strip()
+            else None
+        ),
         email=email,
         password_hash=hash_password(payload.password),
     )
@@ -826,6 +831,7 @@ def create_user_with_cbac(
     # Create user
     user = User(
         username=username,
+        full_name=payload.name.strip(),
         email=email,
         password_hash=hash_password(password),
         base_profession=payload.base_profession,
@@ -903,6 +909,10 @@ def update_user(
                     status_code=400, detail="Username already exists"
                 )
             user.username = username
+
+    # Update full name
+    if payload.name is not None:
+        user.full_name = payload.name.strip() or None
 
     # Validate and update email
     if payload.email is not None:
@@ -1185,6 +1195,7 @@ def me(
     return {
         "id": u.id,
         "username": u.username,
+        "name": u.full_name,
         "email": u.email,
         "roles": [r.name for r in u.roles],
         "system_permissions": u.system_permissions,
@@ -1348,7 +1359,7 @@ def get_user(
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "name": user.username,  # TODO: Add name field to User model
+        "name": user.full_name or user.username,
         "base_profession": user.base_profession,
         "additional_competencies": user.additional_competencies or [],
         "removed_competencies": user.removed_competencies or [],

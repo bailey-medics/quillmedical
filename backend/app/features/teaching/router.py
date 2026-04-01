@@ -849,7 +849,7 @@ def _maybe_enqueue_certificate_emails(
         pdf_bytes = generate_certificate_pdf(
             background_path=bg,
             exam_title=config_row.title,
-            candidate_name=user.username,
+            candidate_name=user.full_name or user.username,
             pass_summary=pass_text,
             completion_date=completion_date,
             exam_ref=exam_ref,
@@ -1088,7 +1088,16 @@ def download_certificate(
     completion_date = assessment.completed_at.strftime("%-d %B %Y")
 
     # Candidate name
-    candidate_name = user.username
+    candidate_name = user.full_name or user.username
+
+    # Lazily generate exam_ref for assessments completed before the feature
+    exam_ref = assessment.exam_ref
+    if not exam_ref:
+        prefix = config.get("results", {}).get("exam_ref_prefix", "")
+        if prefix:
+            exam_ref = f"{prefix}{assessment.id}"
+            assessment.exam_ref = exam_ref
+            db.commit()
 
     # Parse certificate style from config
     style = parse_certificate_style(config.get("certificate"))
@@ -1100,7 +1109,7 @@ def download_certificate(
         pass_summary=pass_summary,
         completion_date=completion_date,
         style=style,
-        exam_ref=assessment.exam_ref,
+        exam_ref=exam_ref,
     )
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"

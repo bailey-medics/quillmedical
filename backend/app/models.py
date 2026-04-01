@@ -76,6 +76,7 @@ class User(Base):
     Attributes:
         id: Primary key.
         username: Unique username for login (indexed).
+        full_name: User's full display name (optional).
         email: Unique email address.
         password_hash: Argon2 password hash.
         totp_secret: Base32-encoded TOTP secret (optional for 2FA).
@@ -94,6 +95,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(
         String(150), unique=True, index=True, nullable=False
     )
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False
     )

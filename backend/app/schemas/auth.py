@@ -26,12 +26,14 @@ class RegisterIn(BaseModel):
 
     Attributes:
         username: Desired username (must be unique).
+        full_name: User's full display name (optional).
         email: Email address (must be unique).
         password: Desired password (min 6 characters).
         organisation_id: ID of the organisation to join (optional).
     """
 
     username: str
+    full_name: str | None = None
     email: str
     password: str
     organisation_id: int | None = None

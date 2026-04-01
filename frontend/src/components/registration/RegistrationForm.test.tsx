@@ -20,6 +20,7 @@ describe("RegistrationForm", () => {
 
     expect(screen.getByText("Create an account")).toBeInTheDocument();
     expect(screen.getByText("Username")).toBeInTheDocument();
+    expect(screen.getByText("Full name")).toBeInTheDocument();
     expect(screen.getByText("Email")).toBeInTheDocument();
     expect(screen.getByText("Organisation")).toBeInTheDocument();
     expect(screen.getByText("Password")).toBeInTheDocument();

@@ -5,6 +5,7 @@ import { ErrorText, HeaderText } from "@components/typography";
 
 export interface RegistrationFormData {
   username: string;
+  fullName: string;
   email: string;
   password: string;
   organisation: string;
@@ -28,6 +29,7 @@ export default function RegistrationForm({
   error = null,
 }: RegistrationFormProps) {
   const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -50,6 +52,7 @@ export default function RegistrationForm({
 
     onSubmit({
       username: username.trim(),
+      fullName: fullName.trim(),
       email: email.trim(),
       password,
       organisation,
@@ -68,6 +71,12 @@ export default function RegistrationForm({
             value={username}
             onChange={(e) => setUsername(e.currentTarget.value)}
             required
+          />
+          <TextField
+            label="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.currentTarget.value)}
+            placeholder="As it should appear on certificates"
           />
           <TextField
             label="Email"
