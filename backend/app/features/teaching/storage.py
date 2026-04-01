@@ -238,8 +238,16 @@ def list_bank_images_in_gcs(
 
     for blob in blobs:
         rel_path = blob.name.removeprefix(prefix)
-        if not rel_path or "/" not in rel_path:
+        if not rel_path:
             continue
+
+        # Root-level files (e.g. certificate-blank.png)
+        if "/" not in rel_path:
+            ext = Path(rel_path).suffix.lower()
+            if ext in allowed:
+                inventory.setdefault(".", set()).add(rel_path)
+            continue
+
         parts = rel_path.split("/", 1)
         item_dir_name = parts[0]
         filename = parts[1]
