@@ -431,6 +431,7 @@ def assessment_history(
             started_at=a.started_at,
             completed_at=a.completed_at,
             is_passed=a.is_passed,
+            exam_ref=a.exam_ref,
             score_breakdown=a.score_breakdown,
             total_items=a.total_items,
         )
@@ -756,6 +757,7 @@ def _maybe_enqueue_certificate_emails(
     user: User,
     db: Session,
     criteria_results: list[dict[str, Any]],
+    exam_ref: str | None = None,
 ) -> None:
     """Enqueue certificate emails if the bank is live and email sending is enabled."""
     from app.config import settings as app_settings
@@ -846,6 +848,7 @@ def _maybe_enqueue_certificate_emails(
             candidate_name=user.username,
             pass_summary=pass_text,
             completion_date=completion_date,
+            exam_ref=exam_ref,
         )
 
     attachments: list[EmailAttachment] = []
@@ -967,6 +970,12 @@ def complete_assessment(
     assessment.completed_at = datetime.now(UTC)
     assessment.score_breakdown = score_breakdown
     assessment.is_passed = overall_passed
+
+    # Generate exam reference from prefix in config
+    exam_ref_prefix = config.get("results", {}).get("exam_ref_prefix", "")
+    if exam_ref_prefix:
+        assessment.exam_ref = f"{exam_ref_prefix}{assessment.id}"
+
     db.commit()
 
     # --- Email certificate on pass ---
@@ -978,6 +987,7 @@ def complete_assessment(
             user=user,
             db=db,
             criteria_results=criteria_results,
+            exam_ref=assessment.exam_ref,
         )
 
     return {
@@ -1086,6 +1096,7 @@ def download_certificate(
         pass_summary=pass_summary,
         completion_date=completion_date,
         style=style,
+        exam_ref=assessment.exam_ref,
     )
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"

@@ -102,6 +102,7 @@ class AssessmentOut(BaseModel):
     time_limit_minutes: int
     total_items: int
     is_passed: bool | None
+    exam_ref: str | None
     score_breakdown: dict[str, Any] | None
 
 
@@ -168,6 +169,7 @@ class AssessmentHistoryOut(BaseModel):
     started_at: datetime
     completed_at: datetime | None
     is_passed: bool | None
+    exam_ref: str | None
     score_breakdown: dict[str, Any] | None
     total_items: int
 

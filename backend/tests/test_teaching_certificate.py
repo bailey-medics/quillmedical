@@ -4,16 +4,21 @@ Covers: PDF generation, find_certificate_background, style parsing,
 and the download_certificate endpoint.
 """
 
+# cspell:words pdfgen
+
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import pytest
 from PIL import Image
+from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
 from app.features.teaching.certificate import (
     CertificateStyle,
     TextFieldStyle,
+    _wrap_text,
     find_certificate_background,
     generate_certificate_pdf,
     parse_certificate_style,
@@ -137,6 +142,31 @@ class TestGenerateCertificatePdf:
         assert isinstance(result, bytes)
         assert result[:5] == b"%PDF-"
 
+    def test_generates_with_exam_ref(self, background: Path) -> None:
+        result = generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Pass",
+            completion_date="1 April 2026",
+            exam_ref="eoeeta-1-42",
+        )
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+        assert len(result) > 1000
+
+    def test_generates_without_exam_ref(self, background: Path) -> None:
+        result = generate_certificate_pdf(
+            background_path=background,
+            exam_title="Test Exam",
+            candidate_name="Jane Smith",
+            pass_summary="Pass",
+            completion_date="1 April 2026",
+            exam_ref=None,
+        )
+        assert isinstance(result, bytes)
+        assert result[:5] == b"%PDF-"
+
 
 # ------------------------------------------------------------------
 # parse_certificate_style
@@ -185,9 +215,67 @@ class TestParseCertificateStyle:
         fs = TextFieldStyle(font="Helvetica-Bold", bold=True)
         assert fs.resolved_font == "Helvetica-Bold"
 
+    def test_resolved_font_times_roman_bold(self) -> None:
+        fs = TextFieldStyle(font="Times-Roman", bold=True)
+        assert fs.resolved_font == "Times-Bold"
+
+    def test_resolved_font_times_roman_not_bold(self) -> None:
+        fs = TextFieldStyle(font="Times-Roman", bold=False)
+        assert fs.resolved_font == "Times-Roman"
+
     def test_rgb_from_hex(self) -> None:
         fs = TextFieldStyle(colour="#FF8000")
         r, g, b = fs.rgb
         assert abs(r - 1.0) < 0.01
         assert abs(g - 0.502) < 0.01
         assert abs(b - 0.0) < 0.01
+
+    def test_defaults_include_exam_ref(self) -> None:
+        style = parse_certificate_style(None)
+        assert style.exam_ref.size == 11
+        assert style.exam_ref.y == 0.34
+
+    def test_parses_exam_ref_field(self) -> None:
+        style = parse_certificate_style(
+            {"exam_ref": {"size": 10, "colour": "#999999", "y": 0.30}}
+        )
+        assert style.exam_ref.size == 10
+        assert style.exam_ref.colour == "#999999"
+        assert style.exam_ref.y == 0.30
+
+
+# ------------------------------------------------------------------
+# _wrap_text
+# ------------------------------------------------------------------
+
+
+class TestWrapText:
+    @pytest.fixture()
+    def _canvas(self) -> canvas.Canvas:
+        buf = io.BytesIO()
+        return canvas.Canvas(buf)
+
+    def test_short_text_returns_single_line(
+        self, _canvas: canvas.Canvas
+    ) -> None:
+        result = _wrap_text(_canvas, "Hello", "Helvetica", 12, 500)
+        assert result == ["Hello"]
+
+    def test_long_text_wraps_to_multiple_lines(
+        self, _canvas: canvas.Canvas
+    ) -> None:
+        long_title = (
+            "Optical Diagnosis of diminutive colorectal polyps MCQ Online"
+        )
+        result = _wrap_text(_canvas, long_title, "Times-Bold", 50, 400)
+        assert len(result) > 1
+        # All original words should be present
+        joined = " ".join(result)
+        assert joined == long_title
+
+    def test_single_word_exceeding_width(self, _canvas: canvas.Canvas) -> None:
+        result = _wrap_text(
+            _canvas, "Supercalifragilisticexpialidocious", "Helvetica", 50, 100
+        )
+        # Returns the word even though it overflows (graceful fallback)
+        assert len(result) >= 1

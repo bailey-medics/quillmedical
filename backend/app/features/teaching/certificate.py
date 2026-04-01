@@ -65,6 +65,9 @@ class TextFieldStyle:
     @property
     def resolved_font(self) -> str:
         if self.bold and not self.font.endswith("-Bold"):
+            # ReportLab's Times bold is "Times-Bold", not "Times-Roman-Bold"
+            if self.font == "Times-Roman":
+                return "Times-Bold"
             return f"{self.font}-Bold"
         return self.font
 
@@ -105,6 +108,11 @@ class CertificateStyle:
     date: TextFieldStyle = field(
         default_factory=lambda: TextFieldStyle(
             size=12, bold=False, colour="#666666", y=0.39
+        )
+    )
+    exam_ref: TextFieldStyle = field(
+        default_factory=lambda: TextFieldStyle(
+            size=11, bold=False, colour="#888888", y=0.34
         )
     )
     margin: int = 30
@@ -148,6 +156,9 @@ def parse_certificate_style(
             data.get("pass_summary", {}), defaults.pass_summary
         ),
         date=_parse_field_style(data.get("date", {}), defaults.date),
+        exam_ref=_parse_field_style(
+            data.get("exam_ref", {}), defaults.exam_ref
+        ),
         margin=int(data.get("margin", defaults.margin)),
     )
 
@@ -173,6 +184,7 @@ def generate_certificate_pdf(
     pass_summary: str,
     completion_date: str,
     style: CertificateStyle | None = None,
+    exam_ref: str | None = None,
 ) -> bytes:
     """Render a PDF certificate with text overlaid on the background.
 
@@ -191,6 +203,8 @@ def generate_certificate_pdf(
     style:
         Optional certificate style from config.yaml.  Uses defaults
         when None.
+    exam_ref:
+        Optional exam reference number, e.g. "eoeeta-1-42".
 
     Returns
     -------
@@ -243,6 +257,11 @@ def generate_certificate_pdf(
     # --- Completion date ---
     _draw_field(c, completion_date, style.date, cx, page_h, max_text_width)
 
+    # --- Exam reference ---
+    if exam_ref:
+        ref_text = f"Exam reference: {exam_ref}"
+        _draw_field(c, ref_text, style.exam_ref, cx, page_h, max_text_width)
+
     c.showPage()
     c.save()
     return buf.getvalue()
@@ -270,12 +289,39 @@ def _draw_centred(
     y: float,
     max_width: float,
 ) -> None:
-    """Draw centred text, reducing font size if it exceeds *max_width*."""
+    """Draw centred text, wrapping onto multiple lines if needed."""
     font_name = c._fontname
     font_size = c._fontsize
-    while c.stringWidth(text, font_name, font_size) > max_width:
-        font_size -= 1
-        if font_size < 8:
-            break
-    c.setFont(font_name, font_size)
-    c.drawCentredString(x, y, text)
+    lines = _wrap_text(c, text, font_name, font_size, max_width)
+    line_height = font_size * 1.2
+    # Centre the block vertically around the target y
+    total_height = line_height * (len(lines) - 1)
+    top_y = y + total_height / 2
+    for i, line in enumerate(lines):
+        c.drawCentredString(x, top_y - i * line_height, line)
+
+
+def _wrap_text(
+    c: canvas.Canvas,
+    text: str,
+    font_name: str,
+    font_size: float,
+    max_width: float,
+) -> list[str]:
+    """Split *text* into lines that fit within *max_width*."""
+    if c.stringWidth(text, font_name, font_size) <= max_width:
+        return [text]
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if c.stringWidth(candidate, font_name, font_size) <= max_width:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines or [text]

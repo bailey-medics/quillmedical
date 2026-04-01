@@ -3,6 +3,7 @@ patient_data/
 cookies.txt
 node_modules/
 .DS_Store
+certificate-preview.pdf
 
 # Generated HTML files from public_pages templates
 frontend/public_pages/*.html
