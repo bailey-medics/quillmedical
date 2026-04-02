@@ -303,6 +303,9 @@ jobs:
           # Derive label from branch prefix (feature/* → feature, copilot/* → copilot)
           LABEL="${GITHUB_REF_NAME%%/*}"
 
+          # Ensure label exists on the repo (no-op if already present)
+          gh label create "$LABEL" --color "0e8a16" 2>/dev/null || true
+
           gh pr create \
             --base main \
             --head "$GITHUB_REF_NAME" \
