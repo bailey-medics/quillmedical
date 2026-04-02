@@ -764,6 +764,7 @@ def _maybe_enqueue_certificate_emails(
     from app.email_send import Attachment as EmailAttachment
     from app.email_send import send_email
     from app.features.teaching.certificate import (
+        download_certificate_background_from_gcs,
         find_certificate_background,
         generate_certificate_pdf,
     )
@@ -837,33 +838,45 @@ def _maybe_enqueue_certificate_emails(
         "recipient_name": "",
     }
 
-    # Generate certificate PDF for attachment (requires local bank path)
+    # Generate certificate PDF for attachment (local path or GCS)
     attachments: list[EmailAttachment] = []
+    bg: Path | None = None
+    tmp_bg: Path | None = None
     bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
     if bank_path_str:
-        bank_path = Path(bank_path_str)
-        bg = find_certificate_background(bank_path, bank_id)
-        if bg:
-            pass_text = (
-                "Pass\n" + "\n".join(score_summary.split(", "))
-                if score_summary
-                else "Pass"
-            )
-            pdf_bytes = generate_certificate_pdf(
-                background_path=bg,
-                exam_title=config_row.title,
-                candidate_name=user.full_name or user.username,
-                pass_summary=pass_text,
-                completion_date=completion_date,
-                exam_ref=exam_ref,
-            )
-            if pdf_bytes:
-                attachments.append(
-                    EmailAttachment(
-                        filename=f"certificate-{bank_id}.pdf",
-                        content=pdf_bytes,
-                    )
+        bg = find_certificate_background(Path(bank_path_str), bank_id)
+
+    if not bg and app_settings.TEACHING_GCS_BUCKET:
+        tmp_bg = download_certificate_background_from_gcs(
+            app_settings.TEACHING_GCS_BUCKET, bank_id
+        )
+        bg = tmp_bg
+
+    if bg:
+        pass_text = (
+            "Pass\n" + "\n".join(score_summary.split(", "))
+            if score_summary
+            else "Pass"
+        )
+        pdf_bytes = generate_certificate_pdf(
+            background_path=bg,
+            exam_title=config_row.title,
+            candidate_name=user.full_name or user.username,
+            pass_summary=pass_text,
+            completion_date=completion_date,
+            exam_ref=exam_ref,
+        )
+        if pdf_bytes:
+            attachments.append(
+                EmailAttachment(
+                    filename=f"certificate-{bank_id}.pdf",
+                    content=pdf_bytes,
                 )
+            )
+
+    # Clean up temp file downloaded from GCS
+    if tmp_bg:
+        tmp_bg.unlink(missing_ok=True)
 
     # Student email
     if email_student:
@@ -1024,6 +1037,7 @@ def download_certificate(
 
     from app.config import settings
     from app.features.teaching.certificate import (
+        download_certificate_background_from_gcs,
         find_certificate_background,
         generate_certificate_pdf,
         parse_certificate_style,
@@ -1059,13 +1073,22 @@ def download_certificate(
     if not config.get("results", {}).get("certificate_download"):
         raise HTTPException(404, "Certificates not enabled for this bank")
 
-    # Find background image
+    # Find background image (local path or GCS)
+    bg: Path | None = None
+    tmp_bg: Path | None = None
     bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
-    if not bank_path_str:
-        raise HTTPException(500, "TEACHING_QUESTION_BANK_PATH not configured")
+    if bank_path_str:
+        bg = find_certificate_background(
+            Path(bank_path_str), assessment.question_bank_id
+        )
 
-    bank_path = Path(bank_path_str)
-    bg = find_certificate_background(bank_path, assessment.question_bank_id)
+    if not bg and settings.TEACHING_GCS_BUCKET:
+        tmp_bg = download_certificate_background_from_gcs(
+            settings.TEACHING_GCS_BUCKET,
+            assessment.question_bank_id,
+        )
+        bg = tmp_bg
+
     if not bg:
         raise HTTPException(
             404, "No certificate background found for this bank"
@@ -1108,6 +1131,10 @@ def download_certificate(
         style=style,
         exam_ref=exam_ref,
     )
+
+    # Clean up temp file downloaded from GCS
+    if tmp_bg:
+        tmp_bg.unlink(missing_ok=True)
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"
     return Response(

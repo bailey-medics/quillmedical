@@ -300,11 +300,18 @@ jobs:
           # Use the latest commit message as the PR title
           TITLE=$(git log -1 --pretty=%s)
 
+          # Derive label from branch prefix (feature/* → feature, copilot/* → copilot)
+          LABEL="${GITHUB_REF_NAME%%/*}"
+
+          # Ensure label exists on the repo (no-op if already present)
+          gh label create "$LABEL" --color "0e8a16" 2>/dev/null || true
+
           gh pr create \
             --base main \
             --head "$GITHUB_REF_NAME" \
             --title "$TITLE" \
-            --body "Auto-created PR for \`$GITHUB_REF_NAME\`."
+            --body "Auto-created PR for \`$GITHUB_REF_NAME\`." \
+            --label "$LABEL"
 
       - name: Notify Slack on PR creation failure
         if: failure()
