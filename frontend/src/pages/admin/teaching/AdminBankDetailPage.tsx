@@ -18,6 +18,7 @@ import {
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
+import MarkdownView from "@/components/typography/MarkdownView";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
@@ -163,7 +164,7 @@ export default function AdminBankDetailPage() {
                           {bank.student_email_template.subject}
                         </BodyText>
                       </Group>
-                      <BodyText>{bank.student_email_template.body}</BodyText>
+                      <MarkdownView source={bank.student_email_template.body} />
                     </Stack>
                   </Paper>
                 ) : (
@@ -181,9 +182,9 @@ export default function AdminBankDetailPage() {
                           {bank.coordinator_email_template.subject}
                         </BodyText>
                       </Group>
-                      <BodyText>
-                        {bank.coordinator_email_template.body}
-                      </BodyText>
+                      <MarkdownView
+                        source={bank.coordinator_email_template.body}
+                      />
                     </Stack>
                   </Paper>
                 ) : (
