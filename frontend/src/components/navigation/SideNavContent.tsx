@@ -53,6 +53,7 @@ export default function SideNavContent({
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [bankTitle, setBankTitle] = useState<string | null>(null);
 
   // Check if user has admin or superadmin permissions
   const hasAdminAccess =
@@ -82,6 +83,11 @@ export default function SideNavContent({
   // Extract user ID from URL if on user admin page
   const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
   const userId = userIdMatch ? userIdMatch[1] : null;
+
+  // Extract bank ID from URL if on teaching bank admin page
+  const bankIdMatch = location.pathname.match(/^\/admin\/teaching\/([^/]+)/);
+  const bankId =
+    bankIdMatch && bankIdMatch[1] !== "settings" ? bankIdMatch[1] : null;
 
   // Fetch patient name when on patient admin page
   useEffect(() => {
@@ -142,6 +148,28 @@ export default function SideNavContent({
     fetchUsername();
   }, [userId]);
 
+  // Fetch bank title when on teaching bank admin page
+  useEffect(() => {
+    async function fetchBankTitle() {
+      if (!bankId) {
+        setBankTitle(null);
+        return;
+      }
+
+      try {
+        const bank = await api.get<{ title: string }>(
+          `/teaching/admin/banks/${bankId}`,
+        );
+        setBankTitle(bank.title || "Unknown bank");
+      } catch (error) {
+        console.error("Failed to fetch bank title:", error);
+        setBankTitle(null);
+      }
+    }
+
+    fetchBankTitle();
+  }, [bankId]);
+
   const navLinkStyles = {
     root: { fontSize: `${fontSize}rem` },
     label: { fontSize: `${fontSize}rem` },
@@ -196,6 +224,17 @@ export default function SideNavContent({
               label: "Teaching",
               href: "/admin/teaching",
               icon: showIcons ? "teaching" : undefined,
+              children: bankTitle
+                ? [
+                    {
+                      label:
+                        bankTitle.length > 8
+                          ? `${bankTitle.slice(0, 8)}…`
+                          : bankTitle,
+                      href: `/admin/teaching/${bankId}`,
+                    },
+                  ]
+                : undefined,
             } satisfies NavItem,
           ]
         : []),
