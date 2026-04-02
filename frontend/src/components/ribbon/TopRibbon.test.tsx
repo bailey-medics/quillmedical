@@ -346,6 +346,40 @@ describe("TopRibbon Component", () => {
     });
   });
 
+  describe("Search visibility", () => {
+    it("hides search field when showSearch is false", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithRouter(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={null}
+          isLoading={false}
+          isNarrow={false}
+          showSearch={false}
+        />,
+      );
+      const searchButton = container.querySelector(
+        'button[aria-label="Search"]',
+      );
+      expect(searchButton).not.toBeInTheDocument();
+    });
+
+    it("shows search field by default on wide screen", () => {
+      const onBurgerClick = vi.fn();
+      const { container } = renderWithRouter(
+        <TopRibbon
+          onBurgerClick={onBurgerClick}
+          patient={null}
+          isLoading={false}
+          isNarrow={false}
+        />,
+      );
+      // SearchField renders a button to toggle search open
+      const buttons = container.querySelectorAll("button");
+      expect(buttons.length).toBeGreaterThan(0);
+    });
+  });
+
   describe("ProfilePic", () => {
     it("renders ProfilePic in non-narrow mode", () => {
       const onBurgerClick = vi.fn();

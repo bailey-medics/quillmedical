@@ -82,3 +82,15 @@ export const LoadingWide: Story = {
     isNarrow: false,
   },
 };
+
+/** Non-clinical deployment — search field hidden */
+export const NonClinical: Story = {
+  args: {
+    patient: demoPatientsList[0],
+    isLoading: false,
+    navOpen: false,
+    isNarrow: false,
+    showSearch: false,
+  },
+  render: (args) => <TopRibbon {...args} />,
+};

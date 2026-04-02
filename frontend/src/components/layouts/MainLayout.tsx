@@ -124,6 +124,10 @@ export default function MainLayout({
           onPatientClick={handlePatientClick}
           onPatientDoubleClick={handlePatientDoubleClick}
           examMode={examMode}
+          showSearch={
+            state.status === "authenticated" &&
+            (state.user.clinical_services_enabled ?? true)
+          }
         />
       </Box>
 
