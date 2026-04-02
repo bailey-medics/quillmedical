@@ -177,6 +177,42 @@ def find_certificate_background(
     return None
 
 
+def download_certificate_background_from_gcs(
+    bucket_name: str,
+    bank_id: str,
+) -> Path | None:
+    """Download ``certificate-blank.png`` from GCS to a temp file.
+
+    Returns the path to the temporary file, or None if the blob
+    does not exist.  The caller is responsible for cleaning up
+    the temp file.
+    """
+    import tempfile
+
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob_path = f"questions/{bank_id}/certificate-blank.png"
+    blob = bucket.blob(blob_path)
+
+    if not blob.exists():
+        logger.info(
+            "certificate-blank.png not found at gs://%s/%s",
+            bucket_name,
+            blob_path,
+        )
+        return None
+
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".png", prefix=f"cert_{bank_id}_", delete=False
+    )
+    blob.download_to_filename(tmp.name)
+    tmp.close()
+    logger.info("Downloaded certificate background from GCS to %s", tmp.name)
+    return Path(tmp.name)
+
+
 def generate_certificate_pdf(
     background_path: Path,
     exam_title: str,
