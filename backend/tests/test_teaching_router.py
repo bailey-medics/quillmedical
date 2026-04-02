@@ -907,3 +907,89 @@ class TestAdminBanks:
         resp = test_client.get("/api/teaching/admin/banks", headers=headers)
         assert resp.status_code == 200
         assert resp.json() == []
+
+    def test_admin_bank_detail_includes_email_templates(
+        self, test_client, db_session
+    ):
+        """Email templates are read from DB config_yaml, not filesystem."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+
+        # Build config with email flags and templates
+        config_with_email = {
+            **SAMPLE_CONFIG_YAML,
+            "results": {
+                "certificate_download": False,
+                "email_student_on_pass": True,
+                "email_coordinator_on_pass": True,
+            },
+            "student_email": {
+                "subject": "Your certificate for $exam_title",
+                "body": "Hi $student_name, well done!",
+                "attach_certificate": True,
+            },
+            "coordinator_email": {
+                "subject": "Certificate issued: $exam_title",
+                "body": "Dear coordinator, $student_name passed.",
+                "attach_certificate": False,
+            },
+        }
+
+        config = QuestionBankConfig(
+            organisation_id=org.id,
+            question_bank_id="test-bank",
+            version=1,
+            title="Test Bank",
+            description="A test question bank.",
+            type="uniform",
+            config_yaml=config_with_email,
+            synced_by=educator.id,
+        )
+        db_session.add(config)
+        db_session.flush()
+        db_session.add(
+            QuestionBankOrgStatus(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                is_live=True,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/admin/banks/test-bank", headers=headers
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["email_student_on_pass"] is True
+        assert data["email_coordinator_on_pass"] is True
+
+        st = data["student_email_template"]
+        assert st is not None
+        assert st["subject"] == "Your certificate for $exam_title"
+        assert st["attach_certificate"] is True
+
+        ct = data["coordinator_email_template"]
+        assert ct is not None
+        assert ct["subject"] == "Certificate issued: $exam_title"
+        assert ct["attach_certificate"] is False
+
+    def test_admin_bank_detail_no_email_templates_when_disabled(
+        self, test_client, db_session
+    ):
+        """Templates are None when email flags are disabled."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/admin/banks/test-bank", headers=headers
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["student_email_template"] is None
+        assert data["coordinator_email_template"] is None

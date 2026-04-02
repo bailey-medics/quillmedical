@@ -34,12 +34,42 @@ class RenderedEmail(TypedDict):
     html_body: str
 
 
+def extract_email_template(
+    config: dict[str, Any],
+    template_name: str,
+) -> EmailTemplate | None:
+    """Extract an email template from an already-parsed config dict.
+
+    Args:
+        config: Parsed config.yaml contents (e.g. from DB config_yaml).
+        template_name: Section key, e.g.
+            ``"coordinator_email"`` or ``"student_email"``.
+
+    Returns:
+        Parsed template dict, or None if section not found.
+    """
+    key = template_name.replace("-", "_")
+    data = config.get(key)
+
+    if not isinstance(data, dict):
+        return None
+
+    return EmailTemplate(
+        subject=str(data.get("subject", "")),
+        body=str(data.get("body", "")),
+        attach_certificate=bool(data.get("attach_certificate", True)),
+    )
+
+
 def load_email_template(
     bank_path: Path,
     bank_id: str,
     template_name: str,
 ) -> EmailTemplate | None:
-    """Load an email template from the bank's config.yaml.
+    """Load an email template from the bank's config.yaml on disk.
+
+    Prefer :func:`extract_email_template` when the config dict is
+    already available (e.g. from the database).
 
     Args:
         bank_path: Root path to all question banks.
@@ -55,20 +85,9 @@ def load_email_template(
         return None
 
     with open(config_path, encoding="utf-8") as f:
-        config: dict[str, Any] = yaml.safe_load(f) or {}
+        loaded: dict[str, Any] = yaml.safe_load(f) or {}
 
-    # Normalise legacy hyphenated keys to underscores
-    key = template_name.replace("-", "_")
-    data = config.get(key)
-
-    if not isinstance(data, dict):
-        return None
-
-    return EmailTemplate(
-        subject=str(data.get("subject", "")),
-        body=str(data.get("body", "")),
-        attach_certificate=bool(data.get("attach_certificate", True)),
-    )
+    return extract_email_template(loaded, template_name)
 
 
 def render_email(
