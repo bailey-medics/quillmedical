@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry-core>=2.0.1,<3.0.0"]
+requires = ["poetry-core>=2.1.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -10,7 +10,7 @@ authors = ["Cotswoldsmaker <mark@letsdodigital.org>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.13.5"
+python = "^3.13.6"
 fastapi = "0.115.14"
 uvicorn = {extras = ["standard"], version = "0.36.1"}
 pydantic = "2.11.4"
