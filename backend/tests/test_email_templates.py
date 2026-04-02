@@ -7,6 +7,7 @@ import yaml
 
 from app.features.teaching.email_templates import (
     EmailTemplate,
+    extract_email_template,
     load_email_template,
     render_email,
 )
@@ -136,6 +137,74 @@ class TestLoadEmailTemplate:
             tmp_path, "test-bank", "coordinator-email"
         )
         assert result is not None
+
+
+class TestExtractEmailTemplate:
+    """Test extracting email templates from a parsed config dict."""
+
+    def test_extracts_coordinator_template(self) -> None:
+        config = {
+            "coordinator_email": {
+                "subject": "Certificate: $exam_title",
+                "body": "Dear $recipient_name",
+                "attach_certificate": True,
+            }
+        }
+        result = extract_email_template(config, "coordinator_email")
+        assert result is not None
+        assert result["subject"] == "Certificate: $exam_title"
+        assert result["body"] == "Dear $recipient_name"
+        assert result["attach_certificate"] is True
+
+    def test_extracts_student_template(self) -> None:
+        config = {
+            "student_email": {
+                "subject": "Your certificate",
+                "body": "Hi $student_name",
+            }
+        }
+        result = extract_email_template(config, "student_email")
+        assert result is not None
+        assert result["subject"] == "Your certificate"
+        assert result["attach_certificate"] is True
+
+    def test_returns_none_for_missing_section(self) -> None:
+        result = extract_email_template({}, "coordinator_email")
+        assert result is None
+
+    def test_returns_none_for_non_dict_section(self) -> None:
+        result = extract_email_template(
+            {"coordinator_email": "not a dict"}, "coordinator_email"
+        )
+        assert result is None
+
+    def test_normalises_hyphenated_key(self) -> None:
+        config = {
+            "coordinator_email": {
+                "subject": "Test",
+                "body": "Body",
+            }
+        }
+        result = extract_email_template(config, "coordinator-email")
+        assert result is not None
+
+    def test_defaults_attach_certificate_to_true(self) -> None:
+        config = {"student_email": {"subject": "S", "body": "B"}}
+        result = extract_email_template(config, "student_email")
+        assert result is not None
+        assert result["attach_certificate"] is True
+
+    def test_attach_certificate_false(self) -> None:
+        config = {
+            "student_email": {
+                "subject": "S",
+                "body": "B",
+                "attach_certificate": False,
+            }
+        }
+        result = extract_email_template(config, "student_email")
+        assert result is not None
+        assert result["attach_certificate"] is False
 
 
 class TestRenderEmail:

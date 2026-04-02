@@ -768,7 +768,7 @@ def _maybe_enqueue_certificate_emails(
         generate_certificate_pdf,
     )
     from app.features.teaching.email_templates import (
-        load_email_template,
+        extract_email_template,
         render_email,
     )
 
@@ -791,11 +791,6 @@ def _maybe_enqueue_certificate_emails(
     if not status_row or not status_row.is_live:
         return
 
-    bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
-    if not bank_path_str:
-        return
-
-    bank_path = Path(bank_path_str)
     bank_id = assessment.question_bank_id
 
     # Build context for template rendering
@@ -842,38 +837,37 @@ def _maybe_enqueue_certificate_emails(
         "recipient_name": "",
     }
 
-    # Generate certificate PDF for attachment
-    bg = find_certificate_background(bank_path, bank_id)
-    pdf_bytes: bytes | None = None
-    if bg:
-        pass_text = (
-            "Pass\n" + "\n".join(score_summary.split(", "))
-            if score_summary
-            else "Pass"
-        )
-        pdf_bytes = generate_certificate_pdf(
-            background_path=bg,
-            exam_title=config_row.title,
-            candidate_name=user.full_name or user.username,
-            pass_summary=pass_text,
-            completion_date=completion_date,
-            exam_ref=exam_ref,
-        )
-
+    # Generate certificate PDF for attachment (requires local bank path)
     attachments: list[EmailAttachment] = []
-    if pdf_bytes:
-        attachments.append(
-            EmailAttachment(
-                filename=f"certificate-{bank_id}.pdf",
-                content=pdf_bytes,
+    bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
+    if bank_path_str:
+        bank_path = Path(bank_path_str)
+        bg = find_certificate_background(bank_path, bank_id)
+        if bg:
+            pass_text = (
+                "Pass\n" + "\n".join(score_summary.split(", "))
+                if score_summary
+                else "Pass"
             )
-        )
+            pdf_bytes = generate_certificate_pdf(
+                background_path=bg,
+                exam_title=config_row.title,
+                candidate_name=user.full_name or user.username,
+                pass_summary=pass_text,
+                completion_date=completion_date,
+                exam_ref=exam_ref,
+            )
+            if pdf_bytes:
+                attachments.append(
+                    EmailAttachment(
+                        filename=f"certificate-{bank_id}.pdf",
+                        content=pdf_bytes,
+                    )
+                )
 
     # Student email
     if email_student:
-        student_template = load_email_template(
-            bank_path, bank_id, "student_email"
-        )
+        student_template = extract_email_template(config, "student_email")
         if student_template and user.email:
             ctx = {**context, "recipient_name": display_name}
             rendered = render_email(student_template, ctx)
@@ -888,9 +882,7 @@ def _maybe_enqueue_certificate_emails(
 
     # Coordinator email
     if email_coordinator:
-        coord_template = load_email_template(
-            bank_path, bank_id, "coordinator_email"
-        )
+        coord_template = extract_email_template(config, "coordinator_email")
         if coord_template and bank_status and bank_status.coordinator_email:
             ctx = {
                 **context,
@@ -1587,8 +1579,6 @@ def get_admin_bank_detail(
     db: Session = _DEP_SESSION,
 ) -> AdminBankDetailOut:
     """Return detailed admin view of a single question bank."""
-    from app.config import settings as app_settings
-
     org_id = _get_user_org_id(user, db)
 
     # Get bank config from DB
@@ -1631,27 +1621,24 @@ def get_admin_bank_detail(
     student_template: EmailTemplateOut | None = None
 
     if email_student_on_pass or email_coordinator_on_pass:
-        bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
-        if bank_path_str:
-            bank_path = Path(bank_path_str)
-            from app.features.teaching.email_templates import (
-                load_email_template,
-            )
+        from app.features.teaching.email_templates import (
+            extract_email_template,
+        )
 
-            ct = load_email_template(bank_path, bank_id, "coordinator_email")
-            if ct:
-                coordinator_template = EmailTemplateOut(
-                    subject=ct["subject"],
-                    body=ct["body"],
-                    attach_certificate=ct.get("attach_certificate", True),
-                )
-            st = load_email_template(bank_path, bank_id, "student_email")
-            if st:
-                student_template = EmailTemplateOut(
-                    subject=st["subject"],
-                    body=st["body"],
-                    attach_certificate=st.get("attach_certificate", True),
-                )
+        ct = extract_email_template(config, "coordinator_email")
+        if ct:
+            coordinator_template = EmailTemplateOut(
+                subject=ct["subject"],
+                body=ct["body"],
+                attach_certificate=ct.get("attach_certificate", True),
+            )
+        st = extract_email_template(config, "student_email")
+        if st:
+            student_template = EmailTemplateOut(
+                subject=st["subject"],
+                body=st["body"],
+                attach_certificate=st.get("attach_certificate", True),
+            )
 
     return AdminBankDetailOut(
         bank_id=bank_id,
