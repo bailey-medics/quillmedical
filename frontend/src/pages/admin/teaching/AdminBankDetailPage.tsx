@@ -8,9 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Loader, Paper, Stack, Table } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
-import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatus from "@/components/badge/ActiveStatus";
 import { StateMessage } from "@/components/message-cards";
@@ -20,6 +18,7 @@ import {
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
+import MarkdownView from "@/components/typography/MarkdownView";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
@@ -77,15 +76,7 @@ export default function AdminBankDetailPage() {
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
-        <Group gap="sm">
-          <IconButton
-            icon={<IconArrowLeft />}
-            variant="subtle"
-            onClick={() => navigate("/admin/teaching")}
-            aria-label="Back to teaching modules"
-          />
-          <PageHeader title={bank.title} />
-        </Group>
+        <PageHeader title={bank.title} />
 
         {/* Bank info */}
         <BaseCard>
@@ -173,7 +164,7 @@ export default function AdminBankDetailPage() {
                           {bank.student_email_template.subject}
                         </BodyText>
                       </Group>
-                      <BodyText>{bank.student_email_template.body}</BodyText>
+                      <MarkdownView source={bank.student_email_template.body} />
                     </Stack>
                   </Paper>
                 ) : (
@@ -191,9 +182,9 @@ export default function AdminBankDetailPage() {
                           {bank.coordinator_email_template.subject}
                         </BodyText>
                       </Group>
-                      <BodyText>
-                        {bank.coordinator_email_template.body}
-                      </BodyText>
+                      <MarkdownView
+                        source={bank.coordinator_email_template.body}
+                      />
                     </Stack>
                   </Paper>
                 ) : (

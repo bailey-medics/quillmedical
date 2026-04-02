@@ -227,7 +227,6 @@ function Step2Competencies({
           })
         }
         searchable
-        clearable
       />
 
       <MultiSelectField
@@ -245,7 +244,6 @@ function Step2Competencies({
           })
         }
         searchable
-        clearable
       />
     </Stack>
   );
