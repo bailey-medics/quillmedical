@@ -243,6 +243,12 @@
       "description": "Task 7 — Notifications: major version bump PRs get a dedicated label",
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "major-version-bump"]
+    },
+    {
+      "description": "Pin Python to 3.13.x — 3.14 does not yet work reliably in our Docker setup. Revisit Q3 2026.",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["python"],
+      "allowedVersions": "<3.14"
     }
   ],
   "pre-commit": {
