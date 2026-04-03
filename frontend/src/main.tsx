@@ -12,7 +12,7 @@
  *
  * Route Structure:
  * - Public routes: /login, /register (guest-only)
- * - Protected routes: /, /settings, /about (require authentication)
+ * - Protected routes: /, /settings (require authentication)
  * - 404 fallback for unknown paths
  */
 
@@ -28,7 +28,6 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { theme } from "./theme";
 
 import RootLayout from "./RootLayout";
-import About from "./pages/About";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
@@ -65,6 +64,7 @@ import PatientDocumentView from "./pages/PatientDocumentView";
 import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TotpSetup from "./pages/TotpSetup";
+import ChangePassword from "./pages/ChangePassword";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
@@ -450,7 +450,7 @@ const router = createBrowserRouter([
         element: import("./pages/Settings").then((m) => <m.default />),
       },
       { path: "/settings/totp", element: <TotpSetup /> },
-      { path: "/about", element: <About /> },
+      { path: "/settings/password", element: <ChangePassword /> },
 
       // Teaching routes — gated by "teaching" feature flag
       {
