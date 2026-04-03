@@ -11,10 +11,10 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.13.6"
-fastapi = "0.115.14"
-uvicorn = {extras = ["standard"], version = "0.36.1"}
-pydantic = "2.11.4"
-sqlalchemy = "2.0.47"
+fastapi = "0.116.0"
+uvicorn = {extras = ["standard"], version = "0.37.0"}
+pydantic = "2.11.5"
+sqlalchemy = "2.0.48"
 psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
 python-dotenv = "1.2.2"
 httpx = "0.28.1"
