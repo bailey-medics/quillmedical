@@ -678,6 +678,7 @@ export default function NewUserPage() {
             onCancel={handleCancel}
             activeStep={activeStep}
             onStepChange={handleStepChange}
+            allStepsAccessible={isEditMode}
           />
         )}
       </Box>

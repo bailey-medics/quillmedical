@@ -21,6 +21,8 @@ export interface LoginFormProps {
   requireTotp?: boolean;
   /** Path for the register link (set to null to hide) */
   registerPath?: string | null;
+  /** Path for the forgot password link (set to null to hide) */
+  forgotPasswordPath?: string | null;
 }
 
 export default function LoginForm({
@@ -29,6 +31,7 @@ export default function LoginForm({
   error = null,
   requireTotp = false,
   registerPath = "/register",
+  forgotPasswordPath = "/forgot-password",
 }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -67,6 +70,13 @@ export default function LoginForm({
               required
               autoComplete="current-password"
             />
+            {forgotPasswordPath && (
+              <Group justify="flex-end">
+                <HyperlinkText to={forgotPasswordPath}>
+                  Forgot password?
+                </HyperlinkText>
+              </Group>
+            )}
             {requireTotp && (
               <TextField
                 label="Authenticator code"

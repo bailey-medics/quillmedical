@@ -345,3 +345,111 @@ class TestTOTPDisable:
         """Test TOTP disable without authentication."""
         response = test_client.post("/api/auth/totp/disable")
         assert response.status_code == 401
+
+
+class TestForgotPassword:
+    """Test forgot-password endpoint."""
+
+    def test_forgot_password_existing_email(
+        self, test_client: TestClient, test_user: User
+    ):
+        """Test forgot-password with existing email returns ok."""
+        response = test_client.post(
+            "/api/auth/forgot-password",
+            json={"email": test_user.email},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"detail": "ok"}
+
+    def test_forgot_password_nonexistent_email(self, test_client: TestClient):
+        """Test forgot-password with unknown email still returns ok (no enumeration)."""
+        response = test_client.post(
+            "/api/auth/forgot-password",
+            json={"email": "nobody@example.com"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"detail": "ok"}
+
+    def test_forgot_password_case_insensitive(
+        self, test_client: TestClient, test_user: User
+    ):
+        """Test forgot-password normalises email to lowercase."""
+        response = test_client.post(
+            "/api/auth/forgot-password",
+            json={"email": test_user.email.upper()},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"detail": "ok"}
+
+
+class TestResetPassword:
+    """Test reset-password endpoint."""
+
+    def test_reset_password_success(
+        self, test_client: TestClient, test_user: User
+    ):
+        """Test successful password reset with valid token."""
+        from app.security import create_password_reset_token
+
+        token = create_password_reset_token(test_user.email)
+        response = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "NewSecurePass123!"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"detail": "Password reset successfully"}
+
+        # Verify new password works for login
+        response = test_client.post(
+            "/api/auth/login",
+            json={
+                "username": test_user.username,
+                "password": "NewSecurePass123!",
+            },
+        )
+        assert response.status_code == 200
+
+    def test_reset_password_invalid_token(self, test_client: TestClient):
+        """Test reset-password with invalid token."""
+        response = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": "bad-token", "new_password": "NewPassword123!"},
+        )
+        assert response.status_code == 400
+        assert "invalid or expired" in response.json()["detail"].lower()
+
+    def test_reset_password_too_short(
+        self, test_client: TestClient, test_user: User
+    ):
+        """Test reset-password rejects passwords shorter than 8 chars."""
+        from app.security import create_password_reset_token
+
+        token = create_password_reset_token(test_user.email)
+        response = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "short"},
+        )
+        assert response.status_code == 400
+        assert "8 characters" in response.json()["detail"]
+
+    def test_reset_password_expired_token(
+        self, test_client: TestClient, test_user: User
+    ):
+        """Test reset-password with expired token."""
+        from unittest.mock import patch
+
+        from app.security import create_password_reset_token
+
+        token = create_password_reset_token(test_user.email)
+
+        # Patch verify to simulate expired token (max_age=0 seconds)
+        with patch("app.main.verify_password_reset_token", return_value=None):
+            response = test_client.post(
+                "/api/auth/reset-password",
+                json={
+                    "token": token,
+                    "new_password": "NewPassword123!",
+                },
+            )
+        assert response.status_code == 400
+        assert "invalid or expired" in response.json()["detail"].lower()
