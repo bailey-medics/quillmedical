@@ -94,6 +94,47 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
       `dependencies`, `security`, `major-version-bump`, `hotfix`,
       `tier-1-clinical`, `back-merge`
 
+## Web push notifications
+
+The plumbing works (service worker, `pywebpush`, VAPID signing) but it is
+currently a proof-of-concept. The following items are needed before push
+notifications are production-ready:
+
+- [ ] **Persistent subscription storage** — subscriptions are held in an
+      in-memory Python list (`push.py`) and lost on every backend restart.
+      Move to the database (new `PushSubscription` model linked to `User`).
+
+- [ ] **Automated triggers** — nothing in the codebase sends notifications in
+      response to real events (new messages, appointments, etc.). The only way
+      to fire one is the manual `POST /api/push/send-test` endpoint. Add
+      triggers for the events that matter (messaging, appointment reminders,
+      clinical alerts).
+
+- [ ] **Auth on push endpoints** — both `/api/push/subscribe` and
+      `/api/push/send-test` are completely unauthenticated. Add
+      `DEP_CURRENT_USER` to `/subscribe` and restrict `/send-test` to admins.
+
+- [ ] **VAPID key documentation** — `frontend/.env` needs `VITE_VAPID_PUBLIC`
+      and `backend/.env` needs `VAPID_PRIVATE`, otherwise subscription/sending
+      silently fails. Ensure `dev-env-check.sh` validates these exist and
+      document in the developer setup guide.
+
+- [ ] **Deduplicate subscription logic** — the enable-notifications code is
+      copy-pasted between `EnableNotificationsButton.tsx` and `Settings.tsx`.
+      Extract into a shared hook (e.g. `usePushSubscription`).
+
+- [ ] **Use `api` client** — both subscription call sites use raw `fetch()`
+      instead of the `api` client from `@/lib/api.ts`, bypassing CSRF and
+      auth cookie handling.
+
+### Verifying push notifications work in dev
+
+1. Ensure VAPID keys are in `.env` files (`just vapid-key` to generate)
+2. Click "Enable notifications" on the settings page and accept the browser
+   permission prompt
+3. `curl -X POST http://localhost/api/push/send-test` — you should see a real
+   browser notification
+
 ## MISC
 
 - [ ] Update all libraries to most recent
@@ -102,3 +143,6 @@ _See [learnings/fhir-ehrbase-issues.md](../learnings/fhir-ehrbase-issues.md) for
       currently only the post-login redirect is handled; if an authenticated
       user navigates directly to `/` they see the clinical home page (patient
       list) instead of the teaching dashboard
+- [ ] Create `/settings/password` page — the settings page links to it via
+      "Change password" but no route or page component exists, resulting in a
+      404

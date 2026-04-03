@@ -13,7 +13,8 @@ description: Commit and push code
 5. If pre-commit hooks fail:
    - For auto-fixable issues (formatting, linting): apply fixes and re-commit
    - For complex issues: report what needs manual attention
-6. Push to current branch
+6. Rebase if the branch is behind main, resolve any conflicts, and ensure tests pass
+7. Push to current branch
 
 If at any step there's an error requiring human judgement, stop and report the issue.
 
