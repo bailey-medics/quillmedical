@@ -37,3 +37,15 @@ class RegisterIn(BaseModel):
     email: str
     password: str
     organisation_id: int | None = None
+
+
+class ChangePasswordIn(BaseModel):
+    """Change password request payload.
+
+    Attributes:
+        current_password: User's current password for verification.
+        new_password: Desired new password (min 8 characters).
+    """
+
+    current_password: str
+    new_password: str

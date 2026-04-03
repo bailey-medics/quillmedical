@@ -89,7 +89,7 @@ from app.organisations import (
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
-from app.schemas.auth import LoginIn, RegisterIn
+from app.schemas.auth import ChangePasswordIn, LoginIn, RegisterIn
 from app.schemas.cbac import (
     PrescriptionRequest,
     UpdateCompetenciesRequest,
@@ -1120,6 +1120,44 @@ def totp_disable(
     db.add(u)
     db.commit()
     return {"detail": "disabled"}
+
+
+@router.post("/auth/change-password")
+def change_password(
+    data: ChangePasswordIn,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Change the current user's password.
+
+    Verifies the current password, validates the new password meets
+    minimum requirements, then updates the hash. Requires CSRF token.
+
+    Args:
+        data: Current and new password payload.
+        u: Currently authenticated user (with CSRF validation).
+        db: Database session for updating user.
+
+    Returns:
+        dict: Success response with {"detail": "Password changed"}.
+
+    Raises:
+        HTTPException: 400 if current password is wrong or new password
+            does not meet requirements.
+    """
+    if not verify_password(data.current_password, u.password_hash):
+        raise HTTPException(
+            status_code=400, detail="Current password is incorrect"
+        )
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be at least 8 characters",
+        )
+    u.password_hash = hash_password(data.new_password)
+    db.add(u)
+    db.commit()
+    return {"detail": "Password changed"}
 
 
 @router.post("/auth/logout")
