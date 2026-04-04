@@ -15,7 +15,12 @@ from typing import Any
 import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from itsdangerous import URLSafeSerializer
+from itsdangerous import (
+    BadSignature,
+    SignatureExpired,
+    URLSafeSerializer,
+    URLSafeTimedSerializer,
+)
 from jose import jwt  # type: ignore[import-untyped]
 
 from app.config import settings
@@ -404,3 +409,50 @@ def decode_invite_token(tok: str) -> dict[str, Any]:
     if data.get("type") != "invite":
         raise jwt.JWTError("Not an invite token")
     return data
+
+
+# --- Password reset tokens ---
+_password_reset = URLSafeTimedSerializer(
+    settings.JWT_SECRET.get_secret_value(), salt="password-reset"
+)
+
+
+def create_password_reset_token(email: str) -> str:
+    """Create a time-limited password reset token.
+
+    Generates a signed, time-limited token tied to the user's email.
+    The token expires after PASSWORD_RESET_TTL_MIN minutes (default 30).
+
+    Args:
+        email: User's email address.
+
+    Returns:
+        str: URL-safe signed token.
+
+    Raises:
+        ValueError: If email is empty.
+    """
+    if not email or not email.strip():
+        raise ValueError("Email cannot be empty")
+    return _password_reset.dumps({"email": email.strip().lower()})
+
+
+def verify_password_reset_token(token: str) -> str | None:
+    """Verify a password reset token and return the email.
+
+    Checks the token signature and expiry. Returns the email if valid,
+    None if the token is invalid or expired.
+
+    Args:
+        token: Password reset token from email link.
+
+    Returns:
+        The email address if valid, None otherwise.
+    """
+    try:
+        data: dict[str, str] = _password_reset.loads(
+            token, max_age=settings.PASSWORD_RESET_TTL_MIN * 60
+        )
+        return data.get("email")
+    except (SignatureExpired, BadSignature):
+        return None

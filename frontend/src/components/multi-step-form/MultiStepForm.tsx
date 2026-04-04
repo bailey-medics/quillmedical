@@ -54,6 +54,8 @@ interface Props {
   activeStep?: number;
   /** Callback when active step changes - for controlled mode */
   onStepChange?: (step: number) => void;
+  /** Allow all steps to be clicked regardless of visit history (e.g. edit mode) */
+  allStepsAccessible?: boolean;
 }
 
 /**
@@ -70,23 +72,25 @@ export default function MultiStepForm({
   onCancel,
   activeStep: controlledStep,
   onStepChange,
+  allStepsAccessible = false,
 }: Props) {
   const [internalStep, setInternalStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [highestVisitedStep, setHighestVisitedStep] = useState(
+    controlledStep ?? 0,
+  );
 
   // Use controlled step if provided, otherwise use internal state
   const activeStep = controlledStep ?? internalStep;
   const setActiveStep = onStepChange ?? setInternalStep;
 
+  // Keep high-water mark in sync with the active step
+  if (activeStep > highestVisitedStep) {
+    setHighestVisitedStep(activeStep);
+  }
+
   const isFirstStep = activeStep === 0;
   const isLastStep = activeStep === steps.length - 1;
   const currentStepConfig = steps[activeStep];
-
-  // Calculate the highest step that can be accessed (current or any completed step)
-  const highestAccessibleStep = Math.max(
-    activeStep,
-    ...Array.from(completedSteps),
-  );
 
   async function nextStep() {
     // Run validation if provided
@@ -96,8 +100,8 @@ export default function MultiStepForm({
     }
 
     if (!isLastStep) {
-      // Mark current step as completed
-      setCompletedSteps((prev) => new Set(prev).add(activeStep));
+      // Mark current step as visited and advance
+      setHighestVisitedStep((prev) => Math.max(prev, activeStep + 1));
       setActiveStep(activeStep + 1);
     }
   }
@@ -109,8 +113,8 @@ export default function MultiStepForm({
   }
 
   function handleStepClick(stepIndex: number) {
-    // Only allow clicking on completed steps or steps up to the highest accessible step
-    if (stepIndex <= highestAccessibleStep) {
+    // Allow clicking on any visited step, or all steps if allStepsAccessible
+    if (allStepsAccessible || stepIndex <= highestVisitedStep) {
       setActiveStep(stepIndex);
     }
   }
@@ -132,7 +136,7 @@ export default function MultiStepForm({
           <Stepper.Step
             key={index}
             label={step.label}
-            allowStepSelect={index <= highestAccessibleStep}
+            allowStepSelect={allStepsAccessible || index <= highestVisitedStep}
           />
         ))}
       </Stepper>
@@ -142,13 +146,17 @@ export default function MultiStepForm({
       </Paper>
 
       <Group justify="space-between">
-        <Button
-          variant="subtle"
-          leftSection={<IconChevronLeft size={16} />}
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
+        {!isLastStep ? (
+          <Button
+            variant="subtle"
+            leftSection={<IconChevronLeft size={16} />}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        ) : (
+          <div />
+        )}
 
         <Group>
           {!isFirstStep && (

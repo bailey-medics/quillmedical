@@ -139,7 +139,7 @@ describe("AddStaffToOrgPage", () => {
     });
   });
 
-  it("shows success message on successful submission", async () => {
+  it("navigates to organisation on successful submission", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
       users: [{ id: 1, username: "drsmith", email: "dr@test.com" }],
     });
@@ -175,7 +175,7 @@ describe("AddStaffToOrgPage", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText("Staff member added")).toBeInTheDocument();
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1");
     });
 
     expect(mockReload).toHaveBeenCalledOnce();

@@ -17,7 +17,7 @@ import {
   Group,
   Alert,
 } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
@@ -38,7 +38,6 @@ export default function AddStaffToOrgPage() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [selectError, setSelectError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,8 +74,7 @@ export default function AddStaffToOrgPage() {
         user_id: Number(selectedUserId),
       });
       await reload();
-      setSuccess(true);
-      setTimeout(() => navigate(`/admin/organisations/${id}`), 1500);
+      navigate(`/admin/organisations/${id}`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to add staff member",
@@ -84,20 +82,6 @@ export default function AddStaffToOrgPage() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (success) {
-    return (
-      <Container size="lg" py="xl">
-        <Alert
-          icon={<Icon icon={<IconCheck />} size="lg" />}
-          title="Staff member added"
-          color="green"
-        >
-          Redirecting to organisation...
-        </Alert>
-      </Container>
-    );
   }
 
   return (

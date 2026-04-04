@@ -49,3 +49,25 @@ class ChangePasswordIn(BaseModel):
 
     current_password: str
     new_password: str
+
+
+class ForgotPasswordIn(BaseModel):
+    """Forgot password request payload.
+
+    Attributes:
+        email: Email address of the account to reset.
+    """
+
+    email: str
+
+
+class ResetPasswordIn(BaseModel):
+    """Reset password request payload.
+
+    Attributes:
+        token: Password reset token from the email link.
+        new_password: Desired new password (min 8 characters).
+    """
+
+    token: str
+    new_password: str

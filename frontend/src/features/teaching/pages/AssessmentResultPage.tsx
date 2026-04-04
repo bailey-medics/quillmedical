@@ -2,7 +2,13 @@ import { Container, Loader, Stack } from "@mantine/core";
 import { ResultMessage, StateMessage } from "@/components/message-cards";
 import { PageHeader } from "@/components/typography";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router-dom";
+import type { LayoutCtx } from "@/RootLayout";
 import { api } from "@/lib/api";
 import { AssessmentResult } from "@/components/teaching/assessment-result/AssessmentResult";
 import type {
@@ -16,8 +22,17 @@ export default function AssessmentResultPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { setExamMode } = useOutletContext<LayoutCtx>();
   const fromExam =
     (location.state as { fromExam?: boolean })?.fromExam === true;
+
+  // Keep exam mode active when arriving directly from an exam
+  useEffect(() => {
+    if (fromExam) {
+      setExamMode(true);
+      return () => setExamMode(false);
+    }
+  }, [fromExam, setExamMode]);
 
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [bankDetail, setBankDetail] = useState<QuestionBankDetail | null>(null);
@@ -95,12 +110,16 @@ export default function AssessmentResultPage() {
             fromExam && allowRetry && bankIsLive && !assessment.is_passed
           }
           showBackToDashboard={fromExam}
-          onTryAgain={() =>
+          onTryAgain={() => {
+            setExamMode(false);
             navigate(
               `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
-            )
-          }
-          onBackToDashboard={() => navigate("/teaching")}
+            );
+          }}
+          onBackToDashboard={() => {
+            setExamMode(false);
+            navigate("/teaching");
+          }}
         />
       </Stack>
     </Container>

@@ -53,13 +53,27 @@ describe("MultiStepForm", () => {
       expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
     });
 
-    it("renders Cancel button", () => {
+    it("renders Cancel button on non-last steps", () => {
       renderWithMantine(
         <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
       );
       expect(
         screen.getByRole("button", { name: /Cancel/i }),
       ).toBeInTheDocument();
+    });
+
+    it("does not render Cancel button on last step", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /Next/i }));
+      await user.click(screen.getByRole("button", { name: /Next/i }));
+
+      expect(
+        screen.queryByRole("button", { name: /Cancel/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("does not render Back button on first step", () => {
@@ -412,6 +426,38 @@ describe("MultiStepForm", () => {
       expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
     });
 
+    it("allows navigating forward to previously visited steps via stepper", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      // Move to Step 2, then Step 3
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      await user.click(screen.getByRole("button", { name: /^Next$/i }));
+      expect(screen.getByText("Step 3 Content")).toBeInTheDocument();
+
+      // Go back to Step 1 via stepper
+      const step1 = screen.getByText("Step 1").closest("button");
+      if (step1) {
+        await user.click(step1);
+      }
+      expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
+
+      // Should be able to click Step 2 and Step 3 again
+      const step2 = screen.getByText("Step 2").closest("button");
+      if (step2) {
+        await user.click(step2);
+      }
+      expect(screen.getByText("Step 2 Content")).toBeInTheDocument();
+
+      const step3 = screen.getByText("Step 3").closest("button");
+      if (step3) {
+        await user.click(step3);
+      }
+      expect(screen.getByText("Step 3 Content")).toBeInTheDocument();
+    });
+
     it("allows clicking on current step", async () => {
       const user = userEvent.setup();
       renderWithMantine(
@@ -470,6 +516,33 @@ describe("MultiStepForm", () => {
       expect(screen.getByText("Personal")).toBeInTheDocument();
       expect(screen.getByText("Contact")).toBeInTheDocument();
       expect(screen.getByText("Personal Content")).toBeInTheDocument();
+    });
+  });
+
+  describe("allStepsAccessible mode", () => {
+    it("allows clicking any step without visiting it first", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <MultiStepForm
+          steps={defaultSteps}
+          onCancel={mockOnCancel}
+          allStepsAccessible
+        />,
+      );
+
+      // Should be able to jump to Step 3 directly
+      const step3 = screen.getByText("Step 3").closest("button");
+      if (step3) {
+        await user.click(step3);
+      }
+      expect(screen.getByText("Step 3 Content")).toBeInTheDocument();
+
+      // Should be able to go back to Step 2
+      const step2 = screen.getByText("Step 2").closest("button");
+      if (step2) {
+        await user.click(step2);
+      }
+      expect(screen.getByText("Step 2 Content")).toBeInTheDocument();
     });
   });
 });

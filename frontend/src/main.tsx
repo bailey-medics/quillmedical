@@ -74,6 +74,8 @@ import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
@@ -104,6 +106,22 @@ const router = createBrowserRouter([
     element: (
       <GuestOnly>
         <RegisterPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/forgot-password",
+    element: (
+      <GuestOnly>
+        <ForgotPasswordPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/reset-password",
+    element: (
+      <GuestOnly>
+        <ResetPasswordPage />
       </GuestOnly>
     ),
   },

@@ -64,8 +64,15 @@ class Settings(BaseSettings):
     JWT_ALG: str = "HS256"
     ACCESS_TTL_MIN: int = 15
     REFRESH_TTL_DAYS: int = 7
+    PASSWORD_RESET_TTL_MIN: int = 30
     COOKIE_DOMAIN: str | None = None
     SECURE_COOKIES: bool = False
+
+    # --- Frontend URL (for email links) ---
+    FRONTEND_URL: str = Field(
+        "http://localhost",
+        description="Base URL of the frontend for email links",
+    )
 
     # --- Clinical services flag ---
     CLINICAL_SERVICES_ENABLED: bool = Field(

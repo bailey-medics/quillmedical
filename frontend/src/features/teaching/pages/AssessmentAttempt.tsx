@@ -43,17 +43,20 @@ export default function AssessmentAttempt() {
   const [phase, setPhase] = useState<Phase>("loading");
 
   const isActive = phase === "questions" || phase === "intro";
+  const isExamPhase =
+    phase === "questions" || phase === "intro" || phase === "closing";
 
-  // Also clear exam mode if we leave an active phase without unmounting
-  // (e.g. error during exam, or closing phase after timer expires)
-  const wasActive = useRef(false);
+  // Also clear exam mode if we leave an exam phase without unmounting
+  // (e.g. error during exam). Closing phase keeps exam mode so the
+  // navbar stays hidden until the user presses "View results".
+  const wasInExam = useRef(false);
   useEffect(() => {
-    if (isActive) {
-      wasActive.current = true;
-    } else if (wasActive.current) {
+    if (isExamPhase) {
+      wasInExam.current = true;
+    } else if (wasInExam.current) {
       setExamMode(false);
     }
-  }, [isActive, setExamMode]);
+  }, [isExamPhase, setExamMode]);
 
   // Block React Router navigation during active exam
   // Allow the /new → /assessment/:id replace navigation on begin

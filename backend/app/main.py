@@ -53,6 +53,7 @@ from app.ehrbase_client import (
     get_letter_composition,
     list_letters_for_patient,
 )
+from app.email_send import send_email
 from app.fhir_client import (
     FhirCommunicationError,
     create_fhir_patient,
@@ -89,7 +90,13 @@ from app.organisations import (
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
-from app.schemas.auth import ChangePasswordIn, LoginIn, RegisterIn
+from app.schemas.auth import (
+    ChangePasswordIn,
+    ForgotPasswordIn,
+    LoginIn,
+    RegisterIn,
+    ResetPasswordIn,
+)
 from app.schemas.cbac import (
     PrescriptionRequest,
     UpdateCompetenciesRequest,
@@ -113,6 +120,7 @@ from app.schemas.messaging import (
 from app.security import (
     create_invite_token,
     create_jwt_with_competencies,
+    create_password_reset_token,
     create_refresh_token,
     decode_invite_token,
     decode_token,
@@ -122,6 +130,7 @@ from app.security import (
     totp_provisioning_uri,
     verify_csrf,
     verify_password,
+    verify_password_reset_token,
     verify_totp_code,
 )
 from app.system_permissions.permissions import (
@@ -710,6 +719,93 @@ def register(
 
     db.commit()
     return {"detail": "created"}
+
+
+@router.post("/auth/forgot-password")
+@limiter.limit("3/minute")
+def forgot_password(
+    request: Request,
+    data: ForgotPasswordIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Request a password reset email.
+
+    Accepts an email address and, if a matching account exists, sends a
+    password reset link. Always returns a success response regardless of
+    whether the email exists, to prevent account enumeration.
+
+    The reset link contains a time-limited signed token (default 30 min).
+
+    Args:
+        data: Payload with the user's email address.
+        db: Database session for user lookup.
+
+    Returns:
+        dict: Always returns ``{"detail": "ok"}`` to prevent enumeration.
+    """
+    email = data.email.strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    if user:
+        token = create_password_reset_token(email)
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        send_email(
+            to=email,
+            subject="Reset your Quill password",
+            html_body=(
+                f"<p>You requested a password reset for your Quill account.</p>"
+                f'<p><a href="{reset_url}">Reset your password</a></p>'
+                f"<p>This link expires in {settings.PASSWORD_RESET_TTL_MIN}"
+                f" minutes. If you did not request this, ignore this email.</p>"
+            ),
+        )
+    # Always return ok to prevent account enumeration
+    return {"detail": "ok"}
+
+
+@router.post("/auth/reset-password")
+@limiter.limit("5/minute")
+def reset_password(
+    request: Request,
+    data: ResetPasswordIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Reset a user's password using a reset token.
+
+    Verifies the token from the email link, validates the new password,
+    and updates the user's password hash.
+
+    Args:
+        data: Payload with the reset token and new password.
+        db: Database session for user update.
+
+    Returns:
+        dict: ``{"detail": "Password reset successfully"}`` on success.
+
+    Raises:
+        HTTPException: 400 if the token is invalid/expired or
+            the new password does not meet requirements.
+    """
+    email = verify_password_reset_token(data.token)
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset link",
+        )
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be at least 8 characters",
+        )
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset link",
+        )
+    user.password_hash = hash_password(data.new_password)
+    db.add(user)
+    db.commit()
+    return {"detail": "Password reset successfully"}
 
 
 class AdminUserCreateIn(BaseModel):
