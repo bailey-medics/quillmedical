@@ -4,7 +4,7 @@ This module defines request and response models for user authentication,
 registration, and two-factor authentication (TOTP) operations.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class LoginIn(BaseModel):
@@ -38,7 +38,7 @@ class RegisterIn(BaseModel):
 
     username: str
     full_name: str | None = None
-    email: str
+    email: EmailStr
     password: str
     organisation_id: int | None = None
 
@@ -66,7 +66,7 @@ class ForgotPasswordIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    email: str
+    email: EmailStr
 
 
 class ResetPasswordIn(BaseModel):

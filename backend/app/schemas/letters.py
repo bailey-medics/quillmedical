@@ -4,7 +4,7 @@ This module defines request models for creating and managing patient
 letters stored in EHRbase as OpenEHR compositions.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LetterIn(BaseModel):
@@ -16,6 +16,8 @@ class LetterIn(BaseModel):
         author_name: Optional author's full name.
         author_email: Optional author's email address.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     title: str
     body: str

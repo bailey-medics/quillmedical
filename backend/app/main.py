@@ -840,6 +840,8 @@ class AdminUserCreateIn(BaseModel):
         system_permissions: System permission level (patient, staff, admin, superadmin).
     """
 
+    model_config = {"extra": "forbid"}
+
     name: str
     username: str | None = None
     email: str
@@ -866,6 +868,8 @@ class AdminUserUpdateIn(BaseModel):
         removed_competencies: Competencies to remove (optional).
         system_permissions: System permission level (optional).
     """
+
+    model_config = {"extra": "forbid"}
 
     name: str | None = None
     username: str | None = None
@@ -1148,6 +1152,8 @@ class TotpVerifyIn(BaseModel):
     Attributes:
         code: 6-digit numeric code from authenticator app.
     """
+
+    model_config = {"extra": "forbid"}
 
     code: str
 
@@ -1926,6 +1932,8 @@ class FHIRPatientCreateIn(BaseModel):
         mrn: Medical Record Number (local hospital identifier).
         patient_id: Optional custom FHIR resource ID.
     """
+
+    model_config = {"extra": "forbid"}
 
     given_name: str
     family_name: str

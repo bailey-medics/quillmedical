@@ -71,15 +71,28 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 - `PATCH /patients/{patient_id}` similarly allows any authenticated user to edit demographics. Consider role restriction.
 - `POST /accept-invite` sets `system_permissions` from the invite token's `user_type` field. The token is cryptographically signed, so this is safe from manipulation, but the `user_type` values ("external_hcp", "patient_advocate") aren't in the standard permission hierarchy.
 
-### 1D. Input validation and injection review
+### 1D. ~~Input validation and injection review~~ REVIEWED AND FIXED
 
-- **Files**: `backend/app/schemas/` (all), route handlers in `main.py`
-- Check: All Pydantic schemas use `extra='forbid'` consistently
-- Check: Password complexity requirements
-- Check: Email validation (RFC compliance, header injection prevention)
-- Check: Message body sanitisation (XSS in stored messages)
-- Check: Patient search parameters (injection via FHIR queries)
-- Check: Letter content handling (stored XSS via clinical letters)
+- **Files**: `backend/app/schemas/` (all), `backend/app/main.py` (inline schemas), `backend/app/messaging.py`, `backend/app/ehrbase_client.py`, `backend/app/fhir_client.py`
+
+**Confirmed secure (no action needed):**
+
+- FHIR queries use object-based construction via `fhirclient` library — no injection risk
+- Frontend renders Markdown with DOMPurify sanitisation — stored XSS mitigated on output
+- Email sending via Resend API (structured params, not raw SMTP) — header injection mitigated
+
+**Vulnerabilities found and fixed:**
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | Medium | Multiple input schemas missing `extra='forbid'` — `LetterIn`, `CompetencyCheck`, `UpdateCompetenciesRequest`, `PrescriptionRequest`, `FeatureToggleIn`, `AdminUserCreateIn`, `AdminUserUpdateIn`, `TotpVerifyIn`, `FHIRPatientCreateIn` | Added `model_config = {"extra": "forbid"}` / `ConfigDict(extra="forbid")` to all request schemas |
+| 2 | Low | Email fields in `RegisterIn` and `ForgotPasswordIn` used plain `str` — no RFC validation or header injection checks | Changed to `EmailStr` (Pydantic + email-validator) for RFC-compliant validation |
+
+**Remaining informational items:**
+
+- **Message body not sanitised server-side**: Server stores raw Markdown. DOMPurify on the frontend handles XSS. Defence-in-depth suggests server-side sanitisation too, but this is low risk given the existing frontend protection. Could add `nh3.clean()` on message body before storage as a future improvement.
+- **Letter content not sanitised server-side**: Same as messages — stored as raw Markdown in EHRbase, rendered safely by frontend DOMPurify.
+- **Password complexity**: Only length is validated (min 8 chars). No uppercase/digit/special character requirement. This is a trade-off — NIST SP 800-63B recommends length over complexity rules. Current approach is acceptable.
 
 ### 1E. Infrastructure and configuration review
 
