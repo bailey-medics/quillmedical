@@ -14,6 +14,7 @@ from string import Template
 from typing import Any, TypedDict
 
 import markdown
+import nh3
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,6 @@ def render_email(
     """
     subject = Template(template["subject"]).safe_substitute(context)
     body_md = Template(template["body"]).safe_substitute(context)
-    html_body = markdown.markdown(body_md)
+    html_body = nh3.clean(markdown.markdown(body_md))
 
     return RenderedEmail(subject=subject, html_body=html_body)

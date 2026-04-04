@@ -4,12 +4,12 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 
 ## Phase 1: Code review (static analysis)
 
-### 1A. Confirmed vulnerability — unsanitised Markdown in email templates
+### 1A. ~~Confirmed vulnerability — unsanitised Markdown in email templates~~ FIXED
 
 - **File**: `backend/app/features/teaching/email_templates.py` (line ~111)
-- **Issue**: `markdown.markdown(body_md)` output is used directly without HTML sanitisation
-- **Risk**: Stored XSS if email body contains malicious HTML/JS rendered by email client
-- **Fix**: Sanitise output with `nh3` or `bleach` before passing to the email send function
+- **Issue**: `markdown.markdown(body_md)` output was used directly without HTML sanitisation
+- **Fix applied**: Added `nh3.clean()` around `markdown.markdown()` output; added `nh3` dependency
+- **Tests**: Added `test_sanitises_malicious_html_in_body` and `test_preserves_safe_html_after_sanitisation`
 - **Severity**: Medium (email clients often strip scripts, but not guaranteed)
 
 ### 1B. Authentication and session management review
@@ -66,6 +66,38 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 
 ## Phase 2: Active testing (penetration testing)
 
+### Tooling
+
+| Tool             | Purpose                                                                                                                                                                                                     | Install                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Schemathesis** | Property-based API fuzzing from OpenAPI spec — auto-generates thousands of test cases covering boundary values, malformed inputs, type confusion, response schema validation, and stateful chained requests | `poetry add --group dev schemathesis` |
+| **Hypothesis**   | Property-based testing for individual functions (token parsing, password hashing, input validation) — generates random inputs to find edge cases                                                            | `poetry add --group dev hypothesis`   |
+| **pytest**       | Targeted manual security test cases (already installed)                                                                                                                                                     | —                                     |
+| **httpx**        | Craft malicious HTTP requests for CSRF bypass, cookie manipulation, header injection (already installed)                                                                                                    | —                                     |
+
+### Rollout plan
+
+1. **Add dev dependencies**: `schemathesis` and `hypothesis` via Poetry
+2. **Create test file**: `backend/tests/test_security_pentest.py` with Schemathesis schema tests and Hypothesis property tests
+3. **Run locally first**: `docker exec quill_backend sh -lc "pytest tests/test_security_pentest.py -v"` to validate and triage findings
+4. **Add monthly CI workflow**: `.github/workflows/security-pentest.yml` — scheduled `cron: '0 3 1 * *'` (1st of each month at 03:00 UTC), runs Schemathesis against the Docker Compose stack, posts results as a GitHub Actions artefact
+5. **Triage**: Schemathesis findings that are false positives get added to a `schemathesis.yaml` exclude config; genuine issues become backlog items
+
+### Schemathesis test approach
+
+- **Target**: `http://backend:8000/api/openapi.json` (inside Docker network)
+- **Modes**: Schema validation (all endpoints), stateful testing (auth flow → CRUD operations), negative testing (malformed inputs)
+- **Auth**: Pre-authenticate with a test user cookie, pass via `--header` or pytest fixture
+- **Checks**: `not_a_server_error`, `response_schema_conformance`, `content_type_conformance`, `status_code_conformance`
+- **Exclusions**: Rate-limited endpoints may need higher limits or exclusion during fuzzing
+
+### Hypothesis test approach
+
+- Property-based tests for `create_password_reset_token` / `verify_password_reset_token` round-trip
+- Property-based tests for `hash_password` / `verify_password` with arbitrary strings
+- Property-based tests for `create_csrf_token` / `verify_csrf` round-trip
+- Fuzz Pydantic schemas with `hypothesis-jsonschema` to find validation gaps
+
 ### 2A. Authentication attacks
 
 - Brute force login with rate limit bypass attempts
@@ -118,10 +150,12 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 
 1. Fix 1A → run `just ub`, write test confirming HTML tags are stripped
 2. Phase 1 produces a findings document with CVSS-like severity ratings
-3. Phase 2 produces pytest tests in `backend/tests/test_security_audit.py` as regression tests
+3. Phase 2 produces pytest tests in `backend/tests/test_security_pentest.py` as regression tests
 4. Review Dependabot alerts dashboard for any open vulnerability advisories
 5. Review Bandit output from pre-commit: `pre-commit run bandit --all-files`
 6. Each finding should be reproducible with a curl command or test case
+7. Schemathesis local run produces zero server errors (`5xx`) against all endpoints
+8. Monthly CI workflow runs successfully and posts artefact with results
 
 ## Decisions
 
@@ -134,4 +168,4 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 
 1. **python-jose vs PyJWT** — `python-jose` has had historical CVEs; consider flagging for future migration to `PyJWT`
 2. **TOTP secret encryption at rest** — currently plaintext in DB; could encrypt with application-level key (medium priority, depends on DB encryption posture)
-3. **No password reset flow** — users who forget passwords have no self-service recovery; this is a UX gap but also means no reset token attack surface exists currently
+3. **Password reset flow** — now implemented (`/api/auth/forgot-password`, `/api/auth/reset-password`) with time-limited signed tokens; needs to be included in Schemathesis test coverage

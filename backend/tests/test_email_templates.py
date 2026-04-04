@@ -254,3 +254,26 @@ class TestRenderEmail:
         result = render_email(template, {})
         assert result["subject"] == "$unknown_var"
         assert "$another_unknown" in result["html_body"]
+
+    def test_sanitises_malicious_html_in_body(self) -> None:
+        """Ensure script tags and event handlers are stripped."""
+        template = EmailTemplate(
+            subject="Test",
+            body='<script>alert("xss")</script><img src=x onerror=alert(1)>',
+            attach_certificate=True,
+        )
+        result = render_email(template, {})
+        assert "<script>" not in result["html_body"]
+        assert "onerror" not in result["html_body"]
+        assert "alert" not in result["html_body"]
+
+    def test_preserves_safe_html_after_sanitisation(self) -> None:
+        """Ensure safe Markdown HTML survives sanitisation."""
+        template = EmailTemplate(
+            subject="Test",
+            body="**bold** and [link](https://example.com)",
+            attach_certificate=True,
+        )
+        result = render_email(template, {})
+        assert "<strong>bold</strong>" in result["html_body"]
+        assert '<a href="https://example.com"' in result["html_body"]
