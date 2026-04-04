@@ -94,29 +94,65 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 - **Letter content not sanitised server-side**: Same as messages — stored as raw Markdown in EHRbase, rendered safely by frontend DOMPurify.
 - **Password complexity**: Only length is validated (min 8 chars). No uppercase/digit/special character requirement. This is a trade-off — NIST SP 800-63B recommends length over complexity rules. Current approach is acceptable.
 
-### 1E. Infrastructure and configuration review
+### 1E. ~~Infrastructure and configuration review~~ REVIEWED — NO FIXES NEEDED
 
 - **Files**: `compose.dev.yml`, `caddy/prod/Caddyfile`, Dockerfiles, `backend/app/config.py`
-- Check: Production CSP policy completeness
-- Check: Docker container security (non-root confirmed, check for exposed debug ports)
-- Check: Secret management (no hardcoded secrets, proper .gitignore)
-- Check: CORS production configuration
-- Check: Rate limiting thresholds (login, register, API endpoints)
 
-### 1F. Dependency security audit
+**Confirmed secure (all areas):**
+
+- **CSP**: Strict policy — `default-src 'self'`, `script-src 'self'`, `frame-ancestors 'none'`. Image exceptions for GCS only.
+- **HSTS**: 2-year max-age with includeSubDomains and preload.
+- **Security headers**: X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy disables camera/microphone/geolocation, Server header removed.
+- **Docker security**: Non-root user (`appuser` UID 10001), multi-stage builds, slim/alpine base images, digest-pinned for reproducibility.
+- **Network isolation**: Backend on private network only (not mapped to host); only Caddy/frontend exposed.
+- **Secrets**: `.env` in `.gitignore`, production secrets via GCP Secret Manager, `JWT_SECRET` enforces `min_length=32`.
+- **CORS**: Default `["*"]` in dev, production set via Cloud Run environment variables.
+- **SECURE_COOKIES**: Default `false` in dev, explicitly `true` in `compose.prod.cloud-run.yml` and `infra/main.tf`.
+- **Rate limiting (infrastructure)**: GCP Cloud Armor WAF handles global rate limiting in production.
+
+**Informational notes:**
+
+- Dev compose has a hardcoded Postgres password (`vspct8I2iLUkfC3JsXxefy`). This is development-only; the DB is on the private Docker network and not exposed to the host. Acceptable for dev.
+- Application-level rate limiting covers auth endpoints (login 5/min, register 3/min, forgot-password 3/min, TOTP 5/min). Other endpoints rely on Cloud Armor in production.
+
+### 1F. ~~Dependency security audit~~ REVIEWED — MIGRATION RECOMMENDED
 
 - **Files**: `backend/pyproject.toml`, `frontend/package.json`
-- Already in place: Dependabot vulnerability alerts (weekly scan of pip, npm, Docker, Terraform, GitHub Actions) + Renovate version-bump PRs with 3-tier severity policy and immediate alerts for critical/high CVEs
-- No additional `pip-audit` / `yarn audit` needed in CI — Dependabot covers the same CVE databases
-- Check: `python-jose` vs `PyJWT` (`python-jose` has had vulnerabilities historically)
 
-### 1G. CI/CD security pipeline gaps
+**Confirmed in place:**
+
+- Dependabot vulnerability alerts (weekly scan of pip, npm, Docker, Terraform, GitHub Actions) + Renovate version-bump PRs with 3-tier severity policy and immediate alerts for critical/high CVEs
+
+**pip-audit findings (31 CVEs across 9 packages):**
+
+| Package | Installed | CVEs | Fix Version | Impact |
+|---------|-----------|------|-------------|--------|
+| starlette | 0.40.0 | CVE-2025-54121, CVE-2025-62727 | 0.47.2+ | ASGI framework (via FastAPI) — update via Renovate |
+| ecdsa | 0.19.1 | CVE-2024-23342 (timing attack) | No fix available | Used only by python-jose — migration to PyJWT removes this |
+| aiohttp | 3.12.15 | 18 CVEs | 3.13.3+ | Transitive dependency — update via Renovate |
+| urllib3 | 2.5.0 | 3 CVEs | 2.6.0+ | Update via Renovate |
+| requests | 2.32.5 | 1 CVE | 2.33.0+ | Update via Renovate |
+
+**Actionable recommendation:**
+
+- **Migrate from `python-jose` to `PyJWT`**: `python-jose` is no longer actively maintained and pulls in the `ecdsa` library (CVE-2024-23342 — timing side-channel has no fix). `PyJWT` is actively maintained and uses `cryptography` natively without `ecdsa`. The migration is straightforward since both libraries have similar APIs (`jwt.encode()`, `jwt.decode()`). This is the only dependency issue that Renovate/Dependabot cannot automatically resolve.
+- **All other CVEs**: Should be addressed by Renovate version-bump PRs. No manual action needed.
+
+### 1G. ~~CI/CD security pipeline gaps~~ REVIEWED
 
 - **Files**: `.github/workflows/`, `.pre-commit-config.yaml`
-- Already in place: Bandit SAST runs via pre-commit (`bandit -r backend -x backend/tests`) in the `Python styling` CI job
-- Already in place: Dependabot vulnerability alerts + Renovate version-bump PRs for dependency security
-- Gap identified: No secret scanning in CI
-- Recommendation: Add secret scanning to CI pipeline
+
+**Confirmed in place:**
+
+- Bandit SAST runs via pre-commit on every commit (backend Python code)
+- Semgrep SAST runs in CI for frontend JavaScript/TypeScript code
+- Dependabot vulnerability alerts with weekly scan
+- Renovate version-bump PRs with severity-based auto-merge policy
+- Pre-commit checks: ruff, black, mypy, cspell, bandit
+
+**Gap identified:**
+
+- **No secret scanning in CI**: No `trufflehog`, `gitleaks`, or `detect-secrets` integration. GitHub's built-in secret scanning / push protection should be enabled in the repository settings (Settings → Code security → Secret scanning → Enable). This is a GitHub Enterprise feature and requires no workflow changes — just enable it in the repository settings.
 
 ## Phase 2: Active testing (penetration testing)
 
