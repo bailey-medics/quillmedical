@@ -880,7 +880,7 @@ class AdminUserUpdateIn(BaseModel):
 @router.post("/users")
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Admin User Creation with CBAC.
@@ -966,7 +966,7 @@ def create_user_with_cbac(
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update User Account.
@@ -1936,7 +1936,10 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-@router.post("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
+@router.post(
+    "/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+)
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -2013,7 +2016,7 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
 
 @router.patch(
     "/patients/{patient_id}",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def update_patient(
     patient_id: str,
@@ -2145,7 +2148,7 @@ def get_patient_metadata(
 
 @router.post(
     "/patients/{patient_id}/deactivate",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def deactivate_patient(
     patient_id: str,
@@ -2213,7 +2216,7 @@ def deactivate_patient(
 
 @router.post(
     "/patients/{patient_id}/activate",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def activate_patient(
     patient_id: str,
@@ -2396,6 +2399,7 @@ async def prescribe_controlled(
     "/cbac/my-competencies",
     response_model=UserCompetenciesResponse,
     tags=["cbac"],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 async def update_my_competencies(
     data: UpdateCompetenciesRequest,
@@ -2405,19 +2409,25 @@ async def update_my_competencies(
     """Update user's additional/removed competencies.
 
     Allows system administrators to add or remove competencies from a user's
-    base profession template. This endpoint should be protected with additional
-    authorization in production (e.g., require "Administrator" role).
-
-    NOTE: In production, this should require Administrator role and CSRF token.
+    base profession template. Requires admin or superadmin permissions and
+    CSRF token.
 
     Args:
         data: Additional and removed competencies to update
-        user: Authenticated user
+        user: Authenticated user (admin/superadmin only)
         db: Database session
 
     Returns:
         UserCompetenciesResponse: Updated user competency information
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
     """
+    if user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
     # Update user's competencies
     if data.additional_competencies is not None:
         user.additional_competencies = data.additional_competencies
@@ -2606,7 +2616,7 @@ class UpdateOrganizationIn(BaseModel):
 def update_organization(
     org_id: int,
     body: UpdateOrganizationIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update Organisation.
@@ -2674,7 +2684,7 @@ def update_organization(
 @router.post("/organizations")
 def create_organization(
     body: CreateOrganizationIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Create Organisation.
@@ -2745,7 +2755,7 @@ class AddStaffIn(BaseModel):
 def add_staff_to_organization(
     org_id: int,
     body: AddStaffIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Add Staff Member to Organisation.

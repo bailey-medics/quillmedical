@@ -16,8 +16,10 @@ Example:
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+
+from app.security import decode_token
 
 router = APIRouter(prefix="/push", tags=["push"])
 
@@ -53,17 +55,31 @@ class PushSubscription(BaseModel):
 
 
 @router.post("/subscribe")
-def subscribe(sub: PushSubscription) -> dict[str, bool | int]:
+def subscribe(
+    sub: PushSubscription, request: Request
+) -> dict[str, bool | int]:
     """Register a new push notification subscription.
 
+    Requires authentication via access_token cookie.
     De-duplicates by endpoint URL to prevent duplicate subscriptions.
 
     Args:
         sub: Push subscription from browser's Push API.
+        request: HTTP request (for cookie validation).
 
     Returns:
         dict: Status with ok=True and total subscription count.
+
+    Raises:
+        HTTPException: 401 if not authenticated.
     """
+    tok = request.cookies.get("access_token")
+    if not tok:
+        raise HTTPException(401, "Not authenticated")
+    try:
+        decode_token(tok)
+    except Exception as e:
+        raise HTTPException(401, "Invalid token") from e
     # de-duplicate by endpoint
     if not any(s["endpoint"] == sub.endpoint for s in SUBSCRIPTIONS):
         SUBSCRIPTIONS.append(sub.model_dump())

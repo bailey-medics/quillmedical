@@ -43,14 +43,33 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 - **No TOTP replay protection**: Same 6-digit code can be reused within the 30-second window. Low risk: requires valid session + code + CSRF, and the window is very short. Server-side used-code tracking would add Redis complexity disproportionate to the risk.
 - **Logout doesn't invalidate tokens server-side**: Clears cookies only. With 15-minute access token TTL and token_version on password change, the exposure window is minimal.
 
-### 1C. Authorisation and access control review
+### 1C. ~~Authorisation and access control review~~ REVIEWED AND FIXED
 
-- **Files**: `backend/app/main.py`, `backend/app/organisations.py`, `backend/app/messaging.py`, `backend/app/system_permissions/`, `backend/app/cbac/`
-- Check: Every endpoint has appropriate auth dependency (DEP_CURRENT_USER, role/permission/CBAC checks)
-- Check: IDOR vulnerabilities — can user A access user B's resources by guessing IDs?
-- Check: Privilege escalation — can a `staff` user access `admin` endpoints?
-- Check: CBAC resolution logic — can additional/removed competencies be manipulated?
-- Check: External patient access grants — proper validation of granter authority
+- **Files**: `backend/app/main.py`, `backend/app/push.py`, `backend/app/messaging.py`, `backend/app/cbac/`
+
+**Confirmed secure (no action needed):**
+
+- All messaging endpoints enforce participant-based access control via `check_user_patient_access`
+- External patient invites properly validate granter authority (patient-self or admin)
+- Organisation list/detail endpoints appropriately restrict admin-only operations
+- Conversation detail returns 404 (not 403) for unauthorised access — prevents IDOR enumeration
+- Teaching feature endpoints gated by feature flags and organisation membership
+
+**Vulnerabilities found and fixed:**
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | Critical | `PATCH /cbac/my-competencies` let any authenticated user modify their own competencies — could grant clinical or admin-level access | Added admin/superadmin permission check + CSRF protection |
+| 2 | Medium | `POST /users`, `PATCH /users/{user_id}` (admin endpoints) missing CSRF protection | Changed from `DEP_CURRENT_USER` to `DEP_REQUIRE_CSRF` |
+| 3 | Medium | `PUT /organizations/{org_id}`, `POST /organizations`, `POST /organizations/{org_id}/staff` missing CSRF protection | Changed from `DEP_CURRENT_USER` to `DEP_REQUIRE_CSRF` |
+| 4 | Medium | `POST /patients`, `PATCH /patients/{patient_id}`, `POST /patients/{patient_id}/deactivate`, `POST /patients/{patient_id}/activate` missing CSRF protection | Added `DEP_REQUIRE_CSRF` to dependencies |
+| 5 | Low | `POST /push/subscribe` had no authentication — any anonymous client could register push subscriptions | Added cookie-based authentication check |
+
+**Remaining informational items:**
+
+- `POST /patients` allows any authenticated user to create patients (no role check). This may be intentional for certain workflows. Consider adding `DEP_REQUIRE_ROLES_CLINICIAN` if only clinicians should create patients.
+- `PATCH /patients/{patient_id}` similarly allows any authenticated user to edit demographics. Consider role restriction.
+- `POST /accept-invite` sets `system_permissions` from the invite token's `user_type` field. The token is cryptographically signed, so this is safe from manipulation, but the `user_type` values ("external_hcp", "patient_advocate") aren't in the standard permission hierarchy.
 
 ### 1D. Input validation and injection review
 

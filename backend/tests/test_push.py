@@ -2,18 +2,37 @@
 
 from fastapi.testclient import TestClient
 
+from app.models import User
 from app.push import SUBSCRIPTIONS
 
 
 class TestPushSubscription:
     """Test push notification subscription endpoint."""
 
-    def test_subscribe_success(self, test_client: TestClient):
+    def test_subscribe_requires_auth(self, test_client: TestClient):
+        """Test push subscription requires authentication."""
+        SUBSCRIPTIONS.clear()
+        response = test_client.post(
+            "/api/push/subscribe",
+            json={
+                "endpoint": "https://push.example.com/123",
+                "expirationTime": None,
+                "keys": {
+                    "p256dh": "test_p256dh_key",
+                    "auth": "test_auth_key",
+                },
+            },
+        )
+        assert response.status_code == 401
+
+    def test_subscribe_success(
+        self, authenticated_client: TestClient, test_user: User
+    ):
         """Test successful push subscription."""
         # Clear subscriptions
         SUBSCRIPTIONS.clear()
 
-        response = test_client.post(
+        response = authenticated_client.post(
             "/api/push/subscribe",
             json={
                 "endpoint": "https://push.example.com/123",
@@ -30,7 +49,9 @@ class TestPushSubscription:
         assert data["ok"] is True
         assert data["count"] == 1
 
-    def test_subscribe_duplicate_endpoint(self, test_client: TestClient):
+    def test_subscribe_duplicate_endpoint(
+        self, authenticated_client: TestClient, test_user: User
+    ):
         """Test subscribing with same endpoint doesn't create duplicate."""
         # Clear subscriptions
         SUBSCRIPTIONS.clear()
@@ -45,22 +66,28 @@ class TestPushSubscription:
         }
 
         # Subscribe twice
-        response1 = test_client.post("/api/push/subscribe", json=subscription)
-        response2 = test_client.post("/api/push/subscribe", json=subscription)
+        response1 = authenticated_client.post(
+            "/api/push/subscribe", json=subscription
+        )
+        response2 = authenticated_client.post(
+            "/api/push/subscribe", json=subscription
+        )
 
         assert response1.status_code == 200
         assert response2.status_code == 200
         # Should only have one subscription
         assert response2.json()["count"] == 1
 
-    def test_subscribe_multiple_endpoints(self, test_client: TestClient):
+    def test_subscribe_multiple_endpoints(
+        self, authenticated_client: TestClient, test_user: User
+    ):
         """Test subscribing multiple different endpoints."""
         # Clear subscriptions
         SUBSCRIPTIONS.clear()
 
         # Subscribe with different endpoints
         for i in range(3):
-            response = test_client.post(
+            response = authenticated_client.post(
                 "/api/push/subscribe",
                 json={
                     "endpoint": f"https://push.example.com/{i}",
@@ -76,12 +103,14 @@ class TestPushSubscription:
         # Should have 3 subscriptions
         assert len(SUBSCRIPTIONS) == 3
 
-    def test_subscribe_with_expiration(self, test_client: TestClient):
+    def test_subscribe_with_expiration(
+        self, authenticated_client: TestClient, test_user: User
+    ):
         """Test subscription with expiration time."""
         # Clear subscriptions
         SUBSCRIPTIONS.clear()
 
-        response = test_client.post(
+        response = authenticated_client.post(
             "/api/push/subscribe",
             json={
                 "endpoint": "https://push.example.com/exp",
@@ -117,7 +146,9 @@ class TestPushSubscription:
 class TestPushNotificationStorage:
     """Test push notification subscription storage."""
 
-    def test_subscriptions_stored_in_memory(self, test_client: TestClient):
+    def test_subscriptions_stored_in_memory(
+        self, authenticated_client: TestClient, test_user: User
+    ):
         """Test that subscriptions are stored in module-level list."""
         # Clear subscriptions
         SUBSCRIPTIONS.clear()
@@ -131,7 +162,7 @@ class TestPushNotificationStorage:
             },
         }
 
-        test_client.post("/api/push/subscribe", json=subscription)
+        authenticated_client.post("/api/push/subscribe", json=subscription)
 
         # Verify stored in SUBSCRIPTIONS
         assert len(SUBSCRIPTIONS) == 1

@@ -167,10 +167,16 @@ def test_admin(db_session: Session) -> User:
 def authenticated_admin_client(
     test_client: TestClient, test_admin: User
 ) -> TestClient:
-    """Create an authenticated test client with admin permissions."""
+    """Create an authenticated test client with admin permissions.
+
+    Automatically sets the X-CSRF-Token header for state-changing requests.
+    """
     response = test_client.post(
         "/api/auth/login",
         json={"username": "testadmin", "password": "AdminPassword123!"},
     )
     assert response.status_code == 200
+    csrf = test_client.cookies.get("XSRF-TOKEN")
+    if csrf:
+        test_client.headers["X-CSRF-Token"] = csrf
     return test_client
