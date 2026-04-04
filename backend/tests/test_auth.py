@@ -35,7 +35,7 @@ class TestRegister:
             },
         )
         assert response.status_code == 400
-        assert "username already" in response.json()["detail"].lower()
+        assert "already in use" in response.json()["detail"].lower()
 
     def test_register_duplicate_email(
         self, test_client: TestClient, test_user: User
@@ -50,7 +50,7 @@ class TestRegister:
             },
         )
         assert response.status_code == 400
-        assert "email already" in response.json()["detail"].lower()
+        assert "already in use" in response.json()["detail"].lower()
 
     def test_register_password_too_short(self, test_client: TestClient):
         """Test registration with password too short."""
@@ -63,7 +63,7 @@ class TestRegister:
             },
         )
         assert response.status_code == 400
-        assert "password too short" in response.json()["detail"].lower()
+        assert "at least 8 characters" in response.json()["detail"].lower()
 
     def test_register_missing_fields(self, test_client: TestClient):
         """Test registration with missing required fields."""
@@ -324,9 +324,11 @@ class TestTOTPDisable:
         authenticated_client.get("/api/auth/me")
         csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
 
-        # Disable TOTP
+        # Disable TOTP (requires password re-entry)
         response = authenticated_client.post(
-            "/api/auth/totp/disable", headers={"X-CSRF-Token": csrf_token}
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+            headers={"X-CSRF-Token": csrf_token},
         )
         assert response.status_code == 200
         assert response.json()["detail"] == "disabled"
@@ -336,14 +338,38 @@ class TestTOTPDisable:
         assert test_user.is_totp_enabled is False
         assert test_user.totp_secret is None
 
+    def test_totp_disable_wrong_password(
+        self, authenticated_client: TestClient, test_user: User, db_session
+    ):
+        """Test TOTP disable with wrong password."""
+        test_user.totp_secret = generate_totp_secret()
+        test_user.is_totp_enabled = True
+        db_session.commit()
+
+        authenticated_client.get("/api/auth/me")
+        csrf_token = authenticated_client.cookies.get("XSRF-TOKEN")
+
+        response = authenticated_client.post(
+            "/api/auth/totp/disable",
+            json={"password": "wrong_password1"},
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert response.status_code == 400
+
     def test_totp_disable_without_csrf(self, authenticated_client: TestClient):
         """Test TOTP disable without CSRF token."""
-        response = authenticated_client.post("/api/auth/totp/disable")
+        response = authenticated_client.post(
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+        )
         assert response.status_code == 403
 
     def test_totp_disable_unauthenticated(self, test_client: TestClient):
         """Test TOTP disable without authentication."""
-        response = test_client.post("/api/auth/totp/disable")
+        response = test_client.post(
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+        )
         assert response.status_code == 401
 
 

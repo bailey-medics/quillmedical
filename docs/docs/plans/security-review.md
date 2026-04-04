@@ -12,14 +12,36 @@ Comprehensive white-hat security audit of Quill Medical — a healthcare SPA wit
 - **Tests**: Added `test_sanitises_malicious_html_in_body` and `test_preserves_safe_html_after_sanitisation`
 - **Severity**: Medium (email clients often strip scripts, but not guaranteed)
 
-### 1B. Authentication and session management review
+### 1B. ~~Authentication and session management review~~ REVIEWED AND FIXED
 
-- **Files**: `backend/app/security.py`, `backend/app/main.py` (auth endpoints)
-- Check: JWT algorithm confusion, secret strength, token lifetime, refresh rotation
-- Check: Cookie flags (HttpOnly, Secure, SameSite, Path)
-- Check: TOTP replay/timing attacks, rate limiting on TOTP attempts
-- Check: Session invalidation on logout/password change (are old tokens revoked?)
-- Check: Account enumeration via login/register error messages
+- **Files**: `backend/app/security.py`, `backend/app/main.py` (auth endpoints), `backend/app/schemas/auth.py`
+
+**Confirmed secure (no action needed):**
+
+- JWT algorithm pinned: `algorithms=[settings.JWT_ALG]` — no `"none"` confusion possible
+- JWT secret enforces `min_length=32` via Pydantic field constraint
+- Cookie flags correct: HttpOnly, SameSite=lax, Secure=True in production configs
+- Login returns generic "Invalid credentials" — no account enumeration via login
+- Forgot-password always returns `{"detail": "ok"}` — no account enumeration
+- CSRF double-submit cookie validates header + cookie match + signature
+- Refresh token scoped to `/api/auth/refresh` path (minimal exposure)
+- Argon2id password hashing with OWASP-recommended defaults
+
+**Vulnerabilities found and fixed:**
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| 1 | Medium | No session invalidation on password change/reset — old refresh tokens valid for 7 days | Added `token_version` column to User model; included `tv` claim in access + refresh JWTs; `current_user` and `refresh` dependencies reject stale tokens; `change_password` and `reset_password` increment `token_version` |
+| 2 | Medium | Account enumeration via registration — distinct "Username already exists" / "Email already exists" errors | Changed both messages to generic "Username or email already in use" |
+| 3 | Low | Inconsistent password minimum: register=6 chars, change/reset=8 chars | Standardised to 8 characters across all endpoints |
+| 4 | Low | TOTP disable didn't require password re-entry — session-hijack could silently disable 2FA | Added `TotpDisableIn` schema requiring `password` field; endpoint now verifies password before disabling |
+| 5 | Low | Missing rate limiting on TOTP setup/verify/disable endpoints | Added `@limiter.limit("5/minute")` to all three TOTP endpoints |
+| 6 | Info | Auth schemas missing `extra='forbid'` (Pydantic defence-in-depth) | Added `model_config = ConfigDict(extra="forbid")` to all auth schemas |
+
+**Remaining informational items (accepted risk):**
+
+- **No TOTP replay protection**: Same 6-digit code can be reused within the 30-second window. Low risk: requires valid session + code + CSRF, and the window is very short. Server-side used-code tracking would add Redis complexity disproportionate to the risk.
+- **Logout doesn't invalidate tokens server-side**: Clears cookies only. With 15-minute access token TTL and token_version on password change, the exposure window is minimal.
 
 ### 1C. Authorisation and access control review
 

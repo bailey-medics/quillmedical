@@ -96,6 +96,7 @@ from app.schemas.auth import (
     LoginIn,
     RegisterIn,
     ResetPasswordIn,
+    TotpDisableIn,
 )
 from app.schemas.cbac import (
     PrescriptionRequest,
@@ -453,6 +454,9 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
+    # Reject tokens minted before a password change
+    if payload.get("tv", 0) != user.token_version:
+        raise HTTPException(401, "Session invalidated")
     request.state.roles = [r.name for r in user.roles]
     return user
 
@@ -593,8 +597,10 @@ def login(
             )
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
-    access = create_jwt_with_competencies(user.username, roles, competencies)
-    refresh = create_refresh_token(user.username)
+    access = create_jwt_with_competencies(
+        user.username, roles, competencies, user.token_version
+    )
+    refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
     return {
@@ -665,18 +671,26 @@ def register(
     if not username or not email or not payload.password:
         raise HTTPException(status_code=400, detail="Missing fields")
 
-    if len(payload.password) < 6:
-        raise HTTPException(status_code=400, detail="Password too short")
+    if len(payload.password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters",
+        )
 
+    # Use generic message to prevent account enumeration
     existing = db.scalar(select(User).where(User.username == username))
-
     if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already in use",
+        )
 
     existing = db.scalar(select(User).where(User.email == email))
-
     if existing:
-        raise HTTPException(status_code=400, detail="Email already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already in use",
+        )
 
     user = User(
         username=username,
@@ -803,6 +817,7 @@ def reset_password(
             detail="Invalid or expired reset link",
         )
     user.password_hash = hash_password(data.new_password)
+    user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
     db.commit()
     return {"detail": "Password reset successfully"}
@@ -1074,8 +1089,9 @@ class TotpSetupOut(BaseModel):
 
 
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
+@limiter.limit("5/minute")
 def totp_setup(
-    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+    request: Request, u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
 
@@ -1137,7 +1153,9 @@ class TotpVerifyIn(BaseModel):
 
 
 @router.post("/auth/totp/verify")
+@limiter.limit("5/minute")
 def totp_verify(
+    request: Request,
     payload: TotpVerifyIn,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
@@ -1191,26 +1209,36 @@ def totp_verify(
 
 
 @router.post("/auth/totp/disable")
+@limiter.limit("5/minute")
 def totp_disable(
-    u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION
+    request: Request,
+    data: TotpDisableIn,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
     their TOTP secret. Future logins will only require username and password.
-    Requires CSRF token validation since this is a security-sensitive operation.
+    Requires CSRF token and password re-entry for security.
 
     Security Note:
-        This is a privileged operation that reduces account security. CSRF
-        protection prevents unauthorized disabling of 2FA via CSRF attacks.
+        Password re-entry prevents an attacker with a stolen session from
+        silently disabling 2FA. CSRF protection adds a second layer.
 
     Args:
+        data: Payload containing the user's current password.
         u: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
         dict: Success response with {"detail": "disabled"}.
+
+    Raises:
+        HTTPException: 400 if password is incorrect.
     """
+    if not verify_password(data.password, u.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
     u.is_totp_enabled = False
     u.totp_secret = None
     db.add(u)
@@ -1251,6 +1279,7 @@ def change_password(
             detail="New password must be at least 8 characters",
         )
     u.password_hash = hash_password(data.new_password)
+    u.token_version += 1  # Invalidate all existing sessions
     db.add(u)
     db.commit()
     return {"detail": "Password changed"}
@@ -1262,13 +1291,8 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
 
     Logs out the current user by clearing all authentication cookies (access_token,
     refresh_token, XSRF-TOKEN). The user will need to login again to access
-    protected endpoints. Note that this only clears client-side cookies; the
-    tokens remain valid until expiration since there's no server-side revocation.
-
-    Implementation Note:
-        Production systems should implement token blacklisting for immediate
-        revocation. Current implementation relies on short access token TTL
-        (15 minutes) to limit exposure window.
+    protected endpoints. Tokens from this session remain valid until expiration
+    but password changes invalidate all sessions via token_version.
 
     Args:
         response: FastAPI response object for clearing cookies.
@@ -1554,12 +1578,17 @@ def refresh(
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
+    # Reject refresh tokens minted before a password change
+    if payload.get("tv", 0) != user.token_version:
+        raise HTTPException(401, "Session invalidated")
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
     new_access = create_jwt_with_competencies(
-        user.username, roles, competencies
+        user.username, roles, competencies, user.token_version
     )
-    new_refresh = create_refresh_token(user.username)  # rotate
+    new_refresh = create_refresh_token(
+        user.username, user.token_version
+    )  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
     return {"detail": "refreshed"}

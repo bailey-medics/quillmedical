@@ -4,7 +4,7 @@ This module defines request and response models for user authentication,
 registration, and two-factor authentication (TOTP) operations.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LoginIn(BaseModel):
@@ -15,6 +15,8 @@ class LoginIn(BaseModel):
         password: User's password (plain text, will be hashed on server).
         totp_code: Optional 6-digit TOTP code if 2FA is enabled.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     username: str
     password: str
@@ -28,9 +30,11 @@ class RegisterIn(BaseModel):
         username: Desired username (must be unique).
         full_name: User's full display name (optional).
         email: Email address (must be unique).
-        password: Desired password (min 6 characters).
+        password: Desired password (min 8 characters).
         organisation_id: ID of the organisation to join (optional).
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     username: str
     full_name: str | None = None
@@ -47,6 +51,8 @@ class ChangePasswordIn(BaseModel):
         new_password: Desired new password (min 8 characters).
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     current_password: str
     new_password: str
 
@@ -57,6 +63,8 @@ class ForgotPasswordIn(BaseModel):
     Attributes:
         email: Email address of the account to reset.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     email: str
 
@@ -69,5 +77,21 @@ class ResetPasswordIn(BaseModel):
         new_password: Desired new password (min 8 characters).
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     token: str
     new_password: str
+
+
+class TotpDisableIn(BaseModel):
+    """TOTP disable request payload.
+
+    Requires password re-entry to prevent session-hijack disabling of 2FA.
+
+    Attributes:
+        password: Current password for verification.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    password: str
