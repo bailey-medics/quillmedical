@@ -133,6 +133,11 @@ The permission system uses the `RequirePermission` component to protect routes:
 </RequirePermission>
 ```
 
+Other route guards:
+
+- **`<RequireClinical>`**: Gates FHIR/EHRbase-dependent routes (patients, messaging). When `clinical_services_enabled` is false, redirects to `/teaching`.
+- **`<RequireFeature feature="teaching">`**: Gates routes behind organisation feature flags. Shows 404 when the user's organisation does not have the specified feature enabled.
+
 ##### Behaviour
 
 - Checks user's permission level on route access

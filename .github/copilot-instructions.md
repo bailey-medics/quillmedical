@@ -56,7 +56,7 @@ see the `Justfile` if you want to know more.
 - **API**: Use `frontend/src/lib/api.ts` client (auto-retry on 401, never raw `fetch`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
-- **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes (all in `src/auth/`)
+- **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Button alignment**: ALWAYS right-justify buttons — wrap in `<Group justify="flex-end">`
@@ -91,32 +91,37 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Admin | Admin | `components/admin/` |
 | Appointments | AppointmentsList | `components/appointments/` |
 | Avatars | ProfilePic, StackedProfilePics | `components/profile-pic/` |
-| Badge | ActiveStatus, PermissionBadge, UnreadBadge | `components/badge/` |
-| Button | ActionCardButton, AddButton, BurgerButton, IconButton | `components/button/` |
+| Backgrounds | PublicDarkBackground, PublicHeroBackground, PublicLightBackground | `components/background/` |
+| Badge | ActiveStatus, AppointmentStatus, AssessmentResultBadge, PermissionBadge, UnreadBadge | `components/badge/` |
+| Button | ActionCardButton, AddButton, BurgerButton, ButtonPair, ButtonPairRed, IconButton, IconTextButton, PreviousNextButton, PublicBurgerButton, PublicButton | `components/button/` |
 | Cards | BaseCard | `components/base-card/` |
 | Data | Date, NationalNumber | `components/data/` |
 | Demographics | Demographics | `components/demographics/` |
 | Documents | Document, DocumentThumbnail, DocumentsList | `components/documents/` |
 | Drawers | NavigationDrawer | `components/drawers/` |
-| Footer | Footer | `components/footer/` |
+| FeatureCard | PublicFeatureCard | `components/feature-card/` |
+| Footer | Footer, PublicFooter | `components/footer/` |
+| Form | MultiSelectField, PasswordField, SelectField, SolidSwitch, TextAreaField, TextField | `components/form/` |
 | Gender | Gender, GenderIcon | `components/gender/` |
-| Icons | Icon, NavIcon | `components/icons/` |
+| Icons | Icon, NavIcon, PublicNavIcon | `components/icons/` |
 | Images | QuillLogo, QuillName | `components/images/` |
-| Layouts | MainLayout, NotFoundLayout, Complete, Complete.PatientList | `components/layouts/` |
+| InfoCard | PublicInfoCard | `components/info-card/` |
+| Layouts | MainLayout, NotFoundLayout, PublicLayout, PublicNotFound, Complete, Complete.PatientList | `components/layouts/` |
 | Letters | LetterList, LetterView | `components/letters/` |
-| Messaging | Messaging, MessagesList, MessagingTriagePayment | `components/messaging/` |
+| MessageCards | ResultMessage, StateMessage | `components/message-cards/` |
+| Messaging | Messaging, MessagesList, MessagingTriagePayment, NewMessageModal | `components/messaging/` |
 | MultiStepForm | MultiStepForm | `components/multi-step-form/` |
-| Navigation | SideNav, SideNavContent, NestedNavLink | `components/navigation/` |
+| Navigation | SideNav | `components/navigation/` |
 | Notes | NotesList | `components/notes/` |
 | Notifications | EnableNotificationsButton | `components/notifications/` |
-| PageHeader | PageHeader | `components/page-header/` |
 | Patients | PatientsList | `components/patients/` |
-| Ribbon | TopRibbon | `components/ribbon/` |
+| Registration | ForgotPasswordForm, LoginForm, RegistrationForm, ResetPasswordForm | `components/registration/` |
+| Ribbon | TopRibbon, PublicTopRibbon | `components/ribbon/` |
 | Search | SearchField | `components/search/` |
-| StateMessages | StateMessage | `components/state-message/` |
 | StatCards | StatCard | `components/stats-card/` |
-| Tables | DataTable | `components/tables/` |
-| Typography | MarkdownView | `components/typography/` |
+| Tables | DataCard, DataTable | `components/tables/` |
+| Teaching | AssessmentClosing, AssessmentHistoryTable, AssessmentIntro, AssessmentProgress, AssessmentResult, AssessmentTimer, ExamCloseButton, QuestionView, ScoreBreakdown | `components/teaching/` |
+| Typography | BodyText, BodyTextBlack, BodyTextBold, BodyTextClamp, ErrorText, HeaderText, HyperlinkText, MarkdownView, PageHeader, PlaceholderText, PublicText, PublicTitle | `components/typography/` |
 | Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.
@@ -173,7 +178,7 @@ Healthcare-specific authorisation layer for clinical operations.
 
 - **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies)
 - **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves `base + additional - removed` competencies per user
-- **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies`)
+- **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — currently placeholders returning `false`)
 - **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)
 - CBAC-protected route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
 
@@ -269,7 +274,7 @@ Healthcare-specific authorisation layer for clinical operations.
 - `backend/app/system_permissions/`: 4-level permission hierarchy
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`, `letters.py`)
 - `frontend/src/main.tsx`: Router config with `createBrowserRouter` and all route definitions
-- `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequirePermission
+- `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequirePermission, RequireClinical, RequireFeature
 - `frontend/src/lib/api.ts`: API client (auto-retry 401, CSRF, credential cookies)
 - `frontend/src/types/cbac.ts`: CBAC type definitions
 - `frontend/src/RootLayout.tsx`: Root layout with patient context provider

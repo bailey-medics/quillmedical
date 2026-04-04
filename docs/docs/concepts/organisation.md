@@ -38,6 +38,8 @@ All endpoints are admin-only (admin or superadmin system permissions required). 
 - `POST /api/organizations/{id}/patients` — add patient
 - `DELETE /api/organizations/{id}/staff/{userId}` — remove staff member (requires CSRF)
 - `DELETE /api/organizations/{id}/patients/{patientId}` — remove patient (requires CSRF)
+- `GET /api/organizations/{id}/features` — list organisation feature flags
+- `PUT /api/organizations/{id}/features/{featureKey}` — enable or disable a feature (requires CSRF)
 
 ## 6. Permissions & Access
 

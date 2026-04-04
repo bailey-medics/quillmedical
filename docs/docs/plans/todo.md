@@ -146,3 +146,11 @@ notifications are production-ready:
 - [ ] Create `/settings/password` page — the settings page links to it via
       "Change password" but no route or page component exists, resulting in a
       404
+
+## Caddy documentation
+
+- [ ] Audit the Caddy documentation (`docs/docs/backend/caddy/index.md`) —
+      the "Key Features" subsections (Reverse Proxy, Static File Serving, CORS
+      Handling, Request Logging) contain generic Caddy examples that do not
+      match either the dev or prod Caddyfile. Replace with accurate snippets
+      or remove. The "Why Caddy?" section is fine.

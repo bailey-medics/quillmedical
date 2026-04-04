@@ -137,7 +137,7 @@ def create_letter(patient_id: str, letter: LetterIn):
 
 All API endpoints are prefixed with `/api`:
 
-- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout)
+- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout, password reset)
 - `/api/users/*` - User management (admin CRUD, profile)
 - `/api/patients/*` - Patient management (backed by FHIR)
 - `/api/patients/{id}/letters/*` - Clinical letters (backed by OpenEHR)
@@ -148,6 +148,7 @@ All API endpoints are prefixed with `/api`:
 - `/api/organizations/*` - Organisation management (admin)
 - `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications
+- `/api/teaching/*` - Teaching assessments (feature-gated)
 - `/api/health` - Service health check
 
 ### Authentication & Security
@@ -281,6 +282,7 @@ DEP_GET_SESSION    # Database session via get_auth_db
 DEP_CURRENT_USER   # Authenticated user from JWT cookie
 DEP_REQUIRE_ROLES_CLINICIAN  # Clinician role gate
 DEP_REQUIRE_CSRF   # CSRF token validation (mutating endpoints)
+DEP_REQUIRE_CLINICAL  # Raises 503 when CLINICAL_SERVICES_ENABLED=false
 
 # Use in routes
 @router.get("/profile")

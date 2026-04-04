@@ -40,20 +40,22 @@ graph LR
 | --------------- | --------------------------------- | ------------------ |
 | `feature/*`     | New features and non-urgent fixes | CI checks only     |
 | `hotfix/*`      | Urgent production fixes           | CI checks only     |
+| `copilot/*`     | AI-generated branches             | CI checks only     |
+| `renovate/*`    | Automated dependency updates      | CI checks only     |
 | `main`          | Integration branch                | Staging + Teaching |
 | `clinical-live` | Production-ready code             | Production         |
 | `release/**`    | Release candidates (future use)   | —                  |
 
 ### Rules
 
-- All development happens on `feature/*` or `hotfix/*` branches
+- All development happens on `feature/*`, `hotfix/*`, or `copilot/*` branches
 - `main` requires a pull request — never push directly
-- Branch names must match `^(feature|hotfix)/.+` (enforced at creation time)
+- Branch names must match `^(feature|hotfix|copilot|renovate)/.+` (enforced at creation time)
 - Use `hotfix/*` only for urgent production fixes; `feature/*` for everything else
 
 ## Branch protection rulesets
 
-Managed by Terraform in `infra/github/branch_rules.tf`. Four rulesets are defined across both repositories.
+Managed by Terraform in `infra/github/branch_rules.tf`. Five rulesets are defined across both repositories.
 
 !!! warning "Manual apply required for GitHub rulesets"
 The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` changes to `main` does not automatically apply them. You must run `terraform apply` locally:
@@ -67,9 +69,9 @@ terraform apply -var-file=terraform.tfvars
 
 The GCP infrastructure Terraform (`infra/`) uses a remote backend and is applied automatically via the Terraform CI workflow.
 
-### Ruleset 1 — Protected branches (quillmedical)
+### Ruleset 1a — Protected branches (quillmedical)
 
-**Targets:** `main`, `clinical-live`, `release/**`
+**Targets:** `main`, `release/**`
 
 | Rule                          | Setting                                                |
 | ----------------------------- | ------------------------------------------------------ |
@@ -80,21 +82,35 @@ The GCP infrastructure Terraform (`infra/`) uses a remote backend and is applied
 | Branch deletion               | Blocked                                                |
 | Bypass actors                 | None (applies to admins too)                           |
 
-### Ruleset 2 — Branch naming (quillmedical)
+### Ruleset 1b — Clinical-live protection (quillmedical)
+
+**Targets:** `clinical-live`
+
+| Rule                          | Setting                                               |
+| ----------------------------- | ----------------------------------------------------- |
+| Pull request required         | Yes (1 approval — two-person sign-off for DCB 0129)   |
+| Dismiss stale reviews on push | Yes                                                   |
+| Require last push approval    | Yes                                                   |
+| Required status checks        | All 10 CI checks (strict — branch must be up-to-date) |
+| Force push                    | Blocked                                               |
+| Branch deletion               | Blocked                                               |
+| Bypass actors                 | None (applies to admins too)                          |
+
+### Ruleset 3 — Branch naming (quillmedical)
 
 **Targets:** All branches except `main`, `clinical-live`, `release/**`
 
-Pattern: `^(feature|hotfix)/.+` — branches that don't match are rejected at creation time.
+Pattern: `^(feature|hotfix|copilot|renovate)/.+` — branches that don't match are rejected at creation time.
 
-### Ruleset 3 — Protected branches (quill-question-bank)
+### Ruleset 4 — Protected branches (quill-question-bank)
 
 **Targets:** `main`
 
 Same PR and force-push rules as quillmedical, but no required status checks (no CI pipeline on the data repo).
 
-### Ruleset 4 — Branch naming (quill-question-bank)
+### Ruleset 5 — Branch naming (quill-question-bank)
 
-Same `^(feature|hotfix)/.+` pattern as quillmedical.
+Same `^(feature|hotfix|copilot|renovate)/.+` pattern as quillmedical.
 
 ## Required status checks
 
