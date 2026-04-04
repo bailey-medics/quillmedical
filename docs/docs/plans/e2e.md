@@ -1,6 +1,6 @@
 # End-to-end testing with Playwright
 
-Add `@playwright/test` to the frontend, create a Playwright config targeting the Docker Compose stack via Caddy on `localhost:80`, and write a simple login e2e test using the seeded `educator` user. Add `just e2e` commands for developer experience.
+Add `@playwright/test` to the frontend, create a Playwright config targeting the Docker Compose stack via Caddy on `localhost:80`, and write a simple login e2e test using the seeded `educator` user (but will need different users from staff, admin, superadmin, and for the EPR we will need patient, doctor, nurse,etc). Add `just e2e` commands for developer experience.
 
 ## Phase 1: Install and configure Playwright
 
