@@ -57,21 +57,13 @@ Our Caddy configuration is in `caddy/dev/Caddyfile`:
   }
 
   # PWA manifest with correct MIME type
-  @webmanifest path /app/*.webmanifest
+  @webmanifest path /*.webmanifest
   header @webmanifest Content-Type "application/manifest+json"
   header @webmanifest Cache-Control "no-cache"
 
-  # Redirect /app to /app/ for SPA routing
-  redir /app /app/ 301
-
-  # SPA served under /app and /app/*
-  handle /app* {
-    reverse_proxy frontend:5173
-  }
-
-  # Everything else → public pages
+  # SPA served at /
   handle {
-    reverse_proxy frontend:5174
+    reverse_proxy frontend:5173
   }
 }
 ```
@@ -87,317 +79,75 @@ Client Browser
       ↓
       ├→ FastAPI Backend (Port 8000)    - /api/*
       ├→ EHRbase Server (Port 8080)     - /ehrbase/*
-      ├→ Frontend SPA (Port 5173)       - /app/* (Vite dev server)
-      └→ Public Pages (Port 5174)       - /* (marketing/landing)
+      └→ Frontend SPA (Port 5173)       - /* (Vite dev server)
 ```
 
 ## Key Features in Use
 
 ### Reverse Proxy
 
-Caddy forwards requests to backend services:
+Caddy forwards requests to backend services based on path matching, as shown in the [Caddyfile above](#our-implementation). In production, the GCP Global HTTPS Load Balancer handles path-based routing (`/api/*` → backend, `/*` → frontend), so Caddy only serves static files and a health check endpoint.
 
-```caddyfile
-# API endpoints
-reverse_proxy /api/* http://backend:8000 {
-    # Preserve original headers
-    header_up Host {host}
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
-    header_up X-Forwarded-Proto {scheme}
-}
-
-# FHIR server
-reverse_proxy /fhir/* http://hapi-fhir:8080 {
-    # Strip /fhir prefix before forwarding
-    rewrite * /fhir{path}
-}
-```
+> **Note:** The config snippets below are illustrative Caddy examples showing capabilities we intend to implement. The actual dev and production Caddyfiles are simpler — see [Our Implementation](#our-implementation) above for the real config. Updating these sections is tracked in the [project to-do list](../../plans/todo.md#caddy-documentation).
 
 ### Static File Serving
 
-Serves the React TypeScript frontend:
+In production, Caddy serves the built React SPA from `/srv/app`:
 
 ```caddyfile
-# Serve static files
+root * /srv/app
 file_server
-root * /srv
-
-# SPA fallback - all routes serve index.html
 try_files {path} /index.html
 ```
 
 ### CORS Handling
 
-Manages Cross-Origin Resource Sharing:
-
-```caddyfile
-@api path /api/*
-handle @api {
-    header {
-        Access-Control-Allow-Origin *
-        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-        Access-Control-Allow-Headers "Content-Type, Authorization"
-    }
-    reverse_proxy http://backend:8000
-}
-```
+CORS is handled by the FastAPI backend middleware, not by Caddy. The backend uses `CORSMiddleware` with configurable `CORS_ORIGINS`.
 
 ### Request Logging
 
-Logs all incoming requests:
-
-```caddyfile
-log {
-    output stdout
-    format json
-    level INFO
-}
-```
+Currently not configured in either Caddyfile. To be added when needed.
 
 ## Development vs Production
 
-### Development Configuration
+### Development
 
-`caddy/dev/Caddyfile`:
+In development (`caddy/dev/Caddyfile`), Caddy listens on port 80 and reverse-proxies to local Docker services (backend on 8000, frontend Vite dev server on 5173, EHRbase on 8080).
 
-```caddyfile
-# No HTTPS in development
-localhost:8080
+### Production
 
-# Detailed logging
-log {
-    level DEBUG
-}
+In production (`caddy/prod/Caddyfile`), the GCP Global HTTPS Load Balancer handles TLS termination, path routing, and Cloud Armor WAF. Caddy runs inside the frontend container on port 80 and serves:
 
-# Direct proxying to local services
-reverse_proxy /api/* http://localhost:8000
-```
-
-### Production Configuration
-
-Production would use:
-
-```caddyfile
-# Automatic HTTPS
-quillmedical.com {
-    # API backend
-    reverse_proxy /api/* http://backend:8000
-
-    # FHIR server (internal only, not exposed)
-    # reverse_proxy /fhir/* http://fhir:8080
-
-    # Frontend
-    root * /srv
-    file_server
-    try_files {path} /index.html
-
-    # Security headers
-    header {
-        Strict-Transport-Security "max-age=31536000"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        X-XSS-Protection "1; mode=block"
-    }
-
-    # Gzip compression
-    encode gzip
-}
-```
+- Security headers (HSTS, CSP, X-Frame-Options, etc.)
+- A `/healthz` health check endpoint for Cloud Run probes
+- The built React SPA with `try_files` fallback to `index.html`
 
 ## Routing Strategy
 
-### API Routes (`/api/*`)
+### Development (Caddy handles routing)
 
-Forwarded to FastAPI backend:
+| Path pattern | Destination          | Purpose             |
+| ------------ | -------------------- | ------------------- |
+| `/api/*`     | Backend (port 8000)  | FastAPI application |
+| `/ehrbase/*` | EHRbase (port 8080)  | OpenEHR server      |
+| `/*`         | Frontend (port 5173) | Vite dev server     |
 
-- `/api/auth/login` → Backend authentication
-- `/api/patients` → Backend patient endpoints
-- `/api/push/*` → Backend push notifications
+### Production (Load Balancer handles routing)
 
-### FHIR Routes (`/fhir/*`)
+In production, the GCP Global HTTPS Load Balancer performs path-based routing before traffic reaches Caddy:
 
-Direct access to FHIR server (typically internal only):
+| Path pattern | Destination        | Purpose                       |
+| ------------ | ------------------ | ----------------------------- |
+| `/api/*`     | Backend Cloud Run  | FastAPI application           |
+| `/*`         | Frontend Cloud Run | Caddy serves static SPA files |
 
-- `/fhir/Patient` → FHIR Patient resources
-- `/fhir/Observation` → FHIR Observations
-
-**Note**: In production, FHIR should not be publicly exposed. Access only through backend API.
-
-### Frontend Routes (`/*`)
-
-Serves React SPA:
-
-- `/` → Frontend app
-- `/patients` → Handled by React Router
-- `/login` → Handled by React Router
-- All unmatched routes → `index.html` (SPA fallback)
-
-### Static Assets
-
-Served directly with caching:
-
-- `/assets/*` → JavaScript, CSS, images
-- `/manifest.webmanifest` → PWA manifest
-- `/sw.js` → Service worker
-
-## Performance Optimizations
-
-### Compression
-
-```caddyfile
-# Gzip compression for text content
-encode gzip {
-    match {
-        header Content-Type text/*
-        header Content-Type application/json
-        header Content-Type application/javascript
-    }
-}
-```
-
-### Caching Headers
-
-```caddyfile
-# Cache static assets
-@static path /assets/*
-handle @static {
-    header Cache-Control "public, max-age=31536000, immutable"
-    file_server
-}
-
-# No cache for HTML (SPA)
-handle {
-    header Cache-Control "no-cache, no-store, must-revalidate"
-    file_server
-}
-```
-
-### Connection Pooling
-
-Caddy automatically manages connection pools to upstream services for better performance.
+FHIR and EHRbase are not publicly exposed — they run on a private VPC and are accessed only by the backend.
 
 ## Security Features
 
-### Automatic HTTPS
+In production, Caddy enforces security headers on all responses. See the [cybersecurity documentation](../../cybersecurity/index.md#http-security-headers) for the full header list.
 
-- Certificates from Let's Encrypt
-- Automatic renewal 30 days before expiration
-- HTTP → HTTPS redirect
-- Modern TLS configuration (TLS 1.2+)
-
-### Security Headers
-
-```caddyfile
-header {
-    # Prevent clickjacking
-    X-Frame-Options "DENY"
-
-    # Prevent MIME sniffing
-    X-Content-Type-Options "nosniff"
-
-    # Enable XSS protection
-    X-XSS-Protection "1; mode=block"
-
-    # HSTS for HTTPS only
-    Strict-Transport-Security "max-age=31536000; includeSubDomains"
-
-    # Content Security Policy
-    Content-Security-Policy "default-src 'self'"
-}
-```
-
-### Rate Limiting
-
-```caddyfile
-# Limit request rate to prevent abuse
-rate_limit {
-    zone dynamic {
-        key {remote_host}
-        events 100
-        window 1m
-    }
-}
-```
-
-## Docker Integration
-
-In `compose.dev.yml`:
-
-```yaml
-caddy:
-  image: caddy:2-alpine
-  ports:
-    - "8080:8080"
-  volumes:
-    - ./caddy/dev/Caddyfile:/etc/caddy/Caddyfile:ro
-    - ./frontend/dist:/srv:ro
-  depends_on:
-    - backend
-    - hapi-fhir
-```
-
-## Monitoring & Debugging
-
-### Access Logs
-
-```caddyfile
-log {
-    output file /var/log/caddy/access.log
-    format json {
-        time_format iso8601
-    }
-}
-```
-
-### Admin API
-
-Caddy provides an admin API (default port 2019):
-
-```bash
-# Get current configuration
-curl <http://localhost:2019/config/>
-
-# Reload configuration
-curl -X POST <http://localhost:2019/load> \
-  -H "Content-Type: application/json" \
-  -d @config.json
-```
-
-### Health Checks
-
-```caddyfile
-# Health check endpoint
-handle /health {
-    respond "OK" 200
-}
-```
-
-## Common Tasks
-
-### Reload Configuration
-
-```bash
-# Graceful reload (no downtime)
-caddy reload --config /etc/caddy/Caddyfile
-```
-
-### View Logs
-
-```bash
-# In Docker
-docker compose logs caddy
-
-# Follow logs
-docker compose logs -f caddy
-```
-
-### Test Configuration
-
-```bash
-# Validate Caddyfile syntax
-caddy validate --config /etc/caddy/Caddyfile
-```
+Key headers: HSTS (2 years, preload), CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, and Server header removal.
 
 ## Resources
 

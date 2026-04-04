@@ -114,7 +114,11 @@ All functions are organised under the `/api` prefix:
 - Refresh your session (`POST /api/auth/refresh`)
 - Log out securely (`POST /api/auth/logout`)
 - View your profile (`GET /api/auth/me`)
+- Change password (`POST /api/auth/change-password`)
+- Request password reset (`POST /api/auth/forgot-password`)
+- Reset password with token (`POST /api/auth/reset-password`)
 - Set up TOTP two-factor authentication (`POST /api/auth/totp/setup`, `/verify`, `/disable`)
+- List organisations for registration (`GET /api/auth/organizations`)
 
 ### Patient Management
 
@@ -122,9 +126,16 @@ All functions are organised under the `/api` prefix:
   - `fhir_ready: true` means FHIR server is fully ready to serve patient data
   - `fhir_ready: false` means FHIR is still initializing (search indexes building)
   - Atomic response eliminates race conditions between health check and data fetch
-- Create new patient record
-- Update patient demographics
-- View patient demographics
+- **Verify patient** (`POST /api/patients/verify`): Check a patient exists in FHIR
+- Create new patient record (`POST /api/patients`)
+- View single patient (`GET /api/patients/{id}`)
+- Update patient demographics (`PATCH /api/patients/{id}`)
+- Upsert demographics (`PUT /api/patients/{id}/demographics`)
+- View demographics (`GET /api/patients/{id}/demographics`)
+- View patient metadata (`GET /api/patients/{id}/metadata`): Activation status
+- Deactivate patient (`POST /api/patients/{id}/deactivate`)
+- Activate patient (`POST /api/patients/{id}/activate`)
+- View shared organisations (`GET /api/patients/{id}/shared-organisations`)
 
 ### Clinical Letters
 
@@ -145,7 +156,8 @@ All functions are organised under the `/api` prefix:
   - Marks conversation as read for the current user
 - **Send message** (`POST /api/conversations/{id}/messages`): Send a message in a conversation
   - Supports message amendments via `amends_id`
-- **Manage participants**: Add participants, self-join as staff, list participants
+- **Manage participants**: Add participants (`POST`), self-join as staff (`POST .../join`), list participants (`GET`)
+- **Mark as read** (`POST /api/conversations/{id}/read`): Mark conversation as read for the current user
 - **Update status** (`PATCH /api/conversations/{id}`): Update conversation status (new, active, resolved, closed)
 - **Patient conversations** (`GET /api/patients/{id}/conversations`): List all conversations for a specific patient
 
@@ -164,6 +176,8 @@ All functions are organised under the `/api` prefix:
 - **View organisation** (`GET /api/organizations/{id}`): Get organisation with staff/patient lists
 - **Update organisation** (`PUT /api/organizations/{id}`): Update organisation details
 - **Manage membership**: Add/remove staff and patients
+- **List features** (`GET /api/organizations/{id}/features`): List organisation feature flags
+- **Toggle feature** (`PUT /api/organizations/{id}/features/{key}`): Enable or disable a feature
 
 ### CBAC (Competency-Based Access Control)
 
@@ -181,6 +195,22 @@ All functions are organised under the `/api` prefix:
 
 - **Subscribe** (`POST /api/push/subscribe`): Register a push subscription for the current browser
 - **Send test** (`POST /api/push/send-test`): Send a test notification to all subscribers (development only)
+
+### Teaching (feature-gated)
+
+All teaching routes are under `/api/teaching` and require the `teaching` feature to be enabled on the user's organisation.
+
+- **List question banks** (`GET /api/teaching/question-banks`)
+- **Get question bank** (`GET /api/teaching/question-banks/{bank_id}`)
+- **Start assessment** (`POST /api/teaching/assessments`)
+- **Assessment history** (`GET /api/teaching/assessments/history`)
+- **Get assessment** (`GET /api/teaching/assessments/{id}`)
+- **Current item** (`GET /api/teaching/assessments/{id}/current`)
+- **Submit answer** (`POST /api/teaching/assessments/{id}/answer`)
+- **Update answer** (`PUT /api/teaching/assessments/{id}/answer/{answer_id}`)
+- **Complete assessment** (`POST /api/teaching/assessments/{id}/complete`)
+- **Download certificate** (`GET /api/teaching/assessments/{id}/certificate`)
+- **Educator routes** (require `manage_teaching_content` competency): item management, validation, sync, results, settings
 
 ## What Data is Stored Where
 

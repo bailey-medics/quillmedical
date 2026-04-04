@@ -1,10 +1,10 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 90 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 98 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
-Quill Medical uses [Storybook 10.2.10](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
+Quill Medical uses [Storybook 10.3.3](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
 
 - Develop UI components in isolation
 - Document component props and variations
@@ -16,7 +16,7 @@ Quill Medical uses [Storybook 10.2.10](https://storybook.js.org/) as an interact
 Storybook is configured with:
 
 - **Framework**: React + Vite integration (`@storybook/react-vite`)
-- **Version**: 10.2.10
+- **Version**: 10.3.3
 - **Dev Server**: Port 6006
 - **Build Output**: `docs/docs/code/storybook/` (deployed with MkDocs documentation)
 
@@ -53,7 +53,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **90 component story files** across various UI categories:
+The project includes **98 component story files** across various UI categories:
 
 ### Core Components
 
