@@ -106,6 +106,11 @@ class User(Base):
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Token version — incremented on password change to invalidate sessions
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+
     # FHIR patient ID link (for patient users)
     fhir_patient_id: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True

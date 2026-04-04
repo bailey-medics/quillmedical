@@ -64,6 +64,8 @@ nav:
       - Overview: github/index.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
+  - Cybersecurity:
+      - Overview: cybersecurity/index.md
   - Dependencies:
       - Overview: dependencies/index.md
       - Automatic updates: dependencies/automatic-updates.md

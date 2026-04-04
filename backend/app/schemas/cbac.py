@@ -1,11 +1,13 @@
 # backend/app/schemas/cbac.py
 """Pydantic schemas for CBAC API endpoints."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CompetencyCheck(BaseModel):
     """Request to check if user has a competency."""
+
+    model_config = ConfigDict(extra="forbid")
 
     user_id: int
     competency: str
@@ -20,6 +22,8 @@ class CompetencyCheckResponse(BaseModel):
 
 class UpdateCompetenciesRequest(BaseModel):
     """Request to update user's additional/removed competencies."""
+
+    model_config = ConfigDict(extra="forbid")
 
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
@@ -57,6 +61,8 @@ class ProfessionalRegistration(BaseModel):
 
 class PrescriptionRequest(BaseModel):
     """Example prescription request schema."""
+
+    model_config = ConfigDict(extra="forbid")
 
     patient_id: str
     medication: str

@@ -63,7 +63,10 @@ class TestRequireCSRFDependency:
 
     def test_csrf_missing_header(self, authenticated_client: TestClient):
         """Test CSRF when header is missing."""
-        response = authenticated_client.post("/api/auth/totp/disable")
+        response = authenticated_client.post(
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+        )
         assert response.status_code == 403
 
     def test_csrf_missing_cookie(self, authenticated_client: TestClient):
@@ -71,7 +74,9 @@ class TestRequireCSRFDependency:
         # Clear the CSRF cookie
         authenticated_client.cookies.delete("XSRF-TOKEN")
         response = authenticated_client.post(
-            "/api/auth/totp/disable", headers={"X-CSRF-Token": "some_token"}
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+            headers={"X-CSRF-Token": "some_token"},
         )
         assert response.status_code == 403
 
@@ -79,7 +84,9 @@ class TestRequireCSRFDependency:
         """Test CSRF when header and cookie don't match."""
         authenticated_client.cookies.set("XSRF-TOKEN", "token1")
         response = authenticated_client.post(
-            "/api/auth/totp/disable", headers={"X-CSRF-Token": "token2"}
+            "/api/auth/totp/disable",
+            json={"password": "TestPassword123!"},
+            headers={"X-CSRF-Token": "token2"},
         )
         assert response.status_code == 403
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class FeatureOut(BaseModel):
@@ -15,5 +15,7 @@ class FeatureOut(BaseModel):
 
 class FeatureToggleIn(BaseModel):
     """Request schema: enable or disable a feature on an org."""
+
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool

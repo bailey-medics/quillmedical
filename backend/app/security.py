@@ -89,7 +89,9 @@ def verify_password(p: str, h: str) -> bool:
         return False
 
 
-def create_access_token(sub: str, roles: list[str]) -> str:
+def create_access_token(
+    sub: str, roles: list[str], token_version: int = 0
+) -> str:
     """Create JWT Access Token.
 
     Creates a short-lived JWT access token containing the user's identity
@@ -99,6 +101,7 @@ def create_access_token(sub: str, roles: list[str]) -> str:
     Args:
         sub: Subject (username) for the token.
         roles: List of role names assigned to the user (e.g., ["Clinician"]).
+        token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT access token valid for ACCESS_TTL_MIN minutes.
@@ -112,6 +115,7 @@ def create_access_token(sub: str, roles: list[str]) -> str:
     payload: dict[str, Any] = {
         "sub": sub,
         "roles": roles,
+        "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
     return jwt.encode(  # type: ignore[no-any-return]
@@ -121,7 +125,7 @@ def create_access_token(sub: str, roles: list[str]) -> str:
     )
 
 
-def create_refresh_token(sub: str) -> str:
+def create_refresh_token(sub: str, token_version: int = 0) -> str:
     """Create JWT Refresh Token.
 
     Creates a long-lived JWT refresh token used to obtain new access tokens
@@ -130,13 +134,15 @@ def create_refresh_token(sub: str) -> str:
 
     Args:
         sub: Subject (username) for the token.
+        token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT refresh token valid for REFRESH_TTL_DAYS days.
     """
-    payload = {
+    payload: dict[str, Any] = {
         "sub": sub,
         "type": "refresh",
+        "tv": token_version,
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
     }
     return jwt.encode(  # type: ignore[no-any-return]
@@ -304,7 +310,10 @@ def totp_provisioning_uri(
 
 
 def create_jwt_with_competencies(
-    sub: str, roles: list[str], competencies: list[str]
+    sub: str,
+    roles: list[str],
+    competencies: list[str],
+    token_version: int = 0,
 ) -> str:
     """Create JWT Access Token with CBAC Competencies.
 
@@ -316,6 +325,7 @@ def create_jwt_with_competencies(
         sub: Subject (username) for the token.
         roles: List of role names assigned to the user (e.g., ["Clinician"]).
         competencies: List of competency IDs user has (resolved from base profession).
+        token_version: User's token version for session invalidation.
 
     Returns:
         str: Encoded JWT access token with competencies, valid for ACCESS_TTL_MIN minutes.
@@ -329,6 +339,7 @@ def create_jwt_with_competencies(
         "sub": sub,
         "roles": roles,
         "competencies": competencies,
+        "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
     return jwt.encode(  # type: ignore[no-any-return]

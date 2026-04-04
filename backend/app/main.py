@@ -96,6 +96,7 @@ from app.schemas.auth import (
     LoginIn,
     RegisterIn,
     ResetPasswordIn,
+    TotpDisableIn,
 )
 from app.schemas.cbac import (
     PrescriptionRequest,
@@ -453,6 +454,9 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
+    # Reject tokens minted before a password change
+    if payload.get("tv", 0) != user.token_version:
+        raise HTTPException(401, "Session invalidated")
     request.state.roles = [r.name for r in user.roles]
     return user
 
@@ -593,8 +597,10 @@ def login(
             )
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
-    access = create_jwt_with_competencies(user.username, roles, competencies)
-    refresh = create_refresh_token(user.username)
+    access = create_jwt_with_competencies(
+        user.username, roles, competencies, user.token_version
+    )
+    refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
     return {
@@ -665,18 +671,26 @@ def register(
     if not username or not email or not payload.password:
         raise HTTPException(status_code=400, detail="Missing fields")
 
-    if len(payload.password) < 6:
-        raise HTTPException(status_code=400, detail="Password too short")
+    if len(payload.password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters",
+        )
 
+    # Use generic message to prevent account enumeration
     existing = db.scalar(select(User).where(User.username == username))
-
     if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already in use",
+        )
 
     existing = db.scalar(select(User).where(User.email == email))
-
     if existing:
-        raise HTTPException(status_code=400, detail="Email already exists")
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already in use",
+        )
 
     user = User(
         username=username,
@@ -803,6 +817,7 @@ def reset_password(
             detail="Invalid or expired reset link",
         )
     user.password_hash = hash_password(data.new_password)
+    user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
     db.commit()
     return {"detail": "Password reset successfully"}
@@ -824,6 +839,8 @@ class AdminUserCreateIn(BaseModel):
         removed_competencies: Competencies to remove from base profession.
         system_permissions: System permission level (patient, staff, admin, superadmin).
     """
+
+    model_config = {"extra": "forbid"}
 
     name: str
     username: str | None = None
@@ -852,6 +869,8 @@ class AdminUserUpdateIn(BaseModel):
         system_permissions: System permission level (optional).
     """
 
+    model_config = {"extra": "forbid"}
+
     name: str | None = None
     username: str | None = None
     email: str | None = None
@@ -865,7 +884,7 @@ class AdminUserUpdateIn(BaseModel):
 @router.post("/users")
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Admin User Creation with CBAC.
@@ -951,7 +970,7 @@ def create_user_with_cbac(
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update User Account.
@@ -1074,8 +1093,9 @@ class TotpSetupOut(BaseModel):
 
 
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
+@limiter.limit("5/minute")
 def totp_setup(
-    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+    request: Request, u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
 
@@ -1133,11 +1153,15 @@ class TotpVerifyIn(BaseModel):
         code: 6-digit numeric code from authenticator app.
     """
 
+    model_config = {"extra": "forbid"}
+
     code: str
 
 
 @router.post("/auth/totp/verify")
+@limiter.limit("5/minute")
 def totp_verify(
+    request: Request,
     payload: TotpVerifyIn,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
@@ -1191,26 +1215,36 @@ def totp_verify(
 
 
 @router.post("/auth/totp/disable")
+@limiter.limit("5/minute")
 def totp_disable(
-    u: User = DEP_REQUIRE_CSRF, db: Session = DEP_GET_SESSION
+    request: Request,
+    data: TotpDisableIn,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
     their TOTP secret. Future logins will only require username and password.
-    Requires CSRF token validation since this is a security-sensitive operation.
+    Requires CSRF token and password re-entry for security.
 
     Security Note:
-        This is a privileged operation that reduces account security. CSRF
-        protection prevents unauthorized disabling of 2FA via CSRF attacks.
+        Password re-entry prevents an attacker with a stolen session from
+        silently disabling 2FA. CSRF protection adds a second layer.
 
     Args:
+        data: Payload containing the user's current password.
         u: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
         dict: Success response with {"detail": "disabled"}.
+
+    Raises:
+        HTTPException: 400 if password is incorrect.
     """
+    if not verify_password(data.password, u.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
     u.is_totp_enabled = False
     u.totp_secret = None
     db.add(u)
@@ -1251,6 +1285,7 @@ def change_password(
             detail="New password must be at least 8 characters",
         )
     u.password_hash = hash_password(data.new_password)
+    u.token_version += 1  # Invalidate all existing sessions
     db.add(u)
     db.commit()
     return {"detail": "Password changed"}
@@ -1262,13 +1297,8 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
 
     Logs out the current user by clearing all authentication cookies (access_token,
     refresh_token, XSRF-TOKEN). The user will need to login again to access
-    protected endpoints. Note that this only clears client-side cookies; the
-    tokens remain valid until expiration since there's no server-side revocation.
-
-    Implementation Note:
-        Production systems should implement token blacklisting for immediate
-        revocation. Current implementation relies on short access token TTL
-        (15 minutes) to limit exposure window.
+    protected endpoints. Tokens from this session remain valid until expiration
+    but password changes invalidate all sessions via token_version.
 
     Args:
         response: FastAPI response object for clearing cookies.
@@ -1554,12 +1584,17 @@ def refresh(
     user = db.scalar(select(User).where(User.username == sub))
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
+    # Reject refresh tokens minted before a password change
+    if payload.get("tv", 0) != user.token_version:
+        raise HTTPException(401, "Session invalidated")
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
     new_access = create_jwt_with_competencies(
-        user.username, roles, competencies
+        user.username, roles, competencies, user.token_version
     )
-    new_refresh = create_refresh_token(user.username)  # rotate
+    new_refresh = create_refresh_token(
+        user.username, user.token_version
+    )  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
     return {"detail": "refreshed"}
@@ -1898,6 +1933,8 @@ class FHIRPatientCreateIn(BaseModel):
         patient_id: Optional custom FHIR resource ID.
     """
 
+    model_config = {"extra": "forbid"}
+
     given_name: str
     family_name: str
     birth_date: str | None = None
@@ -1907,7 +1944,10 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-@router.post("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
+@router.post(
+    "/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+)
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
@@ -1984,7 +2024,7 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
 
 @router.patch(
     "/patients/{patient_id}",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def update_patient(
     patient_id: str,
@@ -2116,7 +2156,7 @@ def get_patient_metadata(
 
 @router.post(
     "/patients/{patient_id}/deactivate",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def deactivate_patient(
     patient_id: str,
@@ -2184,7 +2224,7 @@ def deactivate_patient(
 
 @router.post(
     "/patients/{patient_id}/activate",
-    dependencies=[DEP_REQUIRE_CLINICAL],
+    dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def activate_patient(
     patient_id: str,
@@ -2367,6 +2407,7 @@ async def prescribe_controlled(
     "/cbac/my-competencies",
     response_model=UserCompetenciesResponse,
     tags=["cbac"],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 async def update_my_competencies(
     data: UpdateCompetenciesRequest,
@@ -2376,19 +2417,25 @@ async def update_my_competencies(
     """Update user's additional/removed competencies.
 
     Allows system administrators to add or remove competencies from a user's
-    base profession template. This endpoint should be protected with additional
-    authorization in production (e.g., require "Administrator" role).
-
-    NOTE: In production, this should require Administrator role and CSRF token.
+    base profession template. Requires admin or superadmin permissions and
+    CSRF token.
 
     Args:
         data: Additional and removed competencies to update
-        user: Authenticated user
+        user: Authenticated user (admin/superadmin only)
         db: Database session
 
     Returns:
         UserCompetenciesResponse: Updated user competency information
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
     """
+    if user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
     # Update user's competencies
     if data.additional_competencies is not None:
         user.additional_competencies = data.additional_competencies
@@ -2577,7 +2624,7 @@ class UpdateOrganizationIn(BaseModel):
 def update_organization(
     org_id: int,
     body: UpdateOrganizationIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update Organisation.
@@ -2645,7 +2692,7 @@ def update_organization(
 @router.post("/organizations")
 def create_organization(
     body: CreateOrganizationIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Create Organisation.
@@ -2716,7 +2763,7 @@ class AddStaffIn(BaseModel):
 def add_staff_to_organization(
     org_id: int,
     body: AddStaffIn,
-    u: User = DEP_CURRENT_USER,
+    u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Add Staff Member to Organisation.
