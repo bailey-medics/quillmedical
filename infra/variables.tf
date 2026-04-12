@@ -91,3 +91,16 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+variable "slack_webhook_url" {
+  description = "Slack incoming webhook URL for monitoring alerts (optional)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cloud_run_services" {
+  description = "Cloud Run service names to monitor for startup failures"
+  type        = list(string)
+  default     = []
+}
