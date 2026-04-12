@@ -137,6 +137,14 @@ notifications are production-ready:
 
 ## MISC
 
+- [ ] Add GCP Cloud Monitoring Slack integration — install the "Google Cloud
+      Monitoring" Slack app, obtain an auth token and channel ID, then update
+      `infra/modules/monitoring/main.tf` to use the `slack` channel type
+      instead of `webhook_token_auth`. The Terraform variable
+      `slack_webhook_url` is already wired through but needs replacing with
+      Slack-native config. This will send runtime alerts (uptime failures,
+      container crash-loops) directly to Slack alongside the existing email
+      notifications.
 - [ ] Update all libraries to most recent
 - [ ] Lock value in teaching schema, once locked, same version teaching config.yaml cannot be used, you will need to iterate upwards
 - [ ] Redirect `/` to `/teaching` when `CLINICAL_SERVICES_ENABLED` is false —

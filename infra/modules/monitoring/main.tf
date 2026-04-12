@@ -1,7 +1,8 @@
 # modules/monitoring/main.tf — Uptime checks + alerting
 #
 # Creates an HTTPS uptime check on /api/health for each monitored
-# hostname, plus a single alert policy that fires when any check fails.
+# hostname, plus alert policies that fire on uptime failures and
+# Cloud Run container startup failures.
 
 # ---------- Notification channel (email) ----------
 resource "google_monitoring_notification_channel" "email" {
@@ -12,6 +13,26 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
+}
+
+# ---------- Notification channel (Slack) ----------
+resource "google_monitoring_notification_channel" "slack" {
+  count = var.slack_webhook_url != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Quill Slack alerts (${var.environment})"
+  type         = "webhook_token_auth"
+
+  labels = {
+    url = var.slack_webhook_url
+  }
+}
+
+locals {
+  notification_channels = concat(
+    [google_monitoring_notification_channel.email.id],
+    [for ch in google_monitoring_notification_channel.slack : ch.id],
+  )
 }
 
 # ---------- Uptime checks (one per hostname) ----------
@@ -70,11 +91,43 @@ resource "google_monitoring_alert_policy" "uptime" {
     }
   }
 
-  notification_channels = [
-    google_monitoring_notification_channel.email.id,
-  ]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s" # 30 minutes
+  }
+}
+
+# ---------- Alert policy — Cloud Run container startup failures ----------
+resource "google_monitoring_alert_policy" "cloud_run_startup" {
+  count = length(var.cloud_run_services) > 0 ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Cloud Run startup failure (${var.environment})"
+  combiner     = "OR"
+
+  dynamic "conditions" {
+    for_each = toset(var.cloud_run_services)
+    content {
+      display_name = "Container startup failed: ${conditions.value}"
+
+      condition_matched_log {
+        filter = <<-EOT
+          resource.type = "cloud_run_revision"
+          resource.labels.service_name = "${conditions.value}"
+          textPayload =~ "failed the configured startup probe"
+            OR textPayload =~ "Container called exit"
+        EOT
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close           = "1800s" # 30 minutes
+    notification_rate_limit {
+      period = "300s" # At most one notification per 5 minutes
+    }
   }
 }

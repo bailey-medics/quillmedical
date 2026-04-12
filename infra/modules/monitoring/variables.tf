@@ -19,3 +19,16 @@ variable "alert_email" {
   description = "Email address for uptime failure alerts"
   type        = string
 }
+
+variable "slack_webhook_url" {
+  description = "Slack incoming webhook URL for alert notifications (optional)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cloud_run_services" {
+  description = "Cloud Run service names to monitor for startup failures"
+  type        = list(string)
+  default     = []
+}
