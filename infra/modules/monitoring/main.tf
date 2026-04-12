@@ -106,26 +106,23 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
   display_name = "Cloud Run startup failure (${var.environment})"
   combiner     = "OR"
 
-  dynamic "conditions" {
-    for_each = toset(var.cloud_run_services)
-    content {
-      display_name = "Container startup failed: ${conditions.value}"
+  conditions {
+    display_name = "Container startup failed"
 
-      condition_matched_log {
-        filter = <<-EOT
-          resource.type = "cloud_run_revision"
-          resource.labels.service_name = "${conditions.value}"
-          textPayload =~ "failed the configured startup probe"
-            OR textPayload =~ "Container called exit"
-        EOT
-      }
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type = "cloud_run_revision"
+        (${join(" OR ", [for s in var.cloud_run_services : "resource.labels.service_name = \"${s}\""])})
+        (textPayload =~ "failed the configured startup probe"
+          OR textPayload =~ "Container called exit")
+      EOT
     }
   }
 
   notification_channels = local.notification_channels
 
   alert_strategy {
-    auto_close           = "1800s" # 30 minutes
+    auto_close = "1800s" # 30 minutes
     notification_rate_limit {
       period = "300s" # At most one notification per 5 minutes
     }
