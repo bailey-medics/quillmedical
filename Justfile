@@ -245,7 +245,7 @@ prune-branches:
     if [ -z "$GONE" ]; then
         echo "No stale branches to remove."
     else
-        echo "$GONE" | xargs git branch -d
+        echo "$GONE" | xargs git branch -D
     fi
 
 
