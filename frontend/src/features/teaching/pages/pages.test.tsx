@@ -32,7 +32,7 @@ describe("AssessmentDashboard", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {})); // never resolves
     renderWithRouter(<AssessmentDashboard />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 
   it("shows empty state when no banks", async () => {
@@ -111,7 +111,7 @@ describe("AllResults", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<AllResults />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 });
 
@@ -119,6 +119,6 @@ describe("SyncStatus", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<SyncStatus />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 });

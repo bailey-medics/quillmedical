@@ -34,7 +34,7 @@ describe("TeachingOrgSettingsPage", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<TeachingOrgSettingsPage />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 
   it("shows error state on API failure", async () => {

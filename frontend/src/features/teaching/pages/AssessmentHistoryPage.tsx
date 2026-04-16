@@ -1,4 +1,4 @@
-import { Container, Loader, Stack } from "@mantine/core";
+import { Container, Skeleton, Stack } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +32,12 @@ export default function AssessmentHistoryPage() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={30} width={250} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </Container>
     );
   }
