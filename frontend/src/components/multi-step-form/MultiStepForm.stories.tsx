@@ -10,7 +10,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 import MultiStepForm, { type StepConfig } from "./MultiStepForm";
 import { useState } from "react";
 import { TextInput, Stack, Text, Button, Group, Alert } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck } from "@/components/icons/appIcons";
 
 const meta = {
   title: "MultiStepForm/MultiStepForm",

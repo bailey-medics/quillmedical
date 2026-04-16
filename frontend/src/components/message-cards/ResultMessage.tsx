@@ -7,7 +7,11 @@
  */
 
 import { Alert } from "@mantine/core";
-import { IconAlertTriangle, IconCheck, IconX } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconX,
+} from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import classes from "./ResultMessage.module.css";

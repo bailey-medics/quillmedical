@@ -8,7 +8,7 @@ import {
   IconGenderMale,
   IconGenderFemale,
   IconGenderAgender,
-} from "@tabler/icons-react";
+} from "@/components/icons/appIcons";
 import { Skeleton } from "@mantine/core";
 import type { GenderValue } from "./Gender.types";
 

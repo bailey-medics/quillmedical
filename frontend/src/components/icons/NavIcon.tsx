@@ -22,7 +22,7 @@ import {
   IconCurrencyPound,
   IconDatabase,
   IconMail,
-} from "@tabler/icons-react";
+} from "@/components/icons/appIcons";
 
 /** Available icon types */
 type IconName =

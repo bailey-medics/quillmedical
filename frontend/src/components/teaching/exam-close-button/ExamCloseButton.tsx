@@ -7,7 +7,7 @@
 
 import { Badge, Modal, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@/components/icons/appIcons";
 import { ButtonPairRed } from "@/components/button";
 import BodyTextBold from "@/components/typography/BodyTextBold";
 import Icon from "@/components/icons/Icon";

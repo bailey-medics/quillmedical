@@ -19,7 +19,7 @@ import {
   IconDownload,
   IconRefresh,
   IconSettings,
-} from "@tabler/icons-react";
+} from "@/components/icons/appIcons";
 import type { ReactElement } from "react";
 import Icon from "@/components/icons";
 

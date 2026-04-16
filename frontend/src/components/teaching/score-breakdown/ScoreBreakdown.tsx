@@ -6,7 +6,7 @@
  */
 
 import { Group, Stack } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconCheck, IconX } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
