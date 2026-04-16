@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Loader, Paper, Stack, Table } from "@mantine/core";
+import { Container, Group, Paper, Skeleton, Stack, Table } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatus from "@/components/badge/ActiveStatus";
@@ -60,7 +60,11 @@ export default function AdminBankDetailPage() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={36} width={300} />
+          <Skeleton height={100} />
+          <Skeleton height={200} />
+        </Stack>
       </Container>
     );
   }

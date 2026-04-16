@@ -1,4 +1,4 @@
-import { Container, Loader, Stack } from "@mantine/core";
+import { Container, Skeleton, Stack } from "@mantine/core";
 import { ResultMessage, StateMessage } from "@/components/message-cards";
 import { PageHeader } from "@/components/typography";
 import { useEffect, useState } from "react";
@@ -61,7 +61,11 @@ export default function AssessmentResultPage() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={60} />
+          <Skeleton height={200} />
+          <Skeleton height={150} />
+        </Stack>
       </Container>
     );
   }

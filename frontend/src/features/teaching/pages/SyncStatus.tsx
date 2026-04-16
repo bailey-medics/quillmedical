@@ -1,4 +1,4 @@
-import { Badge, Container, Loader, Stack, Table } from "@mantine/core";
+import { Badge, Container, Skeleton, Stack, Table } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -39,7 +39,12 @@ export default function SyncStatus() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={30} width={200} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </Container>
     );
   }

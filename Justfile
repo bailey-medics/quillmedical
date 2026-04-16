@@ -1,7 +1,9 @@
 set shell := ["bash", "-c"]
 
+
 default:
     just --list
+
 
 initialise:= 'set -euxo pipefail
     initialise() {
@@ -14,6 +16,7 @@ initialise:= 'set -euxo pipefail
 
 _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
+
 
 alias aj := abbreviate-just
 # Set up the description for terminal windows
@@ -41,6 +44,7 @@ create-user:
     {{initialise}} "create-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
 
+
 alias csu := create-super-user
 # Create a superadmin user locally (for dev setup)
 create-super-user:
@@ -48,12 +52,14 @@ create-super-user:
     {{initialise}} "create-super-user"
     docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
 
+
 alias cur := create-user-with-role
 # Create a new user with role assignment (supports Clinician role)
 create-user-with-role:
     #!/usr/bin/env bash
     {{initialise}} "create-user-with-role"
     docker exec -it quill_backend sh -lc "cd scripts && python create_user_with_role.py"
+
 
 alias d := docs
 # Open the documentation in the browser
@@ -137,11 +143,11 @@ initialise-repo:
     just aj
 
 
-alias p := port-8000
+alias kp := kill-port-8000
 # Kill any processes listening on port 8000
-port-8000:
+kill-port-8000:
     #!/usr/bin/env bash
-    {{initialise}} "port-8000"
+    {{initialise}} "kill-port-8000"
     lsof -i :8000
 
 
@@ -157,6 +163,7 @@ question-bank-clone:
     git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
     echo "Cloned into question-bank/"
 
+
 alias qbpu := question-bank-pull
 # Pull the latest question bank content
 question-bank-pull:
@@ -168,6 +175,7 @@ question-bank-pull:
     fi
     git -C question-bank pull
 
+
 alias qbps := question-bank-push
 # Push question bank changes
 question-bank-push:
@@ -178,6 +186,7 @@ question-bank-push:
         exit 1
     fi
     git -C question-bank push
+
 
 alias sdt := seed-teaching
 # Seed teaching data (org, users, feature, sync) for a fresh DB
@@ -296,13 +305,14 @@ terraform-github:
     fi
 
 
-alias pup := public-pages
+alias pub := public-pages
 # Run public pages dev server
 public-pages:
     #!/usr/bin/env bash
     {{initialise}} "public-pages"
     cd frontend
     yarn workspace public-pages dev
+
 
 alias sb := storybook
 # Run storybook dev server
