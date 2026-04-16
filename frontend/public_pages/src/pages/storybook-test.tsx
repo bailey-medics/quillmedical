@@ -8,8 +8,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import "@mantine/core/styles.css";
-import "@mantine/notifications/styles.css";
+import "../global-styles";
 import ReactDOM from "react-dom/client";
 
 // Import the component from your app's shared code

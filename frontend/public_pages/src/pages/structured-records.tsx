@@ -7,7 +7,7 @@ import PublicText from "@/components/typography/PublicText";
 import { colours } from "@/styles/colours";
 import { theme } from "@/theme";
 import { Container, MantineProvider, Stack } from "@mantine/core";
-import "@mantine/core/styles.css";
+import "../global-styles";
 import { IconDatabase } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
