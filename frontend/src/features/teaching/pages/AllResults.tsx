@@ -3,7 +3,7 @@ import {
   Button,
   Container,
   Group,
-  Loader,
+  Skeleton,
   Stack,
   Table,
 } from "@mantine/core";
@@ -84,7 +84,13 @@ export default function AllResults() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={30} width={200} />
+          <Skeleton height={40} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </Container>
     );
   }

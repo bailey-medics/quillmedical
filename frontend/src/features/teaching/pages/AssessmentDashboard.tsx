@@ -1,4 +1,4 @@
-import { Box, Container, Loader, SimpleGrid, Stack } from "@mantine/core";
+import { Box, Container, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,7 +42,17 @@ export default function AssessmentDashboard() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={36} width={200} />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Skeleton height={120} />
+            <Skeleton height={120} />
+          </SimpleGrid>
+          <Skeleton height={24} width={150} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </Container>
     );
   }

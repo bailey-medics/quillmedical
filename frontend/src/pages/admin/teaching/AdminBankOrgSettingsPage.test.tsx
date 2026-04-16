@@ -64,7 +64,7 @@ describe("AdminBankOrgSettingsPage", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
     renderWithRouter(<AdminBankOrgSettingsPage />);
-    expect(document.querySelector(".mantine-Loader-root")).toBeTruthy();
+    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 
   it("shows error state on API failure", async () => {

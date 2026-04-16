@@ -17,8 +17,7 @@ import {
   SimpleGrid,
   Stack,
 } from "@mantine/core";
-import "@mantine/core/styles.css";
-import "@mantine/notifications/styles.css";
+import "../global-styles";
 import {
   IconChalkboardTeacher,
   IconDatabase,

@@ -2,6 +2,8 @@ import react from "@vitejs/plugin-react-swc";
 import fs from "node:fs";
 import path from "node:path";
 import { URL } from "node:url";
+import postcssPresetMantine from "postcss-preset-mantine";
+import postcssSimpleVars from "postcss-simple-vars";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -147,6 +149,22 @@ export default defineConfig({
         __dirname,
         "../node_modules/@mantine/hooks",
       ),
+    },
+  },
+  css: {
+    postcss: {
+      plugins: [
+        postcssPresetMantine(),
+        postcssSimpleVars({
+          variables: {
+            "mantine-breakpoint-xs": "36em",
+            "mantine-breakpoint-sm": "48em",
+            "mantine-breakpoint-md": "62em",
+            "mantine-breakpoint-lg": "75em",
+            "mantine-breakpoint-xl": "88em",
+          },
+        }),
+      ],
     },
   },
 });
