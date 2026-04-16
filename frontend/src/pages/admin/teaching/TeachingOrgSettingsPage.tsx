@@ -7,7 +7,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
-import { Alert, Button, Container, Group, Loader, Stack } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Container,
+  Group,
+  Skeleton,
+  Stack,
+} from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
@@ -90,7 +97,10 @@ export default function TeachingOrgSettingsPage() {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Loader />
+        <Stack gap="lg">
+          <Skeleton height={36} width={250} />
+          <Skeleton height={200} />
+        </Stack>
       </Container>
     );
   }
