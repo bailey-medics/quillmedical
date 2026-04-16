@@ -1,7 +1,7 @@
 import PublicLayout from "@/components/layouts/PublicLayout";
 import { theme } from "@/theme";
 import { Container, List, MantineProvider, Text, Title } from "@mantine/core";
-import "@mantine/core/styles.css";
+import "../global-styles";
 import ReactDOM from "react-dom/client";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

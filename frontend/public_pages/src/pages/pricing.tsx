@@ -7,7 +7,7 @@ import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { theme } from "@/theme";
 import { Container, Group, MantineProvider, Stack } from "@mantine/core";
-import "@mantine/core/styles.css";
+import "../global-styles";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
