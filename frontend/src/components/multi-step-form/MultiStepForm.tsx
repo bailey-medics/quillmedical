@@ -12,7 +12,7 @@
 
 import { Button, Group, Paper, Stack, Stepper } from "@mantine/core";
 import { useState, type ReactNode } from "react";
-import { IconChevronLeft, IconCheck } from "@tabler/icons-react";
+import { IconChevronLeft, IconCheck } from "@/components/icons/appIcons";
 
 /**
  * Individual step configuration

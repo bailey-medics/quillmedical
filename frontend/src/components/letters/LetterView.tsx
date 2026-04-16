@@ -7,7 +7,7 @@
  */
 
 import { ActionIcon, Avatar, Box, Skeleton, Text, Title } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft } from "@/components/icons/appIcons";
 import type { ReactNode } from "react";
 
 /**

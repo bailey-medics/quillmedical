@@ -15,7 +15,7 @@
 import { Badge, Group, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
 import Icon from "@/components/icons";
-import { IconClock } from "@tabler/icons-react";
+import { IconClock } from "@/components/icons/appIcons";
 
 interface AssessmentTimerProps {
   /** Total time limit in minutes */

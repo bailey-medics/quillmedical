@@ -1,6 +1,6 @@
 import { colours } from "@/styles/colours";
 import { ActionIcon } from "@mantine/core";
-import { IconMenu2 } from "@tabler/icons-react";
+import { IconMenu2 } from "@/components/icons/appIcons";
 
 interface PublicBurgerButtonProps {
   /** Whether the navigation is currently open */

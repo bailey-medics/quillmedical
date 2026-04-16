@@ -1,5 +1,5 @@
 import { ActionIcon } from "@mantine/core";
-import { IconMenu2 } from "@tabler/icons-react";
+import { IconMenu2 } from "@/components/icons/appIcons";
 
 interface BurgerButtonProps {
   /** Whether the navigation is currently open */

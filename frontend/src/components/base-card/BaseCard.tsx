@@ -14,6 +14,13 @@
 import { Card, type CardProps } from "@mantine/core";
 import { forwardRef, type ReactNode, type Ref } from "react";
 
+/**
+ * Props for BaseCard.
+ *
+ * Extends Mantine CardProps and HTML div attributes, but omits the four
+ * fixed styling props (shadow, padding, radius, withBorder) so they
+ * cannot be overridden by consumers. `children` is re-declared as required.
+ */
 export type BaseCardProps = Omit<
   CardProps,
   "children" | "shadow" | "padding" | "radius" | "withBorder"
@@ -32,7 +39,5 @@ const BaseCard = forwardRef(function BaseCard(
     </Card>
   );
 });
-
-BaseCard.displayName = "BaseCard";
 
 export default BaseCard;

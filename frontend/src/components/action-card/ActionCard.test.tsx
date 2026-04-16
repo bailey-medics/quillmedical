@@ -10,7 +10,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine, renderWithRouter } from "@/test/test-utils";
 import ActionCard from "./ActionCard";
-import { IconUserPlus, IconSettings } from "@tabler/icons-react";
+import { IconUserPlus, IconSettings } from "@/components/icons/appIcons";
 
 describe("ActionCard", () => {
   const defaultProps = {

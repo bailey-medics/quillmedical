@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
 import { PublicFeatureCard } from "./PublicFeatureCard";
-import { IconMessage } from "@tabler/icons-react";
+import { IconMessage } from "@/components/icons/appIcons";
 
 describe("PublicFeatureCard", () => {
   const defaultProps = {

@@ -7,9 +7,9 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group, SimpleGrid, Stack, Text } from "@mantine/core";
-import { IconPencil, IconCheck, IconX } from "@tabler/icons-react";
+import { IconPencil, IconCheck, IconX } from "@/components/icons/appIcons";
 import Icon from "./Icon";
-import appIcons from "./appIcons";
+import { iconCatalogue } from "./appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 
 /**
@@ -49,10 +49,10 @@ export const Default: Story = {
   },
   render: () => (
     <SimpleGrid cols={5} spacing="lg" style={{ maxWidth: 700 }}>
-      {appIcons.map(({ name, icon }) => (
+      {Object.entries(iconCatalogue).map(([name, IconComponent]) => (
         <BaseCard key={name} style={{ textAlign: "center" }}>
           <Stack gap="xs" align="center">
-            <Icon icon={icon} size="lg" />
+            <Icon icon={<IconComponent />} size="lg" />
             <Text
               size="xs"
               c="dimmed"
@@ -80,75 +80,78 @@ export const AllSizes: Story = {
     icon: <IconPencil />,
     size: "md",
   },
-  render: () => (
-    <BaseCard>
-      <Stack gap="xl">
-        <div>
-          <Text size="sm" fw={700} mb="xs">
-            Small (20px desktop, 16px mobile)
-          </Text>
-          <SimpleGrid cols={5} spacing="md">
-            {appIcons.slice(0, 10).map(({ name, icon }) => (
-              <Stack key={name} gap={4} align="center">
-                <Icon icon={icon} size="sm" />
-                <Text size="xs" c="dimmed">
-                  {name}
-                </Text>
-              </Stack>
-            ))}
-          </SimpleGrid>
-        </div>
+  render: () => {
+    const sampleIcons = Object.entries(iconCatalogue).slice(0, 10);
+    return (
+      <BaseCard>
+        <Stack gap="xl">
+          <div>
+            <Text size="sm" fw={700} mb="xs">
+              Small (20px desktop, 16px mobile)
+            </Text>
+            <SimpleGrid cols={5} spacing="md">
+              {sampleIcons.map(([name, IconComponent]) => (
+                <Stack key={name} gap={4} align="center">
+                  <Icon icon={<IconComponent />} size="sm" />
+                  <Text size="xs" c="dimmed">
+                    {name}
+                  </Text>
+                </Stack>
+              ))}
+            </SimpleGrid>
+          </div>
 
-        <div>
-          <Text size="sm" fw={700} mb="xs">
-            Medium (28px desktop, 20px mobile) — default
-          </Text>
-          <SimpleGrid cols={5} spacing="md">
-            {appIcons.slice(0, 10).map(({ name, icon }) => (
-              <Stack key={name} gap={4} align="center">
-                <Icon icon={icon} size="md" />
-                <Text size="xs" c="dimmed">
-                  {name}
-                </Text>
-              </Stack>
-            ))}
-          </SimpleGrid>
-        </div>
+          <div>
+            <Text size="sm" fw={700} mb="xs">
+              Medium (28px desktop, 20px mobile) — default
+            </Text>
+            <SimpleGrid cols={5} spacing="md">
+              {sampleIcons.map(([name, IconComponent]) => (
+                <Stack key={name} gap={4} align="center">
+                  <Icon icon={<IconComponent />} size="md" />
+                  <Text size="xs" c="dimmed">
+                    {name}
+                  </Text>
+                </Stack>
+              ))}
+            </SimpleGrid>
+          </div>
 
-        <div>
-          <Text size="sm" fw={700} mb="xs">
-            Large (48px desktop, 32px mobile)
-          </Text>
-          <SimpleGrid cols={5} spacing="md">
-            {appIcons.slice(0, 10).map(({ name, icon }) => (
-              <Stack key={name} gap={4} align="center">
-                <Icon icon={icon} size="lg" />
-                <Text size="xs" c="dimmed">
-                  {name}
-                </Text>
-              </Stack>
-            ))}
-          </SimpleGrid>
-        </div>
+          <div>
+            <Text size="sm" fw={700} mb="xs">
+              Large (48px desktop, 32px mobile)
+            </Text>
+            <SimpleGrid cols={5} spacing="md">
+              {sampleIcons.map(([name, IconComponent]) => (
+                <Stack key={name} gap={4} align="center">
+                  <Icon icon={<IconComponent />} size="lg" />
+                  <Text size="xs" c="dimmed">
+                    {name}
+                  </Text>
+                </Stack>
+              ))}
+            </SimpleGrid>
+          </div>
 
-        <div>
-          <Text size="sm" fw={700} mb="xs">
-            Extra large (72px desktop, 48px mobile)
-          </Text>
-          <SimpleGrid cols={5} spacing="md">
-            {appIcons.slice(0, 10).map(({ name, icon }) => (
-              <Stack key={name} gap={4} align="center">
-                <Icon icon={icon} size="xl" />
-                <Text size="xs" c="dimmed">
-                  {name}
-                </Text>
-              </Stack>
-            ))}
-          </SimpleGrid>
-        </div>
-      </Stack>
-    </BaseCard>
-  ),
+          <div>
+            <Text size="sm" fw={700} mb="xs">
+              Extra large (72px desktop, 48px mobile)
+            </Text>
+            <SimpleGrid cols={5} spacing="md">
+              {sampleIcons.map(([name, IconComponent]) => (
+                <Stack key={name} gap={4} align="center">
+                  <Icon icon={<IconComponent />} size="xl" />
+                  <Text size="xs" c="dimmed">
+                    {name}
+                  </Text>
+                </Stack>
+              ))}
+            </SimpleGrid>
+          </div>
+        </Stack>
+      </BaseCard>
+    );
+  },
 };
 
 /**

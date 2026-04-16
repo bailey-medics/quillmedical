@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PublicFeatureCard } from "./PublicFeatureCard";
 import PublicFeatureCardGrid from "./PublicFeatureCardGrid";
 import { Box } from "@mantine/core";
-import { IconMessage } from "@tabler/icons-react";
+import { IconMessage } from "@/components/icons/appIcons";
 import { colours } from "@/styles/colours";
 
 const meta = {

@@ -8,7 +8,7 @@
  */
 
 import { Modal, Stack } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@/components/icons/appIcons";
 import type { Blocker } from "react-router-dom";
 
 import { ButtonPairRed } from "@/components/button";

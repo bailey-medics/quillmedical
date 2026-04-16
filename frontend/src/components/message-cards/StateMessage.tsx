@@ -11,7 +11,11 @@
  */
 
 import { Alert } from "@mantine/core";
-import { IconAlertCircle, IconClock, IconUserOff } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconClock,
+  IconUserOff,
+} from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import { BodyTextBlack, HeaderText } from "@/components/typography";
 import classes from "./StateMessage.module.css";

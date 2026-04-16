@@ -7,7 +7,11 @@
 
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { IconPencil, IconUserPlus, IconSettings } from "@tabler/icons-react";
+import {
+  IconPencil,
+  IconUserPlus,
+  IconSettings,
+} from "@/components/icons/appIcons";
 import { renderWithMantine } from "@test/test-utils";
 import Icon from "./Icon";
 

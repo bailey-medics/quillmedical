@@ -14,7 +14,7 @@
 
 import { Button, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 
 interface AddButtonProps {

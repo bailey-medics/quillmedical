@@ -6,7 +6,7 @@
  */
 
 import { Divider, Stack, TextInput } from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+import { IconSearch } from "@/components/icons/appIcons";
 import type { NavItem } from "./NestedNavLink";
 import SideNavContent from "./SideNavContent";
 

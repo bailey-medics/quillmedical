@@ -9,7 +9,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import IconButton from "./IconButton";
-import { IconPencil, IconTrash, IconCheck } from "@tabler/icons-react";
+import { IconPencil, IconTrash, IconCheck } from "@/components/icons/appIcons";
 
 describe("IconButton", () => {
   it("renders with default medium size (42px container)", () => {

@@ -6,7 +6,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import IconButton from "./IconButton";
-import { IconPencil } from "@tabler/icons-react";
+import { IconPencil } from "@/components/icons/appIcons";
 import type { IconSize } from "@/components/icons";
 import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
 

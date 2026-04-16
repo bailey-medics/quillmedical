@@ -12,7 +12,7 @@ import {
   IconMessage,
   IconBook,
   IconCalendarWeek,
-} from "@tabler/icons-react";
+} from "@/components/icons/appIcons";
 import { SimpleGrid } from "@mantine/core";
 
 const meta = {

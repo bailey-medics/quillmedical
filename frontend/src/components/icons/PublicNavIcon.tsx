@@ -14,7 +14,7 @@ import {
   IconCurrencyPound,
   IconDatabase,
   IconMail,
-} from "@tabler/icons-react";
+} from "@/components/icons/appIcons";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
