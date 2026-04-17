@@ -8,8 +8,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Group } from "@mantine/core";
-import { StateRow } from "@/stories/variants";
+import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
 import IconTextButton from "./IconTextButton";
+import iconTextButtonIcons from "./iconTextButtonIcons";
+
+const iconNames = Object.keys(iconTextButtonIcons) as Array<
+  keyof typeof iconTextButtonIcons
+>;
 
 const meta: Meta<typeof IconTextButton> = {
   title: "Button/IconTextButton",
@@ -28,24 +33,30 @@ const meta: Meta<typeof IconTextButton> = {
 export default meta;
 type Story = StoryObj<typeof IconTextButton>;
 
-/** Default interactive IconTextButton. */
-export const Default: Story = {};
-
-/** Arrow-left icon variant for back navigation. */
-export const ArrowLeft: Story = {
-  args: {
-    icon: "arrowLeft",
-    label: "Back to dashboard",
-  },
+/** All registered icon types side-by-side. */
+export const IconTypes: Story = {
+  render: () => (
+    <Group gap="lg">
+      {iconNames.map((name) => (
+        <IconTextButton key={name} icon={name} label={name} />
+      ))}
+    </Group>
+  ),
 };
 
-/** Light variant for secondary actions. */
-export const LightVariant: Story = {
-  args: {
-    icon: "arrowLeft",
-    label: "Back to dashboard",
-    variant: "light",
-  },
+const variants = ["filled", "light", "outline"] as const;
+
+/** All variant styles side-by-side. */
+export const Variants: Story = {
+  render: () => (
+    <VariantStack>
+      {variants.map((v) => (
+        <VariantRow key={v} label={v === "filled" ? "filled (default)" : v}>
+          <IconTextButton icon="refresh" label="Sync all" variant={v} />
+        </VariantRow>
+      ))}
+    </VariantStack>
+  ),
 };
 
 /** All interaction states side-by-side. */

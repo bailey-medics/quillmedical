@@ -46,3 +46,9 @@ export const Default = () => (
     <DocumentsList documents={docs} />
   </VariantStack>
 );
+
+export const Loading = () => (
+  <VariantStack>
+    <DocumentsList documents={[]} loading />
+  </VariantStack>
+);

@@ -46,4 +46,19 @@ describe("DocumentsList", () => {
     await user.click(screen.getByText("Clinical letter"));
     expect(onSelect).toHaveBeenCalledWith(docs[0]);
   });
+
+  it("renders skeleton cards when loading", () => {
+    const { container } = renderWithMantine(
+      <DocumentsList documents={[]} loading />,
+    );
+    const skeletons = container.querySelectorAll(".mantine-Skeleton-root");
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it("does not render documents when loading", () => {
+    renderWithMantine(<DocumentsList documents={docs} loading />);
+    docs.forEach((doc) => {
+      expect(screen.queryByText(doc.name)).not.toBeInTheDocument();
+    });
+  });
 });

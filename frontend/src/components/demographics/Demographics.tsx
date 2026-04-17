@@ -40,8 +40,8 @@ export default function Demographics({ patient, isLoading = false }: Props) {
   if (isLoading) {
     return (
       <div style={{ flex: 1 }}>
-        <Skeleton height={18} width="20rem" mt={10} mb={15} />
-        <Skeleton height={17} width="20rem" />
+        <Skeleton height={33} width="23rem" mt={10} mb={15} />
+        <Skeleton height={20} width="20rem" />
       </div>
     );
   }

@@ -14,24 +14,10 @@
 import { Button, useMantineTheme } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import {
-  IconArrowLeft,
-  IconDownload,
-  IconRefresh,
-  IconSettings,
-} from "@/components/icons/appIcons";
-import type { ReactElement } from "react";
 import Icon from "@/components/icons";
+import iconTextButtonIcons from "./iconTextButtonIcons";
 
-/** Allowed icon names — add new entries here to extend the component. */
-const iconMap = {
-  arrowLeft: <IconArrowLeft />,
-  download: <IconDownload />,
-  refresh: <IconRefresh />,
-  settings: <IconSettings />,
-} as const satisfies Record<string, ReactElement>;
-
-type IconName = keyof typeof iconMap;
+type IconName = keyof typeof iconTextButtonIcons;
 
 interface IconTextButtonProps {
   /** Icon to display (must be a registered name) */
@@ -47,7 +33,7 @@ interface IconTextButtonProps {
   /** Button colour (default: Mantine primary) */
   color?: MantineColor;
   /** Mantine button variant (default: "filled") */
-  variant?: "filled" | "light" | "outline" | "subtle";
+  variant?: "filled" | "light" | "outline";
 }
 
 /**
@@ -72,7 +58,9 @@ export default function IconTextButton({
 
   return (
     <Button
-      leftSection={<Icon icon={iconMap[icon]} size={isMobile ? "sm" : "md"} />}
+      leftSection={
+        <Icon icon={iconTextButtonIcons[icon]} size={isMobile ? "sm" : "md"} />
+      }
       onClick={onClick}
       size={isMobile ? "md" : "lg"}
       variant={variant}

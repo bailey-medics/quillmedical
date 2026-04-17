@@ -10,7 +10,7 @@ import {
   IconGenderAgender,
 } from "@/components/icons/appIcons";
 import { Skeleton } from "@mantine/core";
-import type { GenderValue } from "./Gender.types";
+import type { GenderValue } from "@/components/data/Gender.types";
 
 const SIZES = { sm: 24, md: 29, lg: 38 } as const;
 type GenderIconSize = keyof typeof SIZES;
