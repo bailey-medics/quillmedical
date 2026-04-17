@@ -59,11 +59,9 @@ describe("NotesList", () => {
     });
 
     it("renders empty list when no notes", () => {
-      const { container } = renderWithMantine(<NotesList notes={[]} />);
+      renderWithMantine(<NotesList notes={[]} />);
 
-      expect(
-        container.querySelector('[class*="Card"]'),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("No notes to show")).toBeInTheDocument();
     });
   });
 

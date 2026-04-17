@@ -29,15 +29,15 @@ export const Default: Story = {
   },
 };
 
+export const Empty: Story = {
+  args: {
+    appointments: [],
+  },
+};
+
 export const Loading: Story = {
   args: {
     appointments: [],
     isLoading: true,
-  },
-};
-
-export const Empty: Story = {
-  args: {
-    appointments: [],
   },
 };

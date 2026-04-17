@@ -1,19 +1,22 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack, Title, Text, Divider } from "@mantine/core";
+import type { Meta, StoryObj, Decorator } from "@storybook/react-vite";
+import { Stack, Divider } from "@mantine/core";
 import FormattedDate from "./Date";
 import BodyText from "@/components/typography/BodyText";
+import BodyTextBlack from "@/components/typography/BodyTextBlack";
+import HeaderText from "@/components/typography/HeaderText";
+
+const bodyTextDecorator: Decorator[] = [
+  (Story) => (
+    <BodyText>
+      <Story />
+    </BodyText>
+  ),
+];
 
 const meta: Meta<typeof FormattedDate> = {
   title: "Data/Date",
   component: FormattedDate,
   tags: ["autodocs"],
-  decorators: [
-    (Story) => (
-      <BodyText>
-        <Story />
-      </BodyText>
-    ),
-  ],
   argTypes: {
     date: {
       control: "text",
@@ -40,6 +43,7 @@ type Story = StoryObj<typeof FormattedDate>;
  * Displays as DD/MM/YYYY (e.g., 15/09/1980)
  */
 export const BritishShort: Story = {
+  decorators: bodyTextDecorator,
   args: {
     date: "1980-09-15",
     locale: "en-GB",
@@ -51,6 +55,7 @@ export const BritishShort: Story = {
  * Displays as MM/DD/YYYY (e.g., 09/15/1980)
  */
 export const AmericanShort: Story = {
+  decorators: bodyTextDecorator,
   args: {
     date: "1980-09-15",
     locale: "en-US",
@@ -61,6 +66,7 @@ export const AmericanShort: Story = {
  * Medium format with abbreviated month
  */
 export const Medium: Story = {
+  decorators: bodyTextDecorator,
   args: {
     date: "1980-09-15",
     locale: "en-GB",
@@ -72,6 +78,7 @@ export const Medium: Story = {
  * Long format with full month name
  */
 export const Long: Story = {
+  decorators: bodyTextDecorator,
   args: {
     date: "1980-09-15",
     locale: "en-GB",
@@ -83,6 +90,7 @@ export const Long: Story = {
  * Full format with weekday and full month name
  */
 export const Full: Story = {
+  decorators: bodyTextDecorator,
   args: {
     date: "1980-09-15",
     locale: "en-GB",
@@ -100,33 +108,31 @@ export const Comparison: Story = {
     return (
       <Stack gap="xl">
         <div>
-          <Title order={3} mb="md">
-            British English (en-GB)
-          </Title>
+          <HeaderText>British English (en-GB)</HeaderText>
           <Stack gap="xs">
             <div>
-              <Text size="sm" c="dimmed">
-                Short:
-              </Text>
-              <FormattedDate date={testDate} locale="en-GB" format="short" />
+              <BodyTextBlack>Short:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-GB" format="short" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Medium:
-              </Text>
-              <FormattedDate date={testDate} locale="en-GB" format="medium" />
+              <BodyTextBlack>Medium:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-GB" format="medium" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Long:
-              </Text>
-              <FormattedDate date={testDate} locale="en-GB" format="long" />
+              <BodyTextBlack>Long:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-GB" format="long" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Full:
-              </Text>
-              <FormattedDate date={testDate} locale="en-GB" format="full" />
+              <BodyTextBlack>Full:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-GB" format="full" />
+              </BodyText>
             </div>
           </Stack>
         </div>
@@ -134,33 +140,31 @@ export const Comparison: Story = {
         <Divider />
 
         <div>
-          <Title order={3} mb="md">
-            American English (en-US)
-          </Title>
+          <HeaderText>American English (en-US)</HeaderText>
           <Stack gap="xs">
             <div>
-              <Text size="sm" c="dimmed">
-                Short:
-              </Text>
-              <FormattedDate date={testDate} locale="en-US" format="short" />
+              <BodyTextBlack>Short:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-US" format="short" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Medium:
-              </Text>
-              <FormattedDate date={testDate} locale="en-US" format="medium" />
+              <BodyTextBlack>Medium:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-US" format="medium" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Long:
-              </Text>
-              <FormattedDate date={testDate} locale="en-US" format="long" />
+              <BodyTextBlack>Long:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-US" format="long" />
+              </BodyText>
             </div>
             <div>
-              <Text size="sm" c="dimmed">
-                Full:
-              </Text>
-              <FormattedDate date={testDate} locale="en-US" format="full" />
+              <BodyTextBlack>Full:</BodyTextBlack>
+              <BodyText>
+                <FormattedDate date={testDate} locale="en-US" format="full" />
+              </BodyText>
             </div>
           </Stack>
         </div>

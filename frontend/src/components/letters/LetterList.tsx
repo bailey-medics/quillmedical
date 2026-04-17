@@ -8,6 +8,7 @@
 import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { LetterStatus } from "@/components/badge";
+import StateMessage from "@/components/message-cards/StateMessage";
 import HeaderText from "@/components/typography/HeaderText";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextBlack from "@/components/typography/BodyTextBlack";
@@ -66,6 +67,10 @@ export default function LetterList({
         ))}
       </Stack>
     );
+  }
+
+  if (letters.length === 0) {
+    return <StateMessage type="no-letters" />;
   }
 
   return (

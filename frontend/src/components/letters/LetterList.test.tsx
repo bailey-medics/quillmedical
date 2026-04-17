@@ -62,13 +62,9 @@ describe("Letters", () => {
     });
 
     it("renders empty list when no letters", () => {
-      const { container } = renderWithMantine(
-        <LetterList letters={[]} onLetterClick={vi.fn()} />,
-      );
+      renderWithMantine(<LetterList letters={[]} onLetterClick={vi.fn()} />);
 
-      expect(
-        container.querySelector('[class*="Card"]'),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("No letters to show")).toBeInTheDocument();
     });
   });
 

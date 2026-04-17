@@ -8,6 +8,7 @@
 
 import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import StateMessage from "@/components/message-cards/StateMessage";
 
 export type ClinicalNote = {
   id: string;
@@ -68,6 +69,10 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
         ))}
       </Stack>
     );
+  }
+
+  if (notes.length === 0) {
+    return <StateMessage type="no-notes" />;
   }
 
   return (

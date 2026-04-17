@@ -59,13 +59,9 @@ describe("MessagesList", () => {
     });
 
     it("renders empty list when no threads", () => {
-      const { container } = renderWithMantine(
-        <MessagesList threads={[]} onThreadClick={vi.fn()} />,
-      );
+      renderWithMantine(<MessagesList threads={[]} onThreadClick={vi.fn()} />);
 
-      expect(
-        container.querySelector('[class*="Card"]'),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("No messages to show")).toBeInTheDocument();
     });
   });
 

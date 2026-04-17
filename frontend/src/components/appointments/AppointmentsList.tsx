@@ -9,6 +9,7 @@
 import { Group, Skeleton, Stack } from "@mantine/core";
 import AppointmentStatus from "@components/badge/AppointmentStatus";
 import BaseCard from "@/components/base-card/BaseCard";
+import StateMessage from "@/components/message-cards/StateMessage";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
 import HeaderText from "@components/typography/HeaderText";
@@ -101,7 +102,7 @@ export default function AppointmentsList({
   const past = appointments.filter((a) => a.status !== "upcoming");
 
   if (appointments.length === 0) {
-    return <BodyText>No appointments to show.</BodyText>;
+    return <StateMessage type="no-appointments" />;
   }
 
   return (
