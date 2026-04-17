@@ -9,6 +9,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import NationalNumber from "./NationalNumber";
+import BodyText from "@/components/typography/BodyText";
 
 const meta = {
   title: "data/NationalNumber",
@@ -17,6 +18,13 @@ const meta = {
     layout: "padded",
   },
   tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <BodyText>
+        <Story />
+      </BodyText>
+    ),
+  ],
 } satisfies Meta<typeof NationalNumber>;
 
 export default meta;
