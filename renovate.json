@@ -47,6 +47,7 @@
   "extends": ["config:recommended"],
   "timezone": "Europe/London",
   "schedule": ["every wednesday"],
+  "rebaseWhen": "conflicted",
   "minimumReleaseAge": "3 days",
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {

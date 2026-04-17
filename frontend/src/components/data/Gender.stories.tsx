@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import Gender from "./Gender";
 
 const meta: Meta<typeof Gender> = {
-  title: "Gender/Gender",
+  title: "data/Gender",
   component: Gender,
   tags: ["autodocs"],
   argTypes: {

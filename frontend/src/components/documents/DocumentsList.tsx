@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack, Group } from "@mantine/core";
+import { Skeleton, Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -9,6 +9,22 @@ import { DocumentThumbnail } from "./DocumentThumbnail";
 export interface DocumentsListProps {
   documents: DocumentProps[];
   onSelect?: (doc: DocumentProps) => void;
+  /** Show skeleton placeholders while loading */
+  loading?: boolean;
+}
+
+function DocumentSkeleton() {
+  return (
+    <BaseCard>
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Stack gap={20} style={{ flex: 1 }}>
+          <Skeleton height={26} width="60%" />
+          <Skeleton height={18} width="50%" />
+        </Stack>
+        <DocumentThumbnail src="" alt="" loading />
+      </Group>
+    </BaseCard>
+  );
 }
 
 /**
@@ -17,7 +33,18 @@ export interface DocumentsListProps {
 export const DocumentsList: React.FC<DocumentsListProps> = ({
   documents,
   onSelect,
+  loading = false,
 }) => {
+  if (loading) {
+    return (
+      <Stack gap="md">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <DocumentSkeleton key={i} />
+        ))}
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="md">
       {documents.map((doc) => (
