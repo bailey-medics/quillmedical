@@ -1,5 +1,4 @@
 import { DocumentThumbnail } from "./DocumentThumbnail";
-import { VariantStack, VariantRow } from "@/stories/variants";
 
 export default {
   title: "Documents/DocumentThumbnail",
@@ -7,20 +6,10 @@ export default {
 };
 
 export const Default = () => (
-  <VariantStack>
-    <VariantRow label="Loaded">
-      <DocumentThumbnail
-        src="/mock-documents/thumbnails/1_external_clinical_letter.pdf.png"
-        alt="External clinical letter"
-      />
-    </VariantRow>
-  </VariantStack>
+  <DocumentThumbnail
+    src="/mock-documents/thumbnails/1_external_clinical_letter.pdf.png"
+    alt="External clinical letter"
+  />
 );
 
-export const Loading = () => (
-  <VariantStack>
-    <VariantRow label="Loading" horizontal={false}>
-      <DocumentThumbnail src="" alt="" loading />
-    </VariantRow>
-  </VariantStack>
-);
+export const Loading = () => <DocumentThumbnail src="" alt="" loading />;

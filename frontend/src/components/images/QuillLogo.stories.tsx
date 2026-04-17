@@ -53,7 +53,16 @@ export const LightGrey: Story = {
   },
   decorators: [
     (Story) => (
-      <div style={{ background: colours.navy, padding: "2rem" }}>
+      <div
+        style={{
+          background: colours.navy,
+          padding: "2rem",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          aspectRatio: "1",
+        }}
+      >
         <Story />
       </div>
     ),
@@ -70,7 +79,16 @@ export const White: Story = {
   },
   decorators: [
     (Story) => (
-      <div style={{ background: colours.navy, padding: "2rem" }}>
+      <div
+        style={{
+          background: colours.navy,
+          padding: "2rem",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          aspectRatio: "1",
+        }}
+      >
         <Story />
       </div>
     ),

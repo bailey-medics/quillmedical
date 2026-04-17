@@ -110,9 +110,9 @@ describe("Letters", () => {
         <LetterList letters={mockLetters} onLetterClick={vi.fn()} />,
       );
 
-      expect(screen.getByText("final")).toBeInTheDocument();
-      expect(screen.getByText("draft")).toBeInTheDocument();
-      expect(screen.getByText("amended")).toBeInTheDocument();
+      expect(screen.getByText("Final")).toBeInTheDocument();
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+      expect(screen.getByText("Amended")).toBeInTheDocument();
     });
   });
 

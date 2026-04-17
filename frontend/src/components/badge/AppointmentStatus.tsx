@@ -6,7 +6,13 @@
  * cancelled, and no-show states.
  */
 
-import { Badge, Skeleton } from "@mantine/core";
+import { Badge } from "@mantine/core";
+import {
+  badgeColours,
+  BADGE_VARIANT,
+  type BadgeColourConfig,
+} from "./badgeColours";
+import BadgeSkeleton from "./BadgeSkeleton";
 
 export type AppointmentStatusType =
   | "upcoming"
@@ -23,45 +29,15 @@ type Props = {
   isLoading?: boolean;
 };
 
-const SKELETON_WIDTHS: Record<string, number> = {
-  sm: 70,
-  md: 80,
-  lg: 95,
-  xl: 115,
+const STATUS_CONFIG: Record<
+  AppointmentStatusType,
+  { label: string; colour: BadgeColourConfig }
+> = {
+  upcoming: { label: "Upcoming", colour: badgeColours.info },
+  completed: { label: "Completed", colour: badgeColours.success },
+  cancelled: { label: "Cancelled", colour: badgeColours.outstanding },
+  "no-show": { label: "No show", colour: badgeColours.alert },
 };
-
-const SKELETON_HEIGHTS: Record<string, number> = {
-  sm: 19,
-  md: 21,
-  lg: 27,
-  xl: 40,
-};
-
-function getStatusColour(status: AppointmentStatusType): string {
-  switch (status) {
-    case "upcoming":
-      return "blue";
-    case "completed":
-      return "green";
-    case "cancelled":
-      return "red";
-    case "no-show":
-      return "orange";
-  }
-}
-
-function getStatusLabel(status: AppointmentStatusType): string {
-  switch (status) {
-    case "upcoming":
-      return "Upcoming";
-    case "completed":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    case "no-show":
-      return "No show";
-  }
-}
 
 export default function AppointmentStatus({
   status,
@@ -69,18 +45,19 @@ export default function AppointmentStatus({
   isLoading = false,
 }: Props) {
   if (isLoading) {
-    return (
-      <Skeleton
-        width={SKELETON_WIDTHS[size] ?? 95}
-        height={SKELETON_HEIGHTS[size] ?? 27}
-        radius="xl"
-      />
-    );
+    return <BadgeSkeleton size={size} />;
   }
 
+  const { label, colour } = STATUS_CONFIG[status];
+
   return (
-    <Badge color={getStatusColour(status)} variant="filled" size={size}>
-      {getStatusLabel(status)}
+    <Badge
+      color={colour.bg}
+      c={colour.text}
+      variant={BADGE_VARIANT}
+      size={size}
+    >
+      {label}
     </Badge>
   );
 }
