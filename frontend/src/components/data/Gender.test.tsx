@@ -84,21 +84,4 @@ describe("Gender Component", () => {
       expect(screen.getByText("M")).toBeInTheDocument();
     });
   });
-
-  describe("Text props", () => {
-    it("accepts and applies Mantine Text props", () => {
-      const { container } = renderWithMantine(
-        <Gender gender="male" size="xl" fw={700} c="blue" />,
-      );
-      const text = container.querySelector("p");
-      expect(text).toBeInTheDocument();
-    });
-
-    it("renders as span when span prop is true", () => {
-      const { container } = renderWithMantine(<Gender gender="male" span />);
-      const span = container.querySelector("span");
-      expect(span).toBeInTheDocument();
-      expect(span).toHaveTextContent("Male");
-    });
-  });
 });

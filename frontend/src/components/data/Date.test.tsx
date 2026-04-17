@@ -97,31 +97,4 @@ describe("FormattedDate Component", () => {
       expect(screen.getByText("01/01/2000")).toBeInTheDocument();
     });
   });
-
-  describe("Text props", () => {
-    it("accepts and applies Mantine Text props", () => {
-      const { container } = renderWithMantine(
-        <FormattedDate date="1980-09-15" size="xl" fw={700} c="blue" />,
-      );
-      const text = container.querySelector("span");
-      expect(text).toBeInTheDocument();
-    });
-
-    it("renders as span when span prop is true", () => {
-      const { container } = renderWithMantine(
-        <FormattedDate date="1980-09-15" span />,
-      );
-      const span = container.querySelector("span");
-      expect(span).toBeInTheDocument();
-      expect(span).toHaveTextContent("15/09/1980");
-    });
-
-    it("inherits parent styles with inherit prop", () => {
-      const { container } = renderWithMantine(
-        <FormattedDate date="1980-09-15" inherit />,
-      );
-      const text = container.querySelector("span");
-      expect(text).toBeInTheDocument();
-    });
-  });
 });

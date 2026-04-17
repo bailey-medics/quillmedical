@@ -1,11 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack, Title, Text, Divider } from "@mantine/core";
 import FormattedDate from "./Date";
+import BodyText from "@/components/typography/BodyText";
 
 const meta: Meta<typeof FormattedDate> = {
   title: "Data/Date",
   component: FormattedDate,
   tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <BodyText>
+        <Story />
+      </BodyText>
+    ),
+  ],
   argTypes: {
     date: {
       control: "text",

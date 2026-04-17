@@ -1,10 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import Gender from "./Gender";
+import BodyText from "@/components/typography/BodyText";
 
 const meta: Meta<typeof Gender> = {
   title: "data/Gender",
   component: Gender,
   tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <BodyText>
+        <Story />
+      </BodyText>
+    ),
+  ],
   argTypes: {
     gender: {
       control: "select",

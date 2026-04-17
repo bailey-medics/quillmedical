@@ -25,7 +25,7 @@ describe("Demographics Component", () => {
 
     it("renders formatted date of birth", () => {
       renderWithMantine(<Demographics patient={mockPatient} />);
-      expect(screen.getByText("15/09/1980")).toBeInTheDocument();
+      expect(screen.getByText(/15\/09\/1980/)).toBeInTheDocument();
     });
 
     it("renders patient age", () => {
