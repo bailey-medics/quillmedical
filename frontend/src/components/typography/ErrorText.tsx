@@ -7,7 +7,7 @@ export interface ErrorTextProps {
 
 export default function ErrorText({ children }: ErrorTextProps) {
   return (
-    <Text size="lg" c="red" fw={700}>
+    <Text size="lg" c="red.8" fw={700}>
       {children}
     </Text>
   );
