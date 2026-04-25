@@ -12,8 +12,14 @@
  * ```
  */
 
-import { Badge, Skeleton } from "@mantine/core";
+import { Badge } from "@mantine/core";
 import type { MantineSize } from "@mantine/core";
+import {
+  badgeColours,
+  BADGE_VARIANT,
+  type BadgeColourConfig,
+} from "./badgeColours";
+import BadgeSkeleton from "./BadgeSkeleton";
 
 export type UserPermission = "superadmin" | "admin" | "staff" | "patient";
 interface PermissionBadgeProps {
@@ -21,25 +27,17 @@ interface PermissionBadgeProps {
   permission: UserPermission;
   /** Badge size - defaults to lg */
   size?: MantineSize;
-  /** Badge variant - defaults to filled */
+  /** Badge variant - defaults to light */
   variant?: "filled" | "light" | "outline" | "dot" | "default";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 }
 
-/**
- * Maps system permissions to their corresponding badge colors.
- *
- * Color scheme:
- * - superadmin: green (highest privilege)
- * - admin: blue (elevated privilege)
- * - staff: gray (standard privilege)
- */
-const PERMISSION_COLORS: Record<UserPermission, string> = {
-  superadmin: "green",
-  admin: "blue",
-  staff: "gray",
-  patient: "orange",
+const PERMISSION_CONFIG: Record<UserPermission, BadgeColourConfig> = {
+  superadmin: badgeColours.success,
+  admin: badgeColours.info,
+  staff: badgeColours.neutral,
+  patient: badgeColours.alert,
 };
 
 /**
@@ -53,34 +51,14 @@ const PERMISSION_COLORS: Record<UserPermission, string> = {
  *
  * Used on admin pages, user management interfaces, and permission displays.
  */
-const SKELETON_WIDTHS: Record<string, number> = {
-  sm: 65,
-  md: 75,
-  lg: 80,
-  xl: 140,
-};
-
-const SKELETON_HEIGHTS: Record<string, number> = {
-  sm: 19,
-  md: 21,
-  lg: 27,
-  xl: 40,
-};
-
 export default function PermissionBadge({
   permission,
   size = "lg",
-  variant = "filled",
+  variant = BADGE_VARIANT,
   isLoading = false,
 }: PermissionBadgeProps) {
   if (isLoading) {
-    return (
-      <Skeleton
-        width={SKELETON_WIDTHS[size] ?? 90}
-        height={SKELETON_HEIGHTS[size] ?? 36}
-        radius="xl"
-      />
-    );
+    return <BadgeSkeleton size={size as "sm" | "md" | "lg" | "xl"} />;
   }
 
   if (!permission) {
@@ -91,7 +69,8 @@ export default function PermissionBadge({
     <Badge
       size={size}
       variant={variant}
-      color={PERMISSION_COLORS[permission]}
+      color={PERMISSION_CONFIG[permission].bg}
+      c={PERMISSION_CONFIG[permission].text}
       radius="xl"
     >
       {permission.toUpperCase()}

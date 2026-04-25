@@ -1,8 +1,8 @@
 /**
- * ActiveStatus Badge Component
+ * LetterStatus Badge Component
  *
- * Displays the active/inactive status of a resource (patient, user, etc.)
- * with appropriate colour coding and sizing.
+ * Displays clinical letter status with colour-coded filled badges
+ * for clear visual distinction between final, draft, and amended states.
  */
 
 import { Badge } from "@mantine/core";
@@ -13,25 +13,28 @@ import {
 } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 
+export type LetterStatusType = "final" | "draft" | "amended";
+
 type Props = {
-  /** Whether the resource is active */
-  active: boolean;
-  /** Badge size (default: "md") */
+  /** The letter status to display */
+  status: LetterStatusType;
+  /** Badge size (default: "lg") */
   size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
 
 const STATUS_CONFIG: Record<
-  "active" | "deactivated",
+  LetterStatusType,
   { label: string; colour: BadgeColourConfig }
 > = {
-  active: { label: "Active", colour: badgeColours.success },
-  deactivated: { label: "Deactivated", colour: badgeColours.outstanding },
+  final: { label: "Final", colour: badgeColours.success },
+  draft: { label: "Draft", colour: badgeColours.warning },
+  amended: { label: "Amended", colour: badgeColours.info },
 };
 
-export default function ActiveStatus({
-  active,
+export default function LetterStatus({
+  status,
   size = "lg",
   isLoading = false,
 }: Props) {
@@ -39,7 +42,7 @@ export default function ActiveStatus({
     return <BadgeSkeleton size={size} />;
   }
 
-  const { label, colour } = STATUS_CONFIG[active ? "active" : "deactivated"];
+  const { label, colour } = STATUS_CONFIG[status];
 
   return (
     <Badge

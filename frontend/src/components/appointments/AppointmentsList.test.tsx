@@ -63,13 +63,9 @@ describe("AppointmentsList", () => {
     });
 
     it("renders empty list when no appointments", () => {
-      const { container } = renderWithMantine(
-        <AppointmentsList appointments={[]} />,
-      );
+      renderWithMantine(<AppointmentsList appointments={[]} />);
 
-      expect(
-        container.querySelector('[class*="Card"]'),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("No appointments to show")).toBeInTheDocument();
     });
   });
 

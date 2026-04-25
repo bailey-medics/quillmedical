@@ -52,3 +52,9 @@ export const Loading = () => (
     <DocumentsList documents={[]} loading />
   </VariantStack>
 );
+
+export const Empty = () => (
+  <VariantStack>
+    <DocumentsList documents={[]} />
+  </VariantStack>
+);

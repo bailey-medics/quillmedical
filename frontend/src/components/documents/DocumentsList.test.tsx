@@ -61,4 +61,9 @@ describe("DocumentsList", () => {
       expect(screen.queryByText(doc.name)).not.toBeInTheDocument();
     });
   });
+
+  it("renders empty state when no documents", () => {
+    renderWithMantine(<DocumentsList documents={[]} />);
+    expect(screen.getByText("No documents to show")).toBeInTheDocument();
+  });
 });

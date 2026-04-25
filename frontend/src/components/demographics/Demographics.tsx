@@ -54,7 +54,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
     <div style={{ flex: 1 }}>
       <HeaderText>{patient.name}</HeaderText>
       <BodyText>
-        {patient.dob && <FormattedDate date={patient.dob} span inherit />}
+        {patient.dob && <FormattedDate date={patient.dob} />}
         {patient.age !== undefined ? `    ${patient.age}` : ""}
         {patient.sex ? ` ${patient.sex}` : ""}
         {patient.nationalNumber ? (

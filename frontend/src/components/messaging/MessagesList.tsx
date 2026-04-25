@@ -14,6 +14,7 @@ import HeaderText from "@/components/typography/HeaderText";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextClamp from "@/components/typography/BodyTextClamp";
 import BaseCard from "@/components/base-card/BaseCard";
+import StateMessage from "@/components/message-cards/StateMessage";
 import { Group, Skeleton, Stack } from "@mantine/core";
 
 export type MessageThread = {
@@ -88,7 +89,7 @@ export default function MessagesList({
 
   return (
     <Stack gap="sm">
-      {threads.length === 0 && <BodyText>No messages to show.</BodyText>}
+      {threads.length === 0 && <StateMessage type="no-messages" />}
       {threads.map((thread) => (
         <div
           key={thread.id}

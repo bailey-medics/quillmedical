@@ -5,8 +5,13 @@
  * date, author, and summary. Provides loading state with skeletons.
  */
 
-import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import { LetterStatus } from "@/components/badge";
+import StateMessage from "@/components/message-cards/StateMessage";
+import HeaderText from "@/components/typography/HeaderText";
+import BodyText from "@/components/typography/BodyText";
+import BodyTextBlack from "@/components/typography/BodyTextBlack";
 
 export type LetterSummary = {
   /** Unique letter identifier */
@@ -30,19 +35,6 @@ type Props = {
   onLetterClick: (letter: LetterSummary) => void;
   isLoading?: boolean;
 };
-
-function getStatusColour(status: LetterSummary["status"]): string {
-  switch (status) {
-    case "final":
-      return "green";
-    case "draft":
-      return "yellow";
-    case "amended":
-      return "blue";
-    default:
-      return "gray";
-  }
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -77,6 +69,10 @@ export default function LetterList({
     );
   }
 
+  if (letters.length === 0) {
+    return <StateMessage type="no-letters" />;
+  }
+
   return (
     <Stack gap="lg">
       {letters.map((letter) => (
@@ -87,24 +83,16 @@ export default function LetterList({
         >
           <Stack gap="sm">
             <Group justify="space-between">
-              <Title order={4}>{letter.title}</Title>
-              <Badge
-                color={getStatusColour(letter.status)}
-                variant="light"
-                size="lg"
-              >
-                {letter.status}
-              </Badge>
+              <HeaderText>{letter.title}</HeaderText>
+              <LetterStatus status={letter.status} />
             </Group>
             <Group gap="lg">
-              <Text size="sm" c="dimmed">
-                {formatDate(letter.date)}
-              </Text>
-              <Text size="sm" c="dimmed">
+              <BodyText>{formatDate(letter.date)}</BodyText>
+              <BodyText>
                 {letter.author} — {letter.authorRole}
-              </Text>
+              </BodyText>
             </Group>
-            <Text size="md">{letter.summary}</Text>
+            <BodyTextBlack>{letter.summary}</BodyTextBlack>
           </Stack>
         </BaseCard>
       ))}

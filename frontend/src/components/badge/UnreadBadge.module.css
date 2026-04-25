@@ -3,7 +3,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background-color: var(--mantine-color-blue-4);
+
+  /* Maps to badgeColours.info (blue) */
+  background-color: var(--mantine-color-blue-6);
   color: white;
   font-weight: 700;
   line-height: 1;

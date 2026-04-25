@@ -120,4 +120,65 @@ describe("StateMessage Component", () => {
       expect(alert).toBeInTheDocument();
     });
   });
+
+  describe("Empty list states", () => {
+    const emptyStates = [
+      {
+        type: "no-letters" as const,
+        title: "No letters to show",
+        description: /no clinical letters/i,
+      },
+      {
+        type: "no-messages" as const,
+        title: "No messages to show",
+        description: /messages from your care team/i,
+      },
+      {
+        type: "no-notes" as const,
+        title: "No notes to show",
+        description: /no clinical notes/i,
+      },
+      {
+        type: "no-documents" as const,
+        title: "No documents to show",
+        description: /no documents for this patient/i,
+      },
+      {
+        type: "no-appointments" as const,
+        title: "No appointments to show",
+        description: /no appointments scheduled/i,
+      },
+    ];
+
+    it.each(emptyStates)(
+      'renders "$title" for type $type',
+      ({ type, title }) => {
+        renderWithMantine(<StateMessage type={type} />);
+        expect(screen.getByText(title)).toBeInTheDocument();
+      },
+    );
+
+    it.each(emptyStates)(
+      "displays description for type $type",
+      ({ type, description }) => {
+        renderWithMantine(<StateMessage type={type} />);
+        expect(screen.getByText(description)).toBeInTheDocument();
+      },
+    );
+
+    it.each(emptyStates)(
+      "renders as alert element for type $type",
+      ({ type }) => {
+        const { container } = renderWithMantine(<StateMessage type={type} />);
+        const alert = container.querySelector('[role="alert"]');
+        expect(alert).toBeInTheDocument();
+      },
+    );
+
+    it.each(emptyStates)("shows an icon for type $type", ({ type }) => {
+      const { container } = renderWithMantine(<StateMessage type={type} />);
+      const icon = container.querySelector("svg");
+      expect(icon).toBeInTheDocument();
+    });
+  });
 });

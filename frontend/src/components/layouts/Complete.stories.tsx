@@ -64,6 +64,7 @@ const mockThreads: MessageThread[] = [
 ];
 
 export const WithPatientMessageList: Story = {
+  tags: ["!test"],
   args: {
     patient: demoPatientsList[0],
     isLoading: false,

@@ -1,13 +1,11 @@
 /**
  * Date Component
  *
- * Formats and displays dates with internationalisation support.
+ * Pure formatter — returns bare text with no wrapping element.
  * Accepts ISO 8601 date strings (YYYY-MM-DD) from the backend (FHIR format).
  */
 
-import { Text, type TextProps } from "@mantine/core";
-
-type FormattedDateProps = TextProps & {
+type FormattedDateProps = {
   /** ISO 8601 date string (YYYY-MM-DD) from backend */
   date: string;
   /** Locale for date formatting. Defaults to 'en-GB' (British English) */
@@ -37,7 +35,6 @@ export default function FormattedDate({
   date,
   locale = "en-GB",
   format = "short",
-  ...textProps
 }: FormattedDateProps) {
   if (!date) {
     return null;
@@ -49,7 +46,7 @@ export default function FormattedDate({
 
     // Check if date is valid
     if (Number.isNaN(dateObj.getTime())) {
-      return <Text {...textProps}>Invalid date</Text>;
+      return <>Invalid date</>;
     }
 
     const formatOptions: Intl.DateTimeFormatOptions =
@@ -82,18 +79,10 @@ export default function FormattedDate({
       dateObj,
     );
 
-    return (
-      <Text component="span" {...textProps}>
-        {formattedDate}
-      </Text>
-    );
+    return <>{formattedDate}</>;
   } catch (error) {
     console.error("Error formatting date:", error);
-    return (
-      <Text component="span" {...textProps}>
-        Invalid date
-      </Text>
-    );
+    return <>Invalid date</>;
   }
   /* eslint-enable react-hooks/error-boundaries */
 }

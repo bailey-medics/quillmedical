@@ -3,6 +3,7 @@ import { Skeleton, Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
 import BaseCard from "@/components/base-card/BaseCard";
+import StateMessage from "@/components/message-cards/StateMessage";
 import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
@@ -43,6 +44,10 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
         ))}
       </Stack>
     );
+  }
+
+  if (documents.length === 0) {
+    return <StateMessage type="no-documents" />;
   }
 
   return (

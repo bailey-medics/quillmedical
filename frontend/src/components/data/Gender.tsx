@@ -1,14 +1,13 @@
 /**
  * Gender Component
  *
- * Displays gender/sex with consistent formatting.
+ * Pure formatter — returns bare text with no wrapping element.
  * Accepts FHIR-compliant gender values from backend.
  */
 
-import { Text, type TextProps } from "@mantine/core";
 import type { GenderValue } from "./Gender.types";
 
-type GenderProps = TextProps & {
+type GenderProps = {
   /** Gender value (male, female, unspecified) */
   gender: GenderValue | undefined | null;
   /** Display format */
@@ -32,13 +31,9 @@ type GenderProps = TextProps & {
  * // Unspecified: "Unspecified"
  * <Gender gender="unspecified" />
  */
-export default function Gender({
-  gender,
-  format = "full",
-  ...textProps
-}: GenderProps) {
+export default function Gender({ gender, format = "full" }: GenderProps) {
   if (!gender || gender === "unspecified") {
-    return <Text {...textProps}>Unspecified</Text>;
+    return <>Unspecified</>;
   }
 
   const normalized = gender.toLowerCase();
@@ -48,10 +43,10 @@ export default function Gender({
       male: "M",
       female: "F",
     };
-    return <Text {...textProps}>{abbreviated[normalized] || "U"}</Text>;
+    return <>{abbreviated[normalized] || "U"}</>;
   }
 
   // Full format - capitalize first letter
   const formatted = normalized.charAt(0).toUpperCase() + normalized.slice(1);
-  return <Text {...textProps}>{formatted}</Text>;
+  return <>{formatted}</>;
 }

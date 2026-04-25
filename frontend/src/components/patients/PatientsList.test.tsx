@@ -113,7 +113,7 @@ describe("PatientsList", () => {
 
       // Demographics should show date, age and sex
       // Jane Doe: 12/05/1980, 45, female
-      expect(screen.getByText("12/05/1980")).toBeInTheDocument();
+      expect(screen.getByText(/12\/05\/1980/)).toBeInTheDocument();
       expect(screen.getByText(/45/)).toBeInTheDocument();
       expect(screen.getByText(/female/)).toBeInTheDocument();
     });

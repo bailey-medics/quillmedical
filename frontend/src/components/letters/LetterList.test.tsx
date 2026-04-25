@@ -62,13 +62,9 @@ describe("Letters", () => {
     });
 
     it("renders empty list when no letters", () => {
-      const { container } = renderWithMantine(
-        <LetterList letters={[]} onLetterClick={vi.fn()} />,
-      );
+      renderWithMantine(<LetterList letters={[]} onLetterClick={vi.fn()} />);
 
-      expect(
-        container.querySelector('[class*="Card"]'),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("No letters to show")).toBeInTheDocument();
     });
   });
 
@@ -110,9 +106,9 @@ describe("Letters", () => {
         <LetterList letters={mockLetters} onLetterClick={vi.fn()} />,
       );
 
-      expect(screen.getByText("final")).toBeInTheDocument();
-      expect(screen.getByText("draft")).toBeInTheDocument();
-      expect(screen.getByText("amended")).toBeInTheDocument();
+      expect(screen.getByText("Final")).toBeInTheDocument();
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+      expect(screen.getByText("Amended")).toBeInTheDocument();
     });
   });
 
