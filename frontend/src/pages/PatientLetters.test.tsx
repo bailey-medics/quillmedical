@@ -75,7 +75,7 @@ describe("PatientLetters", () => {
       initialRoute: "/patients/test-patient/letters",
     });
 
-    const badges = screen.getAllByText("final");
+    const badges = screen.getAllByText("Final");
     expect(badges.length).toBe(3);
   });
 });
