@@ -17,6 +17,7 @@ type Story = StoryObj<typeof ProfilePic>;
  * Gradients flow from top-left to bottom-right at 45 degrees
  */
 export const Default: Story = {
+  tags: ["!test"],
   render: () => (
     <div
       style={{

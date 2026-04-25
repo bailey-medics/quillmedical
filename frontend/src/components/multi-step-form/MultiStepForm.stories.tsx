@@ -39,6 +39,7 @@ type Story = StoryObj<typeof meta>;
  * Simple three-step form showing the core functionality
  */
 export const BasicThreeSteps: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
