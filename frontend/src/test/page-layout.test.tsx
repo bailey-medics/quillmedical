@@ -12,7 +12,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import { MemoryRouter } from "react-router-dom";
-import { theme } from "@/theme";
+import { theme, cssVariablesResolver } from "@/theme";
 
 // Import all page components
 import Home from "@/pages/Home";
@@ -63,7 +63,10 @@ vi.mock("@/auth/AuthContext", () => ({
 function renderPageAndCheckContainer(PageComponent: React.ComponentType) {
   const { container } = render(
     <MemoryRouter>
-      <MantineProvider theme={theme}>
+      <MantineProvider
+        theme={theme}
+        cssVariablesResolver={cssVariablesResolver}
+      >
         <PageComponent />
       </MantineProvider>
     </MemoryRouter>,
@@ -125,7 +128,10 @@ describe("Page Layout Consistency", () => {
       pages.forEach((PageComponent) => {
         const { container } = render(
           <MemoryRouter>
-            <MantineProvider theme={theme}>
+            <MantineProvider
+              theme={theme}
+              cssVariablesResolver={cssVariablesResolver}
+            >
               <PageComponent />
             </MantineProvider>
           </MemoryRouter>,

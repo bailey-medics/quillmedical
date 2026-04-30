@@ -7,7 +7,7 @@ import { render, screen } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
-import { theme } from "@/theme";
+import { theme, cssVariablesResolver } from "@/theme";
 
 // Mock AuthContext
 const mockUseAuth = vi.fn();
@@ -21,7 +21,11 @@ import { RequireFeature } from "@/auth/RequireFeature";
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <MemoryRouter>
-      <MantineProvider theme={theme} env="test">
+      <MantineProvider
+        theme={theme}
+        cssVariablesResolver={cssVariablesResolver}
+        env="test"
+      >
         {children}
       </MantineProvider>
     </MemoryRouter>

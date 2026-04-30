@@ -6,7 +6,7 @@ import "../src/styles/typography.css";
 import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
-import { theme } from "../src/theme";
+import { theme, cssVariablesResolver } from "../src/theme";
 
 // Mock the API to prevent real backend calls in Storybook
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +108,10 @@ const decorators = [
           path: "*",
           element: (
             <AuthProvider>
-              <MantineProvider theme={theme}>
+              <MantineProvider
+                theme={theme}
+                cssVariablesResolver={cssVariablesResolver}
+              >
                 <AuthWrapper>
                   <div style={{ padding: 0 }}>{Story()}</div>
                 </AuthWrapper>

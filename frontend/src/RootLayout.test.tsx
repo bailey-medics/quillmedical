@@ -15,7 +15,7 @@ import {
   useOutletContext,
   useNavigate,
 } from "react-router-dom";
-import { theme } from "@/theme";
+import { theme, cssVariablesResolver } from "@/theme";
 import RootLayout from "@/RootLayout";
 import type { LayoutCtx } from "@/RootLayout";
 
@@ -88,7 +88,11 @@ function HomePage() {
 
 function renderWithRoutes(initialRoute: string) {
   return render(
-    <MantineProvider theme={theme} env="test">
+    <MantineProvider
+      theme={theme}
+      cssVariablesResolver={cssVariablesResolver}
+      env="test"
+    >
       <MemoryRouter initialEntries={[initialRoute]}>
         <Routes>
           <Route element={<RootLayout />}>

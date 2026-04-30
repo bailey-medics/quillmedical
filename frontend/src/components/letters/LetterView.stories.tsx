@@ -1,6 +1,6 @@
 import { sampleLetter } from "@/demo-data/letters/demoSingleLetter";
 import { MantineProvider } from "@mantine/core";
-import { theme } from "@/theme";
+import { theme, cssVariablesResolver } from "@/theme";
 /**
  * LetterView Component Stories
  *
@@ -27,7 +27,7 @@ const sample = sampleLetter;
 
 export const Default: Story = {
   render: () => (
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
       <div style={{ width: 720 }}>
         <LetterView letter={sample} onBack={() => alert("back")} />
       </div>
@@ -37,7 +37,7 @@ export const Default: Story = {
 
 export const Loading: Story = {
   render: () => (
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
       <div style={{ width: 720 }}>
         <LetterView isLoading />
       </div>

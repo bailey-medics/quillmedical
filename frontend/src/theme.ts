@@ -24,7 +24,32 @@
  * ```
  */
 
-import { createTheme } from "@mantine/core";
+import { createTheme, type CSSVariablesResolver } from "@mantine/core";
+
+/**
+ * Brand colour tokens — single source of truth.
+ * Exposed as CSS variables via cssVariablesResolver below:
+ * - var(--brand-primary)
+ * - var(--brand-secondary)
+ * - var(--brand-background)
+ *
+ * In TypeScript: import { brandColours } from "@/theme"
+ */
+export const brandColours = {
+  primary: "#001a36",
+  secondary: "#C8963E",
+  background: "#ffffff",
+} as const;
+
+export const cssVariablesResolver: CSSVariablesResolver = () => ({
+  variables: {
+    "--brand-primary": brandColours.primary,
+    "--brand-secondary": brandColours.secondary,
+    "--brand-background": brandColours.background,
+  },
+  dark: {},
+  light: {},
+});
 
 export const theme = createTheme({
   /**

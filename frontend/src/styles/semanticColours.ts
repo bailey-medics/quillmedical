@@ -1,25 +1,22 @@
 /**
  * Semantic Colour Palette
  *
- * Single source of truth for all design token colours in the app.
- * Components should import from here rather than hardcoding colour values.
+ * Brand colours are defined in theme.ts (which generates CSS variables).
+ * This file re-exports them for TypeScript consumers and adds status/text tokens.
  *
  * Organised into:
- * - Brand: primary and secondary brand colours
+ * - Brand: primary and secondary brand colours (from theme.ts)
  * - Status: state-communicating colours (badges, alerts, validation)
  * - Text: typography colour tokens
  */
+
+import { brandColours } from "@/theme";
 
 /* ------------------------------------------------------------------ */
 /*  Brand colours                                                      */
 /* ------------------------------------------------------------------ */
 
-export const brand = {
-  /** Deep navy blue — primary actions, navigation, brand identity */
-  primary: "#001a36",
-  /** Gold accent — secondary buttons, highlights, hover states */
-  secondary: "#C8963E",
-} as const;
+export const brand = brandColours;
 
 /* ------------------------------------------------------------------ */
 /*  Status colours                                                     */
