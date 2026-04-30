@@ -48,7 +48,7 @@ createRoot(document.getElementById("root")!).render(
               <PublicButton href="https://teaching.quill-medical.com">
                 Teaching
               </PublicButton>
-              <PublicButton href="https://staging.quill-medical.com">
+              <PublicButton variant="outline" disabled>
                 EPR Staging
               </PublicButton>
               <PublicButton variant="outline" disabled>

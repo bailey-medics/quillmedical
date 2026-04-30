@@ -38,15 +38,12 @@ createRoot(document.getElementById("root")!).render(
               availability.
             </PublicText>
             <PublicText size="lg">
-              In the meantime, you can explore the teaching platform and staging
-              environment to see what we are building.
+              In the meantime, you can explore the teaching platform to see what
+              we are building.
             </PublicText>
             <Group mt="lg">
               <PublicButton href="https://teaching.quill-medical.com">
                 Try Teaching
-              </PublicButton>
-              <PublicButton href="https://staging.quill-medical.com">
-                EPR Staging
               </PublicButton>
             </Group>
           </Stack>
