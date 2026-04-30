@@ -91,7 +91,7 @@
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
     "sass": "^1.92.1",
-    "storybook": "10.3.3",
+    "storybook": "^10.3.5",
     "storybook-addon-pseudo-states": "^10.3.3",
     "stylelint": "^17.0.0",
     "stylelint-config-prettier-scss": "^1.0.0",
