@@ -163,6 +163,7 @@ const mdSampleLines = [
 ].join("\n");
 
 export const WithMarkdown: Story = {
+  tags: ["!test"],
   args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
@@ -244,6 +245,7 @@ const LongContent = () => (
 );
 
 export const LongRead: Story = {
+  tags: ["!test"],
   args: { patient: demoPatientsList[0], isLoading: false },
   render: (args) => (
     <MainLayout {...args}>

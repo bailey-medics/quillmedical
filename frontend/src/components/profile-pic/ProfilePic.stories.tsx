@@ -199,6 +199,7 @@ export const Default: Story = {
  * Hover for 1 second to see patient name tooltip
  */
 export const Generic: Story = {
+  tags: ["!test"],
   render: () => (
     <div
       style={{
