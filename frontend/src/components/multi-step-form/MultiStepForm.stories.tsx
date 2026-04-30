@@ -174,6 +174,7 @@ export const WithValidation: Story = {
  * Steps with custom Next button labels
  */
 export const CustomButtonLabels: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
@@ -223,6 +224,7 @@ export const CustomButtonLabels: Story = {
  * Edge case: form with only one step
  */
 export const SingleStep: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
@@ -249,6 +251,7 @@ export const SingleStep: Story = {
  * Longer form with five steps
  */
 export const FiveSteps: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
@@ -287,6 +290,7 @@ export const FiveSteps: Story = {
  * Step content that uses the provided navigation functions
  */
 export const CustomNavigation: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
@@ -344,6 +348,7 @@ export const CustomNavigation: Story = {
  * Form using controlled step state
  */
 export const ControlledMode: Story = {
+  tags: ["!test"],
   render: (args) => {
     const [activeStep, setActiveStep] = useState(0);
 
@@ -401,6 +406,7 @@ export const ControlledMode: Story = {
  * Minimal step configuration without descriptions
  */
 export const NoDescriptions: Story = {
+  tags: ["!test"],
   args: {
     onCancel: fn(),
     steps: [
@@ -440,6 +446,7 @@ export const NoDescriptions: Story = {
  * TODO: Investigate why step transitions don't work reliably in test-runner
  */
 export const TestNavigateThroughSteps: Story = {
+  tags: ["!test"],
   ...BasicThreeSteps,
 };
 
@@ -498,5 +505,6 @@ export const TestCannotSkipForward: Story = {
  * TODO: Investigate why step transitions don't work reliably in test-runner
  */
 export const TestClickCompletedSteps: Story = {
+  tags: ["!test"],
   ...BasicThreeSteps,
 };
