@@ -12,11 +12,12 @@ enable_ha   = false
 cloud_run_max_instances = 5
 
 lb_domains = ["teaching.quill-medical.com"]
+landing_domain = "quill-medical.com"
 
 backend_image  = "gcr.io/cloudrun/hello:latest"
 frontend_image = "gcr.io/cloudrun/hello:latest"
 admin_image    = "gcr.io/cloudrun/hello:latest"
 
-monitored_hostnames = ["teaching.quill-medical.com"]
+monitored_hostnames = ["teaching.quill-medical.com", "quill-medical.com"]
 alert_email         = "info@quill-medical.com"
 cloud_run_services  = ["quill-backend-teaching", "quill-frontend-teaching"]
