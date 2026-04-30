@@ -11,7 +11,7 @@ enable_ha   = false
 
 cloud_run_max_instances = 5
 
-lb_domains = ["teaching.quill-medical.com"]
+lb_domains     = ["teaching.quill-medical.com"]
 landing_domain = "quill-medical.com"
 
 backend_image  = "gcr.io/cloudrun/hello:latest"
