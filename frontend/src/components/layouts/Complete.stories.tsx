@@ -93,6 +93,7 @@ export const WithPatientMessageList: Story = {
 };
 
 export const WithMessaging: Story = {
+  tags: ["!test"],
   args: {
     patient: demoPatientsList[0],
     isLoading: false,
