@@ -31,10 +31,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - environment: staging
-            workspace: staging
-            wif_provider_secret: GCP_STAGING_WIF_PROVIDER
-            service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
+          # staging disabled — environment spun down to save GCP costs
+          # - environment: staging
+          #   workspace: staging
+          #   wif_provider_secret: GCP_STAGING_WIF_PROVIDER
+          #   service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
             workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
@@ -102,7 +103,7 @@ jobs:
               body: body
             });
 
-  # ---------- Terraform apply: staging + teaching (main branch) ----------
+  # ---------- Terraform apply: teaching (main branch) ----------
   apply-staging:
     name: Apply (${{ matrix.environment }})
     runs-on: ubuntu-latest
@@ -110,10 +111,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - environment: staging
-            workspace: staging
-            wif_provider_secret: GCP_STAGING_WIF_PROVIDER
-            service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
+          # staging disabled — environment spun down to save GCP costs
+          # - environment: staging
+          #   workspace: staging
+          #   wif_provider_secret: GCP_STAGING_WIF_PROVIDER
+          #   service_account_secret: GCP_STAGING_SERVICE_ACCOUNT
           - environment: teaching
             workspace: teaching
             wif_provider_secret: GCP_TEACHING_WIF_PROVIDER
