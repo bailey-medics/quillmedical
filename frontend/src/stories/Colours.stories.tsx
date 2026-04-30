@@ -167,6 +167,11 @@ export const Overview: Story = {
             label="Secondary"
             description={`${brand.secondary} — secondary buttons, accents, highlights`}
           />
+          <ColourSwatch
+            colour="white"
+            label="Background"
+            description="#ffffff — page backgrounds, card surfaces"
+          />
         </Stack>
       </div>
 
