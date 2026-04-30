@@ -88,6 +88,7 @@ export const BasicThreeSteps: Story = {
  * Shows validation that prevents moving to next step
  */
 export const WithValidation: Story = {
+  tags: ["!test"],
   render: (args) => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");

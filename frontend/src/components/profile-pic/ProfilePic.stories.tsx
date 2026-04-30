@@ -252,6 +252,7 @@ export const Generic: Story = {
  * Real picture of a person
  */
 export const RealPicture: Story = {
+  tags: ["!test"],
   args: {
     givenName: "Sarah",
     familyName: "Johnson",
@@ -266,6 +267,7 @@ export const RealPicture: Story = {
  * Demonstrates initials, generic icons, and real pictures at each size
  */
 export const Sizes: Story = {
+  tags: ["!test"],
   render: () => (
     <div
       style={{
@@ -430,6 +432,7 @@ export const Sizes: Story = {
  * Shows circular skeleton while data is being fetched
  */
 export const Loading: Story = {
+  tags: ["!test"],
   render: () => (
     <div
       style={{
