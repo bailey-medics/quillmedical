@@ -43,6 +43,32 @@ export default tseslint.config(
         "no-new-func": "error",
 
         "no-secrets/no-secrets": ["warn", { tolerance: 4.5 }],
+        // Prevent raw MantineProvider usage outside approved entry points
+        "no-restricted-imports": [
+          "warn",
+          {
+            paths: [
+              {
+                name: "@mantine/core",
+                importNames: ["MantineProvider"],
+                message:
+                  "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    // Allow MantineProvider in the approved entry points
+    {
+      files: [
+        "src/main.tsx",
+        "src/test/test-utils.tsx",
+        "src/RootLayout.test.tsx",
+        ".storybook/preview.tsx",
+      ],
+      rules: {
+        "no-restricted-imports": "off",
       },
     },
     // Custom rule: Page layout consistency

@@ -3,11 +3,8 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MantineProvider } from "@mantine/core";
-import { MemoryRouter } from "react-router-dom";
-import type { ReactNode } from "react";
-import { theme, cssVariablesResolver } from "@/theme";
+import { screen } from "@testing-library/react";
+import { renderWithRouter } from "@test/test-utils";
 
 // Mock AuthContext
 const mockUseAuth = vi.fn();
@@ -17,20 +14,6 @@ vi.mock("@/auth/AuthContext", () => ({
 
 import { useHasFeature } from "@lib/features";
 import { RequireFeature } from "@/auth/RequireFeature";
-
-function Wrapper({ children }: { children: ReactNode }) {
-  return (
-    <MemoryRouter>
-      <MantineProvider
-        theme={theme}
-        cssVariablesResolver={cssVariablesResolver}
-        env="test"
-      >
-        {children}
-      </MantineProvider>
-    </MemoryRouter>
-  );
-}
 
 /** Small helper component to display hook result */
 function FeatureCheck({ feature }: { feature: string }) {
@@ -43,7 +26,7 @@ describe("useHasFeature", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null },
     });
-    render(<FeatureCheck feature="teaching" />, { wrapper: Wrapper });
+    renderWithRouter(<FeatureCheck feature="teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 
@@ -51,7 +34,7 @@ describe("useHasFeature", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "loading", user: null },
     });
-    render(<FeatureCheck feature="teaching" />, { wrapper: Wrapper });
+    renderWithRouter(<FeatureCheck feature="teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 
@@ -67,7 +50,7 @@ describe("useHasFeature", () => {
         },
       },
     });
-    render(<FeatureCheck feature="teaching" />, { wrapper: Wrapper });
+    renderWithRouter(<FeatureCheck feature="teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("yes");
   });
 
@@ -83,7 +66,7 @@ describe("useHasFeature", () => {
         },
       },
     });
-    render(<FeatureCheck feature="teaching" />, { wrapper: Wrapper });
+    renderWithRouter(<FeatureCheck feature="teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 
@@ -98,7 +81,7 @@ describe("useHasFeature", () => {
         },
       },
     });
-    render(<FeatureCheck feature="teaching" />, { wrapper: Wrapper });
+    renderWithRouter(<FeatureCheck feature="teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 });
@@ -116,11 +99,10 @@ describe("RequireFeature", () => {
         },
       },
     });
-    render(
+    renderWithRouter(
       <RequireFeature feature="teaching">
         <div>Protected content</div>
       </RequireFeature>,
-      { wrapper: Wrapper },
     );
     expect(screen.getByText("Protected content")).toBeDefined();
   });
@@ -137,11 +119,10 @@ describe("RequireFeature", () => {
         },
       },
     });
-    render(
+    renderWithRouter(
       <RequireFeature feature="teaching">
         <div>Protected content</div>
       </RequireFeature>,
-      { wrapper: Wrapper },
     );
     expect(screen.queryByText("Protected content")).toBeNull();
   });
@@ -150,11 +131,10 @@ describe("RequireFeature", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "loading", user: null },
     });
-    render(
+    renderWithRouter(
       <RequireFeature feature="teaching">
         <div>Protected content</div>
       </RequireFeature>,
-      { wrapper: Wrapper },
     );
     expect(screen.queryByText("Protected content")).toBeNull();
     // Mantine Loader renders a div with role
@@ -165,11 +145,10 @@ describe("RequireFeature", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null },
     });
-    render(
+    renderWithRouter(
       <RequireFeature feature="teaching">
         <div>Protected content</div>
       </RequireFeature>,
-      { wrapper: Wrapper },
     );
     expect(screen.queryByText("Protected content")).toBeNull();
   });
