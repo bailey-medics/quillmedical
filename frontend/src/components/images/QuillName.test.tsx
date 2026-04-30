@@ -15,7 +15,7 @@ describe("QuillName Component", () => {
       const img = container.querySelector("img");
       expect(img).toHaveAttribute(
         "src",
-        expect.stringContaining("quill-name.png"),
+        expect.stringContaining("quill-name-white.png"),
       );
     });
 
