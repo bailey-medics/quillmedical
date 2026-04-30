@@ -19,7 +19,6 @@
 // src/main.tsx
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
-import "./styles/colours.css";
 import "./styles/typography.css";
 import ReactDOM from "react-dom/client";
 

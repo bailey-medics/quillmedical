@@ -28,12 +28,9 @@ import { createTheme, type CSSVariablesResolver } from "@mantine/core";
 
 /**
  * Brand colour tokens — single source of truth.
- * Exposed as CSS variables via cssVariablesResolver below:
- * - var(--brand-primary)
- * - var(--brand-secondary)
- * - var(--brand-background)
+ * Exposed as CSS variables via cssVariablesResolver below.
  *
- * In TypeScript: import { brandColours } from "@/theme"
+ * In TypeScript: import { brandColours, publicColours } from "@/theme"
  */
 export const brandColours = {
   primary: "#001a36",
@@ -41,11 +38,35 @@ export const brandColours = {
   background: "#ffffff",
 } as const;
 
+/** Public site colour palette */
+export const publicColours = {
+  navy: brandColours.primary,
+  darkBlue: "#112240",
+  darkBlueHover: "#152a4a",
+  amber: "#C8963E",
+  amberHover: "#b5862f",
+  goldHover: "#e8a317",
+  offWhite: "#fdfbf7",
+  lightText: "rgb(245 240 232 / 55%)",
+  muted: "#909296",
+} as const;
+
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
+    // App brand
     "--brand-primary": brandColours.primary,
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
+    // Public site
+    "--public-navy": publicColours.navy,
+    "--public-dark-blue": publicColours.darkBlue,
+    "--public-dark-blue-hover": publicColours.darkBlueHover,
+    "--public-amber": publicColours.amber,
+    "--public-amber-hover": publicColours.amberHover,
+    "--public-gold-hover": publicColours.goldHover,
+    "--public-off-white": publicColours.offWhite,
+    "--public-light-text": publicColours.lightText,
+    "--public-muted": publicColours.muted,
   },
   dark: {},
   light: {},

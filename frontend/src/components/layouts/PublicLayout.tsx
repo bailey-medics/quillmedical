@@ -1,4 +1,3 @@
-import "@/styles/colours.css";
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
