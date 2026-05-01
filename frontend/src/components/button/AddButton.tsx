@@ -51,7 +51,7 @@ export default function AddButton({
       leftSection={<Icon icon={<IconPlus />} size={isMobile ? "sm" : "md"} />}
       onClick={onClick}
       size={isMobile ? "md" : "lg"}
-      color="blue"
+      color="primary"
       disabled={disabled}
       styles={{
         label: {

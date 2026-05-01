@@ -24,7 +24,11 @@
  * ```
  */
 
-import { createTheme, type CSSVariablesResolver } from "@mantine/core";
+import {
+  createTheme,
+  type CSSVariablesResolver,
+  type MantineColorsTuple,
+} from "@mantine/core";
 
 /**
  * Brand colour tokens — single source of truth.
@@ -45,11 +49,46 @@ export const publicColours = {
   darkBlueHover: "#152a4a",
   amber: "#C8963E",
   amberHover: "#b5862f",
-  goldHover: "#e8a317",
+  amberBright: "#e8a317",
   offWhite: "#fdfbf7",
   lightText: "rgb(245 240 232 / 55%)",
   muted: "#909296",
 } as const;
+
+/**
+ * Mantine colour scales — 10-shade ramps (0 lightest → 9 darkest).
+ *
+ * primary: Navy scale derived from brandColours.primary (#001a36).
+ *          primaryShade: 7 used for filled buttons/actions.
+ *
+ * secondary: Amber scale derived from brandColours.secondary (#C8963E).
+ *            Use for CTAs, highlights, and warm accents.
+ */
+export const primaryScale: MantineColorsTuple = [
+  "#e8eef6", // 0 — subtle backgrounds, variant="light" fills
+  "#c5d4e8", // 1 — light tint, hover on light variant
+  "#9db5d4", // 2 — borders, disabled states
+  "#7094bc", // 3 — muted/secondary indicators
+  "#4a74a3", // 4 — mid-tone
+  "#2f5a8a", // 5 — medium prominence
+  "#1a4270", // 6 — prominent elements
+  "#0a2f56", // 7 — primary actions (filled buttons) ← primaryShade
+  "#042340", // 8 — hover/pressed state
+  "#001a36", // 9 — brand text (darkest)
+];
+
+export const secondaryScale: MantineColorsTuple = [
+  "#fdf6ec", // 0 — subtle amber backgrounds
+  "#fae8cc", // 1 — light amber fill
+  "#f5d5a0", // 2 — amber borders
+  "#efc072", // 3 — decorative amber
+  "#e5a84a", // 4 — secondary amber
+  "#c8963e", // 5 — brand amber
+  "#a87b2f", // 6 — prominent amber
+  "#886223", // 7 — dark amber
+  "#6b4c1a", // 8 — darker amber
+  "#503813", // 9 — darkest amber
+];
 
 /**
  * Typography tokens — single source of truth for all font sizes.
@@ -92,7 +131,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--public-dark-blue-hover": publicColours.darkBlueHover,
     "--public-amber": publicColours.amber,
     "--public-amber-hover": publicColours.amberHover,
-    "--public-gold-hover": publicColours.goldHover,
+    "--public-amber-bright": publicColours.amberBright,
     "--public-off-white": publicColours.offWhite,
     "--public-light-text": publicColours.lightText,
     "--public-muted": publicColours.muted,
@@ -119,6 +158,16 @@ export const theme = createTheme({
 
   /** Default text colour — brand navy instead of pure black */
   black: brandColours.primary,
+
+  /** Colour scales — primary (navy) and secondary (amber) */
+  colors: {
+    primary: primaryScale,
+    secondary: secondaryScale,
+  },
+
+  /** Use primary navy as the default colour for all components */
+  primaryColor: "primary",
+  primaryShade: 7,
 
   /** Font sizes — mobile-first base values from typographyTokens */
   fontSizes: {

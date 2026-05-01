@@ -93,12 +93,7 @@ export default function NavIcon({ name, size = "lg" }: NavIconProps) {
   const iconPixelSize = iconSizeMap[size];
 
   return (
-    <ThemeIcon
-      variant="light"
-      color="var(--brand-primary)"
-      radius="xl"
-      size={size}
-    >
+    <ThemeIcon variant="light" color="primary" radius="xl" size={size}>
       <Icon size={iconPixelSize} />
     </ThemeIcon>
   );

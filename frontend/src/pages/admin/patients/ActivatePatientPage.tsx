@@ -181,7 +181,7 @@ export default function ActivatePatientPage() {
                 <Alert
                   icon={<Icon icon={<IconAlertCircle />} size="sm" />}
                   title="Confirmation"
-                  color="blue"
+                  color="primary"
                 >
                   You are about to activate this patient record. This will
                   restore access to their records.

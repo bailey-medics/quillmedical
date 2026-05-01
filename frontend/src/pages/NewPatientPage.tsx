@@ -208,7 +208,7 @@ function Step2UserAccount({
         <>
           <Divider my="sm" />
 
-          <Alert variant="light" color="blue">
+          <Alert variant="light" color="primary">
             <BodyTextInline>
               Patient will be able to log in and access their health records.
             </BodyTextInline>

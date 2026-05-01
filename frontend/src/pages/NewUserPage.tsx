@@ -204,7 +204,7 @@ function Step2Competencies({
       </BodyText>
 
       {profession && (
-        <Alert variant="light" color="blue">
+        <Alert variant="light" color="primary">
           <BodyTextBold>
             Base profession: {profession.display_name}
           </BodyTextBold>
@@ -327,7 +327,7 @@ function Step3Permissions({
               <BodyTextBold>Additional competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.additionalCompetencies.map((id) => (
-                  <Badge key={id} variant="light" color="blue">
+                  <Badge key={id} variant="light" color="primary">
                     {competenciesData.competencies.find(
                       (c: Competency) => c.id === id,
                     )?.display_name || id}

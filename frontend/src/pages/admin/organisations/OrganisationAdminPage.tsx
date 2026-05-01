@@ -192,7 +192,7 @@ export default function OrganisationAdminPage() {
       header: "Primary",
       render: (member) =>
         member.is_primary ? (
-          <Badge color="blue" variant="light">
+          <Badge color="primary" variant="light">
             Primary
           </Badge>
         ) : null,
@@ -234,7 +234,7 @@ export default function OrganisationAdminPage() {
       header: "Primary",
       render: (patient) =>
         patient.is_primary ? (
-          <Badge color="blue" variant="light">
+          <Badge color="primary" variant="light">
             Primary
           </Badge>
         ) : null,
@@ -368,7 +368,7 @@ export default function OrganisationAdminPage() {
             {enabledFeatures.length > 0 ? (
               <Group gap="sm">
                 {enabledFeatures.map((key) => (
-                  <Badge key={key} variant="light" color="blue" size="lg">
+                  <Badge key={key} variant="light" color="primary" size="lg">
                     {FEATURE_LABELS[key] ?? key}
                   </Badge>
                 ))}

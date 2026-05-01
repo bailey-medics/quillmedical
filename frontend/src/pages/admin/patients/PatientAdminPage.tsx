@@ -283,7 +283,7 @@ export default function PatientAdminPage() {
               icon={<IconPencil />}
               size="md"
               variant="subtle"
-              color="blue"
+              color="primary"
               onClick={handleEditLink}
               aria-label="Edit linked user"
             />

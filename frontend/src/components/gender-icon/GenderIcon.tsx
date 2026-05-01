@@ -37,7 +37,7 @@ interface GenderIconProps {
  *
  * @example
  * // With custom size and colour
- * <GenderIcon gender="female" size="lg" color="blue" />
+ * <GenderIcon gender="female" size="lg" color="primary" />
  *
  * @example
  * // Unspecified

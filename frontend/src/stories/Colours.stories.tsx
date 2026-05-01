@@ -14,6 +14,7 @@ import {
   textColours,
   type StatusColourName,
 } from "@/styles/semanticColours";
+import { primaryScale, secondaryScale } from "@/theme";
 
 const meta: Meta = {
   title: "Foundations/Colours",
@@ -197,6 +198,83 @@ export const Overview: Story = {
           {textEntries.map(([name, config]) => (
             <TextSwatch key={name} name={name} config={config} />
           ))}
+        </Stack>
+      </div>
+    </Stack>
+  ),
+};
+
+/* ------------------------------------------------------------------ */
+/*  Shade Scales                                                       */
+/* ------------------------------------------------------------------ */
+
+function ScaleRow({
+  name,
+  scale,
+  primaryShade,
+}: {
+  name: string;
+  scale: readonly string[];
+  primaryShade?: number;
+}) {
+  return (
+    <div>
+      <Text size="md" fw={700} mb="xs">
+        {name}
+      </Text>
+      <Group gap={0}>
+        {scale.map((colour, i) => (
+          <Stack key={i} gap={4} align="center" style={{ width: 64 }}>
+            <Box
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 8,
+                backgroundColor: colour,
+                border:
+                  i === primaryShade
+                    ? "3px solid var(--mantine-color-red-5)"
+                    : "1px solid var(--mantine-color-gray-3)",
+              }}
+            />
+            <Text size="xs" c="dimmed" ta="center">
+              {i}
+            </Text>
+            <Text size="xs" c="dimmed" ta="center" style={{ fontSize: 9 }}>
+              {colour}
+            </Text>
+          </Stack>
+        ))}
+      </Group>
+    </div>
+  );
+}
+
+/** Brand and accent 10-shade colour scales. Red border = primaryShade. */
+export const Scales: Story = {
+  render: () => (
+    <Stack gap="xl">
+      <div>
+        <Title order={2} mb="md">
+          Colour scales
+        </Title>
+        <Text size="sm" c="dimmed" mb="lg">
+          10-shade ramps registered in the Mantine theme. Components use these
+          via <code>color=&quot;primary&quot;</code> or{" "}
+          <code>color=&quot;secondary&quot;</code>. Red border marks the
+          primaryShade (default for filled variants).
+        </Text>
+        <Stack gap="lg">
+          <ScaleRow
+            name="primary (navy)"
+            scale={primaryScale}
+            primaryShade={7}
+          />
+          <ScaleRow
+            name="secondary (amber)"
+            scale={secondaryScale}
+            primaryShade={5}
+          />
         </Stack>
       </div>
     </Stack>
