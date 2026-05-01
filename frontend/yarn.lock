@@ -1691,6 +1691,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource-variable/atkinson-hyperlegible-next@npm:^5.2.6":
+  version: 5.2.6
+  resolution: "@fontsource-variable/atkinson-hyperlegible-next@npm:5.2.6"
+  checksum: 10c0/e3f7f577e37bec88cc6680a1d6ef93b198f65696d8e35a75c8ee2c7220b54521f9c30c98500329b7a44e55bbbb41225e803dce4d22d6be7e3a58839f90ac06e8
+  languageName: node
+  linkType: hard
+
 "@gar/promise-retry@npm:^1.0.0":
   version: 1.0.2
   resolution: "@gar/promise-retry@npm:1.0.2"
@@ -6635,6 +6642,7 @@ __metadata:
   resolution: "frontend@workspace:."
   dependencies:
     "@eslint/js": "npm:^10.0.0"
+    "@fontsource-variable/atkinson-hyperlegible-next": "npm:^5.2.6"
     "@mantine/core": "npm:^8.3.1"
     "@mantine/hooks": "npm:^8.3.1"
     "@mantine/notifications": "npm:^8.3.1"

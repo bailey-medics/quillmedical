@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PlaceholderText from "./PlaceholderText";
 
 const meta: Meta<typeof PlaceholderText> = {
-  title: "Typography/PlaceholderText",
+  title: "Foundations/Typography/PlaceholderText",
   component: PlaceholderText,
   parameters: { layout: "padded" },
   tags: ["autodocs"],

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import BodyTextBlack from "./BodyTextBlack";
 
 const meta: Meta<typeof BodyTextBlack> = {
-  title: "Typography/BodyTextBlack",
+  title: "Foundations/Typography/BodyTextBlack",
   component: BodyTextBlack,
   parameters: { layout: "padded" },
   tags: ["autodocs"],

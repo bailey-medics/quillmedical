@@ -1,4 +1,5 @@
 import { MantineProvider } from "@mantine/core";
+import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "../src/styles/typography.css";

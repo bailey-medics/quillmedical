@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import HyperlinkText from "./HyperlinkText";
 
 const meta: Meta<typeof HyperlinkText> = {
-  title: "Typography/HyperlinkText",
+  title: "Foundations/Typography/HyperlinkText",
   component: HyperlinkText,
   parameters: { layout: "padded" },
   tags: ["autodocs"],

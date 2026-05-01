@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
-  title: "Typography/MarkdownView",
+  title: "Foundations/Typography/MarkdownView",
   component: MarkdownView,
   tags: ["autodocs"],
   parameters: {
