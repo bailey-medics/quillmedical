@@ -1,5 +1,6 @@
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { typographyTokens } from "@/theme";
 
 interface BodyTextMutedProps {
   children: ReactNode;
@@ -7,7 +8,7 @@ interface BodyTextMutedProps {
 
 export default function BodyTextMuted({ children }: BodyTextMutedProps) {
   return (
-    <Text size="lg" c="dimmed">
+    <Text size="lg" fw={typographyTokens.fontWeights.body} c="dimmed">
       {children}
     </Text>
   );

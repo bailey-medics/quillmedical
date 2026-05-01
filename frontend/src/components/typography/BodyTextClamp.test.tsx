@@ -17,10 +17,12 @@ describe("BodyTextClamp", () => {
     expect(element).toHaveAttribute("data-line-clamp", "true");
   });
 
-  it("renders with dimmed colour", () => {
-    renderWithMantine(<BodyTextClamp lineClamp={2}>Dimmed text</BodyTextClamp>);
+  it("inherits default text colour", () => {
+    renderWithMantine(
+      <BodyTextClamp lineClamp={2}>Clamped text</BodyTextClamp>,
+    );
 
-    const element = screen.getByText("Dimmed text");
+    const element = screen.getByText("Clamped text");
     expect(element).toHaveClass("mantine-Text-root");
   });
 });

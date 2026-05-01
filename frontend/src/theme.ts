@@ -59,6 +59,10 @@ export const publicColours = {
  * at the sm breakpoint (48em / 768px) in typography.css.
  */
 export const typographyTokens = {
+  fontWeights: {
+    body: 500,
+    bold: 700,
+  },
   fontSizes: {
     xs: { mobile: "0.875rem", desktop: "1rem" }, // 14px → 16px
     sm: { mobile: "0.875rem", desktop: "1rem" }, // 14px → 16px
