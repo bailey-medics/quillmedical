@@ -21,7 +21,7 @@ import {
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
@@ -132,12 +132,12 @@ export default function UserAdminPage() {
             <Stack gap="xs">
               <Group gap="xs">
                 <BodyTextBold>Username:</BodyTextBold>
-                <BodyTextBlack>{user.username}</BodyTextBlack>
+                <BodyTextInline>{user.username}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
                 <BodyTextBold>Email:</BodyTextBold>
-                <BodyTextBlack>{user.email}</BodyTextBlack>
+                <BodyTextInline>{user.email}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
@@ -156,9 +156,9 @@ export default function UserAdminPage() {
             <Stack gap="xs">
               <Group gap="xs">
                 <BodyTextBold>Base profession:</BodyTextBold>
-                <BodyTextBlack>
+                <BodyTextInline>
                   {user.base_profession || "Not set"}
-                </BodyTextBlack>
+                </BodyTextInline>
               </Group>
 
               {user.additional_competencies.length > 0 && (

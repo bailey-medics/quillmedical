@@ -14,7 +14,7 @@ import ActiveStatus from "@/components/badge/ActiveStatus";
 import { StateMessage } from "@/components/message-cards";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
@@ -87,15 +87,15 @@ export default function AdminBankDetailPage() {
           <Stack gap="xs">
             <Group>
               <BodyTextBold>Type:</BodyTextBold>
-              <BodyTextBlack>{bank.type}</BodyTextBlack>
+              <BodyTextInline>{bank.type}</BodyTextInline>
             </Group>
             <Group>
               <BodyTextBold>Version:</BodyTextBold>
-              <BodyTextBlack>{bank.version}</BodyTextBlack>
+              <BodyTextInline>{bank.version}</BodyTextInline>
             </Group>
             <Group>
               <BodyTextBold>Items:</BodyTextBold>
-              <BodyTextBlack>{bank.item_count}</BodyTextBlack>
+              <BodyTextInline>{bank.item_count}</BodyTextInline>
             </Group>
           </Stack>
         </BaseCard>
@@ -131,7 +131,7 @@ export default function AdminBankDetailPage() {
                       style={{ cursor: "pointer" }}
                     >
                       <Table.Td>
-                        <BodyTextBlack>{org.organisation_name}</BodyTextBlack>
+                        <BodyTextInline>{org.organisation_name}</BodyTextInline>
                       </Table.Td>
                       <Table.Td>
                         <ActiveStatus active={org.is_live} size="md" />

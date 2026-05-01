@@ -11,7 +11,7 @@ import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
@@ -36,7 +36,7 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
                 size="sm"
                 container={c.passed ? "green" : "red"}
               />
-              <BodyTextBlack>{c.name}</BodyTextBlack>
+              <BodyTextInline>{c.name}</BodyTextInline>
             </Group>
             <Group gap="xs">
               <BodyTextBold>{(c.value * 100).toFixed(1)}%</BodyTextBold>

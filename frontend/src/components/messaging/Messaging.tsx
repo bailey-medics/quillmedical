@@ -19,7 +19,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import React, { useEffect, useRef, useState } from "react";
 import ProfilePic from "@/components/profile-pic";
 import BodyText from "@/components/typography/BodyText";
-import BodyTextBlack from "@/components/typography/BodyTextBlack";
+import BodyTextInline from "@/components/typography/BodyTextInline";
 
 /** Renders **bold** markdown syntax as <strong> elements. */
 function renderBold(text: string): React.ReactNode[] {
@@ -193,7 +193,9 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <BodyTextBlack>{renderBold(m.text)}</BodyTextBlack>
+                            <BodyTextInline>
+                              {renderBold(m.text)}
+                            </BodyTextInline>
                           </div>
                           <ProfilePic
                             src={m.avatar}
@@ -292,7 +294,9 @@ export default function Messaging({
                               wordBreak: "break-word",
                             }}
                           >
-                            <BodyTextBlack>{renderBold(m.text)}</BodyTextBlack>
+                            <BodyTextInline>
+                              {renderBold(m.text)}
+                            </BodyTextInline>
                           </div>
                         </div>
                         {m.timestamp && (

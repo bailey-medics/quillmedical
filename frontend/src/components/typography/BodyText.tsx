@@ -6,9 +6,5 @@ export interface BodyTextProps {
 }
 
 export default function BodyText({ children }: BodyTextProps) {
-  return (
-    <Text size="lg" c="dimmed">
-      {children}
-    </Text>
-  );
+  return <Text size="lg">{children}</Text>;
 }

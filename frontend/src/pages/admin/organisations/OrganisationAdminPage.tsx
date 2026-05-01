@@ -23,7 +23,7 @@ import {
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
   PlaceholderText,
@@ -261,17 +261,19 @@ export default function OrganisationAdminPage() {
             <Stack gap="xs">
               <Group gap="xs">
                 <BodyTextBold>Name:</BodyTextBold>
-                <BodyTextBlack>{org.name}</BodyTextBlack>
+                <BodyTextInline>{org.name}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
                 <BodyTextBold>Type:</BodyTextBold>
-                <BodyTextBlack>{formatType(org.type)}</BodyTextBlack>
+                <BodyTextInline>{formatType(org.type)}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
                 <BodyTextBold>Location:</BodyTextBold>
-                <BodyTextBlack>{org.location || "Not specified"}</BodyTextBlack>
+                <BodyTextInline>
+                  {org.location || "Not specified"}
+                </BodyTextInline>
               </Group>
 
               <Group gap="xs">
@@ -384,11 +386,11 @@ export default function OrganisationAdminPage() {
           centered
         >
           <Stack gap="md">
-            <BodyTextBlack>
+            <BodyTextInline>
               Are you sure you want to remove{" "}
               <strong>{removingMember?.username}</strong> from this
               organisation?
-            </BodyTextBlack>
+            </BodyTextInline>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setRemovingMember(null)}>
                 Cancel

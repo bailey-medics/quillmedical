@@ -1,24 +1,24 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
-import BodyTextBlack from "./BodyTextBlack";
+import BodyTextInline from "./BodyTextInline";
 
-describe("BodyTextBlack", () => {
+describe("BodyTextInline", () => {
   it("renders children text", () => {
-    renderWithMantine(<BodyTextBlack>Hello world</BodyTextBlack>);
+    renderWithMantine(<BodyTextInline>Hello world</BodyTextInline>);
 
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
-  it("renders with black colour", () => {
-    renderWithMantine(<BodyTextBlack>Black text</BodyTextBlack>);
+  it("renders as a span element", () => {
+    renderWithMantine(<BodyTextInline>Inline text</BodyTextInline>);
 
-    const element = screen.getByText("Black text");
-    expect(element).toHaveClass("mantine-Text-root");
+    const element = screen.getByText("Inline text");
+    expect(element.tagName).toBe("SPAN");
   });
 
   it("preserves whitespace for multiline messages", () => {
-    renderWithMantine(<BodyTextBlack>{"Line one\nLine two"}</BodyTextBlack>);
+    renderWithMantine(<BodyTextInline>{"Line one\nLine two"}</BodyTextInline>);
 
     const element = screen.getByText(/Line one/);
     expect(element).toHaveStyle({ whiteSpace: "pre-wrap" });

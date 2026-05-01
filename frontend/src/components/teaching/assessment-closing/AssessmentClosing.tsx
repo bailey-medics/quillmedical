@@ -6,7 +6,7 @@
  */
 
 import { Button, Stack } from "@mantine/core";
-import { BodyTextBlack, PageHeader } from "@/components/typography";
+import { BodyTextInline, PageHeader } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
 
 interface AssessmentClosingProps {
@@ -30,7 +30,7 @@ export function AssessmentClosing({
     <Stack gap="lg">
       <PageHeader title={title} />
       <BaseCard>
-        <BodyTextBlack>{body}</BodyTextBlack>
+        <BodyTextInline>{body}</BodyTextInline>
       </BaseCard>
       <Button size="lg" onClick={onViewResults} disabled={disabled}>
         View results

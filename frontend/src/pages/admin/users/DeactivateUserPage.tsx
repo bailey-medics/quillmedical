@@ -20,7 +20,7 @@ import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   PlaceholderText,
 } from "@/components/typography";
@@ -168,10 +168,10 @@ export default function DeactivateUserPage() {
           centered
         >
           <Stack gap="md">
-            <BodyTextBlack>
+            <BodyTextInline>
               Are you sure you want to deactivate user{" "}
               <strong>{selectedUser?.username}</strong>?
-            </BodyTextBlack>
+            </BodyTextInline>
             <BodyText>
               This will revoke their access to the system. This action can be
               reversed later.

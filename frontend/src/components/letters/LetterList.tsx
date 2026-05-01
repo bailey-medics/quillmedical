@@ -11,7 +11,7 @@ import { LetterStatus } from "@/components/badge";
 import StateMessage from "@/components/message-cards/StateMessage";
 import HeaderText from "@/components/typography/HeaderText";
 import BodyText from "@/components/typography/BodyText";
-import BodyTextBlack from "@/components/typography/BodyTextBlack";
+import BodyTextInline from "@/components/typography/BodyTextInline";
 
 export type LetterSummary = {
   /** Unique letter identifier */
@@ -92,7 +92,7 @@ export default function LetterList({
                 {letter.author} — {letter.authorRole}
               </BodyText>
             </Group>
-            <BodyTextBlack>{letter.summary}</BodyTextBlack>
+            <BodyTextInline>{letter.summary}</BodyTextInline>
           </Stack>
         </BaseCard>
       ))}

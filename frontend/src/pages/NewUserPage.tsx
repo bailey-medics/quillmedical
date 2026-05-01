@@ -34,7 +34,7 @@ import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
@@ -296,19 +296,21 @@ function Step3Permissions({
         <Stack gap="sm">
           <Group justify="space-between">
             <BodyTextBold>Name:</BodyTextBold>
-            <BodyTextBlack>{formData.name}</BodyTextBlack>
+            <BodyTextInline>{formData.name}</BodyTextInline>
           </Group>
           <Group justify="space-between">
             <BodyTextBold>Email:</BodyTextBold>
-            <BodyTextBlack>{formData.email}</BodyTextBlack>
+            <BodyTextInline>{formData.email}</BodyTextInline>
           </Group>
           <Group justify="space-between">
             <BodyTextBold>Username:</BodyTextBold>
-            <BodyTextBlack>{formData.username}</BodyTextBlack>
+            <BodyTextInline>{formData.username}</BodyTextInline>
           </Group>
           <Group justify="space-between">
             <BodyTextBold>Base profession:</BodyTextBold>
-            <BodyTextBlack>{profession?.display_name || "None"}</BodyTextBlack>
+            <BodyTextInline>
+              {profession?.display_name || "None"}
+            </BodyTextInline>
           </Group>
           <Group justify="space-between">
             <BodyTextBold>System permissions:</BodyTextBold>

@@ -9,7 +9,7 @@ import { Stack, Group } from "@mantine/core";
 import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
-import BodyText from "@/components/typography/BodyText";
+import BodyTextMuted from "@/components/typography/BodyTextMuted";
 import HeaderText from "@/components/typography/HeaderText";
 import BaseCard from "@/components/base-card/BaseCard";
 
@@ -69,7 +69,7 @@ export default function ActionCard({
         ) : (
           <HeaderText>{title}</HeaderText>
         )}
-        <BodyText>{subtitle}</BodyText>
+        <BodyTextMuted>{subtitle}</BodyTextMuted>
         <div
           style={{
             marginTop: "auto",

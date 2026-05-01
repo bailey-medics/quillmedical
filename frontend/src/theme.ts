@@ -113,6 +113,9 @@ export const theme = createTheme({
   /** App font — Atkinson Hyperlegible Next (Braille Institute) */
   fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
 
+  /** Default text colour — brand navy instead of pure black */
+  black: brandColours.primary,
+
   /** Font sizes — mobile-first base values from typographyTokens */
   fontSizes: {
     xs: typographyTokens.fontSizes.xs.mobile,

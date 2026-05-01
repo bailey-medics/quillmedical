@@ -96,11 +96,11 @@ export const textColours: Record<string, TextColourConfig> = {
   },
   body: {
     value: "dimmed",
-    usage: "BodyText, BodyTextClamp — secondary body text",
+    usage: "BodyTextMuted, BodyTextClamp — secondary body text",
   },
   emphasis: {
     value: "black",
-    usage: "BodyTextBlack, BodyTextBold — emphasised body text",
+    usage: "BodyTextInline, BodyTextBold — inline and emphasised body text",
   },
   error: {
     value: "red.8",

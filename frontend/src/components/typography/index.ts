@@ -1,7 +1,8 @@
 export { default as BodyText } from "./BodyText";
-export { default as BodyTextBlack } from "./BodyTextBlack";
 export { default as BodyTextBold } from "./BodyTextBold";
 export { default as BodyTextClamp } from "./BodyTextClamp";
+export { default as BodyTextInline } from "./BodyTextInline";
+export { default as BodyTextMuted } from "./BodyTextMuted";
 export { default as ErrorText } from "./ErrorText";
 export { default as HeaderText } from "./HeaderText";
 export { default as HyperlinkText } from "./HyperlinkText";
