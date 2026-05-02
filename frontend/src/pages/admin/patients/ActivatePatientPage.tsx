@@ -27,7 +27,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  PlaceholderText,
+  EmptyState,
 } from "@/components/typography";
 import { notifications } from "@mantine/notifications";
 import PageHeader from "@/components/page-header";
@@ -269,7 +269,7 @@ export default function ActivatePatientPage() {
           <Center h={300}>
             <Stack align="center" gap="xs">
               <Icon icon={<IconUserCheck />} size="lg" />
-              <PlaceholderText>No deactivated patients found</PlaceholderText>
+              <EmptyState>No deactivated patients found</EmptyState>
             </Stack>
           </Center>
         ) : (

@@ -18,7 +18,7 @@
 import { Group, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
-import { BodyTextInline, HeaderText } from "@/components/typography";
+import { BodyTextInline, Heading } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
@@ -114,7 +114,7 @@ export function QuestionView({
       )}
 
       {/* Question title */}
-      <HeaderText>Question {item.display_order}</HeaderText>
+      <Heading>Question {item.display_order}</Heading>
 
       {/* Patient history */}
       {item.text && (

@@ -15,7 +15,7 @@ import {
 import Icon from "@/components/icons";
 import { badgeColours } from "@/components/badge/badgeColours";
 import BaseCard from "@/components/base-card/BaseCard";
-import { BodyTextInline, HeaderText } from "@/components/typography";
+import { BodyTextInline, Heading } from "@/components/typography";
 
 type ResultMessageVariant = "success" | "fail" | "warning";
 
@@ -51,7 +51,7 @@ export default function ResultMessage({
           <Icon icon={icon} size="lg" />
         </Box>
         <Group gap="xs" wrap="wrap" align="baseline">
-          <HeaderText c="white">{title}</HeaderText>
+          <Heading c="white">{title}</Heading>
           {subtitle && <BodyTextInline c="white">{subtitle}</BodyTextInline>}
         </Group>
       </Group>

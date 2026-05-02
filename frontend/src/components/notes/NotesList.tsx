@@ -12,11 +12,7 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { NoteCategoryBadge } from "@/components/badge";
 import type { NoteCategoryType } from "@/components/badge/NoteCategoryBadge";
 import FormattedDate from "@/components/data/Date";
-import {
-  BodyTextBold,
-  BodyTextInline,
-  HeaderText,
-} from "@/components/typography";
+import { BodyTextBold, BodyTextInline, Heading } from "@/components/typography";
 
 export type ClinicalNote = {
   id: string;
@@ -70,7 +66,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
         >
           <Stack gap="sm">
             <Group justify="space-between">
-              <HeaderText>{note.title}</HeaderText>
+              <Heading>{note.title}</Heading>
               <NoteCategoryBadge category={note.category} />
             </Group>
             <Group gap="lg">

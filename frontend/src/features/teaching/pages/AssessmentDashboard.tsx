@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
-import { HeaderText, PlaceholderText } from "@/components/typography";
+import { Heading, EmptyState } from "@/components/typography";
 import type {
   AssessmentHistory,
   QuestionBank,
@@ -71,7 +71,7 @@ export default function AssessmentDashboard() {
         <PageHeader title="Teaching" />
 
         {banks.filter((bank) => bank.is_live).length === 0 ? (
-          <PlaceholderText>No assessments are currently open.</PlaceholderText>
+          <EmptyState>No assessments are currently open.</EmptyState>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {banks
@@ -93,7 +93,7 @@ export default function AssessmentDashboard() {
         )}
 
         <Box mt="md">
-          <HeaderText>My history</HeaderText>
+          <Heading>My history</Heading>
         </Box>
         <AssessmentHistoryTable
           assessments={history}

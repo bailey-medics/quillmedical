@@ -121,7 +121,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | StatCards | StatCard | `components/stats-card/` |
 | Tables | DataCard, DataTable | `components/tables/` |
 | Teaching | AssessmentClosing, AssessmentHistoryTable, AssessmentIntro, AssessmentProgress, AssessmentResult, AssessmentTimer, ExamCloseButton, QuestionView, ScoreBreakdown | `components/teaching/` |
-| Typography | BodyText, BodyTextBold, BodyTextClamp, BodyTextInline, BodyTextMuted, ErrorText, HeaderText, HyperlinkText, MarkdownView, PageHeader, PlaceholderText, PublicText, PublicTitle | `components/typography/` |
+| Typography | BodyText, BodyTextBold, BodyTextClamp, BodyTextInline, EmptyState, ErrorMessage, Heading, MarkdownView, PageHeader, PublicText, PublicTitle, TextLink | `components/typography/` |
 | Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.

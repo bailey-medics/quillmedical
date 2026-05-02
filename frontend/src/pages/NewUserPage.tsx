@@ -36,7 +36,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
+  Heading,
 } from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
 import MultiStepForm, {
@@ -94,7 +94,7 @@ function Step1BasicDetails({
 
   return (
     <Stack gap="md">
-      <HeaderText>Basic details</HeaderText>
+      <Heading>Basic details</Heading>
       <BodyText>
         Enter the user's basic information and select their base profession.
       </BodyText>
@@ -198,7 +198,7 @@ function Step2Competencies({
 
   return (
     <Stack gap="md">
-      <HeaderText>Competency configuration</HeaderText>
+      <Heading>Competency configuration</Heading>
       <BodyText>
         Configure additional or removed competencies for this user.
       </BodyText>
@@ -272,7 +272,7 @@ function Step3Permissions({
 
   return (
     <Stack gap="md">
-      <HeaderText>System permissions & review</HeaderText>
+      <Heading>System permissions & review</Heading>
       <BodyText>Set system permissions and review the user details.</BodyText>
 
       <SelectField
@@ -372,11 +372,11 @@ function Step4Confirmation({
       {success ? (
         <>
           <Icon icon={<IconCheck />} size="xl" colour="green" />
-          <HeaderText>
+          <Heading>
             {isEditMode
               ? "User updated successfully"
               : "User created successfully"}
-          </HeaderText>
+          </Heading>
           <BodyText>
             {isEditMode
               ? "The user's details have been updated."
@@ -389,9 +389,9 @@ function Step4Confirmation({
       ) : (
         <>
           <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
-          <HeaderText>
+          <Heading>
             {isEditMode ? "Failed to update user" : "Failed to create user"}
-          </HeaderText>
+          </Heading>
           <BodyText>
             {isEditMode
               ? "There was an error updating the user. Please try again."

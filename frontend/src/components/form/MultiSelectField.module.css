@@ -4,10 +4,6 @@
   --pill-height: auto;
 }
 
-.pill {
-  font-weight: 500;
-}
-
 .input {
   font-size: var(--mantine-font-size-lg);
   min-height: var(--input-height);

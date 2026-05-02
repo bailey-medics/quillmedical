@@ -23,7 +23,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
+  Heading,
 } from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
 import {
@@ -125,7 +125,7 @@ export default function UserAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between">
-              <HeaderText>Account information</HeaderText>
+              <Heading>Account information</Heading>
               <PermissionBadge permission={user.system_permissions} />
             </Group>
 
@@ -151,7 +151,7 @@ export default function UserAdminPage() {
         {/* CBAC Settings */}
         <BaseCard>
           <Stack gap="md">
-            <HeaderText>CBAC settings</HeaderText>
+            <Heading>CBAC settings</Heading>
 
             <Stack gap="xs">
               <Group gap="xs">
@@ -198,7 +198,7 @@ export default function UserAdminPage() {
 
         {/* Action Cards */}
         <Stack gap="md">
-          <HeaderText>Actions</HeaderText>
+          <Heading>Actions</Heading>
 
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <ActionCard

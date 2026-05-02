@@ -22,7 +22,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  PlaceholderText,
+  EmptyState,
 } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
@@ -124,7 +124,7 @@ export default function DeactivateUserPage() {
           </Alert>
         ) : users.length === 0 ? (
           <Center p="xl">
-            <PlaceholderText>No users found</PlaceholderText>
+            <EmptyState>No users found</EmptyState>
           </Center>
         ) : (
           <Table striped highlightOnHover>

@@ -1,23 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@test/test-utils";
-import HyperlinkText from "./HyperlinkText";
+import TextLink from "./TextLink";
 
-describe("HyperlinkText", () => {
+describe("TextLink", () => {
   it("renders children text", () => {
-    renderWithRouter(<HyperlinkText to="/register">Register</HyperlinkText>);
+    renderWithRouter(<TextLink to="/register">Register</TextLink>);
     expect(screen.getByText("Register")).toBeInTheDocument();
   });
 
   it("renders as a link", () => {
-    renderWithRouter(<HyperlinkText to="/about">Learn more</HyperlinkText>);
+    renderWithRouter(<TextLink to="/about">Learn more</TextLink>);
     const link = screen.getByRole("link", { name: "Learn more" });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/about");
   });
 
   it("uses Mantine Anchor styling", () => {
-    renderWithRouter(<HyperlinkText to="/register">Sign up</HyperlinkText>);
+    renderWithRouter(<TextLink to="/register">Sign up</TextLink>);
     const link = screen.getByRole("link", { name: "Sign up" });
     expect(link).toHaveClass("mantine-Anchor-root");
   });

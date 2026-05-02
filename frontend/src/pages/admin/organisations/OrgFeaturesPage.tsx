@@ -27,7 +27,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
+  Heading,
 } from "@/components/typography";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import DirtyFormNavigation from "@/components/warnings";
@@ -205,7 +205,7 @@ export default function OrgFeaturesPage() {
 
         <BaseCard>
           <Stack gap="lg">
-            <HeaderText>Available features</HeaderText>
+            <Heading>Available features</Heading>
 
             <BodyTextInline>
               You are about to make organisation-wide changes. Please do so with

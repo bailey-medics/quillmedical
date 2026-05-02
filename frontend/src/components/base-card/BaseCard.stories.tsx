@@ -6,7 +6,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
-import { BodyText, HeaderText } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import BaseCard from "./BaseCard";
 
 const meta: Meta<typeof BaseCard> = {
@@ -23,7 +23,7 @@ export const Default: Story = {
   render: () => (
     <BaseCard>
       <Stack gap="sm">
-        <HeaderText>Base card</HeaderText>
+        <Heading>Base card</Heading>
         <BodyText>
           Standard shadow, radius, border, and lg padding applied automatically.
         </BodyText>
@@ -37,7 +37,7 @@ export const WithBackground: Story = {
   render: () => (
     <BaseCard bg="teal">
       <Stack gap="sm">
-        <HeaderText c="white">Coloured card</HeaderText>
+        <Heading c="white">Coloured card</Heading>
         <BodyText c="white">
           Pass a bg prop and the border disappears. Text is set to white
           automatically.

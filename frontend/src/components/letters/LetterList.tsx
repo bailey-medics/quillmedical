@@ -9,7 +9,7 @@ import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { LetterStatus } from "@/components/badge";
 import StateMessage from "@/components/message-cards/StateMessage";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";
 
@@ -83,7 +83,7 @@ export default function LetterList({
         >
           <Stack gap="sm">
             <Group justify="space-between">
-              <HeaderText>{letter.title}</HeaderText>
+              <Heading>{letter.title}</Heading>
               <LetterStatus status={letter.status} />
             </Group>
             <Group gap="lg">

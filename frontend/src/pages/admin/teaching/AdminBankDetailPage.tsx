@@ -16,7 +16,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
+  Heading,
 } from "@/components/typography";
 import MarkdownView from "@/components/typography/MarkdownView";
 import { api } from "@/lib/api";
@@ -103,7 +103,7 @@ export default function AdminBankDetailPage() {
         {/* Organisations */}
         <BaseCard>
           <Stack gap="sm">
-            <HeaderText>Organisations</HeaderText>
+            <Heading>Organisations</Heading>
             {orgs.length === 0 ? (
               <BodyText>
                 No organisations have the teaching feature enabled.
@@ -155,7 +155,7 @@ export default function AdminBankDetailPage() {
         {(bank.email_student_on_pass || bank.email_coordinator_on_pass) && (
           <BaseCard>
             <Stack gap="sm">
-              <HeaderText>Email templates</HeaderText>
+              <Heading>Email templates</Heading>
 
               {bank.email_student_on_pass &&
                 (bank.student_email_template ? (

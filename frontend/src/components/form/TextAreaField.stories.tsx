@@ -19,6 +19,15 @@ export const Default: Story = {
   },
 };
 
+export const WithValue: Story = {
+  args: {
+    label: "Message",
+    value:
+      "Dear Dr Corbett, thank you for seeing this patient. They have been experiencing intermittent symptoms over the past three weeks.",
+    minRows: 3,
+  },
+};
+
 export const Autosize: Story = {
   args: {
     label: "Notes",

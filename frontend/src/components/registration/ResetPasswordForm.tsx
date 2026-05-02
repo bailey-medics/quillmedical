@@ -2,7 +2,7 @@ import { Button, Group, Paper, Stack } from "@mantine/core";
 import { useState } from "react";
 import { PasswordField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { ErrorText, HeaderText, HyperlinkText } from "@components/typography";
+import { ErrorMessage, Heading, TextLink } from "@components/typography";
 
 export interface ResetPasswordFormProps {
   /** Called when the form is submitted */
@@ -47,7 +47,7 @@ export default function ResetPasswordForm({
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
         <form onSubmit={handleSubmit} noValidate>
           <Stack>
-            <HeaderText>Reset password</HeaderText>
+            <Heading>Reset password</Heading>
             <PasswordField
               label="New password"
               value={password}
@@ -62,12 +62,12 @@ export default function ResetPasswordForm({
               required
               autoComplete="new-password"
             />
-            {displayError && <ErrorText>{displayError}</ErrorText>}
+            {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
             <Button type="submit" loading={submitting} size="lg">
               Reset password
             </Button>
             <Group justify="flex-end">
-              <HyperlinkText to="/login">Back to sign in</HyperlinkText>
+              <TextLink to="/login">Back to sign in</TextLink>
             </Group>
           </Stack>
         </form>

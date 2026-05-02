@@ -116,7 +116,7 @@ export default function Icon({
         color={container}
         variant={containerVariant}
         size={pixelSize + 16}
-        radius="xl"
+        radius="50%"
       >
         {containerIcon}
       </ThemeIcon>

@@ -12,7 +12,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
-import HeaderText from "@components/typography/HeaderText";
+import Heading from "@components/typography/Heading";
 
 export type Appointment = {
   id: string;
@@ -57,7 +57,7 @@ function AppointmentCard({
     >
       <Stack gap="sm">
         <Group justify="space-between">
-          <HeaderText>{appointment.title}</HeaderText>
+          <Heading>{appointment.title}</Heading>
           <AppointmentStatus status={appointment.status} />
         </Group>
         <BodyTextBold>
@@ -109,7 +109,7 @@ export default function AppointmentsList({
     <Stack gap="lg">
       {upcoming.length > 0 && (
         <>
-          <HeaderText>Upcoming</HeaderText>
+          <Heading>Upcoming</Heading>
           {upcoming.map((appt) => (
             <AppointmentCard
               key={appt.id}
@@ -122,7 +122,7 @@ export default function AppointmentsList({
 
       {past.length > 0 && (
         <>
-          <HeaderText>Past appointments</HeaderText>
+          <Heading>Past appointments</Heading>
           {past.map((appt) => (
             <AppointmentCard
               key={appt.id}

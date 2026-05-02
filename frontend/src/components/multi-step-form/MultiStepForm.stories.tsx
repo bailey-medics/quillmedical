@@ -13,7 +13,7 @@ import { Button, Group, Stack } from "@mantine/core";
 import { IconCheck } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import { TextField } from "@/components/form";
-import { BodyText, ErrorText, HeaderText } from "@/components/typography";
+import { BodyText, ErrorMessage, Heading } from "@/components/typography";
 
 const meta = {
   title: "MultiStepForm/MultiStepForm",
@@ -51,7 +51,7 @@ export const BasicThreeSteps: Story = {
         description: "Basic information",
         content: () => (
           <Stack gap="md">
-            <HeaderText>Enter your personal information</HeaderText>
+            <Heading>Enter your personal information</Heading>
             <TextField label="Name" placeholder="John Doe" />
             <TextField label="Email" placeholder="john@example.com" />
           </Stack>
@@ -62,7 +62,7 @@ export const BasicThreeSteps: Story = {
         description: "Your preferences",
         content: () => (
           <Stack gap="md">
-            <HeaderText>Select your preferences</HeaderText>
+            <Heading>Select your preferences</Heading>
             <TextField label="Role" placeholder="Developer" />
             <TextField label="Department" placeholder="Engineering" />
           </Stack>
@@ -73,7 +73,7 @@ export const BasicThreeSteps: Story = {
         description: "Confirm details",
         content: () => (
           <Stack gap="md">
-            <HeaderText>Review your information</HeaderText>
+            <Heading>Review your information</Heading>
             <BodyText>Name: John Doe</BodyText>
             <BodyText>Email: john@example.com</BodyText>
             <BodyText>Role: Developer</BodyText>
@@ -119,8 +119,8 @@ export const WithValidation: Story = {
         },
         content: () => (
           <Stack gap="md">
-            <HeaderText>All fields are required</HeaderText>
-            {validationError && <ErrorText>{validationError}</ErrorText>}
+            <Heading>All fields are required</Heading>
+            {validationError && <ErrorMessage>{validationError}</ErrorMessage>}
             <TextField
               label="Name"
               placeholder="John Doe"
@@ -145,7 +145,7 @@ export const WithValidation: Story = {
         content: () => (
           <Stack gap="md" align="center">
             <Icon icon={<IconCheck />} size="lg" colour="teal" />
-            <HeaderText>Form submitted successfully</HeaderText>
+            <Heading>Form submitted successfully</Heading>
             <BodyText>Name: {name}</BodyText>
             <BodyText>Email: {email}</BodyText>
           </Stack>
@@ -177,7 +177,7 @@ export const CustomButtonLabels: Story = {
         nextButtonLabel: "Get started",
         content: () => (
           <Stack gap="md">
-            <HeaderText>Welcome to the setup wizard</HeaderText>
+            <Heading>Welcome to the setup wizard</Heading>
             <BodyText>
               Click &ldquo;Get started&rdquo; to begin the setup process.
             </BodyText>
@@ -201,7 +201,7 @@ export const CustomButtonLabels: Story = {
         content: () => (
           <Stack gap="md" align="center">
             <Icon icon={<IconCheck />} size="lg" colour="teal" />
-            <HeaderText>Setup complete</HeaderText>
+            <Heading>Setup complete</Heading>
           </Stack>
         ),
       },
@@ -224,7 +224,7 @@ export const SingleStep: Story = {
         description: "One and done",
         content: () => (
           <Stack gap="md">
-            <HeaderText>Single step form</HeaderText>
+            <Heading>Single step form</Heading>
             <BodyText>This form only has one step.</BodyText>
             <TextField label="Input" placeholder="Enter value" />
           </Stack>
@@ -288,7 +288,7 @@ export const CustomNavigation: Story = {
         description: "Custom buttons",
         content: ({ nextStep }) => (
           <Stack gap="md">
-            <HeaderText>Step 1 — click the custom button below</HeaderText>
+            <Heading>Step 1 — click the custom button below</Heading>
             <Button onClick={nextStep} fullWidth>
               Custom next button
             </Button>
@@ -300,7 +300,7 @@ export const CustomNavigation: Story = {
         description: "More options",
         content: ({ nextStep, prevStep }) => (
           <Stack gap="md">
-            <HeaderText>Step 2 — custom navigation controls</HeaderText>
+            <Heading>Step 2 — custom navigation controls</Heading>
             <Group grow>
               <Button variant="outline" onClick={prevStep}>
                 Custom back
@@ -315,7 +315,7 @@ export const CustomNavigation: Story = {
         description: "Final step",
         content: ({ prevStep, onCancel }) => (
           <Stack gap="md">
-            <HeaderText>Step 3 — last step</HeaderText>
+            <Heading>Step 3 — last step</Heading>
             <Group grow>
               <Button variant="outline" onClick={prevStep}>
                 Go back
@@ -446,11 +446,14 @@ export const TestNavigateThroughSteps: Story = {
  */
 export const TestCancelButton: Story = {
   ...BasicThreeSteps,
+  tags: [],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
 
-    // Click cancel button
-    const cancelButton = canvas.getByRole("button", { name: /Cancel/i });
+    // Click cancel button (use findBy to wait for render)
+    const cancelButton = await canvas.findByRole("button", {
+      name: /Cancel/i,
+    });
     await userEvent.click(cancelButton);
 
     // Should have called onCancel
@@ -465,6 +468,7 @@ export const TestCancelButton: Story = {
  */
 export const TestCannotSkipForward: Story = {
   ...BasicThreeSteps,
+  tags: [],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

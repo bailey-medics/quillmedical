@@ -8,7 +8,7 @@
 import { Button, Container, Group, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PasswordField from "@/components/form/PasswordField";
-import { BodyText, ErrorText, HeaderText } from "@/components/typography";
+import { BodyText, ErrorMessage, Heading } from "@/components/typography";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
@@ -66,7 +66,7 @@ export default function ChangePassword() {
       <Container size="lg" py="xl">
         <BaseCard maw={480} mx="auto">
           <Stack>
-            <HeaderText>Password changed</HeaderText>
+            <Heading>Password changed</Heading>
             <BodyText>Your password has been updated successfully.</BodyText>
             <Group justify="flex-end">
               <Button onClick={() => navigate("/settings")}>
@@ -84,7 +84,7 @@ export default function ChangePassword() {
       <BaseCard maw={480} mx="auto">
         <form onSubmit={onSubmit}>
           <Stack>
-            <HeaderText>Change password</HeaderText>
+            <Heading>Change password</Heading>
             <PasswordField
               label="Current password"
               value={currentPassword}
@@ -103,7 +103,7 @@ export default function ChangePassword() {
               onChange={(e) => setConfirmPassword(e.currentTarget.value)}
               required
             />
-            {error && <ErrorText>{error}</ErrorText>}
+            {error && <ErrorMessage>{error}</ErrorMessage>}
             <Group justify="flex-end">
               <Button variant="subtle" onClick={() => navigate("/settings")}>
                 Cancel

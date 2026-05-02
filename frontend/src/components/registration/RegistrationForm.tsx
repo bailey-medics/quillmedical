@@ -1,7 +1,7 @@
 import { Button, Paper, Stack } from "@mantine/core";
 import { useState } from "react";
 import { PasswordField, SelectField, TextField } from "@components/form";
-import { ErrorText, HeaderText } from "@components/typography";
+import { ErrorMessage, Heading } from "@components/typography";
 
 export interface RegistrationFormData {
   username: string;
@@ -65,7 +65,7 @@ export default function RegistrationForm({
     <Paper maw={480} mx="auto" p="lg" mt="xl" radius="md" withBorder>
       <form onSubmit={handleSubmit} noValidate>
         <Stack>
-          <HeaderText>Create an account</HeaderText>
+          <Heading>Create an account</Heading>
           <TextField
             label="Username"
             value={username}
@@ -109,7 +109,7 @@ export default function RegistrationForm({
             required
             autoComplete="new-password"
           />
-          {displayError && <ErrorText>{displayError}</ErrorText>}
+          {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
           <Button type="submit" loading={submitting} size="lg">
             Register
           </Button>

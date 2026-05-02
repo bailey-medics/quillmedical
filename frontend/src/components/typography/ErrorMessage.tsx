@@ -1,5 +1,5 @@
 /**
- * ErrorText Component
+ * ErrorMessage Component
  *
  * Validation and error message text with an alert icon.
  * Uses `orange.8` for colour-blind accessibility (avoids red/green ambiguity).
@@ -9,7 +9,7 @@ import { Box, Group, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 
-export interface ErrorTextProps {
+export interface ErrorMessageProps {
   /** Error message content */
   children: ReactNode;
 }
@@ -20,10 +20,10 @@ export interface ErrorTextProps {
  * @param props - Component props
  * @returns Inline group with icon and bold error text
  */
-export default function ErrorText({ children }: ErrorTextProps) {
+export default function ErrorMessage({ children }: ErrorMessageProps) {
   return (
     <Group gap={6} align="center" wrap="nowrap">
-      <Box style={{ flexShrink: 0 }}>
+      <Box style={{ flexShrink: 0, position: "relative", top: 2 }}>
         <IconAlertCircle size={28} color="var(--mantine-color-orange-8)" />
       </Box>
       <Text size="lg" c="orange.8" fw={700}>

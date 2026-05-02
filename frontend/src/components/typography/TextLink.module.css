@@ -1,4 +1,4 @@
-/* HyperlinkText — link colour and hover state using primary scale */
+/* TextLink — link colour and hover state using primary scale */
 
 .link {
   color: var(--mantine-color-primary-4);

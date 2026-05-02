@@ -34,8 +34,8 @@ interface PermissionBadgeProps {
 }
 
 const PERMISSION_CONFIG: Record<UserPermission, BadgeColourConfig> = {
-  superadmin: badgeColours.success,
-  admin: badgeColours.info,
+  superadmin: badgeColours.info,
+  admin: badgeColours.success,
   staff: badgeColours.neutral,
   patient: badgeColours.alert,
 };

@@ -18,7 +18,6 @@ export default function MultiSelectField(props: MultiSelectProps) {
       classNames={{
         root: classes.root,
         input: classes.input,
-        pill: classes.pill,
         pillsList: classes.pillsList,
         inputField: classes.inputField,
         section: classes.section,

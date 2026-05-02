@@ -10,7 +10,7 @@ import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
 import BodyText from "@/components/typography/BodyText";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 import BaseCard from "@/components/base-card/BaseCard";
 
 interface ActionCardProps {
@@ -64,10 +64,10 @@ export default function ActionCard({
         {icon ? (
           <Group>
             <Icon icon={icon} size={iconSize} />
-            <HeaderText>{title}</HeaderText>
+            <Heading>{title}</Heading>
           </Group>
         ) : (
-          <HeaderText>{title}</HeaderText>
+          <Heading>{title}</Heading>
         )}
         <BodyText>{subtitle}</BodyText>
         <div

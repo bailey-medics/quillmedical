@@ -176,7 +176,7 @@ export const Overview: Story = {
             <Table.Tr>
               <Table.Td>
                 <Text fw={600} size="sm">
-                  HeaderText
+                  Heading
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -223,16 +223,6 @@ export const Overview: Story = {
             <Table.Tr>
               <Table.Td>
                 <Text fw={600} size="sm">
-                  BodyTextMuted
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm">Secondary/supporting text — dimmed colour</Text>
-              </Table.Td>
-            </Table.Tr>
-            <Table.Tr>
-              <Table.Td>
-                <Text fw={600} size="sm">
                   BodyTextClamp
                 </Text>
               </Table.Td>
@@ -245,7 +235,7 @@ export const Overview: Story = {
             <Table.Tr>
               <Table.Td>
                 <Text fw={600} size="sm">
-                  ErrorText
+                  ErrorMessage
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -255,7 +245,7 @@ export const Overview: Story = {
             <Table.Tr>
               <Table.Td>
                 <Text fw={600} size="sm">
-                  PlaceholderText
+                  EmptyState
                 </Text>
               </Table.Td>
               <Table.Td>
@@ -265,7 +255,7 @@ export const Overview: Story = {
             <Table.Tr>
               <Table.Td>
                 <Text fw={600} size="sm">
-                  HyperlinkText
+                  TextLink
                 </Text>
               </Table.Td>
               <Table.Td>

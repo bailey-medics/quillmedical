@@ -20,7 +20,7 @@ import {
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
-import { BodyTextInline, HeaderText } from "@/components/typography";
+import { BodyTextInline, Heading } from "@/components/typography";
 import { statusColours } from "@/styles/semanticColours";
 
 /** All supported state message types */
@@ -115,7 +115,7 @@ export default function StateMessage(props: Props) {
             <Icon icon={<IconAlertCircle />} size="lg" />
           </Box>
           <Stack gap={4}>
-            <HeaderText c="white">Error loading data</HeaderText>
+            <Heading c="white">Error loading data</Heading>
             <BodyTextInline c="white">{props.message}</BodyTextInline>
           </Stack>
         </Group>
@@ -132,7 +132,7 @@ export default function StateMessage(props: Props) {
           <Icon icon={icon} size="lg" />
         </Box>
         <Stack gap={4}>
-          <HeaderText c="white">{title}</HeaderText>
+          <Heading c="white">{title}</Heading>
           <BodyTextInline c="white">{description}</BodyTextInline>
         </Stack>
       </Group>

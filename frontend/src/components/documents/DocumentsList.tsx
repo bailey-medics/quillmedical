@@ -1,7 +1,7 @@
 import React from "react";
 import { Skeleton, Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import type { DocumentProps } from "./Document";
@@ -60,7 +60,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Stack gap={2}>
-              <HeaderText>{doc.name}</HeaderText>
+              <Heading>{doc.name}</Heading>
               <BodyText>{doc.url.split("/").pop()}</BodyText>
             </Stack>
             {doc.thumbnailUrl ? (

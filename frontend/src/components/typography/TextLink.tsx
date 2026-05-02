@@ -1,5 +1,5 @@
 /**
- * HyperlinkText Component
+ * TextLink Component
  *
  * Internal navigation link styled with the primary colour and permanent
  * underline. Wraps React Router's `Link` in a Mantine `Anchor` for
@@ -9,9 +9,9 @@
 import { Anchor } from "@mantine/core";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import classes from "./HyperlinkText.module.css";
+import classes from "./TextLink.module.css";
 
-interface HyperlinkTextProps {
+interface TextLinkProps {
   /** Internal route path to navigate to */
   to: string;
   /** Link content */
@@ -24,7 +24,7 @@ interface HyperlinkTextProps {
  * @param props - Component props
  * @returns Styled anchor element wrapping a React Router Link
  */
-export default function HyperlinkText({ to, children }: HyperlinkTextProps) {
+export default function TextLink({ to, children }: TextLinkProps) {
   return (
     <Anchor
       component={Link}

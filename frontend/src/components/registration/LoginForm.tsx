@@ -2,7 +2,7 @@ import { Button, Group, Paper, Stack } from "@mantine/core";
 import { useState } from "react";
 import { PasswordField, TextField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { ErrorText, HeaderText, HyperlinkText } from "@components/typography";
+import { ErrorMessage, Heading, TextLink } from "@components/typography";
 
 export interface LoginFormData {
   username: string;
@@ -55,7 +55,7 @@ export default function LoginForm({
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
         <form onSubmit={handleSubmit} noValidate>
           <Stack>
-            <HeaderText>Sign in to Quill</HeaderText>
+            <Heading>Sign in to Quill</Heading>
             <TextField
               label="Username"
               value={username}
@@ -72,9 +72,7 @@ export default function LoginForm({
             />
             {forgotPasswordPath && (
               <Group justify="flex-end">
-                <HyperlinkText to={forgotPasswordPath}>
-                  Forgot password?
-                </HyperlinkText>
+                <TextLink to={forgotPasswordPath}>Forgot password?</TextLink>
               </Group>
             )}
             {requireTotp && (
@@ -88,15 +86,15 @@ export default function LoginForm({
                 inputMode="numeric"
               />
             )}
-            {error && <ErrorText>{error}</ErrorText>}
+            {error && <ErrorMessage>{error}</ErrorMessage>}
             <Button type="submit" loading={submitting} size="lg">
               Sign in
             </Button>
             {registerPath && (
               <Group justify="flex-end">
-                <HyperlinkText to={registerPath}>
+                <TextLink to={registerPath}>
                   Don&apos;t have an account? Register
-                </HyperlinkText>
+                </TextLink>
               </Group>
             )}
           </Stack>

@@ -13,7 +13,7 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
+  Heading,
 } from "@/components/typography";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import PassIcon from "@/components/badge/PassIcon";
@@ -38,7 +38,7 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
   return (
     <BaseCard>
       <Stack gap="md">
-        <HeaderText>Score breakdown</HeaderText>
+        <Heading>Score breakdown</Heading>
         {criteria.map((c) =>
           isMobile ? (
             <Stack key={c.name} gap={4}>

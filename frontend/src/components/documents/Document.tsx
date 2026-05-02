@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Image, Stack, Paper, useMantineTheme } from "@mantine/core";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -38,7 +38,7 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
 
   return content(
     <>
-      <HeaderText>{name}</HeaderText>
+      <Heading>{name}</Heading>
       {type === "image" ? (
         <Image src={url} alt={name} radius="sm" />
       ) : type === "pdf" ? (

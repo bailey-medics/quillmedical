@@ -29,7 +29,7 @@ import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
-import { BodyText, BodyTextInline, HeaderText } from "@/components/typography";
+import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -89,7 +89,7 @@ function Step1Demographics({
 
   return (
     <Stack gap="md">
-      <HeaderText>Patient demographics</HeaderText>
+      <Heading>Patient demographics</Heading>
       <BodyText>
         Enter the patient's demographic information for their FHIR record.
       </BodyText>
@@ -188,7 +188,7 @@ function Step2UserAccount({
 }) {
   return (
     <Stack gap="md">
-      <HeaderText>User account (optional)</HeaderText>
+      <Heading>User account (optional)</Heading>
       <BodyText>
         Create a user account for this patient to enable portal access.
       </BodyText>
@@ -275,11 +275,11 @@ function Step3Confirmation({
       {success ? (
         <>
           <Icon icon={<IconCheck />} size="xl" colour="green" />
-          <HeaderText>
+          <Heading>
             {isEditMode
               ? "Patient updated successfully"
               : "Patient created successfully"}
-          </HeaderText>
+          </Heading>
           <Box ta="center">
             <BodyText>
               {isEditMode
@@ -299,11 +299,11 @@ function Step3Confirmation({
       ) : (
         <>
           <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
-          <HeaderText>
+          <Heading>
             {isEditMode
               ? "Failed to update patient"
               : "Failed to create patient"}
-          </HeaderText>
+          </Heading>
           <Box ta="center">
             <BodyText>
               {isEditMode

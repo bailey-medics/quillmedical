@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import ErrorText from "./ErrorText";
+import ErrorMessage from "./ErrorMessage";
 
-const meta: Meta<typeof ErrorText> = {
-  title: "Foundations/Typography/ErrorText",
-  component: ErrorText,
+const meta: Meta<typeof ErrorMessage> = {
+  title: "Foundations/Typography/ErrorMessage",
+  component: ErrorMessage,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof ErrorText>;
+type Story = StoryObj<typeof ErrorMessage>;
 
 export const Default: Story = {
   args: {

@@ -16,11 +16,7 @@ import {
 } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import {
-  BodyText,
-  BodyTextBold,
-  PlaceholderText,
-} from "@/components/typography";
+import { BodyText, BodyTextBold, EmptyState } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
 interface User {
@@ -88,7 +84,7 @@ export default function ViewAllUsersPage() {
           </Alert>
         ) : users.length === 0 ? (
           <Center p="xl">
-            <PlaceholderText>No users found</PlaceholderText>
+            <EmptyState>No users found</EmptyState>
           </Center>
         ) : (
           <Table striped highlightOnHover>
