@@ -28,6 +28,19 @@ export default meta;
 type Story = StoryObj;
 
 /* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Mantine default grey scale — light shades only (0–4). */
+const greyScale = [
+  "#f8f9fa", // 0
+  "#f1f3f5", // 1
+  "#e9ecef", // 2
+  "#dee2e6", // 3
+  "#ced4da", // 4
+] as const;
+
+/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -100,31 +113,27 @@ function TextSwatch({
           width: 48,
           height: 48,
           borderRadius: 8,
-          backgroundColor: isCssVar
-            ? config.value
-            : isInherit
-              ? "black"
-              : undefined,
           border: "1px solid var(--mantine-color-gray-3)",
           flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {!isCssVar && !isInherit && (
-          <Text
-            size="xl"
-            fw={700}
-            c={config.value}
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            Aa
-          </Text>
-        )}
+        <Text
+          size="xl"
+          fw={700}
+          c={!isInherit && !isCssVar ? config.value : undefined}
+          style={
+            isInherit
+              ? { color: "var(--mantine-color-text)" }
+              : isCssVar
+                ? { color: config.value }
+                : undefined
+          }
+        >
+          Aa
+        </Text>
       </Box>
       <div>
         <Text size="md" fw={700}>
@@ -172,6 +181,11 @@ export const Overview: Story = {
             colour={brand.background}
             label="Background"
             description={`${brand.background} — page backgrounds, card surfaces`}
+          />
+          <ColourSwatch
+            colour="#f8f9fa"
+            label="Default grey"
+            description="#f8f9fa — subtle backgrounds, input fills, hover states"
           />
         </Stack>
       </div>
@@ -289,6 +303,7 @@ export const Scales: Story = {
               scale={secondaryScale}
               primaryShade={5}
             />
+            <ScaleRow name="grey (neutral)" scale={greyScale} />
           </Stack>
         </div>
       </Stack>

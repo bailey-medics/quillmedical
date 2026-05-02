@@ -35,8 +35,8 @@ export type BadgeColourConfig = {
  * - alert: red — no-show, patient, attention needed
  */
 export const badgeColours: Record<BadgeColour, BadgeColourConfig> = {
-  success: { bg: "green", text: "white" },
-  warning: { bg: "yellow.8", text: "white" },
+  success: { bg: "teal", text: "white" },
+  warning: { bg: "cyan.6", text: "white" },
   outstanding: { bg: "pink", text: "white" },
   info: { bg: "primary", text: "white" },
   neutral: { bg: "yellow.4", text: "dark" },

@@ -7,7 +7,7 @@ export interface PlaceholderTextProps {
 
 export default function PlaceholderText({ children }: PlaceholderTextProps) {
   return (
-    <Text size="lg" style={{ color: "var(--mantine-color-placeholder)" }}>
+    <Text size="lg" c="gray.4">
       {children}
     </Text>
   );

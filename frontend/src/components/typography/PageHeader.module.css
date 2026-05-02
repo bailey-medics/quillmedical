@@ -1,9 +1,10 @@
 .lgTitle {
-  font-size: 2.25rem !important;
+  font-size: 1.875rem !important;
+  color: var(--mantine-color-primary-6);
 }
 
 @media (width >= 48em) {
   .lgTitle {
-    font-size: 3.5rem !important;
+    font-size: 2.5rem !important;
   }
 }
