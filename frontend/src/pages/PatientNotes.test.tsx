@@ -60,10 +60,10 @@ describe("PatientNotes", () => {
       initialRoute: "/patients/test-patient/notes",
     });
 
-    const consultationBadges = screen.getAllByText("consultation");
+    const consultationBadges = screen.getAllByText("Consultation");
     expect(consultationBadges.length).toBe(3);
-    expect(screen.getByText("telephone")).toBeInTheDocument();
-    expect(screen.getByText("observation")).toBeInTheDocument();
+    expect(screen.getByText("Telephone")).toBeInTheDocument();
+    expect(screen.getByText("Observation")).toBeInTheDocument();
   });
 
   it("renders note content with SOAP format", () => {

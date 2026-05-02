@@ -71,7 +71,7 @@
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  color: black;
+  color: var(--mantine-color-black);
   font-weight: 700;
   margin: 0 0 0.5em;
 }

@@ -7,7 +7,7 @@ import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import IconTextButton from "@/components/button/IconTextButton";
 import SolidSwitch from "@/components/form/SolidSwitch";
-import { BodyText, HeaderText } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -123,7 +123,7 @@ export default function Settings() {
           <Stack gap="md">
             <Group justify="space-between" wrap="nowrap">
               <Stack gap={4}>
-                <HeaderText>Two-factor authentication (TOTP)</HeaderText>
+                <Heading>Two-factor authentication (TOTP)</Heading>
                 <BodyText>
                   Use an authenticator app to add a second factor to your
                   account.

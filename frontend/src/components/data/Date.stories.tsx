@@ -3,7 +3,7 @@ import { Stack, Divider } from "@mantine/core";
 import FormattedDate from "./Date";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 
 const bodyTextDecorator: Decorator[] = [
   (Story) => (
@@ -108,7 +108,7 @@ export const Comparison: Story = {
     return (
       <Stack gap="xl">
         <div>
-          <HeaderText>British English (en-GB)</HeaderText>
+          <Heading>British English (en-GB)</Heading>
           <Stack gap="xs">
             <div>
               <BodyTextInline>Short:</BodyTextInline>
@@ -140,7 +140,7 @@ export const Comparison: Story = {
         <Divider />
 
         <div>
-          <HeaderText>American English (en-US)</HeaderText>
+          <Heading>American English (en-US)</Heading>
           <Stack gap="xs">
             <div>
               <BodyTextInline>Short:</BodyTextInline>

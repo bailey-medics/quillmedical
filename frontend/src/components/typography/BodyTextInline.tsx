@@ -6,12 +6,15 @@
  */
 
 import { Text } from "@mantine/core";
+import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 import { typographyTokens } from "@/theme";
 
-interface BodyTextInlineProps {
+export interface BodyTextInlineProps {
   /** Content to render inline */
   children: ReactNode;
+  /** Optional colour override */
+  c?: MantineColor;
 }
 
 /**
@@ -20,12 +23,13 @@ interface BodyTextInlineProps {
  * @param props - Component props
  * @returns Inline text span
  */
-export default function BodyTextInline({ children }: BodyTextInlineProps) {
+export default function BodyTextInline({ children, c }: BodyTextInlineProps) {
   return (
     <Text
       component="span"
       size="lg"
       fw={typographyTokens.fontWeights.body}
+      c={c}
       style={{ whiteSpace: "pre-wrap" }}
     >
       {children}

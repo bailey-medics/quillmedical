@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import HyperlinkText from "./HyperlinkText";
+import TextLink from "./TextLink";
 
-const meta: Meta<typeof HyperlinkText> = {
-  title: "Foundations/Typography/HyperlinkText",
-  component: HyperlinkText,
+const meta: Meta<typeof TextLink> = {
+  title: "Foundations/Typography/TextLink",
+  component: TextLink,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof HyperlinkText>;
+type Story = StoryObj<typeof TextLink>;
 
 export const Default: Story = {
   args: {

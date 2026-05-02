@@ -2,7 +2,7 @@ import { Badge, Container, Skeleton, Stack, Table } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { HeaderText, PlaceholderText } from "@/components/typography";
+import { Heading, EmptyState } from "@/components/typography";
 import type { SyncHistory } from "@/features/teaching/types";
 
 function formatDate(iso: string): string {
@@ -60,10 +60,10 @@ export default function SyncStatus() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <HeaderText>Sync status</HeaderText>
+        <Heading>Sync status</Heading>
 
         {syncs.length === 0 ? (
-          <PlaceholderText>No syncs have been performed yet.</PlaceholderText>
+          <EmptyState>No syncs have been performed yet.</EmptyState>
         ) : (
           <Table highlightOnHover>
             <Table.Thead>

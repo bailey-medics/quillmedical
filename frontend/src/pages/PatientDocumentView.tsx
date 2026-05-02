@@ -8,7 +8,7 @@
 import { Document } from "@/components/documents/Document";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { ErrorText } from "@/components/typography";
+import { ErrorMessage } from "@/components/typography";
 import { Container } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -38,7 +38,7 @@ export default function PatientDocumentView() {
   if (!doc) {
     return (
       <Container size="lg" py="xl">
-        <ErrorText>Document not found.</ErrorText>
+        <ErrorMessage>Document not found.</ErrorMessage>
       </Container>
     );
   }

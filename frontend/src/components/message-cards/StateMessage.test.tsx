@@ -10,12 +10,12 @@ describe("StateMessage Component", () => {
       expect(screen.getByText("No patients to show")).toBeInTheDocument();
     });
 
-    it("displays gray alert color", () => {
+    it("displays state message card", () => {
       const { container } = renderWithMantine(
         <StateMessage type="no-patients" />,
       );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
 
     it("shows user-off icon", () => {
@@ -40,12 +40,12 @@ describe("StateMessage Component", () => {
       expect(screen.getByText("Database is initialising")).toBeInTheDocument();
     });
 
-    it("displays blue alert color", () => {
+    it("displays state message card", () => {
       const { container } = renderWithMantine(
         <StateMessage type="database-initialising" />,
       );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
 
     it("shows clock icon", () => {
@@ -72,20 +72,20 @@ describe("StateMessage Component", () => {
   });
 
   describe("Component structure", () => {
-    it("renders as alert element", () => {
+    it("renders as state message card", () => {
       const { container } = renderWithMantine(
         <StateMessage type="no-patients" />,
       );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
 
-    it("has constrained width", () => {
+    it("renders card element", () => {
       const { container } = renderWithMantine(
         <StateMessage type="no-patients" />,
       );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
   });
 
@@ -112,12 +112,12 @@ describe("StateMessage Component", () => {
       expect(icon).toBeInTheDocument();
     });
 
-    it("renders as alert element", () => {
+    it("renders as state message card", () => {
       const { container } = renderWithMantine(
         <StateMessage type="error" message="Error" />,
       );
-      const alert = container.querySelector('[role="alert"]');
-      expect(alert).toBeInTheDocument();
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
   });
 
@@ -167,11 +167,11 @@ describe("StateMessage Component", () => {
     );
 
     it.each(emptyStates)(
-      "renders as alert element for type $type",
+      "renders as state message card for type $type",
       ({ type }) => {
         const { container } = renderWithMantine(<StateMessage type={type} />);
-        const alert = container.querySelector('[role="alert"]');
-        expect(alert).toBeInTheDocument();
+        const card = container.querySelector('[data-testid="state-message"]');
+        expect(card).toBeInTheDocument();
       },
     );
 

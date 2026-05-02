@@ -19,8 +19,9 @@
 import type { Patient } from "@/domains/patient";
 import ProfilePic from "@/components/profile-pic";
 import Demographics from "@/components/demographics";
+import { OnQuillBadge } from "@/components/badge";
 import { StateMessage } from "@/components/message-cards";
-import { Group, Text, UnstyledButton, Skeleton } from "@mantine/core";
+import { Group, UnstyledButton, Skeleton } from "@mantine/core";
 
 /**
  * PatientsList Props
@@ -106,13 +107,7 @@ export default function PatientsList({
                 size={avatarSize}
               />
               <Demographics patient={p} />
-              <div>
-                {p.onQuill ? (
-                  <Text size="lg" c="teal">
-                    On Quill
-                  </Text>
-                ) : null}
-              </div>
+              {p.onQuill && <OnQuillBadge />}
             </Group>
           </UnstyledButton>
         );

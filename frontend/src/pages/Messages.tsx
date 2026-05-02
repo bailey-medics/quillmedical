@@ -21,7 +21,7 @@ import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import { Container, Group, Stack } from "@mantine/core";
-import { ErrorText, PlaceholderText } from "@/components/typography";
+import { ErrorMessage, EmptyState } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
@@ -275,7 +275,7 @@ export default function Messages() {
 
         {error && (
           <BaseCard>
-            <ErrorText>{error}</ErrorText>
+            <ErrorMessage>{error}</ErrorMessage>
           </BaseCard>
         )}
 
@@ -285,7 +285,7 @@ export default function Messages() {
           <StateMessage type="database-initialising" />
         ) : conversations.length === 0 ? (
           <BaseCard>
-            <PlaceholderText>No conversations yet</PlaceholderText>
+            <EmptyState>No conversations yet</EmptyState>
           </BaseCard>
         ) : (
           <MessagesList

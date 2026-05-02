@@ -52,21 +52,6 @@ export const SuperAdminView: Story = {
 };
 
 /**
- * Admin View
- *
- * Shows the admin interface with admin-level permissions.
- * Admins cannot see the "Change System Permissions" section.
- * Displays statistics for 5 users and 5 patients.
- */
-export const AdminView: Story = {
-  args: {
-    userPermissions: "admin",
-    existingUsers: sampleUsers,
-    existingPatients: samplePatients,
-  },
-};
-
-/**
  * Loading State
  *
  * Shows the admin interface while statistics are loading.

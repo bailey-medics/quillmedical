@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import PlaceholderText from "./PlaceholderText";
+import EmptyState from "./EmptyState";
 
-const meta: Meta<typeof PlaceholderText> = {
-  title: "Foundations/Typography/PlaceholderText",
-  component: PlaceholderText,
+const meta: Meta<typeof EmptyState> = {
+  title: "Foundations/Typography/EmptyState",
+  component: EmptyState,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof PlaceholderText>;
+type Story = StoryObj<typeof EmptyState>;
 
 export const Default: Story = {
   args: {

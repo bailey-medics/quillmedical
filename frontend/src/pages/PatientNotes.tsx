@@ -8,7 +8,7 @@
 import { NotesList } from "@/components/notes";
 import { fakeNotes } from "@/data/fakeNotes";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { HeaderText } from "@/components/typography";
+import { Heading } from "@/components/typography";
 import { Container, Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -29,7 +29,7 @@ export default function PatientNotes() {
   return (
     <Container size="lg" py="xl">
       <Stack gap="lg">
-        <HeaderText>Clinical notes</HeaderText>
+        <Heading>Clinical notes</Heading>
         <NotesList notes={fakeNotes} />
       </Stack>
     </Container>

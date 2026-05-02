@@ -84,8 +84,9 @@ export const Disabled: Story = {
     data: [
       { value: "1", label: "Dr Corbett" },
       { value: "2", label: "Nurse Adams" },
+      { value: "3", label: "Dr Patel" },
     ],
-    value: ["1"],
+    value: ["1", "2", "3"],
     disabled: true,
   },
 };

@@ -11,7 +11,7 @@ import NationalNumber from "@/components/data/NationalNumber";
 import FormattedDate from "@/components/data";
 import { Skeleton } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 
 /**
  * Demographics Props
@@ -52,7 +52,7 @@ export default function Demographics({ patient, isLoading = false }: Props) {
 
   return (
     <div style={{ flex: 1 }}>
-      <HeaderText>{patient.name}</HeaderText>
+      <Heading>{patient.name}</Heading>
       <BodyText>
         {patient.dob && <FormattedDate date={patient.dob} />}
         {patient.age !== undefined ? `    ${patient.age}` : ""}

@@ -1,21 +1,21 @@
 /**
- * HeaderText Storybook Stories
+ * Heading Storybook Stories
  *
- * Demonstrates the HeaderText component — bold, prominent text
+ * Demonstrates the Heading component — bold, prominent text
  * for card titles and section headings.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import HeaderText from "./HeaderText";
+import Heading from "./Heading";
 
 const meta = {
-  title: "Foundations/Typography/HeaderText",
-  component: HeaderText,
+  title: "Foundations/Typography/Heading",
+  component: Heading,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
-} satisfies Meta<typeof HeaderText>;
+} satisfies Meta<typeof Heading>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -1,15 +1,14 @@
 /* eslint-disable no-restricted-syntax */
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicNotFound from "@/components/layouts/PublicNotFound";
-import { theme } from "@/theme";
-import { MantineProvider } from "@mantine/core";
+import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} defaultColorScheme="light">
+  <PublicMantineProvider>
     <PublicLayout>
       <PublicNotFound />
     </PublicLayout>
-  </MantineProvider>,
+  </PublicMantineProvider>,
 );

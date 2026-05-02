@@ -1,20 +1,20 @@
 /**
- * HeaderText Component Tests
+ * Heading Component Tests
  */
 
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
-import HeaderText from "./HeaderText";
+import Heading from "./Heading";
 
-describe("HeaderText", () => {
+describe("Heading", () => {
   it("renders children", () => {
-    renderWithMantine(<HeaderText>Hello world</HeaderText>);
+    renderWithMantine(<Heading>Hello world</Heading>);
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
   it("renders as an h2 element", () => {
-    renderWithMantine(<HeaderText>Heading</HeaderText>);
+    renderWithMantine(<Heading>Heading</Heading>);
     expect(screen.getByText("Heading").tagName).toBe("H2");
   });
 });

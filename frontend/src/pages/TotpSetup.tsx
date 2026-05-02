@@ -9,7 +9,7 @@
 import { Button, Container, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
-import { BodyText, ErrorText, HeaderText } from "@/components/typography";
+import { BodyText, ErrorMessage, Heading } from "@/components/typography";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
@@ -69,7 +69,7 @@ export default function TotpSetup() {
     <Container size="lg" py="xl">
       <BaseCard maw={480} mx="auto">
         <Stack>
-          <HeaderText>Set up two-factor authentication</HeaderText>
+          <Heading>Set up two-factor authentication</Heading>
           <div>
             <BodyText>
               Scan the QR code below with your authenticator app (or copy the
@@ -88,7 +88,7 @@ export default function TotpSetup() {
                 placeholder="123456"
                 required
               />
-              {error && <ErrorText>{error}</ErrorText>}
+              {error && <ErrorMessage>{error}</ErrorMessage>}
               {success && <BodyText>{success}</BodyText>}
               <Button type="submit" loading={loading} disabled={!code}>
                 Verify and enable

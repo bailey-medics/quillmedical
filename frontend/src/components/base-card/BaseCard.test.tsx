@@ -38,4 +38,16 @@ describe("BaseCard", () => {
     screen.getByTestId("clickable").click();
     expect(clicked).toBe(true);
   });
+
+  it("removes border when bg is set", () => {
+    renderWithMantine(
+      <BaseCard data-testid="bg-card" bg="teal">
+        Content
+      </BaseCard>,
+    );
+    const card = screen.getByTestId("bg-card");
+    expect(card).not.toHaveStyle({
+      borderColor: "var(--mantine-color-gray-2)",
+    });
+  });
 });

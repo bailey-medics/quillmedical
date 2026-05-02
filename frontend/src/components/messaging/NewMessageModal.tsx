@@ -15,8 +15,8 @@ import TextAreaField from "@/components/form/TextAreaField";
 import TextField from "@/components/form/TextField";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import BodyTextBold from "@/components/typography/BodyTextBold";
-import ErrorText from "@/components/typography/ErrorText";
-import HeaderText from "@/components/typography/HeaderText";
+import ErrorMessage from "@/components/typography/ErrorMessage";
+import Heading from "@/components/typography/Heading";
 import { Modal, ScrollArea, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 
@@ -192,7 +192,7 @@ export default function NewMessageModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={<HeaderText>New message</HeaderText>}
+      title={<Heading>New message</Heading>}
       size="lg"
       centered
       scrollAreaComponent={ScrollArea.Autosize}
@@ -265,16 +265,16 @@ export default function NewMessageModal({
           patientId === null &&
           !isPatientUser &&
           initialMessage.trim() && (
-            <ErrorText>Please select a patient</ErrorText>
+            <ErrorMessage>Please select a patient</ErrorMessage>
           )}
 
         {!canSubmit &&
           !hasRecipient &&
           patientId !== null &&
           initialMessage.trim() && (
-            <ErrorText>
+            <ErrorMessage>
               Add at least one participant or include the patient
-            </ErrorText>
+            </ErrorMessage>
           )}
 
         <ButtonPair

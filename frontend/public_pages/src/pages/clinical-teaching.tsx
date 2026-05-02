@@ -6,14 +6,14 @@ import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
 import { colours } from "@/styles/colours";
-import { theme } from "@/theme";
-import { Container, MantineProvider, Stack } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
+import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import { IconChalkboardTeacher } from "@tabler/icons-react";
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} defaultColorScheme="light">
+  <PublicMantineProvider>
     <PublicLayout>
       <PublicDarkBackground>
         <Container size="lg" py="xl">
@@ -94,5 +94,5 @@ createRoot(document.getElementById("root")!).render(
         </Container>
       </PublicLightBackground>
     </PublicLayout>
-  </MantineProvider>,
+  </PublicMantineProvider>,
 );

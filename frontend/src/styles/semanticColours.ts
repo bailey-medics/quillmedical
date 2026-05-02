@@ -92,7 +92,7 @@ type TextColourConfig = {
 export const textColours: Record<string, TextColourConfig> = {
   default: {
     value: "inherit",
-    usage: "HeaderText, PageHeader — default black headings",
+    usage: "Heading, PageHeader — default black headings",
   },
   body: {
     value: "var(--mantine-color-text)",
@@ -100,10 +100,10 @@ export const textColours: Record<string, TextColourConfig> = {
   },
   error: {
     value: "orange.8",
-    usage: "ErrorText — validation and error messages",
+    usage: "ErrorMessage — validation and error messages",
   },
   placeholder: {
     value: "gray.4",
-    usage: "PlaceholderText — empty field hints",
+    usage: "EmptyState — empty field hints",
   },
 };

@@ -91,5 +91,5 @@ export default function NavIcon({ name, size = "lg" }: NavIconProps) {
   const Icon = iconMap[name];
   const iconPixelSize = iconSizeMap[size];
 
-  return <Icon size={iconPixelSize} />;
+  return <Icon size={iconPixelSize} color="var(--mantine-color-gray-6)" />;
 }

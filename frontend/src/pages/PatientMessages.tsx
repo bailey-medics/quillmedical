@@ -12,7 +12,7 @@ import NewMessageModal, {
 } from "@/components/messaging/NewMessageModal";
 import AddButton from "@/components/button/AddButton";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { PlaceholderText } from "@/components/typography";
+import { EmptyState } from "@/components/typography";
 import {
   createConversation,
   fetchPatientConversations,
@@ -123,7 +123,7 @@ export default function PatientMessages() {
 
         {conversations.length === 0 ? (
           <BaseCard>
-            <PlaceholderText>No conversations yet</PlaceholderText>
+            <EmptyState>No conversations yet</EmptyState>
           </BaseCard>
         ) : (
           <MessagesList

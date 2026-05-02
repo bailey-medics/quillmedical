@@ -8,7 +8,7 @@
 
 import ActionCard from "@/components/action-card";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
-import { ErrorText, HyperlinkText } from "@/components/typography";
+import { ErrorMessage, TextLink } from "@/components/typography";
 import { Container, SimpleGrid } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
@@ -33,8 +33,8 @@ export default function Patient() {
     return (
       <Container size="lg" py="xl">
         <BaseCard>
-          <ErrorText>{error}</ErrorText>
-          <HyperlinkText to="/">← Back to patient list</HyperlinkText>
+          <ErrorMessage>{error}</ErrorMessage>
+          <TextLink to="/">← Back to patient list</TextLink>
         </BaseCard>
       </Container>
     );

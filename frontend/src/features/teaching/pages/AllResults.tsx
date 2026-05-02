@@ -9,7 +9,7 @@ import {
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { HeaderText, PlaceholderText } from "@/components/typography";
+import { Heading, EmptyState } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
 import SelectField from "@/components/form/SelectField";
 import type { EducatorResult, QuestionBank } from "@/features/teaching/types";
@@ -107,7 +107,7 @@ export default function AllResults() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="center">
-          <HeaderText>All results</HeaderText>
+          <Heading>All results</Heading>
           {results.length > 0 && (
             <Button variant="light" onClick={() => exportCsv(results)}>
               Export CSV
@@ -130,7 +130,7 @@ export default function AllResults() {
         )}
 
         {results.length === 0 ? (
-          <PlaceholderText>No completed results found.</PlaceholderText>
+          <EmptyState>No completed results found.</EmptyState>
         ) : (
           <Table highlightOnHover>
             <Table.Thead>

@@ -1,3 +1,7 @@
+.root {
+  --combobox-chevron-color: var(--mantine-primary-color-filled);
+}
+
 .section {
   transform: scale(1.5);
 }

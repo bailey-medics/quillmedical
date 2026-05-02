@@ -6,9 +6,13 @@
  * Provides loading state with skeletons.
  */
 
-import { Badge, Group, Skeleton, Stack, Text, Title } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { NoteCategoryBadge } from "@/components/badge";
+import type { NoteCategoryType } from "@/components/badge/NoteCategoryBadge";
+import FormattedDate from "@/components/data/Date";
+import { BodyTextBold, BodyTextInline, Heading } from "@/components/typography";
 
 export type ClinicalNote = {
   id: string;
@@ -16,7 +20,7 @@ export type ClinicalNote = {
   date: string;
   author: string;
   authorRole: string;
-  category: "consultation" | "telephone" | "observation" | "procedure";
+  category: NoteCategoryType;
   content: string;
 };
 
@@ -25,29 +29,6 @@ type Props = {
   onNoteClick?: (note: ClinicalNote) => void;
   isLoading?: boolean;
 };
-
-function getCategoryColour(category: ClinicalNote["category"]): string {
-  switch (category) {
-    case "consultation":
-      return "blue";
-    case "telephone":
-      return "teal";
-    case "observation":
-      return "green";
-    case "procedure":
-      return "orange";
-    default:
-      return "gray";
-  }
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
   if (isLoading) {
@@ -85,26 +66,18 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
         >
           <Stack gap="sm">
             <Group justify="space-between">
-              <Title order={4}>{note.title}</Title>
-              <Badge
-                color={getCategoryColour(note.category)}
-                variant="light"
-                size="lg"
-              >
-                {note.category}
-              </Badge>
+              <Heading>{note.title}</Heading>
+              <NoteCategoryBadge category={note.category} />
             </Group>
             <Group gap="lg">
-              <Text size="sm" c="dimmed">
-                {formatDate(note.date)}
-              </Text>
-              <Text size="sm" c="dimmed">
+              <BodyTextBold>
+                <FormattedDate date={note.date} format="long" />
+              </BodyTextBold>
+              <BodyTextBold>
                 {note.author} — {note.authorRole}
-              </Text>
+              </BodyTextBold>
             </Group>
-            <Text size="md" style={{ whiteSpace: "pre-wrap" }}>
-              {note.content}
-            </Text>
+            <BodyTextInline>{note.content}</BodyTextInline>
           </Stack>
         </BaseCard>
       ))}

@@ -10,7 +10,7 @@ import type { StackedParticipant } from "@/components/profile-pic";
 import { StackedProfilePics } from "@/components/profile-pic";
 import ProfilePic from "@/components/profile-pic/ProfilePic";
 import UnreadBadge from "@/components/badge/UnreadBadge";
-import HeaderText from "@/components/typography/HeaderText";
+import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextClamp from "@/components/typography/BodyTextClamp";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -115,7 +115,7 @@ export default function MessagesList({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Group justify="space-between" mb="xs">
                   <Group gap="xs">
-                    <HeaderText>{thread.displayName}</HeaderText>
+                    <Heading>{thread.displayName}</Heading>
                     <UnreadBadge count={thread.unreadCount} />
                   </Group>
                   <BodyText>{formatTime(thread.lastMessageTime)}</BodyText>

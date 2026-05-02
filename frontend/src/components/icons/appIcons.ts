@@ -13,6 +13,7 @@
 import {
   IconAdjustmentsHorizontal,
   IconAlertCircle,
+  IconAlertCircleFilled,
   IconAlertTriangle,
   IconArrowLeft,
   IconBell,
@@ -30,6 +31,7 @@ import {
   IconDots,
   IconDownload,
   IconEdit,
+  IconExclamationCircle,
   IconFileText,
   IconGenderAgender,
   IconGenderFemale,
@@ -62,6 +64,7 @@ import {
 export {
   IconAdjustmentsHorizontal,
   IconAlertCircle,
+  IconAlertCircleFilled,
   IconAlertTriangle,
   IconArrowLeft,
   IconBell,
@@ -79,6 +82,7 @@ export {
   IconDots,
   IconDownload,
   IconEdit,
+  IconExclamationCircle,
   IconFileText,
   IconGenderAgender,
   IconGenderFemale,
@@ -115,6 +119,7 @@ export {
 export const iconCatalogue = {
   AdjustmentsHorizontal: IconAdjustmentsHorizontal,
   AlertCircle: IconAlertCircle,
+  AlertCircleFilled: IconAlertCircleFilled,
   AlertTriangle: IconAlertTriangle,
   ArrowLeft: IconArrowLeft,
   Bell: IconBell,
@@ -132,6 +137,7 @@ export const iconCatalogue = {
   Dots: IconDots,
   Download: IconDownload,
   Edit: IconEdit,
+  ExclamationCircle: IconExclamationCircle,
   FileText: IconFileText,
   GenderAgender: IconGenderAgender,
   GenderFemale: IconGenderFemale,

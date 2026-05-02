@@ -126,7 +126,7 @@ describe("PatientsList", () => {
       );
 
       // Jane Doe (p1) and Emma Wilson (p4) are on Quill
-      const onQuillBadges = screen.getAllByText("On Quill");
+      const onQuillBadges = screen.getAllByText("on Quill");
       expect(onQuillBadges.length).toBeGreaterThan(0);
     });
 
@@ -140,9 +140,9 @@ describe("PatientsList", () => {
         <PatientsList patients={[patientNotOnQuill]} fhirAvailable={true} />,
       );
 
-      // Alex Smith should be rendered but without "On Quill"
+      // Alex Smith should be rendered but without "on Quill"
       expect(screen.getByText(/Alex Smith/)).toBeInTheDocument();
-      expect(screen.queryByText("On Quill")).not.toBeInTheDocument();
+      expect(screen.queryByText("on Quill")).not.toBeInTheDocument();
     });
   });
 

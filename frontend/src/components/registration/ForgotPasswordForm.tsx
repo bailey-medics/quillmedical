@@ -4,9 +4,9 @@ import { TextField } from "@components/form";
 import { QuillLogo } from "@components/images";
 import {
   BodyText,
-  ErrorText,
-  HeaderText,
-  HyperlinkText,
+  ErrorMessage,
+  Heading,
+  TextLink,
 } from "@components/typography";
 
 export interface ForgotPasswordFormProps {
@@ -42,26 +42,34 @@ export default function ForgotPasswordForm({
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
         <form onSubmit={handleSubmit} noValidate>
           <Stack>
-            <HeaderText>Forgot password</HeaderText>
-            <BodyText>
-              Enter your email address and we&apos;ll send you a link to reset
-              your password.
-            </BodyText>
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-              required
-              autoComplete="email"
-            />
-            {error && <ErrorText>{error}</ErrorText>}
+            <Heading>Forgot password</Heading>
+            {!success && (
+              <BodyText>
+                Enter your email address and we&apos;ll send you a link to reset
+                your password.
+              </BodyText>
+            )}
+            {!success && (
+              <>
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  required
+                  autoComplete="email"
+                />
+                {error && <ErrorMessage>{error}</ErrorMessage>}
+              </>
+            )}
             {success && <BodyText>{success}</BodyText>}
-            <Button type="submit" loading={submitting} size="lg">
-              Send reset link
-            </Button>
+            {!success && (
+              <Button type="submit" loading={submitting} size="lg">
+                Send reset link
+              </Button>
+            )}
             <Group justify="flex-end">
-              <HyperlinkText to="/login">Back to sign in</HyperlinkText>
+              <TextLink to="/login">Back to sign in</TextLink>
             </Group>
           </Stack>
         </form>

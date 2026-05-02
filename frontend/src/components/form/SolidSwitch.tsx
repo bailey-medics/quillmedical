@@ -32,11 +32,12 @@ export default function SolidSwitch({
         checked={checked}
         size={size}
         label={checked ? "Yes" : "No"}
-        classNames={{ thumb: classes.thumb, ...classNames }}
+        classNames={{ root: classes.root, thumb: classes.thumb, ...classNames }}
         styles={{
           label: {
             fontSize: "var(--mantine-font-size-lg)",
-            color: "var(--mantine-color-dimmed)",
+            fontWeight: 500,
+            color: "var(--mantine-color-black)",
           },
         }}
       />

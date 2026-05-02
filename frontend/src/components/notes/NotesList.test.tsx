@@ -100,9 +100,9 @@ describe("NotesList", () => {
     it("displays category badge for each note", () => {
       renderWithMantine(<NotesList notes={mockNotes} />);
 
-      expect(screen.getByText("consultation")).toBeInTheDocument();
-      expect(screen.getByText("telephone")).toBeInTheDocument();
-      expect(screen.getByText("observation")).toBeInTheDocument();
+      expect(screen.getByText("Consultation")).toBeInTheDocument();
+      expect(screen.getByText("Telephone")).toBeInTheDocument();
+      expect(screen.getByText("Observation")).toBeInTheDocument();
     });
   });
 

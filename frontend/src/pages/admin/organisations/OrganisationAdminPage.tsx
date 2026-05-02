@@ -25,8 +25,8 @@ import {
   BodyText,
   BodyTextInline,
   BodyTextBold,
-  HeaderText,
-  PlaceholderText,
+  Heading,
+  EmptyState,
 } from "@/components/typography";
 import {
   IconPencil,
@@ -250,7 +250,7 @@ export default function OrganisationAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <HeaderText>Organisation information</HeaderText>
+              <Heading>Organisation information</Heading>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/edit`)}
@@ -287,7 +287,7 @@ export default function OrganisationAdminPage() {
         {/* Statistics */}
         <BaseCard>
           <Stack gap="md">
-            <HeaderText>Statistics</HeaderText>
+            <Heading>Statistics</Heading>
 
             <Group gap="xl">
               <Stack gap={4}>
@@ -309,7 +309,7 @@ export default function OrganisationAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <HeaderText>Staff members</HeaderText>
+              <Heading>Staff members</Heading>
               <AddButton
                 label="Add staff member"
                 onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
@@ -331,7 +331,7 @@ export default function OrganisationAdminPage() {
           <BaseCard>
             <Stack gap="md">
               <Group justify="space-between" align="center">
-                <HeaderText>Patients</HeaderText>
+                <Heading>Patients</Heading>
                 <AddButton
                   label="Add patient"
                   onClick={() =>
@@ -357,7 +357,7 @@ export default function OrganisationAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <HeaderText>Enabled features</HeaderText>
+              <Heading>Enabled features</Heading>
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/organisations/${id}/features`)}
@@ -374,7 +374,7 @@ export default function OrganisationAdminPage() {
                 ))}
               </Group>
             ) : (
-              <PlaceholderText>No features enabled</PlaceholderText>
+              <EmptyState>No features enabled</EmptyState>
             )}
           </Stack>
         </BaseCard>

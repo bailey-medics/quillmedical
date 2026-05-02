@@ -24,8 +24,8 @@ import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
   BodyTextBold,
-  HeaderText,
-  PlaceholderText,
+  Heading,
+  EmptyState,
 } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
@@ -132,7 +132,7 @@ export default function EditPatientPage() {
             </Alert>
           ) : (
             <BaseCard>
-              <HeaderText>TODO: Patient edit form</HeaderText>
+              <Heading>TODO: Patient edit form</Heading>
               <BodyText>
                 Patient edit functionality is not yet implemented. This page
                 will contain a form to edit patient demographics including name,
@@ -169,7 +169,7 @@ export default function EditPatientPage() {
           </Alert>
         ) : patients.length === 0 ? (
           <Center p="xl">
-            <PlaceholderText>No patients found</PlaceholderText>
+            <EmptyState>No patients found</EmptyState>
           </Center>
         ) : (
           <Table striped highlightOnHover>

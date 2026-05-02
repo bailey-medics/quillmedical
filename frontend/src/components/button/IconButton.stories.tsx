@@ -58,14 +58,8 @@ export const Sizes: Story = {
 };
 
 const VARIANTS: Array<
-  | "filled"
-  | "light"
-  | "outline"
-  | "subtle"
-  | "transparent"
-  | "default"
-  | "white"
-> = ["filled", "light", "outline", "subtle", "transparent", "default", "white"];
+  "filled" | "light" | "outline" | "subtle" | "transparent"
+> = ["filled", "light", "outline", "subtle", "transparent"];
 
 /**
  * All Mantine variants with interaction states.

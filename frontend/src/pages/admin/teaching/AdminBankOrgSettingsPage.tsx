@@ -23,7 +23,7 @@ import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
 import ActiveStatus from "@/components/badge/ActiveStatus";
 import { StateMessage } from "@/components/message-cards";
-import { HeaderText } from "@/components/typography";
+import { Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
@@ -156,7 +156,7 @@ export default function AdminBankOrgSettingsPage() {
         <BaseCard>
           <Stack gap="sm">
             <Group justify="space-between">
-              <HeaderText>Exam status</HeaderText>
+              <Heading>Exam status</Heading>
               <ActiveStatus active={isLive} size="lg" />
             </Group>
             <SolidSwitch
@@ -173,7 +173,7 @@ export default function AdminBankOrgSettingsPage() {
         {bank.email_coordinator_on_pass && (
           <BaseCard>
             <Stack gap="md">
-              <HeaderText>Coordinator email</HeaderText>
+              <Heading>Coordinator email</Heading>
               <TextField
                 label="Email address"
                 description="Receives certificate copies when students pass"
