@@ -23,7 +23,7 @@ import {
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
   PlaceholderText,
@@ -192,7 +192,7 @@ export default function OrganisationAdminPage() {
       header: "Primary",
       render: (member) =>
         member.is_primary ? (
-          <Badge color="blue" variant="light">
+          <Badge color="primary" variant="light">
             Primary
           </Badge>
         ) : null,
@@ -234,7 +234,7 @@ export default function OrganisationAdminPage() {
       header: "Primary",
       render: (patient) =>
         patient.is_primary ? (
-          <Badge color="blue" variant="light">
+          <Badge color="primary" variant="light">
             Primary
           </Badge>
         ) : null,
@@ -261,17 +261,19 @@ export default function OrganisationAdminPage() {
             <Stack gap="xs">
               <Group gap="xs">
                 <BodyTextBold>Name:</BodyTextBold>
-                <BodyTextBlack>{org.name}</BodyTextBlack>
+                <BodyTextInline>{org.name}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
                 <BodyTextBold>Type:</BodyTextBold>
-                <BodyTextBlack>{formatType(org.type)}</BodyTextBlack>
+                <BodyTextInline>{formatType(org.type)}</BodyTextInline>
               </Group>
 
               <Group gap="xs">
                 <BodyTextBold>Location:</BodyTextBold>
-                <BodyTextBlack>{org.location || "Not specified"}</BodyTextBlack>
+                <BodyTextInline>
+                  {org.location || "Not specified"}
+                </BodyTextInline>
               </Group>
 
               <Group gap="xs">
@@ -366,7 +368,7 @@ export default function OrganisationAdminPage() {
             {enabledFeatures.length > 0 ? (
               <Group gap="sm">
                 {enabledFeatures.map((key) => (
-                  <Badge key={key} variant="light" color="blue" size="lg">
+                  <Badge key={key} variant="light" color="primary" size="lg">
                     {FEATURE_LABELS[key] ?? key}
                   </Badge>
                 ))}
@@ -384,11 +386,11 @@ export default function OrganisationAdminPage() {
           centered
         >
           <Stack gap="md">
-            <BodyTextBlack>
+            <BodyTextInline>
               Are you sure you want to remove{" "}
               <strong>{removingMember?.username}</strong> from this
               organisation?
-            </BodyTextBlack>
+            </BodyTextInline>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setRemovingMember(null)}>
                 Cancel

@@ -8,7 +8,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import BodyText from "./BodyText";
 
 const meta = {
-  title: "Typography/BodyText",
+  title: "Foundations/Typography/BodyText",
   component: BodyText,
   parameters: {
     layout: "padded",

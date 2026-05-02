@@ -72,7 +72,7 @@ interface IconButtonProps {
  *   icon={<IconPencil />}
  *   size="lg"
  *   variant="subtle"
- *   color="blue"
+ *   color="primary"
  *   onClick={handleClick}
  *   aria-label="Edit"
  * />

@@ -18,7 +18,7 @@ import {
   IconUserOff,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
-import { BodyTextBlack, HeaderText } from "@/components/typography";
+import { BodyTextInline, HeaderText } from "@/components/typography";
 import classes from "./StateMessage.module.css";
 
 /** All supported state message types */
@@ -120,7 +120,7 @@ export default function StateMessage(props: Props) {
         variant="light"
         classNames={alertStyles}
       >
-        <BodyTextBlack>{props.message}</BodyTextBlack>
+        <BodyTextInline>{props.message}</BodyTextInline>
       </Alert>
     );
   }
@@ -135,7 +135,7 @@ export default function StateMessage(props: Props) {
       variant="light"
       classNames={alertStyles}
     >
-      <BodyTextBlack>{description}</BodyTextBlack>
+      <BodyTextInline>{description}</BodyTextInline>
     </Alert>
   );
 }

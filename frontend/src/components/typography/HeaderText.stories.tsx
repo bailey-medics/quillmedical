@@ -9,7 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import HeaderText from "./HeaderText";
 
 const meta = {
-  title: "Typography/HeaderText",
+  title: "Foundations/Typography/HeaderText",
   component: HeaderText,
   parameters: {
     layout: "padded",

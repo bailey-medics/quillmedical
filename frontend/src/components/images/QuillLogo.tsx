@@ -14,8 +14,8 @@ type LogoColour = "default" | "light-grey" | "white";
 
 const logoFileMap: Record<LogoColour, string> = {
   default: "/quill-logo.png",
-  "light-grey": "/quill-light-grey.png",
-  white: "/quill-white.png",
+  "light-grey": "/quill-logo-light-grey.png",
+  white: "/quill-logo-white.png",
 };
 
 /**

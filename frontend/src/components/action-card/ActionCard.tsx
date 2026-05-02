@@ -32,7 +32,7 @@ interface ActionCardProps {
   disabled?: boolean;
   /** Remove max-width constraint so the card fills its container */
   fullWidth?: boolean;
-  /** Button variant (default: "light") */
+  /** Button variant (default: "filled") */
   buttonVariant?: "light" | "filled";
 }
 
@@ -56,7 +56,7 @@ export default function ActionCard({
   onClick,
   disabled = false,
   fullWidth = false,
-  buttonVariant = "light",
+  buttonVariant = "filled",
 }: ActionCardProps) {
   return (
     <BaseCard maw={fullWidth ? undefined : "37.05rem"} h="100%">

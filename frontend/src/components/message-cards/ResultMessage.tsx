@@ -13,7 +13,7 @@ import {
   IconX,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
-import { BodyTextBlack, HeaderText } from "@/components/typography";
+import { BodyTextInline, HeaderText } from "@/components/typography";
 import classes from "./ResultMessage.module.css";
 
 type ResultMessageVariant = "success" | "fail" | "warning";
@@ -57,7 +57,7 @@ export default function ResultMessage({
       variant="light"
       classNames={alertStyles}
     >
-      {subtitle && <BodyTextBlack>{subtitle}</BodyTextBlack>}
+      {subtitle && <BodyTextInline>{subtitle}</BodyTextInline>}
     </Alert>
   );
 }

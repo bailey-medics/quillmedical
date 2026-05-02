@@ -18,7 +18,7 @@
 import { Group, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
-import { BodyTextBlack, HeaderText } from "@/components/typography";
+import { BodyTextInline, HeaderText } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
 import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
@@ -67,7 +67,7 @@ function ImagePanel({ image }: { image: ItemImage }) {
         radius="md"
         className={classes.image}
       />
-      {image.label && <BodyTextBlack>{image.label}</BodyTextBlack>}
+      {image.label && <BodyTextInline>{image.label}</BodyTextInline>}
     </Stack>
   );
 }
@@ -119,7 +119,7 @@ export function QuestionView({
       {/* Patient history */}
       {item.text && (
         <BaseCard>
-          <BodyTextBlack>{item.text}</BodyTextBlack>
+          <BodyTextInline>{item.text}</BodyTextInline>
         </BaseCard>
       )}
 

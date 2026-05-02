@@ -269,7 +269,7 @@ export default function MessagingTriagePayment({
 
         {offer && offer.status === "pending" && (
           <Box mt={12}>
-            <Alert title="Offer pending" color="blue">
+            <Alert title="Offer pending" color="primary">
               Offer: {offer.minutes} minutes —{" "}
               <strong>${(offer.priceCents / 100).toFixed(2)}</strong>
               <Group mt={8}>

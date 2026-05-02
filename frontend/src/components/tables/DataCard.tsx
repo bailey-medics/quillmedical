@@ -21,7 +21,7 @@
  */
 
 import { Divider, Group, Skeleton, Stack } from "@mantine/core";
-import { BodyTextBlack, BodyTextBold } from "@/components/typography";
+import { BodyTextInline, BodyTextBold } from "@/components/typography";
 import type { Column } from "./DataTable";
 import BaseCard from "@/components/base-card/BaseCard";
 import classes from "./DataCard.module.css";
@@ -75,7 +75,7 @@ export default function DataCard<T>({
                   <BodyTextBold>{column.header}:</BodyTextBold>
                 </span>
                 {typeof content === "string" || typeof content === "number" ? (
-                  <BodyTextBlack>{content}</BodyTextBlack>
+                  <BodyTextInline>{content}</BodyTextInline>
                 ) : (
                   content
                 )}

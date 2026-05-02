@@ -26,7 +26,7 @@ describe("QuillLogo Component", () => {
       const img = container.querySelector("img");
       expect(img).toHaveAttribute(
         "src",
-        expect.stringContaining("quill-light-grey.png"),
+        expect.stringContaining("quill-logo-light-grey.png"),
       );
     });
 
@@ -35,7 +35,7 @@ describe("QuillLogo Component", () => {
       const img = container.querySelector("img");
       expect(img).toHaveAttribute(
         "src",
-        expect.stringContaining("quill-white.png"),
+        expect.stringContaining("quill-logo-white.png"),
       );
     });
 

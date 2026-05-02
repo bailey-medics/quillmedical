@@ -1,5 +1,6 @@
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { typographyTokens } from "@/theme";
 
 export interface BodyTextBoldProps {
   children: ReactNode;
@@ -18,7 +19,11 @@ export default function BodyTextBold({
   justify = "left",
 }: BodyTextBoldProps) {
   return (
-    <Text size="lg" c="black" fw={700} ta={alignMap[justify]}>
+    <Text
+      size="lg"
+      fw={typographyTokens.fontWeights.bold}
+      ta={alignMap[justify]}
+    >
       {children}
     </Text>
   );

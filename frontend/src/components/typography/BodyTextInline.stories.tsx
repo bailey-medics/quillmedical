@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import BodyTextBlack from "./BodyTextBlack";
+import BodyTextInline from "./BodyTextInline";
 
-const meta: Meta<typeof BodyTextBlack> = {
-  title: "Typography/BodyTextBlack",
-  component: BodyTextBlack,
+const meta: Meta<typeof BodyTextInline> = {
+  title: "Foundations/Typography/BodyTextInline",
+  component: BodyTextInline,
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 };
 
 export default meta;
-type Story = StoryObj<typeof BodyTextBlack>;
+type Story = StoryObj<typeof BodyTextInline>;
 
 export const Default: Story = {
   args: {

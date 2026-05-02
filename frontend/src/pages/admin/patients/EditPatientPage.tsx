@@ -195,7 +195,7 @@ export default function EditPatientPage() {
                     <IconButton
                       icon={<IconEdit />}
                       variant="light"
-                      color="blue"
+                      color="primary"
                       onClick={() => handleEditPatient(patient.id)}
                       aria-label="Edit patient"
                     />

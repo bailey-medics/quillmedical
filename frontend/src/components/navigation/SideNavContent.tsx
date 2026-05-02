@@ -17,6 +17,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
+import { typographyTokens } from "@/theme";
 
 /**
  * SideNavContent Props
@@ -172,7 +173,10 @@ export default function SideNavContent({
 
   const navLinkStyles = {
     root: { fontSize: `${fontSize}rem` },
-    label: { fontSize: `${fontSize}rem` },
+    label: {
+      fontSize: `${fontSize}rem`,
+      fontWeight: typographyTokens.fontWeights.body,
+    },
   };
 
   // Build Users nav item with optional username child

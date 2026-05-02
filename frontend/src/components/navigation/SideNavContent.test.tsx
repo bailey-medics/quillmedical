@@ -453,8 +453,8 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("John Smith")).toBeInTheDocument();
       });
 
-      // Should have at least one ThemeIcon for the patient nav
-      const icons = container.querySelectorAll(".mantine-ThemeIcon-root");
+      // Should have at least one SVG icon for the patient nav
+      const icons = container.querySelectorAll("svg");
       expect(icons.length).toBeGreaterThan(0);
     });
 

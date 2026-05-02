@@ -1691,6 +1691,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource-variable/atkinson-hyperlegible-next@npm:^5.2.6":
+  version: 5.2.6
+  resolution: "@fontsource-variable/atkinson-hyperlegible-next@npm:5.2.6"
+  checksum: 10c0/e3f7f577e37bec88cc6680a1d6ef93b198f65696d8e35a75c8ee2c7220b54521f9c30c98500329b7a44e55bbbb41225e803dce4d22d6be7e3a58839f90ac06e8
+  languageName: node
+  linkType: hard
+
 "@gar/promise-retry@npm:^1.0.0":
   version: 1.0.2
   resolution: "@gar/promise-retry@npm:1.0.2"
@@ -3889,6 +3896,13 @@ __metadata:
     convert-source-map: "npm:^2.0.0"
     tinyrainbow: "npm:^3.1.0"
   checksum: 10c0/d96475e0703b6e5208c6c0f570c1235278cbac3f3913a9aa4203a3e617c9eaca85a184bfd5d13cf366b84754df787ab8bc85242c5e0c63105ee7176c186a2136
+  languageName: node
+  linkType: hard
+
+"@webcontainer/env@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@webcontainer/env@npm:1.1.1"
+  checksum: 10c0/bc64114ffa7ee92f4985cc2bdd5e27f6f31d892b9aa5cde68eaf93df02d13ee6edf13faeebdd701464183b6f8f9c47c14975958cdd6fc20e7356ad32f6ee39e7
   languageName: node
   linkType: hard
 
@@ -6628,6 +6642,7 @@ __metadata:
   resolution: "frontend@workspace:."
   dependencies:
     "@eslint/js": "npm:^10.0.0"
+    "@fontsource-variable/atkinson-hyperlegible-next": "npm:^5.2.6"
     "@mantine/core": "npm:^8.3.1"
     "@mantine/hooks": "npm:^8.3.1"
     "@mantine/notifications": "npm:^8.3.1"
@@ -6683,7 +6698,7 @@ __metadata:
     react-dom: "npm:^19.1.1"
     react-router-dom: "npm:^7.9.1"
     sass: "npm:^1.92.1"
-    storybook: "npm:10.3.3"
+    storybook: "npm:^10.3.5"
     storybook-addon-pseudo-states: "npm:^10.3.3"
     stylelint: "npm:^17.0.0"
     stylelint-config-prettier-scss: "npm:^1.0.0"
@@ -11125,9 +11140,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"storybook@npm:10.3.3":
-  version: 10.3.3
-  resolution: "storybook@npm:10.3.3"
+"storybook@npm:^10.3.5":
+  version: 10.3.5
+  resolution: "storybook@npm:10.3.5"
   dependencies:
     "@storybook/global": "npm:^5.0.0"
     "@storybook/icons": "npm:^2.0.1"
@@ -11135,6 +11150,7 @@ __metadata:
     "@testing-library/user-event": "npm:^14.6.1"
     "@vitest/expect": "npm:3.2.4"
     "@vitest/spy": "npm:3.2.4"
+    "@webcontainer/env": "npm:^1.1.1"
     esbuild: "npm:^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0"
     open: "npm:^10.2.0"
     recast: "npm:^0.23.5"
@@ -11148,7 +11164,7 @@ __metadata:
       optional: true
   bin:
     storybook: ./dist/bin/dispatcher.js
-  checksum: 10c0/f61e199dfb11a02be6004a3d72c0ecd062f1770d60d480ecf42a6af8a6c49f9082b17c37fde2eea58ed53de35e7b190c95bcad8c8e4d47f9419d577826e0c00c
+  checksum: 10c0/1443e4710b0bb972db7704d8445c039a6335afafebe853d2b0d89b161262050cd7ae5eda3811c771d54d832f0acc80cf2c231d24f73d1f547d020898394afde6
   languageName: node
   linkType: hard
 

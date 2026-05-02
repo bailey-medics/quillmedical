@@ -25,7 +25,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   HeaderText,
 } from "@/components/typography";
@@ -207,11 +207,11 @@ export default function OrgFeaturesPage() {
           <Stack gap="lg">
             <HeaderText>Available features</HeaderText>
 
-            <BodyTextBlack>
+            <BodyTextInline>
               You are about to make organisation-wide changes. Please do so with
               care. You will need to press &ldquo;Save changes&rdquo; below for
               these changes to take effect.
-            </BodyTextBlack>
+            </BodyTextInline>
 
             {AVAILABLE_FEATURES.map((feature) => (
               <Group key={feature.key} justify="space-between" wrap="nowrap">
@@ -247,10 +247,10 @@ export default function OrgFeaturesPage() {
           centered
         >
           <Stack gap="md">
-            <BodyTextBlack>
+            <BodyTextInline>
               You are about to make the following changes for{" "}
               <strong>{orgName}</strong>:
-            </BodyTextBlack>
+            </BodyTextInline>
             <List>
               {pendingChanges.map((change) => (
                 <List.Item key={change.key}>

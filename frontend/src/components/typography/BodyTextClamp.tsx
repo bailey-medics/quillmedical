@@ -1,5 +1,6 @@
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { typographyTokens } from "@/theme";
 
 interface BodyTextClampProps {
   children: ReactNode;
@@ -12,7 +13,11 @@ export default function BodyTextClamp({
   lineClamp,
 }: BodyTextClampProps) {
   return (
-    <Text size="lg" c="dimmed" lineClamp={lineClamp}>
+    <Text
+      size="lg"
+      fw={typographyTokens.fontWeights.body}
+      lineClamp={lineClamp}
+    >
       {children}
     </Text>
   );

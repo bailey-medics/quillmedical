@@ -29,7 +29,7 @@ import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
-import { BodyText, BodyTextBlack, HeaderText } from "@/components/typography";
+import { BodyText, BodyTextInline, HeaderText } from "@/components/typography";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -208,10 +208,10 @@ function Step2UserAccount({
         <>
           <Divider my="sm" />
 
-          <Alert variant="light" color="blue">
-            <BodyTextBlack>
+          <Alert variant="light" color="primary">
+            <BodyTextInline>
               Patient will be able to log in and access their health records.
-            </BodyTextBlack>
+            </BodyTextInline>
           </Alert>
 
           <TextField

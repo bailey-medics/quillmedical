@@ -2,7 +2,7 @@ import type { Meta, StoryObj, Decorator } from "@storybook/react-vite";
 import { Stack, Divider } from "@mantine/core";
 import FormattedDate from "./Date";
 import BodyText from "@/components/typography/BodyText";
-import BodyTextBlack from "@/components/typography/BodyTextBlack";
+import BodyTextInline from "@/components/typography/BodyTextInline";
 import HeaderText from "@/components/typography/HeaderText";
 
 const bodyTextDecorator: Decorator[] = [
@@ -111,25 +111,25 @@ export const Comparison: Story = {
           <HeaderText>British English (en-GB)</HeaderText>
           <Stack gap="xs">
             <div>
-              <BodyTextBlack>Short:</BodyTextBlack>
+              <BodyTextInline>Short:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="short" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Medium:</BodyTextBlack>
+              <BodyTextInline>Medium:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="medium" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Long:</BodyTextBlack>
+              <BodyTextInline>Long:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="long" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Full:</BodyTextBlack>
+              <BodyTextInline>Full:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="full" />
               </BodyText>
@@ -143,25 +143,25 @@ export const Comparison: Story = {
           <HeaderText>American English (en-US)</HeaderText>
           <Stack gap="xs">
             <div>
-              <BodyTextBlack>Short:</BodyTextBlack>
+              <BodyTextInline>Short:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="short" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Medium:</BodyTextBlack>
+              <BodyTextInline>Medium:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="medium" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Long:</BodyTextBlack>
+              <BodyTextInline>Long:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="long" />
               </BodyText>
             </div>
             <div>
-              <BodyTextBlack>Full:</BodyTextBlack>
+              <BodyTextInline>Full:</BodyTextInline>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="full" />
               </BodyText>

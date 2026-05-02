@@ -11,6 +11,7 @@
 import { NavLink } from "@mantine/core";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavIcon from "../icons/NavIcon";
+import { typographyTokens } from "@/theme";
 
 /**
  * Icon name type (from NavIcon component)
@@ -139,6 +140,7 @@ export default function NestedNavLink({
     },
     label: {
       fontSize: `${fontSize}rem`,
+      fontWeight: typographyTokens.fontWeights.body,
     },
   };
 

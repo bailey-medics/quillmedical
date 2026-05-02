@@ -38,7 +38,7 @@ export const badgeColours: Record<BadgeColour, BadgeColourConfig> = {
   success: { bg: "green", text: "white" },
   warning: { bg: "yellow.8", text: "white" },
   outstanding: { bg: "pink", text: "white" },
-  info: { bg: "blue", text: "white" },
+  info: { bg: "primary", text: "white" },
   neutral: { bg: "yellow.4", text: "dark" },
   accent: { bg: "violet", text: "white" },
   alert: { bg: "red", text: "white" },

@@ -98,32 +98,17 @@ describe("NavIcon Component", () => {
     });
   });
 
-  describe("ThemeIcon wrapper", () => {
-    it("wraps icon in ThemeIcon component", () => {
+  describe("Plain icon rendering (no ThemeIcon wrapper)", () => {
+    it("renders icon directly without ThemeIcon wrapper", () => {
       const { container } = renderWithMantine(<NavIcon name="home" />);
       const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
-      expect(themeIcon).toBeInTheDocument();
+      expect(themeIcon).not.toBeInTheDocument();
     });
 
-    it("applies light variant", () => {
+    it("renders SVG icon element", () => {
       const { container } = renderWithMantine(<NavIcon name="home" />);
-      const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
-      expect(themeIcon).toBeInTheDocument();
-      // Mantine applies styles via CSS variables, not class names
-    });
-
-    it("applies gray color", () => {
-      const { container } = renderWithMantine(<NavIcon name="home" />);
-      const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
-      expect(themeIcon).toBeInTheDocument();
-      // Mantine applies colors via CSS variables
-    });
-
-    it("applies xl radius", () => {
-      const { container } = renderWithMantine(<NavIcon name="home" />);
-      const themeIcon = container.querySelector(".mantine-ThemeIcon-root");
-      expect(themeIcon).toBeInTheDocument();
-      // Mantine applies radius via CSS variables
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
     });
   });
 

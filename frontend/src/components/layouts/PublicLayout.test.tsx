@@ -76,10 +76,20 @@ describe("PublicLayout", () => {
         </PublicLayout>,
       );
       const nav = screen.getByRole("navigation", { name: "Primary" });
-      for (const link of publicNavLinks) {
+      const enabledLinks = publicNavLinks.filter((link) => !link.disabled);
+      for (const link of enabledLinks) {
         const anchor = nav.querySelector(`a[href="${link.href}"]`);
         expect(anchor).toBeInTheDocument();
         expect(anchor).toHaveTextContent(link.label);
+      }
+      // Disabled links should still render as text within the nav
+      const disabledLinks = publicNavLinks.filter((link) => link.disabled);
+      for (const link of disabledLinks) {
+        const within = nav.querySelectorAll(`[class*="NavLink"]`);
+        const found = Array.from(within).some((el) =>
+          el.textContent?.includes(link.label),
+        );
+        expect(found).toBe(true);
       }
     });
 

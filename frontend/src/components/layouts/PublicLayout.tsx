@@ -1,4 +1,3 @@
-import "@/styles/colours.css";
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
@@ -51,10 +50,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <NavLink
                 key={link.label}
                 label={link.label}
-                href={link.href}
-                component="a"
-                onClick={close}
+                href={link.disabled ? undefined : link.href}
+                component={link.disabled ? "span" : "a"}
+                onClick={link.disabled ? undefined : close}
                 leftSection={<PublicNavIcon name={link.icon} />}
+                disabled={link.disabled}
                 style={{
                   fontSize: "1.25rem",
                 }}

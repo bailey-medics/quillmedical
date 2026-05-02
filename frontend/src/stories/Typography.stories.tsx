@@ -1,212 +1,309 @@
 /**
- * Foundations/Typography Story
+ * Foundations/Typography Overview
  *
- * Visual reference for the app's typography system.
- * Shows every typography component with sample text and documents
- * the responsive font size scale.
+ * Design system reference for Quill Medical's typography.
+ * Documents font family, type scale, and component usage guidelines.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Divider, Group, Stack, Text, Title } from "@mantine/core";
-import PageHeader from "@/components/typography/PageHeader";
-import HeaderText from "@/components/typography/HeaderText";
-import BodyTextBlack from "@/components/typography/BodyTextBlack";
-import BodyTextBold from "@/components/typography/BodyTextBold";
-import BodyText from "@/components/typography/BodyText";
-import BodyTextClamp from "@/components/typography/BodyTextClamp";
-import ErrorText from "@/components/typography/ErrorText";
-import PlaceholderText from "@/components/typography/PlaceholderText";
-import HyperlinkText from "@/components/typography/HyperlinkText";
+import { Divider, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { typographyTokens } from "@/theme";
 
 const meta: Meta = {
   title: "Foundations/Typography",
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;
 type Story = StoryObj;
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
+/*  Overview                                                           */
 /* ------------------------------------------------------------------ */
 
-function TypeRow({
-  label,
-  details,
-  children,
-}: {
-  label: string;
-  details: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Stack gap={4}>
-      <Group gap="sm" align="baseline">
-        <Text size="sm" fw={700} style={{ minWidth: 140 }}>
-          {label}
-        </Text>
-        <Text size="xs" c="dimmed">
-          {details}
-        </Text>
-      </Group>
-      <div>{children}</div>
-    </Stack>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Stories                                                            */
-/* ------------------------------------------------------------------ */
-
-/** All typography components rendered with sample text. */
-export const ComponentShowcase: Story = {
+export const Overview: Story = {
   render: () => (
-    <Stack gap="lg">
-      <Title order={2}>Component showcase</Title>
-      <Text size="sm" c="dimmed">
-        Every typography component available in the app, shown with sample text.
-      </Text>
+    <Stack gap="xl">
+      {/* Font family */}
+      <Stack gap="xs">
+        <Title order={2}>Font family</Title>
+        <Text size="md">
+          <strong>Atkinson Hyperlegible Next</strong> — designed by the Braille
+          Institute for maximum readability. Self-hosted variable font (100–900
+          weight range).
+        </Text>
+        <Text size="sm" c="dimmed">
+          Chosen for clinical accessibility: distinct Il1O0 characters, high
+          x-height, open apertures, reduced eye strain over extended shifts.
+        </Text>
+      </Stack>
 
       <Divider />
 
-      <TypeRow label="PageHeader" details="Title h1 · xl · inherits · bold">
-        <PageHeader title="Page header text" />
-      </TypeRow>
+      {/* Type scale */}
+      <Stack gap="sm">
+        <Title order={2}>Type scale</Title>
+        <Text size="sm" c="dimmed">
+          Mobile-first sizes that scale up at the sm breakpoint (48em / 768px).
+          All values defined in typographyTokens (theme.ts).
+        </Text>
+
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Token</Table.Th>
+              <Table.Th>Mobile</Table.Th>
+              <Table.Th>Desktop</Table.Th>
+              <Table.Th>Sample</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {Object.entries(typographyTokens.fontSizes).map(
+              ([name, { mobile, desktop }]) => (
+                <Table.Tr key={name}>
+                  <Table.Td>
+                    <Text fw={600} size="sm">
+                      {name}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {mobile}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {desktop}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size={name as "xs" | "sm" | "md" | "lg" | "xl"}>
+                      The quick brown fox
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ),
+            )}
+          </Table.Tbody>
+        </Table>
+      </Stack>
 
       <Divider />
 
-      <TypeRow label="HeaderText" details="Title h2 · lg · inherits · bold">
-        <HeaderText>Header text example</HeaderText>
-      </TypeRow>
+      {/* Headings */}
+      <Stack gap="sm">
+        <Title order={2}>Heading scale</Title>
+        <Text size="sm" c="dimmed">
+          Heading sizes with responsive scaling and fixed line heights.
+        </Text>
+
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Level</Table.Th>
+              <Table.Th>Mobile</Table.Th>
+              <Table.Th>Desktop</Table.Th>
+              <Table.Th>Line height</Table.Th>
+              <Table.Th>Sample</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {Object.entries(typographyTokens.headings).map(
+              ([name, { mobile, desktop, lineHeight }]) => (
+                <Table.Tr key={name}>
+                  <Table.Td>
+                    <Text fw={600} size="sm">
+                      {name}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {mobile}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {desktop}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
+                      {lineHeight}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Title
+                      order={
+                        parseInt(name.replace("h", "")) as 1 | 2 | 3 | 4 | 5 | 6
+                      }
+                    >
+                      Heading {name}
+                    </Title>
+                  </Table.Td>
+                </Table.Tr>
+              ),
+            )}
+          </Table.Tbody>
+        </Table>
+      </Stack>
 
       <Divider />
 
-      <TypeRow
-        label="BodyTextBlack"
-        details='Text · lg · c="black" · normal · pre-wrap'
-      >
-        <BodyTextBlack>
-          Body text in black — used for emphasised content that needs to stand
-          out from the dimmed body text.
-        </BodyTextBlack>
-      </TypeRow>
+      {/* Usage guide */}
+      <Stack gap="sm">
+        <Title order={2}>When to use what</Title>
+
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Component</Table.Th>
+              <Table.Th>Use for</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  PageHeader
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Page titles (one per page, h1)</Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  HeaderText
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Section headings within a page (h2)</Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  BodyText
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">
+                  Default body copy — inherits navy text colour
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  BodyTextInline
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">
+                  Inline span with whitespace preservation — data values,
+                  messages
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  BodyTextBold
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">
+                  Labels, field names, important inline text
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  BodyTextMuted
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Secondary/supporting text — dimmed colour</Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  BodyTextClamp
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">
+                  Truncated previews — message cards, list summaries
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  ErrorText
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Validation errors, failure messages</Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  PlaceholderText
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Empty states, input placeholders</Text>
+              </Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>
+                <Text fw={600} size="sm">
+                  HyperlinkText
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text size="sm">Inline navigation links</Text>
+              </Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+        </Table>
+      </Stack>
 
       <Divider />
 
-      <TypeRow label="BodyTextBold" details='Text · lg · c="black" · fw=700'>
-        <BodyTextBold>
-          Bold body text — used for key values, names, and important labels.
-        </BodyTextBold>
-      </TypeRow>
-
-      <Divider />
-
-      <TypeRow label="BodyText" details='Text · lg · c="dimmed" · normal'>
-        <BodyText>
-          Standard body text — the default for secondary content, descriptions,
-          and supporting information throughout the app.
-        </BodyText>
-      </TypeRow>
-
-      <Divider />
-
-      <TypeRow
-        label="BodyTextClamp"
-        details='Text · lg · c="dimmed" · lineClamp'
-      >
-        <BodyTextClamp lineClamp={2}>
-          Clamped body text truncates after a set number of lines. This is
-          useful for message previews, card summaries, and any content that
-          needs to fit a constrained space without overflowing. The ellipsis
-          appears at the end of the last visible line.
-        </BodyTextClamp>
-      </TypeRow>
-
-      <Divider />
-
-      <TypeRow label="ErrorText" details='Text · lg · c="red" · fw=700'>
-        <ErrorText>Something went wrong. Please try again.</ErrorText>
-      </TypeRow>
-
-      <Divider />
-
-      <TypeRow label="PlaceholderText" details="Text · lg · placeholder colour">
-        <PlaceholderText>Enter your name...</PlaceholderText>
-      </TypeRow>
-
-      <Divider />
-
-      <TypeRow label="HyperlinkText" details="Anchor · lg · link colour">
-        <HyperlinkText to="#">View patient record</HyperlinkText>
-      </TypeRow>
-    </Stack>
-  ),
-};
-
-/** Responsive font size scale from theme.ts. */
-export const FontSizeScale: Story = {
-  render: () => (
-    <Stack gap="lg">
-      <Title order={2}>Font size scale</Title>
-      <Text size="sm" c="dimmed">
-        Responsive sizes scale up at the sm breakpoint (48em / 768px). Values
-        shown as mobile → desktop.
-      </Text>
-
-      <Divider />
-
-      <Stack gap="md">
-        <Group gap="lg" align="baseline">
-          <Text size="sm" fw={700} style={{ minWidth: 40 }}>
-            xs
-          </Text>
-          <Text size="xs">The quick brown fox jumps over the lazy dog</Text>
-          <Text size="xs" c="dimmed">
-            0.875rem → 1rem (14px → 16px)
-          </Text>
-        </Group>
-
-        <Group gap="lg" align="baseline">
-          <Text size="sm" fw={700} style={{ minWidth: 40 }}>
-            sm
-          </Text>
-          <Text size="sm">The quick brown fox jumps over the lazy dog</Text>
-          <Text size="xs" c="dimmed">
-            0.875rem → 1rem (14px → 16px)
-          </Text>
-        </Group>
-
-        <Group gap="lg" align="baseline">
-          <Text size="sm" fw={700} style={{ minWidth: 40 }}>
-            md
-          </Text>
-          <Text size="md">The quick brown fox jumps over the lazy dog</Text>
-          <Text size="xs" c="dimmed">
-            1rem → 1.1875rem (16px → 19px)
-          </Text>
-        </Group>
-
-        <Group gap="lg" align="baseline">
-          <Text size="sm" fw={700} style={{ minWidth: 40 }}>
-            lg
-          </Text>
-          <Text size="lg">The quick brown fox jumps over the lazy dog</Text>
-          <Text size="xs" c="dimmed">
-            1.25rem → 1.5rem (20px → 24px)
-          </Text>
-        </Group>
-
-        <Group gap="lg" align="baseline">
-          <Text size="sm" fw={700} style={{ minWidth: 40 }}>
-            xl
-          </Text>
-          <Text size="xl">The quick brown fox jumps over the lazy dog</Text>
-          <Text size="xs" c="dimmed">
-            1.625rem → 2rem (26px → 32px)
-          </Text>
+      {/* Character differentiation */}
+      <Stack gap="xs">
+        <Title order={2}>Character differentiation</Title>
+        <Text size="sm" c="dimmed">
+          Critical for clinical safety — confusing characters in dosages or IDs
+          could cause harm.
+        </Text>
+        <Group gap="xl" mt="xs">
+          <Stack gap={2}>
+            <Text size="xl">Il1O0 Qq9g rn m</Text>
+            <Text size="xs" c="dimmed">
+              xl (32px)
+            </Text>
+          </Stack>
+          <Stack gap={2}>
+            <Text size="md">Il1O0 Qq9g rn m</Text>
+            <Text size="xs" c="dimmed">
+              md (19px)
+            </Text>
+          </Stack>
+          <Stack gap={2}>
+            <Text size="xs">Il1O0 Qq9g rn m</Text>
+            <Text size="xs" c="dimmed">
+              xs (16px)
+            </Text>
+          </Stack>
         </Group>
       </Stack>
     </Stack>

@@ -43,19 +43,29 @@ export default function PublicTopRibbon({
             />
           </a>
           <Group component="nav" gap="lg" className={classes.navLinks}>
-            {publicNavLinks.map((link) => (
-              <Anchor
-                key={link.label}
-                href={link.href}
-                className={classes.navLink}
-                underline="never"
-                c="inherit"
-                fz="xl"
-                fw={500}
-              >
-                {link.label}
-              </Anchor>
-            ))}
+            {publicNavLinks.map((link) =>
+              link.disabled ? (
+                <span
+                  key={link.label}
+                  className={classes.navLink}
+                  style={{ opacity: 0.5, cursor: "default" }}
+                >
+                  {link.label}
+                </span>
+              ) : (
+                <Anchor
+                  key={link.label}
+                  href={link.href}
+                  className={classes.navLink}
+                  underline="never"
+                  c="inherit"
+                  fz="xl"
+                  fw={500}
+                >
+                  {link.label}
+                </Anchor>
+              ),
+            )}
           </Group>
         </>
       )}

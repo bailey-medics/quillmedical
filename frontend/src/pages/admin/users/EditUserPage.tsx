@@ -116,7 +116,7 @@ export default function EditUserPage() {
                     <IconButton
                       icon={<IconEdit />}
                       variant="light"
-                      color="blue"
+                      color="primary"
                       onClick={() => handleEditUser(user.id)}
                       aria-label={`Edit ${user.username}`}
                     />

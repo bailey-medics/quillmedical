@@ -33,6 +33,7 @@
     "unit-test:coverage": "npm run generate:types && vitest --environment jsdom --coverage"
   },
   "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.2.6",
     "@mantine/core": "^8.3.1",
     "@mantine/hooks": "^8.3.1",
     "@mantine/notifications": "^8.3.1",
@@ -91,7 +92,7 @@
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
     "sass": "^1.92.1",
-    "storybook": "10.3.3",
+    "storybook": "^10.3.5",
     "storybook-addon-pseudo-states": "^10.3.3",
     "stylelint": "^17.0.0",
     "stylelint-config-prettier-scss": "^1.0.0",

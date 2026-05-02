@@ -16,7 +16,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
-import { theme } from "@/theme";
+import { theme, cssVariablesResolver } from "@/theme";
 
 /**
  * Render options with all providers
@@ -33,7 +33,11 @@ interface AllProvidersOptions extends Omit<RenderOptions, "wrapper"> {
  */
 function MantineWrapper({ children }: { children: ReactNode }) {
   return (
-    <MantineProvider theme={theme} env="test">
+    <MantineProvider
+      theme={theme}
+      cssVariablesResolver={cssVariablesResolver}
+      env="test"
+    >
       {children}
     </MantineProvider>
   );
@@ -45,7 +49,11 @@ function MantineWrapper({ children }: { children: ReactNode }) {
 function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
   return (
     <BrowserRouter>
-      <MantineProvider theme={theme} env="test">
+      <MantineProvider
+        theme={theme}
+        cssVariablesResolver={cssVariablesResolver}
+        env="test"
+      >
         {children}
       </MantineProvider>
     </BrowserRouter>
@@ -98,7 +106,11 @@ export function renderWithRouter(
       initialEntries: [initialRoute || "/"],
     });
     const Wrapper = ({ children }: { children: ReactNode }) => (
-      <MantineProvider theme={theme} env="test">
+      <MantineProvider
+        theme={theme}
+        cssVariablesResolver={cssVariablesResolver}
+        env="test"
+      >
         {children}
       </MantineProvider>
     );

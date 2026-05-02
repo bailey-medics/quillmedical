@@ -77,9 +77,9 @@ describe("NestedNavLink Component", () => {
         <NestedNavLink item={singleNavItem} showIcons />,
       );
 
-      // Should render the icon
-      const themeIcons = container.querySelectorAll(".mantine-ThemeIcon-root");
-      expect(themeIcons.length).toBeGreaterThan(0);
+      // Should render the icon (SVG element)
+      const svgs = container.querySelectorAll("svg");
+      expect(svgs.length).toBeGreaterThan(0);
     });
 
     it("renders nav item without icon if none specified", () => {
@@ -92,8 +92,11 @@ describe("NestedNavLink Component", () => {
         <NestedNavLink item={itemNoIcon} showIcons />,
       );
 
-      const themeIcons = container.querySelectorAll(".mantine-ThemeIcon-root");
-      expect(themeIcons).toHaveLength(0);
+      // No leftSection should be rendered when no icon is specified
+      const leftSection = container.querySelector(
+        ".mantine-NavLink-section[data-position='left']",
+      );
+      expect(leftSection).toBeNull();
     });
   });
 

@@ -38,7 +38,7 @@ export default function QuillName({
   className,
   style = { marginRight: "0.5rem" },
 }: Props) {
-  const src = detectStorybook("/quill-name.png");
+  const src = detectStorybook("/quill-name-white.png");
 
   return (
     <Image

@@ -25,7 +25,7 @@ import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
-  BodyTextBlack,
+  BodyTextInline,
   BodyTextBold,
   PlaceholderText,
 } from "@/components/typography";
@@ -185,20 +185,22 @@ export default function DeactivatePatientPage() {
                 <Stack gap="xs">
                   <Group>
                     <BodyTextBold>Name:</BodyTextBold>
-                    <BodyTextBlack>
+                    <BodyTextInline>
                       {formatName(specificPatient.name)}
-                    </BodyTextBlack>
+                    </BodyTextInline>
                   </Group>
                   {specificPatient.birthDate && (
                     <Group>
                       <BodyTextBold>Birth date:</BodyTextBold>
-                      <BodyTextBlack>{specificPatient.birthDate}</BodyTextBlack>
+                      <BodyTextInline>
+                        {specificPatient.birthDate}
+                      </BodyTextInline>
                     </Group>
                   )}
                   {specificPatient.gender && (
                     <Group>
                       <BodyTextBold>Gender:</BodyTextBold>
-                      <BodyTextBlack>{specificPatient.gender}</BodyTextBlack>
+                      <BodyTextInline>{specificPatient.gender}</BodyTextInline>
                     </Group>
                   )}
                   <Group>
@@ -303,13 +305,13 @@ export default function DeactivatePatientPage() {
           centered
         >
           <Stack gap="md">
-            <BodyTextBlack>
+            <BodyTextInline>
               Are you sure you want to deactivate patient{" "}
               <strong>
                 {selectedPatient ? formatName(selectedPatient.name) : ""}
               </strong>
               ?
-            </BodyTextBlack>
+            </BodyTextInline>
             <BodyText>
               This will restrict access to their records. This action can be
               reversed later.

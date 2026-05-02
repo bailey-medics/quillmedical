@@ -9,8 +9,9 @@
   justify-content: space-between;
   gap: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-sm);
-  background: #e6f7ff;
+  background: var(--brand-primary);
   min-height: 60px;
+  color: white;
 }
 
 /* Optional outer wrapper for stickiness so we don't tie queries to viewport */
