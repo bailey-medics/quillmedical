@@ -68,15 +68,15 @@ This follows the modern pattern used by Notion, Linear, and NHS App: faint borde
 
 Status colours communicate state in badges, alerts, and form validation. Each token defines a background and text colour pair. Colours were chosen for colour-blind accessibility — avoiding red/green pairs that are indistinguishable to users with protanopia or deuteranopia.
 
-| Token       | Mantine value | Usage                              |
-| ----------- | ------------- | ---------------------------------- |
-| success     | teal          | Active, completed, final, pass     |
-| warning     | cyan.6        | Draft, pending                     |
-| outstanding | pink          | Deactivated, cancelled             |
-| info        | blue          | Upcoming, amended, admin, unread   |
-| neutral     | yellow.4      | Staff, default                     |
-| accent      | violet        | Incomplete, special states         |
-| alert       | red           | No-show, patient, fail, attention  |
+| Token       | Mantine value | Usage                             |
+| ----------- | ------------- | --------------------------------- |
+| success     | teal          | Active, completed, final, pass    |
+| warning     | cyan.6        | Draft, pending                    |
+| outstanding | pink          | Deactivated, cancelled            |
+| info        | blue          | Upcoming, amended, admin, unread  |
+| neutral     | yellow.4      | Staff, default                    |
+| accent      | violet        | Incomplete, special states        |
+| alert       | red           | No-show, patient, fail, attention |
 
 ## Grey scale
 
@@ -94,12 +94,12 @@ The global Mantine placeholder colour (`--mantine-color-placeholder`) is overrid
 
 ## Text colours
 
-| Token       | Value                        | Usage                                             |
-| ----------- | ---------------------------- | ------------------------------------------------- |
-| default     | inherits                     | Headings (HeaderText, PageHeader)                 |
-| body        | `var(--mantine-color-text)`  | Body text (BodyText, BodyTextClamp, BodyTextBold) |
-| error       | orange.8                     | Validation and error messages (ErrorText)         |
-| placeholder | gray.4                       | Empty field hints (PlaceholderText)               |
+| Token       | Value                       | Usage                                             |
+| ----------- | --------------------------- | ------------------------------------------------- |
+| default     | inherits                    | Headings (HeaderText, PageHeader)                 |
+| body        | `var(--mantine-color-text)` | Body text (BodyText, BodyTextClamp, BodyTextBold) |
+| error       | orange.8                    | Validation and error messages (ErrorText)         |
+| placeholder | gray.4                      | Empty field hints (PlaceholderText)               |
 
 > **Accessibility note:** Error text uses `orange.8` with an alert circle icon rather than red, providing a distinct visual signal for users with red-green colour vision deficiency. The icon ensures error state is communicated by shape as well as colour.
 
@@ -107,19 +107,19 @@ The global Mantine placeholder colour (`--mantine-color-placeholder`) is overrid
 
 All typography is wrapped in purpose-built components — raw Mantine `Text` or `Title` should not be used directly.
 
-| Component       | Wraps      | Size | Colour      | Weight |
-| --------------- | ---------- | ---- | ----------- | ------ |
-| PageHeader      | Title (h1) | xl   | primary.6   | bold   |
-| HeaderText      | Title (h2) | lg   | inherits    | bold   |
-| BodyText        | Text       | lg   | text        | 500    |
-| BodyTextBold    | Text       | lg   | text        | 700    |
-| BodyTextInline  | Text/span  | lg   | text        | 500    |
-| BodyTextClamp   | Text       | lg   | text        | 500    |
-| BodyTextMuted   | Text       | lg   | dimmed      | 500    |
-| ErrorText       | Text       | lg   | orange.8    | 700    |
-| PlaceholderText | Text       | lg   | gray.4      | normal |
-| HyperlinkText   | Anchor     | lg   | primary.4   | normal |
-| MarkdownView    | div (HTML) | lg   | text        | 500    |
+| Component       | Wraps      | Size | Colour    | Weight |
+| --------------- | ---------- | ---- | --------- | ------ |
+| PageHeader      | Title (h1) | xl   | primary.6 | bold   |
+| HeaderText      | Title (h2) | lg   | inherits  | bold   |
+| BodyText        | Text       | lg   | text      | 500    |
+| BodyTextBold    | Text       | lg   | text      | 700    |
+| BodyTextInline  | Text/span  | lg   | text      | 500    |
+| BodyTextClamp   | Text       | lg   | text      | 500    |
+| BodyTextMuted   | Text       | lg   | dimmed    | 500    |
+| ErrorText       | Text       | lg   | orange.8  | 700    |
+| PlaceholderText | Text       | lg   | gray.4    | normal |
+| HyperlinkText   | Anchor     | lg   | primary.4 | normal |
+| MarkdownView    | div (HTML) | lg   | text      | 500    |
 
 Notes:
 

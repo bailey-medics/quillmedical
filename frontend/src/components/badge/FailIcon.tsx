@@ -6,12 +6,12 @@
  */
 
 import { IconX } from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
+import Icon, { type IconSize } from "@/components/icons";
 import { badgeColours } from "./badgeColours";
 
 interface FailIconProps {
   /** Icon size (default: "sm") */
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  size?: IconSize;
 }
 
 export default function FailIcon({ size = "sm" }: FailIconProps) {

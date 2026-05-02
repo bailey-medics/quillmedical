@@ -43,9 +43,6 @@ export const Default: Story = {
 export const PassSizes: Story = {
   render: () => (
     <VariantStack>
-      <VariantRow label="xs">
-        <PassIcon size="xs" />
-      </VariantRow>
       <VariantRow label="sm (default)">
         <PassIcon size="sm" />
       </VariantRow>
@@ -66,9 +63,6 @@ export const PassSizes: Story = {
 export const FailSizes: Story = {
   render: () => (
     <VariantStack>
-      <VariantRow label="xs">
-        <FailIcon size="xs" />
-      </VariantRow>
       <VariantRow label="sm (default)">
         <FailIcon size="sm" />
       </VariantRow>
