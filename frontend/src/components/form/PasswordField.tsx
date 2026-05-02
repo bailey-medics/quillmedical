@@ -7,6 +7,7 @@ const fieldStyles = {
     marginBottom: "0.25rem",
   },
   input: { fontSize: "var(--mantine-font-size-lg)" },
+  visibilityToggle: { color: "var(--mantine-primary-color-filled)" },
 };
 
 export default function PasswordField(props: PasswordInputProps) {

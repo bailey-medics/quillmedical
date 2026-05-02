@@ -6,6 +6,11 @@
   display: none;
 }
 
+/* Keep primary track colour when switch is checked + disabled */
+.root:has(input:checked:disabled) {
+  --switch-disabled-color: var(--mantine-primary-color-filled);
+}
+
 .topLabel {
   font-size: var(--mantine-font-size-lg);
   font-weight: 500;

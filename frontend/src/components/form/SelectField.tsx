@@ -16,7 +16,7 @@ export default function SelectField(props: SelectProps) {
       {...props}
       size="lg"
       styles={fieldStyles}
-      classNames={{ section: classes.section }}
+      classNames={{ root: classes.root, section: classes.section }}
     />
   );
 }
