@@ -31,3 +31,18 @@ export const Default: Story = {
     </BaseCard>
   ),
 };
+
+/** Coloured card — border removed, white text */
+export const WithBackground: Story = {
+  render: () => (
+    <BaseCard bg="teal">
+      <Stack gap="sm">
+        <HeaderText c="white">Coloured card</HeaderText>
+        <BodyText c="white">
+          Pass a bg prop and the border disappears. Text is set to white
+          automatically.
+        </BodyText>
+      </Stack>
+    </BaseCard>
+  ),
+};

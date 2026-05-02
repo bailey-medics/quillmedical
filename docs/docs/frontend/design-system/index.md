@@ -28,6 +28,10 @@ The colour is set via both `theme.black` and `--mantine-color-text` in the CSS v
 
 The primary colour was extracted from the Quill logo. The secondary amber complements the navy and provides warmth for CTAs and highlights.
 
+### Logo font: El Messiri
+
+The "Quill Medical" logo text uses [El Messiri](https://fonts.google.com/specimen/El+Messiri) and is rendered as a PNG image — the font is not loaded at runtime. El Messiri was chosen for its elegant, slightly calligraphic character that complements the clinical identity.
+
 ### Primary scale (navy)
 
 A 10-shade ramp derived from the brand navy, with cooler blue tones in the lighter shades (0–3) to avoid a lavender/pink cast that can appear against white backgrounds — particularly noticeable for users with colour vision deficiency.

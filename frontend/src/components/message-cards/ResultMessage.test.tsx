@@ -31,11 +31,9 @@ describe("ResultMessage", () => {
     expect(screen.queryByText("Polyp test")).not.toBeInTheDocument();
   });
 
-  it("renders as alert element", () => {
-    const { container } = renderWithMantine(
-      <ResultMessage variant="success" title="Passed" />,
-    );
-    expect(container.querySelector('[role="alert"]')).toBeInTheDocument();
+  it("renders as a card element", () => {
+    renderWithMantine(<ResultMessage variant="success" title="Passed" />);
+    expect(screen.getByTestId("result-message")).toBeInTheDocument();
   });
 
   it("shows icon for success", () => {

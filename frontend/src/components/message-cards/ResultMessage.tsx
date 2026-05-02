@@ -1,45 +1,40 @@
 /**
  * ResultMessage Component
  *
- * A full-width alert banner for displaying pass/fail or success/error outcomes.
- * Mirrors the StateMessage pattern (icon sizing, title styling) but without
- * a max-width constraint.
+ * A full-width coloured card for displaying pass/fail or success/error
+ * outcomes. Uses BaseCard with a background colour — border is
+ * automatically removed, text set to white.
  */
 
-import { Alert } from "@mantine/core";
+import { Group } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCheck,
   IconX,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
+import { badgeColours } from "@/components/badge/badgeColours";
+import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, HeaderText } from "@/components/typography";
-import classes from "./ResultMessage.module.css";
 
 type ResultMessageVariant = "success" | "fail" | "warning";
 
 interface ResultMessageProps {
   /** Visual variant controlling colour and icon */
   variant: ResultMessageVariant;
-  /** Bold title text displayed in the alert header */
+  /** Bold title text displayed in the card header */
   title: string;
-  /** Optional subtitle shown below the title */
+  /** Optional subtitle shown beside the title */
   subtitle?: string;
 }
 
 const variantConfig: Record<
   ResultMessageVariant,
-  { color: string; icon: React.ReactElement }
+  { bg: string; icon: React.ReactElement }
 > = {
-  success: { color: "green", icon: <IconCheck /> },
-  fail: { color: "red", icon: <IconX /> },
-  warning: { color: "yellow", icon: <IconAlertTriangle /> },
-};
-
-const alertStyles = {
-  root: classes.root,
-  icon: classes.icon,
-  title: classes.title,
+  success: { bg: badgeColours.success.bg, icon: <IconCheck /> },
+  fail: { bg: badgeColours.alert.bg, icon: <IconX /> },
+  warning: { bg: badgeColours.warning.bg, icon: <IconAlertTriangle /> },
 };
 
 export default function ResultMessage({
@@ -47,17 +42,17 @@ export default function ResultMessage({
   title,
   subtitle,
 }: ResultMessageProps) {
-  const { color, icon } = variantConfig[variant];
+  const { bg, icon } = variantConfig[variant];
 
   return (
-    <Alert
-      icon={<Icon icon={icon} size="xl" />}
-      title={<HeaderText>{title}</HeaderText>}
-      color={color}
-      variant="light"
-      classNames={alertStyles}
-    >
-      {subtitle && <BodyTextInline>{subtitle}</BodyTextInline>}
-    </Alert>
+    <BaseCard bg={bg} data-testid="result-message">
+      <Group gap="md" wrap="nowrap" align="center">
+        <Icon icon={icon} size="lg" />
+        <Group gap="xs" wrap="wrap" align="baseline">
+          <HeaderText c="white">{title}</HeaderText>
+          {subtitle && <BodyTextInline c="white">{subtitle}</BodyTextInline>}
+        </Group>
+      </Group>
+    </BaseCard>
   );
 }

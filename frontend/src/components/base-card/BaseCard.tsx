@@ -20,6 +20,9 @@ import { forwardRef, type ReactNode, type Ref } from "react";
  * Extends Mantine CardProps and HTML div attributes, but omits the
  * fixed styling props so they cannot be overridden by consumers.
  * `children` is re-declared as required.
+ *
+ * Pass `bg` (a Mantine colour value) to create a coloured card —
+ * the border is automatically removed and text set to white.
  */
 export type BaseCardProps = Omit<
   CardProps,
@@ -30,17 +33,24 @@ export type BaseCardProps = Omit<
   };
 
 const BaseCard = forwardRef(function BaseCard(
-  { children, ...rest }: BaseCardProps,
+  { children, bg, style, ...rest }: BaseCardProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const hasBg = !!bg;
+
   return (
     <Card
       ref={ref}
       shadow="sm"
       padding="lg"
       radius="md"
-      withBorder
-      style={{ borderColor: "var(--mantine-color-gray-2)" }}
+      withBorder={!hasBg}
+      bg={bg}
+      c={hasBg ? "white" : undefined}
+      style={{
+        ...(hasBg ? {} : { borderColor: "var(--mantine-color-gray-2)" }),
+        ...((typeof style === "object" && style) || {}),
+      }}
       {...rest}
     >
       {children}
