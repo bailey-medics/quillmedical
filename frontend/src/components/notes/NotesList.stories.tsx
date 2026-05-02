@@ -62,9 +62,3 @@ export const Empty: Story = {
     notes: [],
   },
 };
-
-export const SingleNote: Story = {
-  args: {
-    notes: [fakeNotes[0]],
-  },
-};

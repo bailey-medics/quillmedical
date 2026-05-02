@@ -9,8 +9,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import MultiStepForm, { type StepConfig } from "./MultiStepForm";
 import { useState } from "react";
-import { TextInput, Stack, Text, Button, Group, Alert } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@/components/icons/appIcons";
+import { Button, Group, Stack } from "@mantine/core";
+import { IconCheck } from "@/components/icons/appIcons";
+import Icon from "@/components/icons";
+import { TextField } from "@/components/form";
+import { BodyText, ErrorText, HeaderText } from "@/components/typography";
 
 const meta = {
   title: "MultiStepForm/MultiStepForm",
@@ -48,9 +51,9 @@ export const BasicThreeSteps: Story = {
         description: "Basic information",
         content: () => (
           <Stack gap="md">
-            <Text>Enter your personal information</Text>
-            <TextInput label="Name" placeholder="John Doe" />
-            <TextInput label="Email" placeholder="john@example.com" />
+            <HeaderText>Enter your personal information</HeaderText>
+            <TextField label="Name" placeholder="John Doe" />
+            <TextField label="Email" placeholder="john@example.com" />
           </Stack>
         ),
       },
@@ -59,9 +62,9 @@ export const BasicThreeSteps: Story = {
         description: "Your preferences",
         content: () => (
           <Stack gap="md">
-            <Text>Select your preferences</Text>
-            <TextInput label="Role" placeholder="Developer" />
-            <TextInput label="Department" placeholder="Engineering" />
+            <HeaderText>Select your preferences</HeaderText>
+            <TextField label="Role" placeholder="Developer" />
+            <TextField label="Department" placeholder="Engineering" />
           </Stack>
         ),
       },
@@ -70,11 +73,11 @@ export const BasicThreeSteps: Story = {
         description: "Confirm details",
         content: () => (
           <Stack gap="md">
-            <Text fw={600}>Review Your Information</Text>
-            <Text>Name: John Doe</Text>
-            <Text>Email: john@example.com</Text>
-            <Text>Role: Developer</Text>
-            <Text>Department: Engineering</Text>
+            <HeaderText>Review your information</HeaderText>
+            <BodyText>Name: John Doe</BodyText>
+            <BodyText>Email: john@example.com</BodyText>
+            <BodyText>Role: Developer</BodyText>
+            <BodyText>Department: Engineering</BodyText>
           </Stack>
         ),
       },
@@ -116,24 +119,16 @@ export const WithValidation: Story = {
         },
         content: () => (
           <Stack gap="md">
-            <Text>All fields are required</Text>
-            {validationError && (
-              <Alert
-                icon={<IconAlertCircle size={16} />}
-                title="Validation Error"
-                color="red"
-              >
-                {validationError}
-              </Alert>
-            )}
-            <TextInput
+            <HeaderText>All fields are required</HeaderText>
+            {validationError && <ErrorText>{validationError}</ErrorText>}
+            <TextField
               label="Name"
               placeholder="John Doe"
               required
               value={name}
               onChange={(e) => setName(e.currentTarget.value)}
             />
-            <TextInput
+            <TextField
               label="Email"
               type="email"
               placeholder="john@example.com"
@@ -149,12 +144,10 @@ export const WithValidation: Story = {
         description: "Form completed",
         content: () => (
           <Stack gap="md" align="center">
-            <IconCheck size={48} color="green" />
-            <Text size="lg" fw={600}>
-              Form Submitted Successfully!
-            </Text>
-            <Text>Name: {name}</Text>
-            <Text>Email: {email}</Text>
+            <Icon icon={<IconCheck />} size="lg" colour="teal" />
+            <HeaderText>Form submitted successfully</HeaderText>
+            <BodyText>Name: {name}</BodyText>
+            <BodyText>Email: {email}</BodyText>
           </Stack>
         ),
       },
@@ -181,24 +174,24 @@ export const CustomButtonLabels: Story = {
       {
         label: "Welcome",
         description: "Getting started",
-        nextButtonLabel: "Get Started",
+        nextButtonLabel: "Get started",
         content: () => (
           <Stack gap="md">
-            <Text size="lg" fw={600}>
-              Welcome to the Setup Wizard
-            </Text>
-            <Text>Click "Get Started" to begin the setup process.</Text>
+            <HeaderText>Welcome to the setup wizard</HeaderText>
+            <BodyText>
+              Click &ldquo;Get started&rdquo; to begin the setup process.
+            </BodyText>
           </Stack>
         ),
       },
       {
         label: "Configuration",
         description: "Set up options",
-        nextButtonLabel: "Continue Setup",
+        nextButtonLabel: "Continue setup",
         content: () => (
           <Stack gap="md">
-            <Text>Configure your settings</Text>
-            <TextInput label="API Key" placeholder="Enter API key" />
+            <BodyText>Configure your settings</BodyText>
+            <TextField label="API key" placeholder="Enter API key" />
           </Stack>
         ),
       },
@@ -207,10 +200,8 @@ export const CustomButtonLabels: Story = {
         description: "Setup complete",
         content: () => (
           <Stack gap="md" align="center">
-            <IconCheck size={48} color="green" />
-            <Text size="lg" fw={600}>
-              Setup Complete!
-            </Text>
+            <Icon icon={<IconCheck />} size="lg" colour="teal" />
+            <HeaderText>Setup complete</HeaderText>
           </Stack>
         ),
       },
@@ -233,11 +224,9 @@ export const SingleStep: Story = {
         description: "One and done",
         content: () => (
           <Stack gap="md">
-            <Text size="lg" fw={600}>
-              Single Step Form
-            </Text>
-            <Text>This form only has one step.</Text>
-            <TextInput label="Input" placeholder="Enter value" />
+            <HeaderText>Single step form</HeaderText>
+            <BodyText>This form only has one step.</BodyText>
+            <TextField label="Input" placeholder="Enter value" />
           </Stack>
         ),
       },
@@ -258,27 +247,27 @@ export const FiveSteps: Story = {
       {
         label: "Step 1",
         description: "First step",
-        content: () => <Text>Step 1 Content</Text>,
+        content: () => <BodyText>Step 1 content</BodyText>,
       },
       {
         label: "Step 2",
         description: "Second step",
-        content: () => <Text>Step 2 Content</Text>,
+        content: () => <BodyText>Step 2 content</BodyText>,
       },
       {
         label: "Step 3",
         description: "Third step",
-        content: () => <Text>Step 3 Content</Text>,
+        content: () => <BodyText>Step 3 content</BodyText>,
       },
       {
         label: "Step 4",
         description: "Fourth step",
-        content: () => <Text>Step 4 Content</Text>,
+        content: () => <BodyText>Step 4 content</BodyText>,
       },
       {
         label: "Step 5",
         description: "Final step",
-        content: () => <Text>Step 5 Content - Final</Text>,
+        content: () => <BodyText>Step 5 content — final</BodyText>,
       },
     ],
   },
@@ -299,9 +288,9 @@ export const CustomNavigation: Story = {
         description: "Custom buttons",
         content: ({ nextStep }) => (
           <Stack gap="md">
-            <Text>Step 1 - Click the custom button below</Text>
+            <HeaderText>Step 1 — click the custom button below</HeaderText>
             <Button onClick={nextStep} fullWidth>
-              Custom Next Button
+              Custom next button
             </Button>
           </Stack>
         ),
@@ -311,12 +300,12 @@ export const CustomNavigation: Story = {
         description: "More options",
         content: ({ nextStep, prevStep }) => (
           <Stack gap="md">
-            <Text>Step 2 - Custom navigation controls</Text>
+            <HeaderText>Step 2 — custom navigation controls</HeaderText>
             <Group grow>
               <Button variant="outline" onClick={prevStep}>
-                Custom Back
+                Custom back
               </Button>
-              <Button onClick={nextStep}>Custom Next</Button>
+              <Button onClick={nextStep}>Custom next</Button>
             </Group>
           </Stack>
         ),
@@ -326,13 +315,13 @@ export const CustomNavigation: Story = {
         description: "Final step",
         content: ({ prevStep, onCancel }) => (
           <Stack gap="md">
-            <Text>Step 3 - Last step</Text>
+            <HeaderText>Step 3 — last step</HeaderText>
             <Group grow>
               <Button variant="outline" onClick={prevStep}>
-                Go Back
+                Go back
               </Button>
               <Button color="red" onClick={onCancel}>
-                Custom Cancel
+                Custom cancel
               </Button>
             </Group>
           </Stack>
@@ -358,8 +347,8 @@ export const ControlledMode: Story = {
         description: "First step",
         content: () => (
           <Stack gap="md">
-            <Text>Controlled step: {activeStep + 1}</Text>
-            <Text>This form is in controlled mode.</Text>
+            <BodyText>Controlled step: {activeStep + 1}</BodyText>
+            <BodyText>This form is in controlled mode.</BodyText>
           </Stack>
         ),
       },
@@ -368,8 +357,8 @@ export const ControlledMode: Story = {
         description: "Second step",
         content: () => (
           <Stack gap="md">
-            <Text>Controlled step: {activeStep + 1}</Text>
-            <Text>Parent component controls the active step.</Text>
+            <BodyText>Controlled step: {activeStep + 1}</BodyText>
+            <BodyText>Parent component controls the active step.</BodyText>
           </Stack>
         ),
       },
@@ -378,8 +367,8 @@ export const ControlledMode: Story = {
         description: "Third step",
         content: () => (
           <Stack gap="md">
-            <Text>Controlled step: {activeStep + 1}</Text>
-            <Text>Step state managed externally.</Text>
+            <BodyText>Controlled step: {activeStep + 1}</BodyText>
+            <BodyText>Step state managed externally.</BodyText>
           </Stack>
         ),
       },
@@ -414,7 +403,7 @@ export const NoDescriptions: Story = {
         label: "Personal",
         content: () => (
           <Stack gap="md">
-            <TextInput label="Name" placeholder="Your name" />
+            <TextField label="Name" placeholder="Your name" />
           </Stack>
         ),
       },
@@ -422,7 +411,7 @@ export const NoDescriptions: Story = {
         label: "Contact",
         content: () => (
           <Stack gap="md">
-            <TextInput label="Email" placeholder="your@email.com" />
+            <TextField label="Email" placeholder="your@email.com" />
           </Stack>
         ),
       },
@@ -430,7 +419,7 @@ export const NoDescriptions: Story = {
         label: "Done",
         content: () => (
           <Stack gap="md">
-            <Text>All set!</Text>
+            <BodyText>All set!</BodyText>
           </Stack>
         ),
       },

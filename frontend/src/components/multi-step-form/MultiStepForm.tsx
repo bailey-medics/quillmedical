@@ -10,9 +10,11 @@
  * @module MultiStepForm
  */
 
-import { Button, Group, Paper, Stack, Stepper } from "@mantine/core";
+import { Stack, Stepper } from "@mantine/core";
 import { useState, type ReactNode } from "react";
-import { IconChevronLeft, IconCheck } from "@/components/icons/appIcons";
+import { IconCheck } from "@/components/icons/appIcons";
+import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
 
 /**
  * Individual step configuration
@@ -131,6 +133,15 @@ export default function MultiStepForm({
         active={activeStep}
         onStepClick={handleStepClick}
         completedIcon={<IconCheck size={18} />}
+        styles={{
+          stepLabel: {
+            fontSize: "var(--mantine-font-size-lg)",
+          },
+          stepIcon: {
+            fontSize: "var(--mantine-font-size-lg)",
+          },
+        }}
+        size="lg"
       >
         {steps.map((step, index) => (
           <Stepper.Step
@@ -141,36 +152,16 @@ export default function MultiStepForm({
         ))}
       </Stepper>
 
-      <Paper p="xl" withBorder>
-        {currentStepConfig.content(stepContentProps)}
-      </Paper>
+      <BaseCard>{currentStepConfig.content(stepContentProps)}</BaseCard>
 
-      <Group justify="space-between">
-        {!isLastStep ? (
-          <Button
-            variant="subtle"
-            leftSection={<IconChevronLeft size={16} />}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        ) : (
-          <div />
-        )}
-
-        <Group>
-          {!isFirstStep && (
-            <Button variant="default" onClick={prevStep}>
-              Back
-            </Button>
-          )}
-          {!isLastStep && (
-            <Button onClick={nextStep}>
-              {currentStepConfig.nextButtonLabel || "Next"}
-            </Button>
-          )}
-        </Group>
-      </Group>
+      {!isLastStep && (
+        <ButtonPair
+          cancelLabel={isFirstStep ? "Cancel" : "Back"}
+          onCancel={isFirstStep ? onCancel : prevStep}
+          acceptLabel={currentStepConfig.nextButtonLabel || "Next"}
+          onAccept={nextStep}
+        />
+      )}
     </Stack>
   );
 }
