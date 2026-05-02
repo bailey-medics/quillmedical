@@ -103,7 +103,7 @@ export default function LetterView({
             <Title order={4} style={{ margin: 0 }}>
               {letter.subject}
             </Title>
-            <Text size="lg" color="dimmed">
+            <Text size="lg">
               {letter.from}{" "}
               {letter.date ? `• ${new Date(letter.date).toLocaleString()}` : ""}
             </Text>

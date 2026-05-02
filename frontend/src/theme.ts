@@ -65,13 +65,13 @@ export const publicColours = {
  *            Use for CTAs, highlights, and warm accents.
  */
 export const primaryScale: MantineColorsTuple = [
-  "#e8eef6", // 0 — subtle backgrounds, variant="light" fills
-  "#c5d4e8", // 1 — light tint, hover on light variant
-  "#9db5d4", // 2 — borders, disabled states
-  "#7094bc", // 3 — muted/secondary indicators
-  "#4a74a3", // 4 — mid-tone
-  "#2f5a8a", // 5 — medium prominence
-  "#1a4270", // 6 — prominent elements
+  "#e3edf8", // 0 — subtle backgrounds, variant="light" fills
+  "#bdd2eb", // 1 — light tint, hover on light variant
+  "#93b4d9", // 2 — borders, disabled states
+  "#6894c0", // 3 — muted/secondary indicators
+  "#3d6fa0", // 4 — mid-tone
+  "#245d8f", // 5 — medium prominence
+  "#143f6b", // 6 — prominent elements
   "#0a2f56", // 7 — primary actions (filled buttons) ← primaryShade
   "#042340", // 8 — hover/pressed state
   "#001a36", // 9 — brand text (darkest)
@@ -149,7 +149,9 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--typo-desktop-h6": typographyTokens.headings.h6.desktop,
   },
   dark: {},
-  light: {},
+  light: {
+    "--mantine-color-text": "#143f6b",
+  },
 });
 
 export const theme = createTheme({
@@ -157,7 +159,7 @@ export const theme = createTheme({
   fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
 
   /** Default text colour — brand navy instead of pure black */
-  black: brandColours.primary,
+  black: "#143f6b",
 
   /** Colour scales — primary (navy) and secondary (amber) */
   colors: {
@@ -167,7 +169,7 @@ export const theme = createTheme({
 
   /** Use primary navy as the default colour for all components */
   primaryColor: "primary",
-  primaryShade: 7,
+  primaryShade: 6,
 
   /** Font sizes — mobile-first base values from typographyTokens */
   fontSizes: {

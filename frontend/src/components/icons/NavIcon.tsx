@@ -6,7 +6,6 @@
  * message, file) with configurable sizes (xs, sm, md, lg, xl).
  */
 
-import { ThemeIcon } from "@mantine/core";
 import {
   IconHome2,
   IconSettings,
@@ -92,9 +91,5 @@ export default function NavIcon({ name, size = "lg" }: NavIconProps) {
   const Icon = iconMap[name];
   const iconPixelSize = iconSizeMap[size];
 
-  return (
-    <ThemeIcon variant="light" color="primary" radius="xl" size={size}>
-      <Icon size={iconPixelSize} />
-    </ThemeIcon>
-  );
+  return <Icon size={iconPixelSize} />;
 }

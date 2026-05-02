@@ -9,6 +9,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
+import { colours } from "@/styles/colours";
 
 const meta: Meta<typeof QuillName> = {
   title: "Images/QuillName",
@@ -21,6 +22,19 @@ const meta: Meta<typeof QuillName> = {
     height: { control: "number" },
     alt: { control: "text" },
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: colours.navy,
+          padding: "2rem",
+          display: "inline-flex",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

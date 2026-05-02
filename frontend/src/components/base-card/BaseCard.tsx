@@ -3,10 +3,10 @@
  *
  * Standard card wrapper enforcing consistent styling across the app.
  * All cards in the application should use BaseCard instead of Mantine's
- * Card directly. This ensures uniform shadow, padding, radius, and border.
+ * Card directly. This ensures uniform shadow, padding, and radius.
  *
  * Fixed props (not overridable):
- *   shadow="sm"  padding="lg"  radius="md"  withBorder
+ *   shadow="sm"  padding="lg"  radius="md"
  *
  * All other Mantine Card props are forwarded.
  */
@@ -17,9 +17,9 @@ import { forwardRef, type ReactNode, type Ref } from "react";
 /**
  * Props for BaseCard.
  *
- * Extends Mantine CardProps and HTML div attributes, but omits the four
- * fixed styling props (shadow, padding, radius, withBorder) so they
- * cannot be overridden by consumers. `children` is re-declared as required.
+ * Extends Mantine CardProps and HTML div attributes, but omits the
+ * fixed styling props so they cannot be overridden by consumers.
+ * `children` is re-declared as required.
  */
 export type BaseCardProps = Omit<
   CardProps,
@@ -34,7 +34,15 @@ const BaseCard = forwardRef(function BaseCard(
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <Card ref={ref} shadow="sm" padding="lg" radius="md" withBorder {...rest}>
+    <Card
+      ref={ref}
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      withBorder
+      style={{ borderColor: "var(--mantine-color-gray-2)" }}
+      {...rest}
+    >
       {children}
     </Card>
   );

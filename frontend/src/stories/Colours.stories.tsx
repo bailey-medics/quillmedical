@@ -222,7 +222,7 @@ function ScaleRow({
       <Text size="md" fw={700} mb="xs">
         {name}
       </Text>
-      <Group gap={0}>
+      <Group gap={0} align="flex-start">
         {scale.map((colour, i) => (
           <Stack key={i} gap={4} align="center" style={{ width: 64 }}>
             <Box
@@ -231,18 +231,31 @@ function ScaleRow({
                 height: 48,
                 borderRadius: 8,
                 backgroundColor: colour,
-                border:
-                  i === primaryShade
-                    ? "3px solid var(--mantine-color-red-5)"
-                    : "1px solid var(--mantine-color-gray-3)",
+                border: "1px solid var(--mantine-color-gray-3)",
               }}
             />
-            <Text size="xs" c="dimmed" ta="center">
+            <Text
+              size="xs"
+              c={i === primaryShade ? "black" : "dimmed"}
+              fw={i === primaryShade ? 700 : undefined}
+              ta="center"
+            >
               {i}
             </Text>
-            <Text size="xs" c="dimmed" ta="center" style={{ fontSize: 9 }}>
+            <Text
+              size="xs"
+              c={i === primaryShade ? "black" : "dimmed"}
+              fw={i === primaryShade ? 700 : undefined}
+              ta="center"
+              style={{ fontSize: 9 }}
+            >
               {colour}
             </Text>
+            {i === primaryShade && (
+              <Text size="xs" c="black" fw={700} ta="center">
+                {name.split(" ")[0]} colour
+              </Text>
+            )}
           </Stack>
         ))}
       </Group>
@@ -250,33 +263,35 @@ function ScaleRow({
   );
 }
 
-/** Brand and accent 10-shade colour scales. Red border = primaryShade. */
+/** Brand and accent 10-shade colour scales. Bold label marks the primaryShade. */
 export const Scales: Story = {
-  render: () => (
-    <Stack gap="xl">
-      <div>
-        <Title order={2} mb="md">
-          Colour scales
-        </Title>
-        <Text size="sm" c="dimmed" mb="lg">
-          10-shade ramps registered in the Mantine theme. Components use these
-          via <code>color=&quot;primary&quot;</code> or{" "}
-          <code>color=&quot;secondary&quot;</code>. Red border marks the
-          primaryShade (default for filled variants).
-        </Text>
-        <Stack gap="lg">
-          <ScaleRow
-            name="primary (navy)"
-            scale={primaryScale}
-            primaryShade={7}
-          />
-          <ScaleRow
-            name="secondary (amber)"
-            scale={secondaryScale}
-            primaryShade={5}
-          />
-        </Stack>
-      </div>
-    </Stack>
-  ),
+  render: () => {
+    return (
+      <Stack gap="xl">
+        <div>
+          <Title order={2} mb="md">
+            Colour scales
+          </Title>
+          <Text size="sm" c="dimmed" mb="lg">
+            10-shade ramps registered in the Mantine theme. Components use these
+            via <code>color=&quot;primary&quot;</code> or{" "}
+            <code>color=&quot;secondary&quot;</code>. Bold label marks the
+            primaryShade (default for filled variants).
+          </Text>
+          <Stack gap="lg">
+            <ScaleRow
+              name="primary (navy)"
+              scale={primaryScale}
+              primaryShade={7}
+            />
+            <ScaleRow
+              name="secondary (amber)"
+              scale={secondaryScale}
+              primaryShade={5}
+            />
+          </Stack>
+        </div>
+      </Stack>
+    );
+  },
 };

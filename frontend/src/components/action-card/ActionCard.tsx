@@ -9,7 +9,7 @@ import { Stack, Group } from "@mantine/core";
 import type { ReactElement } from "react";
 import Icon, { type IconSize } from "@/components/icons";
 import ActionCardButton from "@/components/button/ActionCardButton";
-import BodyTextMuted from "@/components/typography/BodyTextMuted";
+import BodyText from "@/components/typography/BodyText";
 import HeaderText from "@/components/typography/HeaderText";
 import BaseCard from "@/components/base-card/BaseCard";
 
@@ -32,7 +32,7 @@ interface ActionCardProps {
   disabled?: boolean;
   /** Remove max-width constraint so the card fills its container */
   fullWidth?: boolean;
-  /** Button variant (default: "light") */
+  /** Button variant (default: "filled") */
   buttonVariant?: "light" | "filled";
 }
 
@@ -56,7 +56,7 @@ export default function ActionCard({
   onClick,
   disabled = false,
   fullWidth = false,
-  buttonVariant = "light",
+  buttonVariant = "filled",
 }: ActionCardProps) {
   return (
     <BaseCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
@@ -69,7 +69,7 @@ export default function ActionCard({
         ) : (
           <HeaderText>{title}</HeaderText>
         )}
-        <BodyTextMuted>{subtitle}</BodyTextMuted>
+        <BodyText>{subtitle}</BodyText>
         <div
           style={{
             marginTop: "auto",

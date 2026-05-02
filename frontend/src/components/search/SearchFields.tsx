@@ -51,7 +51,7 @@ export default function SearchField() {
       onClick={() => setOpen(true)}
       variant="transparent"
     >
-      <IconSearch size={30} stroke={2.5} color="#290661" />
+      <IconSearch size={30} stroke={2.5} color="white" />
     </ActionIcon>
   );
 }

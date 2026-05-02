@@ -32,7 +32,7 @@ export default function ActionCardButton({
   url = "#",
   onClick,
   disabled = false,
-  variant = "light",
+  variant = "filled",
 }: ActionCardButtonProps) {
   if (onClick) {
     return (
