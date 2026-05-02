@@ -42,12 +42,12 @@ export type StatusColourName =
 
 export const statusColours: Record<StatusColourName, StatusColourConfig> = {
   success: {
-    bg: "green",
+    bg: "teal",
     text: "white",
     usage: "Active, completed, final, pass",
   },
   warning: {
-    bg: "yellow.8",
+    bg: "cyan.6",
     text: "white",
     usage: "Draft, pending",
   },
@@ -95,19 +95,15 @@ export const textColours: Record<string, TextColourConfig> = {
     usage: "HeaderText, PageHeader — default black headings",
   },
   body: {
-    value: "dimmed",
-    usage: "BodyTextMuted, BodyTextClamp — secondary body text",
-  },
-  emphasis: {
-    value: "black",
-    usage: "BodyTextInline, BodyTextBold — inline and emphasised body text",
+    value: "var(--mantine-color-text)",
+    usage: "BodyText — primary body text (inherits theme navy)",
   },
   error: {
-    value: "red.8",
+    value: "orange.8",
     usage: "ErrorText — validation and error messages",
   },
   placeholder: {
-    value: "var(--mantine-color-placeholder)",
+    value: "gray.4",
     usage: "PlaceholderText — empty field hints",
   },
 };

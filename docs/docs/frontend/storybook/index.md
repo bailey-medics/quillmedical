@@ -67,9 +67,10 @@ The project includes **98 component story files** across various UI categories:
 
 ### Typography
 
-- **BodyText**, **BodyTextBlack**, **BodyTextBold**, **BodyTextClamp** - Body text variants
-- **ErrorText** - Error message text
+- **BodyText**, **BodyTextBold**, **BodyTextClamp**, **BodyTextInline**, **BodyTextMuted** - Body text variants
+- **ErrorText** - Error message text with alert icon
 - **HeaderText** - Heading text
+- **HyperlinkText** - Internal navigation link
 - **PageHeader** - Page title and description header
 - **PlaceholderText** - Placeholder text
 - **PublicText**, **PublicTitle** - Public-facing typography
@@ -110,12 +111,14 @@ The project includes **98 component story files** across various UI categories:
 - **PreviousNextButton** - Previous/next navigation button pair
 - **PublicBurgerButton** - Public-facing hamburger menu toggle
 - **PublicButton** - Public-facing button
+- **SearchButton** - Search toggle button for the top ribbon
 
 ### Badges & Status
 
 - **ActiveStatus** - Active/inactive status badge
 - **AppointmentStatus** - Appointment status badge
 - **AssessmentResultBadge** - Assessment result badge
+- **PassFailIcon** - Atomic pass/fail indicator icons (PassIcon + FailIcon)
 - **PermissionBadge** - User permission level badge
 - **UnreadBadge** - Unread message count badge
 

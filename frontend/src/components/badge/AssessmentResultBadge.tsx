@@ -29,7 +29,7 @@ const STATUS_CONFIG: Record<
   { label: string; colour: BadgeColourConfig }
 > = {
   pass: { label: "Pass", colour: badgeColours.success },
-  fail: { label: "Fail", colour: badgeColours.outstanding },
+  fail: { label: "Fail", colour: badgeColours.alert },
   incomplete: { label: "Incomplete", colour: badgeColours.accent },
 };
 

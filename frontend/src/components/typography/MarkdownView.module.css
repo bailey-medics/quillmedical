@@ -1,6 +1,14 @@
+/*
+ * MarkdownView styles
+ *
+ * Typography for sanitised HTML rendered from markdown.
+ * Matches BodyText: lg size, weight 500, theme text colour.
+ */
+
 .markdown {
   font-size: var(--mantine-font-size-lg);
-  color: black;
+  font-weight: 500;
+  color: var(--mantine-color-text);
   line-height: 1.55;
 }
 

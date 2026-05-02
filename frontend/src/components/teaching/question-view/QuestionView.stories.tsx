@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Container } from "@mantine/core";
 import { QuestionView } from "./QuestionView";
+import TopRibbon from "@/components/ribbon/TopRibbon";
 import type { CandidateItem } from "@/features/teaching/types";
 
 const uniformItem: CandidateItem = {
@@ -62,23 +63,12 @@ const meta: Meta<typeof QuestionView> = {
   decorators: [
     (Story) => (
       <>
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1000,
-            minHeight: 60,
-            background: "#e6f7ff",
-            display: "flex",
-            alignItems: "center",
-            padding: "var(--mantine-spacing-sm)",
-            fontWeight: 600,
-          }}
-        >
-          Quill Medical — ribbon placeholder
-        </div>
+        <TopRibbon
+          examMode
+          patient={null}
+          isLoading={false}
+          onBurgerClick={() => {}}
+        />
         <Container size="lg" py="xl">
           <Story />
         </Container>

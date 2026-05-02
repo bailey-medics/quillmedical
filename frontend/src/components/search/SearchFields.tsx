@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ActionIcon, TextInput } from "@mantine/core";
-import { IconSearch, IconX } from "@/components/icons/appIcons";
+import { IconX } from "@/components/icons/appIcons";
+import SearchButton from "@/components/button/SearchButton";
 
 /**
  * Search Field
@@ -46,12 +47,6 @@ export default function SearchField() {
       onBlur={() => setOpen(false)}
     />
   ) : (
-    <ActionIcon
-      aria-label="Open search"
-      onClick={() => setOpen(true)}
-      variant="transparent"
-    >
-      <IconSearch size={30} stroke={2.5} color="white" />
-    </ActionIcon>
+    <SearchButton onClick={() => setOpen(true)} />
   );
 }

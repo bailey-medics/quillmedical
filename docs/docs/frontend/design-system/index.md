@@ -66,70 +66,102 @@ This follows the modern pattern used by Notion, Linear, and NHS App: faint borde
 
 ## Status colours
 
-Status colours communicate state in badges, alerts, and form validation. Each token defines a background and text colour pair.
+Status colours communicate state in badges, alerts, and form validation. Each token defines a background and text colour pair. Colours were chosen for colour-blind accessibility — avoiding red/green pairs that are indistinguishable to users with protanopia or deuteranopia.
 
-| Token       | Mantine value | Usage                              |
-| ----------- | ------------- | ---------------------------------- |
-| success     | green         | Active, completed, final, pass     |
-| warning     | yellow.8      | Draft, pending                     |
-| outstanding | pink          | Deactivated, cancelled, fail       |
-| info        | blue          | Upcoming, amended, admin, unread   |
-| neutral     | yellow.4      | Staff, default                     |
-| accent      | violet        | Incomplete, special states         |
-| alert       | red           | No-show, patient, attention needed |
+| Token       | Mantine value | Usage                             |
+| ----------- | ------------- | --------------------------------- |
+| success     | teal          | Active, completed, final, pass    |
+| warning     | cyan.6        | Draft, pending                    |
+| outstanding | pink          | Deactivated, cancelled            |
+| info        | blue          | Upcoming, amended, admin, unread  |
+| neutral     | yellow.4      | Staff, default                    |
+| accent      | violet        | Incomplete, special states        |
+| alert       | red           | No-show, patient, fail, attention |
+
+## Grey scale
+
+The app uses Mantine's default grey scale (shades 0–4 only) for subtle backgrounds, dividers, and placeholder text. These are exported as `greyScale` from `theme.ts` alongside the brand colour scales.
+
+| Shade | Hex       | Usage                                |
+| ----- | --------- | ------------------------------------ |
+| 0     | `#f8f9fa` | Table striped rows, subtle fills     |
+| 1     | `#f1f3f5` | Light dividers, card backgrounds     |
+| 2     | `#e9ecef` | Borders, separators, BaseCard border |
+| 3     | `#dee2e6` | Disabled backgrounds                 |
+| 4     | `#ced4da` | Placeholder text                     |
+
+The global Mantine placeholder colour (`--mantine-color-placeholder`) is overridden in the theme to use `gray.4` so all input placeholders use the design system grey.
 
 ## Text colours
 
-| Token       | Value                              | Usage                                              |
-| ----------- | ---------------------------------- | -------------------------------------------------- |
-| default     | inherits                           | Headings (HeaderText, PageHeader)                  |
-| body        | dimmed                             | Secondary body text (BodyText, BodyTextClamp)      |
-| emphasis    | black                              | Emphasised body text (BodyTextBlack, BodyTextBold) |
-| error       | red.8                              | Validation and error messages (ErrorText)          |
-| placeholder | `var(--mantine-color-placeholder)` | Empty field hints (PlaceholderText)                |
+| Token       | Value                       | Usage                                             |
+| ----------- | --------------------------- | ------------------------------------------------- |
+| default     | inherits                    | Headings (HeaderText, PageHeader)                 |
+| body        | `var(--mantine-color-text)` | Body text (BodyText, BodyTextClamp, BodyTextBold) |
+| error       | orange.8                    | Validation and error messages (ErrorText)         |
+| placeholder | gray.4                      | Empty field hints (PlaceholderText)               |
 
-> **Accessibility note:** Error text uses `red.8` (`#e03131`) rather than the default Mantine `red` (`#fa5252`) for better visibility with red-green colour blindness.
+> **Accessibility note:** Error text uses `orange.8` with an alert circle icon rather than red, providing a distinct visual signal for users with red-green colour vision deficiency. The icon ensures error state is communicated by shape as well as colour.
 
 ## Typography components
 
 All typography is wrapped in purpose-built components — raw Mantine `Text` or `Title` should not be used directly.
 
-| Component       | Wraps      | Size | Colour      | Weight |
-| --------------- | ---------- | ---- | ----------- | ------ |
-| PageHeader      | Title (h1) | xl   | inherits    | bold   |
-| HeaderText      | Title (h2) | lg   | inherits    | bold   |
-| BodyTextBlack   | Text       | lg   | black       | normal |
-| BodyTextBold    | Text       | lg   | black       | 700    |
-| BodyText        | Text       | lg   | dimmed      | normal |
-| BodyTextClamp   | Text       | lg   | dimmed      | normal |
-| ErrorText       | Text       | lg   | red.8       | 700    |
-| PlaceholderText | Text       | lg   | placeholder | normal |
-| HyperlinkText   | Anchor     | lg   | link        | normal |
+| Component       | Wraps      | Size | Colour    | Weight |
+| --------------- | ---------- | ---- | --------- | ------ |
+| PageHeader      | Title (h1) | xl   | primary.6 | bold   |
+| HeaderText      | Title (h2) | lg   | inherits  | bold   |
+| BodyText        | Text       | lg   | text      | 500    |
+| BodyTextBold    | Text       | lg   | text      | 700    |
+| BodyTextInline  | Text/span  | lg   | text      | 500    |
+| BodyTextClamp   | Text       | lg   | text      | 500    |
+| BodyTextMuted   | Text       | lg   | dimmed    | 500    |
+| ErrorText       | Text       | lg   | orange.8  | 700    |
+| PlaceholderText | Text       | lg   | gray.4    | normal |
+| HyperlinkText   | Anchor     | lg   | primary.4 | normal |
+| MarkdownView    | div (HTML) | lg   | text      | 500    |
+
+Notes:
+
+- **PageHeader** uses `primary.6` via CSS module with responsive sizing (1.875rem mobile → 2.5rem desktop)
+- **ErrorText** includes an `IconAlertCircle` icon alongside the text for colour-blind accessibility
+- **HyperlinkText** has a permanent underline and darkens to `primary.8` on hover
+- **MarkdownView** renders sanitised HTML from markdown, styled via CSS module to match BodyText
 
 ## Semantic colour tokens
 
-All colour values live in a single file:
+All colour values live in two files:
 
-```
-frontend/src/styles/semanticColours.ts
-```
+- `frontend/src/styles/semanticColours.ts` — exports `brand`, `statusColours`, and `textColours` for status badges, alerts, and text
+- `frontend/src/components/badge/badgeColours.ts` — mirrors `semanticColours` for badge-specific use with `BadgeColourConfig` shape
 
-This exports `brand`, `statusColours`, and `textColours`. Components should import from here rather than hardcoding colour values. Badge colours (`badgeColours.ts`) will be refactored to import from this file.
+Components should import from these files rather than hardcoding colour values. The badge colours file defines the same semantic tokens (`success`, `warning`, `alert`, etc.) for use with badge components.
 
 ## Storybook documentation
 
 The **Foundations/** category in Storybook provides visual references:
 
-- **Foundations/Colours** — brand swatches, status badges, text colour samples, and 10-shade scale ramps
+- **Foundations/Colours** — brand swatches, status badges, text colour samples, grey scale, and 10-shade colour scale ramps (primary navy, secondary amber, neutral grey)
 - **Foundations/Typography** — every typography component rendered with sample text, plus the responsive font size scale
 
 These are documentation-only stories with no associated test files.
+
+## Pass/fail indicators
+
+Atomic `PassIcon` and `FailIcon` components in `components/badge/` provide consistent pass/fail visual indicators:
+
+- **PassIcon** — teal filled circle with white tick (uses `badgeColours.success`)
+- **FailIcon** — red filled circle with white cross (uses `badgeColours.alert`)
+
+Both wrap the `Icon` component with `containerVariant="filled"` and accept a `size` prop. Used in `ScoreBreakdown` and available for any pass/fail context.
 
 ## What has been done
 
 - Created `semanticColours.ts` as the single source of truth for all design tokens
 - Built Foundations/Colours and Foundations/Typography Storybook stories
-- Updated ErrorText to `red.8` for colour-blind accessibility
+- Updated ErrorText to `orange.8` with alert icon for colour-blind accessibility
+- Changed success status colour from green to teal for colour-blind distinguishability
+- Changed warning status colour from yellow.8 to cyan.6 for colour-blind distinguishability
 - Standardised all badge components to use config record patterns with shared `BadgeColourConfig`
 - Added `BadgeSkeleton` shared loading component
 - Added `StateMessage` empty states to all list components
@@ -143,11 +175,18 @@ These are documentation-only stories with no associated test files.
 - Updated burger button to match public site (amber icon)
 - Made search icon in ribbon white
 - Updated UnreadBadge to use primary navy
+- Exported `greyScale` from `theme.ts` as part of the design system
+- Overrode `--mantine-color-placeholder` to use `gray.4` from grey scale
+- Updated MarkdownView CSS to match BodyText styling (size, weight, colour)
+- Added `HyperlinkText` underline and primary-4/primary-8 hover colour
+- Created `PlaceholderText` component using `gray.4`
+- Created `BodyTextMuted` component for dimmed secondary text
+- Created `PassIcon` and `FailIcon` atomic badge components
+- Created `SearchButton` atomic button component
+- Updated `ScoreBreakdown` to use `PassIcon`/`FailIcon` instead of inline Icon configuration
+- Added Colours section to component instructions for design system compliance
 
 ## What is planned
 
-- **Refactor badge colours** — `badgeColours.ts` will import from `semanticColours.ts` instead of defining its own values
-- **Delete BadgeColours story** — replaced by Foundations/Colours
-- **Colour accessibility audit** — a sighted reviewer should verify contrast ratios and colour-blind distinguishability across all tokens
 - **Spacing tokens** — document any custom spacing conventions beyond Mantine's built-in props
 - **Component backgrounds and borders** — expand the semantic palette to cover hover states, borders, and surface colours as patterns emerge

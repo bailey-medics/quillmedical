@@ -22,7 +22,7 @@ describe("PlaceholderText", () => {
 
     const element = screen.getByText("Grey text");
     expect(element).toHaveStyle({
-      color: "var(--mantine-color-placeholder)",
+      color: "var(--mantine-color-gray-4)",
     });
   });
 });
