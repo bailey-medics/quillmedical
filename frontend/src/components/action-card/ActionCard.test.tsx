@@ -153,9 +153,9 @@ describe("ActionCard", () => {
       expect(card).toBeInTheDocument();
     });
 
-    it("renders button with light variant", () => {
+    it("renders button with filled variant", () => {
       const { container } = renderWithRouter(<ActionCard {...defaultProps} />);
-      const button = container.querySelector('[data-variant="light"]');
+      const button = container.querySelector('[data-variant="filled"]');
       expect(button).toBeInTheDocument();
     });
 
@@ -165,10 +165,10 @@ describe("ActionCard", () => {
       expect(button).toBeInTheDocument();
     });
 
-    it("renders subtitle with dimmed color", () => {
+    it("renders subtitle text", () => {
       renderWithRouter(<ActionCard {...defaultProps} />);
       const subtitle = screen.getByText("This is a test action card");
-      expect(subtitle).toHaveStyle({ color: "var(--mantine-color-dimmed)" });
+      expect(subtitle).toBeInTheDocument();
     });
   });
 

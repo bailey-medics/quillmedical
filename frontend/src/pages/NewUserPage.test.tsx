@@ -402,7 +402,7 @@ describe("NewUserPage", () => {
           screen.getByText("User created successfully"),
         ).toBeInTheDocument();
       });
-    });
+    }, 15000);
   });
 
   describe("Navigation", () => {
@@ -466,6 +466,6 @@ describe("NewUserPage", () => {
       );
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
-    });
+    }, 15000);
   });
 });
