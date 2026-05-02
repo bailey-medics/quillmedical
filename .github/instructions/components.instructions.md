@@ -24,6 +24,16 @@ applyTo: "frontend/src/components/**"
 - **Responsive**: always use `theme.breakpoints.sm` (`48em` / 768px) for mobile/desktop splits via `useMediaQuery`.
 - **Right-justify all buttons** — wrap buttons in `<Group justify="flex-end">` so they align to the right of their container.
 
+## Colours
+
+- **All colours must come from the design system** — never use hardcoded colour values (e.g. `black`, `#333`, `rgb(...)`) in components or CSS modules.
+- **Brand colours**: import `brandColours`, `publicColours` from `@/theme`.
+- **Colour scales**: import `primaryScale`, `secondaryScale`, `greyScale` from `@/theme`.
+- **Status/semantic colours**: import from `@/styles/semanticColours` (e.g. `statusColours`, `textColours`).
+- **Badge colours**: import from `components/badge/badgeColours.ts`.
+- **In CSS modules**: use Mantine CSS variables (e.g. `var(--mantine-color-text)`, `var(--mantine-color-primary-6)`, `var(--mantine-color-gray-0)`) — never raw colour literals.
+- **In TSX**: use Mantine colour tokens (e.g. `c="primary.7"`, `c="gray.4"`) or imports from the above modules.
+
 ## Testing and stories
 
 - Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils` in all tests.

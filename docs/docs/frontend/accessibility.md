@@ -82,8 +82,10 @@ Common keyboard shortcuts work as expected
 
 #### Design considerations
 
-- Information not conveyed by color alone
-- Color-blind friendly palette
+- Information not conveyed by colour alone
+- Colour-blind friendly palette: error text uses orange (not red), success uses teal (not green), warning uses cyan (not yellow/amber)
+- Error messages include an alert icon alongside colour for redundant signalling
+- Pass/fail indicators use shape (tick/cross icons) in addition to colour
 - Visible focus indicators
 - Clear visual hierarchy
 

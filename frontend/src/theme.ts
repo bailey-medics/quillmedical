@@ -91,6 +91,20 @@ export const secondaryScale: MantineColorsTuple = [
 ];
 
 /**
+ * Neutral grey scale — Mantine defaults, light shades only (0–4).
+ *
+ * Used for table striping, dividers, placeholders, and subtle backgrounds.
+ * Matches the Mantine `gray` colour key so `gray.0` === greyScale[0], etc.
+ */
+export const greyScale = [
+  "#f8f9fa", // 0 — table striped rows, subtle backgrounds
+  "#f1f3f5", // 1 — light dividers, card backgrounds
+  "#e9ecef", // 2 — borders, separators
+  "#dee2e6", // 3 — disabled backgrounds
+  "#ced4da", // 4 — placeholder text
+] as const;
+
+/**
  * Typography tokens — single source of truth for all font sizes.
  *
  * Mobile values are consumed by Mantine's createTheme(). Desktop values
@@ -151,6 +165,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   dark: {},
   light: {
     "--mantine-color-text": "#143f6b",
+    "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
   },
 });
 

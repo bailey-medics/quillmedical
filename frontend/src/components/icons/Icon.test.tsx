@@ -123,7 +123,7 @@ describe("Icon Component", () => {
     const { container } = renderWithMantine(
       <Icon
         icon={<IconPencil data-testid="contained-icon" />}
-        container="green"
+        container="teal"
       />,
     );
 

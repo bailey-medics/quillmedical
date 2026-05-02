@@ -2,12 +2,11 @@
  * ScoreBreakdown Component
  *
  * Displays per-criterion pass/fail results from the assessment scoring.
- * Each criterion shows name, value vs threshold, and visual pass/fail.
+ * Each criterion shows name, value vs threshold, and a visual pass/fail
+ * indicator using PassIcon/FailIcon badges alongside an AssessmentResultBadge.
  */
 
 import { Group, Stack } from "@mantine/core";
-import { IconCheck, IconX } from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -16,13 +15,21 @@ import {
   HeaderText,
 } from "@/components/typography";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
+import PassIcon from "@/components/badge/PassIcon";
+import FailIcon from "@/components/badge/FailIcon";
 import type { CriterionResult } from "@/features/teaching/types";
 
 interface ScoreBreakdownProps {
-  /** List of criterion results */
+  /** Assessment criteria results to display */
   criteria: CriterionResult[];
 }
 
+/**
+ * Renders a card with per-criterion pass/fail breakdown.
+ *
+ * @param props - Component props
+ * @returns Score breakdown card
+ */
 export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
   return (
     <BaseCard>
@@ -31,11 +38,7 @@ export function ScoreBreakdown({ criteria }: ScoreBreakdownProps) {
         {criteria.map((c) => (
           <Group key={c.name} justify="space-between" wrap="nowrap">
             <Group gap="sm" wrap="nowrap">
-              <Icon
-                icon={c.passed ? <IconCheck /> : <IconX />}
-                size="sm"
-                container={c.passed ? "green" : "red"}
-              />
+              {c.passed ? <PassIcon /> : <FailIcon />}
               <BodyTextInline>{c.name}</BodyTextInline>
             </Group>
             <Group gap="xs">

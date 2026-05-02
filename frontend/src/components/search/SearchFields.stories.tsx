@@ -7,14 +7,22 @@
  * - Click interaction to toggle visibility
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Box } from "@mantine/core";
 import SearchField from "./SearchFields";
 
 const meta: Meta<typeof SearchField> = {
   title: "Search/SearchField",
   component: SearchField,
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
+  decorators: [
+    (Story) => (
+      <Box bg="primary.9" p="xl" w="fit-content">
+        <Story />
+      </Box>
+    ),
+  ],
 };
 
 export default meta;

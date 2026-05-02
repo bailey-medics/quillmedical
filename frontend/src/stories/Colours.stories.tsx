@@ -14,7 +14,7 @@ import {
   textColours,
   type StatusColourName,
 } from "@/styles/semanticColours";
-import { primaryScale, secondaryScale } from "@/theme";
+import { primaryScale, secondaryScale, greyScale } from "@/theme";
 
 const meta: Meta = {
   title: "Foundations/Colours",
@@ -26,19 +26,6 @@ const meta: Meta = {
 
 export default meta;
 type Story = StoryObj;
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-/** Mantine default grey scale — light shades only (0–4). */
-const greyScale = [
-  "#f8f9fa", // 0
-  "#f1f3f5", // 1
-  "#e9ecef", // 2
-  "#dee2e6", // 3
-  "#ced4da", // 4
-] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */

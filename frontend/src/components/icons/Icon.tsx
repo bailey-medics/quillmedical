@@ -71,7 +71,7 @@ const mobileSizeMap: Record<IconSize, number> = {
  * ```tsx
  * <Icon icon={<IconPencil />} size="sm" />
  * <Icon icon={<IconUserPlus />} size="lg" />
- * <Icon icon={<IconCheck />} container="green" />
+ * <Icon icon={<IconCheck />} container="teal" />
  * <Icon icon={<IconX />} container="red" containerVariant="filled" />
  * ```
  */

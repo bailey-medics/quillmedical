@@ -92,8 +92,8 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Appointments | AppointmentsList | `components/appointments/` |
 | Avatars | ProfilePic, StackedProfilePics | `components/profile-pic/` |
 | Backgrounds | PublicDarkBackground, PublicHeroBackground, PublicLightBackground | `components/background/` |
-| Badge | ActiveStatus, AppointmentStatus, AssessmentResultBadge, PermissionBadge, UnreadBadge | `components/badge/` |
-| Button | ActionCardButton, AddButton, BurgerButton, ButtonPair, ButtonPairRed, IconButton, IconTextButton, PreviousNextButton, PublicBurgerButton, PublicButton | `components/button/` |
+| Badge | ActiveStatus, AppointmentStatus, AssessmentResultBadge, FailIcon, PassIcon, PermissionBadge, UnreadBadge | `components/badge/` |
+| Button | ActionCardButton, AddButton, BurgerButton, ButtonPair, ButtonPairRed, IconButton, IconTextButton, PreviousNextButton, PublicBurgerButton, PublicButton, SearchButton | `components/button/` |
 | Cards | BaseCard | `components/base-card/` |
 | Data | Date, NationalNumber | `components/data/` |
 | Demographics | Demographics | `components/demographics/` |
@@ -121,7 +121,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | StatCards | StatCard | `components/stats-card/` |
 | Tables | DataCard, DataTable | `components/tables/` |
 | Teaching | AssessmentClosing, AssessmentHistoryTable, AssessmentIntro, AssessmentProgress, AssessmentResult, AssessmentTimer, ExamCloseButton, QuestionView, ScoreBreakdown | `components/teaching/` |
-| Typography | BodyText, BodyTextBlack, BodyTextBold, BodyTextClamp, ErrorText, HeaderText, HyperlinkText, MarkdownView, PageHeader, PlaceholderText, PublicText, PublicTitle | `components/typography/` |
+| Typography | BodyText, BodyTextBold, BodyTextClamp, BodyTextInline, BodyTextMuted, ErrorText, HeaderText, HyperlinkText, MarkdownView, PageHeader, PlaceholderText, PublicText, PublicTitle | `components/typography/` |
 | Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.

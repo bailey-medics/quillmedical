@@ -20,25 +20,24 @@ The app's secondary colour is **gold** — warm accent to complement the navy pr
 
 | Token       | Mantine value | Usage                              |
 | ----------- | ------------- | ---------------------------------- |
-| success     | green         | Active, completed, final, pass     |
-| warning     | yellow.8      | Draft, pending                     |
-| outstanding | pink          | Deactivated, cancelled, fail       |
+| success     | teal          | Active, completed, final, pass     |
+| warning     | cyan.6        | Draft, pending                     |
+| outstanding | pink          | Deactivated, cancelled             |
 | info        | blue          | Upcoming, amended, admin, unread   |
 | neutral     | yellow.4      | Staff, default                     |
 | accent      | violet        | Incomplete, special states         |
-| alert       | red           | No-show, patient, attention needed |
+| alert       | red           | No-show, patient, fail, attention  |
 
 Each status token stores `{ bg: string; text: string }` — background and text colour — matching the existing `BadgeColourConfig` shape.
 
 ### Text colours
 
-| Token            | Value                            | Usage                                              |
-| ---------------- | -------------------------------- | -------------------------------------------------- |
-| text.default     | (inherits)                       | HeaderText, PageHeader — default black             |
-| text.body        | dimmed                           | BodyText, BodyTextClamp — secondary text           |
-| text.emphasis    | black                            | BodyTextBlack, BodyTextBold — emphasised body text |
-| text.error       | red                              | ErrorText — validation and error messages          |
-| text.placeholder | var(--mantine-color-placeholder) | PlaceholderText — empty field hints                |
+| Token            | Value                        | Usage                                             |
+| ---------------- | ---------------------------- | ------------------------------------------------- |
+| text.default     | (inherits)                   | HeaderText, PageHeader — default headings         |
+| text.body        | var(--mantine-color-text)    | BodyText, BodyTextClamp — primary body text       |
+| text.error       | orange.8                     | ErrorText — validation and error messages         |
+| text.placeholder | gray.4                       | PlaceholderText — empty field hints               |
 
 ### Refactor badge colours
 
@@ -70,15 +69,17 @@ Sections:
 
 | Component       | Wraps      | Size | Colour      | Weight |
 | --------------- | ---------- | ---- | ----------- | ------ |
-| PageHeader      | Title (h1) | xl   | inherits    | bold   |
+| PageHeader      | Title (h1) | xl   | primary.6   | bold   |
 | HeaderText      | Title (h2) | lg   | inherits    | bold   |
-| BodyTextBlack   | Text       | lg   | black       | normal |
-| BodyTextBold    | Text       | lg   | black       | 700    |
-| BodyText        | Text       | lg   | dimmed      | normal |
-| BodyTextClamp   | Text       | lg   | dimmed      | normal |
-| ErrorText       | Text       | lg   | red         | bold   |
-| PlaceholderText | Text       | lg   | placeholder | normal |
-| HyperlinkText   | Anchor     | lg   | (link)      | normal |
+| BodyText        | Text       | lg   | text        | 500    |
+| BodyTextBold    | Text       | lg   | text        | 700    |
+| BodyTextInline  | Text/span  | lg   | text        | 500    |
+| BodyTextClamp   | Text       | lg   | text        | 500    |
+| BodyTextMuted   | Text       | lg   | dimmed      | 500    |
+| ErrorText       | Text       | lg   | orange.8    | 700    |
+| PlaceholderText | Text       | lg   | gray.4      | normal |
+| HyperlinkText   | Anchor     | lg   | primary.4   | normal |
+| MarkdownView    | div (HTML) | lg   | text        | 500    |
 
 ## Phase 4: clean up
 

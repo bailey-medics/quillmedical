@@ -8,3 +8,4 @@ export { default as IconTextButton } from "./IconTextButton";
 export { default as PreviousNextButton } from "./PreviousNextButton";
 export { default as PublicBurgerButton } from "./PublicBurgerButton";
 export { default as PublicButton } from "./PublicButton";
+export { default as SearchButton } from "./SearchButton";

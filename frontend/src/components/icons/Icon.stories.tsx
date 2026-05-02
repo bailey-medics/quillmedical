@@ -205,9 +205,9 @@ export const WithContainer: Story = {
   render: () => (
     <Group gap="lg">
       <Stack gap="xs" align="center">
-        <Icon icon={<IconCheck />} container="green" />
+        <Icon icon={<IconCheck />} container="teal" />
         <Text size="xs" c="dimmed">
-          Light green
+          Light teal
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
@@ -217,13 +217,9 @@ export const WithContainer: Story = {
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon
-          icon={<IconCheck />}
-          container="green"
-          containerVariant="filled"
-        />
+        <Icon icon={<IconCheck />} container="teal" containerVariant="filled" />
         <Text size="xs" c="dimmed">
-          Filled green
+          Filled teal
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
