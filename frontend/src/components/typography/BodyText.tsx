@@ -7,12 +7,15 @@
  */
 
 import { Text } from "@mantine/core";
+import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 import { typographyTokens } from "@/theme";
 
 export interface BodyTextProps {
   /** Content to render as body text */
   children: ReactNode;
+  /** Optional colour override */
+  c?: MantineColor;
 }
 
 /**
@@ -21,9 +24,9 @@ export interface BodyTextProps {
  * @param props - Component props
  * @returns Text element
  */
-export default function BodyText({ children }: BodyTextProps) {
+export default function BodyText({ children, c }: BodyTextProps) {
   return (
-    <Text size="lg" fw={typographyTokens.fontWeights.body}>
+    <Text size="lg" fw={typographyTokens.fontWeights.body} c={c}>
       {children}
     </Text>
   );

@@ -33,6 +33,7 @@ export default function SearchField() {
   return open ? (
     <TextInput
       ref={inputRef}
+      size="lg"
       aria-label="Search"
       placeholder="Search…"
       rightSection={
