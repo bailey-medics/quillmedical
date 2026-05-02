@@ -43,23 +43,31 @@ export default function ForgotPasswordForm({
         <form onSubmit={handleSubmit} noValidate>
           <Stack>
             <HeaderText>Forgot password</HeaderText>
-            <BodyText>
-              Enter your email address and we&apos;ll send you a link to reset
-              your password.
-            </BodyText>
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-              required
-              autoComplete="email"
-            />
-            {error && <ErrorText>{error}</ErrorText>}
+            {!success && (
+              <BodyText>
+                Enter your email address and we&apos;ll send you a link to reset
+                your password.
+              </BodyText>
+            )}
+            {!success && (
+              <>
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.currentTarget.value)}
+                  required
+                  autoComplete="email"
+                />
+                {error && <ErrorText>{error}</ErrorText>}
+              </>
+            )}
             {success && <BodyText>{success}</BodyText>}
-            <Button type="submit" loading={submitting} size="lg">
-              Send reset link
-            </Button>
+            {!success && (
+              <Button type="submit" loading={submitting} size="lg">
+                Send reset link
+              </Button>
+            )}
             <Group justify="flex-end">
               <HyperlinkText to="/login">Back to sign in</HyperlinkText>
             </Group>

@@ -1,12 +1,13 @@
 /**
  * State Message Component
  *
- * Displays informational alert messages for different application states.
- * Used to indicate database initialisation, empty lists, and error conditions.
+ * Displays informational messages for different application states.
+ * Uses BaseCard with a background colour — border is automatically
+ * removed, text set to white.
  */
 
 import type { ReactElement } from "react";
-import { Alert } from "@mantine/core";
+import { Box, Group, Stack } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCalendar,
@@ -18,8 +19,9 @@ import {
   IconUserOff,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, HeaderText } from "@/components/typography";
-import classes from "./StateMessage.module.css";
+import { statusColours } from "@/styles/semanticColours";
 
 /** All supported state message types */
 export type StateMessageType =
@@ -54,88 +56,86 @@ type StateConfig = {
 const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
   "database-initialising": {
     icon: <IconClock />,
-    colour: "blue",
+    colour: statusColours.info.bg,
     title: "Database is initialising",
     description:
       "The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available.",
   },
   "no-patients": {
     icon: <IconUserOff />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No patients to show",
     description: "There are currently no patients in the system.",
   },
   "no-letters": {
     icon: <IconMail />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No letters to show",
     description: "There are no clinical letters for this patient yet.",
   },
   "no-messages": {
     icon: <IconMessage />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No messages to show",
     description: "Messages from your care team will appear here.",
   },
   "no-notes": {
     icon: <IconPencil />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No notes to show",
     description: "There are no clinical notes for this patient yet.",
   },
   "no-documents": {
     icon: <IconFileText />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No documents to show",
     description: "There are no documents for this patient yet.",
   },
   "no-appointments": {
     icon: <IconCalendar />,
-    colour: "gray",
+    colour: statusColours.warning.bg,
     title: "No appointments to show",
     description: "There are no appointments scheduled for this patient.",
   },
 };
 
-const alertStyles = {
-  root: classes.root,
-  icon: classes.icon,
-  title: classes.title,
-};
-
 /**
  * State Message
  *
- * Renders context-aware alert messages for application states.
- * Uses appropriate icons and colours to distinguish between
+ * Renders context-aware messages for application states.
+ * Uses BaseCard with status colours to distinguish between
  * system initialisation, empty state, and error conditions.
  */
 export default function StateMessage(props: Props) {
   if (props.type === "error") {
     return (
-      <Alert
-        icon={<Icon icon={<IconAlertCircle />} size="xl" />}
-        title={<HeaderText>Error loading data</HeaderText>}
-        color="red"
-        variant="light"
-        classNames={alertStyles}
-      >
-        <BodyTextInline>{props.message}</BodyTextInline>
-      </Alert>
+      <BaseCard bg={statusColours.alert.bg} data-testid="state-message">
+        <Group gap="md" wrap="nowrap" align="flex-start">
+          <Box style={{ flexShrink: 0 }}>
+            <Icon icon={<IconAlertCircle />} size="lg" />
+          </Box>
+          <Stack gap={4}>
+            <HeaderText c="white">Error loading data</HeaderText>
+            <BodyTextInline c="white">{props.message}</BodyTextInline>
+          </Stack>
+        </Group>
+      </BaseCard>
     );
   }
 
   const { icon, colour, title, description } = STATE_CONFIG[props.type];
 
   return (
-    <Alert
-      icon={<Icon icon={icon} size="xl" />}
-      title={<HeaderText>{title}</HeaderText>}
-      color={colour}
-      variant="light"
-      classNames={alertStyles}
-    >
-      <BodyTextInline>{description}</BodyTextInline>
-    </Alert>
+    <BaseCard bg={colour} data-testid="state-message">
+      <Group gap="md" wrap="nowrap" align="flex-start">
+        <Box style={{ flexShrink: 0 }}>
+          <Icon icon={icon} size="lg" />
+        </Box>
+        <Stack gap={4}>
+          <HeaderText c="white">{title}</HeaderText>
+          <BodyTextInline c="white">{description}</BodyTextInline>
+        </Stack>
+      </Group>
+    </BaseCard>
   );
 }

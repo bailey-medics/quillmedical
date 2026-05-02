@@ -86,7 +86,7 @@ export const LoadingWide: Story = {
 /** Non-clinical deployment — search field hidden */
 export const NonClinical: Story = {
   args: {
-    patient: demoPatientsList[0],
+    patient: null,
     isLoading: false,
     navOpen: false,
     isNarrow: false,
