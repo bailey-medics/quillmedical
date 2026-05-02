@@ -44,13 +44,20 @@ type Props = {
 };
 
 /**
- * Skeleton placeholder shown while patient data loads
+ * Skeleton placeholder shown while patient data loads.
+ * Overrides Mantine's default ::before (body-colour base) and
+ * ::after (grey shimmer) so the pulse is visible on dark navy.
  */
+const darkSkeletonVars = {
+  "--mantine-color-body": "rgba(255, 255, 255, 0.1)",
+  "--mantine-color-gray-3": "rgba(255, 255, 255, 0.25)",
+} as React.CSSProperties;
+
 function RibbonSkeleton({ isNarrow = false }: { isNarrow?: boolean }) {
   return (
     <Group gap="md" wrap="nowrap" w="100%" align="center">
-      {!isNarrow && <Skeleton circle h={48} w={48} />}
-      <Skeleton h={30} radius="sm" style={{ flex: 1 }} />
+      {!isNarrow && <Skeleton circle h={48} w={48} style={darkSkeletonVars} />}
+      <Skeleton h={30} radius="sm" style={{ flex: 1, ...darkSkeletonVars }} />
     </Group>
   );
 }
