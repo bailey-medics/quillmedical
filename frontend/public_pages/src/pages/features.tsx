@@ -1,11 +1,11 @@
 import PublicLayout from "@/components/layouts/PublicLayout";
-import { theme } from "@/theme";
-import { Container, List, MantineProvider, Text, Title } from "@mantine/core";
+import { Container, List, Text, Title } from "@mantine/core";
+import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import ReactDOM from "react-dom/client";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} defaultColorScheme="light">
+  <PublicMantineProvider>
     <PublicLayout>
       <Container size="lg" py="xl">
         <Title order={1}>Features</Title>
@@ -19,5 +19,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </Text>
       </Container>
     </PublicLayout>
-  </MantineProvider>,
+  </PublicMantineProvider>,
 );

@@ -9,14 +9,8 @@ import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
-import { theme } from "@/theme";
-import {
-  Container,
-  Group,
-  MantineProvider,
-  SimpleGrid,
-  Stack,
-} from "@mantine/core";
+import { Container, Group, SimpleGrid, Stack } from "@mantine/core";
+import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import {
   IconChalkboardTeacher,
@@ -29,7 +23,7 @@ import {
 import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} defaultColorScheme="light">
+  <PublicMantineProvider>
     <PublicLayout>
       <PublicHeroBackground>
         <Container size="lg" py="xl">
@@ -155,5 +149,5 @@ createRoot(document.getElementById("root")!).render(
         </Container>
       </PublicDarkBackground>
     </PublicLayout>
-  </MantineProvider>,
+  </PublicMantineProvider>,
 );
