@@ -10,7 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Paper, Skeleton, Stack, Table } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
-import ActiveStatus from "@/components/badge/ActiveStatus";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import { StateMessage } from "@/components/message-cards";
 import {
   BodyText,
@@ -134,7 +134,7 @@ export default function AdminBankDetailPage() {
                         <BodyTextInline>{org.organisation_name}</BodyTextInline>
                       </Table.Td>
                       <Table.Td>
-                        <ActiveStatus active={org.is_live} size="md" />
+                        <ActiveStatusBadge active={org.is_live} size="md" />
                       </Table.Td>
                       {bank.email_coordinator_on_pass && (
                         <Table.Td>

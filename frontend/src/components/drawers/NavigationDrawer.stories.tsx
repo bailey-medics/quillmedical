@@ -85,7 +85,7 @@ type Story = StoryObj<typeof meta>;
 
 // Little menu to render inside the drawer
 function DrawerContent() {
-  return <SideNavContent />;
+  return <SideNavContent showIcons />;
 }
 
 export const Interactive: Story = {

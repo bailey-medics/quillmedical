@@ -16,8 +16,8 @@ import {
   Heading,
 } from "@/components/typography";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
-import PassIcon from "@/components/badge/PassIcon";
-import FailIcon from "@/components/badge/FailIcon";
+import PassIcon from "@/components/icons/PassIcon";
+import FailIcon from "@/components/icons/FailIcon";
 import type { CriterionResult } from "@/features/teaching/types";
 
 interface ScoreBreakdownProps {

@@ -14,6 +14,7 @@ const meta: Meta<typeof NewMessageModal> = {
   title: "Messaging/NewMessageModal",
   component: NewMessageModal,
   tags: ["autodocs"],
+  parameters: { layout: "fullscreen" },
   args: {
     opened: true,
     onClose: fn(),

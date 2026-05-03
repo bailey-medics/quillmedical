@@ -43,7 +43,7 @@ export interface Column<T> {
    * Render function for cell content.
    *
    * Return plain text (string/number) or a simple component (Badge,
-   * FormattedDate, ActiveStatus, etc.). Do NOT wrap output in Text or
+   * FormattedDate, ActiveStatusBadge, etc.). Do NOT wrap output in Text or
    * other typography components — cells are already styled via
    * BodyTextInline.
    */

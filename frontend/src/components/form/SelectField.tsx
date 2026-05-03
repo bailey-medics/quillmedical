@@ -8,6 +8,7 @@ const fieldStyles = {
     marginBottom: "0.25rem",
   },
   input: { fontSize: "var(--mantine-font-size-lg)" },
+  required: { color: "var(--mantine-color-secondary-5)" },
 };
 
 export default function SelectField(props: SelectProps) {

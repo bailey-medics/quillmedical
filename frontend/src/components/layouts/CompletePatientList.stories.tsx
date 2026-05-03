@@ -11,6 +11,7 @@ import PatientsList from "@/components/patients";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MainLayout } from "@/components/layouts";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
+import { Container } from "@mantine/core";
 
 const meta: Meta<typeof MainLayout> = {
   title: "Layouts/PatientList",
@@ -25,7 +26,9 @@ export const WithPatientList: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
-      <PatientsList patients={demoPatientsList} />
+      <Container size="lg" py="xl">
+        <PatientsList patients={demoPatientsList} />
+      </Container>
     </MainLayout>
   ),
 };
@@ -34,7 +37,9 @@ export const DatabaseInitialising: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
-      <PatientsList patients={[]} fhirAvailable={false} />
+      <Container size="lg" py="xl">
+        <PatientsList patients={[]} fhirAvailable={false} />
+      </Container>
     </MainLayout>
   ),
 };
@@ -43,7 +48,9 @@ export const NoPatients: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
-      <PatientsList patients={[]} fhirAvailable={true} />
+      <Container size="lg" py="xl">
+        <PatientsList patients={[]} fhirAvailable={true} />
+      </Container>
     </MainLayout>
   ),
 };
@@ -52,7 +59,9 @@ export const PatientListLoading: Story = {
   args: { patient: null, isLoading: false },
   render: (args) => (
     <MainLayout {...args}>
-      <PatientsList patients={[]} isLoading={true} />
+      <Container size="lg" py="xl">
+        <PatientsList patients={[]} isLoading={true} />
+      </Container>
     </MainLayout>
   ),
 };

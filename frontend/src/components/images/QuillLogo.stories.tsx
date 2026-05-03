@@ -41,6 +41,22 @@ export const Default: Story = {
     height: 5,
     alt: "Quill",
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "white",
+          padding: "2rem",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          aspectRatio: "1",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 /**

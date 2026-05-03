@@ -47,12 +47,6 @@ describe("LetterView", () => {
       const datePattern = /15\/01\/2024|1\/15\/2024/;
       expect(screen.getByText(datePattern)).toBeInTheDocument();
     });
-
-    it("renders sender avatar with first letter", () => {
-      renderWithMantine(<LetterView letter={mockLetter} />);
-      // Avatar should contain "D" from "Dr. John Smith"
-      expect(screen.getByText("D")).toBeInTheDocument();
-    });
   });
 
   describe("Back navigation", () => {
@@ -167,8 +161,6 @@ describe("LetterView", () => {
       };
       renderWithMantine(<LetterView letter={letterNoFrom} />);
       expect(screen.getByText("Anonymous Letter")).toBeInTheDocument();
-      // Avatar should show "L" for "Letter"
-      expect(screen.getByText("L")).toBeInTheDocument();
     });
 
     it("handles invalid date gracefully", () => {
@@ -221,27 +213,25 @@ describe("LetterView", () => {
   });
 
   describe("Layout and spacing", () => {
-    it("renders with proper padding", () => {
+    it("renders with Mantine Stack layout", () => {
       const { container } = renderWithMantine(
         <LetterView letter={mockLetter} />,
       );
-      const mainDiv = container.querySelector('[style*="padding: 16px"]');
-      expect(mainDiv).toBeInTheDocument();
+      const stack = container.querySelector(".mantine-Stack-root");
+      expect(stack).toBeInTheDocument();
     });
 
-    it("separates header from body with border", () => {
+    it("separates header from body with divider", () => {
       const { container } = renderWithMantine(
         <LetterView letter={mockLetter} />,
       );
-      const separator = container.querySelector(
-        '[style*="border-top: 1px solid"]',
-      );
-      expect(separator).toBeInTheDocument();
+      const divider = container.querySelector(".mantine-Divider-root");
+      expect(divider).toBeInTheDocument();
     });
   });
 
-  describe("Avatar generation", () => {
-    it("uses first letter of sender name for avatar", () => {
+  describe("Sender display", () => {
+    it("displays sender name", () => {
       const letter: Letter = {
         id: "1",
         subject: "Test",
@@ -249,10 +239,10 @@ describe("LetterView", () => {
         body: "Content",
       };
       renderWithMantine(<LetterView letter={letter} />);
-      expect(screen.getByText("A")).toBeInTheDocument();
+      expect(screen.getByText(/Alice Johnson/)).toBeInTheDocument();
     });
 
-    it("handles empty sender name with default letter", () => {
+    it("handles missing sender", () => {
       const letter: Letter = {
         id: "1",
         subject: "Test",
@@ -260,7 +250,7 @@ describe("LetterView", () => {
         body: "Content",
       };
       renderWithMantine(<LetterView letter={letter} />);
-      expect(screen.getByText("L")).toBeInTheDocument();
+      expect(screen.getByText("Test")).toBeInTheDocument();
     });
   });
 

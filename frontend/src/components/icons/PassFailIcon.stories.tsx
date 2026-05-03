@@ -13,7 +13,7 @@ import { BodyTextInline } from "@/components/typography";
 import { VariantRow, VariantStack } from "@/stories/variants";
 
 const meta: Meta = {
-  title: "Badge/PassFailIcon",
+  title: "Icons/PassFailIcon",
   parameters: {
     layout: "padded",
   },
@@ -39,42 +39,16 @@ export const Default: Story = {
   ),
 };
 
-/** All size variants for PassIcon. */
-export const PassSizes: Story = {
+/** All size variants for both icons. */
+export const AllSizes: Story = {
   render: () => (
     <VariantStack>
-      <VariantRow label="sm (default)">
-        <PassIcon size="sm" />
-      </VariantRow>
-      <VariantRow label="md">
-        <PassIcon size="md" />
-      </VariantRow>
-      <VariantRow label="lg">
-        <PassIcon size="lg" />
-      </VariantRow>
-      <VariantRow label="xl">
-        <PassIcon size="xl" />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
-/** All size variants for FailIcon. */
-export const FailSizes: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="sm (default)">
-        <FailIcon size="sm" />
-      </VariantRow>
-      <VariantRow label="md">
-        <FailIcon size="md" />
-      </VariantRow>
-      <VariantRow label="lg">
-        <FailIcon size="lg" />
-      </VariantRow>
-      <VariantRow label="xl">
-        <FailIcon size="xl" />
-      </VariantRow>
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
+        <VariantRow key={size} label={size === "sm" ? "sm (default)" : size}>
+          <PassIcon size={size} />
+          <FailIcon size={size} />
+        </VariantRow>
+      ))}
     </VariantStack>
   ),
 };

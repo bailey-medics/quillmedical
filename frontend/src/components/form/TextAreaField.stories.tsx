@@ -34,7 +34,8 @@ export const Autosize: Story = {
     placeholder: "Add clinical notes…",
     autosize: true,
     minRows: 3,
-    maxRows: 8,
+    value:
+      "Patient attended for routine follow-up appointment. Reports intermittent headaches over the past three weeks, predominantly in the frontal region, occurring two to three times per week. Pain is described as a dull ache, rated 4/10 in severity, lasting approximately two to three hours each episode. No associated nausea, vomiting, visual disturbance, or photophobia.\n\nOn examination, blood pressure was 128/82 mmHg, pulse 72 bpm regular. Neurological examination was unremarkable with no focal deficits. Fundoscopy showed normal optic discs bilaterally.\n\nPlan: Advised to maintain a headache diary for the next four weeks. Recommended adequate hydration and regular sleep pattern. Paracetamol 1g as required for symptomatic relief, no more than four times daily. Review in four weeks with headache diary. Consider referral to neurology if symptoms persist or worsen.",
   },
 };
 

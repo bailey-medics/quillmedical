@@ -30,7 +30,7 @@ const STATUS_CONFIG: Record<
   deactivated: { label: "Deactivated", colour: badgeColours.outstanding },
 };
 
-export default function ActiveStatus({
+export default function ActiveStatusBadge({
   active,
   size = "lg",
   isLoading = false,

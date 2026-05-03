@@ -8,7 +8,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
-import { ActiveStatus } from "@/components/badge";
+import { ActiveStatusBadge } from "@/components/badge";
 import DataTable, { type Column } from "./DataTable";
 
 interface User {
@@ -130,7 +130,7 @@ export const WithPatientData: StoryObj<typeof DataTable<Patient>> = {
       {
         header: "Status",
         render: (patient) => (
-          <ActiveStatus active={patient.status === "active"} />
+          <ActiveStatusBadge active={patient.status === "active"} />
         ),
       },
     ],

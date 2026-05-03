@@ -21,7 +21,7 @@ import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
-import ActiveStatus from "@/components/badge/ActiveStatus";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import { StateMessage } from "@/components/message-cards";
 import { Heading } from "@/components/typography";
 import { api } from "@/lib/api";
@@ -157,7 +157,7 @@ export default function AdminBankOrgSettingsPage() {
           <Stack gap="sm">
             <Group justify="space-between">
               <Heading>Exam status</Heading>
-              <ActiveStatus active={isLive} size="lg" />
+              <ActiveStatusBadge active={isLive} size="lg" />
             </Group>
             <SolidSwitch
               label="Open for assessments"
