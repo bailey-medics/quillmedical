@@ -83,29 +83,29 @@ Depends on Phase 1.
 
 ## Files involved
 
-| File                                                           | Changes                                                                    |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `frontend/index.html`                                          | Add `ColorSchemeScript` in `<head>`                                        |
-| `frontend/src/main.tsx`                                        | Add `defaultColorScheme="light"` to `MantineProvider`                      |
-| `frontend/src/theme.ts`                                        | Populate `dark: {}` in `cssVariablesResolver` with dark-mode token values  |
-| `frontend/src/styles/semanticColours.ts`                       | Add dark-mode status colour variants                                       |
-| `frontend/src/components/button/PublicButton.module.css`       | Replace 6 hardcoded colour values                                          |
-| `frontend/src/components/button/PublicBurgerButton.module.css` | Replace hardcoded hover colour                                             |
-| `frontend/src/components/badge/UnreadBadge.module.css`         | Replace `color: white` with CSS variable                                   |
-| `frontend/.storybook/preview.tsx`                              | Add dark mode toggle toolbar                                               |
+| File                                                           | Changes                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `frontend/index.html`                                          | Add `ColorSchemeScript` in `<head>`                                       |
+| `frontend/src/main.tsx`                                        | Add `defaultColorScheme="light"` to `MantineProvider`                     |
+| `frontend/src/theme.ts`                                        | Populate `dark: {}` in `cssVariablesResolver` with dark-mode token values |
+| `frontend/src/styles/semanticColours.ts`                       | Add dark-mode status colour variants                                      |
+| `frontend/src/components/button/PublicButton.module.css`       | Replace 6 hardcoded colour values                                         |
+| `frontend/src/components/button/PublicBurgerButton.module.css` | Replace hardcoded hover colour                                            |
+| `frontend/src/components/badge/UnreadBadge.module.css`         | Replace `color: white` with CSS variable                                  |
+| `frontend/.storybook/preview.tsx`                              | Add dark mode toggle toolbar                                              |
 
 ## Key decisions
 
-| Decision               | Decision                                      | Rationale                                                                                           |
-| ---------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Default scheme         | `"light"` (explicit)                          | No user toggle for now; change to `"auto"` when toggle is added                                     |
-| User toggle            | Not yet                                       | Infrastructure first; toggle added in a future PR                                                   |
-| Public pages           | No changes                                    | Dark-themed by design; no light mode variant exists                                                 |
-| PACS/X-ray views       | Per-page `forceColorScheme="dark"`             | Same pattern as `PublicFooter`; keeps dark mode scoped to where it's clinically useful               |
-| Dark surface colour    | Navy-tinted dark (not pure black)              | Consistent with brand; easier on eyes                                                               |
-| Preference persistence | `localStorage` (Mantine default) when enabled | No backend change needed initially; sync across devices only if stored in user profile later         |
-| Transition animation   | None                                          | Instant scheme changes                                                                              |
-| Dark colour values     | Initial placeholders                          | Will be refined collaboratively after infrastructure is in place                                     |
+| Decision               | Decision                                      | Rationale                                                                                    |
+| ---------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Default scheme         | `"light"` (explicit)                          | No user toggle for now; change to `"auto"` when toggle is added                              |
+| User toggle            | Not yet                                       | Infrastructure first; toggle added in a future PR                                            |
+| Public pages           | No changes                                    | Dark-themed by design; no light mode variant exists                                          |
+| PACS/X-ray views       | Per-page `forceColorScheme="dark"`            | Same pattern as `PublicFooter`; keeps dark mode scoped to where it's clinically useful       |
+| Dark surface colour    | Navy-tinted dark (not pure black)             | Consistent with brand; easier on eyes                                                        |
+| Preference persistence | `localStorage` (Mantine default) when enabled | No backend change needed initially; sync across devices only if stored in user profile later |
+| Transition animation   | None                                          | Instant scheme changes                                                                       |
+| Dark colour values     | Initial placeholders                          | Will be refined collaboratively after infrastructure is in place                             |
 
 ## Verification checklist
 
