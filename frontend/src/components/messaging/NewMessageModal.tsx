@@ -17,7 +17,7 @@ import SolidSwitch from "@/components/form/SolidSwitch";
 import BodyTextBold from "@/components/typography/BodyTextBold";
 import ErrorMessage from "@/components/typography/ErrorMessage";
 import Heading from "@/components/typography/Heading";
-import { Modal, ScrollArea, Stack } from "@mantine/core";
+import { Modal, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 
 interface PatientOption {
@@ -195,7 +195,6 @@ export default function NewMessageModal({
       title={<Heading>New message</Heading>}
       size="lg"
       centered
-      scrollAreaComponent={ScrollArea.Autosize}
     >
       <Stack gap="md">
         {isPatientUser ? null : lockedPatientId ? (

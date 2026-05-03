@@ -42,8 +42,15 @@ export const LongContent: Story = {
 
 export const MultipleCards: Story = {
   args: { label: "", heading: "", description: "" },
+  decorators: [
+    (Story) => (
+      <Box bg={colours.navy} p="xl">
+        <Story />
+      </Box>
+    ),
+  ],
   render: () => (
-    <Group grow align="stretch">
+    <Group grow align="stretch" wrap="wrap">
       <PublicInfoCard
         label="Clinical letters"
         heading="42"
