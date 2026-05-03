@@ -1,5 +1,5 @@
 .root {
-  --combobox-chevron-color: var(--mantine-primary-color-filled);
+  --combobox-chevron-color: var(--mantine-color-text);
   --pill-fz: var(--mantine-font-size-lg);
   --pill-height: auto;
 }

@@ -118,7 +118,16 @@ const decorators = [
                 forceColorScheme={colorScheme}
               >
                 <AuthWrapper>
-                  <div style={{ padding: 0 }}>{Story()}</div>
+                  <div
+                    style={{
+                      padding: 0,
+                      background: "var(--mantine-color-body)",
+                      color: "var(--mantine-color-text)",
+                      minHeight: "100vh",
+                    }}
+                  >
+                    {Story()}
+                  </div>
                 </AuthWrapper>
               </MantineProvider>
             </AuthProvider>

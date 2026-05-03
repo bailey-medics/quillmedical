@@ -55,7 +55,7 @@ export const Default: Story = {
             <Icon icon={<IconComponent />} size="lg" />
             <Text
               size="xs"
-              c="dimmed"
+              c="var(--mantine-color-text)"
               style={{
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
@@ -230,4 +230,9 @@ export const WithContainer: Story = {
       </Stack>
     </Group>
   ),
+};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
 };

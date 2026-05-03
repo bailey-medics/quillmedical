@@ -9,6 +9,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
+import Image from "@components/images/Image";
 
 const meta: Meta<typeof QuillName> = {
   title: "Images/QuillName",
@@ -20,6 +21,21 @@ const meta: Meta<typeof QuillName> = {
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },
+  },
+};
+
+export default meta;
+
+type Story = StoryObj<typeof QuillName>;
+
+/**
+ * Default "Quill Medical" text logo.
+ * Standard height (5px) suitable for Storybook display.
+ */
+export const Default: Story = {
+  args: {
+    height: 5,
+    alt: "Quill Medical",
   },
   decorators: [
     (Story) => (
@@ -36,17 +52,27 @@ const meta: Meta<typeof QuillName> = {
   ],
 };
 
-export default meta;
-
-type Story = StoryObj<typeof QuillName>;
-
-/**
- * Default "Quill Medical" text logo.
- * Standard height (5px) suitable for Storybook display.
- */
-export const Default: Story = {
-  args: {
-    height: 5,
-    alt: "Quill Medical",
-  },
+/** Dark font variant for light backgrounds. */
+export const DarkFont: Story = {
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "white",
+          padding: "2rem",
+          display: "inline-flex",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => (
+    <Image
+      src="/quill-name.png"
+      alt="Quill Medical"
+      height={5}
+      style={{ marginRight: "0.5rem" }}
+    />
+  ),
 };

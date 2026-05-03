@@ -132,3 +132,8 @@ export const SingleStep: Story = {
     ],
   },
 };
+
+export const DarkMode: Story = {
+  ...LastStep,
+  globals: { colorScheme: "dark" },
+};

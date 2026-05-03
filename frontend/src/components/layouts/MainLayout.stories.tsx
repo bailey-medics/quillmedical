@@ -55,3 +55,8 @@ export const WithPatient: Story = {
     ],
   },
 };
+
+export const DarkMode: Story = {
+  ...NoPatient,
+  globals: { colorScheme: "dark" },
+};

@@ -44,3 +44,8 @@ export const ShortText: Story = {
     children: "Short message that fits on one line.",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

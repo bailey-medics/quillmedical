@@ -5,7 +5,7 @@
  * Always visible regardless of scroll position.
  */
 
-import { Box, Skeleton, useMantineTheme } from "@mantine/core";
+import { Box, Skeleton } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 
 interface FooterProps {
@@ -27,8 +27,6 @@ interface FooterProps {
  * @returns Footer component or null if no text and not loading
  */
 export default function Footer({ text, loading = false }: FooterProps) {
-  const theme = useMantineTheme();
-
   // Don't show footer if no text provided and not loading
   if (!text && !loading) {
     return null;
@@ -39,10 +37,10 @@ export default function Footer({ text, loading = false }: FooterProps) {
       component="footer"
       pos="sticky"
       bottom={0}
-      bg="white"
+      bg="var(--mantine-color-body)"
       style={{
         zIndex: 100,
-        borderTop: `1px solid ${theme.colors.gray[2]}`,
+        borderTop: `1px solid var(--card-border, var(--mantine-color-gray-2))`,
         flexShrink: 0,
         padding: "0.5rem 1rem",
       }}

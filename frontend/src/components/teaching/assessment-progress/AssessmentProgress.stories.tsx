@@ -25,3 +25,8 @@ export const NearEnd: Story = {
 export const Complete: Story = {
   args: { current: 120, total: 120 },
 };
+
+export const DarkMode: Story = {
+  ...Start,
+  globals: { colorScheme: "dark" },
+};

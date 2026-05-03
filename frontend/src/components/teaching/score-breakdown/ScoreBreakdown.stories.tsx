@@ -69,3 +69,8 @@ export const AllFailed: Story = {
     ],
   },
 };
+
+export const DarkMode: Story = {
+  ...AllPassed,
+  globals: { colorScheme: "dark" },
+};

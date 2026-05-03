@@ -59,3 +59,8 @@ export const Empty: Story = {
     assessments: [],
   },
 };
+
+export const DarkMode: Story = {
+  ...WithAttempts,
+  globals: { colorScheme: "dark" },
+};

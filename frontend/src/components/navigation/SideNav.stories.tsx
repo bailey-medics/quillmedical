@@ -72,3 +72,8 @@ export const PatientMessageThreadWithSearch: Story = {
   },
   parameters: { routerPath: `${patientHref}/messages/gastro-clinic` },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

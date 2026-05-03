@@ -90,3 +90,8 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

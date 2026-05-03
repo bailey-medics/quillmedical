@@ -75,3 +75,8 @@ export const Default: Story = {
 export const Loading: Story = {
   render: () => <Messaging messages={[]} currentUserId="me" isLoading={true} />,
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

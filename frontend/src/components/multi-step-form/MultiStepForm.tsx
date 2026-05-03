@@ -148,6 +148,7 @@ export default function MultiStepForm({
           },
           stepIcon: {
             fontSize: "var(--mantine-font-size-lg)",
+            color: "var(--mantine-color-text)",
           },
         }}
         size="sm"

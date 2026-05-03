@@ -32,6 +32,7 @@ export default function Divider({
       mb={mb}
       label={label}
       labelPosition={labelPosition}
+      color="var(--card-border, var(--mantine-color-gray-3))"
     />
   );
 }

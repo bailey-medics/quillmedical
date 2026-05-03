@@ -173,13 +173,42 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   dark: {
     // Text — light grey on dark background (placeholder values, to be refined)
     "--mantine-color-text": "#c9d1d9",
-    "--mantine-color-placeholder": "var(--mantine-color-gray-5)",
-    // Brand — dark surface colour (navy-tinted, not pure black)
-    "--brand-background": "#0d1b2a",
+    "--mantine-color-placeholder": "#5c6370",
+    // Body background — primary colour (#001a36, shade 9)
+    "--mantine-color-body": "#001a36",
+    "--brand-background": "#001a36",
+    // Card/surface background — primary shade 8 (one lighter than body)
+    "--card-bg": "#042340",
+    "--card-border": "#0a2f56",
+    "--card-border-color": "transparent",
+    // Input background — Mantine dark uses --mantine-color-dark-6 for inputs
+    "--mantine-color-default": "#042340",
+    "--mantine-color-dark-6": "#042340",
+    // Input border — matches divider/card border (shade 7)
+    "--mantine-color-dark-4": "#0a2f56",
+    // Pill (multi-select tags) — text and background
+    "--mantine-color-dark-0": "#c9d1d9",
+    "--mantine-color-dark-7": "#0a2f56",
+    // Dimmed text / input arrows
+    "--mantine-color-dark-2": "#0a2f56",
+    // Stepper inactive circles, outline separator
+    "--mantine-color-dark-5": "#042340",
+    // Error text — brighter red for dark backgrounds
+    "--error-color": "#f55142",
+    // Chat bubble backgrounds
+    "--bubble-mine-bg": "#245d8f",
+    "--bubble-theirs-bg": "#0a2f56",
+    "--bubble-shadow": "none",
+    "--bubble-border-top": "1px solid #0a2f56",
   },
   light: {
     "--mantine-color-text": "#143f6b",
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
+    "--error-color": "#f55142",
+    "--bubble-mine-bg": "#bdd2eb",
+    "--bubble-theirs-bg": "#fae8cc",
+    "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
+    "--bubble-border-top": "1px solid rgba(0,0,0,0.06)",
   },
 });
 

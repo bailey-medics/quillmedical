@@ -54,3 +54,8 @@ export const PatientView: Story = {
     patientName: "James Green",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

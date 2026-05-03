@@ -150,3 +150,8 @@ export const Disabled: Story = {
     isLastQuestion: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...UniformType,
+  globals: { colorScheme: "dark" },
+};

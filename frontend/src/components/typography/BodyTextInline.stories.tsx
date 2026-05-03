@@ -24,3 +24,8 @@ export const MultiLine: Story = {
       "Hi Dr Corbett,\n\nI wanted to follow up on our last appointment.\n\nKind regards,\nSarah",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

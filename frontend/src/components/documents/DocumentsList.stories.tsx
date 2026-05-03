@@ -1,11 +1,14 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import DocumentsList from "./DocumentsList";
 import type { DocumentProps } from "./Document";
 import { VariantStack } from "@/stories/variants";
 
-export default {
+const meta: Meta<typeof DocumentsList> = {
   title: "Documents/DocumentsList",
   component: DocumentsList,
 };
+export default meta;
+type Story = StoryObj<typeof DocumentsList>;
 
 const docs: DocumentProps[] = [
   {
@@ -41,20 +44,31 @@ const docs: DocumentProps[] = [
   },
 ];
 
-export const Default = () => (
-  <VariantStack>
-    <DocumentsList documents={docs} />
-  </VariantStack>
-);
+export const Default: Story = {
+  render: () => (
+    <VariantStack>
+      <DocumentsList documents={docs} />
+    </VariantStack>
+  ),
+};
 
-export const Loading = () => (
-  <VariantStack>
-    <DocumentsList documents={[]} loading />
-  </VariantStack>
-);
+export const Loading: Story = {
+  render: () => (
+    <VariantStack>
+      <DocumentsList documents={[]} loading />
+    </VariantStack>
+  ),
+};
 
-export const Empty = () => (
-  <VariantStack>
-    <DocumentsList documents={[]} />
-  </VariantStack>
-);
+export const Empty: Story = {
+  render: () => (
+    <VariantStack>
+      <DocumentsList documents={[]} />
+    </VariantStack>
+  ),
+};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

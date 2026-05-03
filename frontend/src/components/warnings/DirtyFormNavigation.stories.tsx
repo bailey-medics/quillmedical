@@ -74,3 +74,8 @@ export const Interactive: Story = {
   // @ts-expect-error: Custom render function doesn't use args
   args: {},
 };
+
+export const DarkMode: Story = {
+  ...Interactive,
+  globals: { colorScheme: "dark" },
+};

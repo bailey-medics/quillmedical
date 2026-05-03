@@ -24,3 +24,8 @@ export const ShortLink: Story = {
     children: "Learn more",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

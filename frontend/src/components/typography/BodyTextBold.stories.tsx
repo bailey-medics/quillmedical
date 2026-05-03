@@ -44,3 +44,8 @@ export const Right: Story = {
     justify: "right",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

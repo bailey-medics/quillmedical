@@ -56,3 +56,8 @@ export const Disabled: Story = {
     minRows: 3,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

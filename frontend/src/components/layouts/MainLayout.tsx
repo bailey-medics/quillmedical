@@ -108,10 +108,10 @@ export default function MainLayout({
         component="header"
         pos="sticky"
         top={0}
-        bg="white"
+        bg="var(--mantine-color-body)"
         style={{
           zIndex: 100,
-          borderBottom: `1px solid ${theme.colors.gray[2]}`,
+          borderBottom: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
           flexShrink: 0,
         }}
       >
@@ -155,7 +155,7 @@ export default function MainLayout({
             <Box
               component="aside"
               style={{
-                borderRight: `1px solid ${theme.colors.gray[2]}`,
+                borderRight: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
                 height: "100%",
                 overflowY: "auto",
                 flexShrink: 0,

@@ -91,3 +91,8 @@ export const SingleLetter: Story = {
     },
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

@@ -42,13 +42,13 @@ export const WithLabel: Story = {
 export const AllLabelPositions: Story = {
   render: () => (
     <VariantStack>
-      <VariantRow label="left">
+      <VariantRow label="left" horizontal={false}>
         <Divider label="Left label" labelPosition="left" />
       </VariantRow>
-      <VariantRow label="center">
+      <VariantRow label="center" horizontal={false}>
         <Divider label="Centre label" labelPosition="center" />
       </VariantRow>
-      <VariantRow label="right">
+      <VariantRow label="right" horizontal={false}>
         <Divider label="Right label" labelPosition="right" />
       </VariantRow>
     </VariantStack>
@@ -104,5 +104,28 @@ export const WithSpacing: Story = {
         </Stack>
       </VariantRow>
     </VariantStack>
+  ),
+};
+
+export const DarkMode: Story = {
+  globals: { colorScheme: "dark" },
+  render: () => (
+    <Stack>
+      <BodyText>Content above</BodyText>
+      <Divider />
+      <BodyText>Content below</BodyText>
+      <div
+        style={{
+          display: "flex",
+          gap: "1rem",
+          height: "4rem",
+          alignItems: "center",
+        }}
+      >
+        <BodyText>Left</BodyText>
+        <Divider orientation="vertical" />
+        <BodyText>Right</BodyText>
+      </div>
+    </Stack>
   ),
 };

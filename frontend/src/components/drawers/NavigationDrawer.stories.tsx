@@ -110,3 +110,8 @@ export const Interactive: Story = {
     );
   },
 };
+
+export const DarkMode: Story = {
+  ...Interactive,
+  globals: { colorScheme: "dark" },
+};

@@ -49,3 +49,8 @@ export const NoRegisterLink: Story = {
     registerPath: null,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

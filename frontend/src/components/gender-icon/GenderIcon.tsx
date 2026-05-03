@@ -50,7 +50,7 @@ interface GenderIconProps {
 export default function GenderIcon({
   gender,
   size = "lg",
-  color = "#495057",
+  color = "var(--mantine-color-text)",
   loading,
 }: GenderIconProps) {
   const iconSize = SIZES[size];

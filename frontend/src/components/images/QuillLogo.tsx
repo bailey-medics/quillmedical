@@ -7,12 +7,13 @@
 
 import Image from "@components/images/Image";
 import detectStorybook from "@lib/urlUpdate";
+import { useComputedColorScheme } from "@mantine/core";
 import React from "react";
 
 /** Available logo colour variants */
-type LogoColour = "default" | "light-grey" | "white";
+type LogoColour = "auto" | "default" | "light-grey" | "white";
 
-const logoFileMap: Record<LogoColour, string> = {
+const logoFileMap: Record<Exclude<LogoColour, "auto">, string> = {
   default: "/quill-logo.png",
   "light-grey": "/quill-logo-light-grey.png",
   white: "/quill-logo-white.png",
@@ -24,7 +25,7 @@ const logoFileMap: Record<LogoColour, string> = {
 type Props = {
   /** Alt text for accessibility (default: "Quill") */
   alt?: string;
-  /** Logo colour variant (default: "default") */
+  /** Logo colour variant (default: "auto") */
   colour?: LogoColour;
   /** Logo height in rem (default: 8) */
   height?: number | string;
@@ -45,12 +46,15 @@ type Props = {
  */
 export default function QuillLogo({
   alt = "Quill",
-  colour = "default",
+  colour = "auto",
   height = 8,
   className,
   style,
 }: Props) {
-  const src = detectStorybook(logoFileMap[colour]);
+  const colorScheme = useComputedColorScheme("light");
+  const resolved: Exclude<LogoColour, "auto"> =
+    colour === "auto" ? (colorScheme === "dark" ? "white" : "default") : colour;
+  const src = detectStorybook(logoFileMap[resolved]);
 
   return (
     <Image

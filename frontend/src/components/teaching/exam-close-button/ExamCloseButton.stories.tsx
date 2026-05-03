@@ -15,3 +15,8 @@ export const Default: Story = {
     onConfirm: () => {},
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

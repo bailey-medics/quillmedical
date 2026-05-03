@@ -54,3 +54,8 @@ export const NextLoading: Story = {
     nextLoading: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

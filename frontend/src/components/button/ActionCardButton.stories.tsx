@@ -99,3 +99,8 @@ export const States: Story = {
     </>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

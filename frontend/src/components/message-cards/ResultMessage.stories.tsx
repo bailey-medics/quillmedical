@@ -60,3 +60,8 @@ export const Warning: Story = {
     subtitle: "Optical diagnosis of diminutive colorectal polyps",
   },
 };
+
+export const DarkMode: Story = {
+  ...Success,
+  globals: { colorScheme: "dark" },
+};

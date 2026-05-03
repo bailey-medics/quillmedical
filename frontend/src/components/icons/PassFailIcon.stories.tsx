@@ -52,3 +52,8 @@ export const AllSizes: Story = {
     </VariantStack>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

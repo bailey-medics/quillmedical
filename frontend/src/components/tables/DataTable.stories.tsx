@@ -235,3 +235,8 @@ export const Loading: Story = {
     loading: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

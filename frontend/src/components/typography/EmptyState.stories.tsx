@@ -16,3 +16,8 @@ export const Default: Story = {
     children: "Type a message...",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

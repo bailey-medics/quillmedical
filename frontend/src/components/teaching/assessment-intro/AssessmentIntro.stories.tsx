@@ -49,3 +49,8 @@ For each image pair, select the single best answer from the four options.`,
     loading: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

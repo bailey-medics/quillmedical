@@ -78,3 +78,8 @@ export const PassedFromDashboard: Story = {
     criteria: passCriteria,
   },
 };
+
+export const DarkMode: Story = {
+  ...Passed,
+  globals: { colorScheme: "dark" },
+};
