@@ -1,6 +1,6 @@
 .filled.filled {
   background-color: var(--public-amber);
-  color: #333;
+  color: var(--public-button-text);
   border: none;
 }
 
@@ -11,12 +11,12 @@
 
 .filled.filled:hover:not(:disabled) {
   background-color: var(--public-amber-hover);
-  color: #333;
+  color: var(--public-button-text);
 }
 
 .filled.filled:active:not(:disabled) {
-  background-color: #a07728;
-  color: #333;
+  background-color: var(--public-button-active);
+  color: var(--public-button-text);
 }
 
 .outline.outline {
@@ -31,7 +31,7 @@
 
 .outline.outline:hover:not(:disabled) {
   background-color: rgb(200 150 62 / 10%);
-  color: #d4a854;
+  color: var(--public-button-outline-hover-text);
 }
 
 .outline.outline:active:not(:disabled) {

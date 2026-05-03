@@ -519,7 +519,11 @@ const router = createBrowserRouter([
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
+  <MantineProvider
+    theme={theme}
+    cssVariablesResolver={cssVariablesResolver}
+    defaultColorScheme="light"
+  >
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>

@@ -6,7 +6,7 @@
 
   /* Maps to primary navy */
   background-color: var(--mantine-color-primary-5);
-  color: white;
+  color: var(--mantine-color-white);
   font-weight: 700;
   line-height: 1;
   flex-shrink: 0;

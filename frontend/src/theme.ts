@@ -151,6 +151,12 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--public-off-white": publicColours.offWhite,
     "--public-light-text": publicColours.lightText,
     "--public-muted": publicColours.muted,
+    // Public button — text/active colours on amber buttons
+    "--public-button-text": "#333",
+    "--public-button-active": "#a07728",
+    "--public-button-outline-hover-text": "#d4a854",
+    // Public burger hover background
+    "--public-burger-hover": "#1e2d4a",
     // Typography — desktop sizes (applied at sm breakpoint via CSS)
     "--typo-desktop-xs": typographyTokens.fontSizes.xs.desktop,
     "--typo-desktop-sm": typographyTokens.fontSizes.sm.desktop,
@@ -164,7 +170,13 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--typo-desktop-h5": typographyTokens.headings.h5.desktop,
     "--typo-desktop-h6": typographyTokens.headings.h6.desktop,
   },
-  dark: {},
+  dark: {
+    // Text — light grey on dark background (placeholder values, to be refined)
+    "--mantine-color-text": "#c9d1d9",
+    "--mantine-color-placeholder": "var(--mantine-color-gray-5)",
+    // Brand — dark surface colour (navy-tinted, not pure black)
+    "--brand-background": "#0d1b2a",
+  },
   light: {
     "--mantine-color-text": "#143f6b",
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
