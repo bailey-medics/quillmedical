@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicInfoCard from "./PublicInfoCard";
-import { Box, Group } from "@mantine/core";
-import { colours } from "@/styles/colours";
+import { Box, SimpleGrid } from "@mantine/core";
 
 const meta = {
   title: "Public/InfoCard/PublicInfoCard",
@@ -12,7 +11,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg={colours.navy} p="xl" maw={400}>
+      <Box bg="var(--public-navy)" p="xl">
         <Story />
       </Box>
     ),
@@ -23,6 +22,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
+  decorators: [
+    (Story) => (
+      <Box maw={400}>
+        <Story />
+      </Box>
+    ),
+  ],
   args: {
     label: "Clinical letters",
     heading: "42",
@@ -32,6 +38,13 @@ export const Default: Story = {
 };
 
 export const LongContent: Story = {
+  decorators: [
+    (Story) => (
+      <Box maw={400}>
+        <Story />
+      </Box>
+    ),
+  ],
   args: {
     label: "Average response time",
     heading: "2.4 hours",
@@ -42,15 +55,8 @@ export const LongContent: Story = {
 
 export const MultipleCards: Story = {
   args: { label: "", heading: "", description: "" },
-  decorators: [
-    (Story) => (
-      <Box bg={colours.navy} p="xl">
-        <Story />
-      </Box>
-    ),
-  ],
   render: () => (
-    <Group grow align="stretch" wrap="wrap">
+    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
       <PublicInfoCard
         label="Clinical letters"
         heading="42"
@@ -66,6 +72,6 @@ export const MultipleCards: Story = {
         heading="128"
         description="Clinicians and staff using the platform daily."
       />
-    </Group>
+    </SimpleGrid>
   ),
 };

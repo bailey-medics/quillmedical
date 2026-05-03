@@ -1,16 +1,16 @@
 .filled.filled {
-  background-color: #c8963e;
+  background-color: var(--public-amber);
   color: #333;
   border: none;
 }
 
 .filled.filled:disabled {
-  background-color: #c8963e;
+  background-color: var(--public-amber);
   opacity: 0.5;
 }
 
 .filled.filled:hover:not(:disabled) {
-  background-color: #b5862f;
+  background-color: var(--public-amber-hover);
   color: #333;
 }
 
@@ -21,8 +21,8 @@
 
 .outline.outline {
   background-color: transparent;
-  color: #c8963e;
-  border: 1px solid #c8963e;
+  color: var(--public-amber);
+  border: 1px solid var(--public-amber);
 }
 
 .outline.outline:disabled {

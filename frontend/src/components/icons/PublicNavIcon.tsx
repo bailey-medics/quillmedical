@@ -5,7 +5,6 @@
  * Mirrors NavIcon but uses the public site palette.
  */
 
-import { colours } from "@/styles/colours";
 import { ThemeIcon } from "@mantine/core";
 import {
   IconHome2,
@@ -15,6 +14,7 @@ import {
   IconDatabase,
   IconMail,
 } from "@/components/icons/appIcons";
+import classes from "./PublicNavIcon.module.css";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
@@ -64,9 +64,13 @@ export default function PublicNavIcon({
       variant="filled"
       radius="xl"
       size={size}
-      style={{ backgroundColor: colours.darkBlue }}
+      className={classes.icon}
     >
-      <Icon size={iconPixelSize} color={colours.navIconAmber} stroke={2.5} />
+      <Icon
+        size={iconPixelSize}
+        color="var(--public-nav-icon-amber)"
+        stroke={2.5}
+      />
     </ThemeIcon>
   );
 }

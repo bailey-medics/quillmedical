@@ -4,7 +4,6 @@ import Icon from "@/components/icons/Icon";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicText from "@/components/typography/PublicText";
-import { colours } from "@/styles/colours";
 import { Container, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
@@ -17,7 +16,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <div style={{ color: colours.amber }}>
+            <div style={{ color: "var(--public-amber)" }}>
               <Icon icon={<IconStack2 />} size="xl" />
             </div>
             <PublicTitle title="Modular deployment" c="white" />

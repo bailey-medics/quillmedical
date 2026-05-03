@@ -1,4 +1,3 @@
-import { colours } from "@/styles/colours";
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
 
@@ -9,7 +8,7 @@ export interface PublicTextProps {
   size?: "sm" | "md" | "lg";
   /** Text alignment — defaults to center */
   ta?: "left" | "center" | "right";
-  /** Use dimmed colour instead of white — defaults to false */
+  /** Use dimmed colour instead of default — defaults to false */
   dimmed?: boolean;
   /** Top margin (Mantine spacing value) */
   mt?: string;
@@ -26,13 +25,7 @@ export default function PublicText({
   mb,
 }: PublicTextProps) {
   return (
-    <Text
-      size={size}
-      ta={ta}
-      c={dimmed ? "dimmed" : colours.lightText}
-      mt={mt}
-      mb={mb}
-    >
+    <Text size={size} ta={ta} c={dimmed ? "gray.1" : "gray.3"} mt={mt} mb={mb}>
       {children}
     </Text>
   );

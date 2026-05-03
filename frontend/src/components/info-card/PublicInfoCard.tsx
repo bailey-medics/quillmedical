@@ -1,7 +1,7 @@
 import PublicText from "@/components/typography/PublicText";
-import { colours } from "@/styles/colours";
 import { Box, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
+import classes from "./PublicInfoCard.module.css";
 
 export interface PublicInfoCardProps {
   /** Top label text (amber, medium) */
@@ -18,23 +18,15 @@ export default function PublicInfoCard({
   description,
 }: PublicInfoCardProps) {
   return (
-    <Box
-      data-testid="public-info-card"
-      p="xl"
-      style={{
-        background: colours.darkBlue,
-        border: "0.0625rem solid rgba(200,150,62,0.2)",
-        borderRadius: "0.5rem",
-      }}
-    >
-      <Text fz="1.4rem" c={colours.amber} mb="xs" tt="uppercase">
+    <Box data-testid="public-info-card" p="xl" className={classes.card}>
+      <Text fz="1.4rem" className={classes.label} mb="xs" tt="uppercase">
         {label}
       </Text>
       <Title
         order={2}
         c="white"
-        ff="'Cormorant Garamond', serif"
-        fw={400}
+        className={classes.heading}
+        fw={700}
         fz="4rem"
         lh={1.1}
         mb="xs"

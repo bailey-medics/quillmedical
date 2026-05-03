@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicText from "./PublicText";
 import { Box, Stack } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/Typography/PublicText",
@@ -13,7 +12,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box maw={800} bg={colours.navy} p="xl">
+      <Box maw={800} bg="var(--public-navy)" p="xl">
         <Story />
       </Box>
     ),

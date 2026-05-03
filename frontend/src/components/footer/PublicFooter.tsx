@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- MantineProvider needed for dark footer theme
 import { Anchor, Container, Group, MantineProvider, Text } from "@mantine/core";
 import classes from "./PublicFooter.module.css";
 
@@ -84,7 +85,7 @@ export default function PublicFooter() {
               href="mailto:info@quill-medical.com"
               size="sm"
               underline="hover"
-              c="dimmed"
+              className={classes.link}
             >
               info@quill-medical.com
             </Anchor>

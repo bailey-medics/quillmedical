@@ -7,8 +7,4 @@
  */
 import { publicColours } from "@/theme";
 
-export const colours = {
-  ...publicColours,
-  /** Brighter amber for nav icons (TSX only, no CSS var) */
-  navIconAmber: "#E0A94A",
-} as const;
+export const colours = publicColours;

@@ -1,0 +1,6 @@
+.burger {
+  color: var(--public-amber);
+
+  --ai-hover: #1e2d4a;
+  --ai-hover-color: var(--public-amber);
+}
