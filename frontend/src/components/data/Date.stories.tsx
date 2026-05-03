@@ -1,5 +1,6 @@
 import type { Meta, StoryObj, Decorator } from "@storybook/react-vite";
-import { Stack, Divider } from "@mantine/core";
+import { Stack } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import FormattedDate from "./Date";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";

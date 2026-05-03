@@ -28,20 +28,6 @@ export const Default: Story = {
   },
 };
 
-export const Outline: Story = {
-  args: {
-    children: "EPR Live",
-    variant: "outline",
-  },
-};
-
-export const Disabled: Story = {
-  args: {
-    children: "Coming soon",
-    disabled: true,
-  },
-};
-
 export const AllSizes: Story = {
   args: { children: "" },
   render: () => (

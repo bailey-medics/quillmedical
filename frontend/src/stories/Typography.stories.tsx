@@ -6,7 +6,8 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Divider, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { Group, Stack, Table, Text, Title } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import { typographyTokens } from "@/theme";
 
 const meta: Meta = {

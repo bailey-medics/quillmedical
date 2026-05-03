@@ -20,7 +20,8 @@
  * ```
  */
 
-import { Divider, Group, Skeleton, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import { BodyTextInline, BodyTextBold } from "@/components/typography";
 import type { Column } from "./DataTable";
 import BaseCard from "@/components/base-card/BaseCard";

@@ -19,7 +19,6 @@ import {
   Stack,
   Alert,
   Checkbox,
-  Divider,
   Loader,
   Center,
 } from "@mantine/core";
@@ -27,6 +26,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import Divider from "@/components/divider/Divider";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";

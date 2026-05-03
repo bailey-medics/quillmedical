@@ -6,7 +6,8 @@
  * back navigation and optional action buttons.
  */
 
-import { Divider, Group, Skeleton, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import { IconArrowLeft } from "@/components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
 import { Heading, BodyTextInline, MarkdownView } from "@/components/typography";

@@ -8,7 +8,8 @@
  * Separated from SideNav to allow reuse in drawer/desktop contexts.
  */
 
-import { NavLink, Divider, Stack } from "@mantine/core";
+import { NavLink, Stack } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
