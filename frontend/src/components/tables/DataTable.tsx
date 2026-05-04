@@ -68,7 +68,7 @@ export interface DataTableProps<T> {
   /** Column definitions */
   columns: Column<T>[];
   /** Row click handler - receives the row data */
-  onRowClick: (row: T) => void;
+  onRowClick?: (row: T) => void;
   /** Loading state */
   loading?: boolean;
   /** Error message */
@@ -181,7 +181,7 @@ export default function DataTable<T>({
             key={getRowKey(row)}
             row={row}
             columns={columns}
-            onClick={onRowClick}
+            onClick={onRowClick ?? (() => {})}
           />
         ))}
       </Stack>
@@ -209,8 +209,8 @@ export default function DataTable<T>({
         {data.map((row) => (
           <Table.Tr
             key={getRowKey(row)}
-            onClick={() => onRowClick(row)}
-            style={{ cursor: "pointer" }}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            style={onRowClick ? { cursor: "pointer" } : undefined}
           >
             {columns.map((column, index) => (
               <Table.Td
