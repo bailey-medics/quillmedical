@@ -20,7 +20,7 @@ export default function BurgerButton({ navOpen, onClick }: BurgerButtonProps) {
       aria-expanded={navOpen}
       style={{
         color: colours.amber,
-        "--ai-hover": "#1e2d4a",
+        "--ai-hover": colours.darkBlueHover,
         "--ai-hover-color": colours.amber,
       }}
     >

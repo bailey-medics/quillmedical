@@ -326,7 +326,9 @@ export default function Home() {
           fhirAvailable={fhirAvailable}
           onSelect={(patient) => navigate(`/patients/${patient.id}`)}
         />
-        {error ? <div style={{ color: "red" }}>{error}</div> : null}
+        {error ? (
+          <div style={{ color: "var(--mantine-color-red-6)" }}>{error}</div>
+        ) : null}
       </Stack>
     </Container>
   );

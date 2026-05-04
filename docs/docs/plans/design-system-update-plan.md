@@ -118,39 +118,24 @@ All 20 pages in `src/pages/` that imported directly from `@tabler/icons-react` h
 
 ### Phase 3 — Replace hardcoded colours with design tokens
 
-#### 3a. Component TSX files
+#### 3a. Component TSX files ✅
 
-| Component              | Hardcoded values                | Suggested replacement                                 |
-| ---------------------- | ------------------------------- | ----------------------------------------------------- |
-| DataTable              | `#143f6b`, `#0a2f56`            | Theme primary scale shades via CSS variables          |
-| MessagingTriagePayment | `#e6e6e6`, `#eee`               | Grey scale CSS variables                              |
-| BurgerButton           | `#1e2d4a`                       | Primary scale CSS variable                            |
-| SolidSwitch            | `#000d1f`, `#143f6b`            | Primary scale CSS variables                           |
-| ProfilePic             | `#FFFFFF`, `#000000`, `#333333` | Mantine colour tokens (`white`, `dark.8`, grey scale) |
-| Home                   | `color: "red"`                  | Mantine `color="red"` or `var(--error-color)`         |
+| Component              | Old values                      | Replacement                                                   |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------- |
+| DataTable              | `#143f6b`, `#0a2f56`            | `var(--mantine-color-primary-5)`, `var(--mantine-color-primary-6)` |
+| MessagingTriagePayment | `#e6e6e6`, `#eee`               | `var(--mantine-color-default-border)`                         |
+| BurgerButton           | `#1e2d4a`                       | `colours.darkBlueHover` (from publicColours)                  |
+| SolidSwitch            | `#000d1f`, `#143f6b`            | `var(--mantine-color-primary-9)`, `var(--mantine-color-primary-5)` |
+| ProfilePic             | `#FFFFFF`, `#000000`, `#333333` | `var(--mantine-color-white)`, `var(--mantine-color-black)`, `var(--mantine-color-dark-6)` |
+| Home                   | `color: "red"`                  | `var(--mantine-color-red-6)`                                  |
 
-#### 3b. Component `rgba`/shadow values
+#### 3b. Component `rgba`/shadow values — left as-is ✅
 
-| Component           | Value                                             | Notes                                      |
-| ------------------- | ------------------------------------------------- | ------------------------------------------ |
-| BaseCard            | `rgba(0,0,0,0.25)`                                | Dark mode shadow — may be acceptable as-is |
-| DirtyFormNavigation | `rgba(0, 0, 0, 0.1)`                              | Modal border                               |
-| TopRibbon           | `rgba(255,255,255,0.1)`, `rgba(255,255,255,0.25)` | Mantine CSS var overrides                  |
-| ExamCloseButton     | `rgba(0, 0, 0, 0.1)`                              | Modal content border                       |
+Alpha-blended `rgba()` values in BaseCard, DirtyFormNavigation, TopRibbon, and ExamCloseButton are intentional transparency overlays that work correctly in both light and dark modes by design. Not tokenised.
 
-These alpha-blended values are harder to tokenise. Consider whether they need changing.
+#### 3c. Public component CSS modules — left as-is ✅
 
-#### 3c. Public component CSS modules
-
-| File                            | Values                                              |
-| ------------------------------- | --------------------------------------------------- |
-| PublicInfoCard.module.css       | `rgb(200 150 62 / 20%)`                             |
-| PublicHeroBackground.module.css | `rgb(200 150 62 / 7%)`, `rgb(30 58 95 / 60%)`, etc. |
-| PublicFooter.module.css         | `rgb(255 255 255 / 10%)`                            |
-| PublicFeatureCard.module.css    | `rgb(200 150 62 / 20%)`                             |
-| PublicButton.module.css         | `rgb(200 150 62 / 10%)`, `rgb(200 150 62 / 20%)`    |
-
-These are brand-specific amber/navy overlays on the public marketing site. Lower priority — could be extracted to CSS custom properties if the public site palette changes.
+Brand-specific amber/navy overlays on the public marketing site. These are intentional design choices for the public site's visual identity. Out of scope for this phase.
 
 ### Phase 4 — Add missing DarkMode stories
 

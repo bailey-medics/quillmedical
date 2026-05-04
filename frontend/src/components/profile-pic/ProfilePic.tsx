@@ -95,16 +95,18 @@ export default function ProfilePic({
 
   // Get gradient colors from index, or use white background if index out of range
   const gradient = AVATAR_GRADIENTS[gradientIndex];
-  const colorFrom = gradient?.colorFrom ?? "#FFFFFF";
-  const colorTo = gradient?.colorTo ?? "#FFFFFF";
+  const colorFrom = gradient?.colorFrom ?? "var(--mantine-color-white)";
+  const colorTo = gradient?.colorTo ?? "var(--mantine-color-white)";
 
   // Determine background style - use solid color if undefined, otherwise gradient
   const backgroundStyle = gradient
     ? `linear-gradient(135deg, ${colorFrom} 0%, ${colorTo} 100%)`
-    : "#FFFFFF !important";
+    : "var(--mantine-color-white) !important";
 
   // Add border for high index values (out of range)
-  const borderStyle = gradient ? undefined : "1px solid #000000";
+  const borderStyle = gradient
+    ? undefined
+    : "1px solid var(--mantine-color-black)";
 
   // Map size prop to pixel values
   const sizeMap: Record<ProfilePicSize, number> = {
@@ -160,7 +162,7 @@ export default function ProfilePic({
             border: borderStyle,
           },
           placeholder: {
-            color: "#333333",
+            color: "var(--mantine-color-dark-6)",
             fontWeight: "bold",
             transform: "scale(1.2)",
           },
@@ -183,7 +185,7 @@ export default function ProfilePic({
           border: borderStyle,
         },
         placeholder: {
-          color: "#333333",
+          color: "var(--mantine-color-dark-6)",
           fontWeight: "bold",
           transform: "scale(1.2)",
         },

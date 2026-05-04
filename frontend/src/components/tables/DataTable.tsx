@@ -111,8 +111,8 @@ export default function DataTable<T>({
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const colorScheme = useComputedColorScheme("light");
   const isDark = colorScheme === "dark";
-  const hoverColor = isDark ? "#143f6b" : undefined;
-  const stripedColor = isDark ? "#0a2f56" : undefined;
+  const hoverColor = isDark ? "var(--mantine-color-primary-5)" : undefined;
+  const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
 
   // Error state
   if (error) {
