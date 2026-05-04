@@ -529,13 +529,13 @@ class Message(Base):
     )
     conversation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("conversations.id", ondelete="CASCADE"),
+        ForeignKey("conversations.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
     sender_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
     body: Mapped[str] = mapped_column(String, nullable=False)

@@ -240,7 +240,6 @@ export default function PatientAdminPage() {
 
   const handleEditLink = () => {
     // TODO: Open modal or navigate to edit link page
-    console.log("Edit user-patient link for patient:", patientId);
   };
 
   if (loading) {

@@ -12,6 +12,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { type Patient } from "@domains/patient";
 import type { NavItem } from "@/components/navigation/NestedNavLink";
 import MainLayout from "./components/layouts/MainLayout";
+import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 
 /**
  * Layout Context
@@ -78,18 +79,20 @@ export default function RootLayout() {
         patientNav={patientNav}
         examMode={examMode}
       >
-        <Outlet
-          context={
-            {
-              patient,
-              setPatient,
-              patientNav,
-              setPatientNav,
-              examMode,
-              setExamMode,
-            } satisfies LayoutCtx
-          }
-        />
+        <ErrorBoundary>
+          <Outlet
+            context={
+              {
+                patient,
+                setPatient,
+                patientNav,
+                setPatientNav,
+                examMode,
+                setExamMode,
+              } satisfies LayoutCtx
+            }
+          />
+        </ErrorBoundary>
       </MainLayout>
     </>
   );
