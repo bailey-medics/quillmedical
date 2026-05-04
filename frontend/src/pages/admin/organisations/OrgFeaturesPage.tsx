@@ -17,7 +17,7 @@ import {
   List,
   Modal,
 } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";

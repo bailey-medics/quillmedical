@@ -15,7 +15,7 @@ import {
   Center,
   Alert,
 } from "@mantine/core";
-import { IconAlertCircle, IconEdit } from "@tabler/icons-react";
+import { IconAlertCircle, IconEdit } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
 import { BodyTextBold, EmptyState } from "@/components/typography";

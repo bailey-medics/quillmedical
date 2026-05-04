@@ -25,7 +25,7 @@ import {
 } from "@mantine/core";
 import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
-import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import Divider from "@/components/divider/Divider";
 import BaseCard from "@/components/base-card/BaseCard";

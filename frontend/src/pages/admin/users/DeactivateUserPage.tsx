@@ -16,7 +16,7 @@ import {
   Alert,
   Modal,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import { IconAlertCircle, IconUserMinus } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import ButtonPairRed from "@/components/button/ButtonPairRed";
 import {

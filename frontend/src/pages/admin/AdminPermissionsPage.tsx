@@ -10,7 +10,7 @@ import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import TextField from "@/components/form/TextField";
 import { Container, SimpleGrid, Stack } from "@mantine/core";
-import { IconShieldCheck } from "@tabler/icons-react";
+import { IconShieldCheck } from "@components/icons/appIcons";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import { useState, useEffect } from "react";

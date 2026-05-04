@@ -17,7 +17,7 @@ import {
   IconBook,
   IconMail,
   IconFileText,
-} from "@tabler/icons-react";
+} from "@components/icons/appIcons";
 import { useEffect } from "react";
 
 export default function Patient() {

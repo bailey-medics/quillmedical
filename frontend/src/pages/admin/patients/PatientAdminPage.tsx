@@ -23,7 +23,7 @@ import {
   IconUser,
   IconUserMinus,
   IconUserCheck,
-} from "@tabler/icons-react";
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
