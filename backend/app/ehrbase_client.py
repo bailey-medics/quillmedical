@@ -1,11 +1,20 @@
 """EHRbase client for OpenEHR operations."""
 
 import base64
+import logging
 from typing import Any
 
 import requests
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class EhrAlreadyExistsError(Exception):
+    """Raised when attempting to create an EHR that already exists."""
+
+    pass
 
 
 def _require_clinical_services() -> None:
@@ -67,6 +76,10 @@ def create_ehr(
     }
 
     response = requests.post(url, json=payload, headers=headers)
+    if response.status_code == 409:
+        raise EhrAlreadyExistsError(
+            f"EHR already exists for subject {subject_id}"
+        )
     response.raise_for_status()
     return response.json()  # type: ignore[no-any-return]
 
@@ -105,6 +118,11 @@ def get_or_create_ehr(subject_id: str, subject_namespace: str = "fhir") -> str:
     """
     Get existing EHR or create new one for a subject.
 
+    Handles the race condition where two concurrent requests may both
+    attempt to create an EHR for the same patient. If creation fails
+    because another request created it first (409 Conflict), we fetch
+    the existing EHR instead.
+
     Args:
         subject_id: The FHIR Patient ID
         subject_namespace: The namespace (default: 'fhir')
@@ -116,8 +134,19 @@ def get_or_create_ehr(subject_id: str, subject_namespace: str = "fhir") -> str:
     if ehr:
         return ehr["ehr_id"]["value"]  # type: ignore[no-any-return]
 
-    new_ehr = create_ehr(subject_id, subject_namespace)
-    return new_ehr["ehr_id"]["value"]  # type: ignore[no-any-return]
+    try:
+        new_ehr = create_ehr(subject_id, subject_namespace)
+        return new_ehr["ehr_id"]["value"]  # type: ignore[no-any-return]
+    except EhrAlreadyExistsError:
+        # Another request created the EHR between our check and create
+        logger.info(
+            "EHR creation race condition resolved for subject %s",
+            subject_id,
+        )
+        ehr = get_ehr_by_subject(subject_id, subject_namespace)
+        if ehr:
+            return ehr["ehr_id"]["value"]  # type: ignore[no-any-return]
+        raise
 
 
 def upload_template(template_xml: str) -> dict[str, Any]:

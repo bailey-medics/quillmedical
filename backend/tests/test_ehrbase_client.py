@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app import ehrbase_client
+from app.ehrbase_client import EhrAlreadyExistsError
 
 
 class TestGetOrCreateEhr:
@@ -74,6 +75,89 @@ class TestGetOrCreateEhr:
             ehrbase_client.get_or_create_ehr("patient-789")
 
         assert "Connection error" in str(exc_info.value)
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.requests.get")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_get_or_create_ehr_race_condition_resolved(
+        self, mock_settings, mock_auth, mock_get, mock_post
+    ):
+        """Test race condition: create returns 409, retry fetches existing."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        # First GET returns 404 (no EHR exists yet)
+        mock_get_404 = MagicMock()
+        mock_get_404.status_code = 404
+
+        # Second GET (after 409) returns the EHR created by another request
+        mock_get_200 = MagicMock()
+        mock_get_200.status_code = 200
+        mock_get_200.json.return_value = {
+            "ehr_id": {"value": "race-winner-ehr-123"}
+        }
+
+        mock_get.side_effect = [mock_get_404, mock_get_200]
+
+        # POST returns 409 Conflict (another request won the race)
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 409
+        mock_post.return_value = mock_post_response
+
+        result = ehrbase_client.get_or_create_ehr("patient-race")
+
+        assert result == "race-winner-ehr-123"
+        assert mock_get.call_count == 2
+        mock_post.assert_called_once()
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.requests.get")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_get_or_create_ehr_race_condition_unresolvable(
+        self, mock_settings, mock_auth, mock_get, mock_post
+    ):
+        """Test race condition where retry also fails raises error."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        # Both GETs return 404
+        mock_get_404 = MagicMock()
+        mock_get_404.status_code = 404
+        mock_get.side_effect = [mock_get_404, mock_get_404]
+
+        # POST returns 409
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 409
+        mock_post.return_value = mock_post_response
+
+        with pytest.raises(EhrAlreadyExistsError):
+            ehrbase_client.get_or_create_ehr("patient-phantom")
+
+
+class TestCreateEhrConflict:
+    """Test EHR creation with 409 handling."""
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_create_ehr_conflict_raises(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """Test that 409 Conflict raises EhrAlreadyExistsError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 409
+        mock_post.return_value = mock_response
+
+        with pytest.raises(EhrAlreadyExistsError):
+            ehrbase_client.create_ehr("patient-duplicate")
 
 
 class TestCreateLetterComposition:
