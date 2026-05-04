@@ -28,3 +28,8 @@ export const Submitting: Story = {
     submitting: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

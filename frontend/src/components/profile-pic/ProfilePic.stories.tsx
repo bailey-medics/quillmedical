@@ -463,3 +463,8 @@ export const Loading: Story = {
     </div>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

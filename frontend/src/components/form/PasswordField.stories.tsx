@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import PasswordField from "./PasswordField";
 
 const meta: Meta<typeof PasswordField> = {
@@ -18,6 +20,14 @@ export const Default: Story = {
   },
 };
 
+export const WithDescription: Story = {
+  args: {
+    label: "Password",
+    description: "Must be at least 8 characters with one uppercase letter",
+    placeholder: "Enter your password",
+  },
+};
+
 export const Required: Story = {
   args: {
     label: "Password",
@@ -32,4 +42,17 @@ export const Disabled: Story = {
     value: "secret123",
     disabled: true,
   },
+};
+
+export const DarkMode: Story = {
+  ...WithDescription,
+  globals: { colorScheme: "dark" },
+  render: (args) => (
+    <Stack gap="xl">
+      <BaseCard>
+        <PasswordField {...args} />
+      </BaseCard>
+      <PasswordField {...args} />
+    </Stack>
+  ),
 };

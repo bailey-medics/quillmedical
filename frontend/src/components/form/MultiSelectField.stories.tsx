@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import MultiSelectField from "./MultiSelectField";
 
 const meta: Meta<typeof MultiSelectField> = {
@@ -37,6 +39,15 @@ const staffData = [
 export const Default: Story = {
   args: {
     label: "Participants",
+    placeholder: "Add staff to this conversation",
+    data: staffData,
+  },
+};
+
+export const WithDescription: Story = {
+  args: {
+    label: "Participants",
+    description: "Select staff members to include in this conversation",
     placeholder: "Add staff to this conversation",
     data: staffData,
   },
@@ -89,4 +100,17 @@ export const Disabled: Story = {
     value: ["1", "2", "3"],
     disabled: true,
   },
+};
+
+export const DarkMode: Story = {
+  ...WithDescription,
+  globals: { colorScheme: "dark" },
+  render: (args) => (
+    <Stack gap="xl">
+      <BaseCard>
+        <MultiSelectField {...args} />
+      </BaseCard>
+      <MultiSelectField {...args} />
+    </Stack>
+  ),
 };

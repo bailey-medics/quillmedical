@@ -21,6 +21,7 @@ import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./styles/typography.css";
+import "./styles/dark-overrides.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
@@ -519,7 +520,11 @@ const router = createBrowserRouter([
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
+  <MantineProvider
+    theme={theme}
+    cssVariablesResolver={cssVariablesResolver}
+    defaultColorScheme="light"
+  >
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>

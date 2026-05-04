@@ -1,9 +1,8 @@
 /**
- * AppointmentStatus Badge Component
+ * LetterStatus Badge Component
  *
- * Displays appointment status with colour-coded filled badges
- * for clear visual distinction between upcoming, completed,
- * cancelled, and no-show states.
+ * Displays clinical letter status with colour-coded filled badges
+ * for clear visual distinction between final, draft, and amended states.
  */
 
 import { Badge } from "@mantine/core";
@@ -14,15 +13,11 @@ import {
 } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 
-export type AppointmentStatusType =
-  | "upcoming"
-  | "completed"
-  | "cancelled"
-  | "no-show";
+export type LetterStatusType = "final" | "draft" | "amended";
 
 type Props = {
-  /** The appointment status to display */
-  status: AppointmentStatusType;
+  /** The letter status to display */
+  status: LetterStatusType;
   /** Badge size (default: "lg") */
   size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
@@ -30,16 +25,15 @@ type Props = {
 };
 
 const STATUS_CONFIG: Record<
-  AppointmentStatusType,
+  LetterStatusType,
   { label: string; colour: BadgeColourConfig }
 > = {
-  upcoming: { label: "Upcoming", colour: badgeColours.info },
-  completed: { label: "Completed", colour: badgeColours.success },
-  cancelled: { label: "Cancelled", colour: badgeColours.outstanding },
-  "no-show": { label: "No show", colour: badgeColours.alert },
+  final: { label: "Final", colour: badgeColours.success },
+  draft: { label: "Draft", colour: badgeColours.warning },
+  amended: { label: "Amended", colour: badgeColours.info },
 };
 
-export default function AppointmentStatus({
+export default function LetterStatusBadge({
   status,
   size = "lg",
   isLoading = false,

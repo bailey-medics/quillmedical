@@ -3,6 +3,7 @@ import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "../src/styles/typography.css";
+import "../src/styles/dark-overrides.css";
 import type { Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
@@ -91,6 +92,10 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 const decorators = [
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (Story: any, context: any) => {
+    // Read colour scheme from Storybook toolbar
+    const colorScheme: "light" | "dark" =
+      context.globals.colorScheme ?? "light";
+
     // Allow stories to opt out of the default router wrapper
     // by setting parameters.disableDefaultRouter = true
     if (context.parameters.disableDefaultRouter) {
@@ -111,9 +116,19 @@ const decorators = [
               <MantineProvider
                 theme={theme}
                 cssVariablesResolver={cssVariablesResolver}
+                forceColorScheme={colorScheme}
               >
                 <AuthWrapper>
-                  <div style={{ padding: 0 }}>{Story()}</div>
+                  <div
+                    style={{
+                      padding: 0,
+                      background: "var(--mantine-color-body)",
+                      color: "var(--mantine-color-text)",
+                      minHeight: "100vh",
+                    }}
+                  >
+                    {Story()}
+                  </div>
                 </AuthWrapper>
               </MantineProvider>
             </AuthProvider>
@@ -129,6 +144,23 @@ const decorators = [
 
 const preview: Preview = {
   decorators,
+  globalTypes: {
+    colorScheme: {
+      description: "Mantine colour scheme",
+      toolbar: {
+        title: "Colour scheme",
+        icon: "mirror",
+        items: [
+          { value: "light", title: "Light", icon: "sun" },
+          { value: "dark", title: "Dark", icon: "moon" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    colorScheme: "light",
+  },
   parameters: {
     actions: { argTypesRegex: "^on[A-Z].*" },
     controls: { expanded: true },

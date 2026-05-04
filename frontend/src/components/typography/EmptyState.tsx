@@ -21,7 +21,7 @@ export interface EmptyStateProps {
  */
 export default function EmptyState({ children }: EmptyStateProps) {
   return (
-    <Text size="lg" c="gray.4">
+    <Text size="lg" c="var(--mantine-color-placeholder)">
       {children}
     </Text>
   );

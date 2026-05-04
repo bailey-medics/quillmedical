@@ -14,6 +14,7 @@ const meta: Meta<typeof NewMessageModal> = {
   title: "Messaging/NewMessageModal",
   component: NewMessageModal,
   tags: ["autodocs"],
+  parameters: { layout: "fullscreen" },
   args: {
     opened: true,
     onClose: fn(),
@@ -52,4 +53,9 @@ export const PatientView: Story = {
     patientId: "p-1",
     patientName: "James Green",
   },
+};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
 };

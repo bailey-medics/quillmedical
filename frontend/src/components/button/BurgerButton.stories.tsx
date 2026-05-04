@@ -14,13 +14,27 @@ const meta: Meta<typeof BurgerButton> = {
   title: "Button/BurgerButton",
   component: BurgerButton,
   parameters: {
-    layout: "padded",
+    layout: "fullscreen",
+    backgrounds: { default: "primary" },
   },
   tags: ["autodocs"],
   args: {
     navOpen: false,
     onClick: fn(),
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          padding: "1rem",
+          minHeight: "100vh",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;
@@ -32,7 +46,7 @@ export const Default: Story = {};
 /** All interaction states side-by-side. */
 export const States: Story = {
   render: () => (
-    <Group gap="xl">
+    <Group gap="xl" c="white">
       <StateRow label="default">
         <BurgerButton navOpen={false} onClick={fn()} />
       </StateRow>

@@ -118,3 +118,8 @@ export const Variants: Story = {
     </VariantStack>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

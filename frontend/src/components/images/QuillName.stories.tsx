@@ -9,7 +9,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillName from "./QuillName";
-import { colours } from "@/styles/colours";
+import Image from "@components/images/Image";
 
 const meta: Meta<typeof QuillName> = {
   title: "Images/QuillName",
@@ -22,19 +22,6 @@ const meta: Meta<typeof QuillName> = {
     height: { control: "number" },
     alt: { control: "text" },
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          background: colours.navy,
-          padding: "2rem",
-          display: "inline-flex",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
 };
 
 export default meta;
@@ -50,4 +37,42 @@ export const Default: Story = {
     height: 5,
     alt: "Quill Medical",
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--public-navy)",
+          padding: "2rem",
+          display: "inline-flex",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** Dark font variant for light backgrounds. */
+export const DarkFont: Story = {
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "white",
+          padding: "2rem",
+          display: "inline-flex",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => (
+    <Image
+      src="/quill-name.png"
+      alt="Quill Medical"
+      height={5}
+      style={{ marginRight: "0.5rem" }}
+    />
+  ),
 };

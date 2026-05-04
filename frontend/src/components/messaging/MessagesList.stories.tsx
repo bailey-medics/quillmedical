@@ -105,3 +105,8 @@ export const Empty: Story = {
     },
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

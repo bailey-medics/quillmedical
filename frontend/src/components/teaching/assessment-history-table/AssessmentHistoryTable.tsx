@@ -55,7 +55,7 @@ export function AssessmentHistoryTable({
       columns={columns}
       onRowClick={(a) => onSelect?.(a.id)}
       getRowKey={(a) => a.id}
-      emptyMessage="No assessments yet."
+      emptyMessage="No assessments yet"
     />
   );
 }

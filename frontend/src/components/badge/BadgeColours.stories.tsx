@@ -36,3 +36,8 @@ export const AllColours: Story = {
     </Stack>
   ),
 };
+
+export const DarkMode: Story = {
+  ...AllColours,
+  globals: { colorScheme: "dark" },
+};

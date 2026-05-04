@@ -70,3 +70,8 @@ export const Error: Story = {
     message: "Failed to load data from the server",
   },
 };
+
+export const DarkMode: Story = {
+  ...DatabaseInitialising,
+  globals: { colorScheme: "dark" },
+};

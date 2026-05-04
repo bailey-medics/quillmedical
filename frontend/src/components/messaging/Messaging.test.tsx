@@ -154,15 +154,17 @@ describe("Messaging", () => {
       );
       expect(sentMessage).toBeInTheDocument();
       const sentBubble = sentMessage.closest('[style*="background"]');
-      expect(sentBubble).toHaveStyle({ background: "rgb(187, 222, 251)" }); // #BBDEFB
+      expect(sentBubble).toHaveStyle({ background: "var(--bubble-mine-bg)" });
 
-      // Received messages have orange background
+      // Received messages have different background
       const receivedMessage = screen.getByText(
         "Hello, I have a question about my prescription",
       );
       expect(receivedMessage).toBeInTheDocument();
       const receivedBubble = receivedMessage.closest('[style*="background"]');
-      expect(receivedBubble).toHaveStyle({ background: "rgb(255, 243, 224)" }); // #FFF3E0
+      expect(receivedBubble).toHaveStyle({
+        background: "var(--bubble-theirs-bg)",
+      });
     });
   });
 

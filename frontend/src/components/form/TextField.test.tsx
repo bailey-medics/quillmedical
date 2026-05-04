@@ -30,7 +30,7 @@ describe("TextField", () => {
     const label = screen.getByText("Subject");
     expect(label).toHaveStyle({
       fontSize: "var(--mantine-font-size-lg)",
-      color: "var(--mantine-color-black)",
+      color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });
   });

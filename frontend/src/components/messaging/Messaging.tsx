@@ -186,10 +186,10 @@ export default function Messaging({
                         >
                           <div
                             style={{
-                              background: "#BBDEFB",
+                              background: "var(--bubble-mine-bg)",
                               padding: "0.5rem 0.75rem",
                               borderRadius: 12,
-                              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+                              boxShadow: "var(--bubble-shadow)",
                               wordBreak: "break-word",
                             }}
                           >
@@ -287,10 +287,10 @@ export default function Messaging({
                           />
                           <div
                             style={{
-                              background: "#FFF3E0",
+                              background: "var(--bubble-theirs-bg)",
                               padding: "0.5rem 0.75rem",
                               borderRadius: 12,
-                              boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+                              boxShadow: "var(--bubble-shadow)",
                               wordBreak: "break-word",
                             }}
                           >
@@ -359,7 +359,7 @@ export default function Messaging({
       <div
         style={{
           padding: 12,
-          borderTop: "1px solid rgba(0,0,0,0.06)",
+          borderTop: "var(--bubble-border-top)",
           display: "flex",
           gap: 8,
         }}

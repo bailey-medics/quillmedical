@@ -41,3 +41,8 @@ export const AcceptDisabled: Story = {
     acceptDisabled: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

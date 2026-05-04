@@ -5,7 +5,8 @@
  * Used in main layout sidebar and mobile navigation drawer.
  */
 
-import { Divider, Stack, TextInput } from "@mantine/core";
+import { Stack, TextInput } from "@mantine/core";
+import Divider from "@/components/divider/Divider";
 import { IconSearch } from "@/components/icons/appIcons";
 import type { NavItem } from "./NestedNavLink";
 import SideNavContent from "./SideNavContent";

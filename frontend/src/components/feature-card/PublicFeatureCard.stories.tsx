@@ -3,7 +3,6 @@ import { PublicFeatureCard } from "./PublicFeatureCard";
 import PublicFeatureCardGrid from "./PublicFeatureCardGrid";
 import { Box } from "@mantine/core";
 import { IconMessage } from "@/components/icons/appIcons";
-import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/FeatureCard/PublicFeatureCard",
@@ -14,7 +13,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg={colours.navy} p="2rem">
+      <Box bg="var(--public-navy)" p="2rem">
         <Story />
       </Box>
     ),

@@ -5,32 +5,32 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
-import AppointmentStatus from "./AppointmentStatus";
+import AppointmentStatusBadge from "./AppointmentStatusBadge";
 
-describe("AppointmentStatus", () => {
+describe("AppointmentStatusBadge", () => {
   it("renders upcoming status", () => {
-    renderWithMantine(<AppointmentStatus status="upcoming" />);
+    renderWithMantine(<AppointmentStatusBadge status="upcoming" />);
     expect(screen.getByText("Upcoming")).toBeInTheDocument();
   });
 
   it("renders completed status", () => {
-    renderWithMantine(<AppointmentStatus status="completed" />);
+    renderWithMantine(<AppointmentStatusBadge status="completed" />);
     expect(screen.getByText("Completed")).toBeInTheDocument();
   });
 
   it("renders cancelled status", () => {
-    renderWithMantine(<AppointmentStatus status="cancelled" />);
+    renderWithMantine(<AppointmentStatusBadge status="cancelled" />);
     expect(screen.getByText("Cancelled")).toBeInTheDocument();
   });
 
   it("renders no-show status", () => {
-    renderWithMantine(<AppointmentStatus status="no-show" />);
+    renderWithMantine(<AppointmentStatusBadge status="no-show" />);
     expect(screen.getByText("No show")).toBeInTheDocument();
   });
 
   it("shows skeleton when loading", () => {
     const { container } = renderWithMantine(
-      <AppointmentStatus status="upcoming" isLoading />,
+      <AppointmentStatusBadge status="upcoming" isLoading />,
     );
     expect(screen.queryByText("Upcoming")).not.toBeInTheDocument();
     expect(

@@ -74,7 +74,11 @@ export default function DirtyFormNavigation({
       }}
     >
       <Stack gap="md" align="center" pt="xl">
-        <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
+        <Icon
+          icon={<IconAlertTriangle />}
+          size="xl"
+          colour="var(--error-color)"
+        />
         <BodyTextBold justify="centre">
           You have unsaved changes. Are you sure you want to leave this page?
         </BodyTextBold>

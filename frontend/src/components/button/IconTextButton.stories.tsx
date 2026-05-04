@@ -81,3 +81,8 @@ export const States: Story = {
     </Group>
   ),
 };
+
+export const DarkMode: Story = {
+  ...IconTypes,
+  globals: { colorScheme: "dark" },
+};

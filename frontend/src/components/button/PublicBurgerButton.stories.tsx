@@ -9,8 +9,19 @@ const meta: Meta<typeof PublicBurgerButton> = {
   component: PublicBurgerButton,
   parameters: {
     layout: "padded",
-    backgrounds: { default: "dark" },
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--public-navy)",
+          padding: "2rem",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
   tags: ["autodocs"],
   args: {
     navOpen: false,

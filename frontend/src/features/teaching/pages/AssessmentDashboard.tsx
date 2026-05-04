@@ -1,4 +1,11 @@
-import { Box, Container, SimpleGrid, Skeleton, Stack } from "@mantine/core";
+import {
+  Box,
+  Center,
+  Container,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+} from "@mantine/core";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +13,7 @@ import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
-import { Heading, EmptyState } from "@/components/typography";
+import { Heading, BodyText } from "@/components/typography";
 import type {
   AssessmentHistory,
   QuestionBank,
@@ -71,7 +78,9 @@ export default function AssessmentDashboard() {
         <PageHeader title="Teaching" />
 
         {banks.filter((bank) => bank.is_live).length === 0 ? (
-          <EmptyState>No assessments are currently open.</EmptyState>
+          <Center p="xl">
+            <BodyText>No assessments are currently open</BodyText>
+          </Center>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {banks

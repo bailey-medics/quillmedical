@@ -1,5 +1,5 @@
-import { colours } from "@/styles/colours";
-import { Box, Text, Title } from "@mantine/core";
+import PublicText from "@/components/typography/PublicText";
+import { Box, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PageHeader.module.css";
 
@@ -42,8 +42,8 @@ export default function PublicTitle({
   description,
   size = "lg",
   ta = "center",
-  c = colours.amber,
-  accentColour = colours.amber,
+  c = "var(--public-amber)",
+  accentColour = "var(--public-amber)",
 }: PublicTitleProps) {
   const orderMap = {
     sm: 3,
@@ -72,9 +72,9 @@ export default function PublicTitle({
         {parseTitle(title, accentColour)}
       </Title>
       {description && (
-        <Text c="dimmed" size="lg" ta={ta}>
+        <PublicText size="lg" ta={ta}>
           {description}
-        </Text>
+        </PublicText>
       )}
     </Box>
   );

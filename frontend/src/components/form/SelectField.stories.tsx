@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import SelectField from "./SelectField";
 
 const meta: Meta<typeof SelectField> = {
@@ -20,6 +22,15 @@ export const Default: Story = {
       { value: "2", label: "Sarah Mitchell" },
       { value: "3", label: "Robert Chen" },
     ],
+  },
+};
+
+export const WithDescription: Story = {
+  args: {
+    label: "Priority",
+    description: "Urgent cases are reviewed within 24 hours",
+    placeholder: "Select priority",
+    data: ["Low", "Medium", "High", "Urgent"],
   },
 };
 
@@ -52,4 +63,17 @@ export const Disabled: Story = {
     data: ["Active", "Inactive"],
     disabled: true,
   },
+};
+
+export const DarkMode: Story = {
+  ...WithDescription,
+  globals: { colorScheme: "dark" },
+  render: (args) => (
+    <Stack gap="xl">
+      <BaseCard>
+        <SelectField {...args} />
+      </BaseCard>
+      <SelectField {...args} />
+    </Stack>
+  ),
 };

@@ -16,7 +16,6 @@ import {
   Skeleton,
   Alert,
   Badge,
-  Menu,
   Modal,
   Button,
 } from "@mantine/core";
@@ -31,12 +30,12 @@ import {
 import {
   IconPencil,
   IconAlertCircle,
-  IconDots,
   IconUserMinus,
 } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
 import { useAuth } from "@/auth/AuthContext";
@@ -201,29 +200,17 @@ export default function OrganisationAdminPage() {
       header: "",
       width: "50px",
       render: (member) => (
-        <Menu position="bottom-end" shadow="md">
-          <Menu.Target>
-            <IconButton
-              icon={<IconDots />}
-              variant="subtle"
-              color="gray"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              aria-label={`Actions for ${member.username}`}
-            />
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              color="red"
-              leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
-              onClick={(e) => {
-                e.stopPropagation();
-                setRemovingMember(member);
-              }}
-            >
-              Remove from organisation
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <EllipsisMenu
+          aria-label={`Actions for ${member.username}`}
+          items={[
+            {
+              label: "Remove from organisation",
+              icon: <IconUserMinus />,
+              color: "red",
+              onClick: () => setRemovingMember(member),
+            },
+          ]}
+        />
       ),
     },
   ];

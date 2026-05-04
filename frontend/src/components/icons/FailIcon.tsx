@@ -7,7 +7,7 @@
 
 import { IconX } from "@/components/icons/appIcons";
 import Icon, { type IconSize } from "@/components/icons";
-import { badgeColours } from "./badgeColours";
+import { badgeColours } from "@/components/badge/badgeColours";
 
 interface FailIconProps {
   /** Icon size (default: "sm") */

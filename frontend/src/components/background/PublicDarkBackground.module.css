@@ -1,0 +1,10 @@
+.root {
+  background: var(--public-navy);
+  position: relative;
+  overflow: hidden;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}

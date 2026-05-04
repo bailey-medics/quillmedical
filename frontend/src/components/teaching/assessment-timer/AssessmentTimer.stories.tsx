@@ -52,3 +52,8 @@ export const Expired: Story = {
     />
   ),
 };
+
+export const DarkMode: Story = {
+  ...PlentyOfTime,
+  globals: { colorScheme: "dark" },
+};

@@ -27,3 +27,8 @@ type Story = StoryObj<typeof NotFoundLayout>;
  * Displays when user navigates to non-existent route
  */
 export const Default: Story = {};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

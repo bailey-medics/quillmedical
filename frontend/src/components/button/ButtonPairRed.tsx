@@ -48,7 +48,7 @@ export default function ButtonPairRed({
   return (
     <Group justify="flex-end" mt="xs">
       <Button
-        variant="default"
+        variant="outline"
         onClick={onCancel}
         size={buttonSize}
         styles={{ label: { fontSize } }}

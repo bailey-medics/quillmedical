@@ -16,3 +16,8 @@ export const Default: Story = {
     children: "Please select a patient",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

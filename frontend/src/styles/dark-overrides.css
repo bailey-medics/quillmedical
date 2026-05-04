@@ -1,0 +1,37 @@
+/**
+ * Dark mode overrides
+ *
+ * Fixes for Mantine components whose default dark-mode colours
+ * clash with our custom dark palette (navy shades).
+ */
+
+/* Disabled filled buttons — one shade lighter than card bg so they're visible */
+[data-mantine-color-scheme="dark"] .mantine-Button-root:disabled,
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-disabled] {
+  background-color: #0a2f56 !important;
+  border-color: #0a2f56 !important;
+}
+
+/**
+ * Input description overrides
+ *
+ * Mantine defaults to `var(--mantine-color-dimmed)` which is too light
+ * in light mode and wrong in dark mode. Override per colour scheme.
+ */
+
+/* Light mode — grey scale 6 (muted labels) */
+.mantine-InputWrapper-description {
+  color: #868e96 !important;
+  font-size: var(--mantine-font-size-md) !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/**
+ * Menu item overrides
+ *
+ * Mantine defaults to font-size-sm. Match our body text (lg, weight 500).
+ */
+.mantine-Menu-item {
+  font-size: var(--mantine-font-size-lg) !important;
+  font-weight: 500 !important;
+}

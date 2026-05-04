@@ -7,7 +7,7 @@
  */
 
 import { Group, Skeleton, Stack } from "@mantine/core";
-import AppointmentStatus from "@components/badge/AppointmentStatus";
+import AppointmentStatusBadge from "@components/badge/AppointmentStatusBadge";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
 import BodyText from "@components/typography/BodyText";
@@ -58,7 +58,7 @@ function AppointmentCard({
       <Stack gap="sm">
         <Group justify="space-between">
           <Heading>{appointment.title}</Heading>
-          <AppointmentStatus status={appointment.status} />
+          <AppointmentStatusBadge status={appointment.status} />
         </Group>
         <BodyTextBold>
           {formatDate(appointment.date)} at {appointment.time}

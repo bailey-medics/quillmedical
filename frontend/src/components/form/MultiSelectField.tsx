@@ -4,9 +4,10 @@ import classes from "./MultiSelectField.module.css";
 const fieldStyles = {
   label: {
     fontSize: "var(--mantine-font-size-lg)",
-    color: "var(--mantine-color-black)",
+    color: "var(--mantine-color-text)",
     marginBottom: "0.25rem",
   },
+  required: { color: "var(--mantine-color-secondary-5)" },
 };
 
 export default function MultiSelectField(props: MultiSelectProps) {

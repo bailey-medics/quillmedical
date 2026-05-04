@@ -276,14 +276,14 @@ export const Scales: Story = {
           <Text size="sm" c="dimmed" mb="lg">
             10-shade ramps registered in the Mantine theme. Components use these
             via <code>color=&quot;primary&quot;</code> or{" "}
-            <code>color=&quot;secondary&quot;</code>. Bold label marks the
-            primaryShade (default for filled variants).
+            <code>color=&quot;secondary&quot;</code>. Bold label marks the brand
+            colour.
           </Text>
           <Stack gap="lg">
             <ScaleRow
               name="primary (navy)"
               scale={primaryScale}
-              primaryShade={7}
+              primaryShade={8}
             />
             <ScaleRow
               name="secondary (amber)"

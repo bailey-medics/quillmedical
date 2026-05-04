@@ -6,20 +6,25 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box } from "@mantine/core";
 import SearchButton from "./SearchButton";
 
 const meta: Meta<typeof SearchButton> = {
   title: "Button/SearchButton",
   component: SearchButton,
   parameters: {
-    layout: "padded",
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <Box bg="primary.9" p="xl" w="fit-content">
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          padding: "1rem",
+          minHeight: "100vh",
+        }}
+      >
         <Story />
-      </Box>
+      </div>
     ),
   ],
 };

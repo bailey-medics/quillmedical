@@ -15,7 +15,7 @@ import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import NationalNumber from "@/components/data/NationalNumber";
 import FormattedDate from "@/components/data/Date";
-import ActiveStatus from "@/components/badge/ActiveStatus";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
 
@@ -141,7 +141,7 @@ export default function AdminPatientsPage() {
     {
       header: "Status",
       render: (patient) => (
-        <ActiveStatus active={patient.is_active !== false} />
+        <ActiveStatusBadge active={patient.is_active !== false} />
       ),
     },
   ];

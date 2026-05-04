@@ -1,12 +1,12 @@
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
-import { colours } from "@/styles/colours";
 import publicNavLinks from "@/components/ribbon/publicNavLinks";
 import PublicTopRibbon from "@/components/ribbon/PublicTopRibbon";
 import { Box, Flex, NavLink, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import classes from "./PublicLayout.module.css";
 
 interface PublicLayoutProps {
   /** Page content */
@@ -25,7 +25,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   const [opened, { toggle, close }] = useDisclosure(false);
 
   return (
-    <Stack gap={0} style={{ minHeight: "100dvh", background: colours.navy }}>
+    <Stack gap={0} className={classes.root}>
       <Box component="header">
         <PublicTopRibbon
           isNarrow={isNarrow}

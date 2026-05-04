@@ -79,3 +79,8 @@ export const Loading: Story = {
     loading: true,
   },
 };
+
+export const DarkMode: Story = {
+  ...Male,
+  globals: { colorScheme: "dark" },
+};

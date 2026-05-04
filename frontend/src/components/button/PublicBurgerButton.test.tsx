@@ -21,12 +21,12 @@ describe("PublicBurgerButton", () => {
       expect(svg).toBeInTheDocument();
     });
 
-    it("renders with amber colour", () => {
+    it("renders with burger CSS module class", () => {
       renderWithMantine(
         <PublicBurgerButton navOpen={false} onClick={vi.fn()} />,
       );
       const button = screen.getByRole("button");
-      expect(button.style.color).toBe("rgb(200, 150, 62)");
+      expect(button.className).toMatch(/burger/);
     });
   });
 

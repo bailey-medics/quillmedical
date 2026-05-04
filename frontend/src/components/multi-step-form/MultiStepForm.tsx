@@ -52,6 +52,8 @@ interface Props {
   steps: StepConfig[];
   /** Handler called when form is cancelled */
   onCancel: () => void;
+  /** Handler called when the final step is submitted */
+  onSubmit?: () => void;
   /** Current active step (0-indexed) - for controlled mode */
   activeStep?: number;
   /** Callback when active step changes - for controlled mode */
@@ -72,6 +74,7 @@ interface Props {
 export default function MultiStepForm({
   steps,
   onCancel,
+  onSubmit,
   activeStep: controlledStep,
   onStepChange,
   allStepsAccessible = false,
@@ -132,16 +135,23 @@ export default function MultiStepForm({
       <Stepper
         active={activeStep}
         onStepClick={handleStepClick}
-        completedIcon={<IconCheck size={18} />}
+        completedIcon={
+          <IconCheck
+            size={21}
+            stroke={3}
+            color="var(--mantine-color-secondary-4)"
+          />
+        }
         styles={{
           stepLabel: {
             fontSize: "var(--mantine-font-size-lg)",
           },
           stepIcon: {
             fontSize: "var(--mantine-font-size-lg)",
+            color: "var(--mantine-color-text)",
           },
         }}
-        size="lg"
+        size="sm"
       >
         {steps.map((step, index) => (
           <Stepper.Step
@@ -154,14 +164,16 @@ export default function MultiStepForm({
 
       <BaseCard>{currentStepConfig.content(stepContentProps)}</BaseCard>
 
-      {!isLastStep && (
-        <ButtonPair
-          cancelLabel={isFirstStep ? "Cancel" : "Back"}
-          onCancel={isFirstStep ? onCancel : prevStep}
-          acceptLabel={currentStepConfig.nextButtonLabel || "Next"}
-          onAccept={nextStep}
-        />
-      )}
+      <ButtonPair
+        cancelLabel={isFirstStep ? "Cancel" : "Back"}
+        onCancel={isFirstStep ? onCancel : prevStep}
+        acceptLabel={
+          isLastStep
+            ? currentStepConfig.nextButtonLabel || "Submit"
+            : currentStepConfig.nextButtonLabel || "Next"
+        }
+        onAccept={isLastStep ? (onSubmit ?? onCancel) : nextStep}
+      />
     </Stack>
   );
 }

@@ -22,3 +22,8 @@ type Story = StoryObj<typeof MessagingTriagePayment>;
 export const Default: Story = {
   args: {},
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

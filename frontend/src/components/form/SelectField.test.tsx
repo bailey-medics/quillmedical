@@ -41,7 +41,7 @@ describe("SelectField", () => {
     const label = screen.getByText("Patient");
     expect(label).toHaveStyle({
       fontSize: "var(--mantine-font-size-lg)",
-      color: "var(--mantine-color-black)",
+      color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });
   });

@@ -75,3 +75,8 @@ export const MixedLoading: Story = {
     </div>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

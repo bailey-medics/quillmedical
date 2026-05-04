@@ -1,0 +1,39 @@
+.root {
+  background: var(--public-navy);
+  position: relative;
+  overflow: hidden;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 900px 600px at 65% 50%,
+      rgb(200 150 62 / 7%) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 500px 500px at 15% 80%,
+      rgb(30 58 95 / 60%) 0%,
+      transparent 60%
+    );
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(200 150 62 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(200 150 62 / 4%) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}

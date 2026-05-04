@@ -32,13 +32,3 @@ export const Default: Story = {
     children: <SampleContent />,
   },
 };
-
-/** Resize the viewport below 768px to see the burger button and drawer. */
-export const NarrowWithDrawer: Story = {
-  args: {
-    children: <SampleContent />,
-  },
-  parameters: {
-    viewport: { defaultViewport: "mobile1" },
-  },
-};

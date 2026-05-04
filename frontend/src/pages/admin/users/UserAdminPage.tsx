@@ -35,6 +35,7 @@ import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
+import competenciesData from "@/generated/competencies.json";
 
 /**
  * User details from API
@@ -167,7 +168,9 @@ export default function UserAdminPage() {
                   <Group gap="xs">
                     {user.additional_competencies.map((comp) => (
                       <Badge key={comp} variant="light" color="teal">
-                        {comp}
+                        {competenciesData.competencies.find(
+                          (c) => c.id === comp,
+                        )?.display_name || comp}
                       </Badge>
                     ))}
                   </Group>
@@ -180,7 +183,9 @@ export default function UserAdminPage() {
                   <Group gap="xs">
                     {user.removed_competencies.map((comp) => (
                       <Badge key={comp} variant="light" color="red">
-                        {comp}
+                        {competenciesData.competencies.find(
+                          (c) => c.id === comp,
+                        )?.display_name || comp}
                       </Badge>
                     ))}
                   </Group>

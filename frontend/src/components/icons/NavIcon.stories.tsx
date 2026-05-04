@@ -89,3 +89,8 @@ export const AllSizes: Story = {
     </Stack>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

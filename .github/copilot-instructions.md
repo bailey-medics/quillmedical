@@ -92,7 +92,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Appointments | AppointmentsList | `components/appointments/` |
 | Avatars | ProfilePic, StackedProfilePics | `components/profile-pic/` |
 | Backgrounds | PublicDarkBackground, PublicHeroBackground, PublicLightBackground | `components/background/` |
-| Badge | ActiveStatus, AppointmentStatus, AssessmentResultBadge, FailIcon, PassIcon, PermissionBadge, UnreadBadge | `components/badge/` |
+| Badge | ActiveStatusBadge, AppointmentStatusBadge, AssessmentResultBadge, LetterStatusBadge, NoteCategoryBadge, OnQuillBadge, PermissionBadge, UnreadBadge | `components/badge/` |
 | Button | ActionCardButton, AddButton, BurgerButton, ButtonPair, ButtonPairRed, IconButton, IconTextButton, PreviousNextButton, PublicBurgerButton, PublicButton, SearchButton | `components/button/` |
 | Cards | BaseCard | `components/base-card/` |
 | Data | Date, NationalNumber | `components/data/` |
@@ -103,7 +103,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Footer | Footer, PublicFooter | `components/footer/` |
 | Form | MultiSelectField, PasswordField, SelectField, SolidSwitch, TextAreaField, TextField | `components/form/` |
 | Gender | Gender, GenderIcon | `components/gender/` |
-| Icons | Icon, NavIcon, PublicNavIcon | `components/icons/` |
+| Icons | Icon, NavIcon, PublicNavIcon, PassIcon, FailIcon | `components/icons/` |
 | Images | QuillLogo, QuillName | `components/images/` |
 | InfoCard | PublicInfoCard | `components/info-card/` |
 | Layouts | MainLayout, NotFoundLayout, PublicLayout, PublicNotFound, Complete, Complete.PatientList | `components/layouts/` |

@@ -26,3 +26,8 @@ export const Default: Story = {
     children: "Patient demographics",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

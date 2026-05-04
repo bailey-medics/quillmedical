@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicButton from "./PublicButton";
 import { Box, Group } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import { colours } from "@/styles/colours";
 
 const meta = {
   title: "Public/Button/PublicButton",
@@ -13,7 +12,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg={colours.navy} p="xl" c="white" display="inline-block">
+      <Box bg="var(--public-navy)" p="xl" c="white" display="inline-block">
         <Story />
       </Box>
     ),
@@ -26,20 +25,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     children: "Get started",
-  },
-};
-
-export const Outline: Story = {
-  args: {
-    children: "EPR Live",
-    variant: "outline",
-  },
-};
-
-export const Disabled: Story = {
-  args: {
-    children: "Coming soon",
-    disabled: true,
   },
 };
 

@@ -8,6 +8,10 @@
  * - Brand: primary and secondary brand colours (from theme.ts)
  * - Status: state-communicating colours (badges, alerts, validation)
  * - Text: typography colour tokens
+ *
+ * Dark mode: status colours use Mantine colour tokens (e.g. "teal", "cyan.6")
+ * which Mantine adjusts automatically for dark/light scheme. Text colours
+ * use CSS variables that resolve per scheme via cssVariablesResolver in theme.ts.
  */
 
 import { brandColours } from "@/theme";

@@ -43,3 +43,8 @@ export const NoOrganisations: Story = {
     organisations: [],
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

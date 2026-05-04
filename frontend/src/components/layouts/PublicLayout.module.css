@@ -1,0 +1,4 @@
+.root {
+  min-height: 100dvh;
+  background: var(--public-navy);
+}

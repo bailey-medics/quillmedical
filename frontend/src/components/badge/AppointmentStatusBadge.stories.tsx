@@ -7,12 +7,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import AppointmentStatus from "./AppointmentStatus";
-import type { AppointmentStatusType } from "./AppointmentStatus";
+import AppointmentStatusBadge from "./AppointmentStatusBadge";
+import type { AppointmentStatusType } from "./AppointmentStatusBadge";
 
-const meta: Meta<typeof AppointmentStatus> = {
-  title: "Badge/AppointmentStatus",
-  component: AppointmentStatus,
+const meta: Meta<typeof AppointmentStatusBadge> = {
+  title: "Badge/AppointmentStatusBadge",
+  component: AppointmentStatusBadge,
   parameters: {
     layout: "padded",
   },
@@ -32,7 +32,7 @@ const meta: Meta<typeof AppointmentStatus> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof AppointmentStatus>;
+type Story = StoryObj<typeof AppointmentStatusBadge>;
 
 const allStatuses: AppointmentStatusType[] = [
   "upcoming",
@@ -46,7 +46,7 @@ export const Default: Story = {
   render: () => (
     <Group gap="md">
       {allStatuses.map((status) => (
-        <AppointmentStatus key={status} status={status} />
+        <AppointmentStatusBadge key={status} status={status} />
       ))}
     </Group>
   ),
@@ -59,7 +59,7 @@ export const AllSizes: Story = {
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
         <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
           {allStatuses.map((status) => (
-            <AppointmentStatus key={status} status={status} size={size} />
+            <AppointmentStatusBadge key={status} status={status} size={size} />
           ))}
         </VariantRow>
       ))}
@@ -77,7 +77,7 @@ export const Loading: Story = {
           label={size === "lg" ? "lg (default)" : size}
           horizontal={false}
         >
-          <AppointmentStatus status="upcoming" size={size} isLoading />
+          <AppointmentStatusBadge status="upcoming" size={size} isLoading />
         </VariantRow>
       ))}
     </VariantStack>

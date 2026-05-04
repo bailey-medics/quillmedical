@@ -42,7 +42,7 @@
 .markdown code {
   font-family: var(--mantine-font-family-monospace);
   font-size: 0.9em;
-  background: var(--mantine-color-gray-1);
+  background: var(--card-bg, var(--mantine-color-gray-1));
   padding: 0.125em 0.25em;
   border-radius: var(--mantine-radius-xs);
 }
@@ -50,7 +50,7 @@
 .markdown pre {
   margin: 0 0 0.75em;
   padding: 0.75em;
-  background: var(--mantine-color-gray-1);
+  background: var(--card-bg, var(--mantine-color-gray-1));
   border-radius: var(--mantine-radius-sm);
   overflow-x: auto;
 }
@@ -71,7 +71,7 @@
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  color: var(--mantine-color-black);
+  color: var(--mantine-color-text);
   font-weight: 700;
   margin: 0 0 0.5em;
 }

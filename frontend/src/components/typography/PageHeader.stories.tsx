@@ -32,3 +32,8 @@ export const Default: Story = {
     title: "Administration",
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

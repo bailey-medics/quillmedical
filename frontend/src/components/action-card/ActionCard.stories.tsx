@@ -128,3 +128,8 @@ export const PatientPage: Story = {
     </SimpleGrid>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

@@ -1,27 +1,25 @@
 /**
- * LetterStatus Badge Storybook Stories
+ * ActiveStatus Badge Storybook Stories
  *
- * Demonstrates the LetterStatus component across all statuses and sizes.
+ * Demonstrates the ActiveStatus component in various states and sizes.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import LetterStatus from "./LetterStatus";
-import type { LetterStatusType } from "./LetterStatus";
+import ActiveStatusBadge from "./ActiveStatusBadge";
 
-const meta: Meta<typeof LetterStatus> = {
-  title: "Badge/LetterStatus",
-  component: LetterStatus,
+const meta: Meta<typeof ActiveStatusBadge> = {
+  title: "Badge/ActiveStatusBadge",
+  component: ActiveStatusBadge,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
   argTypes: {
-    status: {
-      control: "select",
-      options: ["final", "draft", "amended"],
-      description: "Letter status",
+    active: {
+      control: "boolean",
+      description: "Whether the resource is active",
     },
     size: {
       control: "select",
@@ -32,30 +30,32 @@ const meta: Meta<typeof LetterStatus> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof LetterStatus>;
+type Story = StoryObj<typeof ActiveStatusBadge>;
 
-const allStatuses: LetterStatusType[] = ["final", "draft", "amended"];
-
-/** Shows all statuses with default large size. */
+/**
+ * Shows both active and deactivated states with default large size.
+ */
 export const Default: Story = {
   render: () => (
     <Group gap="md">
-      {allStatuses.map((status) => (
-        <LetterStatus key={status} status={status} />
-      ))}
+      <ActiveStatusBadge active={true} />
+      <ActiveStatusBadge active={false} />
     </Group>
   ),
 };
 
-/** All sizes comparison across all statuses. */
+/**
+ * All Sizes Comparison
+ *
+ * Shows all size variants side by side for comparison.
+ */
 export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
         <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          {allStatuses.map((status) => (
-            <LetterStatus key={status} status={status} size={size} />
-          ))}
+          <ActiveStatusBadge active={true} size={size} />
+          <ActiveStatusBadge active={false} size={size} />
         </VariantRow>
       ))}
     </VariantStack>
@@ -72,7 +72,7 @@ export const Loading: Story = {
           label={size === "lg" ? "lg (default)" : size}
           horizontal={false}
         >
-          <LetterStatus status="final" size={size} isLoading />
+          <ActiveStatusBadge active={true} size={size} isLoading />
         </VariantRow>
       ))}
     </VariantStack>

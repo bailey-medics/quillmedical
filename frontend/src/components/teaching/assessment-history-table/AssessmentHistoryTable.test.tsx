@@ -45,7 +45,7 @@ describe("AssessmentHistoryTable", () => {
   it("shows empty message when no assessments", () => {
     renderWithMantine(<AssessmentHistoryTable assessments={[]} />);
 
-    expect(screen.getByText("No assessments yet.")).toBeInTheDocument();
+    expect(screen.getByText("No assessments yet")).toBeInTheDocument();
   });
 
   it("renders question bank titles", () => {

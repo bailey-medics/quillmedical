@@ -7,7 +7,7 @@
 
 .lgTitle {
   font-size: 1.875rem !important;
-  color: var(--mantine-color-primary-6);
+  color: var(--mantine-color-text);
 }
 
 @media (width >= 48em) {

@@ -24,9 +24,9 @@ export default function ErrorMessage({ children }: ErrorMessageProps) {
   return (
     <Group gap={6} align="center" wrap="nowrap">
       <Box style={{ flexShrink: 0, position: "relative", top: 2 }}>
-        <IconAlertCircle size={28} color="var(--mantine-color-orange-8)" />
+        <IconAlertCircle size={28} color="var(--error-color)" />
       </Box>
-      <Text size="lg" c="orange.8" fw={700}>
+      <Text size="lg" c="var(--error-color)" fw={700}>
         {children}
       </Text>
     </Group>

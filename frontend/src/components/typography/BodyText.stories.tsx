@@ -28,3 +28,8 @@ export const Default: Story = {
     children: sampleText,
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

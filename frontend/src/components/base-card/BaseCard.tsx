@@ -57,9 +57,11 @@ const BaseCard = forwardRef(function BaseCard(
       c={hasBg ? "white" : undefined}
       style={{
         overflow: "visible",
-        ...(hasBg
-          ? { boxShadow: COLOURED_CARD_SHADOW }
-          : { borderColor: "var(--mantine-color-gray-2)" }),
+        ...(!hasBg && {
+          backgroundColor: "var(--card-bg, var(--mantine-color-body))",
+          borderColor: "var(--card-border-color, var(--mantine-color-gray-2))",
+        }),
+        ...(hasBg && { boxShadow: COLOURED_CARD_SHADOW }),
         ...((typeof style === "object" && style) || {}),
       }}
       {...rest}

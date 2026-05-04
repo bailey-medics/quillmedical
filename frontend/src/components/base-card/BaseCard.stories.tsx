@@ -46,3 +46,13 @@ export const WithBackground: Story = {
     </BaseCard>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};
+
+export const DarkModeColoured: Story = {
+  ...WithBackground,
+  globals: { colorScheme: "dark" },
+};

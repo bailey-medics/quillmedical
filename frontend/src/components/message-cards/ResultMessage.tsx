@@ -6,7 +6,7 @@
  * automatically removed, text set to white.
  */
 
-import { Box, Group } from "@mantine/core";
+import { Box, Group, Stack } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCheck,
@@ -50,10 +50,10 @@ export default function ResultMessage({
         <Box style={{ flexShrink: 0 }}>
           <Icon icon={icon} size="lg" />
         </Box>
-        <Group gap="xs" wrap="wrap" align="baseline">
+        <Stack gap={4}>
           <Heading c="white">{title}</Heading>
           {subtitle && <BodyTextInline c="white">{subtitle}</BodyTextInline>}
-        </Group>
+        </Stack>
       </Group>
     </BaseCard>
   );

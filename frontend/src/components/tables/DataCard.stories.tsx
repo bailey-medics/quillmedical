@@ -8,7 +8,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
-import { ActiveStatus } from "@/components/badge";
+import { ActiveStatusBadge } from "@/components/badge";
 import DataCard from "./DataCard";
 import type { Column } from "./DataTable";
 
@@ -86,7 +86,7 @@ export const WithPatientData: StoryObj<typeof DataCard<Patient>> = {
       {
         header: "Status",
         render: (patient) => (
-          <ActiveStatus active={patient.status === "active"} />
+          <ActiveStatusBadge active={patient.status === "active"} />
         ),
       },
     ],
@@ -137,4 +137,9 @@ export const Loading: Story = {
     onClick: fn(),
     loading: true,
   },
+};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
 };

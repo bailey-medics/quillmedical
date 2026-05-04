@@ -1,0 +1,13 @@
+.card {
+  background: var(--public-dark-blue);
+  border: 0.0625rem solid rgb(200 150 62 / 20%);
+  border-radius: var(--mantine-radius-md);
+}
+
+.label.label {
+  color: var(--public-amber);
+}
+
+.heading.heading {
+  font-family: "Cormorant Garamond", serif;
+}

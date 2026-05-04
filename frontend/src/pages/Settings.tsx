@@ -1,7 +1,14 @@
-import { Container, Group, SimpleGrid, Stack } from "@mantine/core";
-import { IconBell, IconUser } from "@tabler/icons-react";
+import {
+  Container,
+  Group,
+  SimpleGrid,
+  Stack,
+  useMantineColorScheme,
+} from "@mantine/core";
+import { IconBell, IconMoon, IconUser } from "@/components/icons/appIcons";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/auth/AuthContext";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -35,6 +42,8 @@ export default function Settings() {
    */
   const [useTotp, setUseTotp] = useState(false);
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   /**
    * Tracks the state of push notification enabling
    */
@@ -145,6 +154,23 @@ export default function Settings() {
             </Group>
           </Stack>
         </BaseCard>
+
+        {state.status === "authenticated" &&
+          !state.user.clinical_services_enabled && (
+            <ActionCard
+              icon={<IconMoon />}
+              title="Dark mode"
+              subtitle="Switch between light and dark colour schemes."
+              action={
+                <SolidSwitch
+                  checked={colorScheme === "dark"}
+                  onChange={() =>
+                    setColorScheme(colorScheme === "dark" ? "light" : "dark")
+                  }
+                />
+              }
+            />
+          )}
       </Stack>
     </Container>
   );
