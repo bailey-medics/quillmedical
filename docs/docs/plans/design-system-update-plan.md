@@ -137,9 +137,9 @@ Alpha-blended `rgba()` values in BaseCard, DirtyFormNavigation, TopRibbon, and E
 
 Brand-specific amber/navy overlays on the public marketing site. These are intentional design choices for the public site's visual identity. Out of scope for this phase.
 
-### Phase 4 — Add missing DarkMode stories
+### Phase 4 — Add missing DarkMode stories ✅
 
-14 non-public components need a DarkMode story added. Follow the existing pattern: render inside `BaseCard` + outside for comparison with `MantineProvider` `forceColorScheme="dark"`.
+Added `DarkMode` story to 15 components using the `{ ...BaseStory, globals: { colorScheme: "dark" } }` pattern:
 
 | Category    | Components                                                                                                                                         |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -149,7 +149,7 @@ Brand-specific amber/navy overlays on the public marketing site. These are inten
 | Ribbon (1)  | TopRibbon                                                                                                                                          |
 | Search (1)  | SearchFields                                                                                                                                       |
 
-The ~20 `Public*` components (backgrounds, footer, feature card, info card, nav icons, text, title, layout, ribbon, button, burger) are always rendered on their own dark backgrounds and do not need separate dark mode stories.
+The ~20 `Public*` components are always rendered on their own dark backgrounds and do not need separate dark mode stories.
 
 ## Out of scope
 

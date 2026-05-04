@@ -38,3 +38,8 @@ export const Default: Story = {
     onClick: () => {},
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

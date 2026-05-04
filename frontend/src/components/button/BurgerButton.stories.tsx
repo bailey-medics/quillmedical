@@ -62,3 +62,8 @@ export const States: Story = {
     </Group>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};
