@@ -48,11 +48,11 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 
 **Replace** — full-page success redirects with `ResultMessage`:
 
-| Page                 | Alert                           | Replacement                                     |
-| -------------------- | ------------------------------- | ----------------------------------------------- |
-| EditOrganisationPage | "Organisation updated" (green)  | `ResultMessage variant="success"`               |
-| AddPatientToOrgPage  | "Patient added" (green)         | `ResultMessage variant="success"`               |
-| TeachingOrgSettings  | "Saved" (green, inline)         | `ResultMessage variant="success"` (move inline) |
+| Page                 | Alert                          | Replacement                                     |
+| -------------------- | ------------------------------ | ----------------------------------------------- |
+| EditOrganisationPage | "Organisation updated" (green) | `ResultMessage variant="success"`               |
+| AddPatientToOrgPage  | "Patient added" (green)        | `ResultMessage variant="success"`               |
+| TeachingOrgSettings  | "Saved" (green, inline)        | `ResultMessage variant="success"` (move inline) |
 
 **Leave as-is** — inline contextual alerts that don't map to existing components:
 
@@ -66,27 +66,27 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 
 **Replaced** — display-only and row-click tables:
 
-| Page                | Status    |
-| ------------------- | --------- |
-| ViewAllUsersPage    | Replaced  |
-| ViewAllPatientsPage | Replaced  |
+| Page                | Status   |
+| ------------------- | -------- |
+| ViewAllUsersPage    | Replaced |
+| ViewAllPatientsPage | Replaced |
 
 **Deferred** — tables with per-row action buttons (edit, deactivate, activate). `DataTable` wraps cell content in `BodyTextInline` and uses `onRowClick` for the whole row. Per-row action buttons conflict with this pattern. These need a design decision about whether to use row-click navigation or keep inline action buttons.
 
-| Page                  | Issue                              |
-| --------------------- | ---------------------------------- |
-| EditUserPage          | IconButton action column           |
-| DeactivateUserPage    | Red "Deactivate" button column     |
-| DeactivatePatientPage | Red "Deactivate" button column     |
-| ActivatePatientPage   | Green "Activate" button column     |
-| EditPatientPage       | IconButton action column           |
+| Page                  | Issue                          |
+| --------------------- | ------------------------------ |
+| EditUserPage          | IconButton action column       |
+| DeactivateUserPage    | Red "Deactivate" button column |
+| DeactivatePatientPage | Red "Deactivate" button column |
+| ActivatePatientPage   | Green "Activate" button column |
+| EditPatientPage       | IconButton action column       |
 
 #### 1d. Raw `<Text>` / `<Title>` → typography components
 
 **Replaced:**
 
-| Page             | Changes                                                          |
-| ---------------- | ---------------------------------------------------------------- |
+| Page             | Changes                                                             |
+| ---------------- | ------------------------------------------------------------------- |
 | PatientAdminPage | 12× Text → BodyText/BodyTextBold/BodyTextInline, 3× Title → Heading |
 
 **Not applicable:** MessageThread does not exist as a page — messaging UI is in `components/messaging/`.
@@ -95,11 +95,11 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 
 **Replaced:**
 
-| Page                   | Status                                            |
-| ---------------------- | ------------------------------------------------- |
-| PatientAdminPage       | 2× Paper → BaseCard (done in 1d)                 |
-| CreateOrganisationPage | Paper → BaseCard                                  |
-| AddStaffToOrgPage      | Paper → BaseCard                                  |
+| Page                   | Status                           |
+| ---------------------- | -------------------------------- |
+| PatientAdminPage       | 2× Paper → BaseCard (done in 1d) |
+| CreateOrganisationPage | Paper → BaseCard                 |
+| AddStaffToOrgPage      | Paper → BaseCard                 |
 
 **Left as-is:** AdminBankDetailPage uses Paper as inner highlight panels within BaseCard (not a card replacement).
 
@@ -107,10 +107,10 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 
 **Replaced:**
 
-| Page                   | Changes                                              |
-| ---------------------- | ---------------------------------------------------- |
-| CreateOrganisationPage | 2× TextInput → TextField, 1× Select → SelectField   |
-| AddStaffToOrgPage      | 1× Select → SelectField                             |
+| Page                   | Changes                                           |
+| ---------------------- | ------------------------------------------------- |
+| CreateOrganisationPage | 2× TextInput → TextField, 1× Select → SelectField |
+| AddStaffToOrgPage      | 1× Select → SelectField                           |
 
 ### Phase 2 — Centralise icon imports (20 pages) ✅
 
@@ -120,14 +120,14 @@ All 20 pages in `src/pages/` that imported directly from `@tabler/icons-react` h
 
 #### 3a. Component TSX files ✅
 
-| Component              | Old values                      | Replacement                                                   |
-| ---------------------- | ------------------------------- | ------------------------------------------------------------- |
-| DataTable              | `#143f6b`, `#0a2f56`            | `var(--mantine-color-primary-5)`, `var(--mantine-color-primary-6)` |
-| MessagingTriagePayment | `#e6e6e6`, `#eee`               | `var(--mantine-color-default-border)`                         |
-| BurgerButton           | `#1e2d4a`                       | `colours.darkBlueHover` (from publicColours)                  |
-| SolidSwitch            | `#000d1f`, `#143f6b`            | `var(--mantine-color-primary-9)`, `var(--mantine-color-primary-5)` |
+| Component              | Old values                      | Replacement                                                                               |
+| ---------------------- | ------------------------------- | ----------------------------------------------------------------------------------------- |
+| DataTable              | `#143f6b`, `#0a2f56`            | `var(--mantine-color-primary-5)`, `var(--mantine-color-primary-6)`                        |
+| MessagingTriagePayment | `#e6e6e6`, `#eee`               | `var(--mantine-color-default-border)`                                                     |
+| BurgerButton           | `#1e2d4a`                       | `colours.darkBlueHover` (from publicColours)                                              |
+| SolidSwitch            | `#000d1f`, `#143f6b`            | `var(--mantine-color-primary-9)`, `var(--mantine-color-primary-5)`                        |
 | ProfilePic             | `#FFFFFF`, `#000000`, `#333333` | `var(--mantine-color-white)`, `var(--mantine-color-black)`, `var(--mantine-color-dark-6)` |
-| Home                   | `color: "red"`                  | `var(--mantine-color-red-6)`                                  |
+| Home                   | `color: "red"`                  | `var(--mantine-color-red-6)`                                                              |
 
 #### 3b. Component `rgba`/shadow values — left as-is ✅
 

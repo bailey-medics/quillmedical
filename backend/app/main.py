@@ -18,7 +18,7 @@ Architecture:
 - Auth database: User accounts and roles (PostgreSQL via SQLAlchemy)
 - FHIR server: Patient demographics (HAPI FHIR)
 - EHRbase: Clinical documents and letters (OpenEHR)
-- Push notifications: In-memory subscriptions (production should use database)
+- Push notifications: Persistent subscriptions (PostgreSQL)
 """
 
 import logging
