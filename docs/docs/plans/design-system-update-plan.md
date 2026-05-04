@@ -44,21 +44,23 @@ Most admin pages have hand-rolled Cancel + Submit button pairs. Replace with `Bu
 
 #### 1b. Raw `<Alert>` → ResultMessage / StateMessage (~32 instances)
 
-Nearly every admin page has inline `<Alert>` for success/error feedback. Replace with:
+Most raw `<Alert>` usages are **inline contextual alerts** within forms and content areas. `ResultMessage` and `StateMessage` are **full-width coloured cards** designed for page-level states — they don't map to inline alerts.
 
-- `ResultMessage` for success confirmations
-- `StateMessage` for errors and warnings
+**Replace** — full-page success redirects with `ResultMessage`:
 
-Same pages as 1a, plus:
+| Page                 | Alert                           | Replacement                                     |
+| -------------------- | ------------------------------- | ----------------------------------------------- |
+| EditOrganisationPage | "Organisation updated" (green)  | `ResultMessage variant="success"`               |
+| AddPatientToOrgPage  | "Patient added" (green)         | `ResultMessage variant="success"`               |
+| TeachingOrgSettings  | "Saved" (green, inline)         | `ResultMessage variant="success"` (move inline) |
 
-| Page                | File                                           |
-| ------------------- | ---------------------------------------------- |
-| EditUserPage        | `pages/admin/users/EditUserPage.tsx`           |
-| EditPatientPage     | `pages/admin/patients/EditPatientPage.tsx`     |
-| ViewAllUsersPage    | `pages/admin/users/ViewAllUsersPage.tsx`       |
-| ViewAllPatientsPage | `pages/admin/patients/ViewAllPatientsPage.tsx` |
-| UserAdminPage       | `pages/admin/users/UserAdminPage.tsx`          |
-| AdminBankDetailPage | `pages/admin/bank/AdminBankDetailPage.tsx`     |
+**Leave as-is** — inline contextual alerts that don't map to existing components:
+
+- Form validation errors shown inline above forms (~15 instances)
+- Info/warning banners within content areas (orange "Warning", primary "Confirmation")
+- Full-page load errors (StateMessage's fixed title "Error loading data" is less specific than e.g. "Error loading organisation")
+
+**Future work**: Consider creating an inline `AlertMessage` component that wraps `<Alert>` with consistent icon sizing and styling. This is out of scope for this PR.
 
 #### 1c. Raw `<Table>` → DataTable (7 instances)
 

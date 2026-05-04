@@ -9,10 +9,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Stack, Alert, Skeleton } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
+import { ResultMessage } from "@/components/message-cards";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
@@ -135,13 +136,11 @@ export default function EditOrganisationPage() {
   if (success) {
     return (
       <Container size="lg" py="xl">
-        <Alert
-          icon={<Icon icon={<IconCheck />} size="lg" />}
+        <ResultMessage
+          variant="success"
           title="Organisation updated"
-          color="green"
-        >
-          Redirecting to organisation...
-        </Alert>
+          subtitle="Redirecting to organisation..."
+        />
       </Container>
     );
   }
