@@ -112,9 +112,9 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 | CreateOrganisationPage | 2× TextInput → TextField, 1× Select → SelectField   |
 | AddStaffToOrgPage      | 1× Select → SelectField                             |
 
-### Phase 2 — Centralise icon imports (~16 pages)
+### Phase 2 — Centralise icon imports (20 pages) ✅
 
-Pages import directly from `@tabler/icons-react` instead of from `@/components/icons/appIcons`. Register any missing icons in `appIcons.tsx` and update imports across all admin pages.
+All 20 pages in `src/pages/` that imported directly from `@tabler/icons-react` have been updated to import from `@components/icons/appIcons`. All 14 unique icons were already registered — no new registrations needed.
 
 ### Phase 3 — Replace hardcoded colours with design tokens
 

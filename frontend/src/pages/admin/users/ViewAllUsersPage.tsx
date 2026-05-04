@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Container, Stack, Skeleton, Center, Alert } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import { EmptyState } from "@/components/typography";
 import DataTable, { type Column } from "@/components/tables/DataTable";

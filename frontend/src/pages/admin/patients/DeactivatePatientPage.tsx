@@ -20,7 +20,7 @@ import {
   Modal,
   Group,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
+import { IconAlertCircle, IconUserMinus } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPairRed from "@/components/button/ButtonPairRed";

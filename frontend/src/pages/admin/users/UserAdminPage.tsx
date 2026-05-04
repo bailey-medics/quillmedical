@@ -30,7 +30,7 @@ import {
   IconPencil,
   IconAlertCircle,
   IconUserMinus,
-} from "@tabler/icons-react";
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
