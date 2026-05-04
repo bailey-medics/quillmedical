@@ -22,7 +22,14 @@
  * ```
  */
 
-import { Table, Skeleton, Stack, Center, useMantineTheme } from "@mantine/core";
+import {
+  Table,
+  Skeleton,
+  Stack,
+  Center,
+  useMantineTheme,
+  useComputedColorScheme,
+} from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import {
   BodyText,
@@ -102,6 +109,10 @@ export default function DataTable<T>({
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+  const colorScheme = useComputedColorScheme("light");
+  const isDark = colorScheme === "dark";
+  const hoverColor = isDark ? "#143f6b" : undefined;
+  const stripedColor = isDark ? "#0a2f56" : undefined;
 
   // Error state
   if (error) {
@@ -127,7 +138,7 @@ export default function DataTable<T>({
     }
 
     return (
-      <Table striped>
+      <Table striped stripedColor={stripedColor}>
         <Table.Thead>
           <Table.Tr>
             {columns.map((column, index) => (
@@ -179,7 +190,12 @@ export default function DataTable<T>({
 
   // Desktop: Table layout
   return (
-    <Table striped highlightOnHover>
+    <Table
+      striped
+      stripedColor={stripedColor}
+      highlightOnHover
+      highlightOnHoverColor={hoverColor}
+    >
       <Table.Thead>
         <Table.Tr>
           {columns.map((column, index) => (

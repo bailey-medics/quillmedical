@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
 import { VariantRow, VariantStack } from "@/stories/variants";
+import { IconMoon } from "@/components/icons/appIcons";
+import ActionCard from "@/components/action-card/ActionCard";
 import SolidSwitch from "./SolidSwitch";
 
 const meta: Meta<typeof SolidSwitch> = {
@@ -68,6 +71,24 @@ export const AllSizes: Story = {
 };
 
 export const DarkMode: Story = {
-  ...WithDescription,
+  render: () => (
+    <Stack gap="xl">
+      <ActionCard
+        icon={<IconMoon />}
+        title="Dark mode"
+        subtitle="Switch between light and dark themes"
+        action={
+          <SolidSwitch
+            label="Enable dark mode"
+            description="Toggle the colour scheme"
+          />
+        }
+      />
+      <SolidSwitch
+        label="Enable dark mode"
+        description="Toggle the colour scheme"
+      />
+    </Stack>
+  ),
   globals: { colorScheme: "dark" },
 };

@@ -7,10 +7,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Paper, Skeleton, Stack, Table } from "@mantine/core";
+import { Container, Group, Paper, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
 import {
   BodyText,
@@ -109,44 +110,37 @@ export default function AdminBankDetailPage() {
                 No organisations have the teaching feature enabled.
               </BodyText>
             ) : (
-              <Table highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Organisation</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    {bank.email_coordinator_on_pass && (
-                      <Table.Th>Coordinator</Table.Th>
-                    )}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {orgs.map((org) => (
-                    <Table.Tr
-                      key={org.organisation_id}
-                      onClick={() =>
-                        navigate(
-                          `/admin/teaching/${bankId}/org/${org.organisation_id}`,
-                        )
-                      }
-                      style={{ cursor: "pointer" }}
-                    >
-                      <Table.Td>
-                        <BodyTextInline>{org.organisation_name}</BodyTextInline>
-                      </Table.Td>
-                      <Table.Td>
-                        <ActiveStatusBadge active={org.is_live} size="md" />
-                      </Table.Td>
-                      {bank.email_coordinator_on_pass && (
-                        <Table.Td>
-                          <BodyText>
-                            {org.coordinator_email ?? "Not set"}
-                          </BodyText>
-                        </Table.Td>
-                      )}
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+              <DataTable<BankOrganisation>
+                data={orgs}
+                columns={[
+                  {
+                    header: "Organisation",
+                    render: (org) => org.organisation_name,
+                  },
+                  {
+                    header: "Status",
+                    render: (org) => (
+                      <ActiveStatusBadge active={org.is_live} size="md" />
+                    ),
+                  },
+                  ...(bank.email_coordinator_on_pass
+                    ? [
+                        {
+                          header: "Coordinator",
+                          render: (org: BankOrganisation) =>
+                            org.coordinator_email ?? "Not set",
+                        } as Column<BankOrganisation>,
+                      ]
+                    : []),
+                ]}
+                onRowClick={(org) =>
+                  navigate(
+                    `/admin/teaching/${bankId}/org/${org.organisation_id}`,
+                  )
+                }
+                getRowKey={(org) => org.organisation_id}
+                emptyMessage="No organisations have the teaching feature enabled"
+              />
             )}
           </Stack>
         </BaseCard>
@@ -159,7 +153,11 @@ export default function AdminBankDetailPage() {
 
               {bank.email_student_on_pass &&
                 (bank.student_email_template ? (
-                  <Paper p="sm" bg="gray.0" withBorder>
+                  <Paper
+                    p="sm"
+                    bg="var(--card-bg, var(--mantine-color-gray-0))"
+                    withBorder
+                  >
                     <Stack gap="xs">
                       <BodyTextBold>Student email</BodyTextBold>
                       <Group>
@@ -177,7 +175,11 @@ export default function AdminBankDetailPage() {
 
               {bank.email_coordinator_on_pass &&
                 (bank.coordinator_email_template ? (
-                  <Paper p="sm" bg="gray.0" withBorder>
+                  <Paper
+                    p="sm"
+                    bg="var(--card-bg, var(--mantine-color-gray-0))"
+                    withBorder
+                  >
                     <Stack gap="xs">
                       <BodyTextBold>Coordinator email</BodyTextBold>
                       <Group>

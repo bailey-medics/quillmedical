@@ -40,7 +40,7 @@ describe("AssessmentDashboard", () => {
     renderWithRouter(<AssessmentDashboard />);
     await waitFor(() => {
       expect(
-        screen.getByText("No assessments are currently open."),
+        screen.getByText("No assessments are currently open"),
       ).toBeTruthy();
     });
   });
@@ -84,7 +84,7 @@ describe("AssessmentDashboard", () => {
     renderWithRouter(<AssessmentDashboard />);
     await waitFor(() => {
       expect(
-        screen.getByText("No assessments are currently open."),
+        screen.getByText("No assessments are currently open"),
       ).toBeTruthy();
     });
     expect(screen.queryByText("Closed Bank")).toBeNull();

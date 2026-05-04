@@ -60,22 +60,23 @@ export const publicColours = {
  * Mantine colour scales — 10-shade ramps (0 lightest → 9 darkest).
  *
  * primary: Navy scale derived from brandColours.primary (#001a36).
- *          primaryShade: 7 used for filled buttons/actions.
+ *          primaryShade: 5 used for filled buttons/actions.
+ *          Brand primary: shade 8 (#001a36).
  *
  * secondary: Amber scale derived from brandColours.secondary (#C8963E).
  *            Use for CTAs, highlights, and warm accents.
  */
 export const primaryScale: MantineColorsTuple = [
-  "#e3edf8", // 0 — subtle backgrounds, variant="light" fills
-  "#bdd2eb", // 1 — light tint, hover on light variant
-  "#93b4d9", // 2 — borders, disabled states
-  "#6894c0", // 3 — muted/secondary indicators
-  "#3d6fa0", // 4 — mid-tone
-  "#245d8f", // 5 — medium prominence
-  "#143f6b", // 6 — prominent elements
-  "#0a2f56", // 7 — primary actions (filled buttons) ← primaryShade
-  "#042340", // 8 — hover/pressed state
-  "#001a36", // 9 — brand text (darkest)
+  "#bdd2eb", // 0 — subtle backgrounds, variant="light" fills
+  "#93b4d9", // 1 — light tint, hover on light variant
+  "#6894c0", // 2 — borders, disabled states
+  "#3d6fa0", // 3 — muted/secondary indicators
+  "#245d8f", // 4 — medium prominence
+  "#143f6b", // 5 — primary actions (filled buttons) ← primaryShade
+  "#0a2f56", // 6 — card borders, dividers
+  "#042340", // 7 — hover/pressed state
+  "#001a36", // 8 — brand primary
+  "#000d1f", // 9 — deepest navy (dark mode contrast)
 ];
 
 export const secondaryScale: MantineColorsTuple = [
@@ -92,7 +93,7 @@ export const secondaryScale: MantineColorsTuple = [
 ];
 
 /**
- * Neutral grey scale — Mantine defaults, light shades only (0–4).
+ * Neutral grey scale — Mantine defaults (0–7).
  *
  * Used for table striping, dividers, placeholders, and subtle backgrounds.
  * Matches the Mantine `gray` colour key so `gray.0` === greyScale[0], etc.
@@ -103,6 +104,9 @@ export const greyScale = [
   "#e9ecef", // 2 — borders, separators
   "#dee2e6", // 3 — disabled backgrounds
   "#ced4da", // 4 — placeholder text
+  "#adb5bd", // 5 — secondary text, icons
+  "#868e96", // 6 — muted labels
+  "#495057", // 7 — field descriptions, strong muted text
 ] as const;
 
 /**
@@ -174,18 +178,18 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     // Text — light grey on dark background (placeholder values, to be refined)
     "--mantine-color-text": "#c9d1d9",
     "--mantine-color-placeholder": "#5c6370",
-    // Body background — primary colour (#001a36, shade 9)
+    // Body background — primary colour (#001a36, shade 8)
     "--mantine-color-body": "#001a36",
     "--brand-background": "#001a36",
-    // Card/surface background — primary shade 8 (one lighter than body)
+    // Card/surface background — primary shade 7 (one lighter than body)
     "--card-bg": "#042340",
     "--card-border": "#0a2f56",
     "--card-border-color": "transparent",
     // Input background — Mantine dark uses --mantine-color-dark-6 for inputs
-    "--mantine-color-default": "#042340",
-    "--mantine-color-dark-6": "#042340",
-    // Input border — matches divider/card border (shade 7)
-    "--mantine-color-dark-4": "#0a2f56",
+    "--mantine-color-default": "#0a2f56",
+    "--mantine-color-dark-6": "#0a2f56",
+    // Input border — deepest navy (shade 9)
+    "--mantine-color-dark-4": "#000d1f",
     // Pill (multi-select tags) — text and background
     "--mantine-color-dark-0": "#c9d1d9",
     "--mantine-color-dark-7": "#0a2f56",
@@ -227,7 +231,7 @@ export const theme = createTheme({
 
   /** Use primary navy as the default colour for all components */
   primaryColor: "primary",
-  primaryShade: 6,
+  primaryShade: 5,
 
   /** Font sizes — mobile-first base values from typographyTokens */
   fontSizes: {

@@ -7,22 +7,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Alert,
-  Button,
-  Container,
-  Group,
-  Skeleton,
-  Stack,
-} from "@mantine/core";
+import { Container, Group, Skeleton, Stack } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
+import ButtonPair from "@/components/button/ButtonPair";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import { StateMessage } from "@/components/message-cards";
+import { StateMessage, ResultMessage } from "@/components/message-cards";
 import { Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import type {
@@ -152,9 +146,9 @@ export default function AdminBankOrgSettingsPage() {
           <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
         </Group>
 
-        {/* Exam status */}
+        {/* Exam status and coordinator settings */}
         <BaseCard>
-          <Stack gap="sm">
+          <Stack gap="md">
             <Group justify="space-between">
               <Heading>Exam status</Heading>
               <ActiveStatusBadge active={isLive} size="lg" />
@@ -166,42 +160,39 @@ export default function AdminBankOrgSettingsPage() {
               disabled={toggling}
             />
             {toggleError && <StateMessage type="error" message={toggleError} />}
+
+            {bank.email_coordinator_on_pass && (
+              <>
+                <Heading>Coordinator email</Heading>
+                <TextField
+                  label="Email address"
+                  description="Receives certificate copies when students pass"
+                  placeholder="coordinator@example.com"
+                  type="email"
+                  value={coordinatorEmail}
+                  onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
+                />
+
+                {saveError && <StateMessage type="error" message={saveError} />}
+                {saved && (
+                  <ResultMessage
+                    variant="success"
+                    title="Saved"
+                    subtitle="Coordinator email updated"
+                  />
+                )}
+
+                <ButtonPair
+                  acceptLabel="Save"
+                  onAccept={handleSaveEmail}
+                  acceptLoading={saving}
+                  acceptDisabled={!isDirty}
+                  onCancel={() => navigate(`/admin/teaching/${bankId}`)}
+                />
+              </>
+            )}
           </Stack>
         </BaseCard>
-
-        {/* Coordinator email — only shown when bank config requires it */}
-        {bank.email_coordinator_on_pass && (
-          <BaseCard>
-            <Stack gap="md">
-              <Heading>Coordinator email</Heading>
-              <TextField
-                label="Email address"
-                description="Receives certificate copies when students pass"
-                placeholder="coordinator@example.com"
-                type="email"
-                value={coordinatorEmail}
-                onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
-              />
-
-              {saveError && <StateMessage type="error" message={saveError} />}
-              {saved && (
-                <Alert color="green" title="Saved">
-                  Coordinator email updated.
-                </Alert>
-              )}
-
-              <Group justify="flex-end">
-                <Button
-                  onClick={handleSaveEmail}
-                  loading={saving}
-                  disabled={!isDirty}
-                >
-                  Save
-                </Button>
-              </Group>
-            </Stack>
-          </BaseCard>
-        )}
       </Stack>
     </Container>
   );

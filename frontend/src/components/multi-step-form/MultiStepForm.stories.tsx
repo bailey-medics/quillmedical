@@ -9,8 +9,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import MultiStepForm from "./MultiStepForm";
 import { Stack } from "@mantine/core";
-import { TextField } from "@/components/form";
-import { BodyText, Heading } from "@/components/typography";
+import { SelectField, TextField } from "@/components/form";
+import { Heading } from "@/components/typography";
 
 const meta = {
   title: "Form/MultiStepForm",
@@ -66,15 +66,17 @@ export const BasicThreeSteps: Story = {
         ),
       },
       {
-        label: "Review",
+        label: "Job",
         description: "Confirm details",
         content: () => (
           <Stack gap="md">
-            <Heading>Review your information</Heading>
-            <BodyText>Name: John Doe</BodyText>
-            <BodyText>Email: john@example.com</BodyText>
-            <BodyText>Role: Developer</BodyText>
-            <BodyText>Department: Engineering</BodyText>
+            <Heading>Job details</Heading>
+            <SelectField
+              label="Department"
+              data={["Engineering", "Design", "Product"]}
+              placeholder="Select department"
+            />
+            <TextField label="Line manager" placeholder="e.g. Dr Corbett" />
           </Stack>
         ),
       },

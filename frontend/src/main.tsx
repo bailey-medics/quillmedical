@@ -21,6 +21,7 @@ import "@fontsource-variable/atkinson-hyperlegible-next";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "./styles/typography.css";
+import "./styles/dark-overrides.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";

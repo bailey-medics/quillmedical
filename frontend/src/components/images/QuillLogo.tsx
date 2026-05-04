@@ -19,9 +19,6 @@ const logoFileMap: Record<Exclude<LogoColour, "auto">, string> = {
   white: "/quill-logo-white.png",
 };
 
-/**
- * QuillLogo Props
- */
 type Props = {
   /** Alt text for accessibility (default: "Quill") */
   alt?: string;

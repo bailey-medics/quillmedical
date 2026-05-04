@@ -16,6 +16,7 @@ import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import Icon from "@/components/icons";
 import iconTextButtonIcons from "./iconTextButtonIcons";
+import classes from "./IconTextButton.module.css";
 
 type IconName = keyof typeof iconTextButtonIcons;
 
@@ -67,6 +68,7 @@ export default function IconTextButton({
       color={color}
       disabled={disabled}
       loading={loading}
+      classNames={{ root: classes.root }}
       styles={{
         label: {
           fontSize: isMobile

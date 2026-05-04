@@ -17,9 +17,10 @@ import {
   Group,
   Alert,
 } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import PageHeader from "@/components/page-header";
+import { ResultMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
 
 /** Organisation type options for the select input */
@@ -97,13 +98,11 @@ export default function CreateOrganisationPage() {
   if (success) {
     return (
       <Container size="lg" py="xl">
-        <Alert
-          icon={<Icon icon={<IconCheck />} size="lg" />}
+        <ResultMessage
+          variant="success"
           title="Organisation created"
-          color="green"
-        >
-          Redirecting to organisations list...
-        </Alert>
+          subtitle="Redirecting to organisations list..."
+        />
       </Container>
     );
   }

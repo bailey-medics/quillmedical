@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import TextAreaField from "./TextAreaField";
 
 const meta: Meta<typeof TextAreaField> = {
@@ -15,6 +17,15 @@ export const Default: Story = {
   args: {
     label: "Message",
     placeholder: "Type your message…",
+    minRows: 3,
+  },
+};
+
+export const WithDescription: Story = {
+  args: {
+    label: "Clinical notes",
+    description: "Include relevant history and examination findings",
+    placeholder: "Type your notes…",
     minRows: 3,
   },
 };
@@ -58,6 +69,14 @@ export const Disabled: Story = {
 };
 
 export const DarkMode: Story = {
-  ...Default,
+  ...WithDescription,
   globals: { colorScheme: "dark" },
+  render: (args) => (
+    <Stack gap="xl">
+      <BaseCard>
+        <TextAreaField {...args} />
+      </BaseCard>
+      <TextAreaField {...args} />
+    </Stack>
+  ),
 };

@@ -18,7 +18,7 @@ const meta: Meta<typeof SearchField> = {
   },
   decorators: [
     (Story) => (
-      <Box bg="primary.9" p="xl" w="fit-content">
+      <Box bg="primary.8" p="xl" w="fit-content">
         <Story />
       </Box>
     ),

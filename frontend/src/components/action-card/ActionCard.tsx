@@ -22,8 +22,8 @@ interface ActionCardProps {
   title: string;
   /** Card subtitle/description */
   subtitle: string;
-  /** Button label text */
-  buttonLabel: string;
+  /** Button label text (required unless action is provided) */
+  buttonLabel?: string;
   /** Button destination URL */
   buttonUrl?: string;
   /** Optional onClick handler (overrides URL navigation if provided) */
@@ -34,6 +34,8 @@ interface ActionCardProps {
   fullWidth?: boolean;
   /** Button variant (default: "filled") */
   buttonVariant?: "light" | "filled";
+  /** Custom action element (e.g. SolidSwitch) — replaces the button */
+  action?: ReactElement;
 }
 
 /**
@@ -57,6 +59,7 @@ export default function ActionCard({
   disabled = false,
   fullWidth = false,
   buttonVariant = "filled",
+  action,
 }: ActionCardProps) {
   return (
     <BaseCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
@@ -76,13 +79,15 @@ export default function ActionCard({
             marginBottom: "calc(var(--mantine-spacing-md) * -0.5)",
           }}
         />
-        <ActionCardButton
-          label={buttonLabel}
-          url={buttonUrl}
-          onClick={onClick}
-          disabled={disabled}
-          variant={buttonVariant}
-        />
+        {action ?? (
+          <ActionCardButton
+            label={buttonLabel ?? ""}
+            url={buttonUrl}
+            onClick={onClick}
+            disabled={disabled}
+            variant={buttonVariant}
+          />
+        )}
       </Stack>
     </BaseCard>
   );
