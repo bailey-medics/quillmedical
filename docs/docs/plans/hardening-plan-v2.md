@@ -73,42 +73,16 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ## Medium severity
 
-### 3. No file locking in patient records
+### 3. ~~No file locking in patient records~~ ❌ Removed
 
-|              |                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------- |
-| **Location** | `backend/app/patient_records.py` (~line 90)                                                             |
-| **Risk**     | `write_file` uses non-atomic file writes with no locking — concurrent writes could corrupt or lose data |
-| **Impact**   | Silent data loss or corruption of patient record files                                                  |
-
-#### Fix plan
-
-1. Replace direct `file_path.write_text()` with atomic write pattern:
-
-   ```python
-   import tempfile
-   import os
-
-   def write_file_atomic(file_path: Path, content: str) -> None:
-       file_path.parent.mkdir(parents=True, exist_ok=True)
-       fd, tmp_path = tempfile.mkstemp(dir=file_path.parent)
-       try:
-           os.write(fd, content.encode("utf-8"))
-           os.fsync(fd)
-           os.close(fd)
-           os.rename(tmp_path, file_path)
-       except Exception:
-           os.close(fd)
-           os.unlink(tmp_path)
-           raise
-   ```
-
-2. Long-term: migrate file-based patient records to database-backed storage (eliminates concurrency issues entirely)
-3. Add tests for concurrent write scenarios
+|              |                                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Location** | `backend/app/patient_records.py` (deleted)                                                                                |
+| **Status**   | **False positive** — module was legacy dead code, never imported or used. Deleted along with its test file. No fix needed |
 
 ---
 
-### 4. Unpinned Docker images in production
+### 4. ~~Unpinned Docker images in production~~ ✅
 
 |              |                                                                                                                                                                                        |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
