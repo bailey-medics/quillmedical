@@ -6,17 +6,11 @@
  */
 
 import { useEffect, useState } from "react";
-import {
-  Container,
-  Stack,
-  Table,
-  Skeleton,
-  Center,
-  Alert,
-} from "@mantine/core";
+import { Container, Stack, Skeleton, Center, Alert } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import { BodyText, BodyTextBold, EmptyState } from "@/components/typography";
+import { EmptyState } from "@/components/typography";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import PageHeader from "@/components/page-header";
 
 interface User {
@@ -61,6 +55,12 @@ export default function ViewAllUsersPage() {
     fetchUsers();
   }, []);
 
+  const userColumns: Column<User>[] = [
+    { header: "Username", render: (u) => u.username },
+    { header: "Email", render: (u) => u.email },
+    { header: "ID", render: (u) => u.id },
+  ];
+
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
@@ -87,28 +87,12 @@ export default function ViewAllUsersPage() {
             <EmptyState>No users found</EmptyState>
           </Center>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Username</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th>ID</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {users.map((user) => (
-                <Table.Tr key={user.id}>
-                  <Table.Td>
-                    <BodyTextBold>{user.username}</BodyTextBold>
-                  </Table.Td>
-                  <Table.Td>{user.email}</Table.Td>
-                  <Table.Td>
-                    <BodyText>{user.id}</BodyText>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <DataTable<User>
+            data={users}
+            columns={userColumns}
+            getRowKey={(user) => user.id}
+            emptyMessage="No users found"
+          />
         )}
       </Stack>
     </Container>

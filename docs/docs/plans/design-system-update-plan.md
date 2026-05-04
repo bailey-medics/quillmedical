@@ -64,15 +64,22 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 
 #### 1c. Raw `<Table>` → DataTable (7 instances)
 
-| Page                  | File                                             |
-| --------------------- | ------------------------------------------------ |
-| ViewAllUsersPage      | `pages/admin/users/ViewAllUsersPage.tsx`         |
-| EditUserPage          | `pages/admin/users/EditUserPage.tsx`             |
-| DeactivateUserPage    | `pages/admin/users/DeactivateUserPage.tsx`       |
-| ViewAllPatientsPage   | `pages/admin/patients/ViewAllPatientsPage.tsx`   |
-| DeactivatePatientPage | `pages/admin/patients/DeactivatePatientPage.tsx` |
-| ActivatePatientPage   | `pages/admin/patients/ActivatePatientPage.tsx`   |
-| EditPatientPage       | `pages/admin/patients/EditPatientPage.tsx`       |
+**Replaced** — display-only and row-click tables:
+
+| Page                | Status    |
+| ------------------- | --------- |
+| ViewAllUsersPage    | Replaced  |
+| ViewAllPatientsPage | Replaced  |
+
+**Deferred** — tables with per-row action buttons (edit, deactivate, activate). `DataTable` wraps cell content in `BodyTextInline` and uses `onRowClick` for the whole row. Per-row action buttons conflict with this pattern. These need a design decision about whether to use row-click navigation or keep inline action buttons.
+
+| Page                  | Issue                              |
+| --------------------- | ---------------------------------- |
+| EditUserPage          | IconButton action column           |
+| DeactivateUserPage    | Red "Deactivate" button column     |
+| DeactivatePatientPage | Red "Deactivate" button column     |
+| ActivatePatientPage   | Green "Activate" button column     |
+| EditPatientPage       | IconButton action column           |
 
 #### 1d. Raw `<Text>` / `<Title>` → typography components (~20 instances)
 

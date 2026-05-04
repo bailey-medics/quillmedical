@@ -7,17 +7,10 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Table,
-  Skeleton,
-  Center,
-  Alert,
-} from "@mantine/core";
+import { Container, Stack, Skeleton, Center, Alert } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
 import Icon from "@/components/icons";
-import { BodyText, BodyTextBold } from "@/components/typography";
+import DataTable, { type Column } from "@/components/tables/DataTable";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
@@ -102,6 +95,13 @@ export default function ViewAllPatientsPage() {
     return `${givenName} ${familyName}`.trim() || "Unknown";
   };
 
+  const patientColumns: Column<Patient>[] = [
+    { header: "Name", render: (p) => formatName(p.name) },
+    { header: "Birth date", render: (p) => p.birthDate || "N/A" },
+    { header: "Gender", render: (p) => p.gender || "N/A" },
+    { header: "Patient ID", render: (p) => p.id },
+  ];
+
   return (
     <Container size="lg" pt="xl">
       <Stack gap="lg">
@@ -131,34 +131,13 @@ export default function ViewAllPatientsPage() {
             <StateMessage type="no-patients" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Birth Date</Table.Th>
-                <Table.Th>Gender</Table.Th>
-                <Table.Th>Patient ID</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {patients.map((patient) => (
-                <Table.Tr
-                  key={patient.id}
-                  onClick={() => navigate(`/admin/patients/${patient.id}`)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Table.Td>
-                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
-                  </Table.Td>
-                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
-                  <Table.Td>
-                    <BodyText>{patient.id}</BodyText>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <DataTable<Patient>
+            data={patients}
+            columns={patientColumns}
+            onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
+            getRowKey={(patient) => patient.id}
+            emptyMessage="No patients found"
+          />
         )}
       </Stack>
     </Container>
