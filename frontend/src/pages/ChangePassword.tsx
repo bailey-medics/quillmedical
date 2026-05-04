@@ -7,6 +7,7 @@
 
 import { Button, Container, Group, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
 import PasswordField from "@/components/form/PasswordField";
 import { BodyText, ErrorMessage, Heading } from "@/components/typography";
 import { useState } from "react";
@@ -104,14 +105,13 @@ export default function ChangePassword() {
               required
             />
             {error && <ErrorMessage>{error}</ErrorMessage>}
-            <Group justify="flex-end">
-              <Button variant="subtle" onClick={() => navigate("/settings")}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={loading}>
-                Change password
-              </Button>
-            </Group>
+            <ButtonPair
+              acceptLabel="Change password"
+              acceptType="submit"
+              acceptLoading={loading}
+              onAccept={() => {}}
+              onCancel={() => navigate("/settings")}
+            />
           </Stack>
         </form>
       </BaseCard>

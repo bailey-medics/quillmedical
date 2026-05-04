@@ -14,7 +14,8 @@ import { IconShieldCheck } from "@tabler/icons-react";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import { useState, useEffect } from "react";
-import { Modal, Button, Group } from "@mantine/core";
+import { Modal } from "@mantine/core";
+import ButtonPair from "@/components/button/ButtonPair";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import type {
@@ -278,19 +279,12 @@ export default function AdminPermissionsPage() {
               </>
             )}
 
-            <Group justify="flex-end" mt="md">
-              <Button
-                variant="subtle"
-                onClick={() => setPermissionsModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              {isSuperAdmin && (
-                <Button onClick={handleUpdatePermissions}>
-                  Update permissions
-                </Button>
-              )}
-            </Group>
+            <ButtonPair
+              acceptLabel="Update permissions"
+              acceptDisabled={!isSuperAdmin}
+              onAccept={handleUpdatePermissions}
+              onCancel={() => setPermissionsModalOpen(false)}
+            />
           </Stack>
         </Modal>
       </Stack>
