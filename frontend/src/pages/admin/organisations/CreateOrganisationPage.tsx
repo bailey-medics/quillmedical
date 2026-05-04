@@ -7,17 +7,13 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Paper,
-  TextInput,
-  Select,
-  Alert,
-} from "@mantine/core";
+import { Container, Stack, Alert } from "@mantine/core";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
+import TextField from "@/components/form/TextField";
+import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { ResultMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
@@ -121,10 +117,10 @@ export default function CreateOrganisationPage() {
           </Alert>
         )}
 
-        <Paper withBorder p="xl">
+        <BaseCard>
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              <TextInput
+              <TextField
                 label="Organisation name"
                 placeholder="e.g. Great Eastern Hospital"
                 value={name}
@@ -133,7 +129,7 @@ export default function CreateOrganisationPage() {
                 withAsterisk
               />
 
-              <Select
+              <SelectField
                 label="Organisation type"
                 placeholder="Select a type"
                 data={ORGANISATION_TYPE_OPTIONS}
@@ -143,7 +139,7 @@ export default function CreateOrganisationPage() {
                 withAsterisk
               />
 
-              <TextInput
+              <TextField
                 label="Location"
                 placeholder="e.g. London"
                 value={location}
@@ -159,7 +155,7 @@ export default function CreateOrganisationPage() {
               />
             </Stack>
           </form>
-        </Paper>
+        </BaseCard>
       </Stack>
     </Container>
   );

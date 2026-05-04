@@ -81,28 +81,36 @@ Most raw `<Alert>` usages are **inline contextual alerts** within forms and cont
 | ActivatePatientPage   | Green "Activate" button column     |
 | EditPatientPage       | IconButton action column           |
 
-#### 1d. Raw `<Text>` / `<Title>` → typography components (~20 instances)
+#### 1d. Raw `<Text>` / `<Title>` → typography components
 
-| Page             | File                                        | Notes                                                 |
-| ---------------- | ------------------------------------------- | ----------------------------------------------------- |
-| PatientAdminPage | `pages/admin/patients/PatientAdminPage.tsx` | Heaviest offender (~15 instances)                     |
-| MessageThread    | `pages/messaging/MessageThread.tsx`         | `<Text fw={600} size="lg">` → BodyTextBold or Heading |
+**Replaced:**
 
-#### 1e. Raw `<Paper>` → BaseCard (6 instances)
+| Page             | Changes                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| PatientAdminPage | 12× Text → BodyText/BodyTextBold/BodyTextInline, 3× Title → Heading |
 
-| Page                   | File                                                   |
-| ---------------------- | ------------------------------------------------------ |
-| PatientAdminPage       | `pages/admin/patients/PatientAdminPage.tsx`            |
-| CreateOrganisationPage | `pages/admin/organisations/CreateOrganisationPage.tsx` |
-| AddStaffToOrgPage      | `pages/admin/organisations/AddStaffToOrgPage.tsx`      |
-| AdminBankDetailPage    | `pages/admin/bank/AdminBankDetailPage.tsx`             |
+**Not applicable:** MessageThread does not exist as a page — messaging UI is in `components/messaging/`.
 
-#### 1f. Raw `<TextInput>` / `<Select>` → TextField / SelectField (4 instances)
+#### 1e. Raw `<Paper>` → BaseCard
 
-| Page                   | File                                                   |
-| ---------------------- | ------------------------------------------------------ |
-| CreateOrganisationPage | `pages/admin/organisations/CreateOrganisationPage.tsx` |
-| AddStaffToOrgPage      | `pages/admin/organisations/AddStaffToOrgPage.tsx`      |
+**Replaced:**
+
+| Page                   | Status                                            |
+| ---------------------- | ------------------------------------------------- |
+| PatientAdminPage       | 2× Paper → BaseCard (done in 1d)                 |
+| CreateOrganisationPage | Paper → BaseCard                                  |
+| AddStaffToOrgPage      | Paper → BaseCard                                  |
+
+**Left as-is:** AdminBankDetailPage uses Paper as inner highlight panels within BaseCard (not a card replacement).
+
+#### 1f. Raw `<TextInput>` / `<Select>` → TextField / SelectField
+
+**Replaced:**
+
+| Page                   | Changes                                              |
+| ---------------------- | ---------------------------------------------------- |
+| CreateOrganisationPage | 2× TextInput → TextField, 1× Select → SelectField   |
+| AddStaffToOrgPage      | 1× Select → SelectField                             |
 
 ### Phase 2 — Centralise icon imports (~16 pages)
 
