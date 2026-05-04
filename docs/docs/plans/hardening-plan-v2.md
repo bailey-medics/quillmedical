@@ -12,7 +12,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ## High severity
 
-### 1. In-memory push notification subscriptions
+### 1. ~~In-memory push notification subscriptions~~ ✅
 
 |              |                                                                                                      |
 | ------------ | ---------------------------------------------------------------------------------------------------- |
@@ -37,7 +37,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 2. Race condition in `get_or_create_ehr`
+### 2. ~~Race condition in `get_or_create_ehr`~~ ✅
 
 |              |                                                                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
