@@ -23,6 +23,7 @@ import {
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPairRed from "@/components/button/ButtonPairRed";
 import {
   BodyText,
   BodyTextInline,
@@ -210,23 +211,12 @@ export default function DeactivatePatientPage() {
                   </Group>
                 </Stack>
 
-                <Stack gap="sm" mt="md">
-                  <Button
-                    color="red"
-                    onClick={handleDeactivateConfirm}
-                    loading={deactivating}
-                    leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
-                  >
-                    Confirm deactivation
-                  </Button>
-                  <Button
-                    variant="light"
-                    onClick={() => window.history.back()}
-                    disabled={deactivating}
-                  >
-                    Cancel
-                  </Button>
-                </Stack>
+                <ButtonPairRed
+                  acceptLabel="Confirm deactivation"
+                  acceptLoading={deactivating}
+                  onAccept={handleDeactivateConfirm}
+                  onCancel={() => window.history.back()}
+                />
               </Stack>
             </BaseCard>
           )}
@@ -316,23 +306,12 @@ export default function DeactivatePatientPage() {
               This will restrict access to their records. This action can be
               reversed later.
             </BodyText>
-            <Stack gap="sm">
-              <Button
-                color="red"
-                onClick={handleDeactivateConfirm}
-                loading={deactivating}
-                leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
-              >
-                Deactivate patient
-              </Button>
-              <Button
-                variant="light"
-                onClick={() => setSelectedPatient(null)}
-                disabled={deactivating}
-              >
-                Cancel
-              </Button>
-            </Stack>
+            <ButtonPairRed
+              acceptLabel="Deactivate patient"
+              acceptLoading={deactivating}
+              onAccept={handleDeactivateConfirm}
+              onCancel={() => setSelectedPatient(null)}
+            />
           </Stack>
         </Modal>
       </Stack>

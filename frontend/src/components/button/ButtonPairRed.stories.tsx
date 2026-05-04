@@ -42,6 +42,14 @@ export const AcceptDisabled: Story = {
   },
 };
 
+/** Accept button loading */
+export const AcceptLoading: Story = {
+  args: {
+    acceptLabel: "Deactivating...",
+    acceptLoading: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

@@ -13,12 +13,11 @@ import {
   Paper,
   TextInput,
   Select,
-  Button,
-  Group,
   Alert,
 } from "@mantine/core";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
+import ButtonPair from "@/components/button/ButtonPair";
 import PageHeader from "@/components/page-header";
 import { ResultMessage } from "@/components/message-cards";
 import { api } from "@/lib/api";
@@ -151,18 +150,13 @@ export default function CreateOrganisationPage() {
                 onChange={(e) => setLocation(e.currentTarget.value)}
               />
 
-              <Group justify="flex-end" mt="md">
-                <Button
-                  variant="default"
-                  onClick={() => navigate("/admin/organisations")}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" loading={submitting}>
-                  Create organisation
-                </Button>
-              </Group>
+              <ButtonPair
+                acceptLabel="Create organisation"
+                acceptType="submit"
+                acceptLoading={submitting}
+                onAccept={() => {}}
+                onCancel={() => navigate("/admin/organisations")}
+              />
             </Stack>
           </form>
         </Paper>

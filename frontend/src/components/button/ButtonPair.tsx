@@ -29,6 +29,8 @@ interface ButtonPairProps {
   acceptDisabled?: boolean;
   /** Shows loading spinner on the accept button */
   acceptLoading?: boolean;
+  /** HTML button type for the accept button (defaults to "button") */
+  acceptType?: "button" | "submit";
 }
 
 export default function ButtonPair({
@@ -38,6 +40,7 @@ export default function ButtonPair({
   onCancel,
   acceptDisabled = false,
   acceptLoading = false,
+  acceptType = "button",
 }: ButtonPairProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -57,6 +60,7 @@ export default function ButtonPair({
         {cancelLabel}
       </Button>
       <Button
+        type={acceptType}
         onClick={onAccept}
         disabled={acceptDisabled}
         loading={acceptLoading}

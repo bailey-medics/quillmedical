@@ -29,6 +29,10 @@ interface ButtonPairRedProps {
   onCancel: () => void;
   /** Disables the accept button */
   acceptDisabled?: boolean;
+  /** Shows loading spinner on the accept button */
+  acceptLoading?: boolean;
+  /** HTML button type for the accept button (defaults to "button") */
+  acceptType?: "button" | "submit";
 }
 
 export default function ButtonPairRed({
@@ -37,6 +41,8 @@ export default function ButtonPairRed({
   onAccept,
   onCancel,
   acceptDisabled = false,
+  acceptLoading = false,
+  acceptType = "button",
 }: ButtonPairRedProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -56,9 +62,11 @@ export default function ButtonPairRed({
         {cancelLabel}
       </Button>
       <Button
+        type={acceptType}
         color="red"
         onClick={onAccept}
         disabled={acceptDisabled}
+        loading={acceptLoading}
         size={buttonSize}
         styles={{ label: { fontSize } }}
       >

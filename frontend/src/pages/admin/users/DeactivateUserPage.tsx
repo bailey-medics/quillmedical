@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@tabler/icons-react";
 import Icon from "@/components/icons";
+import ButtonPairRed from "@/components/button/ButtonPairRed";
 import {
   BodyText,
   BodyTextInline,
@@ -176,23 +177,12 @@ export default function DeactivateUserPage() {
               This will revoke their access to the system. This action can be
               reversed later.
             </BodyText>
-            <Stack gap="sm">
-              <Button
-                color="red"
-                onClick={handleDeactivateConfirm}
-                loading={deactivating}
-                leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
-              >
-                Deactivate user
-              </Button>
-              <Button
-                variant="light"
-                onClick={() => setSelectedUser(null)}
-                disabled={deactivating}
-              >
-                Cancel
-              </Button>
-            </Stack>
+            <ButtonPairRed
+              acceptLabel="Deactivate user"
+              acceptLoading={deactivating}
+              onAccept={handleDeactivateConfirm}
+              onCancel={() => setSelectedUser(null)}
+            />
           </Stack>
         </Modal>
       </Stack>
