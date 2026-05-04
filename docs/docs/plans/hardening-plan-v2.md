@@ -110,7 +110,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 5. No email rate limiting
+### 5. ~~No email rate limiting~~ ✅
 
 |              |                                                                                               |
 | ------------ | --------------------------------------------------------------------------------------------- |
