@@ -564,3 +564,39 @@ class Message(Base):
         remote_side="Message.id",
         foreign_keys=[amends_id],
     )
+
+
+class PushSubscription(Base):
+    """Web Push notification subscription.
+
+    Stores browser push subscription details so notifications survive
+    container restarts and deployments.
+
+    Attributes:
+        id: Primary key.
+        user_id: FK to User who subscribed.
+        endpoint: Push service endpoint URL (browser-specific).
+        keys_p256dh: Public key for message encryption (Base64).
+        keys_auth: Authentication secret for message encryption (Base64).
+        created_at: When the subscription was registered.
+    """
+
+    __tablename__ = "push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "endpoint", name="uq_push_user_endpoint"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    endpoint: Mapped[str] = mapped_column(String, nullable=False)
+    keys_p256dh: Mapped[str] = mapped_column(String, nullable=False)
+    keys_auth: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
