@@ -133,7 +133,6 @@ export default function AdminPermissionsPage() {
 
   const handleUpdatePermissions = () => {
     // TODO: Wire up actual API callback
-    console.log("Update permissions:", permissionsForm);
     setPermissionsModalOpen(false);
   };
 

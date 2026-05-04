@@ -117,7 +117,6 @@ export default function Home() {
       .get<PatientsApiRes>("/patients")
       .then((res) => {
         if (cancelled) return;
-        console.log("Raw FHIR patients:", res.patients);
         const mapped: Patient[] = (res.patients || []).map((fhirPatient) => {
           // Extract name from FHIR structure
           let displayName = fhirPatient.id;
@@ -186,7 +185,6 @@ export default function Home() {
             onQuill: true,
           } as Patient;
 
-          console.log("Mapped patient:", patient);
           return patient;
         });
 

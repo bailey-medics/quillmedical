@@ -129,7 +129,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 6. No explicit database SSL enforcement
+### 6. ~~No explicit database SSL enforcement~~ ✅
 
 |              |                                                                                                                             |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
@@ -160,7 +160,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 7. Console.log statements in production code
+### 7. ~~Console.log statements in production code~~ ✅
 
 |              |                                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
@@ -185,7 +185,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 8. Cascade deletes on clinical data
+### 8. ~~Cascade deletes on clinical data~~ ✅
 
 |              |                                                                                                                                                |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -209,7 +209,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ## Low severity
 
-### 9. No global React error boundary
+### 9. ~~No global React error boundary~~ ✅
 
 |              |                                                                         |
 | ------------ | ----------------------------------------------------------------------- |
