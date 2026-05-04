@@ -126,7 +126,6 @@ export const SingleStep: Story = {
         content: () => (
           <Stack gap="md">
             <Heading>Single step form</Heading>
-            <BodyText>This form only has one step.</BodyText>
             <TextField label="Input" placeholder="Enter value" />
           </Stack>
         ),

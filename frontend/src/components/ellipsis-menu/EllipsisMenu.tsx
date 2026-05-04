@@ -6,7 +6,7 @@
  * IconButton trigger. Use for row-level actions in tables and cards.
  */
 
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { Menu } from "@mantine/core";
 import { IconDots } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -16,7 +16,7 @@ export interface EllipsisMenuItem {
   /** Display label for the menu item */
   label: string;
   /** Icon element to show before the label */
-  icon?: ReactNode;
+  icon?: ReactElement;
   /** Mantine colour token (e.g. "red") for destructive actions */
   color?: string;
   /** Click handler */
