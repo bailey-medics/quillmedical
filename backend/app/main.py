@@ -167,6 +167,22 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
+# --- Request body size limit (10 MB) ---
+MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@app.middleware("http")
+async def limit_request_body_size(
+    request: Request,
+    call_next: Callable,  # type: ignore[type-arg]
+) -> Response:
+    """Reject requests with Content-Length exceeding the limit."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
+        return Response(status_code=413, content="Request body too large")
+    return await call_next(request)
+
+
 # --- Rate limiting (slowapi) ---
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
