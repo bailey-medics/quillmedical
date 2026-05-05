@@ -36,6 +36,14 @@ logger = logging.getLogger(__name__)
 AVATAR_GRADIENT_EXTENSION_URL = "urn:quillmedical:avatar-gradient"
 
 
+class FhirClientError(Exception):
+    """Raised when a FHIR patient/resource operation fails.
+
+    Wraps underlying network/server errors to provide clean,
+    user-safe messages without leaking internal details.
+    """
+
+
 def _require_clinical_services() -> None:
     """Raise if clinical services are disabled."""
     if not settings.CLINICAL_SERVICES_ENABLED:
@@ -198,7 +206,11 @@ def create_fhir_patient(
     # Use PUT to create with client-assigned UUID (standard FHIR pattern)
     # PUT /Patient/{uuid} creates the resource with our specified ID
     # This is standard FHIR behavior - no server configuration needed
-    fhir.server.put_json(f"Patient/{patient_uuid}", patient.as_json())
+    try:
+        fhir.server.put_json(f"Patient/{patient_uuid}", patient.as_json())
+    except Exception as exc:
+        logger.error("Failed to create FHIR Patient %s: %s", patient_uuid, exc)
+        raise FhirClientError("Failed to create patient record") from exc
 
     # Return the patient data with the UUID
     return patient.as_json()  # type: ignore[no-any-return]
@@ -212,14 +224,23 @@ def read_fhir_patient(patient_id: str) -> dict[str, Any] | None:
 
     Returns:
         dict | None: Patient resource as dictionary, or None if not found.
+
+    Raises:
+        FhirClientError: If the FHIR server is unreachable or returns
+            an unexpected error.
     """
     fhir = get_fhir_client()
 
     try:
         patient = Patient.read(patient_id, fhir.server)
         return patient.as_json()  # type: ignore[no-any-return]
-    except Exception:
-        return None
+    except Exception as exc:
+        # fhirclient raises generic exceptions — check for 404-like cases
+        exc_str = str(exc).lower()
+        if "not found" in exc_str or "404" in exc_str:
+            return None
+        logger.error("Failed to read FHIR Patient %s: %s", patient_id, exc)
+        raise FhirClientError("Failed to retrieve patient record") from exc
 
 
 def delete_fhir_patient(patient_id: str) -> bool:
@@ -250,6 +271,10 @@ def list_fhir_patients() -> list[dict[str, Any]]:
 
     Returns:
         list[dict]: List of patient resources as dictionaries.
+
+    Raises:
+        FhirClientError: If the FHIR server is unreachable or returns
+            an unexpected error.
     """
     fhir = get_fhir_client()
 
@@ -258,8 +283,9 @@ def list_fhir_patients() -> list[dict[str, Any]]:
         search = Patient.where(struct={})
         patients = search.perform_resources(fhir.server)
         return [p.as_json() for p in patients]
-    except Exception:
-        return []
+    except Exception as exc:
+        logger.error("Failed to list FHIR Patients: %s", exc)
+        raise FhirClientError("Failed to retrieve patient list") from exc
 
 
 def update_fhir_patient(
@@ -354,8 +380,12 @@ def update_fhir_patient(
         patient.update(fhir.server)
 
         return patient.as_json()  # type: ignore[no-any-return]
-    except Exception:
-        return None
+    except Exception as exc:
+        exc_str = str(exc).lower()
+        if "not found" in exc_str or "404" in exc_str:
+            return None
+        logger.error("Failed to update FHIR Patient %s: %s", patient_id, exc)
+        raise FhirClientError("Failed to update patient record") from exc
 
 
 # ---------------------------------------------------------------------------

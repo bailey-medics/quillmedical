@@ -1,8 +1,11 @@
 """EHRbase client for OpenEHR operations."""
 
+# cspell:words formedness
 import base64
 import logging
 from typing import Any
+from xml.etree.ElementTree import ParseError
+from xml.etree.ElementTree import fromstring as xml_fromstring
 
 import requests
 
@@ -15,6 +18,14 @@ class EhrAlreadyExistsError(Exception):
     """Raised when attempting to create an EHR that already exists."""
 
     pass
+
+
+class EhrbaseClientError(Exception):
+    """Raised when an EHRbase operation fails.
+
+    Wraps underlying network/server errors to provide clean,
+    user-safe messages without leaking internal details.
+    """
 
 
 def _require_clinical_services() -> None:
@@ -80,7 +91,13 @@ def create_ehr(
         raise EhrAlreadyExistsError(
             f"EHR already exists for subject {subject_id}"
         )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        logger.error(
+            "Failed to create EHR for subject %s: %s", subject_id, exc
+        )
+        raise EhrbaseClientError("Failed to create clinical record") from exc
     return response.json()  # type: ignore[no-any-return]
 
 
@@ -107,11 +124,18 @@ def get_ehr_by_subject(
     headers = get_auth_header()
     params = {"subject_id": subject_id, "subject_namespace": subject_namespace}
 
-    response = requests.get(url, params=params, headers=headers)
-    if response.status_code == 404:
-        return None
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.get(url, params=params, headers=headers)
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        if isinstance(exc, requests.HTTPError) and exc.response is not None:
+            if exc.response.status_code == 404:
+                return None
+        logger.error("Failed to get EHR for subject %s: %s", subject_id, exc)
+        raise EhrbaseClientError("Failed to retrieve clinical record") from exc
 
 
 def get_or_create_ehr(subject_id: str, subject_namespace: str = "fhir") -> str:
@@ -153,21 +177,38 @@ def upload_template(template_xml: str) -> dict[str, Any]:
     """
     Upload an OpenEHR template (OPT) to EHRbase.
 
+    Validates XML well-formedness before uploading to fail fast
+    with a clear error message.
+
     Args:
         template_xml: The template in XML format
 
     Returns:
         Template upload response
+
+    Raises:
+        ValueError: If the XML is malformed.
+        EhrbaseClientError: If the upload fails.
     """
+    # Fail-fast: validate XML well-formedness before sending
+    try:
+        xml_fromstring(template_xml)
+    except ParseError as exc:
+        raise ValueError(f"Invalid template XML: {exc}") from exc
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4"
     headers = {
         **get_auth_header(),
         "Content-Type": "application/xml",
     }
 
-    response = requests.post(url, data=template_xml, headers=headers)
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.post(url, data=template_xml, headers=headers)
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        logger.error("Failed to upload template to EHRbase: %s", exc)
+        raise EhrbaseClientError("Failed to upload clinical template") from exc
 
 
 def list_templates() -> list[str]:
@@ -176,13 +217,22 @@ def list_templates() -> list[str]:
 
     Returns:
         List of template IDs
+
+    Raises:
+        EhrbaseClientError: If the request fails.
     """
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4"
     headers = get_auth_header()
 
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        logger.error("Failed to list EHRbase templates: %s", exc)
+        raise EhrbaseClientError(
+            "Failed to retrieve clinical templates"
+        ) from exc
 
 
 def create_composition(
@@ -198,6 +248,9 @@ def create_composition(
 
     Returns:
         Created composition response
+
+    Raises:
+        EhrbaseClientError: If the request fails.
     """
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr/{ehr_id}/composition"
     headers = {
@@ -206,9 +259,15 @@ def create_composition(
         "Prefer": "return=representation",
     }
 
-    response = requests.post(url, json=composition_data, headers=headers)
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.post(url, json=composition_data, headers=headers)
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        logger.error(
+            "Failed to create composition for EHR %s: %s", ehr_id, exc
+        )
+        raise EhrbaseClientError("Failed to create clinical document") from exc
 
 
 def get_composition(ehr_id: str, composition_uid: str) -> dict[str, Any]:
@@ -221,13 +280,22 @@ def get_composition(ehr_id: str, composition_uid: str) -> dict[str, Any]:
 
     Returns:
         Composition data
+
+    Raises:
+        EhrbaseClientError: If the request fails.
     """
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr/{ehr_id}/composition/{composition_uid}"
     headers = get_auth_header()
 
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        logger.error("Failed to get composition %s: %s", composition_uid, exc)
+        raise EhrbaseClientError(
+            "Failed to retrieve clinical document"
+        ) from exc
 
 
 def query_aql(aql_query: str) -> dict[str, Any]:
@@ -239,6 +307,9 @@ def query_aql(aql_query: str) -> dict[str, Any]:
 
     Returns:
         Query results
+
+    Raises:
+        EhrbaseClientError: If the request fails.
     """
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/query/aql"
     headers = {
@@ -248,9 +319,13 @@ def query_aql(aql_query: str) -> dict[str, Any]:
 
     payload = {"q": aql_query}
 
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-    return response.json()  # type: ignore[no-any-return]
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+    except requests.RequestException as exc:
+        logger.error("AQL query failed: %s", exc)
+        raise EhrbaseClientError("Failed to query clinical records") from exc
 
 
 def list_compositions_for_ehr(ehr_id: str) -> list[dict[str, Any]]:
@@ -397,8 +472,15 @@ def get_letter_composition(
 
         ehr_id = ehr["ehr_id"]["value"]
         return get_composition(ehr_id, composition_uid)
-    except Exception:
-        return None
+    except EhrbaseClientError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Failed to get letter composition %s: %s",
+            composition_uid,
+            exc,
+        )
+        raise EhrbaseClientError("Failed to retrieve letter") from exc
 
 
 def list_letters_for_patient(patient_id: str) -> list[dict[str, Any]]:
@@ -432,5 +514,10 @@ def list_letters_for_patient(patient_id: str) -> list[dict[str, Any]]:
 
         result = query_aql(aql)
         return result.get("rows", [])  # type: ignore[no-any-return]
-    except Exception:
-        return []
+    except EhrbaseClientError:
+        raise
+    except Exception as exc:
+        logger.error(
+            "Failed to list letters for patient %s: %s", patient_id, exc
+        )
+        raise EhrbaseClientError("Failed to retrieve letters") from exc

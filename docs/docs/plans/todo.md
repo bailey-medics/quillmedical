@@ -162,3 +162,26 @@ notifications are production-ready:
       Handling, Request Logging) contain generic Caddy examples that do not
       match either the dev or prod Caddyfile. Replace with accurate snippets
       or remove. The "Why Caddy?" section is fine.
+
+## CBAC (clinical)
+
+- [ ] **Wire up CBAC frontend hooks** — `useHasCompetency`,
+      `useHasAnyCompetency`, and `useHasAllCompetencies` in
+      `frontend/src/lib/cbac/hooks.ts` are hardcoded to return `false`. Any UI
+      gated by CBAC is permanently hidden. Not a security issue (backend
+      enforces), but users can't access features they're entitled to. Fix: 1. Extend `/api/auth/me` to include the user's resolved competencies 2. Store competencies in `AuthContext` state 3. Implement hooks to check against the stored list 4. Add tests for each hook
+
+## Audit logging (clinical)
+
+- [ ] **Implement centralised audit trail** for clinical data access. Required
+      for NHS DSPT and ISO 27001 compliance: - Log who accessed which patient record, when - Log all clinical document modifications (who, what, when) - Store audit logs separately from application logs (tamper-resistant) - Consider a dedicated `AuditLog` table or external service (GCP Cloud
+      Audit Logs)
+
+## Dependency scanning in CI (nice to have)
+
+- [ ] **Add `pip-audit --strict` and `yarn audit --level moderate` to CI
+      pipeline.** This is a nice-to-have — Renovate already handles the bulk of
+      dependency security by auto-raising PRs when vulnerable versions are
+      detected. CI auditing would add a hard gate that prevents merging if a
+      known vulnerability exists in the dependency tree right now, covering the
+      window between disclosure and Renovate's PR being merged.

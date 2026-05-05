@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app import fhir_client
+from app.fhir_client import FhirClientError
 
 
 class TestFhirClient:
@@ -60,12 +61,12 @@ class TestCreateFhirPatient:
         mock_get_client.return_value = mock_fhir
 
         with patch("app.fhir_client.Patient"):
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(FhirClientError) as exc_info:
                 fhir_client.create_fhir_patient(
                     "Test", "User", patient_id="123"
                 )
 
-            assert "Creation failed" in str(exc_info.value)
+            assert "Failed to create patient record" in str(exc_info.value)
 
 
 class TestReadFhirPatient:
@@ -331,3 +332,75 @@ class TestUpdateFhirPatient:
         assert mock_phone.value == "555-1234"
         assert mock_email.system == "email"
         assert mock_email.value == "test@example.com"
+
+
+class TestFhirClientErrorHandling:
+    """Test FhirClientError propagation for non-404 failures."""
+
+    @patch("app.fhir_client.get_fhir_client")
+    def test_read_patient_server_error_raises(self, mock_get_client):
+        """Non-404 errors in read_fhir_patient raise FhirClientError."""
+        mock_fhir = MagicMock()
+        mock_get_client.return_value = mock_fhir
+
+        with patch("app.fhir_client.Patient") as mock_patient_class:
+            mock_patient_class.read.side_effect = Exception(
+                "Connection refused"
+            )
+
+            with pytest.raises(FhirClientError) as exc_info:
+                fhir_client.read_fhir_patient("123")
+
+            assert "Failed to retrieve patient record" in str(exc_info.value)
+
+    @patch("app.fhir_client.get_fhir_client")
+    def test_list_patients_server_error_raises(self, mock_get_client):
+        """Server errors in list_fhir_patients raise FhirClientError."""
+        mock_fhir = MagicMock()
+        mock_fhir.server = MagicMock()
+        mock_get_client.return_value = mock_fhir
+
+        with patch("app.fhir_client.Patient") as mock_patient_class:
+            mock_search = MagicMock()
+            mock_search.perform_resources.side_effect = Exception(
+                "Connection timeout"
+            )
+            mock_patient_class.where.return_value = mock_search
+
+            with pytest.raises(FhirClientError) as exc_info:
+                fhir_client.list_fhir_patients()
+
+            assert "Failed to retrieve patient list" in str(exc_info.value)
+
+    @patch("app.fhir_client.get_fhir_client")
+    def test_update_patient_server_error_raises(self, mock_get_client):
+        """Non-404 errors in update_fhir_patient raise FhirClientError."""
+        mock_fhir = MagicMock()
+        mock_get_client.return_value = mock_fhir
+
+        mock_patient = MagicMock()
+
+        with patch("app.fhir_client.Patient") as mock_patient_class:
+            mock_patient_class.read.return_value = mock_patient
+            mock_patient.update.side_effect = Exception("Server error 500")
+
+            with pytest.raises(FhirClientError) as exc_info:
+                fhir_client.update_fhir_patient("123", {"given_name": "X"})
+
+            assert "Failed to update patient record" in str(exc_info.value)
+
+    @patch("app.fhir_client.get_fhir_client")
+    def test_update_patient_not_found_returns_none(self, mock_get_client):
+        """404 errors in update_fhir_patient still return None."""
+        mock_fhir = MagicMock()
+        mock_get_client.return_value = mock_fhir
+
+        with patch("app.fhir_client.Patient") as mock_patient_class:
+            mock_patient_class.read.side_effect = Exception(
+                "Resource not found (404)"
+            )
+            result = fhir_client.update_fhir_patient(
+                "999", {"given_name": "X"}
+            )
+
+        assert result is None
