@@ -229,7 +229,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 10. ~~No request body size limit~~ ✅
+### 10. No request body size limit
 
 |              |                                                                                  |
 | ------------ | -------------------------------------------------------------------------------- |
@@ -251,7 +251,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 11. ~~FHIR client missing error handling~~ ✅
+### 11. FHIR client missing error handling
 
 |              |                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------- |
@@ -281,7 +281,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 12. ~~EHRbase XML template upload without validation~~ ✅
+### 12. EHRbase XML template upload without validation
 
 |              |                                                                                |
 | ------------ | ------------------------------------------------------------------------------ |

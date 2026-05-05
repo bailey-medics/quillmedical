@@ -47,7 +47,7 @@ export default function Footer({ text, loading = false }: FooterProps) {
     >
       <Box style={{ display: "flex", justifyContent: "flex-end" }}>
         {loading ? (
-          <Skeleton height="1.125rem" width="12rem" radius="sm" />
+          <Skeleton height="1.5rem" width="12rem" radius="sm" my="0.25rem" />
         ) : (
           <BodyText>{text}</BodyText>
         )}

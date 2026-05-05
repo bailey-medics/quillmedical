@@ -173,8 +173,3 @@ export const Comparison: Story = {
     );
   },
 };
-
-export const DarkMode: Story = {
-  ...BritishShort,
-  globals: { colorScheme: "dark" },
-};
