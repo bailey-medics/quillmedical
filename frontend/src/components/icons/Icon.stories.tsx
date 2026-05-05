@@ -11,6 +11,7 @@ import { IconPencil, IconCheck, IconX } from "@/components/icons/appIcons";
 import Icon from "./Icon";
 import { iconCatalogue } from "./appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
+import { statusColours } from "@/styles/semanticColours";
 
 /**
  * Icon component provides consistent sizing for Tabler icons.
@@ -155,7 +156,7 @@ export const AllSizes: Story = {
 };
 
 /**
- * Icons with custom colours.
+ * Icons with status colours from the design system.
  */
 export const WithColour: Story = {
   parameters: { layout: "padded" },
@@ -166,21 +167,53 @@ export const WithColour: Story = {
   render: () => (
     <Group gap="lg">
       <Stack gap="xs" align="center">
-        <Icon icon={<IconPencil />} size="lg" colour="red" />
+        <Icon
+          icon={<IconCheck />}
+          size="lg"
+          colour="var(--mantine-color-teal-filled)"
+        />
         <Text size="xs" c="dimmed">
-          Red
+          Success
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon icon={<IconPencil />} size="lg" colour="blue" />
+        <Icon
+          icon={<IconPencil />}
+          size="lg"
+          colour="var(--mantine-color-blue-filled)"
+        />
         <Text size="xs" c="dimmed">
-          Blue
+          Info
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon icon={<IconPencil />} size="lg" colour="green" />
+        <Icon
+          icon={<IconX />}
+          size="lg"
+          colour="var(--mantine-color-red-filled)"
+        />
         <Text size="xs" c="dimmed">
-          Green
+          Alert
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon
+          icon={<IconPencil />}
+          size="lg"
+          colour="var(--mantine-color-cyan-6)"
+        />
+        <Text size="xs" c="dimmed">
+          Warning
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon
+          icon={<IconPencil />}
+          size="lg"
+          colour="var(--mantine-color-violet-filled)"
+        />
+        <Text size="xs" c="dimmed">
+          Accent
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
@@ -194,7 +227,7 @@ export const WithColour: Story = {
 };
 
 /**
- * Icons with a circular container background.
+ * Icons with a circular container background using status colours.
  */
 export const WithContainer: Story = {
   parameters: { layout: "padded" },
@@ -205,27 +238,51 @@ export const WithContainer: Story = {
   render: () => (
     <Group gap="lg">
       <Stack gap="xs" align="center">
-        <Icon icon={<IconCheck />} container="teal" />
+        <Icon icon={<IconCheck />} container={statusColours.success.bg} />
         <Text size="xs" c="dimmed">
-          Light teal
+          Light success
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon icon={<IconX />} container="red" />
+        <Icon icon={<IconX />} container={statusColours.alert.bg} />
         <Text size="xs" c="dimmed">
-          Light red
+          Light alert
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon icon={<IconCheck />} container="teal" containerVariant="filled" />
+        <Icon
+          icon={<IconCheck />}
+          container={statusColours.success.bg}
+          containerVariant="filled"
+        />
         <Text size="xs" c="dimmed">
-          Filled teal
+          Filled success
         </Text>
       </Stack>
       <Stack gap="xs" align="center">
-        <Icon icon={<IconX />} container="red" containerVariant="filled" />
+        <Icon
+          icon={<IconX />}
+          container={statusColours.alert.bg}
+          containerVariant="filled"
+        />
         <Text size="xs" c="dimmed">
-          Filled red
+          Filled alert
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon icon={<IconPencil />} container={statusColours.info.bg} />
+        <Text size="xs" c="dimmed">
+          Light info
+        </Text>
+      </Stack>
+      <Stack gap="xs" align="center">
+        <Icon
+          icon={<IconPencil />}
+          container={statusColours.accent.bg}
+          containerVariant="filled"
+        />
+        <Text size="xs" c="dimmed">
+          Filled accent
         </Text>
       </Stack>
     </Group>

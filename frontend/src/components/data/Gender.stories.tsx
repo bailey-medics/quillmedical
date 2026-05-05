@@ -59,8 +59,3 @@ export const Unspecified: Story = {
     format: "full",
   },
 };
-
-export const DarkMode: Story = {
-  ...Male,
-  globals: { colorScheme: "dark" },
-};

@@ -26,3 +26,8 @@ export const Default: Story = {
     onReload: () => {},
   },
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

@@ -8,9 +8,10 @@
 
 import { Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
-import { Button, Center, Stack } from "@mantine/core";
-import { IconAlertTriangle, IconRefresh } from "@/components/icons/appIcons";
+import { Center, Stack } from "@mantine/core";
+import { IconAlertTriangle } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
+import IconTextButton from "@/components/button/IconTextButton";
 import { BodyText, Heading } from "@/components/typography";
 
 type Props = {
@@ -58,15 +59,10 @@ export function ErrorFallback({ onReload }: FallbackProps) {
       <Stack align="center" gap="lg">
         <Icon icon={<IconAlertTriangle />} size="xl" c="red.6" />
         <Heading>Something went wrong</Heading>
-        <BodyText c="dimmed">
+        <BodyText c="gray.5">
           An unexpected error occurred. Please try reloading the page.
         </BodyText>
-        <Button
-          leftSection={<Icon icon={<IconRefresh />} />}
-          onClick={onReload}
-        >
-          Reload page
-        </Button>
+        <IconTextButton icon="refresh" label="Reload page" onClick={onReload} />
       </Stack>
     </Center>
   );

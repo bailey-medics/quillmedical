@@ -94,8 +94,3 @@ export const NonClinical: Story = {
   },
   render: (args) => <TopRibbon {...args} />,
 };
-
-export const DarkMode: Story = {
-  ...NoPatient,
-  globals: { colorScheme: "dark" },
-};

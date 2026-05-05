@@ -50,8 +50,3 @@ export const Expanded: Story = {
     if (button) (button as HTMLButtonElement).click();
   },
 };
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
-};

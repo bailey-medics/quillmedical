@@ -47,8 +47,3 @@ export const MedicareNumber: Story = {
       "http://ns.electronichealth.net.au/id/medicare-number",
   },
 };
-
-export const DarkMode: Story = {
-  ...NHSNumber,
-  globals: { colorScheme: "dark" },
-};

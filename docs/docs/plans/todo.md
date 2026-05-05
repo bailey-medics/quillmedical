@@ -1,5 +1,23 @@
 # Project to-do list
 
+## Monitoring and alerting (priority — teaching)
+
+- [ ] **Set up uptime monitoring and alerting for the teaching environment.**
+      Need to know when things break before users report it. Options:
+      - GCP Cloud Monitoring uptime checks on
+        `https://teaching.quill-medical.com` and `/api/health`
+      - Alert policies: error rate spikes (5xx > threshold), latency (p95 >
+        2s), Cloud Run instance count, Cloud SQL connection exhaustion
+      - Notification channel: email and/or Slack webhook
+      - Dashboard: Cloud Run metrics, SQL connections, error logs
+- [ ] **Add structured error logging** — ensure backend logs include request
+      ID, user ID (not PHI), and error context for debugging production issues
+- [ ] **Create basic runbooks** for common incidents:
+      - Backend returning 502s
+      - Database connection limit exhausted
+      - Cloud Run cold start latency spikes
+      - Deployment rollback procedure
+
 ## Branch protection
 
 - [ ] Increase `required_approving_review_count` from 0 to 1 (or higher) in
@@ -185,3 +203,69 @@ notifications are production-ready:
       detected. CI auditing would add a hard gate that prevents merging if a
       known vulnerability exists in the dependency tree right now, covering the
       window between disclosure and Renovate's PR being merged.
+
+## FHIR and EHRbase database backups (clinical)
+
+- [ ] **Add backup strategy for FHIR and EHRbase databases.** Currently these
+      run as Postgres containers on a Compute Engine VM with no disk snapshot
+      schedule. Cloud SQL instances exist in Terraform but are unused. Options: - **Option A**: Add a `google_compute_resource_policy` snapshot schedule
+      for the VM disk (daily, 30-day retention) — quick fix - **Option B**: Migrate FHIR/EHRbase Postgres to Cloud SQL instances
+      (already provisioned) — proper fix, gets managed backups + PITR for free - Either way, add a periodic restore-test to verify recoverability
+
+## Backup restore SOP
+
+- [ ] **Write a standard operating procedure for restoring Cloud SQL backups.**
+      Should cover:
+      - When to use daily backup restore vs point-in-time recovery (PITR)
+      - Step-by-step: clone to temporary instance, verify, export/import
+      - Who has permission to trigger a restore
+      - Communication plan during downtime
+      - Post-restore verification checklist
+      - Periodic restore drill (quarterly) to confirm backups are valid
+
+## Internal penetration testing
+
+- [ ] **Establish a quarterly internal pentest routine.** Tooling and plan
+      documented in `docs/docs/plans/pentesting-plan.md`. Key actions:
+      - Weekly automated ZAP baseline scan already in CI
+      - Quarterly manual session using ZAP Desktop + sqlmap + ffuf
+      - Focus areas: auth bypass, privilege escalation, SSRF via FHIR/EHRbase,
+        CSRF validation, data leakage
+      - External pentest required before NHS go-live (DSPT compliance)
+
+## Incident response plan
+
+- [ ] **Write a one-page incident response plan.** Even lightweight, should
+      cover:
+      - Escalation chain (who gets called)
+      - Classification: P1 (data breach/total outage) vs P2 (partial
+        degradation) vs P3 (cosmetic/non-urgent)
+      - Communication template for affected users
+      - Post-incident review process
+
+## Secret rotation (pre-clinical)
+
+- [ ] **Document current secrets and rotation procedure.** Inventory:
+      - JWT signing key
+      - Database passwords
+      - VAPID keys (push notifications)
+      - CSRF signing secret
+      - Any third-party API keys
+      - Define rotation schedule and procedure for each
+
+## Data retention policy (pre-NHS)
+
+- [ ] **Define data retention periods for UK GDPR compliance.** Required before
+      handling real patient data:
+      - User accounts (how long after deactivation?)
+      - Messages and conversations
+      - Assessment results and teaching data
+      - Audit logs
+      - Automated purge or manual review process
+
+## Vulnerability disclosure
+
+- [ ] **Add a `security.txt` and responsible disclosure policy.** Standard way
+      for external researchers to report vulnerabilities:
+      - `/.well-known/security.txt` with contact details
+      - Document scope, response times, and safe harbour
