@@ -251,7 +251,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 11. FHIR client missing error handling
+### 11. ~~FHIR client missing error handling~~ ✅
 
 |              |                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------- |
@@ -281,7 +281,7 @@ Overall security posture is **good**. Authentication, authorisation, and XSS pro
 
 ---
 
-### 12. EHRbase XML template upload without validation
+### 12. ~~EHRbase XML template upload without validation~~ ✅
 
 |              |                                                                                |
 | ------------ | ------------------------------------------------------------------------------ |

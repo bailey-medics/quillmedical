@@ -1,0 +1,50 @@
+# cspell:words zaproxy
+# Weekly OWASP ZAP baseline scan against the teaching environment.
+#
+# Runs a passive scan (safe, read-only) to detect common
+# vulnerabilities: missing headers, information leakage, XSS
+# reflections, cookie issues, etc.
+#
+# Schedule: Every Monday at 04:00 UTC.
+# Can also be triggered manually via workflow_dispatch.
+name: OWASP ZAP scan
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write  # To create issues for alerts
+
+concurrency:
+  group: zap-scan
+  cancel-in-progress: true
+
+jobs:
+  zap-baseline:
+    runs-on: ubuntu-latest
+    name: ZAP baseline scan
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 1 }
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: "https://teaching.quill-medical.com"
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a"  # Include alpha passive scan rules
+          allow_issue_writing: true
+          fail_action: false  # Don't fail the workflow — report only
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 90

@@ -91,6 +91,25 @@ class TestRequireCSRFDependency:
         assert response.status_code == 403
 
 
+class TestFhirClientErrorHandler:
+    """Test global FhirClientError exception handler."""
+
+    def test_fhir_client_error_returns_502(
+        self, authenticated_clinician_client: TestClient
+    ):
+        """FhirClientError returns 502 with clean message."""
+        from app.fhir_client import FhirClientError
+
+        with patch(
+            "app.main.list_fhir_patients",
+            side_effect=FhirClientError("Failed to retrieve patient list"),
+        ):
+            response = authenticated_clinician_client.get("/api/patients")
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "Failed to retrieve patient list"
+
+
 class TestRequestBodySizeLimit:
     """Test request body size limiting middleware."""
 

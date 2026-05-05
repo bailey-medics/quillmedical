@@ -49,12 +49,14 @@ from app.cbac.decorators import has_competency
 from app.config import settings
 from app.db import get_session
 from app.ehrbase_client import (
+    EhrbaseClientError,
     create_letter_composition,
     get_letter_composition,
     list_letters_for_patient,
 )
 from app.email_send import send_email
 from app.fhir_client import (
+    FhirClientError,
     FhirCommunicationError,
     create_fhir_patient,
     list_fhir_patients,
@@ -187,6 +189,34 @@ async def limit_request_body_size(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# --- FHIR client error handler ---
+@app.exception_handler(FhirClientError)
+async def fhir_client_error_handler(
+    request: Request, exc: FhirClientError
+) -> Response:
+    """Return a clean 502 response for FHIR service failures."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=502,
+        content={"detail": str(exc)},
+    )
+
+
+# --- EHRbase client error handler ---
+@app.exception_handler(EhrbaseClientError)
+async def ehrbase_client_error_handler(
+    request: Request, exc: EhrbaseClientError
+) -> Response:
+    """Return a clean 502 response for EHRbase service failures."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=502,
+        content={"detail": str(exc)},
+    )
 
 
 # --- Request logging middleware ---
@@ -1717,6 +1747,8 @@ def list_patients(
                 enriched_patients.append(patient)
 
         return {"patients": enriched_patients, "fhir_ready": True}
+    except FhirClientError:
+        raise
     except Exception:
         return {"patients": [], "fhir_ready": False}
 
