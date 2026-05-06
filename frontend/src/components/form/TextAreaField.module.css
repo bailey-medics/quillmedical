@@ -1,0 +1,16 @@
+[data-mantine-color-scheme="dark"] .root :global(.mantine-Textarea-input) {
+  border-color: var(--mantine-color-primary-9);
+}
+
+.root :global(.mantine-Textarea-input:focus) {
+  border-color: var(--mantine-color-primary-4) !important;
+}
+
+.root :global(.mantine-Textarea-input[data-disabled]) {
+  background-color: var(--mantine-color-gray-3);
+}
+
+.root :global(.mantine-Textarea-input[data-error]) {
+  border-width: 2px;
+  border-color: var(--error-color) !important;
+}

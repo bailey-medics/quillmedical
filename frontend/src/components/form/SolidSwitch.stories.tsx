@@ -70,6 +70,13 @@ export const AllSizes: Story = {
   ),
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Accept terms",
+    error: "You must accept the terms to continue",
+  },
+};
+
 export const DarkMode: Story = {
   render: () => (
     <Stack gap="xl">

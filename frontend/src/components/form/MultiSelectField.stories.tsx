@@ -53,6 +53,15 @@ export const WithDescription: Story = {
   },
 };
 
+export const Required: Story = {
+  args: {
+    label: "Participants",
+    placeholder: "Add staff to this conversation",
+    data: staffData,
+    required: true,
+  },
+};
+
 export const Searchable: Story = {
   args: {
     label: "Participants",
@@ -102,15 +111,44 @@ export const Disabled: Story = {
   },
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Participants",
+    placeholder: "Add staff to this conversation",
+    data: staffData,
+    error: "At least one participant is required",
+  },
+};
+
 export const DarkMode: Story = {
   ...WithDescription,
   globals: { colorScheme: "dark" },
   render: (args) => (
     <Stack gap="xl">
       <BaseCard>
-        <MultiSelectField {...args} />
+        <MultiSelectField {...args} required />
       </BaseCard>
-      <MultiSelectField {...args} />
+      <MultiSelectField {...args} required />
+      <BaseCard>
+        <MultiSelectField
+          label="Participants - disabled"
+          data={[
+            { value: "1", label: "Dr Corbett" },
+            { value: "2", label: "Nurse Adams" },
+            { value: "3", label: "Dr Patel" },
+          ]}
+          value={["1", "2", "3"]}
+          disabled
+        />
+      </BaseCard>
+      <BaseCard>
+        <MultiSelectField
+          label="Participants - error"
+          placeholder="Add staff to this conversation"
+          data={staffData}
+          error="At least one participant is required"
+        />
+      </BaseCard>
     </Stack>
   ),
 };
