@@ -1,4 +1,7 @@
 import { Textarea, type TextareaProps } from "@mantine/core";
+import { ErrorMessage } from "@components/typography";
+import FieldDescription from "@components/typography/FieldDescription";
+import classes from "./TextAreaField.module.css";
 
 const fieldStyles = {
   label: {
@@ -14,6 +17,23 @@ const fieldStyles = {
   required: { color: "var(--mantine-color-secondary-5)" },
 };
 
-export default function TextAreaField(props: TextareaProps) {
-  return <Textarea {...props} size="lg" styles={fieldStyles} />;
+export default function TextAreaField({
+  description,
+  error,
+  ...props
+}: TextareaProps) {
+  return (
+    <Textarea
+      {...props}
+      description={
+        description ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : undefined
+      }
+      error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
+      size="lg"
+      styles={fieldStyles}
+      classNames={{ root: classes.root }}
+    />
+  );
 }

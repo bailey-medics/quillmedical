@@ -52,15 +52,37 @@ export const Disabled: Story = {
   },
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Email address",
+    value: "gemma@@example.com",
+    error: "Please enter a valid email address",
+  },
+};
+
 export const DarkMode: Story = {
   ...WithDescription,
   globals: { colorScheme: "dark" },
   render: (args) => (
     <Stack gap="xl">
       <BaseCard>
-        <TextField {...args} />
+        <TextField {...args} required />
       </BaseCard>
-      <TextField {...args} />
+      <TextField {...args} required />
+      <BaseCard>
+        <TextField
+          label="Email address - disabled"
+          value="gemma@example.com"
+          disabled
+        />
+      </BaseCard>
+      <BaseCard>
+        <TextField
+          label="Email address - error"
+          value="gemma@@example.com"
+          error="Please enter a valid email address"
+        />
+      </BaseCard>
     </Stack>
   ),
 };

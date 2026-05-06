@@ -197,7 +197,8 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-dark-2": "#0a2f56",
     // Stepper inactive circles, outline separator
     "--mantine-color-dark-5": "#042340",
-    // Error text — brighter red for dark backgrounds
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
     // Chat bubble backgrounds
     "--bubble-mine-bg": "#245d8f",
@@ -208,6 +209,8 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   light: {
     "--mantine-color-text": "#143f6b",
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",
