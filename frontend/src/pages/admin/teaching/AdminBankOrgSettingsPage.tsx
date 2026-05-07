@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Skeleton, Stack } from "@mantine/core";
-import { IconArrowLeft } from "@components/icons/appIcons";
+import { IconAlertCircle, IconArrowLeft } from "@/components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import ButtonPair from "@/components/button/ButtonPair";
@@ -35,14 +35,14 @@ export default function AdminBankOrgSettingsPage() {
 
   const [isLive, setIsLive] = useState(false);
   const [coordinatorEmail, setCoordinatorEmail] = useState("");
-  const [toggling, setToggling] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [originalIsLive, setOriginalIsLive] = useState(false);
   const [originalEmail, setOriginalEmail] = useState("");
 
-  const isDirty = coordinatorEmail !== originalEmail;
+  const isDirty =
+    coordinatorEmail !== originalEmail || isLive !== originalIsLive;
 
   const fetchData = useCallback(async () => {
     try {
@@ -62,6 +62,7 @@ export default function AdminBankOrgSettingsPage() {
       }
       setOrg(thisOrg);
       setIsLive(thisOrg.is_live);
+      setOriginalIsLive(thisOrg.is_live);
       setCoordinatorEmail(thisOrg.coordinator_email ?? "");
       setOriginalEmail(thisOrg.coordinator_email ?? "");
     } catch (err) {
@@ -75,38 +76,24 @@ export default function AdminBankOrgSettingsPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleToggleLive = async (checked: boolean) => {
-    setToggling(true);
-    setToggleError(null);
-    try {
-      await api.put(
-        `/teaching/admin/banks/${bankId}/organisations/${orgId}/status`,
-        { is_live: checked },
-      );
-      setIsLive(checked);
-    } catch (err) {
-      setToggleError(
-        err instanceof Error ? err.message : "Failed to update status",
-      );
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  const handleSaveEmail = async () => {
+  const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
       await api.put(
-        `/teaching/admin/banks/${bankId}/organisations/${orgId}/coordinator`,
-        { coordinator_email: coordinatorEmail },
+        `/teaching/admin/banks/${bankId}/organisations/${orgId}/settings`,
+        {
+          is_live: isLive,
+          coordinator_email: coordinatorEmail || null,
+        },
       );
+      setOriginalIsLive(isLive);
       setOriginalEmail(coordinatorEmail);
       setSaved(true);
     } catch (err) {
       setSaveError(
-        err instanceof Error ? err.message : "Failed to save coordinator email",
+        err instanceof Error ? err.message : "Failed to save settings",
       );
     } finally {
       setSaving(false);
@@ -128,7 +115,12 @@ export default function AdminBankOrgSettingsPage() {
   if (error || !bank || !org) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error ?? "Not found"} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Not found"}
+          colour="alert"
+        />
       </Container>
     );
   }
@@ -156,10 +148,8 @@ export default function AdminBankOrgSettingsPage() {
             <SolidSwitch
               label="Open for assessments"
               checked={isLive}
-              onChange={(e) => handleToggleLive(e.currentTarget.checked)}
-              disabled={toggling}
+              onChange={(e) => setIsLive(e.currentTarget.checked)}
             />
-            {toggleError && <StateMessage type="error" message={toggleError} />}
 
             {bank.email_coordinator_on_pass && (
               <>
@@ -172,25 +162,32 @@ export default function AdminBankOrgSettingsPage() {
                   value={coordinatorEmail}
                   onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
                 />
-
-                {saveError && <StateMessage type="error" message={saveError} />}
-                {saved && (
-                  <ResultMessage
-                    variant="success"
-                    title="Saved"
-                    subtitle="Coordinator email updated"
-                  />
-                )}
-
-                <ButtonPair
-                  acceptLabel="Save"
-                  onAccept={handleSaveEmail}
-                  acceptLoading={saving}
-                  acceptDisabled={!isDirty}
-                  onCancel={() => navigate(`/admin/teaching/${bankId}`)}
-                />
               </>
             )}
+
+            {saveError && (
+              <StateMessage
+                icon={<IconAlertCircle />}
+                title="Error saving settings"
+                description={saveError}
+                colour="alert"
+              />
+            )}
+            {saved && (
+              <ResultMessage
+                variant="success"
+                title="Saved"
+                subtitle="Settings updated"
+              />
+            )}
+
+            <ButtonPair
+              acceptLabel="Save"
+              onAccept={handleSave}
+              acceptLoading={saving}
+              acceptDisabled={!isDirty}
+              onCancel={() => navigate(`/admin/teaching/${bankId}`)}
+            />
           </Stack>
         </BaseCard>
       </Stack>

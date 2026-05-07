@@ -15,7 +15,6 @@ const meta: Meta<typeof UnreadBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;

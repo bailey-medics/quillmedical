@@ -61,7 +61,7 @@ describe("IconButton", () => {
       <IconButton
         icon={<IconTrash />}
         variant="filled"
-        color="red"
+        color="var(--alert-color)"
         aria-label="Delete"
       />,
     );

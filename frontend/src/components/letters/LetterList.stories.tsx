@@ -15,7 +15,6 @@ import type { LetterSummary } from "./LetterList";
 const meta: Meta<typeof LetterList> = {
   title: "Letters/LetterList",
   component: LetterList,
-  tags: ["autodocs"],
 };
 
 export default meta;

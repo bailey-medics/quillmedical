@@ -71,7 +71,11 @@ export function AssessmentTimer({
   const isWarning = remainingSeconds > 60 && remainingSeconds <= 300;
 
   const colour =
-    isExpired || isCritical ? "red" : isWarning ? "orange" : "blue";
+    isExpired || isCritical
+      ? "var(--alert-color)"
+      : isWarning
+        ? "var(--warning-color)"
+        : "var(--info-color)";
 
   return (
     <Badge

@@ -1,4 +1,7 @@
 import { PasswordInput, type PasswordInputProps } from "@mantine/core";
+import { ErrorMessage } from "@components/typography";
+import FieldDescription from "@components/typography/FieldDescription";
+import classes from "./PasswordField.module.css";
 
 const fieldStyles = {
   label: {
@@ -14,6 +17,23 @@ const fieldStyles = {
   visibilityToggle: { color: "var(--mantine-color-text)" },
 };
 
-export default function PasswordField(props: PasswordInputProps) {
-  return <PasswordInput {...props} size="lg" styles={fieldStyles} />;
+export default function PasswordField({
+  description,
+  error,
+  ...props
+}: PasswordInputProps) {
+  return (
+    <PasswordInput
+      {...props}
+      description={
+        description ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : undefined
+      }
+      error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
+      size="lg"
+      styles={fieldStyles}
+      classNames={{ root: classes.root }}
+    />
+  );
 }

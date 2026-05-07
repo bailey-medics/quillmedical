@@ -58,11 +58,18 @@ export default function PreviousNextButton({
         </Button>
       )}
       <Button
-        onClick={onNext}
-        disabled={nextDisabled}
+        onClick={
+          nextDisabled ? (e: React.MouseEvent) => e.preventDefault() : onNext
+        }
         loading={nextLoading}
+        aria-disabled={nextDisabled || undefined}
         size={buttonSize}
-        styles={{ label: { fontSize } }}
+        styles={{
+          root: nextDisabled
+            ? { opacity: 0.6, cursor: "not-allowed" }
+            : undefined,
+          label: { fontSize },
+        }}
       >
         {nextLabel}
       </Button>

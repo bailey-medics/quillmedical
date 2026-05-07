@@ -1,4 +1,7 @@
 import { TextInput, type TextInputProps } from "@mantine/core";
+import { ErrorMessage } from "@components/typography";
+import FieldDescription from "@components/typography/FieldDescription";
+import classes from "./TextField.module.css";
 
 const fieldStyles = {
   label: {
@@ -13,6 +16,23 @@ const fieldStyles = {
   required: { color: "var(--mantine-color-secondary-5)" },
 };
 
-export default function TextField(props: TextInputProps) {
-  return <TextInput {...props} size="lg" styles={fieldStyles} />;
+export default function TextField({
+  description,
+  error,
+  ...props
+}: TextInputProps) {
+  return (
+    <TextInput
+      {...props}
+      description={
+        description ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : undefined
+      }
+      error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
+      size="lg"
+      styles={fieldStyles}
+      classNames={{ root: classes.root }}
+    />
+  );
 }

@@ -5,7 +5,6 @@ const meta: Meta<typeof EmptyState> = {
   title: "Foundations/Typography/EmptyState",
   component: EmptyState,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

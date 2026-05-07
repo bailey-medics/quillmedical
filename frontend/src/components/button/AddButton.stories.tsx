@@ -16,7 +16,6 @@ const meta: Meta<typeof AddButton> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     label: "Add user",
     onClick: fn(),

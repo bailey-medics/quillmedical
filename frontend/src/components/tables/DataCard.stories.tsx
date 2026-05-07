@@ -32,7 +32,6 @@ const meta: Meta<typeof DataCard<User>> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <Container size="sm" ml={0}>

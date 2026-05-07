@@ -11,7 +11,6 @@ import { ErrorFallback } from "./ErrorBoundary";
 const meta: Meta<typeof ErrorFallback> = {
   title: "ErrorBoundary/ErrorFallback",
   component: ErrorFallback,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

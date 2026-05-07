@@ -138,7 +138,7 @@ export default function ActivatePatientPage() {
       notifications.show({
         title: "Patient activated",
         message: `${formatName(patientToActivate.name)} has been activated successfully`,
-        color: "green",
+        color: "var(--success-color)",
       });
 
       // Navigate back to patient admin page or patients list
@@ -152,7 +152,7 @@ export default function ActivatePatientPage() {
         title: "Activation failed",
         message:
           err instanceof Error ? err.message : "Failed to activate patient",
-        color: "red",
+        color: "var(--alert-color)",
       });
     } finally {
       setActivating(false);
@@ -172,7 +172,7 @@ export default function ActivatePatientPage() {
             <Alert
               icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
-              color="red"
+              color="var(--alert-color)"
             >
               {error}
             </Alert>
@@ -251,7 +251,7 @@ export default function ActivatePatientPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>
@@ -286,7 +286,7 @@ export default function ActivatePatientPage() {
                     <Table.Td>
                       <Button
                         size="xs"
-                        color="green"
+                        color="var(--success-color)"
                         variant="light"
                         onClick={() => handleActivateClick(patient)}
                       >

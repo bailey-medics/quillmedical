@@ -17,7 +17,6 @@ const bodyTextDecorator: Decorator[] = [
 const meta: Meta<typeof FormattedDate> = {
   title: "Data/Date",
   component: FormattedDate,
-  tags: ["autodocs"],
   argTypes: {
     date: {
       control: "text",

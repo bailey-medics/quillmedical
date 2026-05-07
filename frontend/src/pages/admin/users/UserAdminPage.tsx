@@ -16,7 +16,6 @@ import {
   SimpleGrid,
   Skeleton,
   Alert,
-  Badge,
 } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
@@ -26,6 +25,7 @@ import {
   Heading,
 } from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
+import CompetencyBadge from "@/components/badge/CompetencyBadge";
 import {
   IconPencil,
   IconAlertCircle,
@@ -108,7 +108,7 @@ export default function UserAdminPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading user"
-          color="red"
+          color="var(--alert-color)"
         >
           {error || "User not found"}
         </Alert>
@@ -131,6 +131,11 @@ export default function UserAdminPage() {
             </Group>
 
             <Stack gap="xs">
+              <Group gap="xs">
+                <BodyTextBold>Full name:</BodyTextBold>
+                <BodyTextInline>{user.name}</BodyTextInline>
+              </Group>
+
               <Group gap="xs">
                 <BodyTextBold>Username:</BodyTextBold>
                 <BodyTextInline>{user.username}</BodyTextInline>
@@ -167,11 +172,14 @@ export default function UserAdminPage() {
                   <BodyTextBold>Additional competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.additional_competencies.map((comp) => (
-                      <Badge key={comp} variant="light" color="teal">
-                        {competenciesData.competencies.find(
-                          (c) => c.id === comp,
-                        )?.display_name || comp}
-                      </Badge>
+                      <CompetencyBadge
+                        key={comp}
+                        label={
+                          competenciesData.competencies.find(
+                            (c) => c.id === comp,
+                          )?.display_name || comp
+                        }
+                      />
                     ))}
                   </Group>
                 </Stack>
@@ -182,11 +190,15 @@ export default function UserAdminPage() {
                   <BodyTextBold>Removed competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.removed_competencies.map((comp) => (
-                      <Badge key={comp} variant="light" color="red">
-                        {competenciesData.competencies.find(
-                          (c) => c.id === comp,
-                        )?.display_name || comp}
-                      </Badge>
+                      <CompetencyBadge
+                        key={comp}
+                        label={
+                          competenciesData.competencies.find(
+                            (c) => c.id === comp,
+                          )?.display_name || comp
+                        }
+                        removed
+                      />
                     ))}
                   </Group>
                 </Stack>

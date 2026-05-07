@@ -103,11 +103,14 @@ describe("Icon Component", () => {
 
   it("applies colour when provided", () => {
     renderWithMantine(
-      <Icon icon={<IconPencil data-testid="coloured-icon" />} colour="red" />,
+      <Icon
+        icon={<IconPencil data-testid="coloured-icon" />}
+        colour="var(--alert-color)"
+      />,
     );
 
     const icon = screen.getByTestId("coloured-icon");
-    expect(icon).toHaveAttribute("stroke", "red");
+    expect(icon).toHaveAttribute("stroke", "var(--alert-color)");
   });
 
   it("does not override stroke when colour is not provided", () => {
@@ -123,7 +126,7 @@ describe("Icon Component", () => {
     const { container } = renderWithMantine(
       <Icon
         icon={<IconPencil data-testid="contained-icon" />}
-        container="teal"
+        container="var(--success-color)"
       />,
     );
 

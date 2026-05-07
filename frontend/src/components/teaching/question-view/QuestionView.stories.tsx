@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Container } from "@mantine/core";
+import { useState } from "react";
 import { QuestionView } from "./QuestionView";
 import TopRibbon from "@/components/ribbon/TopRibbon";
 import type { CandidateItem } from "@/features/teaching/types";
@@ -56,7 +57,6 @@ const variableItem: CandidateItem = {
 const meta: Meta<typeof QuestionView> = {
   title: "Teaching/QuestionView",
   component: QuestionView,
-  tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },
@@ -87,6 +87,16 @@ export default meta;
 type Story = StoryObj<typeof QuestionView>;
 
 export const UniformType: Story = {
+  render: (args) => {
+    const [selected, setSelected] = useState<string | null>(null);
+    return (
+      <QuestionView
+        {...args}
+        selectedOption={selected}
+        onSelectOption={setSelected}
+      />
+    );
+  },
   args: {
     item: uniformItem,
     selectedOption: null,
@@ -99,6 +109,18 @@ export const UniformType: Story = {
 };
 
 export const UniformWithSelection: Story = {
+  render: (args) => {
+    const [selected, setSelected] = useState<string | null>(
+      "high_confidence_adenoma",
+    );
+    return (
+      <QuestionView
+        {...args}
+        selectedOption={selected}
+        onSelectOption={setSelected}
+      />
+    );
+  },
   args: {
     item: { ...uniformItem, display_order: 3 },
     selectedOption: "high_confidence_adenoma",
@@ -112,6 +134,16 @@ export const UniformWithSelection: Story = {
 };
 
 export const VariableType: Story = {
+  render: (args) => {
+    const [selected, setSelected] = useState<string | null>(null);
+    return (
+      <QuestionView
+        {...args}
+        selectedOption={selected}
+        onSelectOption={setSelected}
+      />
+    );
+  },
   args: {
     item: { ...variableItem, display_order: 5 },
     selectedOption: null,
@@ -125,6 +157,18 @@ export const VariableType: Story = {
 };
 
 export const LastQuestion: Story = {
+  render: (args) => {
+    const [selected, setSelected] = useState<string | null>(
+      "low_confidence_adenoma",
+    );
+    return (
+      <QuestionView
+        {...args}
+        selectedOption={selected}
+        onSelectOption={setSelected}
+      />
+    );
+  },
   args: {
     item: { ...uniformItem, display_order: 20 },
     selectedOption: "low_confidence_adenoma",

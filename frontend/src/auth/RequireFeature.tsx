@@ -19,15 +19,22 @@ interface RequireFeatureProps {
   feature: string;
   /** Child components to render if feature is enabled */
   children: ReactNode;
+  /** Optional fallback to render when feature is denied (defaults to 404) */
+  fallback?: ReactNode;
 }
 
 /**
  * Gate content behind an organisation feature flag.
  *
  * If the user's organisation does not have the feature enabled,
- * a 404 page is shown (same as if the route didn't exist).
+ * a 404 page is shown (same as if the route didn't exist) unless
+ * a custom fallback is provided.
  */
-export function RequireFeature({ feature, children }: RequireFeatureProps) {
+export function RequireFeature({
+  feature,
+  children,
+  fallback,
+}: RequireFeatureProps) {
   const { state } = useAuth();
   const hasFeature = useHasFeature(feature);
 
@@ -40,7 +47,7 @@ export function RequireFeature({ feature, children }: RequireFeatureProps) {
   }
 
   if (state.status === "unauthenticated" || !hasFeature) {
-    return <NotFoundLayout />;
+    return <>{fallback ?? <NotFoundLayout />}</>;
   }
 
   return <>{children}</>;

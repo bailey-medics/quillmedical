@@ -13,7 +13,6 @@ import ResultMessage from "./ResultMessage";
 const meta: Meta<typeof ResultMessage> = {
   title: "MessageCards/ResultMessage",
   component: ResultMessage,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

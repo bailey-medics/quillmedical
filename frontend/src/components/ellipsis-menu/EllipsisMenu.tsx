@@ -17,7 +17,7 @@ export interface EllipsisMenuItem {
   label: string;
   /** Icon element to show before the label */
   icon?: ReactElement;
-  /** Mantine colour token (e.g. "red") for destructive actions */
+  /** CSS variable for destructive actions (e.g. "var(--alert-color)") */
   color?: string;
   /** Click handler */
   onClick: () => void;

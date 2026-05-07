@@ -14,7 +14,6 @@ import type { MessageThread } from "./MessagesList";
 const meta: Meta<typeof MessagesList> = {
   title: "Messaging/MessagesList",
   component: MessagesList,
-  tags: ["autodocs"],
 };
 
 export default meta;

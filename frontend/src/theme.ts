@@ -110,6 +110,27 @@ export const greyScale = [
 ] as const;
 
 /**
+ * Status colour tokens — semantic colours for badges, alerts, and buttons.
+ *
+ * Registered as CSS variables (e.g. `var(--success-color)`) via
+ * cssVariablesResolver. Shared across light and dark modes — these are
+ * used as filled backgrounds with white/dark text.
+ *
+ * Note: `--error-color` (#f55142) is a separate token for form validation
+ * borders (accessibility-tuned). `--alert-color` (#fa5252) is for status
+ * badges, destructive buttons, and notifications.
+ */
+export const statusColourValues = {
+  success: "#12b886", // Teal — active, completed, pass (Mantine teal.6)
+  warning: "#15aabf", // Cyan — draft, pending (Mantine cyan.6)
+  outstanding: "#e64980", // Pink — deactivated, cancelled, fail (Mantine pink.6)
+  info: "#228be6", // Blue — upcoming, informational (Mantine blue.6)
+  neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4)
+  accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6)
+  alert: "#fa5252", // Red — no-show, patient, attention (Mantine red.6)
+} as const;
+
+/**
  * Typography tokens — single source of truth for all font sizes.
  *
  * Mobile values are consumed by Mantine's createTheme(). Desktop values
@@ -173,6 +194,14 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--typo-desktop-h4": typographyTokens.headings.h4.desktop,
     "--typo-desktop-h5": typographyTokens.headings.h5.desktop,
     "--typo-desktop-h6": typographyTokens.headings.h6.desktop,
+    // Status colours — semantic design tokens
+    "--success-color": statusColourValues.success,
+    "--warning-color": statusColourValues.warning,
+    "--alert-color": statusColourValues.alert,
+    "--info-color": statusColourValues.info,
+    "--neutral-color": statusColourValues.neutral,
+    "--accent-color": statusColourValues.accent,
+    "--outstanding-color": statusColourValues.outstanding,
   },
   dark: {
     // Text — light grey on dark background (placeholder values, to be refined)
@@ -197,7 +226,8 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-dark-2": "#0a2f56",
     // Stepper inactive circles, outline separator
     "--mantine-color-dark-5": "#042340",
-    // Error text — brighter red for dark backgrounds
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
     // Chat bubble backgrounds
     "--bubble-mine-bg": "#245d8f",
@@ -208,6 +238,8 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   light: {
     "--mantine-color-text": "#143f6b",
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",

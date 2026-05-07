@@ -74,6 +74,7 @@ import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
+import { NoAccessLayout } from "@/components/layouts";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -475,7 +476,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentDashboard />
           </RequireFeature>
         ),
@@ -483,7 +487,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentAttempt />
           </RequireFeature>
         ),
@@ -491,7 +498,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id/result",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentResultPage />
           </RequireFeature>
         ),
@@ -499,7 +509,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/results",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AllResults />
           </RequireFeature>
         ),
@@ -507,7 +520,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/sync",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <SyncStatus />
           </RequireFeature>
         ),

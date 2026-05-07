@@ -9,9 +9,9 @@
  * - Status: state-communicating colours (badges, alerts, validation)
  * - Text: typography colour tokens
  *
- * Dark mode: status colours use Mantine colour tokens (e.g. "teal", "cyan.6")
- * which Mantine adjusts automatically for dark/light scheme. Text colours
- * use CSS variables that resolve per scheme via cssVariablesResolver in theme.ts.
+ * Status colours use CSS variables (e.g. "var(--success-color)") defined
+ * in theme.ts via cssVariablesResolver. These are identical in light and
+ * dark modes — they are used as filled backgrounds with white/dark text.
  */
 
 import { brandColours } from "@/theme";
@@ -46,37 +46,37 @@ export type StatusColourName =
 
 export const statusColours: Record<StatusColourName, StatusColourConfig> = {
   success: {
-    bg: "teal",
+    bg: "var(--success-color)",
     text: "white",
     usage: "Active, completed, final, pass",
   },
   warning: {
-    bg: "cyan.6",
+    bg: "var(--warning-color)",
     text: "white",
     usage: "Draft, pending",
   },
   outstanding: {
-    bg: "pink",
+    bg: "var(--outstanding-color)",
     text: "white",
     usage: "Deactivated, cancelled, fail",
   },
   info: {
-    bg: "blue",
+    bg: "var(--info-color)",
     text: "white",
     usage: "Upcoming, amended, admin, unread",
   },
   neutral: {
-    bg: "yellow.4",
+    bg: "var(--neutral-color)",
     text: "dark",
     usage: "Staff, default",
   },
   accent: {
-    bg: "violet",
+    bg: "var(--accent-color)",
     text: "white",
     usage: "Incomplete, special states",
   },
   alert: {
-    bg: "red",
+    bg: "var(--alert-color)",
     text: "white",
     usage: "No-show, patient, attention needed",
   },

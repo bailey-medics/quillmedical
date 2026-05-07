@@ -63,12 +63,21 @@ export default function ButtonPairRed({
       </Button>
       <Button
         type={acceptType}
-        color="red"
-        onClick={onAccept}
-        disabled={acceptDisabled}
+        color="var(--alert-color)"
+        onClick={
+          acceptDisabled
+            ? (e: React.MouseEvent) => e.preventDefault()
+            : onAccept
+        }
         loading={acceptLoading}
+        aria-disabled={acceptDisabled || undefined}
         size={buttonSize}
-        styles={{ label: { fontSize } }}
+        styles={{
+          root: acceptDisabled
+            ? { opacity: 0.6, cursor: "not-allowed" }
+            : undefined,
+          label: { fontSize },
+        }}
       >
         {acceptLabel}
       </Button>

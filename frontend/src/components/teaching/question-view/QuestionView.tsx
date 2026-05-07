@@ -15,9 +15,10 @@
  * 7. Previous/Next navigation buttons
  */
 
-import { Group, Image, Radio, SimpleGrid, Stack, rem } from "@mantine/core";
+import { Group, Image, SimpleGrid, Stack, rem } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
+import RadioField from "@/components/form/RadioField";
 import { BodyTextInline, Heading } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
@@ -124,19 +125,15 @@ export function QuestionView({
       )}
 
       {/* Options */}
-      <Radio.Group value={selectedOption ?? ""} onChange={onSelectOption}>
-        <Stack gap="sm">
-          {item.options.map((opt) => (
-            <Radio
-              key={opt.id}
-              value={opt.id}
-              label={opt.label}
-              disabled={disabled}
-              className={classes.option}
-            />
-          ))}
-        </Stack>
-      </Radio.Group>
+      <RadioField
+        options={item.options.map((opt) => ({
+          value: opt.id,
+          label: opt.label,
+        }))}
+        value={selectedOption}
+        onChange={onSelectOption}
+        disabled={disabled}
+      />
 
       {/* Progress bar */}
       {currentQuestion != null && totalQuestions != null && (

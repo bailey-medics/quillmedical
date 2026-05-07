@@ -1,0 +1,153 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Form/Form/Guide" />
+
+# Form
+
+The `<Form>` component is the **standard wrapper for all single-page forms** in the application. It owns the submission lifecycle — loading state, success/error feedback, timeout handling - so individual pages don't need to reimplement this boilerplate.
+
+## When to use
+
+Use `<Form>` by default for any page or modal that collects data and submits it to an API.
+
+This includes:
+
+- Admin settings pages
+- User profile / account forms
+- Login, registration, forgot password
+- Patient data entry
+- Messaging compose flows
+- Any single-page save/send workflow
+
+## When NOT to use
+
+- **Multi-step forms** — use `MultiStepForm` instead. It has its own step navigation, per-step validation, and confirmation step pattern that don't fit the `<Form>` model.
+- **Teaching assessments** — these have timer-driven flows, multi-question navigation, and scoring logic that require custom state management.
+- **Inline toggles** — single-field saves (e.g. a live status switch) where a full FormStatus card would be overkill.
+
+## Architecture
+
+Form manages a state machine with seven states:
+
+```
+idle → submitting → success
+                  → partial_success
+                  → error
+                  → timeout
+     → validation_error (client-side validation failed)
+```
+
+- **idle** — no submission attempted
+- **submitting** — request in flight (button shows spinner + submitting label)
+- **success** — full success
+- **partial_success** — composite write where some layers succeeded (e.g. letter saved but GP delivery pending)
+- **error** — server rejected or handler threw
+- **validation_error** — client-side validation failed; uses amber/warning severity to avoid alert fatigue. Shows "Please check the highlighted fields" with a count of fields needing attention
+- **timeout** — request exceeded the configured timeout (default 30 seconds)
+
+The state is exposed to child components via React context. `FormStatus` and `SubmitButton` subscribe to this context automatically — no prop threading needed.
+
+## Basic usage
+
+```tsx
+import { Form, FormStatus, SubmitButton } from "@components/form/Form";
+import { TextField, SelectField } from "@components/form";
+
+function SettingsPage() {
+  const handleSubmit = async (data) => {
+    await api.put("/api/settings", data);
+    return {
+      state: "success",
+      message: { title: "Settings saved" },
+    };
+  };
+
+  return (
+    <Form
+      defaultValues={{ name: "", role: "staff" }}
+      onSubmit={handleSubmit}
+      submitLabel="Save"
+      submittingLabel="Saving…"
+    >
+      <Stack gap="md">
+        <FormStatus />
+        <TextField label="Name" />
+        <SelectField label="Role" data={["staff", "admin"]} />
+        <SubmitButton />
+      </Stack>
+    </Form>
+  );
+}
+```
+
+## Components
+
+### `<Form>`
+
+The outer wrapper. Accepts `defaultValues`, an async `onSubmit` handler that returns a
+`FormSubmitResult`, and optional `submitLabel`, `submittingLabel`, and `timeoutMs` props.
+
+### `<FormStatus />`
+
+Displays a status card when the form is in a result state (success, error, partial_success, timeout).
+Renders nothing during idle/submitting. Place it at the top of your form layout.
+
+- Uses `role="status"` for success/partial success, `role="alert"` for errors
+- Scrolls into view when it appears
+- Dismissible by the user, never auto-dismissed
+
+### `<SubmitButton />`
+
+Subscribes to form context for label and loading state. Uses `aria-disabled` (not `disabled`)
+so it remains focusable for screen readers during submission. Has a minimum width on desktop
+to prevent layout shift when the label changes.
+
+Optional `onCancel` prop adds a cancel button in a ButtonPair-style layout.
+
+## Handling errors
+
+Your `onSubmit` handler should return a `FormSubmitResult` for both success and expected errors:
+
+```tsx
+const handleSubmit = async (data) => {
+  const res = await api.put("/api/settings", data);
+  if (!res.ok) {
+    return {
+      state: "error",
+      message: {
+        title: "Failed to save",
+        description: "The server returned an error. Please try again.",
+      },
+    };
+  }
+  return {
+    state: "success",
+    message: { title: "Settings saved" },
+  };
+};
+```
+
+If your handler throws an unexpected error, Form catches it and shows a generic error message.
+If the request exceeds `timeoutMs`, Form aborts and shows a timeout message automatically.
+
+## Partial success
+
+For composite writes (e.g. saving a letter and sending to a GP), use `partial_success`
+when some operations succeeded but others failed:
+
+```tsx
+return {
+  state: "partial_success",
+  message: {
+    title: "Partially saved",
+    description:
+      "Letter saved to patient record. Delivery to GP is still pending.",
+  },
+};
+```
+
+## Field components
+
+All existing form field components work inside `<Form>` as children:
+`TextField`, `SelectField`, `TextAreaField`, `MultiSelectField`, `PasswordField`,
+`SolidSwitch`, `RadioField`.

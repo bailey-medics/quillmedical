@@ -61,7 +61,7 @@
 }
 
 .markdown a {
-  color: var(--mantine-color-blue-6);
+  color: var(--info-color);
   text-decoration: underline;
 }
 

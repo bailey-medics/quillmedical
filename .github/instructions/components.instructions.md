@@ -27,12 +27,15 @@ applyTo: "frontend/src/components/**"
 ## Colours
 
 - **All colours must come from the design system** — never use hardcoded colour values (e.g. `black`, `#333`, `rgb(...)`) in components or CSS modules.
+- **Never use Mantine's built-in colour names directly** (e.g. `"red"`, `"green"`, `"blue"`, `"teal"`, `"orange"`, `"yellow"`, `"violet"`, `"pink"`, `"cyan"`) as `color` prop values. Use CSS variables from the design system instead: `var(--alert-color)`, `var(--success-color)`, `var(--warning-color)`, `var(--info-color)`, `var(--neutral-color)`, `var(--accent-color)`, `var(--outstanding-color)`.
+- **Never use Mantine's built-in colour scales directly** (e.g. `dark.4`, `blue.6`, `red.5`, `--mantine-color-dark-4`, `--mantine-color-blue-6`) — they are not part of our design system. Only use our defined tokens: `primary`, `secondary`, `gray`, and semantic/status colours from the imports below.
 - **Brand colours**: import `brandColours`, `publicColours` from `@/theme`.
 - **Colour scales**: import `primaryScale`, `secondaryScale`, `greyScale` from `@/theme`.
 - **Status/semantic colours**: import from `@/styles/semanticColours` (e.g. `statusColours`, `textColours`).
 - **Badge colours**: import from `components/badge/badgeColours.ts`.
 - **In CSS modules**: use Mantine CSS variables (e.g. `var(--mantine-color-text)`, `var(--mantine-color-primary-6)`, `var(--mantine-color-gray-0)`) — never raw colour literals.
 - **In TSX**: use Mantine colour tokens (e.g. `c="primary.7"`, `c="gray.4"`) or imports from the above modules.
+- **Dark mode borders**: all form field inputs must use `var(--mantine-color-primary-9)` for border colour in dark mode via `[data-mantine-color-scheme="dark"]` selectors in CSS modules.
 
 ## Testing and stories
 

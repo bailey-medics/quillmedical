@@ -5,3 +5,20 @@
 .section {
   transform: scale(1.5);
 }
+
+[data-mantine-color-scheme="dark"] .root :global(.mantine-Select-input) {
+  border-color: var(--mantine-color-primary-9);
+}
+
+.root :global(.mantine-Select-input:focus) {
+  border-color: var(--mantine-color-primary-4) !important;
+}
+
+.root :global(.mantine-Select-input[data-disabled]) {
+  background-color: var(--mantine-color-gray-3);
+}
+
+.root :global(.mantine-Select-input[data-error]) {
+  border-width: 2px;
+  border-color: var(--error-color) !important;
+}

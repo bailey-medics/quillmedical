@@ -1,4 +1,6 @@
 import { Select, type SelectProps } from "@mantine/core";
+import { ErrorMessage } from "@components/typography";
+import FieldDescription from "@components/typography/FieldDescription";
 import classes from "./SelectField.module.css";
 
 const fieldStyles = {
@@ -14,10 +16,20 @@ const fieldStyles = {
   required: { color: "var(--mantine-color-secondary-5)" },
 };
 
-export default function SelectField(props: SelectProps) {
+export default function SelectField({
+  description,
+  error,
+  ...props
+}: SelectProps) {
   return (
     <Select
       {...props}
+      description={
+        description ? (
+          <FieldDescription>{description}</FieldDescription>
+        ) : undefined
+      }
+      error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
       size="lg"
       styles={fieldStyles}
       classNames={{ root: classes.root, section: classes.section }}

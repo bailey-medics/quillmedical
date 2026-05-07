@@ -57,10 +57,24 @@ describe("ButtonPair", () => {
   });
 
   describe("Disabled states", () => {
-    it("disables accept button when acceptDisabled is true", () => {
+    it("marks accept button as aria-disabled when acceptDisabled is true", () => {
       renderWithMantine(<ButtonPair {...defaultProps} acceptDisabled />);
-      expect(screen.getByRole("button", { name: "OK" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "OK" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+    });
+
+    it("prevents click when acceptDisabled is true", async () => {
+      const user = userEvent.setup();
+      const onAccept = vi.fn();
+      renderWithMantine(
+        <ButtonPair {...defaultProps} onAccept={onAccept} acceptDisabled />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "OK" }));
+      expect(onAccept).not.toHaveBeenCalled();
     });
   });
 

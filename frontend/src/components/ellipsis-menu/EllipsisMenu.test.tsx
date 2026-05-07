@@ -31,7 +31,7 @@ describe("EllipsisMenu", () => {
         aria-label="Actions"
         items={[
           { label: "Edit", onClick: vi.fn() },
-          { label: "Delete", color: "red", onClick: vi.fn() },
+          { label: "Delete", color: "var(--alert-color)", onClick: vi.fn() },
         ]}
       />,
     );
@@ -52,7 +52,11 @@ describe("EllipsisMenu", () => {
         aria-label="Actions"
         items={[
           { label: "Edit", onClick: handleEdit },
-          { label: "Delete", color: "red", onClick: handleDelete },
+          {
+            label: "Delete",
+            color: "var(--alert-color)",
+            onClick: handleDelete,
+          },
         ]}
       />,
     );
@@ -75,7 +79,7 @@ describe("EllipsisMenu", () => {
           {
             label: "Delete",
             icon: <IconTrash />,
-            color: "red",
+            color: "var(--alert-color)",
             onClick: vi.fn(),
           },
         ]}
@@ -98,7 +102,7 @@ describe("EllipsisMenu", () => {
         items={[
           {
             label: "Remove from organisation",
-            color: "red",
+            color: "var(--alert-color)",
             onClick: handleRemove,
           },
         ]}

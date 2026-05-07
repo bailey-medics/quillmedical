@@ -49,11 +49,12 @@ export default function AddButton({
   return (
     <Button
       leftSection={<Icon icon={<IconPlus />} size={isMobile ? "sm" : "md"} />}
-      onClick={onClick}
+      onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
       size={isMobile ? "md" : "lg"}
       color="primary"
-      disabled={disabled}
+      aria-disabled={disabled || undefined}
       styles={{
+        root: disabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined,
         label: {
           fontSize: isMobile
             ? "var(--mantine-font-size-md)"

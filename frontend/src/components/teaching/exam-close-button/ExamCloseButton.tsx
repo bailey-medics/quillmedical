@@ -23,7 +23,7 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
   return (
     <>
       <Badge
-        color="red"
+        color="var(--alert-color)"
         variant="filled"
         size="xl"
         style={{ cursor: "pointer", textTransform: "none" }}
@@ -43,7 +43,11 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
         styles={{ content: { border: "1px solid rgba(0, 0, 0, 0.1)" } }}
       >
         <Stack gap="md" align="center" pt="xl">
-          <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
+          <Icon
+            icon={<IconAlertTriangle />}
+            size="xl"
+            colour="var(--alert-color)"
+          />
           <BodyTextBold justify="centre">
             Are you sure you want to end this exam early? Unanswered questions
             will be marked as incorrect.

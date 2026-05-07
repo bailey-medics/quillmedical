@@ -256,7 +256,7 @@ export default function PatientAdminPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading patient"
-          color="red"
+          color="var(--alert-color)"
         >
           {error || "Patient not found"}
         </Alert>
@@ -293,7 +293,12 @@ export default function PatientAdminPage() {
                 <BodyTextBold>{linkedUser.username}</BodyTextBold>
               </Group>
               <BodyText>{linkedUser.email}</BodyText>
-              <Badge color="green" variant="light" size="sm" w="fit-content">
+              <Badge
+                color="var(--success-color)"
+                variant="light"
+                size="sm"
+                w="fit-content"
+              >
                 Linked
               </Badge>
             </Stack>
@@ -312,7 +317,10 @@ export default function PatientAdminPage() {
           <Group justify="space-between" mb="md">
             <Heading>Patient details</Heading>
             <Group gap="xs">
-              <Badge color={isActive ? "green" : "red"} variant="light">
+              <Badge
+                color={isActive ? "var(--success-color)" : "var(--alert-color)"}
+                variant="light"
+              >
                 {isActive ? "Active" : "Deactivated"}
               </Badge>
               <IconButton

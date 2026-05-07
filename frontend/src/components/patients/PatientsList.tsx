@@ -21,6 +21,7 @@ import ProfilePic from "@/components/profile-pic";
 import Demographics from "@/components/demographics";
 import { OnQuillBadge } from "@/components/badge";
 import { StateMessage } from "@/components/message-cards";
+import { IconClock, IconUserOff } from "@/components/icons/appIcons";
 import { Group, UnstyledButton, Skeleton } from "@mantine/core";
 
 /**
@@ -77,11 +78,25 @@ export default function PatientsList({
   if (!patients || patients.length === 0) {
     // If FHIR is available and has no patients, show "no patients" message
     if (fhirAvailable) {
-      return <StateMessage type="no-patients" />;
+      return (
+        <StateMessage
+          icon={<IconUserOff />}
+          title="No patients to show"
+          description="There are currently no patients in the system."
+          colour="warning"
+        />
+      );
     }
 
     // If FHIR is not available yet, show database initializing message
-    return <StateMessage type="database-initialising" />;
+    return (
+      <StateMessage
+        icon={<IconClock />}
+        title="Database is initialising"
+        description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+        colour="info"
+      />
+    );
   }
 
   return (

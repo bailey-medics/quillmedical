@@ -6,7 +6,6 @@ const meta: Meta<typeof ForgotPasswordForm> = {
   title: "Registration/ForgotPasswordForm",
   component: ForgotPasswordForm,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   args: {
     onSubmit: fn(),
   },

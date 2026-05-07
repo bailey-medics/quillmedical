@@ -16,7 +16,6 @@ const meta: Meta<typeof LetterStatusBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     status: {
       control: "select",

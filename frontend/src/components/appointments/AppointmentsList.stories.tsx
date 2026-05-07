@@ -16,7 +16,6 @@ import { fakeAppointments } from "@/data/fakeAppointments";
 const meta: Meta<typeof AppointmentsList> = {
   title: "Appointments/AppointmentsList",
   component: AppointmentsList,
-  tags: ["autodocs"],
 };
 
 export default meta;

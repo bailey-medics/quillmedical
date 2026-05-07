@@ -13,7 +13,6 @@ import MarkdownView from "./MarkdownView";
 const meta: Meta<typeof MarkdownView> = {
   title: "Foundations/Typography/MarkdownView",
   component: MarkdownView,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

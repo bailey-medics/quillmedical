@@ -322,6 +322,23 @@ class QuestionBankOrgStatusIn(BaseModel):
     is_live: bool
 
 
+class QuestionBankOrgSettingsIn(BaseModel):
+    """Combined settings update for a bank-org pair."""
+
+    is_live: bool
+    coordinator_email: str | None = None
+
+
+class QuestionBankOrgSettingsOut(BaseModel):
+    """Response for combined settings update."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    question_bank_id: str
+    is_live: bool
+    coordinator_email: str | None = None
+
+
 class QuestionBankOrgStatusOut(BaseModel):
     """Current live/closed status for a bank."""
 

@@ -274,7 +274,7 @@ function Step3Confirmation({
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
-          <Icon icon={<IconCheck />} size="xl" colour="green" />
+          <Icon icon={<IconCheck />} size="xl" colour="var(--success-color)" />
           <Heading>
             {isEditMode
               ? "Patient updated successfully"
@@ -298,7 +298,11 @@ function Step3Confirmation({
         </>
       ) : (
         <>
-          <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
+          <Icon
+            icon={<IconAlertCircle />}
+            size="xl"
+            colour="var(--alert-color)"
+          />
           <Heading>
             {isEditMode
               ? "Failed to update patient"
@@ -635,7 +639,7 @@ export default function NewPatientPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patient"
-            color="red"
+            color="var(--alert-color)"
             mt="md"
           >
             {loadError}
