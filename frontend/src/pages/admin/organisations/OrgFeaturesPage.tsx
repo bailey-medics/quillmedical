@@ -261,7 +261,7 @@ export default function OrgFeaturesPage() {
               ))}
             </List>
             {hasDisables && (
-              <Alert color="orange" variant="light">
+              <Alert color="var(--warning-color)" variant="light">
                 Disabling features will immediately remove access for all users
                 in this organisation.
               </Alert>

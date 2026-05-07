@@ -177,7 +177,7 @@ export default function DeactivatePatientPage() {
                 <Alert
                   icon={<Icon icon={<IconAlertCircle />} size="sm" />}
                   title="Warning"
-                  color="orange"
+                  color="var(--warning-color)"
                 >
                   You are about to deactivate this patient record. This will
                   restrict access to their records.
