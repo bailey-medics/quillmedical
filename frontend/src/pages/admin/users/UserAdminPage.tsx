@@ -167,7 +167,11 @@ export default function UserAdminPage() {
                   <BodyTextBold>Additional competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.additional_competencies.map((comp) => (
-                      <Badge key={comp} variant="light" color="teal">
+                      <Badge
+                        key={comp}
+                        variant="light"
+                        color="var(--success-color)"
+                      >
                         {competenciesData.competencies.find(
                           (c) => c.id === comp,
                         )?.display_name || comp}
