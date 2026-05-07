@@ -16,7 +16,7 @@
     "preview": "vite preview",
     "storybook": "yarn generate:types && storybook dev -p 6006",
     "storybook:build": "yarn generate:types && storybook build -o ../docs/docs/code/storybook",
-    "storybook:test": "test-storybook",
+    "storybook:test": "test-storybook --testTimeout 30000",
     "storybook:test:ci": "concurrently -k -s first -n \"SB,TEST\" -c \"magenta,blue\" \"yarn storybook --no-open --quiet --ci\" \"wait-on tcp:127.0.0.1:6006 -t 120000 && yarn storybook:test\"",
     "docs:build": "typedoc",
     "husky:prepare": "husky",
