@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import StateMessage from "./StateMessage";
+import { IconShieldCheck } from "@/components/icons/appIcons";
 
 describe("StateMessage Component", () => {
   describe("No patients message", () => {
@@ -179,6 +180,71 @@ describe("StateMessage Component", () => {
       const { container } = renderWithMantine(<StateMessage type={type} />);
       const icon = container.querySelector("svg");
       expect(icon).toBeInTheDocument();
+    });
+  });
+
+  describe("Custom message", () => {
+    it("renders custom title", () => {
+      renderWithMantine(
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="Custom title"
+          description="Custom description"
+        />,
+      );
+      expect(screen.getByText("Custom title")).toBeInTheDocument();
+    });
+
+    it("renders custom description", () => {
+      renderWithMantine(
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="Custom title"
+          description="Custom description"
+        />,
+      );
+      expect(screen.getByText("Custom description")).toBeInTheDocument();
+    });
+
+    it("renders custom icon", () => {
+      const { container } = renderWithMantine(
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="Custom title"
+          description="Custom description"
+        />,
+      );
+      const icon = container.querySelector("svg");
+      expect(icon).toBeInTheDocument();
+    });
+
+    it("renders JSX description content", () => {
+      renderWithMantine(
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="Custom title"
+          description={<a href="mailto:test@example.com">test@example.com</a>}
+        />,
+      );
+      const link = screen.getByRole("link", { name: "test@example.com" });
+      expect(link).toHaveAttribute("href", "mailto:test@example.com");
+    });
+
+    it("displays state message card", () => {
+      const { container } = renderWithMantine(
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="Custom title"
+          description="Custom description"
+        />,
+      );
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
     });
   });
 });
