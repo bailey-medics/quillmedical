@@ -75,7 +75,13 @@ describe("DataTable", () => {
         {
           header: "Status",
           render: (patient) => (
-            <Badge color={patient.status === "active" ? "green" : "red"}>
+            <Badge
+              color={
+                patient.status === "active"
+                  ? "var(--success-color)"
+                  : "var(--alert-color)"
+              }
+            >
               {patient.status}
             </Badge>
           ),

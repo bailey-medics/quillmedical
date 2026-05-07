@@ -491,7 +491,7 @@ describe("Messaging", () => {
             label: "I'll attend",
             value: "confirm",
             variant: "filled",
-            color: "green",
+            color: "var(--success-color)",
           },
           {
             label: "I can't make it",

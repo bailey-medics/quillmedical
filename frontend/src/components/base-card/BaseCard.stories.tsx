@@ -35,7 +35,7 @@ export const Default: Story = {
 /** Coloured card — border removed, white text */
 export const WithBackground: Story = {
   render: () => (
-    <BaseCard bg="teal">
+    <BaseCard bg="var(--success-color)">
       <Stack gap="sm">
         <Heading c="white">Coloured card</Heading>
         <BodyText c="white">
