@@ -74,6 +74,7 @@ import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
+import { NoAccessLayout } from "@/components/layouts";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -475,7 +476,7 @@ const router = createBrowserRouter([
       {
         path: "/teaching",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
             <AssessmentDashboard />
           </RequireFeature>
         ),
@@ -483,7 +484,7 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
             <AssessmentAttempt />
           </RequireFeature>
         ),
@@ -491,7 +492,7 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id/result",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
             <AssessmentResultPage />
           </RequireFeature>
         ),
@@ -499,7 +500,7 @@ const router = createBrowserRouter([
       {
         path: "/teaching/results",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
             <AllResults />
           </RequireFeature>
         ),
@@ -507,7 +508,7 @@ const router = createBrowserRouter([
       {
         path: "/teaching/sync",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
             <SyncStatus />
           </RequireFeature>
         ),
