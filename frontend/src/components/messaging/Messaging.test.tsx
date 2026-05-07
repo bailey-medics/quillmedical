@@ -497,7 +497,7 @@ describe("Messaging", () => {
             label: "I can't make it",
             value: "cancel",
             variant: "outline",
-            color: "red",
+            color: "var(--alert-color)",
           },
         ],
       },

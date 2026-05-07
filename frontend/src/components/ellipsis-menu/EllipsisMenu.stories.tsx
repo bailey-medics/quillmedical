@@ -21,7 +21,12 @@ export const Default: Story = {
     "aria-label": "Actions",
     items: [
       { label: "Edit", icon: <IconPencil />, onClick: fn() },
-      { label: "Delete", icon: <IconTrash />, color: "red", onClick: fn() },
+      {
+        label: "Delete",
+        icon: <IconTrash />,
+        color: "var(--alert-color)",
+        onClick: fn(),
+      },
     ],
   },
   render: (args) => (
