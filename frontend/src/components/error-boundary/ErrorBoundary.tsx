@@ -57,7 +57,11 @@ export function ErrorFallback({ onReload }: FallbackProps) {
   return (
     <Center mih="60vh" data-testid="error-boundary-fallback">
       <Stack align="center" gap="lg">
-        <Icon icon={<IconAlertTriangle />} size="xl" c="red.6" />
+        <Icon
+          icon={<IconAlertTriangle />}
+          size="xl"
+          colour="var(--mantine-color-red-6)"
+        />
         <Heading>Something went wrong</Heading>
         <BodyText c="gray.5">
           An unexpected error occurred. Please try reloading the page.

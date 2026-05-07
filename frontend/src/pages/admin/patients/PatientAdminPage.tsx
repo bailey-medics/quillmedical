@@ -16,6 +16,7 @@ import {
   Skeleton,
   Alert,
   Badge,
+  Text,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -28,12 +29,7 @@ import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import IconButton from "@/components/button/IconButton";
-import {
-  BodyText,
-  BodyTextBold,
-  BodyTextInline,
-  Heading,
-} from "@/components/typography";
+import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
@@ -349,22 +345,26 @@ export default function PatientAdminPage() {
             {patient.gender && (
               <Group justify="space-between">
                 <BodyText>Gender</BodyText>
-                <BodyTextInline tt="capitalize" fw={500}>
+                <Text component="span" size="lg" tt="capitalize" fw={500}>
                   {patient.gender}
-                </BodyTextInline>
+                </Text>
               </Group>
             )}
 
             {nationalId && (
               <Group justify="space-between">
                 <BodyText>{nationalId.label}</BodyText>
-                <BodyTextBold ff="monospace">{nationalId.value}</BodyTextBold>
+                <Text fw={700} size="lg" ff="monospace">
+                  {nationalId.value}
+                </Text>
               </Group>
             )}
 
             <Group justify="space-between">
               <BodyText>Patient system ID</BodyText>
-              <BodyTextBold ff="monospace">{patient.id}</BodyTextBold>
+              <Text fw={700} size="lg" ff="monospace">
+                {patient.id}
+              </Text>
             </Group>
           </Stack>
         </BaseCard>
