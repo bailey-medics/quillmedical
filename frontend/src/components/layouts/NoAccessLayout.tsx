@@ -25,7 +25,6 @@ export default function NoAccessLayout() {
       <Stack gap="lg">
         <PageHeader title="Welcome to Quill" />
         <StateMessage
-          type="custom"
           icon={<IconShieldCheck />}
           title="No access yet"
           description={

@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Skeleton, Stack } from "@mantine/core";
-import { IconArrowLeft } from "@components/icons/appIcons";
+import { IconAlertCircle, IconArrowLeft } from "@/components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import ButtonPair from "@/components/button/ButtonPair";
@@ -128,7 +128,12 @@ export default function AdminBankOrgSettingsPage() {
   if (error || !bank || !org) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error ?? "Not found"} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Not found"}
+          colour="alert"
+        />
       </Container>
     );
   }
@@ -159,7 +164,14 @@ export default function AdminBankOrgSettingsPage() {
               onChange={(e) => handleToggleLive(e.currentTarget.checked)}
               disabled={toggling}
             />
-            {toggleError && <StateMessage type="error" message={toggleError} />}
+            {toggleError && (
+              <StateMessage
+                icon={<IconAlertCircle />}
+                title="Error loading data"
+                description={toggleError}
+                colour="alert"
+              />
+            )}
 
             {bank.email_coordinator_on_pass && (
               <>
@@ -173,7 +185,14 @@ export default function AdminBankOrgSettingsPage() {
                   onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
                 />
 
-                {saveError && <StateMessage type="error" message={saveError} />}
+                {saveError && (
+                  <StateMessage
+                    icon={<IconAlertCircle />}
+                    title="Error loading data"
+                    description={saveError}
+                    colour="alert"
+                  />
+                )}
                 {saved && (
                   <ResultMessage
                     variant="success"

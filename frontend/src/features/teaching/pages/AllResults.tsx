@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Heading, EmptyState } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import SelectField from "@/components/form/SelectField";
 import type { EducatorResult, QuestionBank } from "@/features/teaching/types";
 
@@ -98,7 +99,12 @@ export default function AllResults() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </Container>
     );
   }

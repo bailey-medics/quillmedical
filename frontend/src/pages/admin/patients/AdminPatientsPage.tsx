@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Stack, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
+import { IconClock } from "@/components/icons/appIcons";
 import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import NationalNumber from "@/components/data/NationalNumber";
@@ -159,7 +160,12 @@ export default function AdminPatientsPage() {
 
         {fhirReady === false ? (
           <Center p="xl">
-            <StateMessage type="database-initialising" />
+            <StateMessage
+              icon={<IconClock />}
+              title="Database is initialising"
+              description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+              colour="info"
+            />
           </Center>
         ) : (
           <DataTable

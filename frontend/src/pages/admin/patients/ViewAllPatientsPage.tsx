@@ -8,7 +8,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Skeleton, Center, Alert } from "@mantine/core";
-import { IconAlertCircle } from "@components/icons/appIcons";
+import {
+  IconAlertCircle,
+  IconClock,
+  IconUserOff,
+} from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import PageHeader from "@/components/page-header";
@@ -124,11 +128,21 @@ export default function ViewAllPatientsPage() {
           </Stack>
         ) : fhirReady === false ? (
           <Center p="xl">
-            <StateMessage type="database-initialising" />
+            <StateMessage
+              icon={<IconClock />}
+              title="Database is initialising"
+              description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+              colour="info"
+            />
           </Center>
         ) : patients.length === 0 ? (
           <Center p="xl">
-            <StateMessage type="no-patients" />
+            <StateMessage
+              icon={<IconUserOff />}
+              title="No patients to show"
+              description="There are currently no patients in the system."
+              colour="warning"
+            />
           </Center>
         ) : (
           <DataTable<Patient>

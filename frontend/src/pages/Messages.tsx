@@ -12,6 +12,7 @@ import NewMessageModal, {
 import AddButton from "@/components/button/AddButton";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
+import { IconClock } from "@/components/icons/appIcons";
 import {
   createConversation,
   fetchConversations,
@@ -282,7 +283,12 @@ export default function Messages() {
         {isLoading ? (
           <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
         ) : !fhirAvailable ? (
-          <StateMessage type="database-initialising" />
+          <StateMessage
+            icon={<IconClock />}
+            title="Database is initialising"
+            description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+            colour="info"
+          />
         ) : conversations.length === 0 ? (
           <BaseCard>
             <EmptyState>No conversations yet</EmptyState>

@@ -10,6 +10,7 @@ import { Group, Skeleton, Stack } from "@mantine/core";
 import AppointmentStatusBadge from "@components/badge/AppointmentStatusBadge";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { IconCalendar } from "@/components/icons/appIcons";
 import BodyText from "@components/typography/BodyText";
 import BodyTextBold from "@components/typography/BodyTextBold";
 import Heading from "@components/typography/Heading";
@@ -102,7 +103,14 @@ export default function AppointmentsList({
   const past = appointments.filter((a) => a.status !== "upcoming");
 
   if (appointments.length === 0) {
-    return <StateMessage type="no-appointments" />;
+    return (
+      <StateMessage
+        icon={<IconCalendar />}
+        title="No appointments to show"
+        description="There are no appointments scheduled for this patient."
+        colour="warning"
+      />
+    );
   }
 
   return (
