@@ -6,7 +6,7 @@
  * of a confusing 404, with guidance to contact their administrator.
  */
 
-import { Center, Container, Stack } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import StateMessage from "@/components/message-cards/StateMessage";
 
@@ -23,9 +23,7 @@ export default function NoAccessLayout() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <PageHeader title="Welcome to Quill" />
-        <Center mih="50vh">
-          <StateMessage type="no-access" />
-        </Center>
+        <StateMessage type="no-access" />
       </Stack>
     </Container>
   );
