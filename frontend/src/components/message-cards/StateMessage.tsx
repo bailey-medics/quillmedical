@@ -68,7 +68,7 @@ const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
     colour: statusColours.info.bg,
     title: "No access yet",
     description:
-      "Your account doesn't have access to this feature yet. Please contact your organisation administrator for assistance.",
+      "Your account doesn't have access to this feature yet. Please contact your administrator or email info@quill-medical.com for assistance.",
   },
   "no-patients": {
     icon: <IconUserOff />,

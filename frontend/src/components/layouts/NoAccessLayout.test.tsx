@@ -19,7 +19,7 @@ describe("NoAccessLayout Component", () => {
       renderWithMantine(<NoAccessLayout />);
       expect(
         screen.getByText(
-          "Your account doesn't have access to this feature yet. Please contact your organisation administrator for assistance.",
+          "Your account doesn't have access to this feature yet. Please contact your administrator or email info@quill-medical.com for assistance.",
         ),
       ).toBeInTheDocument();
     });
