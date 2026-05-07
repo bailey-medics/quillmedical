@@ -15,13 +15,12 @@ describe("NoAccessLayout Component", () => {
       expect(screen.getByText("No access yet")).toBeInTheDocument();
     });
 
-    it("displays guidance to contact administrator", () => {
+    it("displays guidance to contact administrator with email link", () => {
       renderWithMantine(<NoAccessLayout />);
-      expect(
-        screen.getByText(
-          "Your account doesn't have access to this feature yet. Please contact your administrator or email info@quill-medical.com for assistance.",
-        ),
-      ).toBeInTheDocument();
+      const link = screen.getByRole("link", {
+        name: "info@quill-medical.com",
+      });
+      expect(link).toHaveAttribute("href", "mailto:info@quill-medical.com");
     });
 
     it("uses heading level 1 for page header", () => {

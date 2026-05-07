@@ -6,7 +6,7 @@
  * removed, text set to white.
  */
 
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Group, Stack } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -52,7 +52,7 @@ type StateConfig = {
   icon: ReactElement;
   colour: string;
   title: string;
-  description: string;
+  description: ReactNode;
 };
 
 const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
@@ -67,8 +67,16 @@ const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
     icon: <IconShieldCheck />,
     colour: statusColours.info.bg,
     title: "No access yet",
-    description:
-      "Your account doesn't have access to this feature yet. Please contact your administrator or email info@quill-medical.com for assistance.",
+    description: (
+      <>
+        Your account does not have access to this feature yet. Please contact
+        your administrator or email{" "}
+        <a href="mailto:info@quill-medical.com" style={{ color: "white" }}>
+          info@quill-medical.com
+        </a>{" "}
+        for assistance.
+      </>
+    ),
   },
   "no-patients": {
     icon: <IconUserOff />,
