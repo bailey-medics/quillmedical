@@ -5,7 +5,6 @@
  * Note: Full integration tests with routing should be done in e2e tests.
  */
 
-/* eslint-disable no-restricted-syntax */
 import { describe, it, expect } from "vitest";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
 

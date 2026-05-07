@@ -86,6 +86,20 @@ export default tseslint.config(
         "no-console": "off",
       },
     },
+    // Storybook preview uses console.log for mock debugging
+    {
+      files: [".storybook/preview.tsx"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+    // Build scripts use console.log for progress output
+    {
+      files: ["scripts/**/*.ts"],
+      rules: {
+        "no-console": "off",
+      },
+    },
     // Custom rule: Page layout consistency
     {
       files: ["**/pages/**/*.tsx"],

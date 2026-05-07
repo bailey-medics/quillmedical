@@ -34,7 +34,7 @@ export function useHasCompetency(competency: CompetencyId): boolean {
   // For now, return false as a safe default
   // TODO: Implement actual competency check once AuthContext exposes competencies
   // The competency parameter will be used like: state.user.competencies?.includes(competency)
-  console.debug(`Checking competency: ${competency}`);
+  void competency;
   return false;
 }
 
@@ -53,7 +53,7 @@ export function useHasAnyCompetency(...competencies: CompetencyId[]): boolean {
 
   // TODO: Check if any competency is in state.user.competencies
   // This requires AuthContext to expose competencies array
-  console.debug("Checking competencies:", competencies);
+  void competencies;
   return !state.user && competencies.length > 0 ? false : false;
 }
 
@@ -74,6 +74,6 @@ export function useHasAllCompetencies(
 
   // TODO: Check if all competencies are in state.user.competencies
   // This requires AuthContext to expose competencies array
-  console.debug("Checking competencies:", competencies);
+  void competencies;
   return !state.user && competencies.length > 0 ? false : false;
 }
