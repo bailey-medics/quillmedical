@@ -138,7 +138,7 @@ export default function ActivatePatientPage() {
       notifications.show({
         title: "Patient activated",
         message: `${formatName(patientToActivate.name)} has been activated successfully`,
-        color: "green",
+        color: "var(--success-color)",
       });
 
       // Navigate back to patient admin page or patients list
@@ -286,7 +286,7 @@ export default function ActivatePatientPage() {
                     <Table.Td>
                       <Button
                         size="xs"
-                        color="green"
+                        color="var(--success-color)"
                         variant="light"
                         onClick={() => handleActivateClick(patient)}
                       >

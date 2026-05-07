@@ -371,7 +371,7 @@ function Step4Confirmation({
     <Stack gap="md" align="center" py="xl">
       {success ? (
         <>
-          <Icon icon={<IconCheck />} size="xl" colour="green" />
+          <Icon icon={<IconCheck />} size="xl" colour="var(--success-color)" />
           <Heading>
             {isEditMode
               ? "User updated successfully"

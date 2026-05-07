@@ -153,7 +153,7 @@ export default function TeachingOrgSettingsPage() {
               </Alert>
             )}
             {saved && (
-              <Alert color="green" title="Saved">
+              <Alert color="var(--success-color)" title="Saved">
                 Settings updated successfully.
               </Alert>
             )}

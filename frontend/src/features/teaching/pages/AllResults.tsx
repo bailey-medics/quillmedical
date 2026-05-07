@@ -159,7 +159,11 @@ export default function AllResults() {
                         Incomplete
                       </Badge>
                     ) : r.is_passed ? (
-                      <Badge variant="light" color="green" size="sm">
+                      <Badge
+                        variant="light"
+                        color="var(--success-color)"
+                        size="sm"
+                      >
                         Pass
                       </Badge>
                     ) : (

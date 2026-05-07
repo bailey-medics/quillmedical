@@ -131,7 +131,7 @@ export default function DeactivatePatientPage() {
       notifications.show({
         title: "Patient deactivated",
         message: `${formatName(patientToDeactivate.name)} has been deactivated successfully`,
-        color: "green",
+        color: "var(--success-color)",
       });
 
       // Navigate back to patient admin page or patients list

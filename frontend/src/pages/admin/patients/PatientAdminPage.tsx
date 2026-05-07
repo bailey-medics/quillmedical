@@ -293,7 +293,12 @@ export default function PatientAdminPage() {
                 <BodyTextBold>{linkedUser.username}</BodyTextBold>
               </Group>
               <BodyText>{linkedUser.email}</BodyText>
-              <Badge color="green" variant="light" size="sm" w="fit-content">
+              <Badge
+                color="var(--success-color)"
+                variant="light"
+                size="sm"
+                w="fit-content"
+              >
                 Linked
               </Badge>
             </Stack>
