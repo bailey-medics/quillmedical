@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Skeleton, Stack } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import ButtonPair from "@/components/button/ButtonPair";

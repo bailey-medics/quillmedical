@@ -5,7 +5,9 @@
  * message and link back to application home, respecting SPA base URL.
  */
 
-import { Button, Container, Text, Title } from "@mantine/core";
+import { Center, Container, Stack } from "@mantine/core";
+import { Heading, BodyText } from "@/components/typography";
+import IconTextButton from "@/components/button/IconTextButton";
 
 /**
  * Not Found Layout
@@ -23,14 +25,20 @@ export default function NotFoundLayout() {
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
 
   return (
-    <Container style={{ padding: "1.5rem", textAlign: "center" }}>
-      <Title order={2}>404 — Page not found</Title>
-      <Text c="dimmed" size="md" ta="center" style={{ marginTop: "0.75rem" }}>
-        The page you requested does not exist.
-      </Text>
-      <Button component="a" href={base} style={{ marginTop: "1.25rem" }}>
-        Go to home
-      </Button>
+    <Container size="lg" py="xl">
+      <Center mih="60vh">
+        <Stack align="center" gap="lg">
+          <Heading>404 — Page not found</Heading>
+          <BodyText c="gray.5">The page you requested does not exist.</BodyText>
+          <IconTextButton
+            icon="arrowLeft"
+            label="Go to home"
+            onClick={() => {
+              window.location.href = base;
+            }}
+          />
+        </Stack>
+      </Center>
     </Container>
   );
 }

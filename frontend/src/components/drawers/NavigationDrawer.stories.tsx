@@ -31,7 +31,7 @@ const meta: Meta<typeof NavigationDrawer> = {
             position: "relative",
             height: "70dvh",
             background:
-              "repeating-linear-gradient(45deg,#f8fafc,#f8fafc 10px,#f1f5f9 10px,#f1f5f9 20px)",
+              "repeating-linear-gradient(45deg, var(--mantine-color-body), var(--mantine-color-body) 10px, var(--mantine-color-primary-light) 10px, var(--mantine-color-primary-light) 20px)",
           }}
         >
           {/* Fake header to visualize topOffset */}
@@ -41,8 +41,8 @@ const meta: Meta<typeof NavigationDrawer> = {
                 position: "absolute",
                 inset: `0 0 auto 0`,
                 height: top,
-                background: "white",
-                borderBottom: "1px solid #e5e7eb",
+                background: "var(--mantine-color-body)",
+                borderBottom: "1px solid var(--mantine-color-default-border)",
                 display: "flex",
                 alignItems: "center",
                 padding: "0 1rem",
@@ -58,7 +58,7 @@ const meta: Meta<typeof NavigationDrawer> = {
             style={{
               padding: 24,
               paddingTop: top ? top + 16 : 24,
-              color: "#334155",
+              color: "var(--mantine-color-text)",
             }}
           >
             <Text mb="sm">Main body content will go here</Text>

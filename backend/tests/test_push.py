@@ -1,9 +1,9 @@
-"""Tests for push notification endpoints."""
+"""Tests for push notification subscription endpoints."""
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from app.models import User
-from app.push import SUBSCRIPTIONS
+from app.models import PushSubscription, User
 
 
 class TestPushSubscription:
@@ -11,7 +11,6 @@ class TestPushSubscription:
 
     def test_subscribe_requires_auth(self, test_client: TestClient):
         """Test push subscription requires authentication."""
-        SUBSCRIPTIONS.clear()
         response = test_client.post(
             "/api/push/subscribe",
             json={
@@ -26,12 +25,12 @@ class TestPushSubscription:
         assert response.status_code == 401
 
     def test_subscribe_success(
-        self, authenticated_client: TestClient, test_user: User
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
     ):
         """Test successful push subscription."""
-        # Clear subscriptions
-        SUBSCRIPTIONS.clear()
-
         response = authenticated_client.post(
             "/api/push/subscribe",
             json={
@@ -49,13 +48,21 @@ class TestPushSubscription:
         assert data["ok"] is True
         assert data["count"] == 1
 
+        # Verify persisted in DB
+        sub = db_session.query(PushSubscription).first()
+        assert sub is not None
+        assert sub.endpoint == "https://push.example.com/123"
+        assert sub.user_id == test_user.id
+        assert sub.keys_p256dh == "test_p256dh_key"  # gitleaks:allow
+        assert sub.keys_auth == "test_auth_key"
+
     def test_subscribe_duplicate_endpoint(
-        self, authenticated_client: TestClient, test_user: User
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
     ):
         """Test subscribing with same endpoint doesn't create duplicate."""
-        # Clear subscriptions
-        SUBSCRIPTIONS.clear()
-
         subscription = {
             "endpoint": "https://push.example.com/456",
             "expirationTime": None,
@@ -78,14 +85,52 @@ class TestPushSubscription:
         # Should only have one subscription
         assert response2.json()["count"] == 1
 
+        # Verify only one row in DB
+        count = db_session.query(PushSubscription).count()
+        assert count == 1
+
+    def test_subscribe_updates_keys_on_duplicate(
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
+    ):
+        """Test subscribing with same endpoint updates keys."""
+        authenticated_client.post(
+            "/api/push/subscribe",
+            json={
+                "endpoint": "https://push.example.com/789",
+                "keys": {
+                    "p256dh": "old_p256dh",
+                    "auth": "old_auth",
+                },
+            },
+        )
+
+        # Subscribe again with new keys
+        authenticated_client.post(
+            "/api/push/subscribe",
+            json={
+                "endpoint": "https://push.example.com/789",
+                "keys": {
+                    "p256dh": "new_p256dh",
+                    "auth": "new_auth",
+                },
+            },
+        )
+
+        sub = db_session.query(PushSubscription).first()
+        assert sub is not None
+        assert sub.keys_p256dh == "new_p256dh"  # gitleaks:allow
+        assert sub.keys_auth == "new_auth"
+
     def test_subscribe_multiple_endpoints(
-        self, authenticated_client: TestClient, test_user: User
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
     ):
         """Test subscribing multiple different endpoints."""
-        # Clear subscriptions
-        SUBSCRIPTIONS.clear()
-
-        # Subscribe with different endpoints
         for i in range(3):
             response = authenticated_client.post(
                 "/api/push/subscribe",
@@ -100,16 +145,16 @@ class TestPushSubscription:
             )
             assert response.status_code == 200
 
-        # Should have 3 subscriptions
-        assert len(SUBSCRIPTIONS) == 3
+        # Should have 3 subscriptions in DB
+        count = db_session.query(PushSubscription).count()
+        assert count == 3
 
     def test_subscribe_with_expiration(
-        self, authenticated_client: TestClient, test_user: User
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
     ):
         """Test subscription with expiration time."""
-        # Clear subscriptions
-        SUBSCRIPTIONS.clear()
-
         response = authenticated_client.post(
             "/api/push/subscribe",
             json={
@@ -136,36 +181,3 @@ class TestPushSubscription:
         )
         # Should return validation error
         assert response.status_code == 422
-
-
-# Note: Testing /push/send-test requires actual VAPID configuration
-# and would attempt to send real push notifications.
-# These tests are better suited for integration testing with mocked push service.
-
-
-class TestPushNotificationStorage:
-    """Test push notification subscription storage."""
-
-    def test_subscriptions_stored_in_memory(
-        self, authenticated_client: TestClient, test_user: User
-    ):
-        """Test that subscriptions are stored in module-level list."""
-        # Clear subscriptions
-        SUBSCRIPTIONS.clear()
-
-        subscription = {
-            "endpoint": "https://push.example.com/storage",
-            "expirationTime": None,
-            "keys": {
-                "p256dh": "test_key",
-                "auth": "test_auth",
-            },
-        }
-
-        authenticated_client.post("/api/push/subscribe", json=subscription)
-
-        # Verify stored in SUBSCRIPTIONS
-        assert len(SUBSCRIPTIONS) == 1
-        assert (
-            SUBSCRIPTIONS[0]["endpoint"] == "https://push.example.com/storage"
-        )

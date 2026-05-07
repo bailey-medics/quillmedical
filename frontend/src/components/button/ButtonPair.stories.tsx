@@ -42,6 +42,14 @@ export const AcceptDisabled: Story = {
   },
 };
 
+/** Accept button as form submit */
+export const SubmitType: Story = {
+  args: {
+    acceptLabel: "Save changes",
+    acceptType: "submit",
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

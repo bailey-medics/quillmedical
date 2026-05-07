@@ -68,7 +68,7 @@ export interface DataTableProps<T> {
   /** Column definitions */
   columns: Column<T>[];
   /** Row click handler - receives the row data */
-  onRowClick: (row: T) => void;
+  onRowClick?: (row: T) => void;
   /** Loading state */
   loading?: boolean;
   /** Error message */
@@ -111,8 +111,8 @@ export default function DataTable<T>({
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const colorScheme = useComputedColorScheme("light");
   const isDark = colorScheme === "dark";
-  const hoverColor = isDark ? "#143f6b" : undefined;
-  const stripedColor = isDark ? "#0a2f56" : undefined;
+  const hoverColor = isDark ? "var(--mantine-color-primary-5)" : undefined;
+  const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
 
   // Error state
   if (error) {
@@ -181,7 +181,7 @@ export default function DataTable<T>({
             key={getRowKey(row)}
             row={row}
             columns={columns}
-            onClick={onRowClick}
+            onClick={onRowClick ?? (() => {})}
           />
         ))}
       </Stack>
@@ -209,8 +209,8 @@ export default function DataTable<T>({
         {data.map((row) => (
           <Table.Tr
             key={getRowKey(row)}
-            onClick={() => onRowClick(row)}
-            style={{ cursor: "pointer" }}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            style={onRowClick ? { cursor: "pointer" } : undefined}
           >
             {columns.map((column, index) => (
               <Table.Td

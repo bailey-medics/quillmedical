@@ -4,7 +4,7 @@
 
 services:
   postgres-fhir:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:54451ecb8ab38c24c3ec123f2fd501303a3a1856a5c66e98cecf2460d5e1e9d7
     container_name: quill_postgres_fhir
     environment:
       POSTGRES_DB: hapi
@@ -27,7 +27,7 @@ services:
       - internal
 
   postgres-ehrbase:
-    image: ehrbase/ehrbase-v2-postgres:16.2
+    image: ehrbase/ehrbase-v2-postgres:16.2@sha256:abe14e8f9ba33cabc9946c6c17c5aa95b64b35387f266cd20a894149203196d7
     container_name: quill_postgres_ehrbase
     environment:
       POSTGRES_DB: ehrbase
@@ -50,7 +50,7 @@ services:
       - internal
 
   fhir:
-    image: hapiproject/hapi:v8.8.0-1
+    image: hapiproject/hapi:v8.8.0-1@sha256:34c86fd5805df77c2b9d9c10538050b16ac3dc244352da0ebe4717f931330775
     container_name: quill_fhir
     environment:
       - spring.datasource.url=jdbc:postgresql://postgres-fhir:5432/hapi
@@ -87,7 +87,7 @@ services:
       - external
 
   ehrbase:
-    image: ehrbase/ehrbase:2.30.0
+    image: ehrbase/ehrbase:2.30.0@sha256:73b1861362576193399080a4c2658f10ff095c178fc226b1d3daaad1a5feb252
     container_name: quill_ehrbase
     environment:
       - DB_URL=jdbc:postgresql://postgres-ehrbase:5432/ehrbase

@@ -8,10 +8,12 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Button, Group, Alert } from "@mantine/core";
-import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { Container, Stack, Alert } from "@mantine/core";
+import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
+import { ResultMessage } from "@/components/message-cards";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
@@ -98,13 +100,11 @@ export default function AddPatientToOrgPage() {
   if (success) {
     return (
       <Container size="lg" py="xl">
-        <Alert
-          icon={<Icon icon={<IconCheck />} size="lg" />}
+        <ResultMessage
+          variant="success"
           title="Patient added"
-          color="green"
-        >
-          Redirecting to organisation...
-        </Alert>
+          subtitle="Redirecting to organisation..."
+        />
       </Container>
     );
   }
@@ -142,22 +142,14 @@ export default function AddPatientToOrgPage() {
                 withAsterisk
               />
 
-              <Group justify="flex-end" mt="md">
-                <Button
-                  variant="default"
-                  onClick={() => navigate(`/admin/organisations/${id}`)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitting}
-                  disabled={patientsLoading}
-                >
-                  Add patient
-                </Button>
-              </Group>
+              <ButtonPair
+                acceptLabel="Add patient"
+                acceptType="submit"
+                acceptLoading={submitting}
+                acceptDisabled={patientsLoading}
+                onAccept={() => {}}
+                onCancel={() => navigate(`/admin/organisations/${id}`)}
+              />
             </Stack>
           </form>
         </BaseCard>

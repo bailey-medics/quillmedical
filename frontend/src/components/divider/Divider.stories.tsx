@@ -112,7 +112,7 @@ export const DarkMode: Story = {
   render: () => (
     <Stack>
       <BodyText>Content above</BodyText>
-      <Divider />
+      <Divider label="Section" labelPosition="center" />
       <BodyText>Content below</BodyText>
       <div
         style={{

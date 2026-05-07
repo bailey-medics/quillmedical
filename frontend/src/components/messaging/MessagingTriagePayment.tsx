@@ -199,7 +199,7 @@ export default function MessagingTriagePayment({
   return (
     <Box
       style={{
-        border: "1px solid #e6e6e6",
+        border: `1px solid var(--mantine-color-default-border)`,
         borderRadius: 8,
         overflow: "hidden",
         height: 640,
@@ -207,7 +207,12 @@ export default function MessagingTriagePayment({
         flexDirection: "column",
       }}
     >
-      <Box style={{ padding: "0.75rem", borderBottom: "1px solid #eee" }}>
+      <Box
+        style={{
+          padding: "0.75rem",
+          borderBottom: `1px solid var(--mantine-color-default-border)`,
+        }}
+      >
         <Box
           style={{
             display: "flex",
@@ -224,7 +229,12 @@ export default function MessagingTriagePayment({
         <Messaging messages={messages} currentUserId={patientId} />
       </Box>
 
-      <Box style={{ padding: "0.75rem", borderTop: "1px solid #eee" }}>
+      <Box
+        style={{
+          padding: "0.75rem",
+          borderTop: `1px solid var(--mantine-color-default-border)`,
+        }}
+      >
         <Box style={{ marginBottom: 8 }}>
           <Group gap="xs">
             <Button

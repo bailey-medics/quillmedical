@@ -8,17 +8,12 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Paper,
-  Select,
-  Button,
-  Group,
-  Alert,
-} from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { Container, Stack, Alert } from "@mantine/core";
+import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
+import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
@@ -99,10 +94,10 @@ export default function AddStaffToOrgPage() {
           </Alert>
         )}
 
-        <Paper withBorder p="xl">
+        <BaseCard>
           <form onSubmit={handleSubmit}>
             <Stack gap="md">
-              <Select
+              <SelectField
                 label="User"
                 placeholder="Search for a user"
                 data={users.map((u) => ({
@@ -117,25 +112,17 @@ export default function AddStaffToOrgPage() {
                 withAsterisk
               />
 
-              <Group justify="flex-end" mt="md">
-                <Button
-                  variant="default"
-                  onClick={() => navigate(`/admin/organisations/${id}`)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitting}
-                  disabled={usersLoading}
-                >
-                  Add staff member
-                </Button>
-              </Group>
+              <ButtonPair
+                acceptLabel="Add staff member"
+                acceptType="submit"
+                acceptLoading={submitting}
+                acceptDisabled={usersLoading}
+                onAccept={() => {}}
+                onCancel={() => navigate(`/admin/organisations/${id}`)}
+              />
             </Stack>
           </form>
-        </Paper>
+        </BaseCard>
       </Stack>
     </Container>
   );

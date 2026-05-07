@@ -17,7 +17,6 @@ import {
   Alert,
   Badge,
   Modal,
-  Button,
 } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
@@ -31,10 +30,11 @@ import {
   IconPencil,
   IconAlertCircle,
   IconUserMinus,
-} from "@tabler/icons-react";
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
+import ButtonPairRed from "@/components/button/ButtonPairRed";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
@@ -378,14 +378,11 @@ export default function OrganisationAdminPage() {
               <strong>{removingMember?.username}</strong> from this
               organisation?
             </BodyTextInline>
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setRemovingMember(null)}>
-                Cancel
-              </Button>
-              <Button color="red" onClick={confirmRemoveStaff}>
-                Remove
-              </Button>
-            </Group>
+            <ButtonPairRed
+              acceptLabel="Remove"
+              onAccept={confirmRemoveStaff}
+              onCancel={() => setRemovingMember(null)}
+            />
           </Stack>
         </Modal>
       </Stack>

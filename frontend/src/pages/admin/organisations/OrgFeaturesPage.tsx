@@ -9,20 +9,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import {
-  Button,
   Container,
+  Group,
   Stack,
   Skeleton,
   Alert,
-  Group,
   List,
   Modal,
 } from "@mantine/core";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
+import ButtonPairRed from "@/components/button/ButtonPairRed";
 import {
   BodyText,
   BodyTextInline,
@@ -266,17 +266,21 @@ export default function OrgFeaturesPage() {
                 in this organisation.
               </Alert>
             )}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={() => setConfirmOpen(false)}>
-                Go back
-              </Button>
-              <Button
-                color={hasDisables ? "red" : "blue"}
-                onClick={confirmSave}
-              >
-                Confirm
-              </Button>
-            </Group>
+            {hasDisables ? (
+              <ButtonPairRed
+                acceptLabel="Confirm"
+                cancelLabel="Go back"
+                onAccept={confirmSave}
+                onCancel={() => setConfirmOpen(false)}
+              />
+            ) : (
+              <ButtonPair
+                acceptLabel="Confirm"
+                cancelLabel="Go back"
+                onAccept={confirmSave}
+                onCancel={() => setConfirmOpen(false)}
+              />
+            )}
           </Stack>
         </Modal>
       </Stack>

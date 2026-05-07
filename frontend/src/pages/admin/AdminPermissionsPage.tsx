@@ -10,11 +10,12 @@ import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import TextField from "@/components/form/TextField";
 import { Container, SimpleGrid, Stack } from "@mantine/core";
-import { IconShieldCheck } from "@tabler/icons-react";
+import { IconShieldCheck } from "@components/icons/appIcons";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
 import { useState, useEffect } from "react";
-import { Modal, Button, Group } from "@mantine/core";
+import { Modal } from "@mantine/core";
+import ButtonPair from "@/components/button/ButtonPair";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 import type {
@@ -132,7 +133,6 @@ export default function AdminPermissionsPage() {
 
   const handleUpdatePermissions = () => {
     // TODO: Wire up actual API callback
-    console.log("Update permissions:", permissionsForm);
     setPermissionsModalOpen(false);
   };
 
@@ -278,19 +278,12 @@ export default function AdminPermissionsPage() {
               </>
             )}
 
-            <Group justify="flex-end" mt="md">
-              <Button
-                variant="subtle"
-                onClick={() => setPermissionsModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              {isSuperAdmin && (
-                <Button onClick={handleUpdatePermissions}>
-                  Update permissions
-                </Button>
-              )}
-            </Group>
+            <ButtonPair
+              acceptLabel="Update permissions"
+              acceptDisabled={!isSuperAdmin}
+              onAccept={handleUpdatePermissions}
+              onCancel={() => setPermissionsModalOpen(false)}
+            />
           </Stack>
         </Modal>
       </Stack>

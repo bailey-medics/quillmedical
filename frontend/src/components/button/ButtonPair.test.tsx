@@ -63,4 +63,14 @@ describe("ButtonPair", () => {
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
   });
+
+  describe("Submit type", () => {
+    it("renders accept button with type=submit when acceptType is submit", () => {
+      renderWithMantine(<ButtonPair {...defaultProps} acceptType="submit" />);
+      expect(screen.getByRole("button", { name: "OK" })).toHaveAttribute(
+        "type",
+        "submit",
+      );
+    });
+  });
 });

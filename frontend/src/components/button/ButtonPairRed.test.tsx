@@ -73,4 +73,12 @@ describe("ButtonPairRed", () => {
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
   });
+
+  describe("Loading state", () => {
+    it("shows loading spinner on accept button when acceptLoading is true", () => {
+      renderWithMantine(<ButtonPairRed {...defaultProps} acceptLoading />);
+      const acceptButton = screen.getByRole("button", { name: "OK" });
+      expect(acceptButton).toHaveAttribute("data-loading", "true");
+    });
+  });
 });

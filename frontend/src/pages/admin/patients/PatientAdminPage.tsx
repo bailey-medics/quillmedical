@@ -11,14 +11,12 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import {
   Container,
   Stack,
-  Paper,
   Group,
   SimpleGrid,
-  Text,
-  Title,
   Skeleton,
   Alert,
   Badge,
+  Text,
 } from "@mantine/core";
 import {
   IconPencil,
@@ -26,10 +24,12 @@ import {
   IconUser,
   IconUserMinus,
   IconUserCheck,
-} from "@tabler/icons-react";
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
+import BaseCard from "@/components/base-card/BaseCard";
 import IconButton from "@/components/button/IconButton";
+import { BodyText, BodyTextBold, Heading } from "@/components/typography";
 import ActionCard from "@/components/action-card";
 import { api } from "@/lib/api";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
@@ -236,7 +236,6 @@ export default function PatientAdminPage() {
 
   const handleEditLink = () => {
     // TODO: Open modal or navigate to edit link page
-    console.log("Edit user-patient link for patient:", patientId);
   };
 
   if (loading) {
@@ -274,11 +273,9 @@ export default function PatientAdminPage() {
         <PageHeader title={patientName} />
 
         {/* Linked User Section */}
-        <Paper shadow="sm" p="md" withBorder>
+        <BaseCard>
           <Group justify="space-between" mb="md">
-            <Title order={3} size="h4">
-              Linked user account
-            </Title>
+            <Heading>Linked user account</Heading>
             <IconButton
               icon={<IconPencil />}
               size="md"
@@ -293,11 +290,9 @@ export default function PatientAdminPage() {
             <Stack gap="xs">
               <Group gap="xs">
                 <Icon icon={<IconUser />} size="lg" />
-                <Text fw={500}>{linkedUser.username}</Text>
+                <BodyTextBold>{linkedUser.username}</BodyTextBold>
               </Group>
-              <Text size="lg" c="dimmed">
-                {linkedUser.email}
-              </Text>
+              <BodyText>{linkedUser.email}</BodyText>
               <Badge color="green" variant="light" size="sm" w="fit-content">
                 Linked
               </Badge>
@@ -310,14 +305,12 @@ export default function PatientAdminPage() {
               No user account linked to this patient
             </Alert>
           )}
-        </Paper>
+        </BaseCard>
 
         {/* Patient Details Section */}
-        <Paper shadow="sm" p="md" withBorder>
+        <BaseCard>
           <Group justify="space-between" mb="md">
-            <Title order={3} size="h4">
-              Patient details
-            </Title>
+            <Heading>Patient details</Heading>
             <Group gap="xs">
               <Badge color={isActive ? "green" : "red"} variant="light">
                 {isActive ? "Active" : "Deactivated"}
@@ -338,35 +331,21 @@ export default function PatientAdminPage() {
 
           <Stack gap="md">
             <Group justify="space-between">
-              <Text c="dimmed" size="lg">
-                Full name
-              </Text>
-              <Text fw={500} size="lg">
-                {patientName}
-              </Text>
+              <BodyText>Full name</BodyText>
+              <BodyTextBold>{patientName}</BodyTextBold>
             </Group>
 
             {patient.birthDate && (
               <Group justify="space-between">
-                <Text c="dimmed" size="lg">
-                  Date of birth
-                </Text>
-                <Text fw={500} size="lg">
-                  {patient.birthDate}
-                </Text>
+                <BodyText>Date of birth</BodyText>
+                <BodyTextBold>{patient.birthDate}</BodyTextBold>
               </Group>
             )}
 
             {patient.gender && (
               <Group justify="space-between">
-                <Text c="dimmed" size="lg">
-                  Gender
-                </Text>
-                <Text
-                  fw={500}
-                  size="lg"
-                  style={{ textTransform: "capitalize" }}
-                >
+                <BodyText>Gender</BodyText>
+                <Text component="span" size="lg" tt="capitalize" fw={500}>
                   {patient.gender}
                 </Text>
               </Group>
@@ -374,31 +353,25 @@ export default function PatientAdminPage() {
 
             {nationalId && (
               <Group justify="space-between">
-                <Text c="dimmed" size="lg">
-                  {nationalId.label}
-                </Text>
-                <Text fw={500} ff="monospace" size="lg">
+                <BodyText>{nationalId.label}</BodyText>
+                <Text fw={700} size="lg" ff="monospace">
                   {nationalId.value}
                 </Text>
               </Group>
             )}
 
             <Group justify="space-between">
-              <Text c="dimmed" size="lg">
-                Patient system ID
-              </Text>
-              <Text fw={500} ff="monospace" size="lg">
+              <BodyText>Patient system ID</BodyText>
+              <Text fw={700} size="lg" ff="monospace">
                 {patient.id}
               </Text>
             </Group>
           </Stack>
-        </Paper>
+        </BaseCard>
 
         {/* Patient Actions Section */}
         <Stack gap="md">
-          <Title order={3} size="h4">
-            Patient actions
-          </Title>
+          <Heading>Patient actions</Heading>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             {isActive ? (
               <ActionCard

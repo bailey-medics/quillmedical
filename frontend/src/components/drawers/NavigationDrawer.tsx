@@ -80,7 +80,6 @@ export default function NavigationDrawer({
             zIndex: 16,
             transform: opened ? "translateX(0)" : "translateX(-100%)",
             transition: "transform 150ms ease",
-            background: "white",
             display: "flex",
             flexDirection: "column",
             overflowY: "auto",

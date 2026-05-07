@@ -93,6 +93,13 @@ class Settings(BaseSettings):
         "postgres-auth", description="Auth database host"
     )
     AUTH_DB_PORT: int = Field(5432, description="Auth database port")
+    AUTH_DB_SSLMODE: str = Field(
+        "prefer",
+        description=(
+            "SSL mode for auth database connection. "
+            "Use 'require' or 'verify-full' in production."
+        ),
+    )
 
     # --- FHIR Database ---
     FHIR_DB_NAME: str = Field("hapi", description="FHIR database name")
@@ -211,6 +218,7 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.AUTH_DB_USER}:"
             f"{quote_plus(self.AUTH_DB_PASSWORD.get_secret_value())}@"
             f"{self.AUTH_DB_HOST}:{self.AUTH_DB_PORT}/{self.AUTH_DB_NAME}"
+            f"?sslmode={self.AUTH_DB_SSLMODE}"
         )
 
     @computed_field  # type: ignore[prop-decorator]

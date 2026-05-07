@@ -91,6 +91,47 @@ class TestRequireCSRFDependency:
         assert response.status_code == 403
 
 
+class TestFhirClientErrorHandler:
+    """Test global FhirClientError exception handler."""
+
+    def test_fhir_client_error_returns_502(
+        self, authenticated_clinician_client: TestClient
+    ):
+        """FhirClientError returns 502 with clean message."""
+        from app.fhir_client import FhirClientError
+
+        with patch(
+            "app.main.list_fhir_patients",
+            side_effect=FhirClientError("Failed to retrieve patient list"),
+        ):
+            response = authenticated_clinician_client.get("/api/patients")
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "Failed to retrieve patient list"
+
+
+class TestRequestBodySizeLimit:
+    """Test request body size limiting middleware."""
+
+    def test_oversized_request_rejected(self, test_client: TestClient):
+        """Requests with Content-Length > 10MB are rejected with 413."""
+        response = test_client.post(
+            "/api/auth/login",
+            content=b"x",
+            headers={"Content-Length": str(11 * 1024 * 1024)},
+        )
+        assert response.status_code == 413
+
+    def test_normal_request_allowed(self, test_client: TestClient):
+        """Requests within the size limit are processed normally."""
+        response = test_client.post(
+            "/api/auth/login",
+            json={"email": "test@example.com", "password": "pass"},
+        )
+        # Should get past the size check (will fail auth, not 413)
+        assert response.status_code != 413
+
+
 class TestPatientEndpoints:
     """Test patient-related endpoints with mocked FHIR client."""
 

@@ -63,3 +63,8 @@ export const Loading: Story = {
     </VariantStack>
   ),
 };
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

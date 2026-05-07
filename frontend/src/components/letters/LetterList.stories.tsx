@@ -83,15 +83,6 @@ export const Empty: Story = {
   },
 };
 
-export const SingleLetter: Story = {
-  args: {
-    letters: [fakeLetters[0]],
-    onLetterClick: (letter) => {
-      console.log("Clicked letter:", letter.id);
-    },
-  },
-};
-
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

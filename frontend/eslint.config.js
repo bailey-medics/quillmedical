@@ -42,6 +42,7 @@ export default tseslint.config(
         "no-implied-eval": "error",
         "no-new-func": "error",
 
+        "no-console": ["error", { allow: ["warn", "error"] }],
         "no-secrets/no-secrets": ["warn", { tolerance: 4.5 }],
         // Prevent raw MantineProvider usage outside approved entry points
         "no-restricted-imports": [
@@ -69,6 +70,34 @@ export default tseslint.config(
       ],
       rules: {
         "no-restricted-imports": "off",
+      },
+    },
+    // Service worker registration uses console.log intentionally
+    {
+      files: ["src/main.tsx"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+    // Storybook stories use console.log for action callbacks
+    {
+      files: ["**/*.stories.tsx"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+    // Storybook preview uses console.log for mock debugging
+    {
+      files: [".storybook/preview.tsx"],
+      rules: {
+        "no-console": "off",
+      },
+    },
+    // Build scripts use console.log for progress output
+    {
+      files: ["scripts/**/*.ts"],
+      rules: {
+        "no-console": "off",
       },
     },
     // Custom rule: Page layout consistency

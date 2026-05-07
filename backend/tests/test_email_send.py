@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.email_send import Attachment, send_email
+from app.email_send import (
+    Attachment,
+    EmailRateLimitError,
+    _rate_log,
+    send_email,
+)
 
 
 class TestSendEmailDryRun:
@@ -137,3 +142,122 @@ class TestSendEmailLive:
         call_args = mock_resend.Emails.send.call_args[0][0]
         assert "attachments" in call_args
         assert len(call_args["attachments"]) == 1
+
+
+class TestEmailRateLimiting:
+    """Test per-recipient email rate limiting."""
+
+    def setup_method(self) -> None:
+        """Clear rate limit state before each test."""
+        _rate_log.clear()
+
+    @patch("app.email_send.settings")
+    def test_allows_emails_under_limit(self, mock_settings: MagicMock) -> None:
+        """Emails within rate limit should succeed."""
+        mock_settings.EMAIL_DRY_RUN = True
+
+        # Send 10 emails (the limit) — all should succeed
+        for i in range(10):
+            send_email(
+                to="user@example.com",
+                subject=f"Email {i}",
+                html_body=f"<p>Body {i}</p>",
+            )
+
+    @patch("app.email_send.settings")
+    def test_blocks_emails_over_limit(self, mock_settings: MagicMock) -> None:
+        """11th email to same recipient within window should be blocked."""
+        mock_settings.EMAIL_DRY_RUN = True
+
+        for i in range(10):
+            send_email(
+                to="spammed@example.com",
+                subject=f"Email {i}",
+                html_body=f"<p>Body {i}</p>",
+            )
+
+        with pytest.raises(EmailRateLimitError):
+            send_email(
+                to="spammed@example.com",
+                subject="One too many",
+                html_body="<p>Blocked</p>",
+            )
+
+    @patch("app.email_send.settings")
+    def test_different_recipients_have_separate_limits(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """Rate limit is per-recipient, not global."""
+        mock_settings.EMAIL_DRY_RUN = True
+
+        for i in range(10):
+            send_email(
+                to="user-a@example.com",
+                subject=f"Email {i}",
+                html_body=f"<p>Body {i}</p>",
+            )
+
+        # Different recipient should still be allowed
+        send_email(
+            to="user-b@example.com",
+            subject="Fine",
+            html_body="<p>OK</p>",
+        )
+
+    @patch("app.email_send._EMAIL_WINDOW_SECONDS", 1)
+    @patch("app.email_send._EMAIL_MAX_PER_WINDOW", 2)
+    @patch("app.email_send.settings")
+    def test_expired_entries_are_pruned(
+        self, mock_settings: MagicMock
+    ) -> None:
+        """Old timestamps outside the window are cleaned up."""
+        import time
+
+        mock_settings.EMAIL_DRY_RUN = True
+
+        send_email(
+            to="prune@example.com",
+            subject="First",
+            html_body="<p>1</p>",
+        )
+        send_email(
+            to="prune@example.com",
+            subject="Second",
+            html_body="<p>2</p>",
+        )
+
+        # At limit now — wait for window to expire
+        time.sleep(1.1)
+
+        # Should succeed because old entries expired
+        send_email(
+            to="prune@example.com",
+            subject="After expiry",
+            html_body="<p>OK</p>",
+        )
+
+    @patch("app.email_send.settings")
+    def test_rate_limit_logs_warning(
+        self,
+        mock_settings: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Rate limit violation should log a warning."""
+        mock_settings.EMAIL_DRY_RUN = True
+
+        for i in range(10):
+            send_email(
+                to="warned@example.com",
+                subject=f"Email {i}",
+                html_body=f"<p>{i}</p>",
+            )
+
+        with caplog.at_level(logging.WARNING, logger="app.email_send"):
+            with pytest.raises(EmailRateLimitError):
+                send_email(
+                    to="warned@example.com",
+                    subject="Blocked",
+                    html_body="<p>No</p>",
+                )
+
+        assert "rate limit exceeded" in caplog.text.lower()

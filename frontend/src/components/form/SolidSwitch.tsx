@@ -82,8 +82,12 @@ export default function SolidSwitch({
           },
           track: isDark
             ? {
-                backgroundColor: checked ? "#000d1f" : "#143f6b",
-                borderColor: checked ? "#000d1f" : "#143f6b",
+                backgroundColor: checked
+                  ? "var(--mantine-color-primary-9)"
+                  : "var(--mantine-color-primary-5)",
+                borderColor: checked
+                  ? "var(--mantine-color-primary-9)"
+                  : "var(--mantine-color-primary-5)",
               }
             : undefined,
         }}

@@ -254,7 +254,7 @@ function ScaleRow({
             </Text>
             {i === primaryShade && (
               <Text size="xs" c="black" fw={700} ta="center">
-                {name.split(" ")[0]} colour
+                default
               </Text>
             )}
           </Stack>
@@ -290,7 +290,11 @@ export const Scales: Story = {
               scale={secondaryScale}
               primaryShade={5}
             />
-            <ScaleRow name="grey (neutral)" scale={greyScale} />
+            <ScaleRow
+              name="grey (neutral)"
+              scale={greyScale}
+              primaryShade={0}
+            />
           </Stack>
         </div>
       </Stack>

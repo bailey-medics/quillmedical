@@ -20,9 +20,10 @@ import {
   Modal,
   Group,
 } from "@mantine/core";
-import { IconAlertCircle, IconUserCheck } from "@tabler/icons-react";
+import { IconAlertCircle, IconUserCheck } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
 import {
   BodyText,
   BodyTextInline,
@@ -214,29 +215,18 @@ export default function ActivatePatientPage() {
                   </Group>
                 </Stack>
 
-                <Group justify="flex-end">
-                  <Button
-                    variant="subtle"
-                    onClick={() => {
-                      if (patientId) {
-                        navigate(`/admin/patients/${patientId}`);
-                      } else {
-                        navigate("/admin/patients");
-                      }
-                    }}
-                    disabled={activating}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    color="green"
-                    leftSection={<Icon icon={<IconUserCheck />} size="sm" />}
-                    onClick={handleActivateConfirm}
-                    loading={activating}
-                  >
-                    Activate patient
-                  </Button>
-                </Group>
+                <ButtonPair
+                  acceptLabel="Activate patient"
+                  acceptLoading={activating}
+                  onAccept={handleActivateConfirm}
+                  onCancel={() => {
+                    if (patientId) {
+                      navigate(`/admin/patients/${patientId}`);
+                    } else {
+                      navigate("/admin/patients");
+                    }
+                  }}
+                />
               </Stack>
             </BaseCard>
           )}
@@ -319,22 +309,12 @@ export default function ActivatePatientPage() {
                     Are you sure you want to activate{" "}
                     <strong>{formatName(selectedPatient.name)}</strong>?
                   </BodyTextInline>
-                  <Group justify="flex-end">
-                    <Button
-                      variant="subtle"
-                      onClick={() => setSelectedPatient(null)}
-                      disabled={activating}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      color="green"
-                      onClick={handleActivateConfirm}
-                      loading={activating}
-                    >
-                      Confirm
-                    </Button>
-                  </Group>
+                  <ButtonPair
+                    acceptLabel="Confirm"
+                    acceptLoading={activating}
+                    onAccept={handleActivateConfirm}
+                    onCancel={() => setSelectedPatient(null)}
+                  />
                 </Stack>
               )}
             </Modal>

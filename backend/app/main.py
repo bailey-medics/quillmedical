@@ -18,7 +18,7 @@ Architecture:
 - Auth database: User accounts and roles (PostgreSQL via SQLAlchemy)
 - FHIR server: Patient demographics (HAPI FHIR)
 - EHRbase: Clinical documents and letters (OpenEHR)
-- Push notifications: In-memory subscriptions (production should use database)
+- Push notifications: Persistent subscriptions (PostgreSQL)
 """
 
 import logging
@@ -49,12 +49,14 @@ from app.cbac.decorators import has_competency
 from app.config import settings
 from app.db import get_session
 from app.ehrbase_client import (
+    EhrbaseClientError,
     create_letter_composition,
     get_letter_composition,
     list_letters_for_patient,
 )
 from app.email_send import send_email
 from app.fhir_client import (
+    FhirClientError,
     FhirCommunicationError,
     create_fhir_patient,
     list_fhir_patients,
@@ -167,10 +169,54 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
+# --- Request body size limit (10 MB) ---
+MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@app.middleware("http")
+async def limit_request_body_size(
+    request: Request,
+    call_next: Callable,  # type: ignore[type-arg]
+) -> Response:
+    """Reject requests with Content-Length exceeding the limit."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
+        return Response(status_code=413, content="Request body too large")
+    return await call_next(request)
+
+
 # --- Rate limiting (slowapi) ---
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# --- FHIR client error handler ---
+@app.exception_handler(FhirClientError)
+async def fhir_client_error_handler(
+    request: Request, exc: FhirClientError
+) -> Response:
+    """Return a clean 502 response for FHIR service failures."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=502,
+        content={"detail": str(exc)},
+    )
+
+
+# --- EHRbase client error handler ---
+@app.exception_handler(EhrbaseClientError)
+async def ehrbase_client_error_handler(
+    request: Request, exc: EhrbaseClientError
+) -> Response:
+    """Return a clean 502 response for EHRbase service failures."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=502,
+        content={"detail": str(exc)},
+    )
 
 
 # --- Request logging middleware ---
@@ -1701,6 +1747,8 @@ def list_patients(
                 enriched_patients.append(patient)
 
         return {"patients": enriched_patients, "fhir_ready": True}
+    except FhirClientError:
+        raise
     except Exception:
         return {"patients": [], "fhir_ready": False}
 

@@ -6,6 +6,8 @@ are logged to stdout instead of being sent.
 """
 
 import logging
+import threading
+import time
 from typing import TypedDict
 
 import resend
@@ -13,6 +15,55 @@ import resend
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Rate limiting: max emails per recipient per window
+# ---------------------------------------------------------------------------
+_EMAIL_MAX_PER_WINDOW = 10  # max emails per recipient
+_EMAIL_WINDOW_SECONDS = 3600  # 1 hour
+
+_rate_lock = threading.Lock()
+_rate_log: dict[str, list[float]] = {}
+
+
+class EmailRateLimitError(Exception):
+    """Raised when an email send exceeds the rate limit."""
+
+    pass
+
+
+def _check_rate_limit(recipient: str) -> None:
+    """Check and enforce per-recipient email rate limit.
+
+    Args:
+        recipient: Email address to check.
+
+    Raises:
+        EmailRateLimitError: If the recipient has exceeded the limit.
+    """
+    now = time.time()
+    window_start = now - _EMAIL_WINDOW_SECONDS
+
+    with _rate_lock:
+        timestamps = _rate_log.get(recipient, [])
+        # Prune expired entries
+        timestamps = [t for t in timestamps if t > window_start]
+
+        if len(timestamps) >= _EMAIL_MAX_PER_WINDOW:
+            logger.warning(
+                "Email rate limit exceeded for recipient=%s "
+                "(%d emails in last %d seconds)",
+                recipient,
+                len(timestamps),
+                _EMAIL_WINDOW_SECONDS,
+            )
+            raise EmailRateLimitError(
+                f"Rate limit exceeded: max {_EMAIL_MAX_PER_WINDOW} "
+                f"emails per {_EMAIL_WINDOW_SECONDS}s for {recipient}"
+            )
+
+        timestamps.append(now)
+        _rate_log[recipient] = timestamps
 
 
 class Attachment(TypedDict):
@@ -36,7 +87,12 @@ def send_email(
         subject: Email subject line.
         html_body: HTML content of the email body.
         attachments: Optional list of file attachments.
+
+    Raises:
+        EmailRateLimitError: If the recipient has exceeded the hourly limit.
     """
+    _check_rate_limit(to)
+
     attachment_names = [a["filename"] for a in (attachments or [])]
 
     if settings.EMAIL_DRY_RUN:

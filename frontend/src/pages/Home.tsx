@@ -117,7 +117,6 @@ export default function Home() {
       .get<PatientsApiRes>("/patients")
       .then((res) => {
         if (cancelled) return;
-        console.log("Raw FHIR patients:", res.patients);
         const mapped: Patient[] = (res.patients || []).map((fhirPatient) => {
           // Extract name from FHIR structure
           let displayName = fhirPatient.id;
@@ -186,7 +185,6 @@ export default function Home() {
             onQuill: true,
           } as Patient;
 
-          console.log("Mapped patient:", patient);
           return patient;
         });
 
@@ -326,7 +324,9 @@ export default function Home() {
           fhirAvailable={fhirAvailable}
           onSelect={(patient) => navigate(`/patients/${patient.id}`)}
         />
-        {error ? <div style={{ color: "red" }}>{error}</div> : null}
+        {error ? (
+          <div style={{ color: "var(--mantine-color-red-6)" }}>{error}</div>
+        ) : null}
       </Stack>
     </Container>
   );

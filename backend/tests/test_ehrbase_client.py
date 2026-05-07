@@ -3,8 +3,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from app import ehrbase_client
+from app.ehrbase_client import EhrAlreadyExistsError, EhrbaseClientError
 
 
 class TestGetOrCreateEhr:
@@ -68,12 +70,95 @@ class TestGetOrCreateEhr:
         mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
         mock_auth.return_value = {"Authorization": "Basic test"}
 
-        mock_get.side_effect = Exception("Connection error")
+        mock_get.side_effect = requests.ConnectionError("Connection error")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(EhrbaseClientError) as exc_info:
             ehrbase_client.get_or_create_ehr("patient-789")
 
-        assert "Connection error" in str(exc_info.value)
+        assert "Failed to retrieve clinical record" in str(exc_info.value)
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.requests.get")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_get_or_create_ehr_race_condition_resolved(
+        self, mock_settings, mock_auth, mock_get, mock_post
+    ):
+        """Test race condition: create returns 409, retry fetches existing."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        # First GET returns 404 (no EHR exists yet)
+        mock_get_404 = MagicMock()
+        mock_get_404.status_code = 404
+
+        # Second GET (after 409) returns the EHR created by another request
+        mock_get_200 = MagicMock()
+        mock_get_200.status_code = 200
+        mock_get_200.json.return_value = {
+            "ehr_id": {"value": "race-winner-ehr-123"}
+        }
+
+        mock_get.side_effect = [mock_get_404, mock_get_200]
+
+        # POST returns 409 Conflict (another request won the race)
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 409
+        mock_post.return_value = mock_post_response
+
+        result = ehrbase_client.get_or_create_ehr("patient-race")
+
+        assert result == "race-winner-ehr-123"
+        assert mock_get.call_count == 2
+        mock_post.assert_called_once()
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.requests.get")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_get_or_create_ehr_race_condition_unresolvable(
+        self, mock_settings, mock_auth, mock_get, mock_post
+    ):
+        """Test race condition where retry also fails raises error."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        # Both GETs return 404
+        mock_get_404 = MagicMock()
+        mock_get_404.status_code = 404
+        mock_get.side_effect = [mock_get_404, mock_get_404]
+
+        # POST returns 409
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 409
+        mock_post.return_value = mock_post_response
+
+        with pytest.raises(EhrAlreadyExistsError):
+            ehrbase_client.get_or_create_ehr("patient-phantom")
+
+
+class TestCreateEhrConflict:
+    """Test EHR creation with 409 handling."""
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_create_ehr_conflict_raises(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """Test that 409 Conflict raises EhrAlreadyExistsError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_settings.CLINICAL_SERVICES_ENABLED = True
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 409
+        mock_post.return_value = mock_response
+
+        with pytest.raises(EhrAlreadyExistsError):
+            ehrbase_client.create_ehr("patient-duplicate")
 
 
 class TestCreateLetterComposition:
@@ -115,19 +200,19 @@ class TestCreateLetterComposition:
     def test_create_letter_failure(
         self, mock_settings, mock_auth, mock_post, mock_get_ehr
     ):
-        """Test letter creation with error."""
+        """Test letter creation with error raises EhrbaseClientError."""
         mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
         mock_auth.return_value = {"Authorization": "Basic test"}
         mock_get_ehr.return_value = "ehr-123"
 
-        mock_post.side_effect = Exception("Creation failed")
+        mock_post.side_effect = requests.RequestException("Creation failed")
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(EhrbaseClientError) as exc_info:
             ehrbase_client.create_letter_composition(
                 "patient-123", "Test", "Body", None
             )
 
-        assert "Creation failed" in str(exc_info.value)
+        assert "Failed to create clinical document" in str(exc_info.value)
 
 
 class TestListLettersForPatient:
@@ -174,13 +259,13 @@ class TestListLettersForPatient:
 
     @patch("app.ehrbase_client.get_ehr_by_subject")
     def test_list_letters_exception(self, mock_get_ehr):
-        """Test listing letters with exception."""
+        """Test listing letters with exception raises EhrbaseClientError."""
         mock_get_ehr.side_effect = Exception("Query error")
 
-        result = ehrbase_client.list_letters_for_patient("patient-123")
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.list_letters_for_patient("patient-123")
 
-        # Function catches exception and returns empty list
-        assert result == []
+        assert "Failed to retrieve letters" in str(exc_info.value)
 
 
 class TestGetLetterComposition:
@@ -223,16 +308,18 @@ class TestGetLetterComposition:
     @patch("app.ehrbase_client.get_ehr_by_subject")
     @patch("app.ehrbase_client.get_composition")
     def test_get_letter_exception(self, mock_get_comp, mock_get_ehr):
-        """Test retrieving letter with exception."""
+        """Test retrieving letter with exception raises EhrbaseClientError."""
         mock_get_ehr.return_value = {"ehr_id": {"value": "ehr-123"}}
-        mock_get_comp.side_effect = Exception("Retrieval failed")
-
-        result = ehrbase_client.get_letter_composition(
-            "patient-123", "comp-uid-123"
+        mock_get_comp.side_effect = EhrbaseClientError(
+            "Failed to retrieve clinical document"
         )
 
-        # Function catches exception and returns None
-        assert result is None
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.get_letter_composition(
+                "patient-123", "comp-uid-123"
+            )
+
+        assert "Failed to retrieve" in str(exc_info.value)
 
 
 class TestGetAuthHeader:
@@ -405,3 +492,93 @@ class TestListCompositionsForEhr:
 
         assert len(result) == 2
         assert result[0]["uid"] == "comp-1"
+
+
+class TestEhrbaseClientErrorHandling:
+    """Test EhrbaseClientError propagation for service failures."""
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_create_composition_server_error(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """Server errors in create_composition raise EhrbaseClientError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_post.side_effect = requests.ConnectionError("Connection refused")
+
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.create_composition(
+                "ehr-123", "template-1", {"name": {"value": "test"}}
+            )
+
+        assert "Failed to create clinical document" in str(exc_info.value)
+
+    @patch("app.ehrbase_client.requests.get")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_get_composition_server_error(
+        self, mock_settings, mock_auth, mock_get
+    ):
+        """Server errors in get_composition raise EhrbaseClientError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_get.side_effect = requests.Timeout("Request timed out")
+
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.get_composition("ehr-123", "comp-123")
+
+        assert "Failed to retrieve clinical document" in str(exc_info.value)
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_query_aql_server_error(self, mock_settings, mock_auth, mock_post):
+        """Server errors in query_aql raise EhrbaseClientError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_post.side_effect = requests.ConnectionError("Connection refused")
+
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.query_aql("SELECT * FROM EHR")
+
+        assert "Failed to query clinical records" in str(exc_info.value)
+
+
+class TestUploadTemplateValidation:
+    """Test XML validation in upload_template."""
+
+    def test_upload_template_invalid_xml(self):
+        """Malformed XML is rejected before HTTP call."""
+        with pytest.raises(ValueError) as exc_info:
+            ehrbase_client.upload_template("<broken><xml")
+
+        assert "Invalid template XML" in str(exc_info.value)
+
+    def test_upload_template_empty_xml(self):
+        """Empty string is rejected."""
+        with pytest.raises(ValueError) as exc_info:
+            ehrbase_client.upload_template("")
+
+        assert "Invalid template XML" in str(exc_info.value)
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_upload_template_valid_xml_server_error(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """Valid XML that fails on server raises EhrbaseClientError."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+
+        mock_post.side_effect = requests.ConnectionError("Connection refused")
+
+        with pytest.raises(EhrbaseClientError) as exc_info:
+            ehrbase_client.upload_template("<template>valid</template>")
+
+        assert "Failed to upload clinical template" in str(exc_info.value)
