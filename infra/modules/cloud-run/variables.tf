@@ -62,8 +62,9 @@ variable "concurrency" {
 }
 
 variable "vpc_connector_id" {
-  description = "Serverless VPC connector ID"
+  description = "Serverless VPC connector ID (omit to disable VPC access)"
   type        = string
+  default     = ""
 }
 
 variable "env_vars" {

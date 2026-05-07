@@ -287,13 +287,12 @@ module "cloud_run_frontend" {
   region      = var.region
   environment = var.environment
 
-  service_name     = "frontend"
-  image            = var.frontend_image
-  port             = 80
-  memory           = "512Mi"
-  cpu              = "1"
-  max_instances    = var.cloud_run_max_instances
-  vpc_connector_id = module.networking.vpc_connector_id
+  service_name      = "frontend"
+  image             = var.frontend_image
+  port              = 80
+  memory            = "512Mi"
+  cpu               = "1"
+  max_instances     = var.cloud_run_max_instances
   health_check_path = "/healthz"
 }
 
