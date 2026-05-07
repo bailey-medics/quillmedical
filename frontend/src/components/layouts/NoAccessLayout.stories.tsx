@@ -25,7 +25,11 @@ type Story = StoryObj<typeof NoAccessLayout>;
  * Default no-access page
  * Displays when user lacks feature access in a teaching deployment
  */
-export const Default: Story = {};
+export const Default: Story = {
+  args: {
+    feature: "teaching",
+  },
+};
 
 export const DarkMode: Story = {
   ...Default,

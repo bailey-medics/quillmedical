@@ -10,7 +10,7 @@
  * @module MultiStepForm
  */
 
-import { Stack, Stepper } from "@mantine/core";
+import { Button, Group, Stack, Stepper } from "@mantine/core";
 import { useState, type ReactNode } from "react";
 import { IconCheck } from "@/components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -30,6 +30,14 @@ export interface StepConfig {
   validate?: () => boolean | Promise<boolean>;
   /** Optional custom label for the Next button (e.g., "Add Patient", "Create User") */
   nextButtonLabel?: string;
+  /** Optional custom label for the Cancel/Back button */
+  cancelButtonLabel?: string;
+  /** Hide the button pair entirely for this step */
+  hideButtons?: boolean;
+  /** Hide only the cancel/back button for this step */
+  hideCancelButton?: boolean;
+  /** Render step content without the BaseCard wrapper */
+  hideCard?: boolean;
 }
 
 /**
@@ -162,18 +170,39 @@ export default function MultiStepForm({
         ))}
       </Stepper>
 
-      <BaseCard>{currentStepConfig.content(stepContentProps)}</BaseCard>
+      {currentStepConfig.hideCard ? (
+        currentStepConfig.content(stepContentProps)
+      ) : (
+        <BaseCard>{currentStepConfig.content(stepContentProps)}</BaseCard>
+      )}
 
-      <ButtonPair
-        cancelLabel={isFirstStep ? "Cancel" : "Back"}
-        onCancel={isFirstStep ? onCancel : prevStep}
-        acceptLabel={
-          isLastStep
-            ? currentStepConfig.nextButtonLabel || "Submit"
-            : currentStepConfig.nextButtonLabel || "Next"
-        }
-        onAccept={isLastStep ? (onSubmit ?? onCancel) : nextStep}
-      />
+      {!currentStepConfig.hideButtons &&
+        (currentStepConfig.hideCancelButton ? (
+          <Group justify="flex-end" mt="xs">
+            <Button
+              size="lg"
+              onClick={isLastStep ? (onSubmit ?? onCancel) : nextStep}
+            >
+              {isLastStep
+                ? currentStepConfig.nextButtonLabel || "Submit"
+                : currentStepConfig.nextButtonLabel || "Next"}
+            </Button>
+          </Group>
+        ) : (
+          <ButtonPair
+            cancelLabel={
+              currentStepConfig.cancelButtonLabel ||
+              (isFirstStep ? "Cancel" : "Back")
+            }
+            onCancel={isFirstStep ? onCancel : prevStep}
+            acceptLabel={
+              isLastStep
+                ? currentStepConfig.nextButtonLabel || "Submit"
+                : currentStepConfig.nextButtonLabel || "Next"
+            }
+            onAccept={isLastStep ? (onSubmit ?? onCancel) : nextStep}
+          />
+        ))}
     </Stack>
   );
 }

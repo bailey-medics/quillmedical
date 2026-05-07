@@ -19,7 +19,6 @@ import {
   Group,
   Stack,
   Alert,
-  Badge,
   Loader,
   Center,
 } from "@mantine/core";
@@ -27,7 +26,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useBlocker, useParams } from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
-import Divider from "@/components/divider/Divider";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
@@ -39,6 +37,8 @@ import {
   Heading,
 } from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
+import CompetencyBadge from "@/components/badge/CompetencyBadge";
+import { StateMessage } from "@/components/message-cards";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -250,7 +250,7 @@ function Step2Competencies({
 }
 
 /**
- * Step 3: System Permissions + Review
+ * Step 3: System Permissions
  */
 function Step3Permissions({
   formData,
@@ -266,14 +266,10 @@ function Step3Permissions({
     { value: "superadmin", label: "Super Admin - Full system access" },
   ];
 
-  const profession = formData.baseProfession
-    ? getBaseProfessionDetails(formData.baseProfession)
-    : null;
-
   return (
     <Stack gap="md">
-      <Heading>System permissions & review</Heading>
-      <BodyText>Set system permissions and review the user details.</BodyText>
+      <Heading>System permissions</Heading>
+      <BodyText>Set the system permission level for this user.</BodyText>
 
       <SelectField
         label="System permission level"
@@ -289,8 +285,26 @@ function Step3Permissions({
         }}
         required
       />
+    </Stack>
+  );
+}
 
-      <Divider label="Review" labelPosition="center" mt="lg" />
+/**
+ * Step 4: Review
+ */
+function Step4Review({
+  formData,
+}: Pick<StepContentProps, never> & {
+  formData: UserFormData;
+}) {
+  const profession = formData.baseProfession
+    ? getBaseProfessionDetails(formData.baseProfession)
+    : null;
+
+  return (
+    <Stack gap="md">
+      <Heading>Review</Heading>
+      <BodyText>Review the user details before submitting.</BodyText>
 
       <BaseCard>
         <Stack gap="sm">
@@ -318,8 +332,6 @@ function Step3Permissions({
               permission={
                 formData.systemPermissions as "admin" | "superadmin" | "staff"
               }
-              size="md"
-              variant="light"
             />
           </Group>
           {formData.additionalCompetencies.length > 0 && (
@@ -327,11 +339,14 @@ function Step3Permissions({
               <BodyTextBold>Additional competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.additionalCompetencies.map((id) => (
-                  <Badge key={id} variant="light" color="primary">
-                    {competenciesData.competencies.find(
-                      (c: Competency) => c.id === id,
-                    )?.display_name || id}
-                  </Badge>
+                  <CompetencyBadge
+                    key={id}
+                    label={
+                      competenciesData.competencies.find(
+                        (c: Competency) => c.id === id,
+                      )?.display_name || id
+                    }
+                  />
                 ))}
               </Group>
             </Box>
@@ -341,11 +356,15 @@ function Step3Permissions({
               <BodyTextBold>Removed competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.removedCompetencies.map((id) => (
-                  <Badge key={id} variant="light" color="var(--alert-color)">
-                    {competenciesData.competencies.find(
-                      (c: Competency) => c.id === id,
-                    )?.display_name || id}
-                  </Badge>
+                  <CompetencyBadge
+                    key={id}
+                    label={
+                      competenciesData.competencies.find(
+                        (c: Competency) => c.id === id,
+                      )?.display_name || id
+                    }
+                    removed
+                  />
                 ))}
               </Group>
             </Box>
@@ -357,56 +376,39 @@ function Step3Permissions({
 }
 
 /**
- * Step 4: Confirmation
+ * Step 5: Confirmation
  */
-function Step4Confirmation({
+function Step5Confirmation({
   success,
-  onCancel,
   isEditMode = false,
-}: StepContentProps & {
+}: Pick<StepContentProps, never> & {
   success: boolean;
   isEditMode?: boolean;
 }) {
-  return (
-    <Stack gap="md" align="center" py="xl">
-      {success ? (
-        <>
-          <Icon icon={<IconCheck />} size="xl" colour="var(--success-color)" />
-          <Heading>
-            {isEditMode
-              ? "User updated successfully"
-              : "User created successfully"}
-          </Heading>
-          <BodyText>
-            {isEditMode
-              ? "The user's details have been updated."
-              : "The new user has been created and can now log in to the system."}
-          </BodyText>
-          <Button onClick={onCancel} mt="lg">
-            Return to admin
-          </Button>
-        </>
-      ) : (
-        <>
-          <Icon
-            icon={<IconAlertCircle />}
-            size="xl"
-            colour="var(--alert-color)"
-          />
-          <Heading>
-            {isEditMode ? "Failed to update user" : "Failed to create user"}
-          </Heading>
-          <BodyText>
-            {isEditMode
-              ? "There was an error updating the user. Please try again."
-              : "There was an error creating the user. Please try again."}
-          </BodyText>
-          <Button onClick={onCancel} mt="lg">
-            Return to admin
-          </Button>
-        </>
-      )}
-    </Stack>
+  return success ? (
+    <StateMessage
+      icon={<IconCheck />}
+      title={
+        isEditMode ? "User updated successfully" : "User created successfully"
+      }
+      description={
+        isEditMode
+          ? "The user's details have been updated."
+          : "The new user has been created and can now log in to the system."
+      }
+      colour="success"
+    />
+  ) : (
+    <StateMessage
+      icon={<IconAlertCircle />}
+      title={isEditMode ? "Failed to update user" : "Failed to create user"}
+      description={
+        isEditMode
+          ? "There was an error updating the user. Please try again."
+          : "There was an error creating the user. Please try again."
+      }
+      colour="alert"
+    />
   );
 }
 
@@ -580,7 +582,7 @@ export default function NewUserPage() {
 
       setSuccess(true);
       setDirty(false); // Clear dirty flag on successful submission
-      setActiveStep(3); // Move to confirmation step
+      setActiveStep(4); // Move to confirmation step
     } catch (error) {
       console.error(
         `Failed to ${isEditMode ? "update" : "create"} user:`,
@@ -588,7 +590,7 @@ export default function NewUserPage() {
       );
       setSuccess(false);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
-      setActiveStep(3); // Move to confirmation step even on error
+      setActiveStep(4); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
     }
@@ -622,7 +624,7 @@ export default function NewUserPage() {
     },
     {
       label: "Permissions",
-      description: "System permissions and review",
+      description: "System permission level",
       content: (props) => (
         <Step3Permissions
           {...props}
@@ -630,24 +632,32 @@ export default function NewUserPage() {
           setFormData={updateFormData}
         />
       ),
+    },
+    {
+      label: "Review",
+      description: "Review and submit",
+      content: (props) => <Step4Review {...props} formData={formData} />,
       nextButtonLabel: isEditMode ? "Update User" : "Create User",
     },
     {
       label: "Confirmation",
       description: isEditMode ? "User updated" : "User created",
       content: (props) => (
-        <Step4Confirmation
+        <Step5Confirmation
           {...props}
           success={success}
           isEditMode={isEditMode}
         />
       ),
+      hideCancelButton: true,
+      hideCard: true,
+      nextButtonLabel: "Finished",
     },
   ];
 
-  // Intercept step 2 -> 3 transition to submit form
+  // Intercept step 3 -> 4 transition to submit form
   function handleStepChange(newStep: number) {
-    if (activeStep === 2 && newStep === 3) {
+    if (activeStep === 3 && newStep === 4) {
       handleSubmit();
     } else {
       setActiveStep(newStep);

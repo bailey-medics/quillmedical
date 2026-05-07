@@ -476,7 +476,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching",
         element: (
-          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentDashboard />
           </RequireFeature>
         ),
@@ -484,7 +487,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id",
         element: (
-          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentAttempt />
           </RequireFeature>
         ),
@@ -492,7 +498,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id/result",
         element: (
-          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentResultPage />
           </RequireFeature>
         ),
@@ -500,7 +509,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/results",
         element: (
-          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AllResults />
           </RequireFeature>
         ),
@@ -508,7 +520,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/sync",
         element: (
-          <RequireFeature feature="teaching" fallback={<NoAccessLayout />}>
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <SyncStatus />
           </RequireFeature>
         ),

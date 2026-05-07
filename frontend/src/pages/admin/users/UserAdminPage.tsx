@@ -16,7 +16,6 @@ import {
   SimpleGrid,
   Skeleton,
   Alert,
-  Badge,
 } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
@@ -26,6 +25,7 @@ import {
   Heading,
 } from "@/components/typography";
 import PermissionBadge from "@/components/badge/PermissionBadge";
+import CompetencyBadge from "@/components/badge/CompetencyBadge";
 import {
   IconPencil,
   IconAlertCircle,
@@ -132,6 +132,11 @@ export default function UserAdminPage() {
 
             <Stack gap="xs">
               <Group gap="xs">
+                <BodyTextBold>Full name:</BodyTextBold>
+                <BodyTextInline>{user.name}</BodyTextInline>
+              </Group>
+
+              <Group gap="xs">
                 <BodyTextBold>Username:</BodyTextBold>
                 <BodyTextInline>{user.username}</BodyTextInline>
               </Group>
@@ -167,15 +172,14 @@ export default function UserAdminPage() {
                   <BodyTextBold>Additional competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.additional_competencies.map((comp) => (
-                      <Badge
+                      <CompetencyBadge
                         key={comp}
-                        variant="light"
-                        color="var(--success-color)"
-                      >
-                        {competenciesData.competencies.find(
-                          (c) => c.id === comp,
-                        )?.display_name || comp}
-                      </Badge>
+                        label={
+                          competenciesData.competencies.find(
+                            (c) => c.id === comp,
+                          )?.display_name || comp
+                        }
+                      />
                     ))}
                   </Group>
                 </Stack>
@@ -186,15 +190,15 @@ export default function UserAdminPage() {
                   <BodyTextBold>Removed competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.removed_competencies.map((comp) => (
-                      <Badge
+                      <CompetencyBadge
                         key={comp}
-                        variant="light"
-                        color="var(--alert-color)"
-                      >
-                        {competenciesData.competencies.find(
-                          (c) => c.id === comp,
-                        )?.display_name || comp}
-                      </Badge>
+                        label={
+                          competenciesData.competencies.find(
+                            (c) => c.id === comp,
+                          )?.display_name || comp
+                        }
+                        removed
+                      />
                     ))}
                   </Group>
                 </Stack>
