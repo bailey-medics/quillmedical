@@ -16,7 +16,6 @@ import {
   IconMail,
   IconMessage,
   IconPencil,
-  IconShieldCheck,
   IconUserOff,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -27,25 +26,37 @@ import { statusColours } from "@/styles/semanticColours";
 /** All supported state message types */
 export type StateMessageType =
   | "database-initialising"
-  | "no-access"
   | "no-patients"
   | "no-letters"
   | "no-messages"
   | "no-notes"
   | "no-documents"
   | "no-appointments"
-  | "error";
+  | "error"
+  | "custom";
 
 type Props =
   | {
       /** Type of message to display */
-      type: Exclude<StateMessageType, "error">;
+      type: Exclude<StateMessageType, "error" | "custom">;
     }
   | {
       /** Error type requires a message */
       type: "error";
       /** Error message to display */
       message: string;
+    }
+  | {
+      /** Custom type allows bespoke icon, title, description, and colour */
+      type: "custom";
+      /** Tabler icon element to display */
+      icon: ReactElement;
+      /** Bold title text */
+      title: string;
+      /** Body text or JSX content */
+      description: ReactNode;
+      /** Background colour (CSS variable or Mantine token) */
+      colour?: string;
     };
 
 type StateConfig = {
@@ -55,28 +66,16 @@ type StateConfig = {
   description: ReactNode;
 };
 
-const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
+const STATE_CONFIG: Record<
+  Exclude<StateMessageType, "error" | "custom">,
+  StateConfig
+> = {
   "database-initialising": {
     icon: <IconClock />,
     colour: statusColours.info.bg,
     title: "Database is initialising",
     description:
       "The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available.",
-  },
-  "no-access": {
-    icon: <IconShieldCheck />,
-    colour: statusColours.info.bg,
-    title: "No access yet",
-    description: (
-      <>
-        Your account does not have access to this feature yet. Please contact
-        your administrator or email{" "}
-        <a href="mailto:info@quill-medical.com" style={{ color: "white" }}>
-          info@quill-medical.com
-        </a>{" "}
-        for assistance.
-      </>
-    ),
   },
   "no-patients": {
     icon: <IconUserOff />,
@@ -134,6 +133,23 @@ export default function StateMessage(props: Props) {
           <Stack gap={4}>
             <Heading c="white">Error loading data</Heading>
             <BodyTextInline c="white">{props.message}</BodyTextInline>
+          </Stack>
+        </Group>
+      </BaseCard>
+    );
+  }
+
+  if (props.type === "custom") {
+    const bg = props.colour ?? statusColours.info.bg;
+    return (
+      <BaseCard bg={bg} data-testid="state-message">
+        <Group gap="md" wrap="nowrap" align="flex-start">
+          <Box style={{ flexShrink: 0 }}>
+            <Icon icon={props.icon} size="lg" />
+          </Box>
+          <Stack gap={4}>
+            <Heading c="white">{props.title}</Heading>
+            <BodyTextInline c="white">{props.description}</BodyTextInline>
           </Stack>
         </Group>
       </BaseCard>

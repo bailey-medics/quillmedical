@@ -9,6 +9,7 @@
 import { Container, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { IconShieldCheck } from "@/components/icons/appIcons";
 
 /**
  * No Access Layout
@@ -23,7 +24,24 @@ export default function NoAccessLayout() {
     <Container size="lg" py="xl">
       <Stack gap="lg">
         <PageHeader title="Welcome to Quill" />
-        <StateMessage type="no-access" />
+        <StateMessage
+          type="custom"
+          icon={<IconShieldCheck />}
+          title="No access yet"
+          description={
+            <>
+              Your account does not have access to this feature yet. Please
+              email{" "}
+              <a
+                href="mailto:info@quill-medical.com"
+                style={{ color: "white" }}
+              >
+                info@quill-medical.com
+              </a>{" "}
+              for assistance.
+            </>
+          }
+        />
       </Stack>
     </Container>
   );
