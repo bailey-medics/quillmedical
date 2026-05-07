@@ -179,6 +179,7 @@ export default function DeactivateUserPage() {
             </BodyText>
             <ButtonPairRed
               acceptLabel="Deactivate user"
+              submittingLabel="Deactivating…"
               acceptLoading={deactivating}
               onAccept={handleDeactivateConfirm}
               onCancel={() => setSelectedUser(null)}

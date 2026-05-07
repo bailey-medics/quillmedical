@@ -1,10 +1,10 @@
 ---
 agent: "agent"
-name: commit-push
-description: Commit and push code
+name: commit-rebase-push
+description: Commit, rebase, and push code
 ---
 
-# Commit and push code
+# Commit, rebase, and push code
 
 1. Only operate on the **quillmedical** repository — never commit or push to `question-bank/` (quill-question-bank)
 2. Check git status and confirm there are changes to commit

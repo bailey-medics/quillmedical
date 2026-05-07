@@ -17,7 +17,6 @@ import type { ClinicalNote } from "./NotesList";
 const meta: Meta<typeof NotesList> = {
   title: "Notes/NotesList",
   component: NotesList,
-  tags: ["autodocs"],
 };
 
 export default meta;

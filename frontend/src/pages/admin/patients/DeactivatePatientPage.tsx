@@ -213,6 +213,7 @@ export default function DeactivatePatientPage() {
 
                 <ButtonPairRed
                   acceptLabel="Confirm deactivation"
+                  submittingLabel="Deactivating…"
                   acceptLoading={deactivating}
                   onAccept={handleDeactivateConfirm}
                   onCancel={() => window.history.back()}
@@ -308,6 +309,7 @@ export default function DeactivatePatientPage() {
             </BodyText>
             <ButtonPairRed
               acceptLabel="Deactivate patient"
+              submittingLabel="Deactivating…"
               acceptLoading={deactivating}
               onAccept={handleDeactivateConfirm}
               onCancel={() => setSelectedPatient(null)}

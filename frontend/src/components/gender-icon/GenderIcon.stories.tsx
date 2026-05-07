@@ -8,7 +8,6 @@ const meta: Meta<typeof GenderIcon> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     gender: {
       control: "select",

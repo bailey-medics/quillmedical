@@ -10,7 +10,6 @@ const meta: Meta<typeof EllipsisMenu> = {
   title: "Button/EllipsisMenu",
   component: EllipsisMenu,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

@@ -5,7 +5,6 @@ const meta: Meta<typeof ErrorMessage> = {
   title: "Foundations/Typography/ErrorMessage",
   component: ErrorMessage,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

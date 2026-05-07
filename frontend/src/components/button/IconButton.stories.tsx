@@ -18,7 +18,6 @@ const meta = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 } satisfies Meta<typeof IconButton>;
 
 export default meta;

@@ -33,7 +33,7 @@ describe("PublicButton", () => {
       );
       expect(
         screen.getByRole("button", { name: "Disabled link" }),
-      ).toBeDisabled();
+      ).toHaveAttribute("aria-disabled", "true");
     });
   });
 
@@ -73,7 +73,10 @@ describe("PublicButton", () => {
   describe("Disabled state", () => {
     it("disables the button", () => {
       renderWithMantine(<PublicButton disabled>Disabled</PublicButton>);
-      expect(screen.getByRole("button", { name: "Disabled" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
   });
 });

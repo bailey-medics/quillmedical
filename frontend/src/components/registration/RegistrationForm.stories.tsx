@@ -14,7 +14,6 @@ const meta: Meta<typeof RegistrationForm> = {
   title: "Registration/RegistrationForm",
   component: RegistrationForm,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   args: {
     organisations: sampleOrganisations,
     onSubmit: fn(),

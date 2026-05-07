@@ -242,3 +242,10 @@ notifications are production-ready:
 
 - [ ] **Add a `security.txt` and responsible disclosure policy.** Standard way
       for external researchers to report vulnerabilities: - `/.well-known/security.txt` with contact details - Document scope, response times, and safe harbour
+
+## Refactor DirtyFormNavigation to use ConfirmModal
+
+- [ ] **Replace inline modal in `DirtyFormNavigation` with `ConfirmModal`.**
+      The component currently builds its own icon-centred modal layout. Once
+      `ConfirmModal` exists, delegate the visual to it and keep only the React
+      Router `useBlocker` logic in `DirtyFormNavigation`.

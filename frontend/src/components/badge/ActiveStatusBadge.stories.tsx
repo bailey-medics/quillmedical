@@ -15,7 +15,6 @@ const meta: Meta<typeof ActiveStatusBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     active: {
       control: "boolean",

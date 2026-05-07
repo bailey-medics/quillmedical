@@ -14,7 +14,6 @@ const meta: Meta<typeof ButtonPair> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     onAccept: fn(),
     onCancel: fn(),

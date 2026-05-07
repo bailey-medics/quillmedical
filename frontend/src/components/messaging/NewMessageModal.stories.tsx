@@ -13,7 +13,6 @@ import NewMessageModal from "./NewMessageModal";
 const meta: Meta<typeof NewMessageModal> = {
   title: "Messaging/NewMessageModal",
   component: NewMessageModal,
-  tags: ["autodocs"],
   parameters: { layout: "fullscreen" },
   args: {
     opened: true,

@@ -62,14 +62,15 @@ export default function IconTextButton({
       leftSection={
         <Icon icon={iconTextButtonIcons[icon]} size={isMobile ? "sm" : "md"} />
       }
-      onClick={onClick}
+      onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
       size={isMobile ? "md" : "lg"}
       variant={variant}
       color={color}
-      disabled={disabled}
+      aria-disabled={disabled || undefined}
       loading={loading}
       classNames={{ root: classes.root }}
       styles={{
+        root: disabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined,
         label: {
           fontSize: isMobile
             ? "var(--mantine-font-size-md)"

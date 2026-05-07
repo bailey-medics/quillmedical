@@ -31,7 +31,6 @@ const meta: Meta<typeof DataTable<User>> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <Container size="lg">

@@ -35,7 +35,6 @@ const failCriteria = [
 const meta: Meta<typeof AssessmentResult> = {
   title: "Teaching/AssessmentResult",
   component: AssessmentResult,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

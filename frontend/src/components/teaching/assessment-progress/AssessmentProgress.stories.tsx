@@ -4,7 +4,6 @@ import { AssessmentProgress } from "./AssessmentProgress";
 const meta: Meta<typeof AssessmentProgress> = {
   title: "Teaching/AssessmentProgress",
   component: AssessmentProgress,
-  tags: ["autodocs"],
 };
 
 export default meta;

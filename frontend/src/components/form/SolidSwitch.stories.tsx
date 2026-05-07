@@ -9,7 +9,6 @@ const meta: Meta<typeof SolidSwitch> = {
   title: "Form/SolidSwitch",
   component: SolidSwitch,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   argTypes: {
     checked: { control: "boolean", description: "Whether the switch is on" },
     label: { control: "text", description: "Label above the switch" },

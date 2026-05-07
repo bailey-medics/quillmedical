@@ -57,7 +57,6 @@ const variableItem: CandidateItem = {
 const meta: Meta<typeof QuestionView> = {
   title: "Teaching/QuestionView",
   component: QuestionView,
-  tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },

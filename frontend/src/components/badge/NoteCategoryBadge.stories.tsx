@@ -15,7 +15,6 @@ const meta: Meta<typeof NoteCategoryBadge> = {
   title: "Badge/NoteCategoryBadge",
   component: NoteCategoryBadge,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   argTypes: {
     category: {
       control: "select",

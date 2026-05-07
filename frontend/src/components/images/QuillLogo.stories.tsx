@@ -16,7 +16,6 @@ const meta: Meta<typeof QuillLogo> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },

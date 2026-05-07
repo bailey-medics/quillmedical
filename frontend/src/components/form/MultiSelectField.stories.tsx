@@ -7,7 +7,6 @@ const meta: Meta<typeof MultiSelectField> = {
   title: "Form/MultiSelectField",
   component: MultiSelectField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

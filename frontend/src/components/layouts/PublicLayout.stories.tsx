@@ -8,7 +8,6 @@ const meta: Meta<typeof PublicLayout> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;

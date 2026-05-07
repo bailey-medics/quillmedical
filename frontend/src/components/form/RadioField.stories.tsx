@@ -26,7 +26,6 @@ const meta: Meta<typeof RadioField> = {
   title: "Form/RadioField",
   component: RadioField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

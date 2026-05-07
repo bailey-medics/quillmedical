@@ -4,7 +4,6 @@ import ExamCloseButton from "./ExamCloseButton";
 const meta: Meta<typeof ExamCloseButton> = {
   title: "Teaching/ExamCloseButton",
   component: ExamCloseButton,
-  tags: ["autodocs"],
 };
 
 export default meta;

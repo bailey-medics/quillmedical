@@ -16,7 +16,6 @@ const meta: Meta<typeof AssessmentResultBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     result: {
       control: "select",

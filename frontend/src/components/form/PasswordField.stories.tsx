@@ -7,7 +7,6 @@ const meta: Meta<typeof PasswordField> = {
   title: "Form/PasswordField",
   component: PasswordField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

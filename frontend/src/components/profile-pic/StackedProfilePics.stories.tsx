@@ -13,7 +13,6 @@ import StackedProfilePics from "./StackedProfilePics";
 const meta: Meta<typeof StackedProfilePics> = {
   title: "ProfilePic/Stacked",
   component: StackedProfilePics,
-  tags: ["autodocs"],
 };
 
 export default meta;

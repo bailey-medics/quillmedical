@@ -17,7 +17,6 @@ const meta: Meta<typeof QuillName> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },

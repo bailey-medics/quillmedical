@@ -16,7 +16,15 @@ export interface BodyTextProps {
   children: ReactNode;
   /** Optional colour override */
   c?: MantineColor;
+  /** Text alignment. Defaults to "left". */
+  justify?: "left" | "centre" | "right";
 }
+
+const alignMap = {
+  left: "left",
+  centre: "center",
+  right: "right",
+} as const;
 
 /**
  * Renders block-level body text with consistent size and weight.
@@ -24,9 +32,18 @@ export interface BodyTextProps {
  * @param props - Component props
  * @returns Text element
  */
-export default function BodyText({ children, c }: BodyTextProps) {
+export default function BodyText({
+  children,
+  c,
+  justify = "left",
+}: BodyTextProps) {
   return (
-    <Text size="lg" fw={typographyTokens.fontWeights.body} c={c}>
+    <Text
+      size="lg"
+      fw={typographyTokens.fontWeights.body}
+      c={c}
+      ta={alignMap[justify]}
+    >
       {children}
     </Text>
   );

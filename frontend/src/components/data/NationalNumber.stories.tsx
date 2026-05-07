@@ -17,7 +17,6 @@ const meta = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <BodyText>

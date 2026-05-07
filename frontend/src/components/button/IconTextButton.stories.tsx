@@ -22,7 +22,6 @@ const meta: Meta<typeof IconTextButton> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     icon: "refresh",
     label: "Sync all",
