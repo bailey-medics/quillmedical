@@ -27,6 +27,7 @@ applyTo: "frontend/src/components/**"
 ## Colours
 
 - **All colours must come from the design system** — never use hardcoded colour values (e.g. `black`, `#333`, `rgb(...)`) in components or CSS modules.
+- **Never use Mantine's built-in colour names directly** (e.g. `"red"`, `"green"`, `"blue"`, `"teal"`, `"orange"`, `"yellow"`, `"violet"`, `"pink"`, `"cyan"`) as `color` prop values. Use CSS variables from the design system instead: `var(--alert-color)`, `var(--success-color)`, `var(--warning-color)`, `var(--info-color)`, `var(--neutral-color)`, `var(--accent-color)`, `var(--outstanding-color)`.
 - **Never use Mantine's built-in colour scales directly** (e.g. `dark.4`, `blue.6`, `red.5`, `--mantine-color-dark-4`, `--mantine-color-blue-6`) — they are not part of our design system. Only use our defined tokens: `primary`, `secondary`, `gray`, and semantic/status colours from the imports below.
 - **Brand colours**: import `brandColours`, `publicColours` from `@/theme`.
 - **Colour scales**: import `primaryScale`, `secondaryScale`, `greyScale` from `@/theme`.
