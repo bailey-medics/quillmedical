@@ -16,6 +16,7 @@ import {
   IconMail,
   IconMessage,
   IconPencil,
+  IconShieldCheck,
   IconUserOff,
 } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -26,6 +27,7 @@ import { statusColours } from "@/styles/semanticColours";
 /** All supported state message types */
 export type StateMessageType =
   | "database-initialising"
+  | "no-access"
   | "no-patients"
   | "no-letters"
   | "no-messages"
@@ -60,6 +62,13 @@ const STATE_CONFIG: Record<Exclude<StateMessageType, "error">, StateConfig> = {
     title: "Database is initialising",
     description:
       "The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available.",
+  },
+  "no-access": {
+    icon: <IconShieldCheck />,
+    colour: statusColours.info.bg,
+    title: "No access yet",
+    description:
+      "Your account doesn't have access to this feature yet. Please contact your organisation administrator for assistance.",
   },
   "no-patients": {
     icon: <IconUserOff />,

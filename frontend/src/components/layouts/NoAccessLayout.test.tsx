@@ -10,7 +10,12 @@ describe("NoAccessLayout Component", () => {
       expect(screen.getByText("Welcome to Quill")).toBeInTheDocument();
     });
 
-    it("displays no-access message", () => {
+    it("displays no-access state message", () => {
+      renderWithMantine(<NoAccessLayout />);
+      expect(screen.getByText("No access yet")).toBeInTheDocument();
+    });
+
+    it("displays guidance to contact administrator", () => {
       renderWithMantine(<NoAccessLayout />);
       expect(
         screen.getByText(
@@ -19,16 +24,10 @@ describe("NoAccessLayout Component", () => {
       ).toBeInTheDocument();
     });
 
-    it("uses heading level 2 for title", () => {
+    it("uses heading level 1 for page header", () => {
       renderWithMantine(<NoAccessLayout />);
-      const heading = screen.getByRole("heading", { level: 2 });
+      const heading = screen.getByRole("heading", { level: 1 });
       expect(heading).toHaveTextContent("Welcome to Quill");
-    });
-
-    it("renders shield icon", () => {
-      renderWithMantine(<NoAccessLayout />);
-      const icon = document.querySelector("svg");
-      expect(icon).toBeInTheDocument();
     });
   });
 });

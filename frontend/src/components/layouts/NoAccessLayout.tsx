@@ -7,9 +7,8 @@
  */
 
 import { Center, Container, Stack } from "@mantine/core";
-import { Heading, BodyText } from "@/components/typography";
-import Icon from "@/components/icons/Icon";
-import { IconShieldCheck } from "@/components/icons/appIcons";
+import PageHeader from "@/components/typography/PageHeader";
+import StateMessage from "@/components/message-cards/StateMessage";
 
 /**
  * No Access Layout
@@ -22,16 +21,12 @@ import { IconShieldCheck } from "@/components/icons/appIcons";
 export default function NoAccessLayout() {
   return (
     <Container size="lg" py="xl">
-      <Center mih="60vh">
-        <Stack align="center" gap="lg">
-          <Icon icon={<IconShieldCheck />} size="xl" colour="gray.5" />
-          <Heading>Welcome to Quill</Heading>
-          <BodyText c="gray.5" ta="center">
-            Your account doesn't have access to this feature yet. Please contact
-            your organisation administrator for assistance.
-          </BodyText>
-        </Stack>
-      </Center>
+      <Stack gap="lg">
+        <PageHeader title="Welcome to Quill" />
+        <Center mih="50vh">
+          <StateMessage type="no-access" />
+        </Center>
+      </Stack>
     </Container>
   );
 }
