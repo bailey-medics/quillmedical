@@ -7,7 +7,6 @@ const meta: Meta<typeof SelectField> = {
   title: "Form/SelectField",
   component: SelectField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

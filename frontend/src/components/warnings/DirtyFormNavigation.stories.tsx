@@ -31,7 +31,6 @@ const meta = {
       },
     },
   },
-  tags: ["autodocs"],
 } satisfies Meta<typeof DirtyFormNavigation>;
 
 export default meta;

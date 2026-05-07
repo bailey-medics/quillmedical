@@ -5,7 +5,6 @@ const meta: Meta<typeof TextLink> = {
   title: "Foundations/Typography/TextLink",
   component: TextLink,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

@@ -71,7 +71,10 @@ describe("PreviousNextButton", () => {
     it("disables the Next button when nextDisabled is true", () => {
       renderWithMantine(<PreviousNextButton onNext={() => {}} nextDisabled />);
 
-      expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Next" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
 
     it("shows loading state on the Next button", () => {

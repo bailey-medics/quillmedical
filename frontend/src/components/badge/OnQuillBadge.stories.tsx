@@ -14,7 +14,6 @@ const meta: Meta<typeof OnQuillBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     size: {
       control: "select",

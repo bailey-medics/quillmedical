@@ -4,7 +4,6 @@ import { ScoreBreakdown } from "./ScoreBreakdown";
 const meta: Meta<typeof ScoreBreakdown> = {
   title: "Teaching/ScoreBreakdown",
   component: ScoreBreakdown,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

@@ -5,7 +5,6 @@ import { AssessmentHistoryTable } from "./AssessmentHistoryTable";
 const meta: Meta<typeof AssessmentHistoryTable> = {
   title: "Teaching/AssessmentHistoryTable",
   component: AssessmentHistoryTable,
-  tags: ["autodocs"],
   args: {
     onSelect: fn(),
   },

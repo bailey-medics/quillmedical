@@ -5,7 +5,6 @@ import BodyText from "@/components/typography/BodyText";
 const meta: Meta<typeof Gender> = {
   title: "data/Gender",
   component: Gender,
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <BodyText>

@@ -31,7 +31,6 @@ const meta = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     name: {
       description: "The name of the icon to display",

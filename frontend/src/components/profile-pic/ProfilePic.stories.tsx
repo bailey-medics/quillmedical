@@ -4,7 +4,6 @@ import ProfilePic from "./ProfilePic";
 const meta: Meta<typeof ProfilePic> = {
   title: "ProfilePic/Single",
   component: ProfilePic,
-  tags: ["autodocs"],
 };
 
 export default meta;

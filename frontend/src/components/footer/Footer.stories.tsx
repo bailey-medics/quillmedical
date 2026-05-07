@@ -14,7 +14,6 @@ const meta: Meta<typeof Footer> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <Box

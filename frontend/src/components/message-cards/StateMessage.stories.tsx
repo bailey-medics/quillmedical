@@ -21,7 +21,6 @@ import {
 const meta: Meta<typeof StateMessage> = {
   title: "MessageCards/StateMessage",
   component: StateMessage,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

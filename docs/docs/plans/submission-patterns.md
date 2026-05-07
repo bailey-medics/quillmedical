@@ -20,7 +20,7 @@
     - Label changes to action-appropriate verb + ellipsis (U+2026): "Saving…", "Sending…", "Uploading…", "Submitting…"
     - Button width fixed (or `min-width` set) to prevent layout shift
     - For long-running operations, cancel affordance appears after ~2s, wired to the form's AbortController
-  - Success: briefly "Saved ✓" (1–2s) then return to idle, OR remain disabled if re-submission should be blocked
+  - Success: return to idle; success surfaced in status card
   - Error: return to idle; error surfaced in status card
 - **Status card:** rendered in a reserved slot at the top of the form
 - **Scroll into view** on success/error if off-screen
@@ -51,7 +51,6 @@
 
 - **Always disabled during in-flight submission** to prevent double-submits (clinical safety: avoids duplicate `Communication` resources, duplicate clinical entries)
 - Spinner + "Saving…" label during submission
-- Brief success state ("Saved ✓") before returning to idle, where appropriate
 
 ## Patterns to Avoid
 
@@ -144,8 +143,7 @@ Submissions that write to both administrative and clinical layers can succeed in
 - Subscribes to form context
 - Disabled during `validating` and `submitting` (prevents double-submit — clinical safety)
 - Shows spinner + "Saving…" during `submitting`
-- Brief "Saved ✓" state on `success` before returning to idle (or remains disabled if re-submit should be blocked)
-- Returns to idle on `error` or `timeout`
+- Returns to idle on `success`, `error`, or `timeout`
 
 ### `<FormField>` components
 
@@ -191,4 +189,3 @@ Do not roll the form state from scratch — the wrapper is Quill-specific, but t
 - Not a standalone status component you wire up manually
 - Not a monolithic form component
 - A **wrapper that owns state**, with **composable children that subscribe to it**
-- The React equivalent of Django's `Form` object as a single source of truth

@@ -14,7 +14,6 @@ const meta: Meta<typeof PreviousNextButton> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     onPrevious: fn(),
     onNext: fn(),

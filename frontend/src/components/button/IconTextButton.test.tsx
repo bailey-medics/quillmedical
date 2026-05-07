@@ -68,12 +68,15 @@ describe("IconTextButton", () => {
       renderWithMantine(
         <IconTextButton icon="refresh" label="Sync all" disabled />,
       );
-      expect(screen.getByRole("button")).toBeDisabled();
+      expect(screen.getByRole("button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
 
     it("is interactive when not disabled", () => {
       renderWithMantine(<IconTextButton icon="refresh" label="Sync all" />);
-      expect(screen.getByRole("button")).not.toBeDisabled();
+      expect(screen.getByRole("button")).not.toHaveAttribute("aria-disabled");
     });
   });
 

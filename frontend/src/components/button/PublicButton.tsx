@@ -56,10 +56,21 @@ export default function PublicButton({
   return (
     <Button
       size={mantineSize}
-      disabled={disabled}
-      styles={sizeStyles}
+      aria-disabled={disabled || undefined}
+      styles={
+        disabled
+          ? {
+              ...sizeStyles,
+              root: {
+                ...sizeStyles.root,
+                opacity: 0.6,
+                cursor: "not-allowed",
+              },
+            }
+          : sizeStyles
+      }
       className={className}
-      onClick={onClick}
+      onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
     >
       {children}
     </Button>

@@ -5,7 +5,6 @@ const meta: Meta<typeof BodyTextClamp> = {
   title: "Foundations/Typography/BodyTextClamp",
   component: BodyTextClamp,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

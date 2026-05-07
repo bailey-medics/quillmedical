@@ -16,7 +16,6 @@ const meta: Meta<typeof FeatureBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;

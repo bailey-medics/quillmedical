@@ -12,7 +12,6 @@ import NoAccessLayout from "./NoAccessLayout";
 const meta: Meta<typeof NoAccessLayout> = {
   title: "Layouts/NoAccessLayout",
   component: NoAccessLayout,
-  tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },

@@ -22,7 +22,6 @@ const meta: Meta<typeof PublicBurgerButton> = {
       </div>
     ),
   ],
-  tags: ["autodocs"],
   args: {
     navOpen: false,
     onClick: fn(),

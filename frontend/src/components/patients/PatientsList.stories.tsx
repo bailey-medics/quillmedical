@@ -18,7 +18,6 @@ import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 const meta: Meta<typeof PatientsList> = {
   title: "Patients/PatientsList",
   component: PatientsList,
-  tags: ["autodocs"],
 };
 
 export default meta;

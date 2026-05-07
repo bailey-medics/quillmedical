@@ -6,7 +6,6 @@ const meta: Meta<typeof LoginForm> = {
   title: "Registration/LoginForm",
   component: LoginForm,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   args: {
     onSubmit: fn(),
   },

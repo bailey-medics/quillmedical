@@ -15,7 +15,6 @@ const meta: Meta<typeof LetterView> = {
   title: "Letters/LetterView",
   component: LetterView,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;
