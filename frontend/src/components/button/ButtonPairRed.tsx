@@ -63,7 +63,7 @@ export default function ButtonPairRed({
       </Button>
       <Button
         type={acceptType}
-        color="red"
+        color="var(--alert-color)"
         onClick={onAccept}
         disabled={acceptDisabled}
         loading={acceptLoading}

@@ -190,7 +190,7 @@ export default function OrgFeaturesPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading features"
-          color="red"
+          color="var(--alert-color)"
         >
           {error}
         </Alert>

@@ -108,7 +108,7 @@ export default function UserAdminPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading user"
-          color="red"
+          color="var(--alert-color)"
         >
           {error || "User not found"}
         </Alert>
@@ -182,7 +182,11 @@ export default function UserAdminPage() {
                   <BodyTextBold>Removed competencies:</BodyTextBold>
                   <Group gap="xs">
                     {user.removed_competencies.map((comp) => (
-                      <Badge key={comp} variant="light" color="red">
+                      <Badge
+                        key={comp}
+                        variant="light"
+                        color="var(--alert-color)"
+                      >
                         {competenciesData.competencies.find(
                           (c) => c.id === comp,
                         )?.display_name || comp}

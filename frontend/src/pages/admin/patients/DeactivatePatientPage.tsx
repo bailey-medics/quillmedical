@@ -145,7 +145,7 @@ export default function DeactivatePatientPage() {
         title: "Deactivation failed",
         message:
           err instanceof Error ? err.message : "Failed to deactivate patient",
-        color: "red",
+        color: "var(--alert-color)",
       });
     } finally {
       setDeactivating(false);
@@ -167,7 +167,7 @@ export default function DeactivatePatientPage() {
             <Alert
               icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
-              color="red"
+              color="var(--alert-color)"
             >
               {error}
             </Alert>
@@ -243,7 +243,7 @@ export default function DeactivatePatientPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>
@@ -274,7 +274,7 @@ export default function DeactivatePatientPage() {
                   <Table.Td style={{ textAlign: "right" }}>
                     <Button
                       variant="light"
-                      color="red"
+                      color="var(--alert-color)"
                       size="xs"
                       leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(patient)}

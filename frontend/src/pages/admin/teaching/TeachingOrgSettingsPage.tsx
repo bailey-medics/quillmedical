@@ -108,7 +108,7 @@ export default function TeachingOrgSettingsPage() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Alert color="red" title="Error">
+        <Alert color="var(--alert-color)" title="Error">
           {error}
         </Alert>
       </Container>
@@ -148,7 +148,7 @@ export default function TeachingOrgSettingsPage() {
             />
 
             {saveError && (
-              <Alert color="red" title="Error">
+              <Alert color="var(--alert-color)" title="Error">
                 {saveError}
               </Alert>
             )}

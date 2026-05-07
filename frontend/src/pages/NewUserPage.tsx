@@ -341,7 +341,7 @@ function Step3Permissions({
               <BodyTextBold>Removed competencies:</BodyTextBold>
               <Group gap="xs">
                 {formData.removedCompetencies.map((id) => (
-                  <Badge key={id} variant="light" color="red">
+                  <Badge key={id} variant="light" color="var(--alert-color)">
                     {competenciesData.competencies.find(
                       (c: Competency) => c.id === id,
                     )?.display_name || id}
@@ -388,7 +388,11 @@ function Step4Confirmation({
         </>
       ) : (
         <>
-          <Icon icon={<IconAlertCircle />} size="xl" colour="red" />
+          <Icon
+            icon={<IconAlertCircle />}
+            size="xl"
+            colour="var(--alert-color)"
+          />
           <Heading>
             {isEditMode ? "Failed to update user" : "Failed to create user"}
           </Heading>
@@ -666,7 +670,7 @@ export default function NewUserPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading user"
-            color="red"
+            color="var(--alert-color)"
             mt="md"
           >
             {loadError}

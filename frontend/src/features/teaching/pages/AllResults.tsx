@@ -163,7 +163,11 @@ export default function AllResults() {
                         Pass
                       </Badge>
                     ) : (
-                      <Badge variant="light" color="red" size="sm">
+                      <Badge
+                        variant="light"
+                        color="var(--alert-color)"
+                        size="sm"
+                      >
                         Fail
                       </Badge>
                     )}

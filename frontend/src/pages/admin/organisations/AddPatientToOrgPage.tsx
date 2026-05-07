@@ -118,7 +118,7 @@ export default function AddPatientToOrgPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="lg" />}
             title="Error"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

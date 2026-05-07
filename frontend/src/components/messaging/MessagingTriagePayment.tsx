@@ -288,7 +288,7 @@ export default function MessagingTriagePayment({
                 </Button>
                 <Button
                   variant="outline"
-                  color="red"
+                  color="var(--alert-color)"
                   onClick={patientDeclineOffer}
                 >
                   Decline

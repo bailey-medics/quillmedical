@@ -60,7 +60,7 @@ export function ErrorFallback({ onReload }: FallbackProps) {
         <Icon
           icon={<IconAlertTriangle />}
           size="xl"
-          colour="var(--mantine-color-red-6)"
+          colour="var(--alert-color)"
         />
         <Heading>Something went wrong</Heading>
         <BodyText c="gray.5">

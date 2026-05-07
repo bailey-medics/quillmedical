@@ -111,7 +111,7 @@ export default function ViewAllPatientsPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

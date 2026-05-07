@@ -121,7 +121,7 @@ export default function Messages() {
               err instanceof Error
                 ? err.message
                 : "Something went wrong. Please try again.",
-            color: "red",
+            color: "var(--alert-color)",
           });
         })
         .finally(() => setIsSubmitting(false));

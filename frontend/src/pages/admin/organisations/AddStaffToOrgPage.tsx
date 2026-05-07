@@ -88,7 +88,7 @@ export default function AddStaffToOrgPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="lg" />}
             title="Error"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

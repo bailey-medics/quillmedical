@@ -111,7 +111,7 @@ export default function CreateOrganisationPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="lg" />}
             title="Error creating organisation"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

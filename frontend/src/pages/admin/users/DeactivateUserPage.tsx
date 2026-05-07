@@ -119,7 +119,7 @@ export default function DeactivateUserPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading users"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>
@@ -148,7 +148,7 @@ export default function DeactivateUserPage() {
                   <Table.Td style={{ textAlign: "right" }}>
                     <Button
                       variant="light"
-                      color="red"
+                      color="var(--alert-color)"
                       size="xs"
                       leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(user)}

@@ -125,7 +125,7 @@ export default function EditOrganisationPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
-          color="red"
+          color="var(--alert-color)"
         >
           {loadError}
         </Alert>
@@ -154,7 +154,7 @@ export default function EditOrganisationPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="lg" />}
             title="Error updating organisation"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

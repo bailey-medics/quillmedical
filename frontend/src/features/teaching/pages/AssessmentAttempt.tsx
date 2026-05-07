@@ -322,7 +322,11 @@ export default function AssessmentAttempt() {
         styles={{ content: { border: "1px solid rgba(0, 0, 0, 0.1)" } }}
       >
         <Stack gap="md" align="center" pt="xl">
-          <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
+          <Icon
+            icon={<IconAlertTriangle />}
+            size="xl"
+            colour="var(--alert-color)"
+          />
           <BodyTextBold justify="centre">
             You have an active exam. Are you sure you want to leave? Your
             progress will be submitted.

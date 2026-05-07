@@ -169,7 +169,7 @@ export default function OrganisationAdminPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
-          color="red"
+          color="var(--alert-color)"
         >
           {error || "Organisation not found"}
         </Alert>
@@ -206,7 +206,7 @@ export default function OrganisationAdminPage() {
             {
               label: "Remove from organisation",
               icon: <IconUserMinus />,
-              color: "red",
+              color: "var(--alert-color)",
               onClick: () => setRemovingMember(member),
             },
           ]}

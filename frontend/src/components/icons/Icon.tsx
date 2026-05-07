@@ -72,7 +72,7 @@ const mobileSizeMap: Record<IconSize, number> = {
  * <Icon icon={<IconPencil />} size="sm" />
  * <Icon icon={<IconUserPlus />} size="lg" />
  * <Icon icon={<IconCheck />} container="teal" />
- * <Icon icon={<IconX />} container="red" containerVariant="filled" />
+ * <Icon icon={<IconX />} container="var(--alert-color)" containerVariant="filled" />
  * ```
  */
 export default function Icon({

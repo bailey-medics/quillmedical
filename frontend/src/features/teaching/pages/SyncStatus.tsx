@@ -86,7 +86,11 @@ export default function SyncStatus() {
                     <Badge
                       variant="light"
                       size="sm"
-                      color={sync.status === "success" ? "green" : "red"}
+                      color={
+                        sync.status === "success"
+                          ? "var(--success-color)"
+                          : "var(--alert-color)"
+                      }
                     >
                       {sync.status}
                     </Badge>
