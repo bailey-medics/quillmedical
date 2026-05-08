@@ -43,14 +43,7 @@ export function VariantRow({
 }: VariantRowProps) {
   return (
     <div>
-      <Text
-        size="lg"
-        fw={typographyTokens.fontWeights.bold}
-        c={STORY_LABEL_COLOR}
-        mb="xs"
-      >
-        {label}
-      </Text>
+      <StoryNote mt={0}>{label}</StoryNote>
       {horizontal ? <Group gap="md">{children}</Group> : children}
     </div>
   );
@@ -111,14 +104,7 @@ export function StateRow({
       <div className={className} style={{ pointerEvents: "none", ...style }}>
         {children}
       </div>
-      <Text
-        size="lg"
-        fw={typographyTokens.fontWeights.body}
-        c={STORY_LABEL_COLOR}
-        mt="xs"
-      >
-        {label}
-      </Text>
+      <StoryNote mt="xs">{label}</StoryNote>
     </div>
   );
 }
@@ -153,7 +139,7 @@ type StoryNoteProps = {
 export function StoryNote({ children, mt = "sm" }: StoryNoteProps) {
   return (
     <Text
-      size="lg"
+      size={typographyTokens.sizes.desktop}
       fw={typographyTokens.fontWeights.body}
       c={STORY_LABEL_COLOR}
       mt={mt}

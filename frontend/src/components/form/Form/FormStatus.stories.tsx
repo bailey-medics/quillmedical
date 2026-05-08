@@ -6,7 +6,8 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { VariantRow, VariantStack } from "@/stories/variants";
+import { Stack } from "@mantine/core";
+import { StoryNote } from "@/stories/variants";
 import FormStatus from "./FormStatus";
 
 const meta: Meta<typeof FormStatus> = {
@@ -25,43 +26,48 @@ type Story = StoryObj<typeof FormStatus>;
  */
 export const AllVariants: Story = {
   render: () => (
-    <VariantStack>
-      <VariantRow label="success" horizontal={false}>
+    <Stack gap="lg">
+      <Stack gap="xs">
+        <StoryNote>success</StoryNote>
         <FormStatus
           variant="success"
           title="Settings saved"
           description="Your changes have been applied."
         />
-      </VariantRow>
-      <VariantRow label="error" horizontal={false}>
+      </Stack>
+      <Stack gap="xs">
+        <StoryNote>error</StoryNote>
         <FormStatus
           variant="error"
           title="Failed to save"
           description="The server returned an error. Please try again."
         />
-      </VariantRow>
-      <VariantRow label="partial_success" horizontal={false}>
+      </Stack>
+      <Stack gap="xs">
+        <StoryNote>partial_success</StoryNote>
         <FormStatus
           variant="partial_success"
           title="Partially saved"
           description="Letter saved to patient record. Delivery to GP is still pending."
         />
-      </VariantRow>
-      <VariantRow label="timeout" horizontal={false}>
+      </Stack>
+      <Stack gap="xs">
+        <StoryNote>timeout</StoryNote>
         <FormStatus
           variant="timeout"
           title="Request timed out"
           description="The server did not respond in time. Your changes may not have been saved."
         />
-      </VariantRow>
-      <VariantRow label="validation_error" horizontal={false}>
+      </Stack>
+      <Stack gap="xs">
+        <StoryNote>validation_error</StoryNote>
         <FormStatus
           variant="validation_error"
           title="Please check the highlighted fields"
           description="2 fields need attention."
         />
-      </VariantRow>
-    </VariantStack>
+      </Stack>
+    </Stack>
   ),
 };
 

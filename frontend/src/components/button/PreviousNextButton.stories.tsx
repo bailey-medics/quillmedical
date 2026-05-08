@@ -9,7 +9,7 @@ import { fn } from "storybook/test";
 import PreviousNextButton from "./PreviousNextButton";
 
 const meta: Meta<typeof PreviousNextButton> = {
-  title: "Button/PreviousNextButton",
+  title: "Teaching/PreviousNextButton",
   component: PreviousNextButton,
   parameters: {
     layout: "padded",

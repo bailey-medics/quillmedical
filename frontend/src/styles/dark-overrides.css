@@ -7,7 +7,9 @@
 
 /* Disabled filled buttons — light navy with white text, matching brand */
 .mantine-Button-root:disabled,
-.mantine-Button-root[data-disabled] {
+.mantine-Button-root[data-disabled],
+.mantine-ActionIcon-root[data-variant="filled"]:disabled,
+.mantine-ActionIcon-root[data-variant="filled"][data-disabled] {
   background-color: var(--mantine-color-primary-2) !important;
   border-color: var(--mantine-color-primary-2) !important;
   color: white !important;
@@ -15,7 +17,9 @@
 
 /* Dark mode — one shade lighter than card bg so they're visible */
 [data-mantine-color-scheme="dark"] .mantine-Button-root:disabled,
-[data-mantine-color-scheme="dark"] .mantine-Button-root[data-disabled] {
+[data-mantine-color-scheme="dark"] .mantine-Button-root[data-disabled],
+[data-mantine-color-scheme="dark"] .mantine-ActionIcon-root[data-variant="filled"]:disabled,
+[data-mantine-color-scheme="dark"] .mantine-ActionIcon-root[data-variant="filled"][data-disabled] {
   background-color: #0a2f56 !important;
   border-color: #0a2f56 !important;
   color: white !important;

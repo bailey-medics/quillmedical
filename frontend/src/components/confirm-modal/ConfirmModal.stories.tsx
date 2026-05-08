@@ -32,8 +32,40 @@ const meta: Meta<typeof ConfirmModal> = {
 export default meta;
 type Story = StoryObj<typeof ConfirmModal>;
 
-/** Interactive demo — click the trigger button to open, confirm to close */
+/** Default — modal with icon, title, and message */
 export const Default: Story = {
+  args: {
+    title: "Delete patient record",
+    icon: <IconAlertTriangle />,
+    acceptLabel: "Delete",
+    submittingLabel: "Deleting…",
+    children:
+      "This will permanently delete the patient record. This action cannot be undone.",
+  },
+};
+
+/** Title and message only (no icon) */
+export const TitleOnly: Story = {
+  args: {
+    title: "Remove member",
+    acceptLabel: "Remove",
+    children:
+      "Are you sure you want to remove this member? This action cannot be undone.",
+  },
+};
+
+/** Icon and message only (no title) */
+export const IconOnly: Story = {
+  args: {
+    icon: <IconAlertTriangle />,
+    acceptLabel: "Leave",
+    cancelLabel: "Stay",
+    children: "You have unsaved changes that will be lost.",
+  },
+};
+
+/** Interactive demo — click the trigger button to open, confirm to close */
+export const Interactive: Story = {
   args: { opened: false },
   render: function InteractiveDemo() {
     const [opened, setOpened] = useState(false);
@@ -103,26 +135,6 @@ export const Default: Story = {
         </ConfirmModal>
       </Stack>
     );
-  },
-};
-
-/** Title and message only (no icon) */
-export const TitleOnly: Story = {
-  args: {
-    title: "Remove member",
-    acceptLabel: "Remove",
-    children:
-      "Are you sure you want to remove this member? This action cannot be undone.",
-  },
-};
-
-/** Icon and message only (no title) */
-export const IconOnly: Story = {
-  args: {
-    icon: <IconAlertTriangle />,
-    acceptLabel: "Leave",
-    cancelLabel: "Stay",
-    children: "You have unsaved changes that will be lost.",
   },
 };
 

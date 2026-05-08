@@ -12,15 +12,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 // ...existing imports...
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
+import { StoryNote } from "@/stories/variants";
 import MainLayout from "./MainLayout";
 
 // demoPatientsList imported from centralized demo-data
 
-const Content = () => (
-  <div style={{ flex: 1, padding: 16, color: "#667085" }}>
-    Desktop content area.
-  </div>
-);
+const Content = () => <StoryNote p="md">Desktop content area.</StoryNote>;
 
 // ...existing code...
 

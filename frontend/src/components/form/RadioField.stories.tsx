@@ -90,12 +90,17 @@ export const Disabled: Story = {
 };
 
 export const WithError: Story = {
-  args: {
-    label: "Select an answer",
-    options: sampleOptions,
-    value: null,
-    onChange: () => {},
-    error: "Please select an option to continue",
+  render: () => {
+    const [value, setValue] = useState<string | null>(null);
+    return (
+      <RadioField
+        label="Select an answer"
+        options={sampleOptions}
+        value={value}
+        onChange={setValue}
+        error="Please select an option to continue"
+      />
+    );
   },
 };
 
@@ -104,6 +109,7 @@ export const DarkMode: Story = {
   render: () => {
     const [value1, setValue1] = useState<string | null>("b");
     const [value2, setValue2] = useState<string | null>("a");
+    const [value3, setValue3] = useState<string | null>(null);
     return (
       <Stack gap="xl">
         <BaseCard>
@@ -137,8 +143,8 @@ export const DarkMode: Story = {
           <RadioField
             label="Select an answer - error"
             options={sampleOptions}
-            value={null}
-            onChange={() => {}}
+            value={value3}
+            onChange={setValue3}
             error="Please select an option to continue"
           />
         </BaseCard>

@@ -10,6 +10,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack, Group } from "@mantine/core";
 import NavIcon from "./NavIcon";
+import { StoryNote } from "@/stories/variants";
 
 const iconNames = [
   "home",
@@ -80,9 +81,9 @@ export const AllSizes: Story = {
               <NavIcon key={name} name={name} size={size} />
             ))}
           </Group>
-          <div style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
+          <StoryNote mt="xs">
             {size === "lg" ? `${size} (default)` : size}
-          </div>
+          </StoryNote>
         </div>
       ))}
     </Stack>

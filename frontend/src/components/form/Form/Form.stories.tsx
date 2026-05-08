@@ -19,9 +19,7 @@ import SolidSwitch from "../SolidSwitch";
 import RadioField from "../RadioField";
 
 import { IconAlertTriangle } from "@/components/icons/appIcons";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { PageFlash } from "@/components/page-flash";
+import { useState } from "react";
 import type { FlashState } from "@/components/page-flash";
 
 const meta: Meta<typeof Form> = {
@@ -71,15 +69,18 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Injects flash into router state so PageFlash can read it */
+/** Renders a flash message directly via FormStatus */
 function InjectFlash({ flash }: { flash: FlashState["flash"] | null }) {
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (flash) {
-      navigate(".", { replace: true, state: { flash } });
-    }
-  }, [flash, navigate]);
-  return <PageFlash />;
+  if (!flash) {
+    return null;
+  }
+  return (
+    <FormStatus
+      variant={flash.variant ?? "success"}
+      title={flash.title}
+      description={flash.description}
+    />
+  );
 }
 
 /**

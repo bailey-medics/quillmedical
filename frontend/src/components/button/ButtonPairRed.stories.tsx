@@ -33,11 +33,12 @@ export const AcceptDisabled: Story = {
   },
 };
 
-/** Accept button loading */
-export const AcceptLoading: Story = {
+/** Accept button in submitting state */
+export const Submitting: Story = {
   args: {
     acceptLabel: "Deactivating...",
     acceptLoading: true,
+    acceptDisabled: true,
   },
 };
 

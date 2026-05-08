@@ -9,6 +9,7 @@
  * - Used in patient cards and summaries
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
 import Demographics from "./Demographics";
 import type { Patient } from "@/domains/patient";
 
@@ -62,6 +63,12 @@ export const Loading: Story = {
 };
 
 export const DarkMode: Story = {
-  ...Default,
+  args: { patient: basePatient },
   globals: { colorScheme: "dark" },
+  render: () => (
+    <Stack gap="xl">
+      <Demographics patient={basePatient} />
+      <Demographics isLoading />
+    </Stack>
+  ),
 };

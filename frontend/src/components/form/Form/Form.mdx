@@ -93,42 +93,38 @@ function SettingsPage() {
 
 ## Destructive actions (§1 — confirm modal)
 
-For destructive or irreversible actions, use `<ConfirmModal>` as a safety gate before submission. The modal manages its own async loading state — the form stays idle until the user confirms.
+For destructive or irreversible actions, use the `confirm` prop on `<Form>` to gate submission behind a confirmation modal. The modal manages its own async loading state — the form stays idle until the user confirms.
 
 ```tsx
-import { ConfirmModal } from "@components/confirm-modal";
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 function PermissionsPage() {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
   const handleSubmit = async () => {
-    setConfirmOpen(true);
-    return new Promise(() => {}); // ConfirmModal takes over
-  };
-
-  const handleConfirm = async () => {
     await api.delete("/api/permissions/123");
+    return {
+      state: "success",
+      message: { title: "Permissions deleted" },
+    };
   };
 
   return (
-    <Form onSubmit={handleSubmit} submitLabel="Delete permissions">
+    <Form
+      onSubmit={handleSubmit}
+      submitLabel="Delete permissions"
+      submittingLabel="Deleting…"
+      confirm={{
+        title: "Delete system permissions",
+        acceptLabel: "Delete",
+        submittingLabel: "Deleting…",
+        icon: <IconAlertTriangle />,
+        children:
+          "This will permanently delete all permissions. This action cannot be undone.",
+      }}
+    >
       <Stack gap="md">
         <FormStatus />
         {/* ... fields ... */}
         <SubmitButton />
-        <ConfirmModal
-          opened={confirmOpen}
-          onClose={() => setConfirmOpen(false)}
-          onAccept={handleConfirm}
-          title="Delete system permissions"
-          acceptLabel="Delete"
-          submittingLabel="Deleting…"
-          icon={<IconAlertTriangle />}
-        >
-          This will permanently delete all permissions. This action cannot be
-          undone.
-        </ConfirmModal>
       </Stack>
     </Form>
   );
@@ -204,10 +200,12 @@ function PatientLettersPage() {
 ### `<Form>`
 
 The outer wrapper. Accepts `defaultValues`, an async `onSubmit` handler that returns a
-`FormSubmitResult`, and optional `submitLabel`, `submittingLabel`, `timeoutMs`, and
-`disableWhenClean` props.
+`FormSubmitResult`, and optional `submitLabel`, `submittingLabel`, `timeoutMs`,
+`disableWhenClean`, and `confirm` props.
 
 When `disableWhenClean` is true, the submit button is disabled until the user changes a field value.
+
+When `confirm` is provided, a `<ConfirmModal>` gates submission — the form validates first, then shows the modal. On confirm, the `onSubmit` handler runs.
 
 ### `<FormStatus />`
 
@@ -215,7 +213,7 @@ Displays a status card when the form is in a result state (success, error, parti
 Renders nothing during idle/submitting. Place it at the top of your form layout.
 
 - Uses `role="status"` for success/partial success, `role="alert"` for errors/timeout/validation
-- Scrolls into view when it appears
+- Scrolls the page to the top when it appears
 - Dismissible by the user, never auto-dismissed
 - Can also be used standalone with manual props: `<FormStatus variant="success" title="Done" />`
 

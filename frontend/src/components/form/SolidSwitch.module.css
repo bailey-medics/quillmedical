@@ -8,7 +8,11 @@
 
 /* Keep primary track colour when switch is checked + disabled */
 .root:has(input:checked:disabled) {
-  --switch-disabled-color: var(--mantine-primary-color-filled);
+  --switch-disabled-color: var(--mantine-color-primary-2);
+}
+
+:global([data-mantine-color-scheme="dark"]) .root:has(input:checked:disabled) {
+  --switch-disabled-color: #0a2f56;
 }
 
 .topLabel {

@@ -150,6 +150,18 @@ export const typographyTokens = {
     lg: { mobile: "1.25rem", desktop: "1.5rem" }, // 20px → 24px
     xl: { mobile: "1.625rem", desktop: "2rem" }, // 26px → 32px
   },
+  /**
+   * Semantic size aliases — map meaningful names to Mantine size tokens.
+   * Use these in components instead of raw "md" / "xs" strings.
+   *
+   * Each resolves to a responsive CSS variable:
+   * - desktop: 19px — NHS/GOV.UK standard body text on large screens
+   * - mobile: 16px — NHS/GOV.UK standard body text on small screens
+   */
+  sizes: {
+    desktop: "md", // 16px mobile → 19px desktop
+    mobile: "xs", // 14px mobile → 16px desktop
+  },
   headings: {
     h1: { mobile: "1.625rem", desktop: "2rem", lineHeight: "1.3" },
     h2: { mobile: "1.5rem", desktop: "1.75rem", lineHeight: "1.35" },
@@ -183,6 +195,12 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--public-button-outline-hover-text": "#d4a854",
     // Public burger hover background
     "--public-burger-hover": "#1e2d4a",
+    // Typography — mobile sizes (base, applied on :root in typography.css)
+    "--typo-mobile-xs": typographyTokens.fontSizes.xs.mobile,
+    "--typo-mobile-sm": typographyTokens.fontSizes.sm.mobile,
+    "--typo-mobile-md": typographyTokens.fontSizes.md.mobile,
+    "--typo-mobile-lg": typographyTokens.fontSizes.lg.mobile,
+    "--typo-mobile-xl": typographyTokens.fontSizes.xl.mobile,
     // Typography — desktop sizes (applied at sm breakpoint via CSS)
     "--typo-desktop-xs": typographyTokens.fontSizes.xs.desktop,
     "--typo-desktop-sm": typographyTokens.fontSizes.sm.desktop,
@@ -255,6 +273,10 @@ export const theme = createTheme({
   /** App font — Atkinson Hyperlegible Next (Braille Institute) */
   fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
 
+  /** Monospace font — for code blocks, inline code, and technical data */
+  fontFamilyMonospace:
+    "'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+
   /** Default text colour — brand navy instead of pure black */
   black: "#143f6b",
 
@@ -268,14 +290,12 @@ export const theme = createTheme({
   primaryColor: "primary",
   primaryShade: 5,
 
-  /** Font sizes — mobile-first base values from typographyTokens */
-  fontSizes: {
-    xs: typographyTokens.fontSizes.xs.mobile,
-    sm: typographyTokens.fontSizes.sm.mobile,
-    md: typographyTokens.fontSizes.md.mobile,
-    lg: typographyTokens.fontSizes.lg.mobile,
-    xl: typographyTokens.fontSizes.xl.mobile,
-  },
+  /**
+   * Font sizes — handled entirely in typography.css for responsive scaling.
+   * Mobile sizes set on :root, desktop overrides in @media (width >= 48em).
+   * Removed from createTheme() to prevent Mantine's runtime <style> tag
+   * from overriding the CSS media query (source-order specificity issue).
+   */
 
   /** Heading sizes — mobile-first values from typographyTokens */
   headings: {

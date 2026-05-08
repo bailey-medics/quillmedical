@@ -25,36 +25,6 @@ export const Default: Story = {
   ),
 };
 
-export const WithLabel: Story = {
-  args: {
-    label: "Section",
-    labelPosition: "center",
-  },
-  render: (args) => (
-    <Stack>
-      <BodyText>Content above</BodyText>
-      <Divider {...args} />
-      <BodyText>Content below</BodyText>
-    </Stack>
-  ),
-};
-
-export const AllLabelPositions: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="left" horizontal={false}>
-        <Divider label="Left label" labelPosition="left" />
-      </VariantRow>
-      <VariantRow label="center" horizontal={false}>
-        <Divider label="Centre label" labelPosition="center" />
-      </VariantRow>
-      <VariantRow label="right" horizontal={false}>
-        <Divider label="Right label" labelPosition="right" />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
 export const Vertical: Story = {
   render: () => (
     <div
@@ -112,7 +82,7 @@ export const DarkMode: Story = {
   render: () => (
     <Stack>
       <BodyText>Content above</BodyText>
-      <Divider label="Section" labelPosition="center" />
+      <Divider />
       <BodyText>Content below</BodyText>
       <div
         style={{

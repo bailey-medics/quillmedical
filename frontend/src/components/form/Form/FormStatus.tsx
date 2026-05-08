@@ -20,7 +20,7 @@
  */
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Box, CloseButton, Group, Stack } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -121,15 +121,14 @@ function FormStatusCard({
   description?: ReactNode;
   onDismiss?: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
   const config = VARIANT_CONFIG[variant];
 
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [title, variant]);
 
   return (
-    <div ref={ref}>
+    <div>
       <BaseCard
         bg={config.bg}
         data-testid="form-status"

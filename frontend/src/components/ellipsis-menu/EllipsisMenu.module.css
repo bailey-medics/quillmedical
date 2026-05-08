@@ -1,0 +1,12 @@
+.trigger {
+  background-color: #e9ecef;
+  color: #868e96;
+}
+
+.trigger:hover {
+  background-color: #dee2e6;
+}
+
+.trigger:active {
+  background-color: #ced4da;
+}

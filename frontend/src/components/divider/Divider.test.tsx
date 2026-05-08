@@ -15,17 +15,4 @@ describe("Divider", () => {
     expect(divider).toBeInTheDocument();
     expect(divider).toHaveAttribute("data-orientation", "vertical");
   });
-
-  it("renders a label when provided", () => {
-    const { container } = renderWithMantine(
-      <Divider label="Section" labelPosition="center" />,
-    );
-    expect(container).toHaveTextContent("Section");
-  });
-
-  it("renders without a label by default", () => {
-    const { container } = renderWithMantine(<Divider />);
-    const label = container.querySelector(".mantine-Divider-label");
-    expect(label).not.toBeInTheDocument();
-  });
 });

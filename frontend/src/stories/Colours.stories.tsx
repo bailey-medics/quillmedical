@@ -173,7 +173,7 @@ export const Overview: Story = {
         <StoryNote>
           Used in badges, alerts, and form validation to communicate state.
         </StoryNote>
-        <Stack gap="sm">
+        <Stack gap="sm" mt="xl">
           {statusEntries.map(([name, config]) => (
             <StatusSwatch key={name} name={name} config={config} />
           ))}

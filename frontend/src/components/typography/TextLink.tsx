@@ -9,6 +9,7 @@
 import { Anchor } from "@mantine/core";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { typographyTokens } from "@/theme";
 import classes from "./TextLink.module.css";
 
 interface TextLinkProps {
@@ -29,7 +30,7 @@ export default function TextLink({ to, children }: TextLinkProps) {
     <Anchor
       component={Link}
       to={to}
-      size="lg"
+      size={typographyTokens.sizes.desktop}
       underline="always"
       className={classes.link}
     >

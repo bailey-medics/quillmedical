@@ -35,14 +35,6 @@ export const Required: Story = {
   },
 };
 
-export const WithValue: Story = {
-  args: {
-    label: "Email address",
-    value: "gemma@example.com",
-    readOnly: true,
-  },
-};
-
 export const Disabled: Story = {
   args: {
     label: "Username",

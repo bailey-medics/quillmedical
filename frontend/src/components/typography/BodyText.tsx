@@ -2,8 +2,9 @@
  * BodyText Component
  *
  * Primary body text component for the application. Renders block-level
- * text at `lg` size with standard body weight (500). Inherits the theme
- * text colour (navy) via `--mantine-color-text`.
+ * text at `md` size (16px mobile → 19px desktop) with standard body
+ * weight (500). Matches NHS/GOV.UK typography recommendations.
+ * Inherits the theme text colour (navy) via `--mantine-color-text`.
  */
 
 import { Text } from "@mantine/core";
@@ -39,7 +40,7 @@ export default function BodyText({
 }: BodyTextProps) {
   return (
     <Text
-      size="lg"
+      size={typographyTokens.sizes.desktop}
       fw={typographyTokens.fontWeights.body}
       c={c}
       ta={alignMap[justify]}

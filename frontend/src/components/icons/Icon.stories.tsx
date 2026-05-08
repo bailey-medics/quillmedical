@@ -6,12 +6,13 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Group, SimpleGrid, Stack } from "@mantine/core";
 import { IconPencil, IconCheck, IconX } from "@/components/icons/appIcons";
 import Icon from "./Icon";
 import { iconCatalogue } from "./appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 import { statusColours } from "@/styles/semanticColours";
+import { VariantRow, VariantStack, StoryNote } from "@/stories/variants";
 
 /**
  * Icon component provides consistent sizing for Tabler icons.
@@ -32,7 +33,7 @@ const meta = {
   title: "Icons/Icon",
   component: Icon,
   parameters: {
-    layout: "centered",
+    layout: "padded",
   },
 } satisfies Meta<typeof Icon>;
 
@@ -53,18 +54,9 @@ export const Default: Story = {
         <BaseCard key={name} style={{ textAlign: "center" }}>
           <Stack gap="xs" align="center">
             <Icon icon={<IconComponent />} size="lg" />
-            <Text
-              size="xs"
-              c="var(--mantine-color-text)"
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
+            <StoryNote mt={0}>
               {name.replace(/([A-Z])/g, " $1").trim()}
-            </Text>
+            </StoryNote>
           </Stack>
         </BaseCard>
       ))}
@@ -73,85 +65,26 @@ export const Default: Story = {
 };
 
 /**
- * All sizes comparison — sm, md, lg, and xl side by side.
+ * All sizes comparison — sm, md, lg, and xl with a single icon.
  */
 export const AllSizes: Story = {
   args: {
     icon: <IconPencil />,
     size: "md",
   },
-  render: () => {
-    const sampleIcons = Object.entries(iconCatalogue).slice(0, 10);
-    return (
-      <BaseCard>
-        <Stack gap="xl">
-          <div>
-            <Text size="sm" fw={700} mb="xs">
-              Small (20px desktop, 16px mobile)
-            </Text>
-            <SimpleGrid cols={5} spacing="md">
-              {sampleIcons.map(([name, IconComponent]) => (
-                <Stack key={name} gap={4} align="center">
-                  <Icon icon={<IconComponent />} size="sm" />
-                  <Text size="xs" c="dimmed">
-                    {name}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-          </div>
-
-          <div>
-            <Text size="sm" fw={700} mb="xs">
-              Medium (28px desktop, 20px mobile) — default
-            </Text>
-            <SimpleGrid cols={5} spacing="md">
-              {sampleIcons.map(([name, IconComponent]) => (
-                <Stack key={name} gap={4} align="center">
-                  <Icon icon={<IconComponent />} size="md" />
-                  <Text size="xs" c="dimmed">
-                    {name}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-          </div>
-
-          <div>
-            <Text size="sm" fw={700} mb="xs">
-              Large (48px desktop, 32px mobile)
-            </Text>
-            <SimpleGrid cols={5} spacing="md">
-              {sampleIcons.map(([name, IconComponent]) => (
-                <Stack key={name} gap={4} align="center">
-                  <Icon icon={<IconComponent />} size="lg" />
-                  <Text size="xs" c="dimmed">
-                    {name}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-          </div>
-
-          <div>
-            <Text size="sm" fw={700} mb="xs">
-              Extra large (72px desktop, 48px mobile)
-            </Text>
-            <SimpleGrid cols={5} spacing="md">
-              {sampleIcons.map(([name, IconComponent]) => (
-                <Stack key={name} gap={4} align="center">
-                  <Icon icon={<IconComponent />} size="xl" />
-                  <Text size="xs" c="dimmed">
-                    {name}
-                  </Text>
-                </Stack>
-              ))}
-            </SimpleGrid>
-          </div>
-        </Stack>
-      </BaseCard>
-    );
-  },
+  render: () => (
+    <VariantStack>
+      {(["sm", "md", "lg", "xl"] as const).map((size) => (
+        <VariantRow
+          key={size}
+          label={size === "md" ? "md (default)" : size}
+          align="start"
+        >
+          <Icon icon={<IconPencil />} size={size} />
+        </VariantRow>
+      ))}
+    </VariantStack>
+  ),
 };
 
 /**
@@ -171,9 +104,7 @@ export const WithColour: Story = {
           size="lg"
           colour="var(--mantine-color-teal-filled)"
         />
-        <Text size="xs" c="dimmed">
-          Success
-        </Text>
+        <StoryNote mt={0}>Success</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -181,9 +112,7 @@ export const WithColour: Story = {
           size="lg"
           colour="var(--mantine-color-blue-filled)"
         />
-        <Text size="xs" c="dimmed">
-          Info
-        </Text>
+        <StoryNote mt={0}>Info</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -191,9 +120,7 @@ export const WithColour: Story = {
           size="lg"
           colour="var(--mantine-color-red-filled)"
         />
-        <Text size="xs" c="dimmed">
-          Alert
-        </Text>
+        <StoryNote mt={0}>Alert</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -201,9 +128,7 @@ export const WithColour: Story = {
           size="lg"
           colour="var(--mantine-color-cyan-6)"
         />
-        <Text size="xs" c="dimmed">
-          Warning
-        </Text>
+        <StoryNote mt={0}>Warning</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -211,15 +136,11 @@ export const WithColour: Story = {
           size="lg"
           colour="var(--mantine-color-violet-filled)"
         />
-        <Text size="xs" c="dimmed">
-          Accent
-        </Text>
+        <StoryNote mt={0}>Accent</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon icon={<IconPencil />} size="lg" />
-        <Text size="xs" c="dimmed">
-          Default
-        </Text>
+        <StoryNote mt={0}>Default</StoryNote>
       </Stack>
     </Group>
   ),
@@ -238,15 +159,11 @@ export const WithContainer: Story = {
     <Group gap="lg">
       <Stack gap="xs" align="center">
         <Icon icon={<IconCheck />} container={statusColours.success.bg} />
-        <Text size="xs" c="dimmed">
-          Light success
-        </Text>
+        <StoryNote mt={0}>Light success</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon icon={<IconX />} container={statusColours.alert.bg} />
-        <Text size="xs" c="dimmed">
-          Light alert
-        </Text>
+        <StoryNote mt={0}>Light alert</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -254,9 +171,7 @@ export const WithContainer: Story = {
           container={statusColours.success.bg}
           containerVariant="filled"
         />
-        <Text size="xs" c="dimmed">
-          Filled success
-        </Text>
+        <StoryNote mt={0}>Filled success</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -264,15 +179,11 @@ export const WithContainer: Story = {
           container={statusColours.alert.bg}
           containerVariant="filled"
         />
-        <Text size="xs" c="dimmed">
-          Filled alert
-        </Text>
+        <StoryNote mt={0}>Filled alert</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon icon={<IconPencil />} container={statusColours.info.bg} />
-        <Text size="xs" c="dimmed">
-          Light info
-        </Text>
+        <StoryNote mt={0}>Light info</StoryNote>
       </Stack>
       <Stack gap="xs" align="center">
         <Icon
@@ -280,9 +191,7 @@ export const WithContainer: Story = {
           container={statusColours.accent.bg}
           containerVariant="filled"
         />
-        <Text size="xs" c="dimmed">
-          Filled accent
-        </Text>
+        <StoryNote mt={0}>Filled accent</StoryNote>
       </Stack>
     </Group>
   ),
