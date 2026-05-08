@@ -20,7 +20,6 @@ export default meta;
 
 type Story = StoryObj<typeof LetterList>;
 
-
 export const Default: Story = {
   args: {
     letters: fakeLetters,
