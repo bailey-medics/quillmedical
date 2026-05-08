@@ -22,6 +22,7 @@
 import { Box, Modal, Stack } from "@mantine/core";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useState } from "react";
+import ButtonPair from "@/components/button/ButtonPair";
 import ButtonPairRed from "@/components/button/ButtonPairRed";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
@@ -46,6 +47,8 @@ export interface ConfirmModalProps {
   cancelLabel?: string;
   /** Centred icon above title/message */
   icon?: ReactElement;
+  /** Use red (destructive) or blue (non-destructive) accept button. Defaults to true */
+  destructive?: boolean;
 }
 
 export default function ConfirmModal({
@@ -58,6 +61,7 @@ export default function ConfirmModal({
   submittingLabel = "Confirming\u2026",
   cancelLabel = "Cancel",
   icon,
+  destructive = true,
 }: ConfirmModalProps) {
   const [loading, setLoading] = useState(false);
 
@@ -97,16 +101,28 @@ export default function ConfirmModal({
         )}
         {title && <Heading justify="centre">{title}</Heading>}
         <BodyText justify="centre">{children}</BodyText>
-        <ButtonPairRed
-          onAccept={handleAccept}
-          onCancel={onClose}
-          acceptLabel={acceptLabel}
-          submittingLabel={submittingLabel}
-          cancelLabel={cancelLabel}
-          acceptDisabled={loading}
-          acceptLoading={loading}
-          justify="center"
-        />
+        {destructive ? (
+          <ButtonPairRed
+            onAccept={handleAccept}
+            onCancel={onClose}
+            acceptLabel={acceptLabel}
+            submittingLabel={submittingLabel}
+            cancelLabel={cancelLabel}
+            acceptDisabled={loading}
+            acceptLoading={loading}
+            justify="center"
+          />
+        ) : (
+          <ButtonPair
+            onAccept={handleAccept}
+            onCancel={onClose}
+            acceptLabel={acceptLabel}
+            cancelLabel={cancelLabel}
+            acceptLoading={loading}
+            acceptDisabled={loading}
+            justify="center"
+          />
+        )}
       </Stack>
     </Modal>
   );

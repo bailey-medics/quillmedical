@@ -125,7 +125,7 @@ function FormStatusCard({
   const config = VARIANT_CONFIG[variant];
 
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [title, variant]);
 
   return (

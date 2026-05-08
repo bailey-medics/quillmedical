@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Stack, Group, Skeleton, Alert, Modal } from "@mantine/core";
+import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -26,7 +26,7 @@ import {
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
-import ButtonPairRed from "@/components/button/ButtonPairRed";
+import { ConfirmModal } from "@/components/confirm-modal";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
@@ -134,13 +134,8 @@ export default function OrganisationAdminPage() {
 
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
-    try {
-      await api.del(`/organizations/${id}/staff/${removingMember.id}`);
-      setRemovingMember(null);
-      await fetchOrganizationData();
-    } catch {
-      setRemovingMember(null);
-    }
+    await api.del(`/organizations/${id}/staff/${removingMember.id}`);
+    await fetchOrganizationData();
   }
 
   if (loading) {
@@ -342,25 +337,17 @@ export default function OrganisationAdminPage() {
           </Stack>
         </BaseCard>
 
-        <Modal
+        <ConfirmModal
           opened={removingMember !== null}
           onClose={() => setRemovingMember(null)}
+          onAccept={confirmRemoveStaff}
           title="Remove staff member"
-          centered
+          acceptLabel="Remove"
+          submittingLabel="Removing…"
         >
-          <Stack gap="md">
-            <BodyTextInline>
-              Are you sure you want to remove{" "}
-              <strong>{removingMember?.username}</strong> from this
-              organisation?
-            </BodyTextInline>
-            <ButtonPairRed
-              acceptLabel="Remove"
-              onAccept={confirmRemoveStaff}
-              onCancel={() => setRemovingMember(null)}
-            />
-          </Stack>
-        </Modal>
+          Are you sure you want to remove{" "}
+          <strong>{removingMember?.username}</strong> from this organisation?
+        </ConfirmModal>
       </Stack>
     </Container>
   );

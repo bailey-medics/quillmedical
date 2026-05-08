@@ -117,8 +117,9 @@ export const greyScale = [
  * used as filled backgrounds with white/dark text.
  *
  * Note: `--error-color` (#f55142) is a separate token for form validation
- * borders (accessibility-tuned). `--alert-color` (#fa5252) is for status
- * badges, destructive buttons, and notifications.
+ * borders (accessibility-tuned). `--error-focus-color` (#ffb3b3) is a lighter
+ * variant used when an errored field receives focus. `--alert-color` (#fa5252)
+ * is for status badges, destructive buttons, and notifications.
  */
 export const statusColourValues = {
   success: "#12b886", // Teal — active, completed, pass (Mantine teal.6)
@@ -229,6 +230,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     // Error text/border — accessible orange-red for colour-blind users
     "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
+    "--error-focus-color": "#ffb3b3",
     // Chat bubble backgrounds
     "--bubble-mine-bg": "#245d8f",
     "--bubble-theirs-bg": "#0a2f56",
@@ -241,6 +243,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     // Error text/border — accessible orange-red for colour-blind users
     "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
+    "--error-focus-color": "#ffb3b3",
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",

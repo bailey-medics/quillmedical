@@ -17,13 +17,13 @@ import {
   Skeleton,
   Center,
   Alert,
-  Modal,
   Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserCheck } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
+import { ConfirmModal } from "@/components/confirm-modal";
 import {
   BodyText,
   BodyTextInline,
@@ -298,26 +298,20 @@ export default function ActivatePatientPage() {
               </Table.Tbody>
             </Table>
 
-            <Modal
+            <ConfirmModal
               opened={!!selectedPatient}
               onClose={() => setSelectedPatient(null)}
+              onAccept={handleActivateConfirm}
               title="Confirm activation"
+              acceptLabel="Confirm"
+              destructive={false}
             >
-              {selectedPatient && (
-                <Stack gap="md">
-                  <BodyTextInline>
-                    Are you sure you want to activate{" "}
-                    <strong>{formatName(selectedPatient.name)}</strong>?
-                  </BodyTextInline>
-                  <ButtonPair
-                    acceptLabel="Confirm"
-                    acceptLoading={activating}
-                    onAccept={handleActivateConfirm}
-                    onCancel={() => setSelectedPatient(null)}
-                  />
-                </Stack>
-              )}
-            </Modal>
+              Are you sure you want to activate{" "}
+              <strong>
+                {selectedPatient ? formatName(selectedPatient.name) : ""}
+              </strong>
+              ?
+            </ConfirmModal>
           </>
         )}
       </Stack>

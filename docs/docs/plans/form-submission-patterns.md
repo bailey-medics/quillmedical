@@ -19,7 +19,6 @@
     - Spinner with `role="status"` / `aria-label`, delayed by 150–300ms to avoid flashing on fast requests
     - Label changes to action-appropriate verb + ellipsis (U+2026): "Saving…", "Sending…", "Uploading…", "Submitting…"
     - Button width fixed (or `min-width` set) to prevent layout shift
-    - For long-running operations, cancel affordance appears after ~2s, wired to the form's AbortController
   - Success: return to idle; success surfaced in status card
   - Error: return to idle; error surfaced in status card
 - **Status card:** rendered in a reserved slot at the top of the form
@@ -82,14 +81,16 @@ Inspired by Django's `Form` object on the server: a single source of truth for s
 ```tsx
 <Form onSubmit={handleSubmit} timeoutMs={30000}>
   <FormStatus /> {/* subscribes to context */}
-  <FormField name="..." />
-  <FormField name="..." />
+  <TextField label="Name" {...register("name")} />
+  <TextField label="Email" {...register("email", { required: true })} />
   <SubmitButton /> {/* subscribes to context */}
 </Form>
 ```
 
 - `<Form>` owns state, validation, submission, timeout handling
-- `<FormStatus>`, `<FormField>`, `<SubmitButton>` all subscribe to the same context
+- `<FormStatus>` and `<SubmitButton>` subscribe to the same context
+- Standard form fields use React Hook Form's `register` directly — no custom wrapper needed
+- Field-level validation errors rendered natively by RHF; form-level errors in `<FormStatus>`
 - No prop drilling; no manual wiring of status to fields to button
 - UI cannot drift out of sync with form state
 
@@ -103,6 +104,7 @@ The `<Form>` wrapper owns these states:
 - `success` — full success
 - `partial_success` — composite write where some layers succeeded, some did not
 - `error` — server rejected, validation failed, or other known failure
+- `validation_error` — client-side validation failed (field errors present)
 - `timeout` — request exceeded configured timeout (distinct from `error`)
 
 #### Why `partial_success` matters for Quill
@@ -116,21 +118,22 @@ Submissions that write to both administrative and clinical layers can succeed in
 ### `<FormStatus>` component
 
 - Standalone, reusable, themeable component
-- Renders nothing in `idle` and `validating` states
+- Renders nothing in `idle`, `validating`, and `submitting` states
 - Subscribes to form context — no props needed in production use
 - Accepts props in Storybook for variant testing
 - Variants:
   - `success`
   - `partial_success` (warning styling)
   - `error`
+  - `validation_error` (warning styling)
   - `timeout`
 - Accessibility:
   - `role="status"` for success/partial_success
-  - `role="alert"` for error/timeout
+  - `role="alert"` for error/timeout/validation_error
   - `aria-live="polite"` (or `assertive` for errors)
 - Persistent — never auto-dismissed on a timer
 - Dismissible by user action
-- Renders at top of form, scrolls into view if off-screen
+- Renders at top of form, scrolls into view (`block: "start"`) when status appears
 - Content includes:
   - Status message
   - Generated record ID (where applicable)
@@ -142,15 +145,19 @@ Submissions that write to both administrative and clinical layers can succeed in
 
 - Subscribes to form context
 - Disabled during `validating` and `submitting` (prevents double-submit — clinical safety)
-- Shows spinner + "Saving…" during `submitting`
+- Optional `disableWhenClean` mode — button stays disabled until the form is dirty
+- Shows spinner + "Saving…" during `submitting` using CSS grid dual-label pattern (stable width, no layout shift)
+- Labels horizontally centred via `placeItems: "center"` on the grid container
 - Returns to idle on `success`, `error`, or `timeout`
+- Composes `ButtonPair` internally
 
-### `<FormField>` components
+### Field-level validation
 
-- Subscribe to form context for their own error state
-- Field-level errors rendered inline beneath the field
-- Form-level errors handled by `<FormStatus>`
-- Both can coexist (e.g. `<FormStatus>` shows "3 issues to fix", fields show specific errors)
+- Fields use React Hook Form's `register` directly — no custom `<FormField>` abstraction
+- Per-field errors rendered natively by RHF (`errors.fieldName`) beneath each input
+- Form-level summary handled by `<FormStatus>` (e.g. "3 fields need attention")
+- Both coexist: inline errors for specifics, status card for the overview
+- This approach avoids duplicating RHF's built-in per-field error tracking and leverages its uncontrolled-input performance
 
 ### Timeout handling
 
@@ -238,16 +245,18 @@ All three content elements (icon, title, message) are optional independently:
 
 ### Props
 
-| Prop          | Type                          | Required | Default     | Description                                   |
-| ------------- | ----------------------------- | -------- | ----------- | --------------------------------------------- |
-| `opened`      | `boolean`                     | Yes      | —           | Controls modal visibility                     |
-| `onClose`     | `() => void`                  | Yes      | —           | Called on Cancel or Escape                    |
-| `onAccept`    | `() => void \| Promise<void>` | Yes      | —           | Async-aware; component manages loading        |
-| `children`    | `ReactNode`                   | Yes      | —           | Message body                                  |
-| `title`       | `string`                      | No       | —           | Bold centred heading between icon and message |
-| `acceptLabel` | `string`                      | No       | `"Confirm"` | Red action button label                       |
-| `cancelLabel` | `string`                      | No       | `"Cancel"`  | Outline button label                          |
-| `icon`        | `ReactElement`                | No       | —           | Centred icon above title/message              |
+| Prop              | Type                          | Required | Default     | Description                                                  |
+| ----------------- | ----------------------------- | -------- | ----------- | ------------------------------------------------------------ |
+| `opened`          | `boolean`                     | Yes      | —           | Controls modal visibility                                    |
+| `onClose`         | `() => void`                  | Yes      | —           | Called on Cancel or Escape                                   |
+| `onAccept`        | `() => void \| Promise<void>` | Yes      | —           | Async-aware; component manages loading                       |
+| `children`        | `ReactNode`                   | Yes      | —           | Message body                                                 |
+| `title`           | `string`                      | No       | —           | Bold centred heading between icon and message                |
+| `acceptLabel`     | `string`                      | No       | `"Confirm"` | Action button label                                          |
+| `submittingLabel` | `string`                      | No       | —           | Label shown during loading (falls back to `acceptLabel`)     |
+| `cancelLabel`     | `string`                      | No       | `"Cancel"`  | Outline button label                                         |
+| `icon`            | `ReactElement`                | No       | —           | Centred icon above title/message                             |
+| `destructive`     | `boolean`                     | No       | `true`      | When true uses `ButtonPairRed`; when false uses `ButtonPair` |
 
 ### Behaviour
 
@@ -322,20 +331,21 @@ frontend/src/components/confirm-modal/
 └── index.ts
 ```
 
-### Refactoring existing instances (follow-up)
+### Refactoring existing instances (completed)
 
-6 ad-hoc confirmation modals to replace:
+7 ad-hoc confirmation modals replaced with `ConfirmModal`:
 
-| Location                    | Action                         |
-| --------------------------- | ------------------------------ |
-| `OrganisationAdminPage.tsx` | Remove staff from organisation |
-| `DeactivateUserPage.tsx`    | Deactivate user account        |
-| `DeactivatePatientPage.tsx` | Deactivate patient record      |
-| `OrgFeaturesPage.tsx`       | Toggle features                |
-| `ExamCloseButton.tsx`       | End exam early                 |
-| `AssessmentAttempt.tsx`     | Leave during active exam       |
+| Location                    | Action                         | `destructive` |
+| --------------------------- | ------------------------------ | ------------- |
+| `OrganisationAdminPage.tsx` | Remove staff from organisation | `true`        |
+| `DeactivateUserPage.tsx`    | Deactivate user account        | `true`        |
+| `DeactivatePatientPage.tsx` | Deactivate patient record      | `true`        |
+| `ActivatePatientPage.tsx`   | Activate patient record        | `false`       |
+| `OrgFeaturesPage.tsx`       | Toggle features                | conditional   |
+| `ExamCloseButton.tsx`       | End exam early                 | `true`        |
+| `AssessmentAttempt.tsx`     | Leave during active exam       | `true`        |
 
-Additionally, `DirtyFormNavigation` can delegate its visual to `ConfirmModal` while keeping its React Router `useBlocker` logic.
+Additionally, `DirtyFormNavigation` delegates its visual to `ConfirmModal` (with `destructive={true}`) while keeping its React Router `useBlocker` logic and a `proceededRef` to prevent `blocker.reset()` being called after `blocker.proceed()` (since ConfirmModal calls `onClose` after `onAccept` resolves).
 
 ---
 

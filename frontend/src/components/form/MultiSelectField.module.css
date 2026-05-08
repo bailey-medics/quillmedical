@@ -75,3 +75,7 @@
   border-width: 2px;
   border-color: var(--error-color) !important;
 }
+
+.root :global(.mantine-MultiSelect-input[data-error]):focus-within {
+  border-color: var(--error-focus-color) !important;
+}

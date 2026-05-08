@@ -8,21 +8,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
-import {
-  Container,
-  Group,
-  Stack,
-  Skeleton,
-  Alert,
-  List,
-  Modal,
-} from "@mantine/core";
+import { Container, Group, Stack, Skeleton, Alert, List } from "@mantine/core";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
-import ButtonPairRed from "@/components/button/ButtonPairRed";
+import { ConfirmModal } from "@/components/confirm-modal";
 import {
   BodyText,
   BodyTextInline,
@@ -152,7 +144,6 @@ export default function OrgFeaturesPage() {
   async function confirmSave() {
     if (!id) return;
 
-    setConfirmOpen(false);
     setSaving(true);
 
     try {
@@ -240,18 +231,19 @@ export default function OrgFeaturesPage() {
           acceptLoading={saving}
         />
 
-        <Modal
+        <ConfirmModal
           opened={confirmOpen}
           onClose={() => setConfirmOpen(false)}
+          onAccept={confirmSave}
           title="Confirm feature changes"
-          centered
+          acceptLabel="Confirm"
+          cancelLabel="Go back"
+          destructive={hasDisables}
         >
-          <Stack gap="md">
-            <BodyTextInline>
-              You are about to make the following changes for{" "}
-              <strong>{orgName}</strong>:
-            </BodyTextInline>
-            <List>
+          <>
+            You are about to make the following changes for{" "}
+            <strong>{orgName}</strong>:
+            <List mt="xs">
               {pendingChanges.map((change) => (
                 <List.Item key={change.key}>
                   <BodyTextBold>{change.label}</BodyTextBold>
@@ -261,28 +253,13 @@ export default function OrgFeaturesPage() {
               ))}
             </List>
             {hasDisables && (
-              <Alert color="var(--warning-color)" variant="light">
+              <Alert color="var(--warning-color)" variant="light" mt="xs">
                 Disabling features will immediately remove access for all users
                 in this organisation.
               </Alert>
             )}
-            {hasDisables ? (
-              <ButtonPairRed
-                acceptLabel="Confirm"
-                cancelLabel="Go back"
-                onAccept={confirmSave}
-                onCancel={() => setConfirmOpen(false)}
-              />
-            ) : (
-              <ButtonPair
-                acceptLabel="Confirm"
-                cancelLabel="Go back"
-                onAccept={confirmSave}
-                onCancel={() => setConfirmOpen(false)}
-              />
-            )}
-          </Stack>
-        </Modal>
+          </>
+        </ConfirmModal>
       </Stack>
 
       <DirtyFormNavigation
