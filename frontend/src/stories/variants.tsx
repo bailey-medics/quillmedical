@@ -18,7 +18,8 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
-import { Stack, Group } from "@mantine/core";
+import { Stack, Group, Text } from "@mantine/core";
+import { typographyTokens } from "@/theme";
 
 type VariantRowProps = {
   /** Label displayed below the row */
@@ -28,6 +29,9 @@ type VariantRowProps = {
   /** Use Group (horizontal) or plain div (single item). Default: true */
   horizontal?: boolean;
 };
+
+export const STORY_LABEL_COLOR =
+  "light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5))";
 
 /**
  * A single labelled row of variant content.
@@ -39,15 +43,14 @@ export function VariantRow({
 }: VariantRowProps) {
   return (
     <div>
-      <div
-        style={{
-          marginBottom: "0.5rem",
-          fontSize: "1.5rem",
-          fontWeight: 700,
-        }}
+      <Text
+        size="lg"
+        fw={typographyTokens.fontWeights.bold}
+        c={STORY_LABEL_COLOR}
+        mb="xs"
       >
         {label}
-      </div>
+      </Text>
       {horizontal ? <Group gap="md">{children}</Group> : children}
     </div>
   );
@@ -108,7 +111,14 @@ export function StateRow({
       <div className={className} style={{ pointerEvents: "none", ...style }}>
         {children}
       </div>
-      <div style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>{label}</div>
+      <Text
+        size="lg"
+        fw={typographyTokens.fontWeights.body}
+        c={STORY_LABEL_COLOR}
+        mt="xs"
+      >
+        {label}
+      </Text>
     </div>
   );
 }
@@ -123,4 +133,32 @@ type VariantStackProps = {
  */
 export function VariantStack({ children }: VariantStackProps) {
   return <Stack gap="xl">{children}</Stack>;
+}
+
+type StoryNoteProps = {
+  /** Note text to display */
+  children: ReactNode;
+  /** Top margin. Defaults to "sm". Use 0 for inline usage. */
+  mt?: string | number;
+};
+
+/**
+ * Descriptive note for Storybook stories only.
+ *
+ * Uses the same font size and weight as BodyText, but in muted grey.
+ * Medium grey in light mode, light grey in dark mode.
+ *
+ * Lives in src/stories/ — cannot be imported by real app views.
+ */
+export function StoryNote({ children, mt = "sm" }: StoryNoteProps) {
+  return (
+    <Text
+      size="lg"
+      fw={typographyTokens.fontWeights.body}
+      c={STORY_LABEL_COLOR}
+      mt={mt}
+    >
+      {children}
+    </Text>
+  );
 }

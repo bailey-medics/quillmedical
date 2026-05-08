@@ -56,6 +56,13 @@ export default tseslint.config(
                   "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
               },
             ],
+            patterns: [
+              {
+                group: ["@/stories/*"],
+                message:
+                  "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only — never import in app code.",
+              },
+            ],
           },
         ],
       },
@@ -84,6 +91,7 @@ export default tseslint.config(
       files: ["**/*.stories.tsx"],
       rules: {
         "no-console": "off",
+        "no-restricted-imports": "off",
       },
     },
     // Storybook preview uses console.log for mock debugging

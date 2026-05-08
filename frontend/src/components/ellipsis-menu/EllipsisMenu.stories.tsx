@@ -3,7 +3,7 @@ import { fn } from "storybook/test";
 import { Stack } from "@mantine/core";
 import { IconPencil, IconTrash } from "@/components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
-import { BodyText, Heading } from "@/components/typography";
+import { StoryNote } from "@/stories/variants";
 import EllipsisMenu from "./EllipsisMenu";
 
 const meta: Meta<typeof EllipsisMenu> = {
@@ -31,7 +31,7 @@ export const Default: Story = {
   render: (args) => (
     <Stack gap="md">
       <EllipsisMenu {...args} />
-      <BodyText c="dimmed">Click on button to open up menu</BodyText>
+      <StoryNote>Click on button to open up menu</StoryNote>
     </Stack>
   ),
 };
@@ -43,7 +43,7 @@ export const DarkMode: Story = {
     <Stack gap="xl">
       <BaseCard>
         <Stack gap="md">
-          <Heading>Inside card</Heading>
+          <StoryNote>Inside card</StoryNote>
           <EllipsisMenu {...args} />
         </Stack>
       </BaseCard>

@@ -7,7 +7,6 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import FeatureBadge from "./FeatureBadge";
 
 const meta: Meta<typeof FeatureBadge> = {
@@ -35,36 +34,14 @@ export const Default: Story = {
 };
 
 /**
- * Size variants for feature badges
+ * Removed state — features that have been removed
  */
-export const SizeVariants: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          <FeatureBadge label="Teaching" size={size} />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/**
- * Dark mode rendering
- */
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
-};
-
-/**
- * Loading skeleton state
- */
-export const Loading: Story = {
+export const Removed: Story = {
   render: () => (
     <Group gap="md">
-      <FeatureBadge label="" isLoading />
-      <FeatureBadge label="" isLoading size="sm" />
+      <FeatureBadge label="Teaching" removed />
+      <FeatureBadge label="Messaging" removed />
+      <FeatureBadge label="Letters" removed />
     </Group>
   ),
 };

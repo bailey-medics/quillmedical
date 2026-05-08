@@ -26,14 +26,6 @@ type Story = StoryObj<typeof ButtonPairRed>;
 /** Default red button pair */
 export const Default: Story = {};
 
-/** Custom labels for navigation warning */
-export const NavigationWarning: Story = {
-  args: {
-    acceptLabel: "Leave page",
-    cancelLabel: "Stay on page",
-  },
-};
-
 /** Accept button disabled */
 export const AcceptDisabled: Story = {
   args: {

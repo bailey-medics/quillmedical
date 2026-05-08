@@ -8,18 +8,18 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import PageFlash from "./PageFlash";
-import { BodyText } from "@/components/typography";
+import { StoryNote } from "@/stories/variants";
 import type { FlashState } from "./PageFlash";
 
 function PageFlashWithContent() {
   return (
     <Stack gap="md">
       <PageFlash />
-      <BodyText>Destination page content appears below the flash.</BodyText>
-      <BodyText c="gray.6">
+      <StoryNote>Destination page content appears below the flash.</StoryNote>
+      <StoryNote>
         In production, this status card is rendered automatically from React
         Router navigation state. It clears on dismiss or next navigation.
-      </BodyText>
+      </StoryNote>
     </Stack>
   );
 }

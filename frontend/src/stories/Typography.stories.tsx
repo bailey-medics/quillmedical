@@ -8,6 +8,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group, Stack, Table, Text, Title } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
+import PageHeader from "@components/page-header/PageHeader";
+import { StoryNote } from "@/stories/variants";
 import { typographyTokens } from "@/theme";
 
 const meta: Meta = {
@@ -29,27 +31,27 @@ export const Overview: Story = {
     <Stack gap="xl">
       {/* Font family */}
       <Stack gap="xs">
-        <Title order={2}>Font family</Title>
-        <Text size="md">
+        <PageHeader title="Font family" />
+        <StoryNote>
           <strong>Atkinson Hyperlegible Next</strong> — designed by the Braille
           Institute for maximum readability. Self-hosted variable font (100–900
           weight range).
-        </Text>
-        <Text size="sm" c="dimmed">
+        </StoryNote>
+        <StoryNote>
           Chosen for clinical accessibility: distinct Il1O0 characters, high
           x-height, open apertures, reduced eye strain over extended shifts.
-        </Text>
+        </StoryNote>
       </Stack>
 
       <Divider />
 
       {/* Type scale */}
       <Stack gap="sm">
-        <Title order={2}>Type scale</Title>
-        <Text size="sm" c="dimmed">
+        <PageHeader title="Type scale" />
+        <StoryNote>
           Mobile-first sizes that scale up at the sm breakpoint (48em / 768px).
           All values defined in typographyTokens (theme.ts).
-        </Text>
+        </StoryNote>
 
         <Table>
           <Table.Thead>
@@ -95,10 +97,10 @@ export const Overview: Story = {
 
       {/* Headings */}
       <Stack gap="sm">
-        <Title order={2}>Heading scale</Title>
-        <Text size="sm" c="dimmed">
+        <PageHeader title="Heading scale" />
+        <StoryNote>
           Heading sizes with responsive scaling and fixed line heights.
-        </Text>
+        </StoryNote>
 
         <Table>
           <Table.Thead>
@@ -154,7 +156,7 @@ export const Overview: Story = {
 
       {/* Usage guide */}
       <Stack gap="sm">
-        <Title order={2}>When to use what</Title>
+        <PageHeader title="When to use what" />
 
         <Table>
           <Table.Thead>
@@ -271,11 +273,11 @@ export const Overview: Story = {
 
       {/* Character differentiation */}
       <Stack gap="xs">
-        <Title order={2}>Character differentiation</Title>
-        <Text size="sm" c="dimmed">
+        <PageHeader title="Character differentiation" />
+        <StoryNote>
           Critical for clinical safety — confusing characters in dosages or IDs
           could cause harm.
-        </Text>
+        </StoryNote>
         <Group gap="xl" mt="xs">
           <Stack gap={2}>
             <Text size="xl">Il1O0 Qq9g rn m</Text>

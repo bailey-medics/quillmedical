@@ -23,27 +23,32 @@ interface FeatureBadgeProps {
   size?: MantineSize;
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
+  /** Feature has been removed */
+  removed?: boolean;
 }
 
 /**
  * FeatureBadge displays a feature name with consistent
- * colour coding using the warning colour.
+ * colour coding. Accent by default, alert when removed.
  */
 export default function FeatureBadge({
   label,
   size = "lg",
   isLoading = false,
+  removed = false,
 }: FeatureBadgeProps) {
   if (isLoading) {
     return <BadgeSkeleton size={size as "sm" | "md" | "lg" | "xl"} />;
   }
 
+  const colour = removed ? badgeColours.alert : badgeColours.accent;
+
   return (
     <Badge
       size={size}
       variant={BADGE_VARIANT}
-      color={badgeColours.alert.bg}
-      c={badgeColours.alert.text}
+      color={colour.bg}
+      c={colour.text}
       radius="xl"
     >
       {label}

@@ -5,11 +5,20 @@
  * clash with our custom dark palette (navy shades).
  */
 
-/* Disabled filled buttons — one shade lighter than card bg so they're visible */
+/* Disabled filled buttons — light navy with white text, matching brand */
+.mantine-Button-root:disabled,
+.mantine-Button-root[data-disabled] {
+  background-color: var(--mantine-color-primary-2) !important;
+  border-color: var(--mantine-color-primary-2) !important;
+  color: white !important;
+}
+
+/* Dark mode — one shade lighter than card bg so they're visible */
 [data-mantine-color-scheme="dark"] .mantine-Button-root:disabled,
 [data-mantine-color-scheme="dark"] .mantine-Button-root[data-disabled] {
   background-color: #0a2f56 !important;
   border-color: #0a2f56 !important;
+  color: white !important;
 }
 
 /**
@@ -34,4 +43,18 @@
 .mantine-Menu-item {
   font-size: var(--mantine-font-size-lg) !important;
   font-weight: 500 !important;
+}
+
+/**
+ * Skeleton overrides
+ *
+ * Mantine's default dark-mode skeleton uses --mantine-color-dark-6 which
+ * is nearly invisible on our navy card backgrounds. Use a lighter grey.
+ */
+[data-mantine-color-scheme="dark"] .mantine-Skeleton-root::before {
+  background-color: rgb(255 255 255 / 10%) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Skeleton-root::after {
+  background-color: rgb(255 255 255 / 25%) !important;
 }

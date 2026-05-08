@@ -8,6 +8,7 @@ import { Button } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import type { Location } from "react-router-dom";
+import { StoryNote } from "@/stories/variants";
 import DirtyFormNavigation from "./DirtyFormNavigation";
 
 const mockLocation: Location = {
@@ -60,11 +61,10 @@ export const Interactive: Story = {
 
     return (
       <div style={{ padding: "2rem" }}>
-        <h3>DirtyFormNavigation Modal Demo</h3>
-        <p>
+        <StoryNote>
           Click the button below to simulate attempting to navigate away from a
           form with unsaved changes.
-        </p>
+        </StoryNote>
         <Button onClick={() => setIsBlocked(true)}>Leave dirty form</Button>
         <DirtyFormNavigation blocker={blocker} />
       </div>

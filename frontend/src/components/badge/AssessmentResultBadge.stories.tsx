@@ -7,7 +7,6 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import AssessmentResultBadge from "./AssessmentResultBadge";
 
 const meta: Meta<typeof AssessmentResultBadge> = {
@@ -44,45 +43,4 @@ export const Default: Story = {
       <AssessmentResultBadge result="incomplete" />
     </Group>
   ),
-};
-
-/**
- * All sizes comparison
- *
- * Shows all size variants side by side for comparison.
- */
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          <AssessmentResultBadge result="pass" size={size} />
-          <AssessmentResultBadge result="fail" size={size} />
-          <AssessmentResultBadge result="incomplete" size={size} />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <AssessmentResultBadge result="pass" size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
 };

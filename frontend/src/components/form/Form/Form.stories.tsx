@@ -7,7 +7,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
-import { BodyText } from "@/components/typography";
+import { StoryNote } from "@/stories/variants";
 import { Form, FormStatus, SubmitButton, useFormContext } from "./index";
 import type { FormSubmitResult } from "./Form";
 import TextField from "../TextField";
@@ -107,7 +107,7 @@ export const SuccessSubmission: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">Change a value, then press submit</BodyText>
+          <StoryNote>Change a value, then press submit</StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredStaff />
@@ -144,7 +144,7 @@ export const ErrorSubmission: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">Change a value, then press submit</BodyText>
+          <StoryNote>Change a value, then press submit</StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredStaff />
@@ -176,7 +176,7 @@ export const UnexpectedError: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">Change a value, then press submit</BodyText>
+          <StoryNote>Change a value, then press submit</StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredStaff />
@@ -214,7 +214,7 @@ export const PartialSuccessSubmission: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">Change a value, then press submit</BodyText>
+          <StoryNote>Change a value, then press submit</StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredStaff />
@@ -250,7 +250,7 @@ export const TimeoutSubmission: Story = {
         timeoutMs={2000}
       >
         <Stack gap="md">
-          <BodyText c="dimmed">Change a value, then press submit</BodyText>
+          <StoryNote>Change a value, then press submit</StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredStaff />
@@ -290,9 +290,9 @@ export const ValidationError: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">
+          <StoryNote>
             Change a value, then press submit to see the validation warning
-          </BodyText>
+          </StoryNote>
           <FormStatus />
           <ValidatedEmail />
           <RegisteredStaff />
@@ -338,10 +338,10 @@ export const DirtyStatePlayground: Story = {
         disableWhenClean
       >
         <Stack gap="md">
-          <BodyText c="dimmed">
+          <StoryNote>
             Change any field — Save should enable. Revert all — Save should
             disable.
-          </BodyText>
+          </StoryNote>
           <FormStatus />
           <RegisteredName />
           <RegisteredPassword />
@@ -407,10 +407,10 @@ export const ConfirmAndStay: Story = {
         }}
       >
         <Stack gap="md">
-          <BodyText c="gray.6">
+          <StoryNote>
             Press "Delete permissions". A confirmation modal will appear.
             Confirming stays on this page with a success message.
-          </BodyText>
+          </StoryNote>
           <FormStatus />
           <RegisteredUser />
           <RegisteredPermissionLevel />
@@ -434,11 +434,11 @@ export const ConfirmThenNavigate: Story = {
       return (
         <Stack gap="md">
           <InjectFlash flash={flash} />
-          <BodyText>Staff members list (destination page)</BodyText>
-          <BodyText c="gray.6">
+          <StoryNote>Staff members list (destination page)</StoryNote>
+          <StoryNote>
             The flash message above was passed via React Router navigation state
             and rendered by PageFlash.
-          </BodyText>
+          </StoryNote>
         </Stack>
       );
     }
@@ -471,10 +471,10 @@ export const ConfirmThenNavigate: Story = {
         }}
       >
         <Stack gap="md">
-          <BodyText c="gray.6">
+          <StoryNote>
             Press "Remove staff member". A confirmation modal appears, then
             navigates to a destination page with a flash message.
-          </BodyText>
+          </StoryNote>
           <FormStatus />
           <RegisteredUsername />
           <SubmitButton onCancel={() => {}} />
@@ -497,11 +497,11 @@ export const SubmitAndNavigate: Story = {
       return (
         <Stack gap="md">
           <InjectFlash flash={flash} />
-          <BodyText>Patient letters list (destination page)</BodyText>
-          <BodyText c="gray.6">
+          <StoryNote>Patient letters list (destination page)</StoryNote>
+          <StoryNote>
             The flash message above was passed via React Router navigation state
             and rendered by PageFlash.
-          </BodyText>
+          </StoryNote>
         </Stack>
       );
     }
@@ -529,10 +529,10 @@ export const SubmitAndNavigate: Story = {
         submittingLabel="Sending…"
       >
         <Stack gap="md">
-          <BodyText c="gray.6">
+          <StoryNote>
             Press "Send letter". The form will navigate to a new page with a
             flash message.
-          </BodyText>
+          </StoryNote>
           <FormStatus />
           <RegisteredPatientName />
           <RegisteredHospitalNumber />

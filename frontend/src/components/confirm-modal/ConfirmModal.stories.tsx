@@ -14,7 +14,7 @@ import { IconAlertTriangle } from "@tabler/icons-react";
 import { useState } from "react";
 import { Stack } from "@mantine/core";
 import ConfirmModal from "./ConfirmModal";
-import BodyText from "@/components/typography/BodyText";
+import { StoryNote } from "@/stories/variants";
 import ButtonPair from "@/components/button/ButtonPair";
 import SelectField from "@/components/form/SelectField";
 
@@ -53,9 +53,7 @@ export const Default: Story = {
 
     return (
       <Stack>
-        <BodyText c="gray.6">
-          Press Submit to see the confirmation modal.
-        </BodyText>
+        <StoryNote>Press Submit to see the confirmation modal.</StoryNote>
         <SelectField
           label="Procedure"
           placeholder="Select procedure"

@@ -6,8 +6,8 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import ActionCardButton from "./ActionCardButton";
-import { StateRow } from "@/stories/variants";
-import { Group, Text } from "@mantine/core";
+import { StateRow, StoryNote } from "@/stories/variants";
+import { Group } from "@mantine/core";
 
 const CONTAINER_NOTE =
   "Constrained to 18rem width for display. In practice, the button is full-width and adapts to its parent container.";
@@ -42,9 +42,7 @@ export const Default: Story = {
         <div style={{ width: "18rem" }}>
           <Story />
         </div>
-        <Text size="sm" c="dimmed" mt="md">
-          {CONTAINER_NOTE}
-        </Text>
+        <StoryNote>{CONTAINER_NOTE}</StoryNote>
       </div>
     ),
   ],
@@ -92,9 +90,7 @@ export const States: Story = {
           <ActionCardButton label="View details" url="/example" disabled />
         </StateRow>
       </Group>
-      <Text size="sm" c="dimmed" mt="md">
-        {CONTAINER_NOTE}
-      </Text>
+      <StoryNote>{CONTAINER_NOTE}</StoryNote>
     </>
   ),
 };

@@ -37,17 +37,10 @@ export default function ActionCardButton({
   if (onClick) {
     return (
       <Button
-        onClick={
-          disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick
-        }
+        onClick={disabled ? undefined : onClick}
         variant={variant}
         fullWidth
-        aria-disabled={disabled || undefined}
-        styles={
-          disabled
-            ? { root: { opacity: 0.6, cursor: "not-allowed" } }
-            : undefined
-        }
+        disabled={disabled}
         size="lg"
       >
         {label}
@@ -57,8 +50,8 @@ export default function ActionCardButton({
 
   return (
     <Button
-      component={Link}
-      to={url}
+      component={disabled ? undefined : Link}
+      to={disabled ? undefined : url}
       variant={variant}
       fullWidth
       disabled={disabled}
