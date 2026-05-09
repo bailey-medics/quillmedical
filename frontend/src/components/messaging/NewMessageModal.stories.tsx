@@ -4,11 +4,22 @@
  * Demonstrates the new message modal:
  * - Default state with patient selector
  * - Pre-filled patient (locked selector)
- * - Submitting state
+ * - Patient user view
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import type { FormSubmitResult } from "@/components/form/Form";
 import NewMessageModal from "./NewMessageModal";
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const mockSubmit = async (): Promise<FormSubmitResult> => {
+  await delay(1000);
+  return {
+    state: "success",
+    message: { title: "Conversation started" },
+  };
+};
 
 const meta: Meta<typeof NewMessageModal> = {
   title: "Messaging/NewMessageModal",
@@ -16,8 +27,8 @@ const meta: Meta<typeof NewMessageModal> = {
   parameters: { layout: "fullscreen" },
   args: {
     opened: true,
-    onClose: fn(),
-    onSubmit: fn(),
+    onClose: () => {},
+    onSubmit: mockSubmit,
   },
 };
 
@@ -31,15 +42,6 @@ export const Default: Story = {};
 /** Patient pre-selected — shows patient name, selector hidden */
 export const WithLockedPatient: Story = {
   args: {
-    patientId: "p-1",
-    patientName: "James Green",
-  },
-};
-
-/** Submitting state — buttons disabled, "Creating…" label */
-export const Submitting: Story = {
-  args: {
-    isSubmitting: true,
     patientId: "p-1",
     patientName: "James Green",
   },

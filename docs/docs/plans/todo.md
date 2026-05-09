@@ -4,6 +4,10 @@
 
 - http://localhost:6006/?path=/story/messaging-newmessagemodal--default
 
+## Off line
+
+## Playwright E2E testing
+
 ## Cloud Run: set min_instances = 1 for frontend
 
 - [ ] Set `min_instances = 1` for the frontend Cloud Run service once there
