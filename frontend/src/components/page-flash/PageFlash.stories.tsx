@@ -6,22 +6,13 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { Stack } from "@mantine/core";
+import { MantineProvider } from "@mantine/core";
+import { theme, cssVariablesResolver } from "@/theme";
 import PageFlash from "./PageFlash";
-import { StoryNote } from "@/stories/variants";
 import type { FlashState } from "./PageFlash";
 
 function PageFlashWithContent() {
-  return (
-    <Stack gap="md">
-      <PageFlash />
-      <StoryNote>Destination page content appears below the flash.</StoryNote>
-      <StoryNote>
-        In production, this status card is rendered automatically from React
-        Router navigation state. It clears on dismiss or next navigation.
-      </StoryNote>
-    </Stack>
-  );
+  return <PageFlash />;
 }
 
 function renderStoryWithState(flash: FlashState["flash"]) {
@@ -32,14 +23,18 @@ function renderStoryWithState(flash: FlashState["flash"]) {
     },
   );
 
-  return <RouterProvider router={router} />;
+  return (
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
+      <RouterProvider router={router} />
+    </MantineProvider>
+  );
 }
 
 const meta: Meta<typeof PageFlash> = {
   title: "PageFlash/PageFlash",
   component: PageFlash,
   parameters: {
-    layout: "fullscreen",
+    layout: "padded",
     disableDefaultRouter: true,
   },
 };

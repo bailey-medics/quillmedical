@@ -29,9 +29,9 @@
  * />
  */
 
-import { Avatar, Skeleton, Tooltip } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Avatar, Skeleton } from "@mantine/core";
 import { AVATAR_GRADIENTS } from "./gradients";
+import AppTooltip from "@components/tooltip/AppTooltip";
 
 type ProfilePicSize = "sm" | "md" | "lg";
 
@@ -91,8 +91,6 @@ export default function ProfilePic({
   size = "md",
   isLoading = false,
 }: Props) {
-  const isMobile = useMediaQuery("(pointer: coarse)");
-
   // Get gradient colors from index, or use white background if index out of range
   const gradient = AVATAR_GRADIENTS[gradientIndex];
   const colorFrom = gradient?.colorFrom ?? "var(--mantine-color-white)";
@@ -117,26 +115,9 @@ export default function ProfilePic({
   const avatarSize = sizeMap[size];
   const fullName = getFullName(givenName, familyName);
 
-  /** Wrap an avatar with a tooltip. On mobile, enables touch and stops event propagation. */
+  /** Wrap an avatar with AppTooltip showing the patient's full name. */
   function withTooltip(avatar: React.ReactElement, label: string) {
-    if (isMobile) {
-      return (
-        <span onClick={(e) => e.stopPropagation()}>
-          <Tooltip
-            label={label}
-            openDelay={400}
-            events={{ hover: true, focus: true, touch: true }}
-          >
-            {avatar}
-          </Tooltip>
-        </span>
-      );
-    }
-    return (
-      <Tooltip label={label} openDelay={400}>
-        {avatar}
-      </Tooltip>
-    );
+    return <AppTooltip label={label}>{avatar}</AppTooltip>;
   }
 
   // Loading state

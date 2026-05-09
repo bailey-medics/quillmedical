@@ -114,9 +114,7 @@ function NewMessageFields({
           placeholder="Select a patient"
           data={patients}
           value={patientId}
-          onChange={(v) =>
-            setValue("patientId", v, { shouldDirty: true })
-          }
+          onChange={(v) => setValue("patientId", v, { shouldDirty: true })}
           searchable
           required
           disabled={loadingPatients}
@@ -146,9 +144,7 @@ function NewMessageFields({
         placeholder="Add staff to this conversation"
         data={users}
         value={participantIds}
-        onChange={(v) =>
-          setValue("participantIds", v, { shouldDirty: true })
-        }
+        onChange={(v) => setValue("participantIds", v, { shouldDirty: true })}
         searchable
         disabled={loadingUsers}
         nothingFoundMessage={

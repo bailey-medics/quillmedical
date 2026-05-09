@@ -42,6 +42,8 @@ applyTo: "frontend/src/components/**"
 - Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils` in all tests.
 - Use `VariantStack` and `VariantRow` from `src/stories/variants.tsx` for "all sizes" or "all variants" stories.
 - Use `StoryNote` from `src/stories/variants.tsx` for **all** descriptive text in stories (e.g. "Constrained to 18rem width for display"). Never use raw `<Text>`, `<div>`, or other elements for story descriptions.
+- **Labels go below components** — when labelling variants (sizes, states, etc.), place the `<StoryNote>` underneath the component, not above it.
 - Loading/skeleton stories should be placed **last** in the stories file.
 - Use `layout: "padded"` (not `"centered"`) so stories render top-left. Exception: layout components (e.g. `MainLayout`, `NotFoundLayout`).
 - **Do NOT wrap stories in `MemoryRouter`** — Storybook's `preview.tsx` already provides a `RouterProvider` context. Adding a `MemoryRouter` decorator causes a "cannot render a Router inside another Router" error.
+- **Exception — custom router with initial state**: If a component reads `location.state` (e.g. `PageFlash`), set `parameters: { disableDefaultRouter: true }` and provide your own `createMemoryRouter` with `initialEntries` containing state. You **must** wrap the `<RouterProvider>` in `<MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>` (imported from `@/theme`) since `disableDefaultRouter` bypasses the decorator that normally provides it.

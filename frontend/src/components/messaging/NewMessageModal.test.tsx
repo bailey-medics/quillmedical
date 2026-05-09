@@ -42,9 +42,7 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
-const mockSubmit = vi.fn<
-  () => Promise<FormSubmitResult>
->().mockResolvedValue({
+const mockSubmit = vi.fn<() => Promise<FormSubmitResult>>().mockResolvedValue({
   state: "success",
   message: { title: "Created" },
 });
