@@ -143,7 +143,7 @@ export default function ProfilePic({
             border: borderStyle,
           },
           placeholder: {
-            color: "var(--mantine-color-dark-6)",
+            color: "#000",
             fontWeight: "bold",
             transform: "scale(1.2)",
           },
@@ -166,7 +166,7 @@ export default function ProfilePic({
           border: borderStyle,
         },
         placeholder: {
-          color: "var(--mantine-color-dark-6)",
+          color: "#000",
           fontWeight: "bold",
           transform: "scale(1.2)",
         },

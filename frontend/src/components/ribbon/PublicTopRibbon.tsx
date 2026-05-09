@@ -1,4 +1,4 @@
-import PublicBurgerButton from "@/components/button/PublicBurgerButton";
+import BurgerButton from "@/components/button/BurgerButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";
 import publicNavLinks from "./publicNavLinks";
@@ -21,7 +21,7 @@ export default function PublicTopRibbon({
     <div className={classes.cq}>
       {isNarrow ? (
         <div className={classes.left}>
-          <PublicBurgerButton navOpen={navOpen} onClick={onBurgerClick} />
+          <BurgerButton navOpen={navOpen} onClick={onBurgerClick} />
         </div>
       ) : (
         <>

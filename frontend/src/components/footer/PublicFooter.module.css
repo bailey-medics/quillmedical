@@ -17,10 +17,10 @@
 }
 
 .logoImage {
-  height: 1.5rem;
+  height: 2.25rem;
 
-  @media (max-width: $mantine-breakpoint-md) {
-    height: 1.05rem;
+  @media (max-width: $mantine-breakpoint-sm) {
+    height: 1.5rem;
   }
 }
 

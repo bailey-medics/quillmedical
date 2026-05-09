@@ -1,18 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicButton from "./PublicButton";
 import { Box, Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
+import { StoryNote, VariantStack } from "@/stories/variants";
 
 const meta = {
   title: "Public/Button/PublicButton",
   component: PublicButton,
   parameters: {
-    layout: "padded",
-    backgrounds: { default: "dark" },
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <Box bg="var(--public-navy)" p="xl" c="white" display="inline-block">
+      <Box bg="var(--mantine-color-primary-8)" p="xl" c="white" mih="100vh">
         <Story />
       </Box>
     ),
@@ -32,15 +31,18 @@ export const AllSizes: Story = {
   args: { children: "" },
   render: () => (
     <VariantStack>
-      <VariantRow label="sm">
+      <div>
         <PublicButton size="sm">Small</PublicButton>
-      </VariantRow>
-      <VariantRow label="md (default)">
+        <StoryNote mt="xs">sm</StoryNote>
+      </div>
+      <div>
         <PublicButton size="md">Medium</PublicButton>
-      </VariantRow>
-      <VariantRow label="lg">
+        <StoryNote mt="xs">md (default)</StoryNote>
+      </div>
+      <div>
         <PublicButton size="lg">Large</PublicButton>
-      </VariantRow>
+        <StoryNote mt="xs">lg</StoryNote>
+      </div>
     </VariantStack>
   ),
 };
