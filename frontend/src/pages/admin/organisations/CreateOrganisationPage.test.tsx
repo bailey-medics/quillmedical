@@ -58,9 +58,7 @@ describe("CreateOrganisationPage", () => {
 
     it("renders submit and cancel buttons", () => {
       renderWithRouter(<CreateOrganisationPage />);
-      expect(
-        screen.getByRole("button", { name: /create organisation/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("submit-button")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /cancel/i }),
       ).toBeInTheDocument();
@@ -68,20 +66,16 @@ describe("CreateOrganisationPage", () => {
   });
 
   describe("Validation", () => {
-    it("shows error when name is empty", async () => {
-      const user = userEvent.setup();
+    it("disables submit when required fields are empty", () => {
       renderWithRouter(<CreateOrganisationPage />);
 
-      await user.click(
-        screen.getByRole("button", { name: /create organisation/i }),
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
       );
-
-      expect(
-        screen.getByText("Organisation name is required"),
-      ).toBeInTheDocument();
     });
 
-    it("shows error when type is not selected", async () => {
+    it("disables submit when type is not selected", async () => {
       const user = userEvent.setup();
       renderWithRouter(<CreateOrganisationPage />);
 
@@ -89,13 +83,11 @@ describe("CreateOrganisationPage", () => {
         screen.getByRole("textbox", { name: /organisation name/i }),
         "Test Hospital",
       );
-      await user.click(
-        screen.getByRole("button", { name: /create organisation/i }),
-      );
 
-      expect(
-        screen.getByText("Organisation type is required"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
   });
 
@@ -120,9 +112,9 @@ describe("CreateOrganisationPage", () => {
       );
       await user.click(screen.getByText("Hospital team"));
       await user.type(screen.getByLabelText(/location/i), "London");
-      await user.click(
-        screen.getByRole("button", { name: /create organisation/i }),
-      );
+
+      const submitButton = screen.getByTestId("submit-button");
+      await user.click(submitButton);
 
       await waitFor(() => {
         expect(postSpy).toHaveBeenCalledWith("/organizations", {
@@ -151,9 +143,9 @@ describe("CreateOrganisationPage", () => {
         screen.getByRole("textbox", { name: /organisation type/i }),
       );
       await user.click(screen.getByText("Hospital team"));
-      await user.click(
-        screen.getByRole("button", { name: /create organisation/i }),
-      );
+
+      const submitButton = screen.getByTestId("submit-button");
+      await user.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText("Organisation created")).toBeInTheDocument();
@@ -174,9 +166,9 @@ describe("CreateOrganisationPage", () => {
         screen.getByRole("textbox", { name: /organisation type/i }),
       );
       await user.click(screen.getByText("Hospital team"));
-      await user.click(
-        screen.getByRole("button", { name: /create organisation/i }),
-      );
+
+      const submitButton = screen.getByTestId("submit-button");
+      await user.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText("Server error")).toBeInTheDocument();

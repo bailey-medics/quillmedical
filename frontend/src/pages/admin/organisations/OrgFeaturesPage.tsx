@@ -2,27 +2,34 @@
  * Organisation Features Page
  *
  * Admin page to enable/disable features on an organisation.
- * Toggles edit local draft state. A Save button appears when there are
- * unsaved changes and opens a confirmation modal listing what will change.
+ * Toggles are managed by React Hook Form. Save requires confirmation
+ * listing what will change.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Stack, Skeleton, Alert, List } from "@mantine/core";
+import { Container, Group, Stack, Skeleton, Alert } from "@mantine/core";
+import { Controller, useFormState } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
-import ButtonPair from "@/components/button/ButtonPair";
-import { ConfirmModal } from "@/components/confirm-modal";
 import {
   BodyText,
-  BodyTextInline,
   BodyTextBold,
+  BodyTextInline,
+  ErrorMessage,
   Heading,
 } from "@/components/typography";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import DirtyFormNavigation from "@/components/warnings";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
@@ -60,23 +67,113 @@ interface OrgSummary {
   name: string;
 }
 
-interface FeatureChange {
-  key: string;
-  label: string;
-  enabled: boolean;
+type FeatureFormValues = Record<string, boolean>;
+
+function ConfirmContent({
+  orgName,
+  savedKeys,
+}: {
+  orgName: string;
+  savedKeys: Set<string>;
+}) {
+  const { methods } = useFormContext();
+  const values = methods.getValues() as FeatureFormValues;
+  const changes = AVAILABLE_FEATURES.filter(
+    (f) => savedKeys.has(f.key) !== values[f.key],
+  );
+  const hasDisables = changes.some((f) => !values[f.key]);
+
+  return (
+    <>
+      You are about to make the following changes for <strong>{orgName}</strong>
+      :
+      <Stack gap={4} mt="xs" align="center">
+        {changes.map((change) => (
+          <BodyText key={change.key}>
+            <strong>{change.label}</strong> —{" "}
+            {values[change.key] ? "enable" : "disable"}
+          </BodyText>
+        ))}
+      </Stack>
+      {hasDisables && (
+        <ErrorMessage>
+          Disabling features will immediately remove access for all users in
+          this organisation.
+        </ErrorMessage>
+      )}
+    </>
+  );
+}
+
+function FeatureFields({ orgId }: { orgId: string }) {
+  const navigate = useNavigate();
+  const { methods, formState } = useFormContext();
+  const { isDirty } = useFormState({ control: methods.control });
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  return (
+    <>
+      <Stack gap="md">
+        <FormStatus />
+        <BaseCard>
+          <Stack gap="lg">
+            <Heading>Available features</Heading>
+
+            <BodyTextInline>
+              You are about to make organisation-wide changes. Please do so with
+              care. You will need to press &ldquo;Save changes&rdquo; below for
+              these changes to take effect.
+            </BodyTextInline>
+
+            {AVAILABLE_FEATURES.map((feature) => (
+              <Controller
+                key={feature.key}
+                name={feature.key}
+                control={methods.control}
+                render={({ field }) => (
+                  <Group justify="space-between" wrap="nowrap">
+                    <Stack gap={2}>
+                      <BodyTextBold>{feature.label}</BodyTextBold>
+                      <BodyText>{feature.description}</BodyText>
+                    </Stack>
+
+                    <SolidSwitch
+                      checked={field.value as boolean}
+                      onChange={field.onChange}
+                      disabled={formState === "submitting"}
+                      aria-label={`Toggle ${feature.label}`}
+                    />
+                  </Group>
+                )}
+              />
+            ))}
+          </Stack>
+        </BaseCard>
+
+        <SubmitButton
+          onCancel={() => navigate(`/admin/organisations/${orgId}`)}
+        />
+      </Stack>
+
+      <DirtyFormNavigation
+        blocker={blocker}
+        onProceed={() => methods.reset()}
+      />
+    </>
+  );
 }
 
 export default function OrgFeaturesPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { reload } = useAuth();
   const [orgName, setOrgName] = useState<string>("");
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
-  const [draftKeys, setDraftKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -94,7 +191,6 @@ export default function OrgFeaturesPage() {
         setOrgName(orgData.name);
         const keys = new Set(featuresData.features.map((f) => f.feature_key));
         setSavedKeys(keys);
-        setDraftKeys(new Set(keys));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -105,62 +201,47 @@ export default function OrgFeaturesPage() {
     fetchData();
   }, [id]);
 
-  const pendingChanges = useMemo<FeatureChange[]>(() => {
-    const changes: FeatureChange[] = [];
+  const defaultValues = useMemo(() => {
+    const values: FeatureFormValues = {};
     for (const feature of AVAILABLE_FEATURES) {
-      const wasSaved = savedKeys.has(feature.key);
-      const isDraft = draftKeys.has(feature.key);
-      if (wasSaved !== isDraft) {
-        changes.push({
-          key: feature.key,
-          label: feature.label,
-          enabled: isDraft,
-        });
-      }
+      values[feature.key] = savedKeys.has(feature.key);
     }
-    return changes;
-  }, [savedKeys, draftKeys]);
+    return values;
+  }, [savedKeys]);
 
-  const hasChanges = pendingChanges.length > 0;
-  const hasDisables = pendingChanges.some((c) => !c.enabled);
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasChanges && currentLocation.pathname !== nextLocation.pathname,
-  );
-
-  function toggleDraft(featureKey: string) {
-    setDraftKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(featureKey)) {
-        next.delete(featureKey);
-      } else {
-        next.add(featureKey);
-      }
-      return next;
-    });
-  }
-
-  async function confirmSave() {
-    if (!id) return;
-
-    setSaving(true);
+  async function handleSubmit(
+    data: FeatureFormValues,
+  ): Promise<FormSubmitResult> {
+    const changes = AVAILABLE_FEATURES.filter(
+      (f) => savedKeys.has(f.key) !== data[f.key],
+    );
 
     try {
       await Promise.all(
-        pendingChanges.map((change) =>
+        changes.map((change) =>
           api.put(`/organizations/${id}/features/${change.key}`, {
-            enabled: change.enabled,
+            enabled: data[change.key],
           }),
         ),
       );
-      setSavedKeys(new Set(draftKeys));
+      const newSaved = new Set(
+        AVAILABLE_FEATURES.filter((f) => data[f.key]).map((f) => f.key),
+      );
+      setSavedKeys(newSaved);
       await reload();
-    } catch {
-      // Revert draft to last saved state on failure
-      setDraftKeys(new Set(savedKeys));
-    } finally {
-      setSaving(false);
+      return {
+        state: "success",
+        message: { title: "Features updated" },
+      };
+    } catch (err) {
+      return {
+        state: "error",
+        message: {
+          title: "Failed to update features",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred",
+        },
+      };
     }
   }
 
@@ -194,78 +275,24 @@ export default function OrgFeaturesPage() {
       <Stack gap="lg">
         <PageHeader title="Features" />
 
-        <BaseCard>
-          <Stack gap="lg">
-            <Heading>Available features</Heading>
-
-            <BodyTextInline>
-              You are about to make organisation-wide changes. Please do so with
-              care. You will need to press &ldquo;Save changes&rdquo; below for
-              these changes to take effect.
-            </BodyTextInline>
-
-            {AVAILABLE_FEATURES.map((feature) => (
-              <Group key={feature.key} justify="space-between" wrap="nowrap">
-                <Stack gap={2}>
-                  <BodyTextBold>{feature.label}</BodyTextBold>
-                  <BodyText>{feature.description}</BodyText>
-                </Stack>
-
-                <SolidSwitch
-                  checked={draftKeys.has(feature.key)}
-                  disabled={saving}
-                  onChange={() => toggleDraft(feature.key)}
-                  aria-label={`Toggle ${feature.label}`}
-                />
-              </Group>
-            ))}
-          </Stack>
-        </BaseCard>
-
-        <ButtonPair
-          cancelLabel="Cancel"
-          acceptLabel="Save changes"
-          onCancel={() => navigate(`/admin/organisations/${id}`)}
-          onAccept={() => setConfirmOpen(true)}
-          acceptDisabled={!hasChanges}
-          acceptLoading={saving}
-        />
-
-        <ConfirmModal
-          opened={confirmOpen}
-          onClose={() => setConfirmOpen(false)}
-          onAccept={confirmSave}
-          title="Confirm feature changes"
-          acceptLabel="Confirm"
-          cancelLabel="Go back"
-          destructive={hasDisables}
+        <Form<FeatureFormValues>
+          defaultValues={defaultValues}
+          onSubmit={handleSubmit}
+          submitLabel="Save changes"
+          submittingLabel="Saving…"
+          disableWhenClean
+          confirm={{
+            title: "Confirm feature changes",
+            acceptLabel: "Confirm",
+            cancelLabel: "Go back",
+            children: (
+              <ConfirmContent orgName={orgName} savedKeys={savedKeys} />
+            ),
+          }}
         >
-          <>
-            You are about to make the following changes for{" "}
-            <strong>{orgName}</strong>:
-            <List mt="xs">
-              {pendingChanges.map((change) => (
-                <List.Item key={change.key}>
-                  <BodyTextBold>{change.label}</BodyTextBold>
-                  {" — "}
-                  {change.enabled ? "enable" : "disable"}
-                </List.Item>
-              ))}
-            </List>
-            {hasDisables && (
-              <Alert color="var(--warning-color)" variant="light" mt="xs">
-                Disabling features will immediately remove access for all users
-                in this organisation.
-              </Alert>
-            )}
-          </>
-        </ConfirmModal>
+          <FeatureFields orgId={id!} />
+        </Form>
       </Stack>
-
-      <DirtyFormNavigation
-        blocker={blocker}
-        onProceed={() => setDraftKeys(new Set(savedKeys))}
-      />
     </Container>
   );
 }

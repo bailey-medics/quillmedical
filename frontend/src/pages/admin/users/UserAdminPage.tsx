@@ -157,7 +157,7 @@ export default function UserAdminPage() {
         {/* CBAC Settings */}
         <BaseCard>
           <Stack gap="md">
-            <Heading>CBAC settings</Heading>
+            <Heading>Competency based access control (CBAC) settings</Heading>
 
             <Stack gap="xs">
               <Group gap="xs">

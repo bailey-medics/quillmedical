@@ -63,8 +63,7 @@ describe("AddStaffToOrgPage", () => {
     });
   });
 
-  it("shows validation error when no user selected", async () => {
-    const user = userEvent.setup();
+  it("disables submit button when no user selected", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
 
     renderWithRouter(<AddStaffToOrgPage />, {
@@ -72,12 +71,12 @@ describe("AddStaffToOrgPage", () => {
       initialRoute: "/admin/organisations/1/add-staff",
     });
 
-    const submitButton = screen.getByRole("button", {
-      name: "Add staff member",
+    await waitFor(() => {
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
-    await user.click(submitButton);
-
-    expect(screen.getByText("Please select a user")).toBeInTheDocument();
   });
 
   it("navigates back on cancel", async () => {
@@ -127,9 +126,7 @@ describe("AddStaffToOrgPage", () => {
     await user.click(option);
 
     // Submit
-    const submitButton = screen.getByRole("button", {
-      name: "Add staff member",
-    });
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -169,9 +166,7 @@ describe("AddStaffToOrgPage", () => {
     });
     await user.click(option);
 
-    const submitButton = screen.getByRole("button", {
-      name: "Add staff member",
-    });
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
     await waitFor(() => {
