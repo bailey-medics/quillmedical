@@ -25,17 +25,21 @@ interface SubmitButtonProps {
   onCancel?: () => void;
   /** Cancel button label (defaults to "Cancel") */
   cancelLabel?: string;
+  /** Additional disable condition — OR'd with internal checks */
+  disabled?: boolean;
 }
 
 export default function SubmitButton({
   onCancel,
   cancelLabel = "Cancel",
+  disabled = false,
 }: SubmitButtonProps) {
   const { formState, submitLabel, submittingLabel, disableWhenClean, methods } =
     useFormContext();
 
   const { isDirty } = useFormState({ control: methods.control });
   const isDisabled =
+    disabled ||
     formState === "validating" ||
     formState === "submitting" ||
     (disableWhenClean && !isDirty);

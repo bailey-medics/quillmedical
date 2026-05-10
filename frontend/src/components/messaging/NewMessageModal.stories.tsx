@@ -7,6 +7,7 @@
  * - Patient user view
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import type { FormSubmitResult } from "@/components/form/Form";
 import NewMessageModal from "./NewMessageModal";
 
@@ -53,6 +54,42 @@ export const PatientView: Story = {
     isPatientView: true,
     patientId: "p-1",
     patientName: "James Green",
+  },
+};
+
+/** Error state — submits and shows inline error via FormStatusNarrow */
+export const WithError: Story = {
+  args: {
+    isPatientView: true,
+    patientId: "p-1",
+    patientName: "James Green",
+    onSubmit: async () => {
+      await delay(500);
+      return {
+        state: "error",
+        message: { title: "Failed to create conversation. Please try again." },
+      } satisfies FormSubmitResult;
+    },
+  },
+  play: async () => {
+    // Modal renders in a portal, so query from document.body
+    const body = within(document.body);
+    // Click into Participants and type to show we tried
+    const participantsInput = body.getByPlaceholderText(
+      "Add staff to this conversation",
+    );
+    await userEvent.type(participantsInput, "Dr");
+    // Close the dropdown by pressing Escape
+    await userEvent.keyboard("{Escape}");
+    await userEvent.type(
+      body.getByLabelText("Subject *"),
+      "Prescription renewal",
+    );
+    await userEvent.type(
+      body.getByLabelText("Message *"),
+      "Hello, I need to renew my prescription.",
+    );
+    await userEvent.click(body.getByTestId("submit-button"));
   },
 };
 

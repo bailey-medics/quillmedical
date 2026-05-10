@@ -107,6 +107,10 @@ function NewMessageFields({
   const initialMessage = watch("initialMessage") as string;
   const includePatient = watch("includePatient") as boolean;
 
+  const needsPatient = !isPatientUser && !lockedPatientId && !patientId;
+  const isIncomplete =
+    needsPatient || !subject.trim() || !initialMessage.trim();
+
   return (
     <Stack gap="md">
       {isPatientUser ? null : lockedPatientId ? (
@@ -183,7 +187,11 @@ function NewMessageFields({
       />
 
       <FormStatusNarrow />
-      <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
+      <SubmitButton
+        onCancel={onClose}
+        cancelLabel="Cancel"
+        disabled={isIncomplete}
+      />
     </Stack>
   );
 }
@@ -259,8 +267,22 @@ export default function NewMessageModal({
     const patientId = lockedPatientId ?? data.patientId;
     if (!patientId) {
       return {
-        state: "error",
+        state: "validation_error",
         message: { title: "Please select a patient" },
+      };
+    }
+
+    if (!data.subject.trim()) {
+      return {
+        state: "validation_error",
+        message: { title: "Please enter a subject" },
+      };
+    }
+
+    if (!data.initialMessage.trim()) {
+      return {
+        state: "validation_error",
+        message: { title: "Please enter a message" },
       };
     }
 

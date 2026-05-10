@@ -160,4 +160,73 @@ describe("NewMessageModal", () => {
       expect(screen.queryByText("Patient")).not.toBeInTheDocument();
     });
   });
+
+  describe("Validation", () => {
+    it("disables submit when subject is empty", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      const messageInput = screen.getByPlaceholderText(
+        "Type your message\u2026",
+      );
+      await user.type(messageInput, "Hello");
+
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("disables submit when message is empty", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      const subjectInput = screen.getByPlaceholderText(
+        "e.g. Prescription renewal",
+      );
+      await user.type(subjectInput, "Test");
+
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("enables submit when all required fields are filled", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      await user.type(
+        screen.getByPlaceholderText("e.g. Prescription renewal"),
+        "Test subject",
+      );
+      await user.type(
+        screen.getByPlaceholderText("Type your message\u2026"),
+        "Hello",
+      );
+
+      expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+  });
 });
