@@ -1,5 +1,11 @@
 import { Paper, Stack } from "@mantine/core";
-import { PasswordField, SelectField, TextField } from "@components/form";
+import {
+  EmailField,
+  EMAIL_PATTERN,
+  PasswordField,
+  SelectField,
+  TextField,
+} from "@components/form";
 import { Heading } from "@components/typography";
 import {
   Form,
@@ -54,12 +60,13 @@ function RegistrationFields({
         {...methods.register("fullName")}
         placeholder="As it should appear on certificates"
       />
-      <TextField
+      <EmailField
         label="Email"
-        type="email"
-        {...methods.register("email", { required: true })}
+        {...methods.register("email", {
+          required: true,
+          pattern: EMAIL_PATTERN,
+        })}
         required
-        autoComplete="email"
       />
       <Controller
         name="organisation"

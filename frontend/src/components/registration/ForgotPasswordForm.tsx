@@ -1,5 +1,5 @@
 import { Group, Paper, Stack } from "@mantine/core";
-import { TextField } from "@components/form";
+import { EmailField, EMAIL_PATTERN } from "@components/form";
 import { QuillLogo } from "@components/images";
 import { BodyText, Heading, TextLink } from "@components/typography";
 import {
@@ -35,12 +35,13 @@ function ForgotPasswordFields() {
             Enter your email address and we&apos;ll send you a link to reset
             your password.
           </BodyText>
-          <TextField
+          <EmailField
             label="Email"
-            type="email"
-            {...methods.register("email", { required: true })}
+            {...methods.register("email", {
+              required: true,
+              pattern: EMAIL_PATTERN,
+            })}
             required
-            autoComplete="email"
           />
           <FormStatusNarrow />
           <SubmitButton />
