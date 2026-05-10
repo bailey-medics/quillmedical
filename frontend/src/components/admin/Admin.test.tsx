@@ -172,42 +172,6 @@ describe("Admin", () => {
     });
   });
 
-  describe("Change System Permissions visibility", () => {
-    // NOTE: Change System Permissions has been moved to AdminPermissionsPage
-    it.skip("shows Change System Permissions card for superadmin", () => {
-      renderWithRouter(<Admin userPermissions="superadmin" />);
-      expect(screen.getByText("Change system permissions")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "View and edit user competencies and system permissions",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Change permissions/i }),
-      ).toBeInTheDocument();
-    });
-
-    it.skip("does not show Change System Permissions card for admin", () => {
-      renderWithRouter(<Admin userPermissions="admin" />);
-      expect(
-        screen.queryByText("Change system permissions"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: /Change permissions/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it.skip("does not show Change System Permissions card for staff", () => {
-      renderWithRouter(<Admin userPermissions="staff" />);
-      expect(
-        screen.queryByText("Change system permissions"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: /Change permissions/i }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
   describe("Add User Navigation", () => {
     // NOTE: Add User functionality is now on AdminUsersPage
     it.skip("has correct link to create new user page", () => {
@@ -469,48 +433,6 @@ describe("Admin", () => {
       );
 
       expect(screen.getByLabelText(/Select Patient/i)).toBeInTheDocument();
-    });
-  });
-
-  describe("Change Permissions Modal", () => {
-    // NOTE: Change Permissions modal has been moved to AdminPermissionsPage
-    it.skip("opens Change Permissions modal for superadmin", async () => {
-      const user = userEvent.setup();
-      renderWithRouter(
-        <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
-      );
-
-      await user.click(
-        screen.getByRole("button", { name: /Change Permissions/i }),
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
-      });
-    });
-
-    it.skip("closes Change Permissions modal when cancel clicked", async () => {
-      const user = userEvent.setup();
-      renderWithRouter(
-        <Admin userPermissions="superadmin" existingUsers={mockUsers} />,
-      );
-
-      await user.click(
-        screen.getByRole("button", { name: /Change Permissions/i }),
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText("Manage user permissions")).toBeInTheDocument();
-      });
-
-      const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });
-      await user.click(cancelButtons[0]);
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Manage user permissions"),
-        ).not.toBeInTheDocument();
-      });
     });
   });
 

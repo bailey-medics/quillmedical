@@ -5,116 +5,122 @@
  * their current password and a new password with confirmation.
  */
 
-import { Button, Container, Group, Stack } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import ButtonPair from "@/components/button/ButtonPair";
 import PasswordField from "@/components/form/PasswordField";
-import { BodyText, ErrorMessage, Heading } from "@/components/typography";
-import { useState } from "react";
-import { api } from "@/lib/api";
+import { Heading } from "@/components/typography";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
+import { api } from "@/lib/api";
 
-/**
- * Change Password Page
- *
- * Form with current password, new password, and confirm new password
- * fields. Validates that passwords match before submitting to the
- * backend. On success, navigates back to settings.
- *
- * @returns Change password form page
- */
-export default function ChangePassword() {
+interface ChangePasswordFormValues {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+function ChangePasswordFields() {
   const navigate = useNavigate();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { methods, formState } = useFormContext();
+  const newPasswordValue = methods.watch("newPassword");
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (newPassword !== confirmPassword) {
-      setError("New passwords do not match");
-      return;
+  useEffect(() => {
+    if (formState === "success") {
+      methods.reset({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
     }
+  }, [formState, methods]);
 
-    if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters");
-      return;
-    }
+  return (
+    <BaseCard maw={480} mx="auto">
+      <Stack>
+        <Heading>Change password</Heading>
+        <FormStatus />
+        <PasswordField
+          label="Current password"
+          {...methods.register("currentPassword", {
+            required: "Current password is required",
+          })}
+          error={methods.formState.errors.currentPassword?.message as string}
+          withAsterisk
+        />
+        <PasswordField
+          label="New password"
+          {...methods.register("newPassword", {
+            required: "New password is required",
+            minLength: {
+              value: 8,
+              message: "New password must be at least 8 characters",
+            },
+          })}
+          error={methods.formState.errors.newPassword?.message as string}
+          withAsterisk
+        />
+        <PasswordField
+          label="Confirm new password"
+          {...methods.register("confirmPassword", {
+            required: "Please confirm your new password",
+            validate: (v: string) =>
+              v === newPasswordValue || "New passwords do not match",
+          })}
+          error={methods.formState.errors.confirmPassword?.message as string}
+          withAsterisk
+        />
+        <SubmitButton onCancel={() => navigate("/settings")} />
+      </Stack>
+    </BaseCard>
+  );
+}
 
-    setLoading(true);
+export default function ChangePassword() {
+  async function handleSubmit(
+    data: ChangePasswordFormValues,
+  ): Promise<FormSubmitResult> {
     try {
       await api.post("/auth/change-password", {
-        current_password: currentPassword,
-        new_password: newPassword,
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
       });
-      setSuccess(true);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to change password";
-      setError(message);
-    } finally {
-      setLoading(false);
+      return {
+        state: "success",
+        message: { title: "Password changed" },
+      };
+    } catch (err) {
+      return {
+        state: "error",
+        message: {
+          title: "Failed to change password",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred",
+        },
+      };
     }
-  }
-
-  if (success) {
-    return (
-      <Container size="lg" py="xl">
-        <BaseCard maw={480} mx="auto">
-          <Stack>
-            <Heading>Password changed</Heading>
-            <BodyText>Your password has been updated successfully.</BodyText>
-            <Group justify="flex-end">
-              <Button onClick={() => navigate("/settings")}>
-                Back to settings
-              </Button>
-            </Group>
-          </Stack>
-        </BaseCard>
-      </Container>
-    );
   }
 
   return (
     <Container size="lg" py="xl">
-      <BaseCard maw={480} mx="auto">
-        <form onSubmit={onSubmit}>
-          <Stack>
-            <Heading>Change password</Heading>
-            <PasswordField
-              label="Current password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.currentTarget.value)}
-              required
-            />
-            <PasswordField
-              label="New password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.currentTarget.value)}
-              required
-            />
-            <PasswordField
-              label="Confirm new password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.currentTarget.value)}
-              required
-            />
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-            <ButtonPair
-              acceptLabel="Change password"
-              acceptType="submit"
-              acceptLoading={loading}
-              onAccept={() => {}}
-              onCancel={() => navigate("/settings")}
-            />
-          </Stack>
-        </form>
-      </BaseCard>
+      <Form<ChangePasswordFormValues>
+        defaultValues={{
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="Change password"
+        submittingLabel="Changing…"
+      >
+        <ChangePasswordFields />
+      </Form>
     </Container>
   );
 }

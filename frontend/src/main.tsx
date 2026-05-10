@@ -33,7 +33,6 @@ import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
 import AdminOrganisationsPage from "./pages/admin/organisations/AdminOrganisationsPage";
-import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import ViewAllUsersPage from "./pages/admin/users/ViewAllUsersPage";
 import UserAdminPage from "./pages/admin/users/UserAdminPage";
 import EditUserPage from "./pages/admin/users/EditUserPage";
@@ -52,7 +51,7 @@ import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
-import NewUserPage from "./pages/NewUserPage";
+import UserInfoUpdatePage from "./pages/UserInfoUpdatePage";
 import NotFound from "./pages/NotFound";
 import Patient from "./pages/Patient";
 import PatientAppointments from "./pages/PatientAppointments";
@@ -245,7 +244,7 @@ const router = createBrowserRouter([
         path: "/admin/users/new",
         element: (
           <RequirePermission level="admin">
-            <NewUserPage />
+            <UserInfoUpdatePage />
           </RequirePermission>
         ),
       },
@@ -285,7 +284,7 @@ const router = createBrowserRouter([
         path: "/admin/users/:id/edit",
         element: (
           <RequirePermission level="admin">
-            <NewUserPage />
+            <UserInfoUpdatePage />
           </RequirePermission>
         ),
       },
@@ -422,14 +421,6 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <OrgFeaturesPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/permissions",
-        element: (
-          <RequirePermission level="admin">
-            <AdminPermissionsPage />
           </RequirePermission>
         ),
       },

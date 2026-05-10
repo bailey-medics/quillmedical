@@ -115,7 +115,7 @@ describe("AdminBankOrgSettingsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Coordinator email")).toBeTruthy();
     });
-    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute(
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
       "aria-disabled",
       "true",
     );

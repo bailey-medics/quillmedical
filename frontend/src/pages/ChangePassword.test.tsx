@@ -49,9 +49,11 @@ describe("ChangePassword", () => {
       screen.getByLabelText(/confirm new password/i),
       "Different123!",
     );
-    await user.click(screen.getByRole("button", { name: /change password/i }));
+    await user.click(screen.getByTestId("submit-button"));
 
-    expect(screen.getByText(/do not match/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/do not match/i)).toBeInTheDocument();
+    });
   });
 
   it("shows error when new password is too short", async () => {
@@ -61,9 +63,11 @@ describe("ChangePassword", () => {
     await user.type(screen.getByLabelText(/current password/i), "OldPass123!");
     await user.type(screen.getByLabelText(/^new password/i), "short");
     await user.type(screen.getByLabelText(/confirm new password/i), "short");
-    await user.click(screen.getByRole("button", { name: /change password/i }));
+    await user.click(screen.getByTestId("submit-button"));
 
-    expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument();
+    });
   });
 
   it("calls API and shows success on valid submission", async () => {
@@ -79,7 +83,7 @@ describe("ChangePassword", () => {
       screen.getByLabelText(/confirm new password/i),
       "NewPass456!",
     );
-    await user.click(screen.getByRole("button", { name: /change password/i }));
+    await user.click(screen.getByTestId("submit-button"));
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/auth/change-password", {
@@ -108,7 +112,7 @@ describe("ChangePassword", () => {
       screen.getByLabelText(/confirm new password/i),
       "NewPass456!",
     );
-    await user.click(screen.getByRole("button", { name: /change password/i }));
+    await user.click(screen.getByTestId("submit-button"));
 
     await waitFor(() => {
       expect(
@@ -126,7 +130,7 @@ describe("ChangePassword", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/settings");
   });
 
-  it("navigates to settings from success screen", async () => {
+  it("clears all fields after successful password change", async () => {
     const mockPost = vi.fn().mockResolvedValue({ detail: "Password changed" });
     (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
@@ -139,13 +143,16 @@ describe("ChangePassword", () => {
       screen.getByLabelText(/confirm new password/i),
       "NewPass456!",
     );
-    await user.click(screen.getByRole("button", { name: /change password/i }));
+    await user.click(screen.getByTestId("submit-button"));
 
     await waitFor(() => {
       expect(screen.getByText(/password changed/i)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /back to settings/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/settings");
+    await waitFor(() => {
+      expect(screen.getByLabelText(/current password/i)).toHaveValue("");
+      expect(screen.getByLabelText(/^new password/i)).toHaveValue("");
+      expect(screen.getByLabelText(/confirm new password/i)).toHaveValue("");
+    });
   });
 });

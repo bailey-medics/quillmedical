@@ -17,7 +17,6 @@ import Messages from "@/pages/Messages";
 import Settings from "@/pages/Settings";
 import AdminPatientsPage from "@/pages/admin/patients/AdminPatientsPage";
 import AdminUsersPage from "@/pages/admin/users/AdminUsersPage";
-import AdminPermissionsPage from "@/pages/admin/AdminPermissionsPage";
 
 // Mock dependencies
 vi.mock("react-router-dom", async () => {
@@ -94,12 +93,6 @@ describe("Page Layout Consistency", () => {
       const containerElement = renderPageAndCheckContainer(AdminUsersPage);
       expect(containerElement).toBeInTheDocument();
     });
-
-    it("AdminPermissionsPage uses Container size='lg'", () => {
-      const containerElement =
-        renderPageAndCheckContainer(AdminPermissionsPage);
-      expect(containerElement).toBeInTheDocument();
-    });
   });
 
   describe("Maximum width consistency", () => {
@@ -110,7 +103,6 @@ describe("Page Layout Consistency", () => {
         Settings,
         AdminPatientsPage,
         AdminUsersPage,
-        AdminPermissionsPage,
       ];
 
       pages.forEach((PageComponent) => {

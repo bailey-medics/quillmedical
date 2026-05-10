@@ -1,13 +1,13 @@
 /**
- * New User Page
+ * User Info Update Page
  *
- * Multi-step form for creating a new user with:
+ * Multi-step form for creating or editing a user with:
  * - Step 1: Basic details (name, email, username, base profession)
  * - Step 2: Competency editor (add/remove competencies)
  * - Step 3: System permissions + review
  * - Step 4: Confirmation
  *
- * @module NewUserPage
+ * @module UserInfoUpdatePage
  */
 
 /* eslint-disable no-restricted-syntax */
@@ -422,7 +422,7 @@ function Step5Confirmation({
  *
  * @returns New/edit user page
  */
-export default function NewUserPage() {
+export default function UserInfoUpdatePage() {
   const navigate = useNavigate();
   const { id: userId } = useParams<{ id: string }>();
   const isEditMode = Boolean(userId);
