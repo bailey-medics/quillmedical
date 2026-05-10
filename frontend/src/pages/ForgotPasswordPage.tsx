@@ -9,36 +9,31 @@
 // Auth pages use centred form layout, not Container
 
 import { api } from "@/lib/api";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { ForgotPasswordForm } from "@components/registration";
-import { useState } from "react";
 
 export default function ForgotPasswordPage() {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  async function handleSubmit(email: string) {
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
+  async function handleSubmit(email: string): Promise<FormSubmitResult> {
     try {
       await api.post("/auth/forgot-password", { email });
-      setSuccess(
-        "If an account with that email exists, we've sent a reset link. Please check your inbox.",
-      );
+      return {
+        state: "success",
+        message: {
+          title: "Check your inbox",
+          description:
+            "If an account with that email exists, we've sent a reset link. Please check your inbox.",
+        },
+      };
     } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
+      return {
+        state: "error",
+        message: {
+          title: "Something went wrong",
+          description: "Please try again.",
+        },
+      };
     }
   }
 
-  return (
-    <ForgotPasswordForm
-      onSubmit={handleSubmit}
-      submitting={submitting}
-      error={error}
-      success={success}
-    />
-  );
+  return <ForgotPasswordForm onSubmit={handleSubmit} />;
 }

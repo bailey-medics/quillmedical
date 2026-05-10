@@ -10,7 +10,12 @@
 
 import { api } from "@lib/api";
 import { useAuth } from "@/auth/AuthContext";
-import { Form, SubmitButton, useFormContext } from "@/components/form/Form";
+import {
+  Form,
+  FormStatusNarrow,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import SelectField from "@/components/form/SelectField";
@@ -177,6 +182,7 @@ function NewMessageFields({
         }
       />
 
+      <FormStatusNarrow />
       <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
     </Stack>
   );

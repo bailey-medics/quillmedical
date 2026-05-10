@@ -1,42 +1,88 @@
-import { Button, Group, Paper, Stack } from "@mantine/core";
-import { useState } from "react";
+import { Group, Paper, Stack } from "@mantine/core";
 import { PasswordField } from "@components/form";
 import { QuillLogo } from "@components/images";
-import { ErrorMessage, Heading, TextLink } from "@components/typography";
+import { Heading, TextLink } from "@components/typography";
+import {
+  Form,
+  FormStatusNarrow,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
+
+interface ResetPasswordFormValues {
+  password: string;
+  confirm: string;
+}
 
 export interface ResetPasswordFormProps {
-  /** Called when the form is submitted */
-  onSubmit: (newPassword: string) => void;
-  /** Whether the form is currently submitting */
-  submitting?: boolean;
-  /** Error message to display */
-  error?: string | null;
+  /** Called when the form is submitted — should return a FormSubmitResult */
+  onSubmit: (newPassword: string) => Promise<FormSubmitResult>;
+}
+
+function ResetPasswordFields() {
+  const { methods } = useFormContext();
+  const password = methods.watch("password") as string;
+  const confirm = methods.watch("confirm") as string;
+
+  return (
+    <Stack>
+      <Heading>Reset password</Heading>
+      <PasswordField
+        label="New password"
+        value={password}
+        onChange={(e) =>
+          methods.setValue("password", e.currentTarget.value, {
+            shouldDirty: true,
+          })
+        }
+        required
+        autoComplete="new-password"
+      />
+      <PasswordField
+        label="Confirm password"
+        value={confirm}
+        onChange={(e) =>
+          methods.setValue("confirm", e.currentTarget.value, {
+            shouldDirty: true,
+          })
+        }
+        required
+        autoComplete="new-password"
+      />
+      <FormStatusNarrow />
+      <SubmitButton />
+      <Group justify="flex-end">
+        <TextLink to="/login">Back to sign in</TextLink>
+      </Group>
+    </Stack>
+  );
 }
 
 export default function ResetPasswordForm({
   onSubmit,
-  submitting = false,
-  error = null,
 }: ResetPasswordFormProps) {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLocalError(null);
-    if (password.length < 8) {
-      setLocalError("Password must be at least 8 characters");
-      return;
+  async function handleSubmit(
+    data: ResetPasswordFormValues,
+  ): Promise<FormSubmitResult> {
+    if (data.password.length < 8) {
+      return {
+        state: "validation_error",
+        message: {
+          title: "Password must be at least 8 characters",
+        },
+      };
     }
-    if (password !== confirm) {
-      setLocalError("Passwords do not match");
-      return;
+    if (data.password !== data.confirm) {
+      return {
+        state: "validation_error",
+        message: {
+          title: "Passwords do not match",
+        },
+      };
     }
-    onSubmit(password);
+    return onSubmit(data.password);
   }
-
-  const displayError = error ?? localError;
 
   return (
     <>
@@ -45,32 +91,14 @@ export default function ResetPasswordForm({
       </Stack>
 
       <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
-        <form onSubmit={handleSubmit} noValidate>
-          <Stack>
-            <Heading>Reset password</Heading>
-            <PasswordField
-              label="New password"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-              required
-              autoComplete="new-password"
-            />
-            <PasswordField
-              label="Confirm password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.currentTarget.value)}
-              required
-              autoComplete="new-password"
-            />
-            {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
-            <Button type="submit" loading={submitting} size="lg">
-              Reset password
-            </Button>
-            <Group justify="flex-end">
-              <TextLink to="/login">Back to sign in</TextLink>
-            </Group>
-          </Stack>
-        </form>
+        <Form<ResetPasswordFormValues>
+          defaultValues={{ password: "", confirm: "" }}
+          onSubmit={handleSubmit}
+          submitLabel="Reset password"
+          submittingLabel="Resetting…"
+        >
+          <ResetPasswordFields />
+        </Form>
       </Paper>
     </>
   );

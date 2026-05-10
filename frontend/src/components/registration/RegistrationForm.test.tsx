@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
+import type { FormSubmitResult } from "@/components/form/Form";
 import RegistrationForm from "./RegistrationForm";
 
 const sampleOrganisations = [
@@ -9,12 +10,22 @@ const sampleOrganisations = [
   { value: "nhs-grampian", label: "NHS Grampian" },
 ];
 
+const successResult: FormSubmitResult = {
+  state: "success",
+  message: { title: "Account created" },
+};
+
+const errorResult: FormSubmitResult = {
+  state: "error",
+  message: { title: "Email already taken" },
+};
+
 describe("RegistrationForm", () => {
   it("renders all form fields", () => {
     renderWithMantine(
       <RegistrationForm
         organisations={sampleOrganisations}
-        onSubmit={vi.fn()}
+        onSubmit={() => new Promise(() => {})}
       />,
     );
 
@@ -25,14 +36,12 @@ describe("RegistrationForm", () => {
     expect(screen.getByText("Organisation")).toBeInTheDocument();
     expect(screen.getByText("Password")).toBeInTheDocument();
     expect(screen.getByText("Confirm password")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Register" }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("submit-button")).toBeInTheDocument();
   });
 
   it("shows error when passwords do not match", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn().mockResolvedValue(successResult);
 
     renderWithMantine(
       <RegistrationForm
@@ -45,15 +54,17 @@ describe("RegistrationForm", () => {
     await user.type(screen.getByLabelText("Email *"), "test@example.com");
     await user.type(screen.getByLabelText(/^Password/), "pass123");
     await user.type(screen.getByLabelText(/Confirm password/), "different");
-    await user.click(screen.getByRole("button", { name: "Register" }));
+    await user.click(screen.getByTestId("submit-button"));
 
-    expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
+    });
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("shows error when organisation is not selected", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn();
+    const onSubmit = vi.fn().mockResolvedValue(successResult);
 
     renderWithMantine(
       <RegistrationForm
@@ -64,37 +75,70 @@ describe("RegistrationForm", () => {
 
     await user.type(screen.getByLabelText("Username *"), "testuser");
     await user.type(screen.getByLabelText("Email *"), "test@example.com");
-    await user.type(screen.getByLabelText(/^Password/), "pass123");
-    await user.type(screen.getByLabelText(/Confirm password/), "pass123");
-    await user.click(screen.getByRole("button", { name: "Register" }));
+    await user.type(screen.getByLabelText(/^Password/), "pass1234");
+    await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
+    await user.click(screen.getByTestId("submit-button"));
 
-    expect(
-      screen.getByText("Please select an organisation"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Please select an organisation"),
+      ).toBeInTheDocument();
+    });
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("displays external error prop", () => {
+  it("displays server error after failed submission", async () => {
+    const user = userEvent.setup();
+
     renderWithMantine(
       <RegistrationForm
         organisations={sampleOrganisations}
-        onSubmit={vi.fn()}
-        error="Email already taken"
+        onSubmit={async () => errorResult}
       />,
     );
 
-    expect(screen.getByText("Email already taken")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Username *"), "testuser");
+    await user.type(screen.getByLabelText("Email *"), "test@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "pass1234");
+    await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
+
+    // Select organisation
+    await user.click(screen.getByPlaceholderText("Select your organisation"));
+    await user.click(screen.getByRole("option", { name: "NHS Highland" }));
+
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Email already taken")).toBeInTheDocument();
+    });
   });
 
-  it("shows loading state when submitting", () => {
+  it("disables submit button while submitting", async () => {
+    const user = userEvent.setup();
+
     renderWithMantine(
       <RegistrationForm
         organisations={sampleOrganisations}
-        onSubmit={vi.fn()}
-        submitting
+        onSubmit={() => new Promise(() => {})}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Register" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Username *"), "testuser");
+    await user.type(screen.getByLabelText("Email *"), "test@example.com");
+    await user.type(screen.getByLabelText(/^Password/), "pass1234");
+    await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
+
+    // Select organisation
+    await user.click(screen.getByPlaceholderText("Select your organisation"));
+    await user.click(screen.getByRole("option", { name: "NHS Highland" }));
+
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
   });
 });

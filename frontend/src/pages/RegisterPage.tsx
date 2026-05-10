@@ -9,6 +9,7 @@
 // Auth pages use centred form layout, not Container
 
 import { api } from "@/lib/api";
+import type { FormSubmitResult } from "@/components/form/Form";
 import {
   RegistrationForm,
   type RegistrationFormData,
@@ -23,8 +24,6 @@ interface Organisation {
 
 export default function RegisterPage() {
   const { login } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [organisations, setOrganisations] = useState<
     { value: string; label: string }[]
   >([]);
@@ -45,9 +44,9 @@ export default function RegisterPage() {
       });
   }, []);
 
-  async function handleSubmit(data: RegistrationFormData) {
-    setSubmitting(true);
-    setError(null);
+  async function handleSubmit(
+    data: RegistrationFormData,
+  ): Promise<FormSubmitResult> {
     try {
       await api.post("/auth/register", {
         username: data.username,
@@ -68,6 +67,7 @@ export default function RegisterPage() {
         const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
         window.location.assign(base);
       }
+      return { state: "success", message: { title: "Account created" } };
     } catch (err: unknown) {
       let msg = "Registration failed";
       if (err instanceof Error && err.message) msg = err.message;
@@ -78,18 +78,14 @@ export default function RegisterPage() {
           msg = String(err);
         }
       }
-      setError(msg);
-    } finally {
-      setSubmitting(false);
+      return {
+        state: "error",
+        message: { title: msg },
+      };
     }
   }
 
   return (
-    <RegistrationForm
-      organisations={organisations}
-      onSubmit={handleSubmit}
-      submitting={submitting}
-      error={error}
-    />
+    <RegistrationForm organisations={organisations} onSubmit={handleSubmit} />
   );
 }
