@@ -17,7 +17,7 @@ import MainLayout from "./MainLayout";
 
 // demoPatientsList imported from centralized demo-data
 
-const Content = () => <StoryNote p="md">Desktop content area.</StoryNote>;
+const Content = () => <StoryNote>Desktop content area.</StoryNote>;
 
 // ...existing code...
 

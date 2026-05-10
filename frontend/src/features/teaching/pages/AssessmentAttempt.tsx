@@ -1,4 +1,4 @@
-import { Container, Loader } from "@mantine/core";
+import { Container, Loader, Stack } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useCallback, useEffect, useRef, useState } from "react";

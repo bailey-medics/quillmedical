@@ -45,7 +45,7 @@ import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
 
 export interface FormSubmitResult {
   /** Resulting state after submission */
-  state: "success" | "partial_success" | "error";
+  state: "success" | "partial_success" | "error" | "validation_error";
   /** Status message to display */
   message: FormStatusMessage;
 }

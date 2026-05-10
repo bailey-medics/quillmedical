@@ -75,11 +75,7 @@ export const AllSizes: Story = {
   render: () => (
     <VariantStack>
       {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "md" ? "md (default)" : size}
-          align="start"
-        >
+        <VariantRow key={size} label={size === "md" ? "md (default)" : size}>
           <Icon icon={<IconPencil />} size={size} />
         </VariantRow>
       ))}
