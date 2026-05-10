@@ -1,5 +1,5 @@
 .card {
-  background: var(--mantine-color-primary-9);
+  background: var(--mantine-color-primary-7);
   border: 0.0625rem solid rgb(200 150 62 / 20%);
   border-radius: var(--mantine-radius-md);
 }

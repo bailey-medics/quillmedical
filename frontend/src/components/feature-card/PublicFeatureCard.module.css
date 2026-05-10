@@ -1,5 +1,5 @@
 .card {
-  background: var(--mantine-color-primary-9);
+  background: var(--mantine-color-primary-7);
   border: 0.0625rem solid rgb(200 150 62 / 20%);
   border-radius: 4px;
   padding: 2rem 1.75rem;
@@ -31,7 +31,7 @@
 }
 
 .clickable:hover {
-  background: var(--mantine-color-primary-9);
+  background: var(--mantine-color-primary-8);
 }
 
 .clickable:active {
