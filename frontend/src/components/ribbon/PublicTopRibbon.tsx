@@ -59,7 +59,6 @@ export default function PublicTopRibbon({
                   className={classes.navLink}
                   underline="never"
                   c="inherit"
-                  fz="xl"
                   fw={500}
                 >
                   {link.label}

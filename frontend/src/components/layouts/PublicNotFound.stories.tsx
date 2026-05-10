@@ -7,6 +7,18 @@ const meta: Meta<typeof PublicNotFound> = {
   parameters: {
     layout: "fullscreen",
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

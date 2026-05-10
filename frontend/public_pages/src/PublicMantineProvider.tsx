@@ -14,7 +14,7 @@ export default function PublicMantineProvider({
     <MantineProvider
       theme={theme}
       cssVariablesResolver={cssVariablesResolver}
-      defaultColorScheme="light"
+      forceColorScheme="light"
     >
       {children}
     </MantineProvider>

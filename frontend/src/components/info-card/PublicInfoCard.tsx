@@ -1,4 +1,4 @@
-import PublicText from "@/components/typography/PublicText";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Box, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PublicInfoCard.module.css";
@@ -8,7 +8,7 @@ export interface PublicInfoCardProps {
   label: string;
   /** Large heading text (white, Cormorant Garamond) */
   heading: string;
-  /** Description content (PublicText) */
+  /** Description content */
   description: ReactNode;
 }
 
@@ -33,9 +33,7 @@ export default function PublicInfoCard({
       >
         {heading}
       </Title>
-      <PublicText ta="left" size="lg">
-        {description}
-      </PublicText>
+      <PublicBodyText>{description}</PublicBodyText>
     </Box>
   );
 }

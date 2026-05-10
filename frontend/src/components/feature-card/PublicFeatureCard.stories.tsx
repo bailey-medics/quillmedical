@@ -1,21 +1,25 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PublicFeatureCard } from "./PublicFeatureCard";
 import PublicFeatureCardGrid from "./PublicFeatureCardGrid";
-import { Box } from "@mantine/core";
 import { IconMessage } from "@/components/icons/appIcons";
 
 const meta = {
   title: "Public/FeatureCard/PublicFeatureCard",
   component: PublicFeatureCard,
   parameters: {
-    layout: "padded",
-    backgrounds: { default: "dark" },
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <Box bg="var(--public-navy)" p="2rem">
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
         <Story />
-      </Box>
+      </div>
     ),
   ],
 } satisfies Meta<typeof PublicFeatureCard>;

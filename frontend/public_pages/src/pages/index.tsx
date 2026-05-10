@@ -8,8 +8,8 @@ import PublicInfoCard from "@/components/info-card/PublicInfoCard";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import QuillLogo from "@/components/images/QuillLogo";
 import PublicTitle from "@/components/typography/PublicTitle";
-import PublicText from "@/components/typography/PublicText";
-import { Container, Group, SimpleGrid, Stack } from "@mantine/core";
+import PublicBodyText from "@/components/typography/PublicBodyText";
+import { Box, Container, Group, SimpleGrid, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import {
@@ -30,14 +30,14 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" justify="center" style={{ minHeight: "60dvh" }}>
             <QuillLogo height={8} colour="light-grey" />
             <PublicTitle title="Communication that counts!" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               Exceptional clinical care deserves exceptional clinical tools.
               Software your team actually wants to use, and trainees who walk
               into any clinical setting knowing exactly what they're doing.
               Quill Medical is what a clinical team builds when they refuse to
               settle - for trainees across every specialty, and the clinicians
               who teach them.
-            </PublicText>
+            </PublicBodyText>
             <Group mt="lg" justify="center">
               <PublicButton href="https://teaching.quill-medical.com">
                 Teaching
@@ -77,20 +77,22 @@ createRoot(document.getElementById("root")!).render(
               title="Built by clinicians *for* clinicians!"
               c="white"
             />
-            <PublicText size="lg" mb="sm">
-              Great clinical care has always depended on great clinical
-              judgement. We believe it should also have great clinical tools to
-              match - tools that support that judgement, surface the right
-              information at the right moment, and get out of the way.
-            </PublicText>
-            <PublicText size="lg">
+            <Box mb="sm">
+              <PublicBodyText justify="centre">
+                Great clinical care has always depended on great clinical
+                judgement. We believe it should also have great clinical tools
+                to match - tools that support that judgement, surface the right
+                information at the right moment, and get out of the way.
+              </PublicBodyText>
+            </Box>
+            <PublicBodyText justify="centre">
               The Quill team brings something rare to software development:
               genuine clinical experience. We have trained, examined, referred,
               prescribed, and taught. We know what good looks like at the
               bedside, and we build towards it. That is our commitment — to keep
               raising the standard of what clinical software can be, one
               carefully considered feature at a time.
-            </PublicText>
+            </PublicBodyText>
           </Stack>
         </Container>
       </PublicLightBackground>
@@ -102,11 +104,11 @@ createRoot(document.getElementById("root")!).render(
               title="Everything a clinic *actually* needs!"
               c="white"
             />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               Quill brings together patient records, clinical messaging,
               letters, and structured documentation in a single coherent system
               — modular by design, so you deploy only what you need.
-            </PublicText>
+            </PublicBodyText>
           </Stack>
           <PublicFeatureCardGrid>
             <PublicFeatureCard

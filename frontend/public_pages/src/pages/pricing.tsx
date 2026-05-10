@@ -4,7 +4,7 @@ import PublicLightBackground from "@/components/background/PublicLightBackground
 import PublicButton from "@/components/button/PublicButton";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
-import PublicText from "@/components/typography/PublicText";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Container, Group, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
@@ -17,11 +17,11 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Pricing" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               Quill Medical is currently in active development. We are building
               something we believe will genuinely improve clinical workflows —
               and we want to get it right before we put a price on it.
-            </PublicText>
+            </PublicBodyText>
           </Stack>
         </Container>
       </PublicHeroBackground>
@@ -30,17 +30,17 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="App coming soon" c="white" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               We are working towards a production release that meets the
               standards clinical teams deserve — clinically safe, rigorously
               tested, and built on open healthcare standards. Pricing details
               will be published when the platform is ready for general
               availability.
-            </PublicText>
-            <PublicText size="lg">
+            </PublicBodyText>
+            <PublicBodyText justify="centre">
               In the meantime, you can explore the teaching platform to see what
               we are building.
-            </PublicText>
+            </PublicBodyText>
             <Group mt="lg">
               <PublicButton href="https://teaching.quill-medical.com">
                 Try Teaching
@@ -54,11 +54,11 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Get in touch" c="white" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               Interested in early access or want to discuss how Quill could work
               for your organisation? We would love to hear from you. Head over
               to our contact page and let us know.
-            </PublicText>
+            </PublicBodyText>
             <Group mt="lg">
               <PublicButton href="/contact.html">Contact us</PublicButton>
             </Group>

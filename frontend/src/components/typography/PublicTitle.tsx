@@ -1,4 +1,4 @@
-import PublicText from "@/components/typography/PublicText";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Box, Title } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PageHeader.module.css";
@@ -72,9 +72,9 @@ export default function PublicTitle({
         {parseTitle(title, accentColour)}
       </Title>
       {description && (
-        <PublicText size="lg" ta={ta}>
+        <PublicBodyText justify={ta === "center" ? "centre" : ta}>
           {description}
-        </PublicText>
+        </PublicBodyText>
       )}
     </Box>
   );

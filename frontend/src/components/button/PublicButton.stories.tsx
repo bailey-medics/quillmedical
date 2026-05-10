@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicButton from "./PublicButton";
-import { Box, Group } from "@mantine/core";
+import { Group } from "@mantine/core";
 import { StoryNote, VariantStack } from "@/stories/variants";
 
 const meta = {
@@ -11,9 +11,15 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <Box bg="var(--mantine-color-primary-8)" p="xl" c="white" mih="100vh">
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
         <Story />
-      </Box>
+      </div>
     ),
   ],
 } satisfies Meta<typeof PublicButton>;

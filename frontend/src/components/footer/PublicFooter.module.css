@@ -58,16 +58,11 @@
 }
 
 .link {
-  display: block;
-  color: var(--mantine-color-gray-1);
-  font-size: var(--mantine-font-size-sm);
-  padding-top: 3px;
-  padding-bottom: 3px;
+  color: inherit;
   text-decoration: none;
 }
 
 .link:hover {
-  color: var(--mantine-color-gray-2);
   text-decoration: underline;
 }
 

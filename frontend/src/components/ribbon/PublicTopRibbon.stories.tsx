@@ -8,6 +8,18 @@ const meta: Meta<typeof PublicTopRibbon> = {
     layout: "fullscreen",
     controls: { expanded: true },
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     onBurgerClick: { action: "burger-clicked" },
   },

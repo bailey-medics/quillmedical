@@ -19,8 +19,21 @@ const meta = {
   title: "Public/Icons/PublicNavIcon",
   component: PublicNavIcon,
   parameters: {
-    layout: "padded",
+    layout: "fullscreen",
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     name: {
       description: "The name of the icon to display",

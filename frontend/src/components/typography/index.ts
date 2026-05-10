@@ -9,5 +9,5 @@ export { default as Heading } from "./Heading";
 export { default as TextLink } from "./TextLink";
 export { default as MarkdownView } from "./MarkdownView";
 export { default as PageHeader } from "./PageHeader";
-export { default as PublicText } from "./PublicText";
+export { default as PublicBodyText } from "./PublicBodyText";
 export { default as PublicTitle } from "./PublicTitle";

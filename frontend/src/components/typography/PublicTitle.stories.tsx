@@ -1,19 +1,23 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicTitle from "./PublicTitle";
-import { Box } from "@mantine/core";
 
 const meta = {
   title: "Public/Typography/PublicTitle",
   component: PublicTitle,
   parameters: {
-    layout: "padded",
-    backgrounds: { default: "dark" },
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <Box maw={800} bg="var(--public-navy)" p="xl">
+      <div
+        style={{
+          background: "var(--public-navy)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
         <Story />
-      </Box>
+      </div>
     ),
   ],
 } satisfies Meta<typeof PublicTitle>;

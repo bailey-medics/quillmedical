@@ -2,7 +2,7 @@ import PublicDarkBackground from "@/components/background/PublicDarkBackground";
 import PublicHeroBackground from "@/components/background/PublicHeroBackground";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
-import PublicText from "@/components/typography/PublicText";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Anchor, Container, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
@@ -15,11 +15,11 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Contact us" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               Whether you are a clinician interested in early access, an
               organisation exploring clinical software options, or just curious
               about what we are building — we would love to hear from you.
-            </PublicText>
+            </PublicBodyText>
           </Stack>
         </Container>
       </PublicHeroBackground>
@@ -28,7 +28,7 @@ createRoot(document.getElementById("root")!).render(
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Get in touch" c="white" />
-            <PublicText size="lg">
+            <PublicBodyText justify="centre">
               A contact form is coming soon. In the meantime, you can reach us
               at{" "}
               <Anchor
@@ -39,10 +39,10 @@ createRoot(document.getElementById("root")!).render(
                 info@quill-medical.com
               </Anchor>
               .
-            </PublicText>
-            <PublicText size="lg">
+            </PublicBodyText>
+            <PublicBodyText justify="centre">
               We aim to respond to all enquiries within two working days.
-            </PublicText>
+            </PublicBodyText>
           </Stack>
         </Container>
       </PublicDarkBackground>
