@@ -44,6 +44,8 @@ interface ButtonPairProps {
   acceptChildren?: ReactNode;
   /** data-testid for the accept button */
   acceptTestId?: string;
+  /** Horizontal alignment of the button group (defaults to "flex-end") */
+  justify?: "flex-end" | "center";
 }
 
 export default function ButtonPair({
@@ -56,6 +58,7 @@ export default function ButtonPair({
   acceptType = "button",
   acceptChildren,
   acceptTestId,
+  justify = "flex-end",
 }: ButtonPairProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -65,7 +68,7 @@ export default function ButtonPair({
     : "var(--mantine-font-size-lg)";
 
   return (
-    <Group justify="flex-end" mt="xs">
+    <Group justify={justify} mt="xs">
       {onCancel && (
         <Button
           variant="outline"
