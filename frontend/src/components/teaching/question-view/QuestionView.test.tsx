@@ -184,7 +184,10 @@ describe("QuestionView", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: /next/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /next/i })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
 
     it("enables Next when an option is selected", () => {
@@ -197,7 +200,9 @@ describe("QuestionView", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: /next/i })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: /next/i })).not.toHaveAttribute(
+        "aria-disabled",
+      );
     });
 
     it("calls onNext when clicked", async () => {

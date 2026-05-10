@@ -226,9 +226,7 @@ describe("NewUserPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText("System permissions & review"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
       });
     }, 10000);
   });
@@ -264,6 +262,12 @@ describe("NewUserPage", () => {
       });
 
       await user.click(screen.getByRole("button", { name: /next/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /next/i }));
     }
 
     it("renders permissions selection and review", async () => {
@@ -274,12 +278,9 @@ describe("NewUserPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
-      expect(
-        screen.getAllByLabelText(/system permission level/i)[0],
-      ).toBeInTheDocument();
       // Check for review section by looking for unique review field labels
       expect(screen.getByText("Name:")).toBeInTheDocument();
       expect(screen.getByText("Email:")).toBeInTheDocument();
@@ -336,10 +337,16 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Step 3 - submit
+      // Step 3 - permissions
+      await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Step 4 - review and submit
       await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -391,8 +398,12 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -449,8 +460,12 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -461,9 +476,7 @@ describe("NewUserPage", () => {
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /return to admin/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /finished/i }));
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
     }, 15000);

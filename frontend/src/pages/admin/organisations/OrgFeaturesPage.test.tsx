@@ -104,7 +104,9 @@ describe("OrgFeaturesPage", () => {
       expect(screen.getByText("Teaching")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 

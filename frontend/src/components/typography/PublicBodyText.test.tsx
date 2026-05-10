@@ -9,10 +9,10 @@ describe("PublicBodyText", () => {
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
-  it("defaults to gray.3 colour", () => {
+  it("defaults to gray.4 colour", () => {
     renderWithMantine(<PublicBodyText>Coloured text</PublicBodyText>);
     const el = screen.getByText("Coloured text");
-    expect(el).toHaveStyle({ color: "var(--mantine-color-gray-3)" });
+    expect(el).toHaveStyle({ color: "var(--mantine-color-gray-4)" });
   });
 
   it("allows colour override", () => {

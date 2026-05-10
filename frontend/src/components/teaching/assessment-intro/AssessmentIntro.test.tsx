@@ -64,7 +64,8 @@ describe("AssessmentIntro", () => {
       />,
     );
 
-    const button = screen.getByRole("button", { name: "Begin" });
+    const button = screen.getByRole("button");
     expect(button).toBeDisabled();
+    expect(screen.getByText("Loading exam…")).toBeInTheDocument();
   });
 });

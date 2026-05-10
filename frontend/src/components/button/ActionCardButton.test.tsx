@@ -71,12 +71,12 @@ describe("ActionCardButton", () => {
   });
 
   describe("States", () => {
-    it("renders disabled link", () => {
+    it("renders disabled button when disabled with url", () => {
       renderWithRouter(
         <ActionCardButton label="View details" url="/example" disabled />,
       );
-      const link = screen.getByRole("link", { name: /view details/i });
-      expect(link).toHaveAttribute("data-disabled", "true");
+      const button = screen.getByRole("button", { name: /view details/i });
+      expect(button).toBeDisabled();
     });
 
     it("renders with light variant styling", () => {

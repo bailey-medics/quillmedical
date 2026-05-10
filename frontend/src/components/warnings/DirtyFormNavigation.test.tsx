@@ -35,9 +35,7 @@ describe("DirtyFormNavigation", () => {
         "You have unsaved changes. Are you sure you want to leave this page?",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /stay on page/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^stay$/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /leave page/i }),
     ).toBeInTheDocument();
@@ -71,7 +69,7 @@ describe("DirtyFormNavigation", () => {
 
     renderWithMantine(<DirtyFormNavigation blocker={blocker} />);
 
-    await user.click(screen.getByRole("button", { name: /stay on page/i }));
+    await user.click(screen.getByRole("button", { name: /^stay$/i }));
 
     expect(blocker.reset).toHaveBeenCalledTimes(1);
     expect(blocker.proceed).not.toHaveBeenCalled();

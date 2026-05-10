@@ -115,6 +115,9 @@ describe("AdminBankOrgSettingsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Coordinator email")).toBeTruthy();
     });
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });
