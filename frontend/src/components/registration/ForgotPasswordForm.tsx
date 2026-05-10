@@ -21,7 +21,6 @@ export interface ForgotPasswordFormProps {
 
 function ForgotPasswordFields() {
   const { formState, statusMessage, methods } = useFormContext();
-  const email = methods.watch("email") as string;
   const isSuccess = formState === "success";
 
   return (
@@ -39,12 +38,7 @@ function ForgotPasswordFields() {
           <TextField
             label="Email"
             type="email"
-            value={email}
-            onChange={(e) =>
-              methods.setValue("email", e.currentTarget.value, {
-                shouldDirty: true,
-              })
-            }
+            {...methods.register("email", { required: true })}
             required
             autoComplete="email"
           />

@@ -26,6 +26,7 @@ import BodyTextBold from "@/components/typography/BodyTextBold";
 import Heading from "@/components/typography/Heading";
 import { Modal, Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { Controller } from "react-hook-form";
 
 interface PatientOption {
   value: string;
@@ -99,17 +100,9 @@ function NewMessageFields({
   onClose: () => void;
 }) {
   const { methods } = useFormContext();
-  const { watch, setValue } = methods;
+  const { watch, setValue, register, control } = methods;
 
-  const patientId = watch("patientId") as string | null;
-  const participantIds = watch("participantIds") as string[];
-  const subject = watch("subject") as string;
-  const initialMessage = watch("initialMessage") as string;
   const includePatient = watch("includePatient") as boolean;
-
-  const needsPatient = !isPatientUser && !lockedPatientId && !patientId;
-  const isIncomplete =
-    needsPatient || !subject.trim() || !initialMessage.trim();
 
   return (
     <Stack gap="md">
@@ -118,18 +111,25 @@ function NewMessageFields({
           Patient: {lockedPatientName ?? lockedPatientId}
         </BodyTextBold>
       ) : (
-        <SelectField
-          label="Patient"
-          placeholder="Select a patient"
-          data={patients}
-          value={patientId}
-          onChange={(v) => setValue("patientId", v, { shouldDirty: true })}
-          searchable
-          required
-          disabled={loadingPatients}
-          nothingFoundMessage={
-            loadingPatients ? "Loading patients\u2026" : "No patients found"
-          }
+        <Controller
+          name="patientId"
+          control={control}
+          rules={{ required: true }}
+          render={({ field }) => (
+            <SelectField
+              label="Patient"
+              placeholder="Select a patient"
+              data={patients}
+              value={field.value as string | null}
+              onChange={field.onChange}
+              searchable
+              required
+              disabled={loadingPatients}
+              nothingFoundMessage={
+                loadingPatients ? "Loading patients\u2026" : "No patients found"
+              }
+            />
+          )}
         />
       )}
 
@@ -148,27 +148,30 @@ function NewMessageFields({
         </div>
       )}
 
-      <MultiSelectField
-        label="Participants"
-        placeholder="Add staff to this conversation"
-        data={users}
-        value={participantIds}
-        onChange={(v) => setValue("participantIds", v, { shouldDirty: true })}
-        searchable
-        disabled={loadingUsers}
-        nothingFoundMessage={
-          loadingUsers ? "Loading users\u2026" : "No users found"
-        }
+      <Controller
+        name="participantIds"
+        control={control}
+        render={({ field }) => (
+          <MultiSelectField
+            label="Participants"
+            placeholder="Add staff to this conversation"
+            data={users}
+            value={field.value as string[]}
+            onChange={field.onChange}
+            searchable
+            disabled={loadingUsers}
+            nothingFoundMessage={
+              loadingUsers ? "Loading users\u2026" : "No users found"
+            }
+          />
+        )}
       />
 
       <TextField
         label="Subject"
         placeholder="e.g. Prescription renewal"
         required
-        value={subject}
-        onChange={(e) =>
-          setValue("subject", e.currentTarget.value, { shouldDirty: true })
-        }
+        {...register("subject", { required: true })}
       />
 
       <TextAreaField
@@ -178,20 +181,11 @@ function NewMessageFields({
         autosize
         maxRows={8}
         required
-        value={initialMessage}
-        onChange={(e) =>
-          setValue("initialMessage", e.currentTarget.value, {
-            shouldDirty: true,
-          })
-        }
+        {...register("initialMessage", { required: true })}
       />
 
       <FormStatusNarrow />
-      <SubmitButton
-        onCancel={onClose}
-        cancelLabel="Cancel"
-        disabled={isIncomplete}
-      />
+      <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
     </Stack>
   );
 }
@@ -269,20 +263,6 @@ export default function NewMessageModal({
       return {
         state: "validation_error",
         message: { title: "Please select a patient" },
-      };
-    }
-
-    if (!data.subject.trim()) {
-      return {
-        state: "validation_error",
-        message: { title: "Please enter a subject" },
-      };
-    }
-
-    if (!data.initialMessage.trim()) {
-      return {
-        state: "validation_error",
-        message: { title: "Please enter a message" },
       };
     }
 

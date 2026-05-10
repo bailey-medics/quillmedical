@@ -22,31 +22,26 @@ export interface ResetPasswordFormProps {
 
 function ResetPasswordFields() {
   const { methods } = useFormContext();
-  const password = methods.watch("password") as string;
-  const confirm = methods.watch("confirm") as string;
 
   return (
     <Stack>
       <Heading>Reset password</Heading>
       <PasswordField
         label="New password"
-        value={password}
-        onChange={(e) =>
-          methods.setValue("password", e.currentTarget.value, {
-            shouldDirty: true,
-          })
-        }
+        {...methods.register("password", {
+          required: true,
+          minLength: 8,
+        })}
         required
         autoComplete="new-password"
       />
       <PasswordField
         label="Confirm password"
-        value={confirm}
-        onChange={(e) =>
-          methods.setValue("confirm", e.currentTarget.value, {
-            shouldDirty: true,
-          })
-        }
+        {...methods.register("confirm", {
+          required: true,
+          validate: (value: string) =>
+            value === methods.getValues("password") || "Passwords do not match",
+        })}
         required
         autoComplete="new-password"
       />
@@ -65,22 +60,6 @@ export default function ResetPasswordForm({
   async function handleSubmit(
     data: ResetPasswordFormValues,
   ): Promise<FormSubmitResult> {
-    if (data.password.length < 8) {
-      return {
-        state: "validation_error",
-        message: {
-          title: "Password must be at least 8 characters",
-        },
-      };
-    }
-    if (data.password !== data.confirm) {
-      return {
-        state: "validation_error",
-        message: {
-          title: "Passwords do not match",
-        },
-      };
-    }
     return onSubmit(data.password);
   }
 

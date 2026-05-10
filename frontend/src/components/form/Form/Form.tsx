@@ -97,7 +97,7 @@ export default function Form<T extends FieldValues>({
   confirm,
   children,
 }: FormProps<T>) {
-  const methods = useForm<T>({ defaultValues });
+  const methods = useForm<T>({ defaultValues, mode: "onChange" });
   const [formState, setFormState] = useState<FormState>("idle");
   const [statusMessage, setStatusMessage] = useState<FormStatusMessage | null>(
     null,

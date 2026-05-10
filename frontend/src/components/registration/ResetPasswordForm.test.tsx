@@ -58,7 +58,7 @@ describe("ResetPasswordForm", () => {
     });
   });
 
-  it("shows error when passwords do not match", async () => {
+  it("disables submit when passwords do not match", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);
 
@@ -72,15 +72,15 @@ describe("ResetPasswordForm", () => {
       screen.getByLabelText("Confirm password *"),
       "DifferentPass123!",
     );
-    await user.click(screen.getByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("shows error when password is too short", async () => {
+  it("disables submit when password is too short", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);
 
@@ -88,13 +88,11 @@ describe("ResetPasswordForm", () => {
 
     await user.type(screen.getByLabelText("New password *"), "short");
     await user.type(screen.getByLabelText("Confirm password *"), "short");
-    await user.click(screen.getByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Password must be at least 8 characters"),
-      ).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

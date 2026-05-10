@@ -39,7 +39,7 @@ describe("RegistrationForm", () => {
     expect(screen.getByTestId("submit-button")).toBeInTheDocument();
   });
 
-  it("shows error when passwords do not match", async () => {
+  it("disables submit when passwords do not match", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);
 
@@ -52,17 +52,17 @@ describe("RegistrationForm", () => {
 
     await user.type(screen.getByLabelText("Username *"), "testuser");
     await user.type(screen.getByLabelText("Email *"), "test@example.com");
-    await user.type(screen.getByLabelText(/^Password/), "pass123");
+    await user.type(screen.getByLabelText(/^Password/), "pass1234");
     await user.type(screen.getByLabelText(/Confirm password/), "different");
-    await user.click(screen.getByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("shows error when organisation is not selected", async () => {
+  it("disables submit when organisation is not selected", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);
 
@@ -77,13 +77,12 @@ describe("RegistrationForm", () => {
     await user.type(screen.getByLabelText("Email *"), "test@example.com");
     await user.type(screen.getByLabelText(/^Password/), "pass1234");
     await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
-    await user.click(screen.getByTestId("submit-button"));
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Please select an organisation"),
-      ).toBeInTheDocument();
-    });
+    // Organisation not selected — button should be disabled
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

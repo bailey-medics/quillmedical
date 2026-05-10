@@ -37,9 +37,10 @@ export default function SubmitButton({
   const { formState, submitLabel, submittingLabel, disableWhenClean, methods } =
     useFormContext();
 
-  const { isDirty } = useFormState({ control: methods.control });
+  const { isDirty, isValid } = useFormState({ control: methods.control });
   const isDisabled =
     disabled ||
+    !isValid ||
     formState === "validating" ||
     formState === "submitting" ||
     (disableWhenClean && !isDirty);

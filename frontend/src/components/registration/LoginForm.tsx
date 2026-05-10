@@ -43,32 +43,19 @@ function LoginFields({
   forgotPasswordPath: string | null;
 }) {
   const { methods } = useFormContext();
-  const username = methods.watch("username") as string;
-  const password = methods.watch("password") as string;
-  const totp = methods.watch("totp") as string;
 
   return (
     <Stack>
       <Heading>Sign in to Quill</Heading>
       <TextField
         label="Username"
-        value={username}
-        onChange={(e) =>
-          methods.setValue("username", e.currentTarget.value, {
-            shouldDirty: true,
-          })
-        }
+        {...methods.register("username", { required: true })}
         required
         autoComplete="username"
       />
       <PasswordField
         label="Password"
-        value={password}
-        onChange={(e) =>
-          methods.setValue("password", e.currentTarget.value, {
-            shouldDirty: true,
-          })
-        }
+        {...methods.register("password", { required: true })}
         required
         autoComplete="current-password"
       />
@@ -80,12 +67,7 @@ function LoginFields({
       {requireTotp && (
         <TextField
           label="Authenticator code"
-          value={totp}
-          onChange={(e) =>
-            methods.setValue("totp", e.currentTarget.value, {
-              shouldDirty: true,
-            })
-          }
+          {...methods.register("totp", { required: true })}
           required
           autoComplete="one-time-code"
           maxLength={6}

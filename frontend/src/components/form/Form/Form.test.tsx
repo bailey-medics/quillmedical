@@ -178,29 +178,21 @@ describe("Form", () => {
 
   describe("Timeout", () => {
     it("shows timeout status when submission exceeds timeout", async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      const user = userEvent.setup({
-        advanceTimers: vi.advanceTimersByTime,
-      });
+      const user = userEvent.setup();
 
       const handleSubmit = async (): Promise<FormSubmitResult> => {
-        await delay(60_000);
+        await delay(2000);
         return { state: "success", message: { title: "OK" } };
       };
 
-      renderWithMantine(<TestForm onSubmit={handleSubmit} timeoutMs={500} />);
+      renderWithMantine(<TestForm onSubmit={handleSubmit} timeoutMs={50} />);
 
       await user.click(screen.getByTestId("submit-button"));
-
-      // Advance past timeout
-      vi.advanceTimersByTime(600);
 
       await waitFor(() => {
         expect(screen.getByTestId("form-status")).toBeInTheDocument();
       });
       expect(screen.getByText("Request timed out")).toBeInTheDocument();
-
-      vi.useRealTimers();
     });
   });
 
@@ -241,33 +233,27 @@ describe("Form", () => {
     }
 
     it("shows validation_error with warning when fields fail validation", async () => {
-      const user = userEvent.setup();
-
       renderWithMantine(<ValidatedTestForm />);
 
-      await user.click(screen.getByTestId("submit-button"));
-
-      await waitFor(() => {
-        const status = screen.getByTestId("form-status");
-        expect(status).toBeInTheDocument();
-        expect(status).toHaveAttribute("role", "alert");
-      });
-      expect(
-        screen.getByText("Please check the highlighted fields"),
-      ).toBeInTheDocument();
-      expect(screen.getByText("1 field needs attention.")).toBeInTheDocument();
+      // With mode: "onChange", the button is disabled when the
+      // required field is empty — validation prevents submission
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
 
-    it("keeps submit button enabled after validation_error", async () => {
+    it("enables submit button after filling required field", async () => {
       const user = userEvent.setup();
 
       renderWithMantine(<ValidatedTestForm />);
 
-      await user.click(screen.getByTestId("submit-button"));
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
 
-      await waitFor(() => {
-        expect(screen.getByTestId("form-status")).toBeInTheDocument();
-      });
+      await user.type(screen.getByLabelText("Name"), "Dr Smith");
 
       expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
         "aria-disabled",
@@ -547,8 +533,6 @@ describe("Form with confirm prop", () => {
   });
 
   it("shows validation error without opening modal when form is invalid", async () => {
-    const user = userEvent.setup();
-
     function ValidatedConfirmForm() {
       return (
         <Form<TestFormValues>
@@ -576,15 +560,11 @@ describe("Form with confirm prop", () => {
 
     renderWithMantine(<ValidatedConfirmForm />);
 
-    await user.click(screen.getByTestId("submit-button"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("form-status")).toBeInTheDocument();
-    });
-
-    expect(
-      screen.getByText("Please check the highlighted fields"),
-    ).toBeInTheDocument();
+    // With mode: "onChange", the button is disabled when required field is empty
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.queryByText("Are you sure?")).not.toBeInTheDocument();
   });
 });
