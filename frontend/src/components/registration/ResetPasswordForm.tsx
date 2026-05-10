@@ -1,4 +1,5 @@
-import { Group, Paper, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField } from "@components/form";
 import { QuillLogo } from "@components/images";
 import { Heading, TextLink } from "@components/typography";
@@ -69,7 +70,7 @@ export default function ResetPasswordForm({
         <QuillLogo height={8} />
       </Stack>
 
-      <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
+      <BaseCard maw={380} mx="auto" mt="xl">
         <Form<ResetPasswordFormValues>
           defaultValues={{ password: "", confirm: "" }}
           onSubmit={handleSubmit}
@@ -78,7 +79,7 @@ export default function ResetPasswordForm({
         >
           <ResetPasswordFields />
         </Form>
-      </Paper>
+      </BaseCard>
     </>
   );
 }

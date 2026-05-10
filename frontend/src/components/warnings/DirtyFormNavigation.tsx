@@ -75,7 +75,7 @@ export default function DirtyFormNavigation({
       onClose={handleClose}
       onAccept={handleProceed}
       acceptLabel="Leave page"
-      cancelLabel="Stay on page"
+      cancelLabel="Stay"
       icon={<IconAlertTriangle />}
     >
       You have unsaved changes. Are you sure you want to leave this page?

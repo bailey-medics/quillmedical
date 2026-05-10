@@ -37,16 +37,16 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const WithError: Story = {
+export const Submitting: Story = {
   args: {
-    onSubmit: async () => errorResult,
+    onSubmit: () => new Promise(() => {}),
   },
   play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };
 
-export const Submitting: Story = {
+export const WithError: Story = {
   args: {
-    onSubmit: () => new Promise(() => {}),
+    onSubmit: async () => errorResult,
   },
   play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };

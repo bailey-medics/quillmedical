@@ -26,6 +26,6 @@ export const Complete: Story = {
 };
 
 export const DarkMode: Story = {
-  ...Start,
+  ...Midway,
   globals: { colorScheme: "dark" },
 };

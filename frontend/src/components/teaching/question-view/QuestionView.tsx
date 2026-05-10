@@ -145,7 +145,9 @@ export function QuestionView({
         <PreviousNextButton
           onPrevious={onPrevious}
           onNext={(isLastQuestion ? onSubmit : onNext) ?? (() => {})}
-          nextLabel={isLastQuestion ? "Submit & finish" : "Next"}
+          nextLabel={
+            isLastQuestion ? (disabled ? "Finish" : "Submit & finish") : "Next"
+          }
           nextDisabled={!selectedOption}
           nextLoading={submitting}
         />

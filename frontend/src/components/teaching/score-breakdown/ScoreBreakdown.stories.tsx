@@ -31,6 +31,19 @@ export const AllPassed: Story = {
   },
 };
 
+export const SingleCriterion: Story = {
+  args: {
+    criteria: [
+      {
+        name: "Chest X-ray results",
+        value: 0.78,
+        threshold: 0.7,
+        passed: true,
+      },
+    ],
+  },
+};
+
 export const OneFailed: Story = {
   args: {
     criteria: [

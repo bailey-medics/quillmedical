@@ -142,3 +142,8 @@ export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },
 };
+
+export const DarkModeLoading: Story = {
+  ...Loading,
+  globals: { colorScheme: "dark" },
+};

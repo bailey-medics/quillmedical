@@ -74,7 +74,7 @@ export function AssessmentTimer({
     isExpired || isCritical
       ? "var(--alert-color)"
       : isWarning
-        ? "var(--warning-color)"
+        ? "var(--neutral-color)"
         : "var(--info-color)";
 
   return (

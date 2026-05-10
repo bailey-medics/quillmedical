@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Container } from "@mantine/core";
+import { Box, Container } from "@mantine/core";
 import { useState } from "react";
 import { QuestionView } from "./QuestionView";
 import TopRibbon from "@/components/ribbon/TopRibbon";
@@ -63,12 +63,19 @@ const meta: Meta<typeof QuestionView> = {
   decorators: [
     (Story) => (
       <>
-        <TopRibbon
-          examMode
-          patient={null}
-          isLoading={false}
-          onBurgerClick={() => {}}
-        />
+        <Box
+          style={{
+            borderBottom:
+              "1px solid var(--card-border, var(--mantine-color-gray-2))",
+          }}
+        >
+          <TopRibbon
+            examMode
+            patient={null}
+            isLoading={false}
+            onBurgerClick={() => {}}
+          />
+        </Box>
         <Container size="lg" py="xl">
           <Story />
         </Container>

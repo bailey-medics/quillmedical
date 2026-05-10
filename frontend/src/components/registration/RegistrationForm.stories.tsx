@@ -18,18 +18,21 @@ const errorResult: FormSubmitResult = {
 
 async function fillAndSubmit(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
+  const body = within(document.body);
   await userEvent.type(canvas.getByLabelText("Username *"), "testuser");
   await userEvent.type(canvas.getByLabelText("Email *"), "test@example.com");
-  // Select organisation
+  // Select organisation — dropdown renders in a portal outside canvasElement
   await userEvent.click(
     canvas.getByPlaceholderText("Select your organisation"),
   );
-  await userEvent.click(canvas.getByRole("option", { name: "NHS Highland" }));
+  await userEvent.click(body.getByRole("option", { name: "NHS Highland" }));
   await userEvent.type(canvas.getByLabelText(/^Password/), "SecurePass1!");
   await userEvent.type(
     canvas.getByLabelText(/Confirm password/),
     "SecurePass1!",
   );
+  // Allow RHF onChange validation to settle before clicking submit
+  await new Promise((r) => setTimeout(r, 100));
   await userEvent.click(canvas.getByTestId("submit-button"));
 }
 
@@ -48,16 +51,16 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const WithError: Story = {
+export const Submitting: Story = {
   args: {
-    onSubmit: async () => errorResult,
+    onSubmit: () => new Promise(() => {}),
   },
   play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };
 
-export const Submitting: Story = {
+export const WithError: Story = {
   args: {
-    onSubmit: () => new Promise(() => {}),
+    onSubmit: async () => errorResult,
   },
   play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };

@@ -5,8 +5,10 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import PreviousNextButton from "./PreviousNextButton";
+import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof PreviousNextButton> = {
   title: "Teaching/PreviousNextButton",
@@ -51,6 +53,23 @@ export const NextDisabled: Story = {
 export const NextLoading: Story = {
   args: {
     nextLoading: true,
+  },
+};
+
+/** Finish button shown when reviewing results on the last question (disabled mode) */
+export const ReviewFinish: Story = {
+  render: (args) => (
+    <Stack gap="md">
+      <StoryNote>
+        Shown on the last question when a user is reviewing their answers after
+        the exam has been submitted. The "Finish" label replaces "Submit &
+        finish".
+      </StoryNote>
+      <PreviousNextButton {...args} />
+    </Stack>
+  ),
+  args: {
+    nextLabel: "Finish",
   },
 };
 

@@ -1,4 +1,5 @@
-import { Paper, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
 import {
   EmailField,
   EMAIL_PATTERN,
@@ -123,7 +124,7 @@ export default function RegistrationForm({
   }
 
   return (
-    <Paper maw={480} mx="auto" p="lg" mt="xl" radius="md" withBorder>
+    <BaseCard maw={480} mx="auto" mt="xl">
       <Form<RegistrationFormValues>
         defaultValues={{
           username: "",
@@ -139,6 +140,6 @@ export default function RegistrationForm({
       >
         <RegistrationFields organisations={organisations} />
       </Form>
-    </Paper>
+    </BaseCard>
   );
 }

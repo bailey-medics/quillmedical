@@ -47,7 +47,7 @@ const fieldStyles = {
 
 const radioStyles = {
   label: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     fontWeight: 500,
     color: "var(--mantine-color-text)",
   },

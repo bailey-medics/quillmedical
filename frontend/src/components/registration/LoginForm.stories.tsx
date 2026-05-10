@@ -48,10 +48,7 @@ export const WithError: Story = {
 export const RequireTotp: Story = {
   args: {
     requireTotp: true,
-    onSubmit: async () => errorResult("Enter the 6-digit authenticator code"),
   },
-  play: async ({ canvasElement }) =>
-    fillAndSubmit(canvasElement, { totp: true }),
 };
 
 export const TotpInvalidCode: Story = {
