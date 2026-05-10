@@ -306,6 +306,23 @@ export default function AssessmentAttempt() {
     setPhase("closing");
   }, []);
 
+  // Track whether we've already called proceed — prevents ConfirmModal's
+  // automatic onClose (after onAccept) from calling reset and cancelling
+  // the in-flight navigation.
+  const proceededRef = useRef(false);
+
+  function handleBlockerProceed() {
+    proceededRef.current = true;
+    blocker.proceed?.();
+  }
+
+  function handleBlockerClose() {
+    if (!proceededRef.current) {
+      blocker.reset?.();
+    }
+    proceededRef.current = false;
+  }
+
   const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
   const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
@@ -314,8 +331,8 @@ export default function AssessmentAttempt() {
       {/* Blocker modal — warns when navigating away during active exam */}
       <ConfirmModal
         opened={blocker.state === "blocked"}
-        onClose={() => blocker.reset?.()}
-        onAccept={() => blocker.proceed?.()}
+        onClose={handleBlockerClose}
+        onAccept={handleBlockerProceed}
         acceptLabel="Leave exam"
         cancelLabel="Continue exam"
         icon={<IconAlertTriangle />}
