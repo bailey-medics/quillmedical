@@ -37,7 +37,7 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
         onClose={close}
         onAccept={onConfirm}
         acceptLabel="End exam"
-        cancelLabel="Continue exam"
+        cancelLabel="Continue"
         icon={<IconAlertTriangle />}
       >
         Are you sure you want to end this exam early? Unanswered questions will

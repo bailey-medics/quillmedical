@@ -18,7 +18,7 @@ describe("ExamCloseButton", () => {
 
     expect(screen.getByText(/unanswered questions/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Continue exam" }),
+      screen.getByRole("button", { name: "Continue" }),
     ).toBeInTheDocument();
   });
 
@@ -40,7 +40,7 @@ describe("ExamCloseButton", () => {
     renderWithMantine(<ExamCloseButton onConfirm={vi.fn()} />);
 
     await user.click(screen.getByText("End exam"));
-    await user.click(screen.getByRole("button", { name: "Continue exam" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.queryByText(/unanswered questions/i)).not.toBeInTheDocument();
   });

@@ -90,7 +90,7 @@ export default function ConfirmModal({
       closeOnEscape={!loading}
       withCloseButton={false}
       centered
-      size="md"
+      size="lg"
       onTransitionEnd={handleTransitionEnd}
     >
       <Stack gap="md" py="md">
