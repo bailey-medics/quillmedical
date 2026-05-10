@@ -11,7 +11,7 @@ const meta: Meta<typeof PublicFooter> = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",

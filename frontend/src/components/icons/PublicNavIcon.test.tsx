@@ -69,7 +69,9 @@ describe("PublicNavIcon Component", () => {
     it("applies amber icon colour via CSS variable", () => {
       const { container } = renderWithMantine(<PublicNavIcon name="home" />);
       const svg = container.querySelector("svg") as SVGElement;
-      expect(svg.getAttribute("stroke")).toBe("var(--public-nav-icon-amber)");
+      expect(svg.getAttribute("stroke")).toBe(
+        "var(--mantine-color-secondary-4)",
+      );
     });
   });
 });

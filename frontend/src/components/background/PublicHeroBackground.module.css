@@ -1,5 +1,5 @@
 .root {
-  background: var(--public-navy);
+  background: var(--brand-primary);
   position: relative;
   overflow: hidden;
 }

@@ -34,26 +34,12 @@ import {
  * Brand colour tokens — single source of truth.
  * Exposed as CSS variables via cssVariablesResolver below.
  *
- * In TypeScript: import { brandColours, publicColours } from "@/theme"
+ * In TypeScript: import { brandColours } from "@/theme"
  */
 export const brandColours = {
   primary: "#001a36",
   secondary: "#C8963E",
   background: "#ffffff",
-} as const;
-
-/** Public site colour palette */
-export const publicColours = {
-  navy: brandColours.primary,
-  darkBlue: "#112240",
-  darkBlueHover: "#152a4a",
-  amber: "#C8963E",
-  amberHover: "#b5862f",
-  amberBright: "#e8a317",
-  navIconAmber: "#E0A94A",
-  offWhite: "#fdfbf7",
-  lightText: "rgb(245 240 232 / 55%)",
-  muted: "#909296",
 } as const;
 
 /**
@@ -178,23 +164,12 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--brand-primary": brandColours.primary,
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
-    // Public site
-    "--public-navy": publicColours.navy,
-    "--public-dark-blue": publicColours.darkBlue,
-    "--public-dark-blue-hover": publicColours.darkBlueHover,
-    "--public-amber": publicColours.amber,
-    "--public-amber-hover": publicColours.amberHover,
-    "--public-amber-bright": publicColours.amberBright,
-    "--public-nav-icon-amber": publicColours.navIconAmber,
-    "--public-off-white": publicColours.offWhite,
-    "--public-light-text": publicColours.lightText,
-    "--public-muted": publicColours.muted,
-    // Public button — text/active colours on amber buttons
-    "--public-button-text": "#333",
-    "--public-button-active": "#a07728",
-    "--public-button-outline-hover-text": "#d4a854",
-    // Public burger hover background
-    "--public-burger-hover": "#1e2d4a",
+    // Button interaction colours — amber button text/active states
+    "--button-text-dark": "#333",
+    "--button-active-bg": "#a07728",
+    "--button-outline-hover-text": "#d4a854",
+    // Burger menu hover background
+    "--burger-hover-bg": "#1e2d4a",
     // Typography — mobile sizes (base, applied on :root in typography.css)
     "--typo-mobile-xs": typographyTokens.fontSizes.xs.mobile,
     "--typo-mobile-sm": typographyTokens.fontSizes.sm.mobile,

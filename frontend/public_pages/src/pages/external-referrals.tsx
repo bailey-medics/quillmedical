@@ -16,7 +16,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicDarkBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <div style={{ color: "var(--public-amber)" }}>
+            <div style={{ color: "var(--mantine-color-secondary-5)" }}>
               <Icon icon={<IconPhoneRinging />} size="xl" />
             </div>
             <PublicTitle title="External referrals made easy" c="white" />

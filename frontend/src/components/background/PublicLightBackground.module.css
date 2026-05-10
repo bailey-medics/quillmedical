@@ -1,5 +1,5 @@
 .root {
-  background: var(--public-dark-blue);
+  background: var(--mantine-color-primary-9);
   position: relative;
   overflow: hidden;
 }

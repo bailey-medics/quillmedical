@@ -62,7 +62,7 @@ export default function PublicNavIcon({
     <ThemeIcon variant="transparent" radius="xl" size={size}>
       <Icon
         size={iconPixelSize}
-        color="var(--public-nav-icon-amber)"
+        color="var(--mantine-color-secondary-4)"
         stroke={2.5}
       />
     </ThemeIcon>

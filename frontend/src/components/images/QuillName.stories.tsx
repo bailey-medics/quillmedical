@@ -40,7 +40,7 @@ export const Default: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
         }}

@@ -11,7 +11,7 @@ const meta: Meta<typeof PublicNotFound> = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           minHeight: "100vh",
         }}
       >

@@ -1,6 +1,6 @@
 import { ActionIcon } from "@mantine/core";
 import { IconMenu2 } from "@/components/icons/appIcons";
-import { colours } from "@/styles/colours";
+import { secondaryScale } from "@/theme";
 
 interface BurgerButtonProps {
   /** Whether the navigation is currently open */
@@ -19,9 +19,9 @@ export default function BurgerButton({ navOpen, onClick }: BurgerButtonProps) {
       aria-label={navOpen ? "Close navigation" : "Open navigation"}
       aria-expanded={navOpen}
       style={{
-        color: colours.amber,
-        "--ai-hover": colours.darkBlueHover,
-        "--ai-hover-color": colours.amber,
+        color: secondaryScale[5],
+        "--ai-hover": "var(--burger-hover-bg)",
+        "--ai-hover-color": secondaryScale[5],
       }}
     >
       <IconMenu2 size={32} stroke={2.5} />

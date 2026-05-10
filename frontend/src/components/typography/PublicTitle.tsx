@@ -42,8 +42,8 @@ export default function PublicTitle({
   description,
   size = "lg",
   ta = "center",
-  c = "var(--public-amber)",
-  accentColour = "var(--public-amber)",
+  c = "var(--mantine-color-secondary-5)",
+  accentColour = "var(--mantine-color-secondary-5)",
 }: PublicTitleProps) {
   const orderMap = {
     sm: 3,

@@ -1,11 +1,11 @@
 .card {
-  background: var(--public-dark-blue);
+  background: var(--mantine-color-primary-9);
   border: 0.0625rem solid rgb(200 150 62 / 20%);
   border-radius: var(--mantine-radius-md);
 }
 
 .label.label {
-  color: var(--public-amber);
+  color: var(--mantine-color-secondary-5);
 }
 
 .heading.heading {

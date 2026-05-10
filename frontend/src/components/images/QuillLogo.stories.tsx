@@ -69,7 +69,7 @@ export const LightGrey: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
           alignItems: "center",
@@ -95,7 +95,7 @@ export const White: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
           alignItems: "center",
