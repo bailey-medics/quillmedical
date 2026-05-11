@@ -15,7 +15,6 @@ const meta: Meta<typeof UnreadBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -29,6 +28,7 @@ export const Default: Story = {
       {counts.map((count) => (
         <UnreadBadge key={count} count={count} />
       ))}
+      <UnreadBadge count={1} isLoading />
     </Group>
   ),
 };

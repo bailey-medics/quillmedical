@@ -9,9 +9,11 @@
  * - Auto-closes on navigation selection
  */
 // src/components/navigation/InlineDrawer.stories.tsx
-import { Button, Group, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { StoryNote } from "@/stories/variants";
+import AddButton from "../button/AddButton";
 import SideNavContent from "../navigation/SideNavContent";
 import NavigationDrawer from "./NavigationDrawer";
 
@@ -61,7 +63,6 @@ const meta: Meta<typeof NavigationDrawer> = {
               color: "var(--mantine-color-text)",
             }}
           >
-            <Text mb="sm">Main body content will go here</Text>
             <Story />
           </div>
         </div>
@@ -93,11 +94,12 @@ export const Interactive: Story = {
     const [open, setOpen] = useState(!!args.opened);
     return (
       <>
-        <Group mb="sm">
-          <Button onClick={() => setOpen((v) => !v)}>
-            {open ? "Close" : "Open"} drawer
-          </Button>
-        </Group>
+        <Stack gap="md" mb="sm">
+          <StoryNote>Press the button to toggle the drawer.</StoryNote>
+          <div style={{ maxWidth: 80 }}>
+            <AddButton label="Press" onClick={() => setOpen((v) => !v)} />
+          </div>
+        </Stack>
 
         <NavigationDrawer
           {...args}

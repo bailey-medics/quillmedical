@@ -6,6 +6,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { Loader } from "@mantine/core";
 import ButtonPair from "./ButtonPair";
 
 const meta: Meta<typeof ButtonPair> = {
@@ -14,7 +15,6 @@ const meta: Meta<typeof ButtonPair> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     onAccept: fn(),
     onCancel: fn(),
@@ -27,14 +27,6 @@ type Story = StoryObj<typeof ButtonPair>;
 /** Default button pair */
 export const Default: Story = {};
 
-/** Custom labels */
-export const CustomLabels: Story = {
-  args: {
-    acceptLabel: "Save changes",
-    cancelLabel: "Discard",
-  },
-};
-
 /** Accept button disabled */
 export const AcceptDisabled: Story = {
   args: {
@@ -42,11 +34,27 @@ export const AcceptDisabled: Story = {
   },
 };
 
-/** Accept button as form submit */
-export const SubmitType: Story = {
+/** Accept button in submitting state */
+export const Submitting: Story = {
   args: {
-    acceptLabel: "Save changes",
-    acceptType: "submit",
+    acceptDisabled: true,
+    acceptChildren: (
+      <span style={{ display: "grid", placeItems: "center" }}>
+        <span style={{ gridArea: "1/1", visibility: "hidden" }}>Accept</span>
+        <span
+          style={{
+            gridArea: "1/1",
+            visibility: "visible",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <Loader size="xs" color="white" aria-hidden="true" />
+          Saving…
+        </span>
+      </span>
+    ),
   },
 };
 

@@ -4,15 +4,16 @@
  * Tests for the new conversation modal covering:
  * - Rendering when opened/closed
  * - Form field presence
- * - Validation (patient required, message required)
  * - Cancel behaviour
- * - Submitting state
+ * - Pre-filled patient
+ * - Patient view mode
  */
 
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
+import type { FormSubmitResult } from "@/components/form/Form";
 import NewMessageModal from "./NewMessageModal";
 
 vi.mock("@/lib/api", () => ({
@@ -41,11 +42,16 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
+const mockSubmit = vi.fn<() => Promise<FormSubmitResult>>().mockResolvedValue({
+  state: "success",
+  message: { title: "Created" },
+});
+
 describe("NewMessageModal", () => {
   const defaultProps = {
     opened: true,
     onClose: vi.fn(),
-    onSubmit: vi.fn(),
+    onSubmit: mockSubmit,
   };
 
   describe("Rendering", () => {
@@ -78,16 +84,6 @@ describe("NewMessageModal", () => {
     });
   });
 
-  describe("Validation", () => {
-    it("disables submit when form is empty", () => {
-      renderWithRouter(<NewMessageModal {...defaultProps} />);
-      const submitButton = screen.getByRole("button", {
-        name: /start conversation/i,
-      });
-      expect(submitButton).toBeDisabled();
-    });
-  });
-
   describe("Interactions", () => {
     it("calls onClose when cancel is clicked", async () => {
       const user = userEvent.setup();
@@ -113,27 +109,11 @@ describe("NewMessageModal", () => {
       const user = userEvent.setup();
       renderWithRouter(<NewMessageModal {...defaultProps} />);
 
-      const messageInput = screen.getByPlaceholderText("Type your message…");
+      const messageInput = screen.getByPlaceholderText(
+        "Type your message\u2026",
+      );
       await user.type(messageInput, "Hello there");
       expect(messageInput).toHaveValue("Hello there");
-    });
-  });
-
-  describe("Submitting state", () => {
-    it("shows creating text when submitting", () => {
-      renderWithRouter(
-        <NewMessageModal {...defaultProps} isSubmitting={true} />,
-      );
-      expect(
-        screen.getByRole("button", { name: /creating/i }),
-      ).toBeInTheDocument();
-    });
-
-    it("keeps cancel enabled when submitting", () => {
-      renderWithRouter(
-        <NewMessageModal {...defaultProps} isSubmitting={true} />,
-      );
-      expect(screen.getByRole("button", { name: /cancel/i })).toBeEnabled();
     });
   });
 
@@ -178,6 +158,75 @@ describe("NewMessageModal", () => {
         <NewMessageModal {...defaultProps} isPatientView={true} />,
       );
       expect(screen.queryByText("Patient")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Validation", () => {
+    it("disables submit when subject is empty", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      const messageInput = screen.getByPlaceholderText(
+        "Type your message\u2026",
+      );
+      await user.type(messageInput, "Hello");
+
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("disables submit when message is empty", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      const subjectInput = screen.getByPlaceholderText(
+        "e.g. Prescription renewal",
+      );
+      await user.type(subjectInput, "Test");
+
+      expect(screen.getByTestId("submit-button")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("enables submit when all required fields are filled", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <NewMessageModal
+          {...defaultProps}
+          isPatientView={true}
+          patientId="p-1"
+        />,
+      );
+
+      await user.type(
+        screen.getByPlaceholderText("e.g. Prescription renewal"),
+        "Test subject",
+      );
+      await user.type(
+        screen.getByPlaceholderText("Type your message\u2026"),
+        "Hello",
+      );
+
+      expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
     });
   });
 });

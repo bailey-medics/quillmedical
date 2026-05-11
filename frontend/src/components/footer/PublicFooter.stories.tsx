@@ -7,7 +7,21 @@ const meta: Meta<typeof PublicFooter> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

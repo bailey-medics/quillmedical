@@ -288,7 +288,7 @@ export default function MessagingTriagePayment({
                 </Button>
                 <Button
                   variant="outline"
-                  color="red"
+                  color="var(--alert-color)"
                   onClick={patientDeclineOffer}
                 >
                   Decline
@@ -301,6 +301,6 @@ export default function MessagingTriagePayment({
     </Box>
   );
 }
-<Alert title="Processing payment" color="yellow">
+<Alert title="Processing payment" color="var(--warning-color)">
   Simulating payment...
 </Alert>;

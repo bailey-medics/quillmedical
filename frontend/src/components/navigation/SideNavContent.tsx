@@ -28,8 +28,6 @@ type Props = {
   onNavigate?: () => void;
   /** Whether to display icons next to labels */
   showIcons?: boolean;
-  /** Font size for navigation labels (default: 1.25rem) */
-  fontSize?: number;
   /** Patient navigation breadcrumbs — flat array converted to nested tree */
   patientNav?: NavItem[];
 };
@@ -44,10 +42,12 @@ type Props = {
  * @param props - Component props
  * @returns Navigation links stack
  */
+/** Responsive font size — 16px on mobile, 19px on desktop (matches BodyText) */
+const NAV_FONT_SIZE = "var(--mantine-font-size-md)";
+
 export default function SideNavContent({
   onNavigate,
   showIcons = false,
-  fontSize = 1.25,
   patientNav,
 }: Props) {
   const { logout, state } = useAuth();
@@ -173,9 +173,9 @@ export default function SideNavContent({
   }, [bankId]);
 
   const navLinkStyles = {
-    root: { fontSize: `${fontSize}rem` },
+    root: { fontSize: NAV_FONT_SIZE },
     label: {
-      fontSize: `${fontSize}rem`,
+      fontSize: NAV_FONT_SIZE,
       fontWeight: typographyTokens.fontWeights.body,
     },
   };
@@ -293,7 +293,6 @@ export default function SideNavContent({
             item={patientNavItem}
             onNavigate={onNavigate}
             showIcons={showIcons}
-            baseFontSize={fontSize}
           />
           <Divider my="xs" />
         </>
@@ -325,7 +324,6 @@ export default function SideNavContent({
           item={teachingNavItem}
           onNavigate={onNavigate}
           showIcons={showIcons}
-          baseFontSize={fontSize}
         />
       )}
       <NavLink
@@ -342,7 +340,6 @@ export default function SideNavContent({
           item={adminNavItem}
           onNavigate={onNavigate}
           showIcons={showIcons}
-          baseFontSize={fontSize}
         />
       )}
       <NavLink

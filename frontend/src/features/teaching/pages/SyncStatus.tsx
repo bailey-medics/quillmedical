@@ -1,5 +1,6 @@
 import { Badge, Container, Skeleton, Stack, Table } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Heading, EmptyState } from "@/components/typography";
@@ -52,7 +53,12 @@ export default function SyncStatus() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </Container>
     );
   }
@@ -86,7 +92,11 @@ export default function SyncStatus() {
                     <Badge
                       variant="light"
                       size="sm"
-                      color={sync.status === "success" ? "green" : "red"}
+                      color={
+                        sync.status === "success"
+                          ? "var(--success-color)"
+                          : "var(--alert-color)"
+                      }
                     >
                       {sync.status}
                     </Badge>

@@ -2,111 +2,46 @@ import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import StateMessage from "./StateMessage";
+import {
+  IconAlertCircle,
+  IconClock,
+  IconShieldCheck,
+  IconUserOff,
+} from "@/components/icons/appIcons";
 
 describe("StateMessage Component", () => {
-  describe("No patients message", () => {
-    it('renders "No patients to show" message', () => {
-      renderWithMantine(<StateMessage type="no-patients" />);
+  describe("Rendering", () => {
+    it("renders title text", () => {
+      renderWithMantine(
+        <StateMessage
+          icon={<IconUserOff />}
+          title="No patients to show"
+          description="There are currently no patients in the system."
+        />,
+      );
       expect(screen.getByText("No patients to show")).toBeInTheDocument();
     });
 
-    it("displays state message card", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="no-patients" />,
-      );
-      const card = container.querySelector('[data-testid="state-message"]');
-      expect(card).toBeInTheDocument();
-    });
-
-    it("shows user-off icon", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="no-patients" />,
-      );
-      const icon = container.querySelector("svg");
-      expect(icon).toBeInTheDocument();
-    });
-
-    it("displays explanatory text", () => {
-      renderWithMantine(<StateMessage type="no-patients" />);
-      expect(
-        screen.getByText(/There are currently no patients in the system/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("Database initialising message", () => {
-    it('renders "Database is initialising" message', () => {
-      renderWithMantine(<StateMessage type="database-initialising" />);
-      expect(screen.getByText("Database is initialising")).toBeInTheDocument();
-    });
-
-    it("displays state message card", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="database-initialising" />,
-      );
-      const card = container.querySelector('[data-testid="state-message"]');
-      expect(card).toBeInTheDocument();
-    });
-
-    it("shows clock icon", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="database-initialising" />,
-      );
-      const icon = container.querySelector("svg");
-      expect(icon).toBeInTheDocument();
-    });
-
-    it("displays explanatory text about data retrieval", () => {
-      renderWithMantine(<StateMessage type="database-initialising" />);
-      expect(
-        screen.getByText(/Quill databases are just warming up/i),
-      ).toBeInTheDocument();
-    });
-
-    it("mentions automatic appearance of patient list", () => {
-      renderWithMantine(<StateMessage type="database-initialising" />);
-      expect(
-        screen.getByText(/will appear automatically once available/i),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("Component structure", () => {
-    it("renders as state message card", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="no-patients" />,
-      );
-      const card = container.querySelector('[data-testid="state-message"]');
-      expect(card).toBeInTheDocument();
-    });
-
-    it("renders card element", () => {
-      const { container } = renderWithMantine(
-        <StateMessage type="no-patients" />,
-      );
-      const card = container.querySelector('[data-testid="state-message"]');
-      expect(card).toBeInTheDocument();
-    });
-  });
-
-  describe("Error message", () => {
-    it('renders "Error loading data" title', () => {
+    it("renders description text", () => {
       renderWithMantine(
-        <StateMessage type="error" message="Something went wrong" />,
+        <StateMessage
+          icon={<IconClock />}
+          title="Database is initialising"
+          description="The Quill databases are just warming up."
+        />,
       );
-      expect(screen.getByText("Error loading data")).toBeInTheDocument();
+      expect(
+        screen.getByText("The Quill databases are just warming up."),
+      ).toBeInTheDocument();
     });
 
-    it("displays the error message", () => {
-      renderWithMantine(
-        <StateMessage type="error" message="Failed to load data" />,
-      );
-      expect(screen.getByText("Failed to load data")).toBeInTheDocument();
-    });
-
-    it("shows alert-circle icon", () => {
+    it("renders an icon", () => {
       const { container } = renderWithMantine(
-        <StateMessage type="error" message="Error" />,
+        <StateMessage
+          icon={<IconShieldCheck />}
+          title="Test"
+          description="Test description"
+        />,
       );
       const icon = container.querySelector("svg");
       expect(icon).toBeInTheDocument();
@@ -114,71 +49,79 @@ describe("StateMessage Component", () => {
 
     it("renders as state message card", () => {
       const { container } = renderWithMantine(
-        <StateMessage type="error" message="Error" />,
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error"
+          description="Something went wrong"
+        />,
       );
       const card = container.querySelector('[data-testid="state-message"]');
       expect(card).toBeInTheDocument();
     });
   });
 
-  describe("Empty list states", () => {
-    const emptyStates = [
-      {
-        type: "no-letters" as const,
-        title: "No letters to show",
-        description: /no clinical letters/i,
-      },
-      {
-        type: "no-messages" as const,
-        title: "No messages to show",
-        description: /messages from your care team/i,
-      },
-      {
-        type: "no-notes" as const,
-        title: "No notes to show",
-        description: /no clinical notes/i,
-      },
-      {
-        type: "no-documents" as const,
-        title: "No documents to show",
-        description: /no documents for this patient/i,
-      },
-      {
-        type: "no-appointments" as const,
-        title: "No appointments to show",
-        description: /no appointments scheduled/i,
-      },
-    ];
+  describe("Colour prop", () => {
+    it("defaults to info colour when no colour provided", () => {
+      const { container } = renderWithMantine(
+        <StateMessage
+          icon={<IconClock />}
+          title="Loading"
+          description="Please wait"
+        />,
+      );
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
+    });
 
-    it.each(emptyStates)(
-      'renders "$title" for type $type',
-      ({ type, title }) => {
-        renderWithMantine(<StateMessage type={type} />);
-        expect(screen.getByText(title)).toBeInTheDocument();
-      },
-    );
+    it("accepts alert colour", () => {
+      const { container } = renderWithMantine(
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description="Something broke"
+          colour="alert"
+        />,
+      );
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
+    });
 
-    it.each(emptyStates)(
-      "displays description for type $type",
-      ({ type, description }) => {
-        renderWithMantine(<StateMessage type={type} />);
-        expect(screen.getByText(description)).toBeInTheDocument();
-      },
-    );
+    it("accepts warning colour", () => {
+      const { container } = renderWithMantine(
+        <StateMessage
+          icon={<IconUserOff />}
+          title="No patients"
+          description="None found"
+          colour="warning"
+        />,
+      );
+      const card = container.querySelector('[data-testid="state-message"]');
+      expect(card).toBeInTheDocument();
+    });
+  });
 
-    it.each(emptyStates)(
-      "renders as state message card for type $type",
-      ({ type }) => {
-        const { container } = renderWithMantine(<StateMessage type={type} />);
-        const card = container.querySelector('[data-testid="state-message"]');
-        expect(card).toBeInTheDocument();
-      },
-    );
+  describe("Description content", () => {
+    it("renders JSX description content", () => {
+      renderWithMantine(
+        <StateMessage
+          icon={<IconShieldCheck />}
+          title="Contact us"
+          description={<a href="mailto:test@example.com">test@example.com</a>}
+        />,
+      );
+      const link = screen.getByRole("link", { name: "test@example.com" });
+      expect(link).toHaveAttribute("href", "mailto:test@example.com");
+    });
 
-    it.each(emptyStates)("shows an icon for type $type", ({ type }) => {
-      const { container } = renderWithMantine(<StateMessage type={type} />);
-      const icon = container.querySelector("svg");
-      expect(icon).toBeInTheDocument();
+    it("renders string description", () => {
+      renderWithMantine(
+        <StateMessage
+          icon={<IconClock />}
+          title="Waiting"
+          description="This is a plain string"
+        />,
+      );
+      expect(screen.getByText("This is a plain string")).toBeInTheDocument();
     });
   });
 });

@@ -9,7 +9,6 @@ const meta: Meta<typeof SolidSwitch> = {
   title: "Form/SolidSwitch",
   component: SolidSwitch,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   argTypes: {
     checked: { control: "boolean", description: "Whether the switch is on" },
     label: { control: "text", description: "Label above the switch" },
@@ -68,6 +67,13 @@ export const AllSizes: Story = {
       ))}
     </VariantStack>
   ),
+};
+
+export const WithError: Story = {
+  args: {
+    label: "Accept terms",
+    error: "You must accept the terms to continue",
+  },
 };
 
 export const DarkMode: Story = {

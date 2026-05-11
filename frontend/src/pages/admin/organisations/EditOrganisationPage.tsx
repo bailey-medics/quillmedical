@@ -9,14 +9,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Stack, Alert, Skeleton } from "@mantine/core";
+import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
-import ButtonPair from "@/components/button/ButtonPair";
-import { ResultMessage } from "@/components/message-cards";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
 
 /** Organisation type options for the select input */
@@ -35,27 +41,76 @@ interface OrganisationData {
   location: string | null;
 }
 
+interface EditFormValues {
+  name: string;
+  type: string | null;
+  location: string;
+}
+
+function EditFields({ orgId }: { orgId: string }) {
+  const navigate = useNavigate();
+  const { methods } = useFormContext();
+
+  return (
+    <Stack gap="md">
+      <FormStatus />
+      <BaseCard>
+        <Stack gap="md">
+          <TextField
+            label="Organisation name"
+            placeholder="e.g. Great Eastern Hospital"
+            {...methods.register("name", {
+              required: "Organisation name is required",
+              validate: (v: string) =>
+                v.trim().length > 0 || "Organisation name is required",
+            })}
+            error={methods.formState.errors.name?.message as string}
+            withAsterisk
+          />
+
+          <Controller
+            name="type"
+            control={methods.control}
+            rules={{ required: "Organisation type is required" }}
+            render={({ field, fieldState }) => (
+              <SelectField
+                label="Organisation type"
+                placeholder="Select a type"
+                data={ORGANISATION_TYPE_OPTIONS}
+                value={field.value as string | null}
+                onChange={field.onChange}
+                error={fieldState.error?.message}
+                withAsterisk
+              />
+            )}
+          />
+
+          <TextField
+            label="Location"
+            placeholder="e.g. London"
+            {...methods.register("location")}
+          />
+
+          <SubmitButton
+            onCancel={() => navigate(`/admin/organisations/${orgId}`)}
+          />
+        </Stack>
+      </BaseCard>
+    </Stack>
+  );
+}
+
 export default function EditOrganisationPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [type, setType] = useState<string | null>(null);
-  const [location, setLocation] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [typeError, setTypeError] = useState<string | null>(null);
+  const [orgData, setOrgData] = useState<OrganisationData | null>(null);
 
   useEffect(() => {
     async function fetchOrganisation() {
       try {
         const data = await api.get<OrganisationData>(`/organizations/${id}`);
-        setName(data.name);
-        setType(data.type);
-        setLocation(data.location || "");
+        setOrgData(data);
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load organisation",
@@ -68,43 +123,26 @@ export default function EditOrganisationPage() {
     fetchOrganisation();
   }, [id]);
 
-  function validate(): boolean {
-    let valid = true;
-    setNameError(null);
-    setTypeError(null);
-
-    if (!name.trim()) {
-      setNameError("Organisation name is required");
-      valid = false;
-    }
-    if (!type) {
-      setTypeError("Organisation type is required");
-      valid = false;
-    }
-    return valid;
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setSubmitting(true);
-    setError(null);
-
+  async function handleSubmit(data: EditFormValues): Promise<FormSubmitResult> {
     try {
       await api.put(`/organizations/${id}`, {
-        name: name.trim(),
-        type,
-        location: location.trim() || null,
+        name: data.name.trim(),
+        type: data.type,
+        location: data.location.trim() || null,
       });
-      setSuccess(true);
-      setTimeout(() => navigate(`/admin/organisations/${id}`), 1500);
+      return {
+        state: "success",
+        message: { title: "Organisation updated" },
+      };
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update organisation",
-      );
-    } finally {
-      setSubmitting(false);
+      return {
+        state: "error",
+        message: {
+          title: "Failed to update organisation",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred",
+        },
+      };
     }
   }
 
@@ -125,22 +163,10 @@ export default function EditOrganisationPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
-          color="red"
+          color="var(--alert-color)"
         >
           {loadError}
         </Alert>
-      </Container>
-    );
-  }
-
-  if (success) {
-    return (
-      <Container size="lg" py="xl">
-        <ResultMessage
-          variant="success"
-          title="Organisation updated"
-          subtitle="Redirecting to organisation..."
-        />
       </Container>
     );
   }
@@ -150,55 +176,19 @@ export default function EditOrganisationPage() {
       <Stack gap="lg">
         <PageHeader title="Edit organisation" />
 
-        {error && (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error updating organisation"
-            color="red"
-          >
-            {error}
-          </Alert>
-        )}
-
-        <BaseCard>
-          <form onSubmit={handleSubmit}>
-            <Stack gap="md">
-              <TextField
-                label="Organisation name"
-                placeholder="e.g. Great Eastern Hospital"
-                value={name}
-                onChange={(e) => setName(e.currentTarget.value)}
-                error={nameError}
-                withAsterisk
-              />
-
-              <SelectField
-                label="Organisation type"
-                placeholder="Select a type"
-                data={ORGANISATION_TYPE_OPTIONS}
-                value={type}
-                onChange={setType}
-                error={typeError}
-                withAsterisk
-              />
-
-              <TextField
-                label="Location"
-                placeholder="e.g. London"
-                value={location}
-                onChange={(e) => setLocation(e.currentTarget.value)}
-              />
-
-              <ButtonPair
-                acceptLabel="Save changes"
-                acceptType="submit"
-                acceptLoading={submitting}
-                onAccept={() => {}}
-                onCancel={() => navigate(`/admin/organisations/${id}`)}
-              />
-            </Stack>
-          </form>
-        </BaseCard>
+        <Form<EditFormValues>
+          defaultValues={{
+            name: orgData?.name ?? "",
+            type: orgData?.type ?? null,
+            location: orgData?.location ?? "",
+          }}
+          onSubmit={handleSubmit}
+          submitLabel="Save changes"
+          submittingLabel="Saving…"
+          disableWhenClean
+        >
+          <EditFields orgId={id!} />
+        </Form>
       </Stack>
     </Container>
   );

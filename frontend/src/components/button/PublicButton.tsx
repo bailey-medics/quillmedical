@@ -25,17 +25,6 @@ export default function PublicButton({
   variant = "filled",
   onClick,
 }: PublicButtonProps) {
-  // Map sizes up one level for ~30% larger buttons
-  const sizeMap = { sm: "md", md: "lg", lg: "xl" } as const;
-  const mantineSize = sizeMap[size];
-
-  const sizeStyles = {
-    root: {
-      fontSize: "calc(var(--button-fz) * 1.3)",
-      paddingInline: "calc(var(--button-padding-x) * 1.3)",
-    },
-  };
-
   const className = variant === "filled" ? classes.filled : classes.outline;
 
   if (href && !disabled) {
@@ -43,8 +32,7 @@ export default function PublicButton({
       <Button
         component="a"
         href={href}
-        size={mantineSize}
-        styles={sizeStyles}
+        size={size}
         className={className}
         onClick={onClick}
       >
@@ -55,11 +43,20 @@ export default function PublicButton({
 
   return (
     <Button
-      size={mantineSize}
-      disabled={disabled}
-      styles={sizeStyles}
+      size={size}
+      aria-disabled={disabled || undefined}
+      styles={
+        disabled
+          ? {
+              root: {
+                opacity: 0.6,
+                cursor: "not-allowed",
+              },
+            }
+          : undefined
+      }
       className={className}
-      onClick={onClick}
+      onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
     >
       {children}
     </Button>

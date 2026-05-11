@@ -325,23 +325,16 @@ describe("NestedNavLink Component", () => {
     });
   });
 
-  describe("Font size customization", () => {
-    it("uses default base font size of 1.25rem", () => {
+  describe("Font size", () => {
+    it("uses responsive font size from design system", () => {
       const { container } = renderWithRouter(
         <NestedNavLink item={singleNavItem} />,
       );
 
       const navLink = container.querySelector(".mantine-NavLink-root");
-      expect(navLink).toHaveStyle({ fontSize: "1.25rem" });
-    });
-
-    it("uses custom base font size when provided", () => {
-      const { container } = renderWithRouter(
-        <NestedNavLink item={singleNavItem} baseFontSize={1.5} />,
-      );
-
-      const navLink = container.querySelector(".mantine-NavLink-root");
-      expect(navLink).toHaveStyle({ fontSize: "1.5rem" });
+      expect(navLink).toHaveStyle({
+        fontSize: "var(--mantine-font-size-md)",
+      });
     });
   });
 });

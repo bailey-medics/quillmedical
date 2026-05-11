@@ -1,6 +1,6 @@
 import PublicDarkBackground from "@/components/background/PublicDarkBackground";
 import PublicButton from "@/components/button/PublicButton";
-import PublicText from "@/components/typography/PublicText";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import PublicTitle from "@/components/typography/PublicTitle";
 import { Container, Stack } from "@mantine/core";
 
@@ -15,12 +15,12 @@ export default function PublicNotFound({
   return (
     <PublicDarkBackground>
       <Container size="lg" py="xl">
-        <Stack align="center" gap="md" py="xl" style={{ minHeight: "50dvh" }}>
+        <Stack align="center" gap="md" py="xl" style={{ minHeight: "100dvh" }}>
           <PublicTitle title="404 — Page not found" c="white" />
-          <PublicText size="lg">
+          <PublicBodyText justify="centre">
             The page you requested does not exist. It may have been moved or
             removed.
-          </PublicText>
+          </PublicBodyText>
           <PublicButton href={homeHref}>Go to home</PublicButton>
         </Stack>
       </Container>

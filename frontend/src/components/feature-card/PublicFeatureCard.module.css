@@ -1,5 +1,5 @@
 .card {
-  background: var(--public-dark-blue);
+  background: var(--mantine-color-primary-7);
   border: 0.0625rem solid rgb(200 150 62 / 20%);
   border-radius: 4px;
   padding: 2rem 1.75rem;
@@ -14,7 +14,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--public-amber);
+  background: var(--mantine-color-secondary-5);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.35s ease;
@@ -31,7 +31,7 @@
 }
 
 .clickable:hover {
-  background: var(--public-dark-blue-hover);
+  background: var(--mantine-color-primary-8);
 }
 
 .clickable:active {
@@ -44,7 +44,7 @@
 
 .icon {
   margin-bottom: 1.25rem;
-  color: var(--public-amber);
+  color: var(--mantine-color-secondary-5);
 }
 
 .icon svg {
@@ -55,7 +55,7 @@
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 2.4rem;
   font-weight: 700;
-  color: var(--public-off-white);
+  color: var(--mantine-color-gray-0);
   margin-bottom: 0.6rem;
 }
 

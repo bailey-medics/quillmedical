@@ -11,9 +11,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ResultMessage from "./ResultMessage";
 
 const meta: Meta<typeof ResultMessage> = {
-  title: "MessageCards/ResultMessage",
+  title: "Teaching/ResultMessage",
   component: ResultMessage,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

@@ -1,5 +1,5 @@
 /**
- * NewUserPage Component Tests
+ * UserInfoUpdatePage Component Tests
  *
  * Tests multi-step user creation form:
  * - Step navigation
@@ -12,7 +12,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiModule from "@/lib/api";
-import NewUserPage from "./NewUserPage";
+import UserInfoUpdatePage from "./UserInfoUpdatePage";
 
 // Mock the API
 vi.mock("@/lib/api", () => ({
@@ -35,14 +35,14 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-describe("NewUserPage", () => {
+describe("UserInfoUpdatePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("Step 1: Basic details", () => {
     it("renders step 1 with all required fields", () => {
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       expect(screen.getByText("Create new user")).toBeInTheDocument();
       expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("NewUserPage", () => {
 
     it("shows validation errors when trying to proceed with empty fields", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -73,7 +73,7 @@ describe("NewUserPage", () => {
 
     it("validates email format", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       const emailInput = screen.getByLabelText(/email/i);
       await user.type(emailInput, "invalid-email");
@@ -87,7 +87,7 @@ describe("NewUserPage", () => {
 
     it("validates password length", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       const passwordInput = screen.getByLabelText(/initial password/i);
       await user.type(passwordInput, "short");
@@ -103,7 +103,7 @@ describe("NewUserPage", () => {
 
     it("proceeds to step 2 when validation passes", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       // Fill all required fields
       await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
@@ -162,7 +162,7 @@ describe("NewUserPage", () => {
 
     it("renders competency configuration fields", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStep1AndProceed(user);
 
@@ -181,7 +181,7 @@ describe("NewUserPage", () => {
 
     it("shows base profession information", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStep1AndProceed(user);
 
@@ -192,7 +192,7 @@ describe("NewUserPage", () => {
 
     it("navigates back to step 1", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStep1AndProceed(user);
 
@@ -213,7 +213,7 @@ describe("NewUserPage", () => {
 
     it("proceeds to step 3 permissions", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStep1AndProceed(user);
 
@@ -226,9 +226,7 @@ describe("NewUserPage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText("System permissions & review"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
       });
     }, 10000);
   });
@@ -264,22 +262,25 @@ describe("NewUserPage", () => {
       });
 
       await user.click(screen.getByRole("button", { name: /next/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /next/i }));
     }
 
     it("renders permissions selection and review", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStepsAndProceed(user);
 
       await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
-      expect(
-        screen.getAllByLabelText(/system permission level/i)[0],
-      ).toBeInTheDocument();
       // Check for review section by looking for unique review field labels
       expect(screen.getByText("Name:")).toBeInTheDocument();
       expect(screen.getByText("Email:")).toBeInTheDocument();
@@ -287,7 +288,7 @@ describe("NewUserPage", () => {
 
     it("displays review information correctly", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await fillStepsAndProceed(user);
 
@@ -305,7 +306,7 @@ describe("NewUserPage", () => {
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       // Fill step 1
       await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
@@ -336,10 +337,16 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Step 3 - submit
+      // Step 3 - permissions
+      await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Step 4 - review and submit
       await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -362,7 +369,7 @@ describe("NewUserPage", () => {
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       // Fill and submit
       await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
@@ -391,8 +398,12 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -408,7 +419,7 @@ describe("NewUserPage", () => {
   describe("Navigation", () => {
     it("navigates back to admin when cancel is clicked", async () => {
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       await user.click(screen.getByRole("button", { name: /cancel/i }));
 
@@ -420,7 +431,7 @@ describe("NewUserPage", () => {
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
-      renderWithRouter(<NewUserPage />);
+      renderWithRouter(<UserInfoUpdatePage />);
 
       // Complete form
       await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
@@ -449,8 +460,12 @@ describe("NewUserPage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
+        expect(screen.getByText("System permissions")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
         expect(
-          screen.getByText("System permissions & review"),
+          screen.getByRole("heading", { name: "Review" }),
         ).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
@@ -461,9 +476,7 @@ describe("NewUserPage", () => {
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /return to admin/i }),
-      );
+      await user.click(screen.getByRole("button", { name: /finished/i }));
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
     }, 15000);

@@ -1,36 +1,67 @@
-import { Button, Group, Paper, Stack } from "@mantine/core";
-import { useState } from "react";
-import { TextField } from "@components/form";
+import { Group, Stack } from "@mantine/core";
+import BaseCard from "@components/base-card/BaseCard";
+import { EmailField, EMAIL_PATTERN } from "@components/form";
 import { QuillLogo } from "@components/images";
+import { BodyText, Heading, TextLink } from "@components/typography";
 import {
-  BodyText,
-  ErrorMessage,
-  Heading,
-  TextLink,
-} from "@components/typography";
+  Form,
+  FormStatusNarrow,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
+
+interface ForgotPasswordFormValues {
+  email: string;
+}
 
 export interface ForgotPasswordFormProps {
-  /** Called when the form is submitted */
-  onSubmit: (email: string) => void;
-  /** Whether the form is currently submitting */
-  submitting?: boolean;
-  /** Error message to display */
-  error?: string | null;
-  /** Success message to display after submission */
-  success?: string | null;
+  /** Called when the form is submitted — should return a FormSubmitResult */
+  onSubmit: (email: string) => Promise<FormSubmitResult>;
+}
+
+function ForgotPasswordFields() {
+  const { formState, statusMessage, methods } = useFormContext();
+  const isSuccess = formState === "success";
+
+  return (
+    <Stack>
+      <Heading>Forgot password</Heading>
+      {isSuccess && statusMessage && (
+        <BodyText>{statusMessage.description ?? statusMessage.title}</BodyText>
+      )}
+      {!isSuccess && (
+        <>
+          <BodyText>
+            Enter your email address and we&apos;ll send you a link to reset
+            your password.
+          </BodyText>
+          <EmailField
+            label="Email"
+            {...methods.register("email", {
+              required: true,
+              pattern: EMAIL_PATTERN,
+            })}
+            required
+          />
+          <FormStatusNarrow />
+          <SubmitButton />
+        </>
+      )}
+      <Group justify="flex-end">
+        <TextLink to="/login">Back to sign in</TextLink>
+      </Group>
+    </Stack>
+  );
 }
 
 export default function ForgotPasswordForm({
   onSubmit,
-  submitting = false,
-  error = null,
-  success = null,
 }: ForgotPasswordFormProps) {
-  const [email, setEmail] = useState("");
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    onSubmit(email.trim());
+  async function handleSubmit(
+    data: ForgotPasswordFormValues,
+  ): Promise<FormSubmitResult> {
+    return onSubmit(data.email.trim());
   }
 
   return (
@@ -39,41 +70,16 @@ export default function ForgotPasswordForm({
         <QuillLogo height={8} />
       </Stack>
 
-      <Paper maw={380} mx="auto" p="lg" mt="xl" radius="md" withBorder>
-        <form onSubmit={handleSubmit} noValidate>
-          <Stack>
-            <Heading>Forgot password</Heading>
-            {!success && (
-              <BodyText>
-                Enter your email address and we&apos;ll send you a link to reset
-                your password.
-              </BodyText>
-            )}
-            {!success && (
-              <>
-                <TextField
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.currentTarget.value)}
-                  required
-                  autoComplete="email"
-                />
-                {error && <ErrorMessage>{error}</ErrorMessage>}
-              </>
-            )}
-            {success && <BodyText>{success}</BodyText>}
-            {!success && (
-              <Button type="submit" loading={submitting} size="lg">
-                Send reset link
-              </Button>
-            )}
-            <Group justify="flex-end">
-              <TextLink to="/login">Back to sign in</TextLink>
-            </Group>
-          </Stack>
-        </form>
-      </Paper>
+      <BaseCard maw={380} mx="auto" mt="xl">
+        <Form<ForgotPasswordFormValues>
+          defaultValues={{ email: "" }}
+          onSubmit={handleSubmit}
+          submitLabel="Send reset link"
+          submittingLabel="Sending…"
+        >
+          <ForgotPasswordFields />
+        </Form>
+      </BaseCard>
     </>
   );
 }

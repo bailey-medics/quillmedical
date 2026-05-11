@@ -7,7 +7,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Badge, Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import {
   brand,
   statusColours,
@@ -15,13 +15,14 @@ import {
   type StatusColourName,
 } from "@/styles/semanticColours";
 import { primaryScale, secondaryScale, greyScale } from "@/theme";
+import { StoryNote } from "@/stories/variants";
+import PageHeader from "@components/page-header";
 
 const meta: Meta = {
   title: "Foundations/Colours",
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -53,12 +54,8 @@ function ColourSwatch({
         }}
       />
       <div>
-        <Text size="md" fw={700}>
-          {label}
-        </Text>
-        <Text size="sm" c="dimmed">
-          {description}
-        </Text>
+        <StoryNote mt={0}>{label.toUpperCase()}</StoryNote>
+        <StoryNote mt={0}>{description}</StoryNote>
       </div>
     </Group>
   );
@@ -76,9 +73,7 @@ function StatusSwatch({
       <Badge color={config.bg} c={config.text} variant="filled" size="lg">
         {name}
       </Badge>
-      <Text size="sm" c="dimmed">
-        {config.usage}
-      </Text>
+      <StoryNote mt={0}>{config.usage}</StoryNote>
     </Group>
   );
 }
@@ -123,12 +118,10 @@ function TextSwatch({
         </Text>
       </Box>
       <div>
-        <Text size="md" fw={700}>
-          {name}
-        </Text>
-        <Text size="sm" c="dimmed">
+        <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
+        <StoryNote mt={0}>
           {config.value} — {config.usage}
-        </Text>
+        </StoryNote>
       </div>
     </Group>
   );
@@ -150,9 +143,7 @@ export const Overview: Story = {
   render: () => (
     <Stack gap="xl">
       <div>
-        <Title order={2} mb="md">
-          Brand colours
-        </Title>
+        <PageHeader title="Brand colours" />
         <Stack gap="md">
           <ColourSwatch
             colour={brand.primary}
@@ -178,13 +169,11 @@ export const Overview: Story = {
       </div>
 
       <div>
-        <Title order={2} mb="md">
-          Status colours
-        </Title>
-        <Text size="sm" c="dimmed" mb="md">
+        <PageHeader title="Status colours" />
+        <StoryNote>
           Used in badges, alerts, and form validation to communicate state.
-        </Text>
-        <Stack gap="sm">
+        </StoryNote>
+        <Stack gap="sm" mt="xl">
           {statusEntries.map(([name, config]) => (
             <StatusSwatch key={name} name={name} config={config} />
           ))}
@@ -192,9 +181,7 @@ export const Overview: Story = {
       </div>
 
       <div>
-        <Title order={2} mb="md">
-          Text colours
-        </Title>
+        <PageHeader title="Text colours" />
         <Stack gap="md">
           {textEntries.map(([name, config]) => (
             <TextSwatch key={name} name={name} config={config} />
@@ -220,12 +207,10 @@ function ScaleRow({
 }) {
   return (
     <div>
-      <Text size="md" fw={700} mb="xs">
-        {name}
-      </Text>
-      <Group gap={0} align="flex-start">
+      <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
+      <Group gap="md" align="flex-start" mt="xs">
         {scale.map((colour, i) => (
-          <Stack key={i} gap={4} align="center" style={{ width: 64 }}>
+          <Stack key={i} gap={4} align="center">
             <Box
               style={{
                 width: 48,
@@ -235,28 +220,9 @@ function ScaleRow({
                 border: "1px solid var(--mantine-color-gray-3)",
               }}
             />
-            <Text
-              size="xs"
-              c={i === primaryShade ? "black" : "dimmed"}
-              fw={i === primaryShade ? 700 : undefined}
-              ta="center"
-            >
-              {i}
-            </Text>
-            <Text
-              size="xs"
-              c={i === primaryShade ? "black" : "dimmed"}
-              fw={i === primaryShade ? 700 : undefined}
-              ta="center"
-              style={{ fontSize: 9 }}
-            >
-              {colour}
-            </Text>
-            {i === primaryShade && (
-              <Text size="xs" c="black" fw={700} ta="center">
-                default
-              </Text>
-            )}
+            <StoryNote mt={0}>{i}</StoryNote>
+            <StoryNote mt={0}>{colour}</StoryNote>
+            {i === primaryShade && <StoryNote mt={0}>DEFAULT</StoryNote>}
           </Stack>
         ))}
       </Group>
@@ -270,16 +236,13 @@ export const Scales: Story = {
     return (
       <Stack gap="xl">
         <div>
-          <Title order={2} mb="md">
-            Colour scales
-          </Title>
-          <Text size="sm" c="dimmed" mb="lg">
+          <PageHeader title="Colour scales" />
+          <StoryNote>
             10-shade ramps registered in the Mantine theme. Components use these
             via <code>color=&quot;primary&quot;</code> or{" "}
-            <code>color=&quot;secondary&quot;</code>. Bold label marks the brand
-            colour.
-          </Text>
-          <Stack gap="lg">
+            <code>color=&quot;secondary&quot;</code>.
+          </StoryNote>
+          <Stack gap="lg" mt={20}>
             <ScaleRow
               name="primary (navy)"
               scale={primaryScale}

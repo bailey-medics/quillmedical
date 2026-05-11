@@ -7,7 +7,18 @@ const meta: Meta<typeof PublicNotFound> = {
   parameters: {
     layout: "fullscreen",
   },
-  tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          minHeight: "100vh",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

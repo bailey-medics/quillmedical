@@ -85,6 +85,9 @@ export const PatientsLoadingState: Story = {
 };
 
 export const DarkMode: Story = {
-  ...SuperAdminView,
+  args: {
+    ...SuperAdminView.args,
+    patientsLoading: true,
+  },
   globals: { colorScheme: "dark" },
 };

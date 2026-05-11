@@ -16,7 +16,6 @@ const meta: Meta<typeof QuillLogo> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },
@@ -70,7 +69,7 @@ export const LightGrey: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
           alignItems: "center",
@@ -96,7 +95,7 @@ export const White: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
           alignItems: "center",

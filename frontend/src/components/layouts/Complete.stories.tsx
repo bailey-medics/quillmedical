@@ -8,6 +8,10 @@
  * - Real-world application page examples
  */
 import MarkdownView from "@/components/markdown";
+import BodyText from "@/components/typography/BodyText";
+import Heading from "@/components/typography/Heading";
+import PageHeader from "@/components/typography/PageHeader";
+import { typographyTokens } from "@/theme";
 import {
   Messaging,
   MessagesList,
@@ -16,6 +20,7 @@ import {
 } from "@/components/messaging";
 import demoMessages from "@/demo-data/messaging/demoMessages";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Container, Stack, List } from "@mantine/core";
 import { useState } from "react";
 import MainLayout from "./MainLayout";
 
@@ -176,72 +181,55 @@ export const WithMarkdown: Story = {
 
 // Lots of text to force vertical scrolling and exercise sticky headers
 const LongContent = () => (
-  <div style={{ flex: 1, padding: 24, color: "#374151" }}>
-    <div style={{ maxWidth: 880, margin: "0 auto" }}>
-      <h1 style={{ margin: "0 0 0.5rem" }}>An Extremely Long Read</h1>
-      <p style={{ marginTop: 0, color: "#6b7280" }}>
-        This page is intentionally verbose to test scrolling, sticky headers,
-        and general layout behaviour inside <code>MainLayout</code>.
-      </p>
-
+  <Container size="lg" py="xl">
+    <Stack gap="lg">
+      <PageHeader title="An extremely long read" />
       {[...Array(12)].map((_, i) => (
-        <section key={i} style={{ margin: "1.25rem 0" }}>
-          <h2 style={{ fontSize: 20, margin: "0 0 .5rem" }}>
-            Section {i + 1}: Responsive Layout Considerations
-          </h2>
-          <p>
+        <Stack key={i} gap="sm">
+          <Heading>Section {i + 1}: Responsive layout considerations</Heading>
+          <BodyText>
             In wider viewports we expect the search bar to remain visible
             alongside patient details. When space becomes constrained, the
             layout should gracefully collapse. Container queries let components
             adapt to the width they actually have, rather than guessing via the
             viewport.
-          </p>
-          <p>
+          </BodyText>
+          <BodyText>
             Real-world interfaces need to cope with split views, drawers, and
             odd aspect ratios. That’s why component-level responsiveness is such
             a reliable default. It avoids brittle assumptions and keeps
             components portable.
-          </p>
-          <ul>
-            <li>Use container queries for visual changes.</li>
-            <li>
+          </BodyText>
+          <List
+            size={typographyTokens.sizes.desktop}
+            fw={typographyTokens.fontWeights.body}
+          >
+            <List.Item>Use container queries for visual changes.</List.Item>
+            <List.Item>
               Use a ResizeObserver-based hook for JS behaviour tied to component
               width.
-            </li>
-            <li>Reserve global breakpoint context for app-shell decisions.</li>
-          </ul>
-          <p>Here is a tiny code sample to illustrate the point:</p>
-          <pre
-            style={{
-              background: "#0b1020",
-              color: "#e5e7eb",
-              padding: 12,
-              borderRadius: 8,
-              overflowX: "auto",
-            }}
-          >
-            {`@container (max-width: 640px) {
-  .search { display: none; }
-  .burger { display: inline-flex; }
-}`}
-          </pre>
-          <p>
+            </List.Item>
+            <List.Item>
+              Reserve global breakpoint context for app-shell decisions.
+            </List.Item>
+          </List>
+          <BodyText>
             As the section continues, imagine a stream of clinical notes,
             letters, tasks, and audit trails—enough content to ensure the page
-            scrolls and your ribbon remains pinned to the top if{" "}
-            <code>sticky</code> is enabled.
-          </p>
-        </section>
+            scrolls and your ribbon remains pinned to the top if sticky is
+            enabled.
+          </BodyText>
+        </Stack>
       ))}
 
-      <h2 style={{ marginTop: "2rem" }}>Summary</h2>
-      <p>
+      <Heading>Summary</Heading>
+      <BodyText>
         If you can scroll comfortably and the header stays put, your sticky
         handling works. If the search hides on narrow widths and reappears when
         there’s room, your container queries are doing their job.
-      </p>
-    </div>
-  </div>
+      </BodyText>
+    </Stack>
+  </Container>
 );
 
 export const LongRead: Story = {

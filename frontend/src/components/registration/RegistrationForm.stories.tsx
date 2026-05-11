@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { userEvent, within } from "storybook/test";
+import type { FormSubmitResult } from "@/components/form/Form";
 import RegistrationForm from "./RegistrationForm";
 
 const sampleOrganisations = [
@@ -10,14 +11,38 @@ const sampleOrganisations = [
   { value: "nhs-tayside", label: "NHS Tayside" },
 ];
 
+const errorResult: FormSubmitResult = {
+  state: "error",
+  message: { title: "A user with that email address already exists" },
+};
+
+async function fillAndSubmit(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const body = within(document.body);
+  await userEvent.type(canvas.getByLabelText("Username *"), "testuser");
+  await userEvent.type(canvas.getByLabelText("Email *"), "test@example.com");
+  // Select organisation — dropdown renders in a portal outside canvasElement
+  await userEvent.click(
+    canvas.getByPlaceholderText("Select your organisation"),
+  );
+  await userEvent.click(body.getByRole("option", { name: "NHS Highland" }));
+  await userEvent.type(canvas.getByLabelText(/^Password/), "SecurePass1!");
+  await userEvent.type(
+    canvas.getByLabelText(/Confirm password/),
+    "SecurePass1!",
+  );
+  // Allow RHF onChange validation to settle before clicking submit
+  await new Promise((r) => setTimeout(r, 100));
+  await userEvent.click(canvas.getByTestId("submit-button"));
+}
+
 const meta: Meta<typeof RegistrationForm> = {
   title: "Registration/RegistrationForm",
   component: RegistrationForm,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   args: {
     organisations: sampleOrganisations,
-    onSubmit: fn(),
+    onSubmit: () => new Promise(() => {}),
   },
 };
 
@@ -26,16 +51,18 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const WithError: Story = {
-  args: {
-    error: "A user with that email address already exists",
-  },
-};
-
 export const Submitting: Story = {
   args: {
-    submitting: true,
+    onSubmit: () => new Promise(() => {}),
   },
+  play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
+};
+
+export const WithError: Story = {
+  args: {
+    onSubmit: async () => errorResult,
+  },
+  play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };
 
 export const NoOrganisations: Story = {

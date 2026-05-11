@@ -9,13 +9,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
 import NoteCategoryBadge from "./NoteCategoryBadge";
 import type { NoteCategoryType } from "./NoteCategoryBadge";
-import { VariantRow, VariantStack } from "@/stories/variants";
 
 const meta: Meta<typeof NoteCategoryBadge> = {
   title: "Badge/NoteCategoryBadge",
   component: NoteCategoryBadge,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   argTypes: {
     category: {
       control: "select",
@@ -50,41 +48,4 @@ export const Default: Story = {
       ))}
     </Group>
   ),
-};
-
-/** All sizes comparison across all categories. */
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          {allCategories.map((category) => (
-            <NoteCategoryBadge key={category} category={category} size={size} />
-          ))}
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <NoteCategoryBadge category="consultation" size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
 };

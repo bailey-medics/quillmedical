@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import ActionCard from "@/components/action-card/ActionCard";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
 import { Heading, BodyText } from "@/components/typography";
 import type {
@@ -67,7 +68,12 @@ export default function AssessmentDashboard() {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </Container>
     );
   }

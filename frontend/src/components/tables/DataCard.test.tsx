@@ -51,7 +51,7 @@ describe("DataCard", () => {
         { header: "Name", render: (u) => u.name },
         {
           header: "Status",
-          render: () => <Badge color="green">Active</Badge>,
+          render: () => <Badge color="var(--success-color)">Active</Badge>,
         },
       ];
 

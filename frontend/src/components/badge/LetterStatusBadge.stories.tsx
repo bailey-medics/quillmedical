@@ -6,7 +6,6 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import LetterStatusBadge from "./LetterStatusBadge";
 import type { LetterStatusType } from "./LetterStatusBadge";
 
@@ -16,7 +15,6 @@ const meta: Meta<typeof LetterStatusBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     status: {
       control: "select",
@@ -45,41 +43,4 @@ export const Default: Story = {
       ))}
     </Group>
   ),
-};
-
-/** All sizes comparison across all statuses. */
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          {allStatuses.map((status) => (
-            <LetterStatusBadge key={status} status={status} size={size} />
-          ))}
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <LetterStatusBadge status="final" size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
 };

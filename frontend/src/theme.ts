@@ -34,26 +34,12 @@ import {
  * Brand colour tokens — single source of truth.
  * Exposed as CSS variables via cssVariablesResolver below.
  *
- * In TypeScript: import { brandColours, publicColours } from "@/theme"
+ * In TypeScript: import { brandColours } from "@/theme"
  */
 export const brandColours = {
   primary: "#001a36",
   secondary: "#C8963E",
   background: "#ffffff",
-} as const;
-
-/** Public site colour palette */
-export const publicColours = {
-  navy: brandColours.primary,
-  darkBlue: "#112240",
-  darkBlueHover: "#152a4a",
-  amber: "#C8963E",
-  amberHover: "#b5862f",
-  amberBright: "#e8a317",
-  navIconAmber: "#E0A94A",
-  offWhite: "#fdfbf7",
-  lightText: "rgb(245 240 232 / 55%)",
-  muted: "#909296",
 } as const;
 
 /**
@@ -110,6 +96,28 @@ export const greyScale = [
 ] as const;
 
 /**
+ * Status colour tokens — semantic colours for badges, alerts, and buttons.
+ *
+ * Registered as CSS variables (e.g. `var(--success-color)`) via
+ * cssVariablesResolver. Shared across light and dark modes — these are
+ * used as filled backgrounds with white/dark text.
+ *
+ * Note: `--error-color` (#f55142) is a separate token for form validation
+ * borders (accessibility-tuned). `--error-focus-color` (#ffb3b3) is a lighter
+ * variant used when an errored field receives focus. `--alert-color` (#fa5252)
+ * is for status badges, destructive buttons, and notifications.
+ */
+export const statusColourValues = {
+  success: "#12b886", // Teal — active, completed, pass (Mantine teal.6)
+  warning: "#15aabf", // Cyan — draft, pending (Mantine cyan.6)
+  outstanding: "#e64980", // Pink — deactivated, cancelled, fail (Mantine pink.6)
+  info: "#228be6", // Blue — upcoming, informational (Mantine blue.6)
+  neutral: "#ffd43b", // Yellow — staff, default (Mantine yellow.4)
+  accent: "#7950f2", // Violet — incomplete, special states (Mantine violet.6)
+  alert: "#fa5252", // Red — no-show, patient, attention (Mantine red.6)
+} as const;
+
+/**
  * Typography tokens — single source of truth for all font sizes.
  *
  * Mobile values are consumed by Mantine's createTheme(). Desktop values
@@ -128,6 +136,18 @@ export const typographyTokens = {
     lg: { mobile: "1.25rem", desktop: "1.5rem" }, // 20px → 24px
     xl: { mobile: "1.625rem", desktop: "2rem" }, // 26px → 32px
   },
+  /**
+   * Semantic size aliases — map meaningful names to Mantine size tokens.
+   * Use these in components instead of raw "md" / "xs" strings.
+   *
+   * Each resolves to a responsive CSS variable:
+   * - desktop: 19px — NHS/GOV.UK standard body text on large screens
+   * - mobile: 16px — NHS/GOV.UK standard body text on small screens
+   */
+  sizes: {
+    desktop: "md", // 16px mobile → 19px desktop
+    mobile: "xs", // 14px mobile → 16px desktop
+  },
   headings: {
     h1: { mobile: "1.625rem", desktop: "2rem", lineHeight: "1.3" },
     h2: { mobile: "1.5rem", desktop: "1.75rem", lineHeight: "1.35" },
@@ -144,23 +164,18 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--brand-primary": brandColours.primary,
     "--brand-secondary": brandColours.secondary,
     "--brand-background": brandColours.background,
-    // Public site
-    "--public-navy": publicColours.navy,
-    "--public-dark-blue": publicColours.darkBlue,
-    "--public-dark-blue-hover": publicColours.darkBlueHover,
-    "--public-amber": publicColours.amber,
-    "--public-amber-hover": publicColours.amberHover,
-    "--public-amber-bright": publicColours.amberBright,
-    "--public-nav-icon-amber": publicColours.navIconAmber,
-    "--public-off-white": publicColours.offWhite,
-    "--public-light-text": publicColours.lightText,
-    "--public-muted": publicColours.muted,
-    // Public button — text/active colours on amber buttons
-    "--public-button-text": "#333",
-    "--public-button-active": "#a07728",
-    "--public-button-outline-hover-text": "#d4a854",
-    // Public burger hover background
-    "--public-burger-hover": "#1e2d4a",
+    // Button interaction colours — amber button text/active states
+    "--button-text-dark": "#333",
+    "--button-active-bg": "#a07728",
+    "--button-outline-hover-text": "#d4a854",
+    // Burger menu hover background
+    "--burger-hover-bg": "#1e2d4a",
+    // Typography — mobile sizes (base, applied on :root in typography.css)
+    "--typo-mobile-xs": typographyTokens.fontSizes.xs.mobile,
+    "--typo-mobile-sm": typographyTokens.fontSizes.sm.mobile,
+    "--typo-mobile-md": typographyTokens.fontSizes.md.mobile,
+    "--typo-mobile-lg": typographyTokens.fontSizes.lg.mobile,
+    "--typo-mobile-xl": typographyTokens.fontSizes.xl.mobile,
     // Typography — desktop sizes (applied at sm breakpoint via CSS)
     "--typo-desktop-xs": typographyTokens.fontSizes.xs.desktop,
     "--typo-desktop-sm": typographyTokens.fontSizes.sm.desktop,
@@ -173,6 +188,14 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--typo-desktop-h4": typographyTokens.headings.h4.desktop,
     "--typo-desktop-h5": typographyTokens.headings.h5.desktop,
     "--typo-desktop-h6": typographyTokens.headings.h6.desktop,
+    // Status colours — semantic design tokens
+    "--success-color": statusColourValues.success,
+    "--warning-color": statusColourValues.warning,
+    "--alert-color": statusColourValues.alert,
+    "--info-color": statusColourValues.info,
+    "--neutral-color": statusColourValues.neutral,
+    "--accent-color": statusColourValues.accent,
+    "--outstanding-color": statusColourValues.outstanding,
   },
   dark: {
     // Text — light grey on dark background (placeholder values, to be refined)
@@ -197,8 +220,10 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-dark-2": "#0a2f56",
     // Stepper inactive circles, outline separator
     "--mantine-color-dark-5": "#042340",
-    // Error text — brighter red for dark backgrounds
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
+    "--error-focus-color": "#ffb3b3",
     // Chat bubble backgrounds
     "--bubble-mine-bg": "#245d8f",
     "--bubble-theirs-bg": "#0a2f56",
@@ -208,7 +233,10 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   light: {
     "--mantine-color-text": "#143f6b",
     "--mantine-color-placeholder": "var(--mantine-color-gray-4)",
+    // Error text/border — accessible orange-red for colour-blind users
+    "--mantine-color-error": "var(--error-color)",
     "--error-color": "#f55142",
+    "--error-focus-color": "#ffb3b3",
     "--bubble-mine-bg": "#bdd2eb",
     "--bubble-theirs-bg": "#fae8cc",
     "--bubble-shadow": "0 1px 0 rgba(0,0,0,0.06)",
@@ -219,6 +247,10 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
 export const theme = createTheme({
   /** App font — Atkinson Hyperlegible Next (Braille Institute) */
   fontFamily: "'Atkinson Hyperlegible Next Variable', sans-serif",
+
+  /** Monospace font — for code blocks, inline code, and technical data */
+  fontFamilyMonospace:
+    "'SF Mono', SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
 
   /** Default text colour — brand navy instead of pure black */
   black: "#143f6b",
@@ -233,14 +265,12 @@ export const theme = createTheme({
   primaryColor: "primary",
   primaryShade: 5,
 
-  /** Font sizes — mobile-first base values from typographyTokens */
-  fontSizes: {
-    xs: typographyTokens.fontSizes.xs.mobile,
-    sm: typographyTokens.fontSizes.sm.mobile,
-    md: typographyTokens.fontSizes.md.mobile,
-    lg: typographyTokens.fontSizes.lg.mobile,
-    xl: typographyTokens.fontSizes.xl.mobile,
-  },
+  /**
+   * Font sizes — handled entirely in typography.css for responsive scaling.
+   * Mobile sizes set on :root, desktop overrides in @media (width >= 48em).
+   * Removed from createTheme() to prevent Mantine's runtime <style> tag
+   * from overriding the CSS media query (source-order specificity issue).
+   */
 
   /** Heading sizes — mobile-first values from typographyTokens */
   headings: {

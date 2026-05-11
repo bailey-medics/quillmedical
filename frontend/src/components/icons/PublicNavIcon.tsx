@@ -14,7 +14,6 @@ import {
   IconDatabase,
   IconMail,
 } from "@/components/icons/appIcons";
-import classes from "./PublicNavIcon.module.css";
 
 /** Icon names available in public navigation */
 export type PublicNavIconName =
@@ -60,15 +59,10 @@ export default function PublicNavIcon({
   const iconPixelSize = iconSizeMap[size];
 
   return (
-    <ThemeIcon
-      variant="filled"
-      radius="xl"
-      size={size}
-      className={classes.icon}
-    >
+    <ThemeIcon variant="transparent" radius="xl" size={size}>
       <Icon
         size={iconPixelSize}
-        color="var(--public-nav-icon-amber)"
+        color="var(--mantine-color-secondary-4)"
         stroke={2.5}
       />
     </ThemeIcon>

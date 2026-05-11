@@ -35,13 +35,13 @@ export type BadgeColourConfig = {
  * - alert: red — no-show, patient, attention needed
  */
 export const badgeColours: Record<BadgeColour, BadgeColourConfig> = {
-  success: { bg: "teal", text: "white" },
-  warning: { bg: "cyan.6", text: "white" },
-  outstanding: { bg: "pink", text: "white" },
+  success: { bg: "var(--success-color)", text: "white" },
+  warning: { bg: "var(--warning-color)", text: "white" },
+  outstanding: { bg: "var(--outstanding-color)", text: "white" },
   info: { bg: "primary", text: "white" },
-  neutral: { bg: "yellow.4", text: "dark" },
-  accent: { bg: "violet", text: "white" },
-  alert: { bg: "red", text: "white" },
+  neutral: { bg: "var(--neutral-color)", text: "dark" },
+  accent: { bg: "var(--accent-color)", text: "white" },
+  alert: { bg: "var(--alert-color)", text: "white" },
 };
 
 /** Standard variant for all badges */

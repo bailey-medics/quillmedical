@@ -58,18 +58,20 @@ describe("PublicNavIcon Component", () => {
       expect(themeIcon).toBeInTheDocument();
     });
 
-    it("applies icon CSS module class for background", () => {
+    it("uses transparent variant for background", () => {
       const { container } = renderWithMantine(<PublicNavIcon name="home" />);
       const themeIcon = container.querySelector(
         ".mantine-ThemeIcon-root",
       ) as HTMLElement;
-      expect(themeIcon.className).toMatch(/icon/);
+      expect(themeIcon).toHaveAttribute("data-variant", "transparent");
     });
 
     it("applies amber icon colour via CSS variable", () => {
       const { container } = renderWithMantine(<PublicNavIcon name="home" />);
       const svg = container.querySelector("svg") as SVGElement;
-      expect(svg.getAttribute("stroke")).toBe("var(--public-nav-icon-amber)");
+      expect(svg.getAttribute("stroke")).toBe(
+        "var(--mantine-color-secondary-4)",
+      );
     });
   });
 });

@@ -10,10 +10,6 @@ export interface DividerProps {
   mt?: MantineSpacing;
   /** Bottom margin (Mantine spacing token) */
   mb?: MantineSpacing;
-  /** Optional label text displayed on the divider */
-  label?: string;
-  /** Label position — defaults to left */
-  labelPosition?: "left" | "center" | "right";
 }
 
 export default function Divider({
@@ -21,8 +17,6 @@ export default function Divider({
   my,
   mt,
   mb,
-  label,
-  labelPosition,
 }: DividerProps) {
   return (
     <MantineDivider
@@ -30,8 +24,6 @@ export default function Divider({
       my={my}
       mt={mt}
       mb={mb}
-      label={label}
-      labelPosition={labelPosition}
       color="var(--card-border, var(--mantine-color-gray-3))"
     />
   );

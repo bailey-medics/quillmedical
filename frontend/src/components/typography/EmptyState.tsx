@@ -7,6 +7,7 @@
 
 import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
+import { typographyTokens } from "@/theme";
 
 export interface EmptyStateProps {
   /** Placeholder hint content */
@@ -14,14 +15,17 @@ export interface EmptyStateProps {
 }
 
 /**
- * Renders placeholder text in `gray.4` at `lg` size.
+ * Renders placeholder text in `gray.4` at body size (16px → 19px).
  *
  * @param props - Component props
  * @returns Light grey text element
  */
 export default function EmptyState({ children }: EmptyStateProps) {
   return (
-    <Text size="lg" c="var(--mantine-color-placeholder)">
+    <Text
+      size={typographyTokens.sizes.desktop}
+      c="var(--mantine-color-placeholder)"
+    >
       {children}
     </Text>
   );

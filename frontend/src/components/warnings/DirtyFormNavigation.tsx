@@ -7,13 +7,10 @@
  * @module DirtyFormNavigation
  */
 
-import { Modal, Stack } from "@mantine/core";
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import type { Blocker } from "react-router-dom";
-
-import { ButtonPairRed } from "@/components/button";
-import BodyTextBold from "@/components/typography/BodyTextBold";
-import Icon from "@/components/icons/Icon";
+import { useRef } from "react";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 /**
  * Props for DirtyFormNavigation component
@@ -53,42 +50,35 @@ export default function DirtyFormNavigation({
   blocker,
   onProceed,
 }: DirtyFormNavigationProps) {
+  const proceededRef = useRef(false);
+
   function handleProceed() {
+    proceededRef.current = true;
     if (onProceed) {
       onProceed();
     }
     blocker.proceed?.();
   }
 
+  function handleClose() {
+    // ConfirmModal calls onClose after onAccept succeeds — skip reset if
+    // we already proceeded (navigation is in progress).
+    if (!proceededRef.current) {
+      blocker.reset?.();
+    }
+    proceededRef.current = false;
+  }
+
   return (
-    <Modal
+    <ConfirmModal
       opened={blocker.state === "blocked"}
-      onClose={() => blocker.reset?.()}
-      centered
-      withCloseButton={false}
-      radius="md"
-      styles={{
-        content: {
-          border: "1px solid rgba(0, 0, 0, 0.1)",
-        },
-      }}
+      onClose={handleClose}
+      onAccept={handleProceed}
+      acceptLabel="Leave page"
+      cancelLabel="Stay"
+      icon={<IconAlertTriangle />}
     >
-      <Stack gap="md" align="center" pt="xl">
-        <Icon
-          icon={<IconAlertTriangle />}
-          size="xl"
-          colour="var(--error-color)"
-        />
-        <BodyTextBold justify="centre">
-          You have unsaved changes. Are you sure you want to leave this page?
-        </BodyTextBold>
-        <ButtonPairRed
-          cancelLabel="Stay on page"
-          acceptLabel="Leave page"
-          onCancel={() => blocker.reset?.()}
-          onAccept={handleProceed}
-        />
-      </Stack>
-    </Modal>
+      You have unsaved changes. Are you sure you want to leave this page?
+    </ConfirmModal>
   );
 }

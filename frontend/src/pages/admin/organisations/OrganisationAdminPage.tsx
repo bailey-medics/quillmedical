@@ -9,15 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Group,
-  Skeleton,
-  Alert,
-  Badge,
-  Modal,
-} from "@mantine/core";
+import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -34,10 +26,11 @@ import {
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
-import ButtonPairRed from "@/components/button/ButtonPairRed";
+import { ConfirmModal } from "@/components/confirm-modal";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
+import FeatureBadge from "@/components/badge/FeatureBadge";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
@@ -48,7 +41,7 @@ interface StaffMember {
   id: number;
   username: string;
   email: string;
-  is_primary: boolean;
+  full_name: string;
 }
 
 /**
@@ -56,7 +49,6 @@ interface StaffMember {
  */
 interface PatientMember {
   patient_id: string;
-  is_primary: boolean;
 }
 
 /**
@@ -142,13 +134,8 @@ export default function OrganisationAdminPage() {
 
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
-    try {
-      await api.del(`/organizations/${id}/staff/${removingMember.id}`);
-      setRemovingMember(null);
-      await fetchOrganizationData();
-    } catch {
-      setRemovingMember(null);
-    }
+    await api.del(`/organizations/${id}/staff/${removingMember.id}`);
+    await fetchOrganizationData();
   }
 
   if (loading) {
@@ -169,7 +156,7 @@ export default function OrganisationAdminPage() {
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
-          color="red"
+          color="var(--alert-color)"
         >
           {error || "Organisation not found"}
         </Alert>
@@ -185,17 +172,12 @@ export default function OrganisationAdminPage() {
   };
 
   const staffColumns: Column<StaffMember>[] = [
+    {
+      header: "Full name",
+      render: (member) => member.full_name || member.username,
+    },
     { header: "Username", render: (member) => member.username },
     { header: "Email", render: (member) => member.email },
-    {
-      header: "Primary",
-      render: (member) =>
-        member.is_primary ? (
-          <Badge color="primary" variant="light">
-            Primary
-          </Badge>
-        ) : null,
-    },
     {
       header: "",
       width: "50px",
@@ -206,7 +188,7 @@ export default function OrganisationAdminPage() {
             {
               label: "Remove from organisation",
               icon: <IconUserMinus />,
-              color: "red",
+              color: "var(--alert-color)",
               onClick: () => setRemovingMember(member),
             },
           ]}
@@ -217,15 +199,6 @@ export default function OrganisationAdminPage() {
 
   const patientColumns: Column<PatientMember>[] = [
     { header: "Patient ID", render: (patient) => patient.patient_id },
-    {
-      header: "Primary",
-      render: (patient) =>
-        patient.is_primary ? (
-          <Badge color="primary" variant="light">
-            Primary
-          </Badge>
-        ) : null,
-    },
   ];
 
   return (
@@ -355,9 +328,7 @@ export default function OrganisationAdminPage() {
             {enabledFeatures.length > 0 ? (
               <Group gap="sm">
                 {enabledFeatures.map((key) => (
-                  <Badge key={key} variant="light" color="primary" size="lg">
-                    {FEATURE_LABELS[key] ?? key}
-                  </Badge>
+                  <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
                 ))}
               </Group>
             ) : (
@@ -366,25 +337,17 @@ export default function OrganisationAdminPage() {
           </Stack>
         </BaseCard>
 
-        <Modal
+        <ConfirmModal
           opened={removingMember !== null}
           onClose={() => setRemovingMember(null)}
+          onAccept={confirmRemoveStaff}
           title="Remove staff member"
-          centered
+          acceptLabel="Remove"
+          submittingLabel="Removing…"
         >
-          <Stack gap="md">
-            <BodyTextInline>
-              Are you sure you want to remove{" "}
-              <strong>{removingMember?.username}</strong> from this
-              organisation?
-            </BodyTextInline>
-            <ButtonPairRed
-              acceptLabel="Remove"
-              onAccept={confirmRemoveStaff}
-              onCancel={() => setRemovingMember(null)}
-            />
-          </Stack>
-        </Modal>
+          Are you sure you want to remove{" "}
+          <strong>{removingMember?.username}</strong> from this organisation?
+        </ConfirmModal>
       </Stack>
     </Container>
   );

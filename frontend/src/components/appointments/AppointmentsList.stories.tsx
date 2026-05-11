@@ -16,7 +16,6 @@ import { fakeAppointments } from "@/data/fakeAppointments";
 const meta: Meta<typeof AppointmentsList> = {
   title: "Appointments/AppointmentsList",
   component: AppointmentsList,
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -44,5 +43,10 @@ export const Loading: Story = {
 
 export const DarkMode: Story = {
   ...Default,
+  globals: { colorScheme: "dark" },
+};
+
+export const DarkModeLoading: Story = {
+  ...Loading,
   globals: { colorScheme: "dark" },
 };

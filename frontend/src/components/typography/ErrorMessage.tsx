@@ -8,6 +8,8 @@
 import { Box, Group, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { IconAlertCircle } from "@/components/icons/appIcons";
+import { typographyTokens } from "@/theme";
+import classes from "./ErrorMessage.module.css";
 
 export interface ErrorMessageProps {
   /** Error message content */
@@ -23,10 +25,14 @@ export interface ErrorMessageProps {
 export default function ErrorMessage({ children }: ErrorMessageProps) {
   return (
     <Group gap={6} align="center" wrap="nowrap">
-      <Box style={{ flexShrink: 0, position: "relative", top: 2 }}>
-        <IconAlertCircle size={28} color="var(--error-color)" />
+      <Box className={classes.icon}>
+        <IconAlertCircle size="100%" color="var(--error-color)" />
       </Box>
-      <Text size="lg" c="var(--error-color)" fw={700}>
+      <Text
+        size={typographyTokens.sizes.desktop}
+        c="var(--error-color)"
+        fw={typographyTokens.fontWeights.bold}
+      >
         {children}
       </Text>
     </Group>

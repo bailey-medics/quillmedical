@@ -1,0 +1,32 @@
+.option {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  transition: background-color 150ms ease;
+}
+
+.radio:not(:checked) {
+  border-color: var(--mantine-color-gray-5) !important;
+}
+
+.radio:checked {
+  background-color: var(--mantine-color-primary-5) !important;
+  border-color: var(--mantine-color-primary-5) !important;
+}
+
+[data-mantine-color-scheme="dark"] .radio:not(:checked) {
+  background-color: var(--mantine-color-gray-4) !important;
+  border-color: var(--mantine-color-primary-9) !important;
+}
+
+[data-mantine-color-scheme="dark"] .radio:checked {
+  border-color: var(--mantine-color-primary-9) !important;
+}
+
+.option:hover:not([data-disabled]) {
+  background-color: var(--mantine-color-primary-light);
+}
+
+.option[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

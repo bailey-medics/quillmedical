@@ -1,5 +1,5 @@
-// eslint-disable-next-line no-restricted-imports -- MantineProvider needed for dark footer theme
-import { Anchor, Container, Group, MantineProvider, Text } from "@mantine/core";
+import { Container, Group } from "@mantine/core";
+import PublicBodyText from "@/components/typography/PublicBodyText";
 import classes from "./PublicFooter.module.css";
 
 interface FooterLink {
@@ -46,9 +46,11 @@ const data: FooterGroup[] = [
 export default function PublicFooter() {
   const groups = data.map((group) => {
     const links = group.links.map((link) => (
-      <a key={link.label} className={classes.link} href={link.link}>
-        {link.label}
-      </a>
+      <PublicBodyText key={link.label}>
+        <a className={classes.link} href={link.link}>
+          {link.label}
+        </a>
+      </PublicBodyText>
     ));
 
     return (
@@ -60,38 +62,33 @@ export default function PublicFooter() {
   });
 
   return (
-    <MantineProvider forceColorScheme="dark">
-      <footer className={classes.footer}>
-        <Container className={classes.inner} size="lg">
-          <div className={classes.logo}>
-            <img
-              src="/quill-name-long-white-amber.png"
-              alt="Quill Medical"
-              className={classes.logoImage}
-            />
-            <Text size="xs" c="dimmed">
-              A modern, secure platform for patients and clinics to communicate
-              seamlessly.
-            </Text>
-          </div>
-          <div className={classes.groups}>{groups}</div>
-        </Container>
-        <Container className={classes.afterFooter} size="lg">
-          <Text size="sm" c="dimmed">
-            © {new Date().getFullYear()} Quill Medical. All rights reserved.
-          </Text>
-          <Group gap="xs" className={classes.social} justify="flex-end">
-            <Anchor
-              href="mailto:info@quill-medical.com"
-              size="sm"
-              underline="hover"
-              className={classes.link}
-            >
+    <footer className={classes.footer}>
+      <Container className={classes.inner} size="lg">
+        <div className={classes.logo}>
+          <img
+            src="/quill-name-long-white-amber.png"
+            alt="Quill Medical"
+            className={classes.logoImage}
+          />
+          <PublicBodyText>
+            A modern, secure platform for patients and clinics to communicate
+            seamlessly.
+          </PublicBodyText>
+        </div>
+        <div className={classes.groups}>{groups}</div>
+      </Container>
+      <Container className={classes.afterFooter} size="lg">
+        <PublicBodyText>
+          © {new Date().getFullYear()} Quill Medical. All rights reserved.
+        </PublicBodyText>
+        <Group gap="xs" className={classes.social} justify="flex-end">
+          <PublicBodyText>
+            <a href="mailto:info@quill-medical.com" className={classes.link}>
               info@quill-medical.com
-            </Anchor>
-          </Group>
-        </Container>
-      </footer>
-    </MantineProvider>
+            </a>
+          </PublicBodyText>
+        </Group>
+      </Container>
+    </footer>
   );
 }

@@ -1,14 +1,34 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
+import { userEvent, within } from "storybook/test";
+import type { FormSubmitResult } from "@/components/form/Form";
 import ResetPasswordForm from "./ResetPasswordForm";
+
+const errorResult: FormSubmitResult = {
+  state: "error",
+  message: {
+    title: "Invalid or expired reset link",
+  },
+};
+
+async function fillAndSubmit(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.type(
+    canvas.getByLabelText("New password *"),
+    "SecurePass123!",
+  );
+  await userEvent.type(
+    canvas.getByLabelText("Confirm password *"),
+    "SecurePass123!",
+  );
+  await userEvent.click(canvas.getByTestId("submit-button"));
+}
 
 const meta: Meta<typeof ResetPasswordForm> = {
   title: "Registration/ResetPasswordForm",
   component: ResetPasswordForm,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
   args: {
-    onSubmit: fn(),
+    onSubmit: () => new Promise(() => {}),
   },
 };
 
@@ -17,16 +37,18 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const WithError: Story = {
-  args: {
-    error: "Invalid or expired reset link",
-  },
-};
-
 export const Submitting: Story = {
   args: {
-    submitting: true,
+    onSubmit: () => new Promise(() => {}),
   },
+  play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
+};
+
+export const WithError: Story = {
+  args: {
+    onSubmit: async () => errorResult,
+  },
+  play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };
 
 export const DarkMode: Story = {

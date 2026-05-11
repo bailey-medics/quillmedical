@@ -78,7 +78,7 @@ describe("EditOrganisationPage", () => {
     });
   });
 
-  it("shows validation error when name is empty", async () => {
+  it("shows validation error when name is cleared", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
 
@@ -94,14 +94,15 @@ describe("EditOrganisationPage", () => {
     const nameInput = screen.getByDisplayValue("Test Hospital");
     await user.clear(nameInput);
 
-    const submitButton = screen.getByRole("button", {
-      name: "Save changes",
-    });
+    // Trigger form submission
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
-    expect(
-      screen.getByText("Organisation name is required"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Organisation name is required"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("navigates back on cancel", async () => {
@@ -144,9 +145,7 @@ describe("EditOrganisationPage", () => {
     await user.clear(nameInput);
     await user.type(nameInput, "Updated Hospital");
 
-    const submitButton = screen.getByRole("button", {
-      name: "Save changes",
-    });
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -172,9 +171,12 @@ describe("EditOrganisationPage", () => {
       expect(screen.getByDisplayValue("Test Hospital")).toBeInTheDocument();
     });
 
-    const submitButton = screen.getByRole("button", {
-      name: "Save changes",
-    });
+    // Make the form dirty by changing a field
+    const locationInput = screen.getByDisplayValue("London");
+    await user.clear(locationInput);
+    await user.type(locationInput, "Manchester");
+
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
     await waitFor(() => {
@@ -196,13 +198,34 @@ describe("EditOrganisationPage", () => {
       expect(screen.getByDisplayValue("Test Hospital")).toBeInTheDocument();
     });
 
-    const submitButton = screen.getByRole("button", {
-      name: "Save changes",
-    });
+    // Make the form dirty
+    const locationInput = screen.getByDisplayValue("London");
+    await user.clear(locationInput);
+    await user.type(locationInput, "Manchester");
+
+    const submitButton = screen.getByTestId("submit-button");
     await user.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText("Server error")).toBeInTheDocument();
     });
+  });
+
+  it("disables submit button when form is clean", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(mockOrganisation);
+
+    renderWithRouter(<EditOrganisationPage />, {
+      routePath: "/admin/organisations/:id/edit",
+      initialRoute: "/admin/organisations/1/edit",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test Hospital")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });

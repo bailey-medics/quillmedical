@@ -2,11 +2,11 @@
  * MarkdownView styles
  *
  * Typography for sanitised HTML rendered from markdown.
- * Matches BodyText: lg size, weight 500, theme text colour.
+ * Matches BodyText: md size (16px → 19px), weight 500, theme text colour.
  */
 
 .markdown {
-  font-size: var(--mantine-font-size-lg);
+  font-size: var(--mantine-font-size-md);
   font-weight: 500;
   color: var(--mantine-color-text);
   line-height: 1.55;
@@ -61,7 +61,7 @@
 }
 
 .markdown a {
-  color: var(--mantine-color-blue-6);
+  color: var(--info-color);
   text-decoration: underline;
 }
 

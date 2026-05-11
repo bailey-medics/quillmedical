@@ -126,7 +126,7 @@ export default function EditPatientPage() {
             <Alert
               icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
-              color="red"
+              color="var(--alert-color)"
             >
               {error}
             </Alert>
@@ -163,7 +163,7 @@ export default function EditPatientPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

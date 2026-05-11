@@ -9,6 +9,7 @@
 import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { IconPencil } from "@/components/icons/appIcons";
 import { NoteCategoryBadge } from "@/components/badge";
 import type { NoteCategoryType } from "@/components/badge/NoteCategoryBadge";
 import FormattedDate from "@/components/data/Date";
@@ -53,7 +54,14 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
   }
 
   if (notes.length === 0) {
-    return <StateMessage type="no-notes" />;
+    return (
+      <StateMessage
+        icon={<IconPencil />}
+        title="No notes to show"
+        description="There are no clinical notes for this patient yet."
+        colour="warning"
+      />
+    );
   }
 
   return (

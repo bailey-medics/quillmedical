@@ -14,17 +14,11 @@ import {
   Skeleton,
   Center,
   Alert,
-  Modal,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
-import ButtonPairRed from "@/components/button/ButtonPairRed";
-import {
-  BodyText,
-  BodyTextInline,
-  BodyTextBold,
-  EmptyState,
-} from "@/components/typography";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { BodyTextBold, EmptyState } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 
 interface User {
@@ -46,7 +40,6 @@ export default function DeactivateUserPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [deactivating, setDeactivating] = useState(false);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -78,28 +71,21 @@ export default function DeactivateUserPage() {
   const handleDeactivateConfirm = async () => {
     if (!selectedUser) return;
 
-    setDeactivating(true);
-    try {
-      // TODO: Implement API call to deactivate user
-      // const response = await fetch(`/api/users/${selectedUser.id}/deactivate`, {
-      //   method: 'POST',
-      //   credentials: 'include',
-      // });
-      // if (!response.ok) throw new Error('Failed to deactivate user');
+    // TODO: Implement API call to deactivate user
+    // const response = await fetch(`/api/users/${selectedUser.id}/deactivate`, {
+    //   method: 'POST',
+    //   credentials: 'include',
+    // });
+    // if (!response.ok) throw new Error('Failed to deactivate user');
 
-      // For now, just close the modal and show success
-      alert(
-        `User ${selectedUser.username} would be deactivated (API not yet implemented)`,
-      );
+    // For now, just close the modal and show success
+    alert(
+      `User ${selectedUser.username} would be deactivated (API not yet implemented)`,
+    );
 
-      setSelectedUser(null);
-      // Refresh user list
-      // fetchUsers();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to deactivate user");
-    } finally {
-      setDeactivating(false);
-    }
+    setSelectedUser(null);
+    // Refresh user list
+    // fetchUsers();
   };
 
   return (
@@ -119,7 +105,7 @@ export default function DeactivateUserPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading users"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>
@@ -148,7 +134,7 @@ export default function DeactivateUserPage() {
                   <Table.Td style={{ textAlign: "right" }}>
                     <Button
                       variant="light"
-                      color="red"
+                      color="var(--alert-color)"
                       size="xs"
                       leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(user)}
@@ -162,29 +148,18 @@ export default function DeactivateUserPage() {
           </Table>
         )}
 
-        <Modal
+        <ConfirmModal
           opened={selectedUser !== null}
           onClose={() => setSelectedUser(null)}
+          onAccept={handleDeactivateConfirm}
           title="Confirm deactivation"
-          centered
+          acceptLabel="Deactivate user"
+          submittingLabel="Deactivating…"
         >
-          <Stack gap="md">
-            <BodyTextInline>
-              Are you sure you want to deactivate user{" "}
-              <strong>{selectedUser?.username}</strong>?
-            </BodyTextInline>
-            <BodyText>
-              This will revoke their access to the system. This action can be
-              reversed later.
-            </BodyText>
-            <ButtonPairRed
-              acceptLabel="Deactivate user"
-              acceptLoading={deactivating}
-              onAccept={handleDeactivateConfirm}
-              onCancel={() => setSelectedUser(null)}
-            />
-          </Stack>
-        </Modal>
+          Are you sure you want to deactivate user{" "}
+          <strong>{selectedUser?.username}</strong>? This will revoke their
+          access to the system. This action can be reversed later.
+        </ConfirmModal>
       </Stack>
     </Container>
   );

@@ -7,7 +7,6 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import PermissionBadge from "./PermissionBadge";
 
 const meta: Meta<typeof PermissionBadge> = {
@@ -16,7 +15,6 @@ const meta: Meta<typeof PermissionBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -35,47 +33,4 @@ export const Default: Story = {
       <PermissionBadge permission="staff" />
     </Group>
   ),
-};
-
-/**
- * Size Variants
- *
- * Shows permission badges in different sizes: sm, md, lg, xl.
- */
-export const SizeVariants: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          <PermissionBadge permission="superadmin" size={size} />
-          <PermissionBadge permission="admin" size={size} />
-          <PermissionBadge permission="staff" size={size} />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/**
- * Loading state with skeleton placeholders at each size.
- */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <PermissionBadge permission="superadmin" size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
 };

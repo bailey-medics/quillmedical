@@ -7,7 +7,6 @@ const meta: Meta<typeof PasswordField> = {
   title: "Form/PasswordField",
   component: PasswordField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -44,15 +43,33 @@ export const Disabled: Story = {
   },
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Password",
+    value: "pass",
+    error: "Password must be at least 8 characters",
+  },
+};
+
 export const DarkMode: Story = {
   ...WithDescription,
   globals: { colorScheme: "dark" },
   render: (args) => (
     <Stack gap="xl">
       <BaseCard>
-        <PasswordField {...args} />
+        <PasswordField {...args} required />
       </BaseCard>
-      <PasswordField {...args} />
+      <PasswordField {...args} required />
+      <BaseCard>
+        <PasswordField label="Password - disabled" value="secret123" disabled />
+      </BaseCard>
+      <BaseCard>
+        <PasswordField
+          label="Password - error"
+          value="pass"
+          error="Password must be at least 8 characters"
+        />
+      </BaseCard>
     </Stack>
   ),
 };

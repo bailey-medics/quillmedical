@@ -38,15 +38,14 @@ from app.features.teaching.schemas import (
     BankOrgRow,
     CandidateItemOut,
     CompletionResultOut,
-    CoordinatorEmailIn,
     CriterionResult,
     EducatorResultOut,
     EmailTemplateOut,
     ItemImageOut,
     QuestionBankDetailOut,
     QuestionBankItemOut,
-    QuestionBankOrgStatusIn,
-    QuestionBankOrgStatusOut,
+    QuestionBankOrgSettingsIn,
+    QuestionBankOrgSettingsOut,
     QuestionBankOut,
     StartAssessmentIn,
     SubmitAnswerIn,
@@ -1742,67 +1741,25 @@ def list_bank_organisations(
 
 
 @teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/coordinator",
+    "/admin/banks/{bank_id}/organisations/{org_id}/settings",
+    response_model=QuestionBankOrgSettingsOut,
     dependencies=[_DEP_MANAGE],
 )
-def update_org_coordinator(
+def update_bank_org_settings(
     bank_id: str,
     org_id: int,
-    body: CoordinatorEmailIn,
+    body: QuestionBankOrgSettingsIn,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> dict[str, str]:
-    """Update coordinator email for an organisation + bank."""
+) -> QuestionBankOrgSettingsOut:
+    """Update all settings (status + coordinator) for a bank-org pair."""
     _get_user_org_id(user, db)
 
     org = db.get(Organization, org_id)
     if not org:
         raise HTTPException(404, "Organisation not found")
 
-    status_row = db.execute(
-        select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id == org_id,
-            QuestionBankOrgStatus.question_bank_id == bank_id,
-        )
-    ).scalar_one_or_none()
-
-    if status_row:
-        status_row.coordinator_email = body.coordinator_email
-    else:
-        status_row = QuestionBankOrgStatus(
-            organisation_id=org_id,
-            question_bank_id=bank_id,
-            is_live=False,
-            coordinator_email=body.coordinator_email,
-        )
-        db.add(status_row)
-
-    db.commit()
-    return {"coordinator_email": body.coordinator_email}
-
-
-@teaching_router.put(
-    "/admin/banks/{bank_id}/organisations/{org_id}/status",
-    response_model=QuestionBankOrgStatusOut,
-    dependencies=[_DEP_MANAGE],
-)
-def update_bank_status(
-    bank_id: str,
-    org_id: int,
-    body: QuestionBankOrgStatusIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> QuestionBankOrgStatusOut:
-    """Toggle live/closed status for a question bank for a specific org."""
-    # Verify caller is an educator
-    _get_user_org_id(user, db)
-
-    # Verify target org exists and has teaching feature
-    org = db.get(Organization, org_id)
-    if not org:
-        raise HTTPException(404, "Organisation not found")
-
-    # Verify bank exists (check the caller's org for config)
+    # Verify bank exists
     caller_org_id = _get_user_org_id(user, db)
     config_row = (
         db.execute(
@@ -1817,27 +1774,20 @@ def update_bank_status(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # If going live and coordinator email is enabled, check it's set
+    # If going live and coordinator email is required, validate
     if body.is_live:
         config = config_row.config_yaml
         email_coordinator = config.get("results", {}).get(
             "email_coordinator_on_pass", False
         )
-        if email_coordinator:
-            existing_status = db.execute(
-                select(QuestionBankOrgStatus).where(
-                    QuestionBankOrgStatus.organisation_id == org_id,
-                    QuestionBankOrgStatus.question_bank_id == bank_id,
-                )
-            ).scalar_one_or_none()
-            if not existing_status or not existing_status.coordinator_email:
-                raise HTTPException(
-                    400,
-                    "Coordinator email must be set before "
-                    "going live with email-on-pass enabled",
-                )
+        if email_coordinator and not body.coordinator_email:
+            raise HTTPException(
+                400,
+                "Coordinator email must be set before "
+                "going live with email-on-pass enabled",
+            )
 
-    # Upsert status
+    # Upsert status row
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
             QuestionBankOrgStatus.organisation_id == org_id,
@@ -1847,17 +1797,21 @@ def update_bank_status(
 
     if status_row:
         status_row.is_live = body.is_live
+        if body.coordinator_email is not None:
+            status_row.coordinator_email = body.coordinator_email
     else:
         status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
+            coordinator_email=body.coordinator_email,
         )
         db.add(status_row)
 
     db.commit()
     db.refresh(status_row)
-    return QuestionBankOrgStatusOut(
+    return QuestionBankOrgSettingsOut(
         question_bank_id=bank_id,
         is_live=status_row.is_live,
+        coordinator_email=status_row.coordinator_email,
     )

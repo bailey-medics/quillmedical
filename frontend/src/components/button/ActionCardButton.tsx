@@ -37,7 +37,7 @@ export default function ActionCardButton({
   if (onClick) {
     return (
       <Button
-        onClick={onClick}
+        onClick={disabled ? undefined : onClick}
         variant={variant}
         fullWidth
         disabled={disabled}
@@ -48,13 +48,20 @@ export default function ActionCardButton({
     );
   }
 
+  if (disabled) {
+    return (
+      <Button variant={variant} fullWidth disabled size="lg">
+        {label}
+      </Button>
+    );
+  }
+
   return (
     <Button
       component={Link}
-      to={url}
+      to={url ?? "#"}
       variant={variant}
       fullWidth
-      disabled={disabled}
       size="lg"
     >
       {label}

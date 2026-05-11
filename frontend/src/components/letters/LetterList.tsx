@@ -9,6 +9,7 @@ import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { LetterStatusBadge } from "@/components/badge";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { IconMail } from "@/components/icons/appIcons";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import BodyTextInline from "@/components/typography/BodyTextInline";
@@ -70,7 +71,14 @@ export default function LetterList({
   }
 
   if (letters.length === 0) {
-    return <StateMessage type="no-letters" />;
+    return (
+      <StateMessage
+        icon={<IconMail />}
+        title="No letters to show"
+        description="There are no clinical letters for this patient yet."
+        colour="warning"
+      />
+    );
   }
 
   return (

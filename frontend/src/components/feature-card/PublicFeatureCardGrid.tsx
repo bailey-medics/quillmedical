@@ -9,7 +9,7 @@ export default function PublicFeatureCardGrid({
   children,
 }: PublicFeatureCardGridProps) {
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={3}>
+    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing={11}>
       {children}
     </SimpleGrid>
   );

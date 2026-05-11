@@ -31,7 +31,6 @@ const meta: Meta<typeof DataTable<User>> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <Container size="lg">
@@ -192,21 +191,6 @@ export const LongText: Story = {
 // cspell:enable
 
 /**
- * Empty State
- *
- * Shows a message when there is no data to display.
- */
-export const Empty: Story = {
-  args: {
-    data: [],
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-    emptyMessage: "No users found",
-  },
-};
-
-/**
  * Error State
  *
  * Shows an error alert when data fails to load.
@@ -238,5 +222,10 @@ export const Loading: Story = {
 
 export const DarkMode: Story = {
   ...Default,
+  globals: { colorScheme: "dark" },
+};
+
+export const DarkModeLoading: Story = {
+  ...Loading,
   globals: { colorScheme: "dark" },
 };

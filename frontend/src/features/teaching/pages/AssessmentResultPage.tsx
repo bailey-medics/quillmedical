@@ -1,5 +1,6 @@
 import { Container, Skeleton, Stack } from "@mantine/core";
 import { ResultMessage, StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import { PageHeader } from "@/components/typography";
 import { useEffect, useState } from "react";
 import {
@@ -73,7 +74,12 @@ export default function AssessmentResultPage() {
   if (error || !assessment) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error ?? "Assessment not found"} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Assessment not found"}
+          colour="alert"
+        />
       </Container>
     );
   }

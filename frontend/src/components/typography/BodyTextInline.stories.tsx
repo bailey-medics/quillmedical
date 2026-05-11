@@ -5,7 +5,6 @@ const meta: Meta<typeof BodyTextInline> = {
   title: "Foundations/Typography/BodyTextInline",
   component: BodyTextInline,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;

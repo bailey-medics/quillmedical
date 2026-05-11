@@ -10,6 +10,7 @@ import { MessagesList, type MessageThread } from "@/components/messaging";
 import NewMessageModal, {
   type NewConversationData,
 } from "@/components/messaging/NewMessageModal";
+import type { FormSubmitResult } from "@/components/form/Form";
 import AddButton from "@/components/button/AddButton";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { EmptyState } from "@/components/typography";
@@ -32,33 +33,37 @@ export default function PatientMessages() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleNewConversation = useCallback(
-    (data: NewConversationData) => {
-      setIsSubmitting(true);
-      createConversation({
-        patient_id: data.patient_id,
-        subject: data.subject,
-        participant_ids: data.participant_ids,
-        initial_message: data.initial_message,
-        include_patient_as_participant: data.include_patient_as_participant,
-      })
-        .then((created) => {
-          setModalOpen(false);
-          navigate(`/patients/${id}/messages/${created.id}`);
-        })
-        .catch((err: unknown) => {
-          notifications.show({
-            title: "Failed to create conversation",
-            message:
-              err instanceof Error
-                ? err.message
-                : "Something went wrong. Please try again.",
-            color: "red",
-          });
-        })
-        .finally(() => setIsSubmitting(false));
+    async (data: NewConversationData): Promise<FormSubmitResult> => {
+      try {
+        const created = await createConversation({
+          patient_id: data.patient_id,
+          subject: data.subject,
+          participant_ids: data.participant_ids,
+          initial_message: data.initial_message,
+          include_patient_as_participant: data.include_patient_as_participant,
+        });
+        setModalOpen(false);
+        navigate(`/patients/${id}/messages/${created.id}`);
+        return {
+          state: "success",
+          message: { title: "Conversation started" },
+        };
+      } catch (err: unknown) {
+        notifications.show({
+          title: "Failed to create conversation",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Something went wrong. Please try again.",
+          color: "var(--alert-color)",
+        });
+        return {
+          state: "error",
+          message: { title: "Failed to create conversation" },
+        };
+      }
     },
     [navigate, id],
   );
@@ -116,7 +121,6 @@ export default function PatientMessages() {
           opened={modalOpen}
           onClose={() => setModalOpen(false)}
           onSubmit={handleNewConversation}
-          isSubmitting={isSubmitting}
           patientId={id}
           patientName={patient?.name}
         />

@@ -2,8 +2,9 @@
  * BodyText Component
  *
  * Primary body text component for the application. Renders block-level
- * text at `lg` size with standard body weight (500). Inherits the theme
- * text colour (navy) via `--mantine-color-text`.
+ * text at `md` size (16px mobile → 19px desktop) with standard body
+ * weight (500). Matches NHS/GOV.UK typography recommendations.
+ * Inherits the theme text colour (navy) via `--mantine-color-text`.
  */
 
 import { Text } from "@mantine/core";
@@ -16,7 +17,15 @@ export interface BodyTextProps {
   children: ReactNode;
   /** Optional colour override */
   c?: MantineColor;
+  /** Text alignment. Defaults to "left". */
+  justify?: "left" | "centre" | "right";
 }
+
+const alignMap = {
+  left: "left",
+  centre: "center",
+  right: "right",
+} as const;
 
 /**
  * Renders block-level body text with consistent size and weight.
@@ -24,9 +33,18 @@ export interface BodyTextProps {
  * @param props - Component props
  * @returns Text element
  */
-export default function BodyText({ children, c }: BodyTextProps) {
+export default function BodyText({
+  children,
+  c,
+  justify = "left",
+}: BodyTextProps) {
   return (
-    <Text size="lg" fw={typographyTokens.fontWeights.body} c={c}>
+    <Text
+      size={typographyTokens.sizes.desktop}
+      fw={typographyTokens.fontWeights.body}
+      c={c}
+      ta={alignMap[justify]}
+    >
       {children}
     </Text>
   );

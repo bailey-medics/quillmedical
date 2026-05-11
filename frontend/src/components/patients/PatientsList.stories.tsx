@@ -11,14 +11,13 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useState } from "react";
-import { Text } from "@mantine/core";
+import { StoryNote } from "@/stories/variants";
 import PatientsList from "./PatientsList";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof PatientsList> = {
   title: "Patients/PatientsList",
   component: PatientsList,
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -106,9 +105,7 @@ export const AnimatedLoadingSequence: Story = {
     if (state === "health-check") {
       return (
         <>
-          <Text size="sm" c="dimmed" mb="md">
-            {labels[state]}
-          </Text>
+          <StoryNote>{labels[state]}</StoryNote>
           <PatientsList patients={[]} isLoading={true} fhirAvailable={false} />
         </>
       );
@@ -117,9 +114,7 @@ export const AnimatedLoadingSequence: Story = {
     if (state === "db-init") {
       return (
         <>
-          <Text size="sm" c="dimmed" mb="md">
-            {labels[state]}
-          </Text>
+          <StoryNote>{labels[state]}</StoryNote>
           <PatientsList patients={[]} isLoading={false} fhirAvailable={false} />
         </>
       );
@@ -128,9 +123,7 @@ export const AnimatedLoadingSequence: Story = {
     if (state === "fetching") {
       return (
         <>
-          <Text size="sm" c="dimmed" mb="md">
-            {labels[state]}
-          </Text>
+          <StoryNote>{labels[state]}</StoryNote>
           <PatientsList patients={[]} isLoading={true} fhirAvailable={true} />
         </>
       );
@@ -139,9 +132,7 @@ export const AnimatedLoadingSequence: Story = {
     // state === "loaded"
     return (
       <>
-        <Text size="sm" c="dimmed" mb="md">
-          {labels[state]}
-        </Text>
+        <StoryNote>{labels[state]}</StoryNote>
         <PatientsList
           patients={demoPatientsList}
           isLoading={false}

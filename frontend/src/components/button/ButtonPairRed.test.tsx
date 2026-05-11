@@ -67,18 +67,56 @@ describe("ButtonPairRed", () => {
   });
 
   describe("Disabled states", () => {
-    it("disables accept button when acceptDisabled is true", () => {
+    it("marks accept button as aria-disabled when acceptDisabled is true", () => {
       renderWithMantine(<ButtonPairRed {...defaultProps} acceptDisabled />);
-      expect(screen.getByRole("button", { name: "OK" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "OK" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+    });
+
+    it("prevents click when acceptDisabled is true", async () => {
+      const user = userEvent.setup();
+      const onAccept = vi.fn();
+      renderWithMantine(
+        <ButtonPairRed {...defaultProps} onAccept={onAccept} acceptDisabled />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "OK" }));
+      expect(onAccept).not.toHaveBeenCalled();
     });
   });
 
   describe("Loading state", () => {
-    it("shows loading spinner on accept button when acceptLoading is true", () => {
+    it("shows loading spinner when acceptLoading is true", () => {
       renderWithMantine(<ButtonPairRed {...defaultProps} acceptLoading />);
       const acceptButton = screen.getByRole("button", { name: "OK" });
-      expect(acceptButton).toHaveAttribute("data-loading", "true");
+      expect(
+        acceptButton.querySelector(".mantine-Loader-root"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows submittingLabel text when acceptLoading is true", () => {
+      renderWithMantine(
+        <ButtonPairRed
+          {...defaultProps}
+          acceptLabel="Delete"
+          submittingLabel="Deleting…"
+          acceptLoading
+        />,
+      );
+      expect(screen.getByText("Deleting…")).toBeVisible();
+      expect(screen.getByText("Delete")).not.toBeVisible();
+    });
+
+    it("falls back to acceptLabel when submittingLabel is not provided", () => {
+      renderWithMantine(
+        <ButtonPairRed {...defaultProps} acceptLabel="Remove" acceptLoading />,
+      );
+      // Both grid cells show "Remove" — the visible one is the loading row
+      const removeTexts = screen.getAllByText("Remove");
+      expect(removeTexts).toHaveLength(2);
     });
   });
 });

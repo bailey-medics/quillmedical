@@ -6,13 +6,52 @@
  * scanning with authenticator apps (Google Authenticator, Authy, etc.).
  */
 
-import { Button, Container, Stack } from "@mantine/core";
+import { Container, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
-import { BodyText, ErrorMessage, Heading } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+
+interface TotpVerifyFormValues {
+  code: string;
+}
+
+function TotpVerifyFields() {
+  const navigate = useNavigate();
+  const { methods, formState } = useFormContext();
+
+  useEffect(() => {
+    if (formState === "success") {
+      methods.reset({ code: "" });
+    }
+  }, [formState, methods]);
+
+  return (
+    <Stack>
+      <TextField
+        label="6-digit code"
+        placeholder="123456"
+        {...methods.register("code", {
+          required: "Please enter the 6-digit code",
+        })}
+        error={methods.formState.errors.code?.message as string}
+        withAsterisk
+      />
+      <FormStatus />
+      <SubmitButton onCancel={() => navigate("/settings")} />
+    </Stack>
+  );
+}
 
 /**
  * TOTP Setup Page
@@ -25,11 +64,8 @@ import { api } from "../lib/api";
  */
 export default function TotpSetup() {
   const [provisionUri, setProvisionUri] = useState<string | null>(null);
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchUri() {
@@ -39,7 +75,7 @@ export default function TotpSetup() {
         );
         setProvisionUri(out.provision_uri);
       } catch {
-        setError("Failed to get provisioning URI");
+        setSetupError("Failed to get provisioning URI");
       }
     }
     void fetchUri();
@@ -50,18 +86,20 @@ export default function TotpSetup() {
     void QRCode.toCanvas(canvasRef.current, provisionUri, { width: 240 });
   }, [provisionUri]);
 
-  async function onVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+  async function handleSubmit(
+    data: TotpVerifyFormValues,
+  ): Promise<FormSubmitResult> {
     try {
-      await api.post("/auth/totp/verify", { code });
-      setSuccess("Two-factor enabled");
+      await api.post("/auth/totp/verify", { code: data.code });
+      return {
+        state: "success",
+        message: { title: "Two-factor enabled" },
+      };
     } catch {
-      setError("Verification failed");
-    } finally {
-      setLoading(false);
+      return {
+        state: "error",
+        message: { title: "Verification failed" },
+      };
     }
   }
 
@@ -75,26 +113,26 @@ export default function TotpSetup() {
               Scan the QR code below with your authenticator app (or copy the
               provided URL into your app).
             </BodyText>
-            <canvas ref={canvasRef} />
-            {provisionUri && <BodyText>{provisionUri}</BodyText>}
+            <canvas
+              ref={canvasRef}
+              style={{ display: "block", margin: "0 auto" }}
+            />
+            {provisionUri && (
+              <div style={{ wordBreak: "break-all" }}>
+                <BodyText>{provisionUri}</BodyText>
+              </div>
+            )}
+            {setupError && <BodyText c="red">{setupError}</BodyText>}
           </div>
 
-          <form onSubmit={onVerify}>
-            <Stack>
-              <TextField
-                label="6-digit code"
-                value={code}
-                onChange={(e) => setCode(e.currentTarget.value)}
-                placeholder="123456"
-                required
-              />
-              {error && <ErrorMessage>{error}</ErrorMessage>}
-              {success && <BodyText>{success}</BodyText>}
-              <Button type="submit" loading={loading} disabled={!code}>
-                Verify and enable
-              </Button>
-            </Stack>
-          </form>
+          <Form<TotpVerifyFormValues>
+            defaultValues={{ code: "" }}
+            onSubmit={handleSubmit}
+            submitLabel="Verify and enable"
+            submittingLabel="Verifying…"
+          >
+            <TotpVerifyFields />
+          </Form>
         </Stack>
       </BaseCard>
     </Container>

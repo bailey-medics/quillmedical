@@ -19,9 +19,21 @@ const meta = {
   title: "Public/Icons/PublicNavIcon",
   component: PublicNavIcon,
   parameters: {
-    layout: "padded",
+    layout: "fullscreen",
   },
-  tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     name: {
       description: "The name of the icon to display",

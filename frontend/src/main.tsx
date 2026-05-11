@@ -33,7 +33,6 @@ import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
 import AdminOrganisationsPage from "./pages/admin/organisations/AdminOrganisationsPage";
-import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import ViewAllUsersPage from "./pages/admin/users/ViewAllUsersPage";
 import UserAdminPage from "./pages/admin/users/UserAdminPage";
 import EditUserPage from "./pages/admin/users/EditUserPage";
@@ -52,7 +51,7 @@ import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
-import NewUserPage from "./pages/NewUserPage";
+import UserInfoUpdatePage from "./pages/UserInfoUpdatePage";
 import NotFound from "./pages/NotFound";
 import Patient from "./pages/Patient";
 import PatientAppointments from "./pages/PatientAppointments";
@@ -74,6 +73,7 @@ import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
+import { NoAccessLayout } from "@/components/layouts";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -88,7 +88,6 @@ import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
-import TeachingOrgSettingsPage from "./pages/admin/teaching/TeachingOrgSettingsPage";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -244,7 +243,7 @@ const router = createBrowserRouter([
         path: "/admin/users/new",
         element: (
           <RequirePermission level="admin">
-            <NewUserPage />
+            <UserInfoUpdatePage />
           </RequirePermission>
         ),
       },
@@ -284,7 +283,7 @@ const router = createBrowserRouter([
         path: "/admin/users/:id/edit",
         element: (
           <RequirePermission level="admin">
-            <NewUserPage />
+            <UserInfoUpdatePage />
           </RequirePermission>
         ),
       },
@@ -425,26 +424,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/admin/permissions",
-        element: (
-          <RequirePermission level="admin">
-            <AdminPermissionsPage />
-          </RequirePermission>
-        ),
-      },
-      {
         path: "/admin/teaching",
         element: (
           <RequirePermission level="admin">
             <AdminTeachingPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/teaching/settings",
-        element: (
-          <RequirePermission level="admin">
-            <TeachingOrgSettingsPage />
           </RequirePermission>
         ),
       },
@@ -475,7 +458,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentDashboard />
           </RequireFeature>
         ),
@@ -483,7 +469,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentAttempt />
           </RequireFeature>
         ),
@@ -491,7 +480,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/assessment/:id/result",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AssessmentResultPage />
           </RequireFeature>
         ),
@@ -499,7 +491,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/results",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <AllResults />
           </RequireFeature>
         ),
@@ -507,7 +502,10 @@ const router = createBrowserRouter([
       {
         path: "/teaching/sync",
         element: (
-          <RequireFeature feature="teaching">
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
             <SyncStatus />
           </RequireFeature>
         ),

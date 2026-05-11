@@ -5,12 +5,10 @@
  * Placed next to the timer in QuestionView during assessments.
  */
 
-import { Badge, Modal, Stack, Text } from "@mantine/core";
+import { Badge, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconAlertTriangle } from "@/components/icons/appIcons";
-import { ButtonPairRed } from "@/components/button";
-import BodyTextBold from "@/components/typography/BodyTextBold";
-import Icon from "@/components/icons/Icon";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 interface ExamCloseButtonProps {
   /** Called when the user confirms they want to end the exam */
@@ -23,7 +21,7 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
   return (
     <>
       <Badge
-        color="red"
+        color="var(--alert-color)"
         variant="filled"
         size="xl"
         style={{ cursor: "pointer", textTransform: "none" }}
@@ -34,28 +32,17 @@ export default function ExamCloseButton({ onConfirm }: ExamCloseButtonProps) {
         </Text>
       </Badge>
 
-      <Modal
+      <ConfirmModal
         opened={opened}
         onClose={close}
-        centered
-        withCloseButton={false}
-        radius="md"
-        styles={{ content: { border: "1px solid rgba(0, 0, 0, 0.1)" } }}
+        onAccept={onConfirm}
+        acceptLabel="End exam"
+        cancelLabel="Continue"
+        icon={<IconAlertTriangle />}
       >
-        <Stack gap="md" align="center" pt="xl">
-          <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
-          <BodyTextBold justify="centre">
-            Are you sure you want to end this exam early? Unanswered questions
-            will be marked as incorrect.
-          </BodyTextBold>
-          <ButtonPairRed
-            cancelLabel="Continue exam"
-            acceptLabel="End exam"
-            onCancel={close}
-            onAccept={onConfirm}
-          />
-        </Stack>
-      </Modal>
+        Are you sure you want to end this exam early? Unanswered questions will
+        be marked as incorrect.
+      </ConfirmModal>
     </>
   );
 }

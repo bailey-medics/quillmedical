@@ -13,7 +13,6 @@ import NotFoundLayout from "./NotFoundLayout";
 const meta: Meta<typeof NotFoundLayout> = {
   title: "Layouts/NotFoundLayout",
   component: NotFoundLayout,
-  tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
   },

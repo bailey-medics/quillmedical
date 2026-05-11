@@ -6,14 +6,19 @@ const meta = {
   title: "Public/InfoCard/PublicInfoCard",
   component: PublicInfoCard,
   parameters: {
-    layout: "padded",
-    backgrounds: { default: "dark" },
+    layout: "fullscreen",
   },
   decorators: [
     (Story) => (
-      <Box bg="var(--public-navy)" p="xl">
+      <div
+        style={{
+          background: "var(--brand-primary)",
+          minHeight: "100vh",
+          padding: "var(--mantine-spacing-xl)",
+        }}
+      >
         <Story />
-      </Box>
+      </div>
     ),
   ],
 } satisfies Meta<typeof PublicInfoCard>;

@@ -13,6 +13,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import {
   BodyText,
   BodyTextInline,
@@ -73,7 +74,12 @@ export default function AdminBankDetailPage() {
   if (error || !bank) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error ?? "Bank not found"} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Bank not found"}
+          colour="alert"
+        />
       </Container>
     );
   }

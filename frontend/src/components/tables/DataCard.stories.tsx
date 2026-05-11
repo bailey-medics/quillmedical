@@ -32,7 +32,6 @@ const meta: Meta<typeof DataCard<User>> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   decorators: [
     (Story) => (
       <Container size="sm" ml={0}>
@@ -141,5 +140,10 @@ export const Loading: Story = {
 
 export const DarkMode: Story = {
   ...Default,
+  globals: { colorScheme: "dark" },
+};
+
+export const DarkModeLoading: Story = {
+  ...Loading,
   globals: { colorScheme: "dark" },
 };

@@ -8,21 +8,85 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Skeleton, Stack } from "@mantine/core";
-import { IconArrowLeft } from "@components/icons/appIcons";
+import { Controller } from "react-hook-form";
+import { IconAlertCircle, IconArrowLeft } from "@/components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
-import ButtonPair from "@/components/button/ButtonPair";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import { StateMessage, ResultMessage } from "@/components/message-cards";
+import { StateMessage } from "@/components/message-cards";
 import { Heading } from "@/components/typography";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
 import type {
   AdminBankDetail,
   BankOrganisation,
 } from "@/features/teaching/types";
+
+interface BankOrgSettingsFormValues {
+  isLive: boolean;
+  coordinatorEmail: string;
+}
+
+interface SettingsFieldsProps {
+  bank: AdminBankDetail;
+}
+
+function SettingsFields({ bank }: SettingsFieldsProps) {
+  const navigate = useNavigate();
+  const { bankId } = useParams<{ bankId: string }>();
+  const { methods } = useFormContext();
+  const isLive = methods.watch("isLive");
+
+  return (
+    <BaseCard>
+      <Stack gap="md">
+        <Group justify="space-between">
+          <Heading>Exam status</Heading>
+          <ActiveStatusBadge active={isLive} size="lg" />
+        </Group>
+        <Controller
+          name="isLive"
+          control={methods.control}
+          render={({ field }) => (
+            <SolidSwitch
+              label="Open for assessments"
+              checked={field.value}
+              onChange={(e) => field.onChange(e.currentTarget.checked)}
+            />
+          )}
+        />
+
+        {bank.email_coordinator_on_pass && (
+          <>
+            <Heading>Coordinator email</Heading>
+            <TextField
+              label="Email address"
+              description="Receives certificate copies when students pass"
+              placeholder="coordinator@example.com"
+              type="email"
+              {...methods.register("coordinatorEmail")}
+              error={
+                methods.formState.errors.coordinatorEmail?.message as string
+              }
+            />
+          </>
+        )}
+
+        <FormStatus />
+        <SubmitButton onCancel={() => navigate(`/admin/teaching/${bankId}`)} />
+      </Stack>
+    </BaseCard>
+  );
+}
 
 export default function AdminBankOrgSettingsPage() {
   const { bankId, orgId } = useParams<{ bankId: string; orgId: string }>();
@@ -32,17 +96,6 @@ export default function AdminBankOrgSettingsPage() {
   const [org, setOrg] = useState<BankOrganisation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [isLive, setIsLive] = useState(false);
-  const [coordinatorEmail, setCoordinatorEmail] = useState("");
-  const [toggling, setToggling] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [originalEmail, setOriginalEmail] = useState("");
-
-  const isDirty = coordinatorEmail !== originalEmail;
 
   const fetchData = useCallback(async () => {
     try {
@@ -61,9 +114,6 @@ export default function AdminBankOrgSettingsPage() {
         return;
       }
       setOrg(thisOrg);
-      setIsLive(thisOrg.is_live);
-      setCoordinatorEmail(thisOrg.coordinator_email ?? "");
-      setOriginalEmail(thisOrg.coordinator_email ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
@@ -75,43 +125,32 @@ export default function AdminBankOrgSettingsPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleToggleLive = async (checked: boolean) => {
-    setToggling(true);
-    setToggleError(null);
+  async function handleSubmit(
+    data: BankOrgSettingsFormValues,
+  ): Promise<FormSubmitResult> {
     try {
       await api.put(
-        `/teaching/admin/banks/${bankId}/organisations/${orgId}/status`,
-        { is_live: checked },
+        `/teaching/admin/banks/${bankId}/organisations/${orgId}/settings`,
+        {
+          is_live: data.isLive,
+          coordinator_email: data.coordinatorEmail || null,
+        },
       );
-      setIsLive(checked);
+      return {
+        state: "success",
+        message: { title: "Saved", description: "Settings updated" },
+      };
     } catch (err) {
-      setToggleError(
-        err instanceof Error ? err.message : "Failed to update status",
-      );
-    } finally {
-      setToggling(false);
+      return {
+        state: "error",
+        message: {
+          title: "Error saving settings",
+          description:
+            err instanceof Error ? err.message : "Failed to save settings",
+        },
+      };
     }
-  };
-
-  const handleSaveEmail = async () => {
-    setSaving(true);
-    setSaveError(null);
-    setSaved(false);
-    try {
-      await api.put(
-        `/teaching/admin/banks/${bankId}/organisations/${orgId}/coordinator`,
-        { coordinator_email: coordinatorEmail },
-      );
-      setOriginalEmail(coordinatorEmail);
-      setSaved(true);
-    } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to save coordinator email",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+  }
 
   if (loading) {
     return (
@@ -128,7 +167,12 @@ export default function AdminBankOrgSettingsPage() {
   if (error || !bank || !org) {
     return (
       <Container size="lg" py="xl">
-        <StateMessage type="error" message={error ?? "Not found"} />
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Not found"}
+          colour="alert"
+        />
       </Container>
     );
   }
@@ -146,53 +190,18 @@ export default function AdminBankOrgSettingsPage() {
           <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
         </Group>
 
-        {/* Exam status and coordinator settings */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Heading>Exam status</Heading>
-              <ActiveStatusBadge active={isLive} size="lg" />
-            </Group>
-            <SolidSwitch
-              label="Open for assessments"
-              checked={isLive}
-              onChange={(e) => handleToggleLive(e.currentTarget.checked)}
-              disabled={toggling}
-            />
-            {toggleError && <StateMessage type="error" message={toggleError} />}
-
-            {bank.email_coordinator_on_pass && (
-              <>
-                <Heading>Coordinator email</Heading>
-                <TextField
-                  label="Email address"
-                  description="Receives certificate copies when students pass"
-                  placeholder="coordinator@example.com"
-                  type="email"
-                  value={coordinatorEmail}
-                  onChange={(e) => setCoordinatorEmail(e.currentTarget.value)}
-                />
-
-                {saveError && <StateMessage type="error" message={saveError} />}
-                {saved && (
-                  <ResultMessage
-                    variant="success"
-                    title="Saved"
-                    subtitle="Coordinator email updated"
-                  />
-                )}
-
-                <ButtonPair
-                  acceptLabel="Save"
-                  onAccept={handleSaveEmail}
-                  acceptLoading={saving}
-                  acceptDisabled={!isDirty}
-                  onCancel={() => navigate(`/admin/teaching/${bankId}`)}
-                />
-              </>
-            )}
-          </Stack>
-        </BaseCard>
+        <Form<BankOrgSettingsFormValues>
+          defaultValues={{
+            isLive: org.is_live,
+            coordinatorEmail: org.coordinator_email ?? "",
+          }}
+          onSubmit={handleSubmit}
+          submitLabel="Save"
+          submittingLabel="Saving…"
+          disableWhenClean
+        >
+          <SettingsFields bank={bank} />
+        </Form>
       </Stack>
     </Container>
   );

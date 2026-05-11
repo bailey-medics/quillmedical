@@ -4,7 +4,6 @@ import { ScoreBreakdown } from "./ScoreBreakdown";
 const meta: Meta<typeof ScoreBreakdown> = {
   title: "Teaching/ScoreBreakdown",
   component: ScoreBreakdown,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },
@@ -26,6 +25,19 @@ export const AllPassed: Story = {
         name: "Accuracy of high-confidence answers",
         value: 0.91,
         threshold: 0.85,
+        passed: true,
+      },
+    ],
+  },
+};
+
+export const SingleCriterion: Story = {
+  args: {
+    criteria: [
+      {
+        name: "Chest X-ray results",
+        value: 0.78,
+        threshold: 0.7,
         passed: true,
       },
     ],

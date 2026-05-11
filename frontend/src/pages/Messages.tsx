@@ -9,9 +9,11 @@ import { MessagesList, type MessageThread } from "@/components/messaging";
 import NewMessageModal, {
   type NewConversationData,
 } from "@/components/messaging/NewMessageModal";
+import type { FormSubmitResult } from "@/components/form/Form";
 import AddButton from "@/components/button/AddButton";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
+import { IconClock } from "@/components/icons/appIcons";
 import {
   createConversation,
   fetchConversations,
@@ -98,33 +100,37 @@ export default function Messages() {
   const [isFhirReady, setIsFhirReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleNewConversation = useCallback(
-    (data: NewConversationData) => {
-      setIsSubmitting(true);
-      createConversation({
-        patient_id: data.patient_id,
-        subject: data.subject,
-        participant_ids: data.participant_ids,
-        initial_message: data.initial_message,
-        include_patient_as_participant: data.include_patient_as_participant,
-      })
-        .then((created) => {
-          setModalOpen(false);
-          navigate(`/messages/${created.id}`);
-        })
-        .catch((err: unknown) => {
-          notifications.show({
-            title: "Failed to create conversation",
-            message:
-              err instanceof Error
-                ? err.message
-                : "Something went wrong. Please try again.",
-            color: "red",
-          });
-        })
-        .finally(() => setIsSubmitting(false));
+    async (data: NewConversationData): Promise<FormSubmitResult> => {
+      try {
+        const created = await createConversation({
+          patient_id: data.patient_id,
+          subject: data.subject,
+          participant_ids: data.participant_ids,
+          initial_message: data.initial_message,
+          include_patient_as_participant: data.include_patient_as_participant,
+        });
+        setModalOpen(false);
+        navigate(`/messages/${created.id}`);
+        return {
+          state: "success",
+          message: { title: "Conversation started" },
+        };
+      } catch (err: unknown) {
+        notifications.show({
+          title: "Failed to create conversation",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Something went wrong. Please try again.",
+          color: "var(--alert-color)",
+        });
+        return {
+          state: "error",
+          message: { title: "Failed to create conversation" },
+        };
+      }
     },
     [navigate],
   );
@@ -270,7 +276,6 @@ export default function Messages() {
           opened={modalOpen}
           onClose={() => setModalOpen(false)}
           onSubmit={handleNewConversation}
-          isSubmitting={isSubmitting}
         />
 
         {error && (
@@ -282,7 +287,12 @@ export default function Messages() {
         {isLoading ? (
           <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
         ) : !fhirAvailable ? (
-          <StateMessage type="database-initialising" />
+          <StateMessage
+            icon={<IconClock />}
+            title="Database is initialising"
+            description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+            colour="info"
+          />
         ) : conversations.length === 0 ? (
           <BaseCard>
             <EmptyState>No conversations yet</EmptyState>

@@ -2601,6 +2601,7 @@ def get_organization(
             User.id,
             User.username,
             User.email,
+            User.full_name,
             organisation_staff_member.c.is_primary,
         )
         .join(
@@ -2634,6 +2635,7 @@ def get_organization(
                 "id": sm.id,
                 "username": sm.username,
                 "email": sm.email,
+                "full_name": sm.full_name or "",
                 "is_primary": sm.is_primary or False,
             }
             for sm in staff_members

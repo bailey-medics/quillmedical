@@ -7,7 +7,6 @@ const meta: Meta<typeof TextAreaField> = {
   title: "Form/TextAreaField",
   component: TextAreaField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -68,15 +67,41 @@ export const Disabled: Story = {
   },
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Clinical notes",
+    value: "",
+    placeholder: "Type your notes…",
+    minRows: 3,
+    error: "Clinical notes are required before submitting",
+  },
+};
+
 export const DarkMode: Story = {
   ...WithDescription,
   globals: { colorScheme: "dark" },
   render: (args) => (
     <Stack gap="xl">
       <BaseCard>
-        <TextAreaField {...args} />
+        <TextAreaField {...args} required />
       </BaseCard>
-      <TextAreaField {...args} />
+      <TextAreaField {...args} required />
+      <BaseCard>
+        <TextAreaField
+          label="Clinical notes - disabled"
+          value="Patient presented with mild symptoms. Follow-up in two weeks."
+          disabled
+          minRows={3}
+        />
+      </BaseCard>
+      <BaseCard>
+        <TextAreaField
+          label="Clinical notes - error"
+          placeholder="Type your notes\u2026"
+          minRows={3}
+          error="Clinical notes are required before submitting"
+        />
+      </BaseCard>
     </Stack>
   ),
 };

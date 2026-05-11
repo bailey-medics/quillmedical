@@ -14,7 +14,6 @@ const meta: Meta<typeof ButtonPairRed> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   args: {
     onAccept: fn(),
     onCancel: fn(),
@@ -27,14 +26,6 @@ type Story = StoryObj<typeof ButtonPairRed>;
 /** Default red button pair */
 export const Default: Story = {};
 
-/** Custom labels for navigation warning */
-export const NavigationWarning: Story = {
-  args: {
-    acceptLabel: "Leave page",
-    cancelLabel: "Stay on page",
-  },
-};
-
 /** Accept button disabled */
 export const AcceptDisabled: Story = {
   args: {
@@ -42,11 +33,12 @@ export const AcceptDisabled: Story = {
   },
 };
 
-/** Accept button loading */
-export const AcceptLoading: Story = {
+/** Accept button in submitting state */
+export const Submitting: Story = {
   args: {
     acceptLabel: "Deactivating...",
     acceptLoading: true,
+    acceptDisabled: true,
   },
 };
 

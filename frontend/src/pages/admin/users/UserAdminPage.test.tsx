@@ -51,7 +51,7 @@ const mockUserDetails = {
   id: 1,
   username: "test.user",
   email: "test@example.com",
-  name: "test.user",
+  name: "Test User",
   base_profession: "doctor",
   additional_competencies: ["cardiology", "surgery"],
   removed_competencies: ["dermatology"],

@@ -11,13 +11,14 @@ import { Menu } from "@mantine/core";
 import { IconDots } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
+import classes from "./EllipsisMenu.module.css";
 
 export interface EllipsisMenuItem {
   /** Display label for the menu item */
   label: string;
   /** Icon element to show before the label */
   icon?: ReactElement;
-  /** Mantine colour token (e.g. "red") for destructive actions */
+  /** CSS variable for destructive actions (e.g. "var(--alert-color)") */
   color?: string;
   /** Click handler */
   onClick: () => void;
@@ -39,8 +40,9 @@ export default function EllipsisMenu({
       <Menu.Target>
         <IconButton
           icon={<IconDots />}
-          variant="subtle"
+          variant="transparent"
           color="gray"
+          className={classes.trigger}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           aria-label={ariaLabel}
         />

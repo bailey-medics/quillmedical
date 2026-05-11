@@ -37,6 +37,7 @@ import {
   BodyTextBold,
 } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import DataCard from "./DataCard";
 import classes from "./DataTable.module.css";
 
@@ -116,7 +117,14 @@ export default function DataTable<T>({
 
   // Error state
   if (error) {
-    return <StateMessage type="error" message={error} />;
+    return (
+      <StateMessage
+        icon={<IconAlertCircle />}
+        title="Error loading data"
+        description={error}
+        colour="alert"
+      />
+    );
   }
 
   // Loading state

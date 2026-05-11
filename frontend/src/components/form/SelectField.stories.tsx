@@ -7,7 +7,6 @@ const meta: Meta<typeof SelectField> = {
   title: "Form/SelectField",
   component: SelectField,
   parameters: { layout: "padded" },
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -65,15 +64,40 @@ export const Disabled: Story = {
   },
 };
 
+export const WithError: Story = {
+  args: {
+    label: "Priority",
+    placeholder: "Select priority",
+    data: ["Low", "Medium", "High", "Urgent"],
+    error: "Please select a priority level",
+  },
+};
+
 export const DarkMode: Story = {
   ...WithDescription,
   globals: { colorScheme: "dark" },
   render: (args) => (
     <Stack gap="xl">
       <BaseCard>
-        <SelectField {...args} />
+        <SelectField {...args} required />
       </BaseCard>
-      <SelectField {...args} />
+      <SelectField {...args} required />
+      <BaseCard>
+        <SelectField
+          label="Priority - disabled"
+          value="High"
+          data={["Low", "Medium", "High", "Urgent"]}
+          disabled
+        />
+      </BaseCard>
+      <BaseCard>
+        <SelectField
+          label="Priority - error"
+          placeholder="Select priority"
+          data={["Low", "Medium", "High", "Urgent"]}
+          error="Please select a priority level"
+        />
+      </BaseCard>
     </Stack>
   ),
 };

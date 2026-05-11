@@ -4,6 +4,7 @@ import BodyText from "@/components/typography/BodyText";
 import Heading from "@/components/typography/Heading";
 import BaseCard from "@/components/base-card/BaseCard";
 import StateMessage from "@/components/message-cards/StateMessage";
+import { IconFileText } from "@/components/icons/appIcons";
 import type { DocumentProps } from "./Document";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
@@ -47,7 +48,14 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
   }
 
   if (documents.length === 0) {
-    return <StateMessage type="no-documents" />;
+    return (
+      <StateMessage
+        icon={<IconFileText />}
+        title="No documents to show"
+        description="There are no documents for this patient yet."
+        colour="warning"
+      />
+    );
   }
 
   return (

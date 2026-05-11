@@ -10,6 +10,7 @@
 // Auth pages use centred form layout, not Container
 
 import { LoginForm, type LoginFormData } from "@components/registration";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -17,17 +18,13 @@ import { useAuth } from "../auth/AuthContext";
 export default function LoginPage() {
   const { login } = useAuth();
   const [requireTotp, setRequireTotp] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const location = useLocation() as { state?: { from?: Location } };
   const rawBase = (import.meta.env.BASE_URL as string) || "/";
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
   const redirectFrom = location.state?.from?.pathname;
 
-  async function handleSubmit(data: LoginFormData) {
-    setSubmitting(true);
-    setError(null);
+  async function handleSubmit(data: LoginFormData): Promise<FormSubmitResult> {
     try {
       const user = await login(data.username, data.password, data.totp);
       if (redirectFrom && redirectFrom !== "/") {
@@ -37,6 +34,7 @@ export default function LoginPage() {
       } else {
         window.location.assign(base);
       }
+      return { state: "success", message: { title: "Signed in" } };
     } catch (err: unknown) {
       function extractMessage(e: unknown): string | null {
         if (typeof e === "string") return e;
@@ -75,44 +73,38 @@ export default function LoginPage() {
       const invalidCodeRegex = /invalid two[ -]?factor code|invalid code/i;
       const requiresTwoFactorRegex = /two[ -]?factor|two[ -]?factor required/i;
 
+      let errorMessage: string;
+
       if (code === "invalid_totp") {
         setRequireTotp(true);
-        setError(
-          requireTotp
-            ? "Wrong code entered, please try entering your 6-digit authenticator code again"
-            : "Enter the 6-digit authenticator code",
-        );
+        errorMessage = requireTotp
+          ? "Wrong code entered, please try entering your 6-digit authenticator code again"
+          : "Enter the 6-digit authenticator code";
       } else if (code === "two_factor_required") {
         setRequireTotp(true);
-        setError("Enter the 6-digit authenticator code");
+        errorMessage = "Enter the 6-digit authenticator code";
       } else {
         const invalidCode = invalidCodeRegex.test(message);
         const requiresTwoFactor = requiresTwoFactorRegex.test(message);
         if (invalidCode) {
           setRequireTotp(true);
-          setError(
-            requireTotp
-              ? "Wrong code entered, please try entering your 6-digit authenticator code again"
-              : "Enter the 6-digit authenticator code",
-          );
+          errorMessage = requireTotp
+            ? "Wrong code entered, please try entering your 6-digit authenticator code again"
+            : "Enter the 6-digit authenticator code";
         } else if (requiresTwoFactor) {
           setRequireTotp(true);
-          setError("Enter the 6-digit authenticator code");
+          errorMessage = "Enter the 6-digit authenticator code";
         } else {
-          setError(message);
+          errorMessage = message;
         }
       }
-    } finally {
-      setSubmitting(false);
+
+      return {
+        state: "error",
+        message: { title: errorMessage },
+      };
     }
   }
 
-  return (
-    <LoginForm
-      onSubmit={handleSubmit}
-      submitting={submitting}
-      error={error}
-      requireTotp={requireTotp}
-    />
-  );
+  return <LoginForm onSubmit={handleSubmit} requireTotp={requireTotp} />;
 }

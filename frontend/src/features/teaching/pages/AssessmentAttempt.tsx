@@ -1,5 +1,6 @@
-import { Container, Loader, Modal, Stack } from "@mantine/core";
+import { Container, Loader, Stack } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
+import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useBlocker,
@@ -12,10 +13,8 @@ import { api } from "@/lib/api";
 import { QuestionView } from "@/components/teaching/question-view/QuestionView";
 import { AssessmentIntro } from "@/components/teaching/assessment-intro/AssessmentIntro";
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
-import { ButtonPairRed } from "@/components/button";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import Icon from "@/components/icons/Icon";
-import BodyTextBold from "@/components/typography/BodyTextBold";
 import type { LayoutCtx } from "@/RootLayout";
 import type {
   AnswerResult,
@@ -307,34 +306,40 @@ export default function AssessmentAttempt() {
     setPhase("closing");
   }, []);
 
+  // Track whether we've already called proceed — prevents ConfirmModal's
+  // automatic onClose (after onAccept) from calling reset and cancelling
+  // the in-flight navigation.
+  const proceededRef = useRef(false);
+
+  function handleBlockerProceed() {
+    proceededRef.current = true;
+    blocker.proceed?.();
+  }
+
+  function handleBlockerClose() {
+    if (!proceededRef.current) {
+      blocker.reset?.();
+    }
+    proceededRef.current = false;
+  }
+
   const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
   const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
   return (
     <>
       {/* Blocker modal — warns when navigating away during active exam */}
-      <Modal
+      <ConfirmModal
         opened={blocker.state === "blocked"}
-        onClose={() => blocker.reset?.()}
-        centered
-        withCloseButton={false}
-        radius="md"
-        styles={{ content: { border: "1px solid rgba(0, 0, 0, 0.1)" } }}
+        onClose={handleBlockerClose}
+        onAccept={handleBlockerProceed}
+        acceptLabel="Leave exam"
+        cancelLabel="Continue exam"
+        icon={<IconAlertTriangle />}
       >
-        <Stack gap="md" align="center" pt="xl">
-          <Icon icon={<IconAlertTriangle />} size="xl" colour="red" />
-          <BodyTextBold justify="centre">
-            You have an active exam. Are you sure you want to leave? Your
-            progress will be submitted.
-          </BodyTextBold>
-          <ButtonPairRed
-            cancelLabel="Continue exam"
-            acceptLabel="Leave exam"
-            onCancel={() => blocker.reset?.()}
-            onAccept={() => blocker.proceed?.()}
-          />
-        </Stack>
-      </Modal>
+        You have an active exam. Are you sure you want to leave? Your progress
+        will be submitted.
+      </ConfirmModal>
 
       {phase === "loading" && (
         <Container size="lg" py="xl">
@@ -345,8 +350,10 @@ export default function AssessmentAttempt() {
       {phase === "error" && (
         <Container size="lg" py="xl">
           <StateMessage
-            type="error"
-            message={error ?? "An unexpected error occurred"}
+            icon={<IconAlertCircle />}
+            title="Error loading data"
+            description={error ?? "An unexpected error occurred"}
+            colour="alert"
           />
         </Container>
       )}

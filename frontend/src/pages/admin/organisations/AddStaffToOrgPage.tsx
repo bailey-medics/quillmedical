@@ -9,12 +9,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container, Stack, Alert } from "@mantine/core";
+import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
-import ButtonPair from "@/components/button/ButtonPair";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
 
@@ -24,16 +31,66 @@ interface ApiUser {
   email: string;
 }
 
+interface AddStaffFormValues {
+  userId: string | null;
+}
+
+function AddStaffFields({
+  orgId,
+  users,
+  usersLoading,
+}: {
+  orgId: string;
+  users: ApiUser[];
+  usersLoading: boolean;
+}) {
+  const navigate = useNavigate();
+  const { methods } = useFormContext();
+
+  return (
+    <Stack gap="md">
+      <FormStatus />
+      <BaseCard>
+        <Stack gap="md">
+          <Controller
+            name="userId"
+            control={methods.control}
+            rules={{ required: "Please select a user" }}
+            render={({ field, fieldState }) => (
+              <SelectField
+                label="User"
+                placeholder="Search for a user"
+                data={users.map((u) => ({
+                  value: String(u.id),
+                  label: `${u.username} (${u.email})`,
+                }))}
+                value={field.value as string | null}
+                onChange={field.onChange}
+                error={fieldState.error?.message}
+                searchable
+                disabled={usersLoading}
+                withAsterisk
+              />
+            )}
+          />
+
+          <SubmitButton
+            onCancel={() => navigate(`/admin/organisations/${orgId}`)}
+            disabled={usersLoading}
+          />
+        </Stack>
+      </BaseCard>
+    </Stack>
+  );
+}
+
 export default function AddStaffToOrgPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { reload } = useAuth();
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectError, setSelectError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -43,7 +100,9 @@ export default function AddStaffToOrgPage() {
         );
         setUsers(response.users);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load users");
+        setLoadError(
+          err instanceof Error ? err.message : "Failed to load users",
+        );
       } finally {
         setUsersLoading(false);
       }
@@ -52,30 +111,28 @@ export default function AddStaffToOrgPage() {
     fetchUsers();
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSelectError(null);
-
-    if (!selectedUserId) {
-      setSelectError("Please select a user");
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-
+  async function handleSubmit(
+    data: AddStaffFormValues,
+  ): Promise<FormSubmitResult> {
     try {
       await api.post(`/organizations/${id}/staff`, {
-        user_id: Number(selectedUserId),
+        user_id: Number(data.userId),
       });
       await reload();
       navigate(`/admin/organisations/${id}`);
+      return {
+        state: "success",
+        message: { title: "Staff member added" },
+      };
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to add staff member",
-      );
-    } finally {
-      setSubmitting(false);
+      return {
+        state: "error",
+        message: {
+          title: "Failed to add staff member",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred",
+        },
+      };
     }
   }
 
@@ -84,45 +141,28 @@ export default function AddStaffToOrgPage() {
       <Stack gap="lg">
         <PageHeader title="Add staff member" />
 
-        {error && (
+        {loadError && (
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error"
-            color="red"
+            title="Error loading users"
+            color="var(--alert-color)"
           >
-            {error}
+            {loadError}
           </Alert>
         )}
 
-        <BaseCard>
-          <form onSubmit={handleSubmit}>
-            <Stack gap="md">
-              <SelectField
-                label="User"
-                placeholder="Search for a user"
-                data={users.map((u) => ({
-                  value: String(u.id),
-                  label: `${u.username} (${u.email})`,
-                }))}
-                value={selectedUserId}
-                onChange={setSelectedUserId}
-                error={selectError}
-                searchable
-                disabled={usersLoading}
-                withAsterisk
-              />
-
-              <ButtonPair
-                acceptLabel="Add staff member"
-                acceptType="submit"
-                acceptLoading={submitting}
-                acceptDisabled={usersLoading}
-                onAccept={() => {}}
-                onCancel={() => navigate(`/admin/organisations/${id}`)}
-              />
-            </Stack>
-          </form>
-        </BaseCard>
+        <Form<AddStaffFormValues>
+          defaultValues={{ userId: null }}
+          onSubmit={handleSubmit}
+          submitLabel="Add staff member"
+          submittingLabel="Adding…"
+        >
+          <AddStaffFields
+            orgId={id!}
+            users={users}
+            usersLoading={usersLoading}
+          />
+        </Form>
       </Stack>
     </Container>
   );

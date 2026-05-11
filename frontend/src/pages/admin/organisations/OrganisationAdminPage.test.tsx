@@ -256,9 +256,20 @@ describe("OrganisationAdminPage", () => {
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [
-          { id: "1", username: "doctor1", email: "doctor1@test.com" },
-          { id: "2", username: "nurse1", email: "nurse1@test.com" },
+          {
+            id: "1",
+            username: "doctor1",
+            full_name: "Dr One",
+            email: "doctor1@test.com",
+          },
+          {
+            id: "2",
+            username: "nurse1",
+            full_name: "Nurse One",
+            email: "nurse1@test.com",
+          },
         ],
+        staff_count: 2,
         patient_members: [],
         patient_count: 0,
       };
@@ -271,8 +282,8 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("doctor1")).toBeInTheDocument();
-        expect(screen.getByText("nurse1")).toBeInTheDocument();
+        expect(screen.getByText("Dr One")).toBeInTheDocument();
+        expect(screen.getByText("Nurse One")).toBeInTheDocument();
         expect(screen.getByText("doctor1@test.com")).toBeInTheDocument();
         expect(screen.getByText("nurse1@test.com")).toBeInTheDocument();
       });
@@ -736,12 +747,14 @@ describe("OrganisationAdminPage", () => {
         {
           id: 10,
           username: "alice",
+          full_name: "Alice Smith",
           email: "alice@example.com",
           is_primary: true,
         },
         {
           id: 20,
           username: "bob",
+          full_name: "Bob Jones",
           email: "bob@example.com",
           is_primary: false,
         },

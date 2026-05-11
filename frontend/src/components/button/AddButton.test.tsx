@@ -62,7 +62,7 @@ describe("AddButton", () => {
     it("shows disabled state", () => {
       renderWithMantine(<AddButton label="Add user" disabled />);
       const button = screen.getByRole("button");
-      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
     });
 
     it("is interactive when not disabled", () => {

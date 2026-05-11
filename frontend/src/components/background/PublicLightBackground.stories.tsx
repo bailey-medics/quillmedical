@@ -18,7 +18,7 @@ export const WithContent: Story = {
   render: () => (
     <PublicLightBackground>
       <Container size="lg" py="xl">
-        <Stack align="center" justify="center" style={{ minHeight: "60vh" }}>
+        <Stack align="center" justify="center" style={{ minHeight: "100vh" }}>
           <PublicTitle
             title="Communication that *counts*!"
             description="A modern, secure platform for patients and clinics to communicate seamlessly."

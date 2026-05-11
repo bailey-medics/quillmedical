@@ -4,7 +4,6 @@ import { AssessmentTimer } from "./AssessmentTimer";
 const meta: Meta<typeof AssessmentTimer> = {
   title: "Teaching/AssessmentTimer",
   component: AssessmentTimer,
-  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

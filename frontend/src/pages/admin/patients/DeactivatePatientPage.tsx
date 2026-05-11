@@ -17,13 +17,13 @@ import {
   Skeleton,
   Center,
   Alert,
-  Modal,
   Group,
 } from "@mantine/core";
 import { IconAlertCircle, IconUserMinus } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPairRed from "@/components/button/ButtonPairRed";
+import { ConfirmModal } from "@/components/confirm-modal";
 import {
   BodyText,
   BodyTextInline,
@@ -131,7 +131,7 @@ export default function DeactivatePatientPage() {
       notifications.show({
         title: "Patient deactivated",
         message: `${formatName(patientToDeactivate.name)} has been deactivated successfully`,
-        color: "green",
+        color: "var(--success-color)",
       });
 
       // Navigate back to patient admin page or patients list
@@ -140,13 +140,6 @@ export default function DeactivatePatientPage() {
       } else {
         navigate("/admin/patients");
       }
-    } catch (err) {
-      notifications.show({
-        title: "Deactivation failed",
-        message:
-          err instanceof Error ? err.message : "Failed to deactivate patient",
-        color: "red",
-      });
     } finally {
       setDeactivating(false);
     }
@@ -167,7 +160,7 @@ export default function DeactivatePatientPage() {
             <Alert
               icon={<Icon icon={<IconAlertCircle />} size="sm" />}
               title="Error loading patient"
-              color="red"
+              color="var(--alert-color)"
             >
               {error}
             </Alert>
@@ -177,7 +170,7 @@ export default function DeactivatePatientPage() {
                 <Alert
                   icon={<Icon icon={<IconAlertCircle />} size="sm" />}
                   title="Warning"
-                  color="orange"
+                  color="var(--warning-color)"
                 >
                   You are about to deactivate this patient record. This will
                   restrict access to their records.
@@ -213,6 +206,7 @@ export default function DeactivatePatientPage() {
 
                 <ButtonPairRed
                   acceptLabel="Confirm deactivation"
+                  submittingLabel="Deactivating…"
                   acceptLoading={deactivating}
                   onAccept={handleDeactivateConfirm}
                   onCancel={() => window.history.back()}
@@ -243,7 +237,7 @@ export default function DeactivatePatientPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading patients"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>
@@ -274,7 +268,7 @@ export default function DeactivatePatientPage() {
                   <Table.Td style={{ textAlign: "right" }}>
                     <Button
                       variant="light"
-                      color="red"
+                      color="var(--alert-color)"
                       size="xs"
                       leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
                       onClick={() => handleDeactivateClick(patient)}
@@ -288,32 +282,21 @@ export default function DeactivatePatientPage() {
           </Table>
         )}
 
-        <Modal
+        <ConfirmModal
           opened={selectedPatient !== null}
           onClose={() => setSelectedPatient(null)}
+          onAccept={handleDeactivateConfirm}
           title="Confirm deactivation"
-          centered
+          acceptLabel="Deactivate patient"
+          submittingLabel="Deactivating…"
         >
-          <Stack gap="md">
-            <BodyTextInline>
-              Are you sure you want to deactivate patient{" "}
-              <strong>
-                {selectedPatient ? formatName(selectedPatient.name) : ""}
-              </strong>
-              ?
-            </BodyTextInline>
-            <BodyText>
-              This will restrict access to their records. This action can be
-              reversed later.
-            </BodyText>
-            <ButtonPairRed
-              acceptLabel="Deactivate patient"
-              acceptLoading={deactivating}
-              onAccept={handleDeactivateConfirm}
-              onCancel={() => setSelectedPatient(null)}
-            />
-          </Stack>
-        </Modal>
+          Are you sure you want to deactivate patient{" "}
+          <strong>
+            {selectedPatient ? formatName(selectedPatient.name) : ""}
+          </strong>
+          ? This will restrict access to their records. This action can be
+          reversed later.
+        </ConfirmModal>
       </Stack>
     </Container>
   );

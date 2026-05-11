@@ -104,7 +104,10 @@ describe("OrgFeaturesPage", () => {
       expect(screen.getByText("Teaching")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 
@@ -130,8 +133,9 @@ describe("OrgFeaturesPage", () => {
     )!;
     await user.click(teachingSwitch);
 
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+    expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+      "aria-disabled",
+    );
   });
 
   it("navigates back to org page when cancel is clicked with no changes", async () => {
@@ -183,7 +187,7 @@ describe("OrgFeaturesPage", () => {
       "input[type='checkbox']",
     )!;
     await user.click(teachingSwitch);
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByTestId("submit-button"));
 
     expect(screen.getByText("Confirm feature changes")).toBeInTheDocument();
     // Modal lists the change
@@ -214,7 +218,7 @@ describe("OrgFeaturesPage", () => {
       "input[type='checkbox']",
     )!;
     await user.click(teachingSwitch);
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(putSpy).toHaveBeenCalledWith("/organizations/3/features/teaching", {
@@ -244,7 +248,7 @@ describe("OrgFeaturesPage", () => {
       "input[type='checkbox']",
     )!;
     await user.click(teachingSwitch);
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByTestId("submit-button"));
 
     expect(screen.getByText(/remove access for all users/)).toBeInTheDocument();
   });
@@ -273,7 +277,7 @@ describe("OrgFeaturesPage", () => {
       "input[type='checkbox']",
     )!;
     await user.click(teachingSwitch);
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Go back" }));
 
     expect(putSpy).not.toHaveBeenCalled();
@@ -281,7 +285,7 @@ describe("OrgFeaturesPage", () => {
     expect(teachingSwitch.checked).toBe(true);
   });
 
-  it("reverts draft on API failure", async () => {
+  it("shows error on API failure", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("Server error"));
 
@@ -303,11 +307,11 @@ describe("OrgFeaturesPage", () => {
       "input[type='checkbox']",
     )!;
     await user.click(teachingSwitch);
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => {
-      expect(teachingSwitch.checked).toBe(false);
+      expect(screen.getByText("Server error")).toBeInTheDocument();
     });
   });
 

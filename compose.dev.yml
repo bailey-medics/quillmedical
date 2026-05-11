@@ -60,7 +60,7 @@ services:
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: vspct8I2iLUkfC3JsXxefy
     volumes:
-      - postgres_auth_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_auth"]
       interval: 5s
@@ -83,7 +83,7 @@ services:
       POSTGRES_USER: hapi_user
       POSTGRES_PASSWORD: hapi_secure_password_123
     volumes:
-      - postgres_fhir_data:/var/lib/postgresql/data
+      - postgres_fhir_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hapi_user -d hapi"]
       interval: 5s

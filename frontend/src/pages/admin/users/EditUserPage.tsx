@@ -86,7 +86,7 @@ export default function EditUserPage() {
           <Alert
             icon={<Icon icon={<IconAlertCircle />} size="sm" />}
             title="Error loading users"
-            color="red"
+            color="var(--alert-color)"
           >
             {error}
           </Alert>

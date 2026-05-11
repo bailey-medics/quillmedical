@@ -6,7 +6,6 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import AppointmentStatusBadge from "./AppointmentStatusBadge";
 import type { AppointmentStatusType } from "./AppointmentStatusBadge";
 
@@ -16,7 +15,6 @@ const meta: Meta<typeof AppointmentStatusBadge> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     status: {
       control: "select",
@@ -50,41 +48,4 @@ export const Default: Story = {
       ))}
     </Group>
   ),
-};
-
-/** All sizes comparison across all statuses. */
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          {allStatuses.map((status) => (
-            <AppointmentStatusBadge key={status} status={status} size={size} />
-          ))}
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
-export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <AppointmentStatusBadge status="upcoming" size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-export const DarkMode: Story = {
-  ...Default,
-  globals: { colorScheme: "dark" },
 };

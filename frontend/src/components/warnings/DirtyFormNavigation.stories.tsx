@@ -4,10 +4,11 @@
  * Interactive example of the navigation blocker modal warning users
  * about unsaved changes when attempting to navigate away.
  */
-import { Button } from "@mantine/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import type { Location } from "react-router-dom";
+import ActionCardButton from "@/components/button/ActionCardButton";
+import { StoryNote } from "@/stories/variants";
 import DirtyFormNavigation from "./DirtyFormNavigation";
 
 const mockLocation: Location = {
@@ -31,7 +32,6 @@ const meta = {
       },
     },
   },
-  tags: ["autodocs"],
 } satisfies Meta<typeof DirtyFormNavigation>;
 
 export default meta;
@@ -61,12 +61,16 @@ export const Interactive: Story = {
 
     return (
       <div style={{ padding: "2rem" }}>
-        <h3>DirtyFormNavigation Modal Demo</h3>
-        <p>
+        <StoryNote>
           Click the button below to simulate attempting to navigate away from a
           form with unsaved changes.
-        </p>
-        <Button onClick={() => setIsBlocked(true)}>Leave dirty form</Button>
+        </StoryNote>
+        <div style={{ width: 300 }}>
+          <ActionCardButton
+            label="Leave dirty form"
+            onClick={() => setIsBlocked(true)}
+          />
+        </div>
         <DirtyFormNavigation blocker={blocker} />
       </div>
     );

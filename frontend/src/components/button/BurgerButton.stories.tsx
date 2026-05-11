@@ -17,7 +17,6 @@ const meta: Meta<typeof BurgerButton> = {
     layout: "fullscreen",
     backgrounds: { default: "primary" },
   },
-  tags: ["autodocs"],
   args: {
     navOpen: false,
     onClick: fn(),

@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { FieldDescription, ErrorMessage } from "@components/typography";
 import classes from "./SolidSwitch.module.css";
 
 interface SolidSwitchProps extends Omit<SwitchProps, "label" | "description"> {
@@ -21,11 +22,14 @@ interface SolidSwitchProps extends Omit<SwitchProps, "label" | "description"> {
   label?: string;
   /** Helper text displayed below the switch */
   description?: string;
+  /** Error message displayed below the switch */
+  error?: string;
 }
 
 export default function SolidSwitch({
   label,
   description,
+  error,
   checked: controlledChecked,
   onChange,
   classNames,
@@ -62,6 +66,7 @@ export default function SolidSwitch({
   return (
     <div>
       {label && <Text className={classes.topLabel}>{label}</Text>}
+      {description && <FieldDescription>{description}</FieldDescription>}
       <Switch
         {...rest}
         checked={checked}
@@ -92,9 +97,7 @@ export default function SolidSwitch({
             : undefined,
         }}
       />
-      {description && (
-        <Text className={classes.description}>{description}</Text>
-      )}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
     </div>
   );
 }

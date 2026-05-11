@@ -41,7 +41,7 @@ describe("BaseCard", () => {
 
   it("removes border when bg is set", () => {
     renderWithMantine(
-      <BaseCard data-testid="bg-card" bg="teal">
+      <BaseCard data-testid="bg-card" bg="var(--success-color)">
         Content
       </BaseCard>,
     );

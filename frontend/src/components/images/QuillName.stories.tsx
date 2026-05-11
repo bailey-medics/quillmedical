@@ -17,7 +17,6 @@ const meta: Meta<typeof QuillName> = {
   parameters: {
     layout: "padded",
   },
-  tags: ["autodocs"],
   argTypes: {
     height: { control: "number" },
     alt: { control: "text" },
@@ -41,7 +40,7 @@ export const Default: Story = {
     (Story) => (
       <div
         style={{
-          background: "var(--public-navy)",
+          background: "var(--brand-primary)",
           padding: "2rem",
           display: "inline-flex",
         }}

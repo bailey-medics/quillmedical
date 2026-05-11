@@ -4,7 +4,6 @@ import { AssessmentProgress } from "./AssessmentProgress";
 const meta: Meta<typeof AssessmentProgress> = {
   title: "Teaching/AssessmentProgress",
   component: AssessmentProgress,
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -27,6 +26,6 @@ export const Complete: Story = {
 };
 
 export const DarkMode: Story = {
-  ...Start,
+  ...Midway,
   globals: { colorScheme: "dark" },
 };

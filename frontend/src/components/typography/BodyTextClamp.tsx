@@ -29,7 +29,7 @@ export default function BodyTextClamp({
 }: BodyTextClampProps) {
   return (
     <Text
-      size="lg"
+      size={typographyTokens.sizes.desktop}
       fw={typographyTokens.fontWeights.body}
       lineClamp={lineClamp}
     >

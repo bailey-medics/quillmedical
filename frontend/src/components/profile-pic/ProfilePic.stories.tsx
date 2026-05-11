@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import ProfilePic from "./ProfilePic";
+import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof ProfilePic> = {
   title: "ProfilePic/Single",
   component: ProfilePic,
-  tags: ["autodocs"],
 };
 
 export default meta;
@@ -28,167 +28,340 @@ export const Default: Story = {
     >
       {/* Row 1 */}
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic
             givenName="Alice"
             familyName="Anderson"
             gradientIndex={0}
           />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>0</div>
+          <StoryNote mt="xs">0</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Bob" familyName="Brown" gradientIndex={1} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>1</div>
+          <StoryNote mt="xs">1</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic
             givenName="Charlie"
             familyName="Davis"
             gradientIndex={2}
           />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>2</div>
+          <StoryNote mt="xs">2</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Diana" familyName="Evans" gradientIndex={3} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>3</div>
+          <StoryNote mt="xs">3</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Frank" familyName="Green" gradientIndex={4} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>4</div>
+          <StoryNote mt="xs">4</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Grace" familyName="Hill" gradientIndex={5} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>5</div>
+          <StoryNote mt="xs">5</StoryNote>
         </div>
       </div>
 
       {/* Row 2 */}
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Henry" familyName="Harris" gradientIndex={6} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>6</div>
+          <StoryNote mt="xs">6</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Iris" familyName="Irving" gradientIndex={7} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>7</div>
+          <StoryNote mt="xs">7</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Jack" familyName="Jones" gradientIndex={8} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>8</div>
+          <StoryNote mt="xs">8</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Kate" familyName="King" gradientIndex={9} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>9</div>
+          <StoryNote mt="xs">9</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Leo" familyName="Lane" gradientIndex={10} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>10</div>
+          <StoryNote mt="xs">10</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Maya" familyName="Mills" gradientIndex={11} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>11</div>
+          <StoryNote mt="xs">11</StoryNote>
         </div>
       </div>
 
       {/* Row 3 */}
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Noah" familyName="Nash" gradientIndex={12} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>12</div>
+          <StoryNote mt="xs">12</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Olivia" familyName="Owen" gradientIndex={13} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>13</div>
+          <StoryNote mt="xs">13</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Paul" familyName="Price" gradientIndex={14} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>14</div>
+          <StoryNote mt="xs">14</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Quinn" familyName="Quick" gradientIndex={15} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>15</div>
+          <StoryNote mt="xs">15</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Rose" familyName="Reed" gradientIndex={16} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>16</div>
+          <StoryNote mt="xs">16</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Sam" familyName="Shaw" gradientIndex={17} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>17</div>
+          <StoryNote mt="xs">17</StoryNote>
         </div>
       </div>
 
       {/* Row 4 */}
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Tara" familyName="Todd" gradientIndex={18} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>18</div>
+          <StoryNote mt="xs">18</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic
             givenName="Uma"
             familyName="Underwood"
             gradientIndex={19}
           />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>19</div>
+          <StoryNote mt="xs">19</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Victor" familyName="Vale" gradientIndex={20} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>20</div>
+          <StoryNote mt="xs">20</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Wendy" familyName="Ward" gradientIndex={21} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>21</div>
+          <StoryNote mt="xs">21</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Xavier" familyName="Xu" gradientIndex={22} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>22</div>
+          <StoryNote mt="xs">22</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Yara" familyName="Young" gradientIndex={23} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>23</div>
+          <StoryNote mt="xs">23</StoryNote>
         </div>
       </div>
 
       {/* Row 5 */}
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Zara" familyName="Zhang" gradientIndex={24} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>24</div>
+          <StoryNote mt="xs">24</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Adam" familyName="Allen" gradientIndex={25} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>25</div>
+          <StoryNote mt="xs">25</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Beth" familyName="Bell" gradientIndex={26} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>26</div>
+          <StoryNote mt="xs">26</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Carl" familyName="Cole" gradientIndex={27} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>27</div>
+          <StoryNote mt="xs">27</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Dora" familyName="Drake" gradientIndex={28} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>28</div>
+          <StoryNote mt="xs">28</StoryNote>
         </div>
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           <ProfilePic givenName="Evan" familyName="Ellis" gradientIndex={29} />
-          <div style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>29</div>
+          <StoryNote mt="xs">29</StoryNote>
         </div>
       </div>
 
       {/* Numbers below avatars indicate gradient index values (0-29) */}
-      <div
-        style={{
-          marginTop: "1.5rem",
-          fontSize: "0.875rem",
-          fontStyle: "italic",
-          color: "#6b7280",
-        }}
-      >
+      <StoryNote>
         Numbers below avatars indicate gradient index values (0-29)
-      </div>
+      </StoryNote>
     </div>
   ),
 };
@@ -287,38 +460,50 @@ export const Sizes: Story = {
             alignItems: "flex-end",
           }}
         >
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Alice"
               familyName="Anderson"
               gradientIndex={3}
               size="sm"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Small (32px)
-            </div>
+            <StoryNote mt="xs">Small (32px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Bob"
               familyName="Brown"
               gradientIndex={1}
               size="md"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Medium (48px)
-            </div>
+            <StoryNote mt="xs">Medium (48px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Charlie"
               familyName="Davis"
               gradientIndex={0}
               size="lg"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Large (64px)
-            </div>
+            <StoryNote mt="xs">Large (64px)</StoryNote>
           </div>
         </div>
       </div>
@@ -335,7 +520,13 @@ export const Sizes: Story = {
             alignItems: "flex-end",
           }}
         >
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Diana"
               familyName="Evans"
@@ -343,11 +534,15 @@ export const Sizes: Story = {
               showGeneric
               size="sm"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Small (32px)
-            </div>
+            <StoryNote mt="xs">Small (32px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Emma"
               familyName="Foster"
@@ -355,11 +550,15 @@ export const Sizes: Story = {
               showGeneric
               size="md"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Medium (48px)
-            </div>
+            <StoryNote mt="xs">Medium (48px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Frank"
               familyName="Green"
@@ -367,9 +566,7 @@ export const Sizes: Story = {
               showGeneric
               size="lg"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Large (64px)
-            </div>
+            <StoryNote mt="xs">Large (64px)</StoryNote>
           </div>
         </div>
       </div>
@@ -386,7 +583,13 @@ export const Sizes: Story = {
             alignItems: "flex-end",
           }}
         >
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Grace"
               familyName="Hill"
@@ -394,11 +597,15 @@ export const Sizes: Story = {
               src="https://i.pravatar.cc/150?img=45"
               size="sm"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Small (32px)
-            </div>
+            <StoryNote mt="xs">Small (32px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Henry"
               familyName="Irving"
@@ -406,11 +613,15 @@ export const Sizes: Story = {
               src="https://i.pravatar.cc/150?img=12"
               size="md"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Medium (48px)
-            </div>
+            <StoryNote mt="xs">Medium (48px)</StoryNote>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <ProfilePic
               givenName="Ivy"
               familyName="Jones"
@@ -418,9 +629,7 @@ export const Sizes: Story = {
               src="https://i.pravatar.cc/150?img=27"
               size="lg"
             />
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              Large (64px)
-            </div>
+            <StoryNote mt="xs">Large (64px)</StoryNote>
           </div>
         </div>
       </div>
@@ -442,23 +651,35 @@ export const Loading: Story = {
         alignItems: "flex-end",
       }}
     >
-      <div style={{ textAlign: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <ProfilePic isLoading size="sm" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Small (32px)
-        </div>
+        <StoryNote mt="xs">Small (32px)</StoryNote>
       </div>
-      <div style={{ textAlign: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <ProfilePic isLoading size="md" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Medium (48px)
-        </div>
+        <StoryNote mt="xs">Medium (48px)</StoryNote>
       </div>
-      <div style={{ textAlign: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <ProfilePic isLoading size="lg" />
-        <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-          Large (64px)
-        </div>
+        <StoryNote mt="xs">Large (64px)</StoryNote>
       </div>
     </div>
   ),

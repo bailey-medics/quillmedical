@@ -3,11 +3,22 @@
  *
  * Implements responsive font scaling for accessibility.
  * All token values are defined in theme.ts (typographyTokens) and exposed
- * as CSS custom properties via cssVariablesResolver (--typo-desktop-*).
+ * as CSS custom properties via cssVariablesResolver:
+ *   --typo-mobile-*  (base sizes)
+ *   --typo-desktop-* (large-screen sizes)
  *
- * - Mobile sizes: set by Mantine's createTheme() fontSizes
- * - Desktop sizes: overridden here at the sm breakpoint (48em / 768px)
+ * Font sizes are NOT set in createTheme() because Mantine's runtime <style> tag
+ * (rendered in <body>) would override these media-query rules due to source order.
  */
+
+/* Mobile-first base sizes — from typographyTokens.fontSizes.*.mobile */
+:root {
+  --mantine-font-size-xs: var(--typo-mobile-xs);
+  --mantine-font-size-sm: var(--typo-mobile-sm);
+  --mantine-font-size-md: var(--typo-mobile-md);
+  --mantine-font-size-lg: var(--typo-mobile-lg);
+  --mantine-font-size-xl: var(--typo-mobile-xl);
+}
 
 /* Responsive scaling for tablet and desktop */
 @media (width >= 48em) {

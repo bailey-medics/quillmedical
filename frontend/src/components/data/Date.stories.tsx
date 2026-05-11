@@ -3,8 +3,7 @@ import { Stack } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
 import FormattedDate from "./Date";
 import BodyText from "@/components/typography/BodyText";
-import BodyTextInline from "@/components/typography/BodyTextInline";
-import Heading from "@/components/typography/Heading";
+import { StoryNote } from "@/stories/variants";
 
 const bodyTextDecorator: Decorator[] = [
   (Story) => (
@@ -17,7 +16,6 @@ const bodyTextDecorator: Decorator[] = [
 const meta: Meta<typeof FormattedDate> = {
   title: "Data/Date",
   component: FormattedDate,
-  tags: ["autodocs"],
   argTypes: {
     date: {
       control: "text",
@@ -109,28 +107,28 @@ export const Comparison: Story = {
     return (
       <Stack gap="xl">
         <div>
-          <Heading>British English (en-GB)</Heading>
+          <StoryNote>British English (en-GB)</StoryNote>
           <Stack gap="xs">
             <div>
-              <BodyTextInline>Short:</BodyTextInline>
+              <StoryNote mt={0}>Short:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="short" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Medium:</BodyTextInline>
+              <StoryNote mt={0}>Medium:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="medium" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Long:</BodyTextInline>
+              <StoryNote mt={0}>Long:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="long" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Full:</BodyTextInline>
+              <StoryNote mt={0}>Full:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-GB" format="full" />
               </BodyText>
@@ -141,28 +139,28 @@ export const Comparison: Story = {
         <Divider />
 
         <div>
-          <Heading>American English (en-US)</Heading>
+          <StoryNote>American English (en-US)</StoryNote>
           <Stack gap="xs">
             <div>
-              <BodyTextInline>Short:</BodyTextInline>
+              <StoryNote mt={0}>Short:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="short" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Medium:</BodyTextInline>
+              <StoryNote mt={0}>Medium:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="medium" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Long:</BodyTextInline>
+              <StoryNote mt={0}>Long:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="long" />
               </BodyText>
             </div>
             <div>
-              <BodyTextInline>Full:</BodyTextInline>
+              <StoryNote mt={0}>Full:</StoryNote>
               <BodyText>
                 <FormattedDate date={testDate} locale="en-US" format="full" />
               </BodyText>
