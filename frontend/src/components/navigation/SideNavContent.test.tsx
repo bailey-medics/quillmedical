@@ -241,23 +241,14 @@ describe("SideNavContent Component", () => {
     });
   });
 
-  describe("Font size customization", () => {
-    it("applies custom font size when provided", async () => {
-      renderWithAuth(<SideNavContent fontSize={24} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Home")).toBeInTheDocument();
-      });
-      // Font size is applied via Mantine styles, checking component renders
-    });
-
-    it("uses default font size when not provided", async () => {
+  describe("Font size", () => {
+    it("uses responsive font size from design system", async () => {
       renderWithAuth(<SideNavContent />);
 
       await waitFor(() => {
         expect(screen.getByText("Home")).toBeInTheDocument();
       });
-      // Default is 20px, applied via Mantine styles
+      // Font size is var(--mantine-font-size-md): 16px mobile, 19px desktop
     });
   });
 

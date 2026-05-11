@@ -58,8 +58,6 @@ type Props = {
   showIcons?: boolean;
   /** Nesting level for indentation (internal use) */
   level?: number;
-  /** Base font size in rem (default: 1.25) */
-  baseFontSize?: number;
 };
 
 /**
@@ -101,12 +99,14 @@ function isActiveOrParent(navItem: NavItem, path: string): boolean {
  * @param props - Component props
  * @returns Navigation link with optional nested children
  */
+/** Responsive font size — 16px on mobile, 19px on desktop (matches BodyText) */
+const NAV_FONT_SIZE = "var(--mantine-font-size-md)";
+
 export default function NestedNavLink({
   item,
   onNavigate,
   showIcons = false,
   level = 0,
-  baseFontSize = 1.25,
 }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -124,9 +124,6 @@ export default function NestedNavLink({
     onNavigate?.();
   };
 
-  // Calculate font size: reduce by 12.5% for each level
-  const fontSize = level > 0 ? baseFontSize * 0.875 : baseFontSize;
-
   // Calculate indentation for child items
   // Child items with icons don't need iconOffset since NavLink handles icon spacing
   // Base indentation: 2.25rem for level 1, 3rem per level for deeper levels
@@ -136,10 +133,10 @@ export default function NestedNavLink({
   const navLinkStyles = {
     root: {
       paddingLeft: totalPaddingLeft ? `${totalPaddingLeft}rem` : undefined,
-      fontSize: `${fontSize}rem`,
+      fontSize: NAV_FONT_SIZE,
     },
     label: {
-      fontSize: `${fontSize}rem`,
+      fontSize: NAV_FONT_SIZE,
       fontWeight: typographyTokens.fontWeights.body,
     },
   };
@@ -164,7 +161,6 @@ export default function NestedNavLink({
               onNavigate={onNavigate}
               showIcons={showIcons}
               level={level + 1}
-              baseFontSize={baseFontSize}
             />
           ))}
         </>
