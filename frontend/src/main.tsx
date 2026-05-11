@@ -88,7 +88,6 @@ import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
-import TeachingOrgSettingsPage from "./pages/admin/teaching/TeachingOrgSettingsPage";
 
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
@@ -429,14 +428,6 @@ const router = createBrowserRouter([
         element: (
           <RequirePermission level="admin">
             <AdminTeachingPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/teaching/settings",
-        element: (
-          <RequirePermission level="admin">
-            <TeachingOrgSettingsPage />
           </RequirePermission>
         ),
       },
