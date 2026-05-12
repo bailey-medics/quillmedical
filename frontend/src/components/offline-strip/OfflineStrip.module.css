@@ -1,0 +1,29 @@
+/**
+ * OfflineStrip Styles
+ *
+ * Thin horizontal strip below the TopRibbon header.
+ * White background, dark grey text. Sits in layout flow.
+ */
+
+.strip {
+  width: 100%;
+  padding: 0.25rem 1rem;
+  text-align: center;
+  transition: opacity 150ms ease-in-out;
+}
+
+.offline {
+  background-color: var(--mantine-color-gray-1);
+}
+
+.reconnected {
+  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme="dark"] .offline {
+  background-color: var(--mantine-color-primary-6);
+}
+
+[data-mantine-color-scheme="dark"] .reconnected {
+  background-color: var(--mantine-color-primary-6);
+}

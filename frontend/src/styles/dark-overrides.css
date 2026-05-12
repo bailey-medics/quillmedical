@@ -64,3 +64,32 @@
 [data-mantine-color-scheme="dark"] .mantine-Skeleton-root::after {
   background-color: rgb(255 255 255 / 25%) !important;
 }
+
+/**
+ * Offline background tint
+ *
+ * Subtle body background shift when the app is offline.
+ * Toggled by ConnectivityProvider setting data-offline on <html>.
+ * TopRibbon is unaffected (uses its own navy background class).
+ */
+
+/* Light mode: white → gray.2 (must match Mantine's :root[data-…] specificity) */
+:root[data-mantine-color-scheme="light"][data-offline] {
+  --mantine-color-body: var(--mantine-color-gray-2);
+}
+
+/*
+ * Darken light-mode borders when offline so they stay visible
+ * against the grey background. Layout borders (sidebar, footer, header)
+ * use inline styles with var(--card-border, gray.2) fallback, so we
+ * define --card-border to override the fallback.
+ */
+[data-offline] {
+  --card-border: #ced4da; /* gray.4 — 2 shades darker than bg (gray.2) */
+  --card-border-color: #ced4da;
+}
+
+/* Dark mode: primary.8 → primary.7 */
+:root[data-mantine-color-scheme="dark"][data-offline] {
+  --mantine-color-body: var(--mantine-color-primary-7);
+}
