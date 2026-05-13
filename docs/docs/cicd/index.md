@@ -435,7 +435,7 @@ Typical run times (with warm caches):
 
 ## Related documentation
 
-- [GitHub configuration and rulesets](../github/)
+- [GitHub configuration and rulesets](../github/index.md)
 - [Pre-commit hooks configuration](https://github.com/bailey-medics/quillmedical/blob/main/.pre-commit-config.yaml)
 - [Semgrep rules](https://github.com/bailey-medics/quillmedical/blob/main/frontend/.semgrep.yml)
 - [MkDocs configuration](https://github.com/bailey-medics/quillmedical/blob/main/docs/mkdocs.yml)
