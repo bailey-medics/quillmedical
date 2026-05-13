@@ -289,7 +289,7 @@ module "cloud_run_frontend" {
 
   service_name      = "frontend"
   image             = var.frontend_image
-  port              = 80
+  port              = 8080
   memory            = "512Mi"
   cpu               = "1"
   max_instances     = var.cloud_run_max_instances
