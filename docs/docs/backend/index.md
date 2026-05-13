@@ -377,7 +377,7 @@ Health checks can be monitored automatically to detect and alert on service fail
 
 ## Learn More
 
-- **[FHIR Documentation](fhir/)** - Patient demographics storage system
-- **[OpenEHR Documentation](openehr/)** - Clinical data storage system
-- **[Application Framework](fastapi/)** - Core application framework
-- **[Web Server](caddy/)** - Web server configuration
+- **[FHIR Documentation](fhir/index.md)** - Patient demographics storage system
+- **[OpenEHR Documentation](openehr/index.md)** - Clinical data storage system
+- **[Application Framework](fastapi/index.md)** - Core application framework
+- **[Web Server](caddy/index.md)** - Web server configuration

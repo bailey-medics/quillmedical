@@ -88,7 +88,7 @@ These variables are no longer used:
 
 ### Configuration Module
 
-[backend/app/config.py](backend/app/config.py) now includes:
+`backend/app/config.py` now includes:
 
 ```python
 from app.config import settings

@@ -60,6 +60,8 @@ import {
   IconUserMinus,
   IconUserOff,
   IconUserPlus,
+  IconWifi,
+  IconWifiOff,
   IconX,
 } from "@tabler/icons-react";
 
@@ -113,6 +115,8 @@ export {
   IconUserMinus,
   IconUserOff,
   IconUserPlus,
+  IconWifi,
+  IconWifiOff,
   IconX,
 };
 
@@ -170,5 +174,7 @@ export const iconCatalogue = {
   UserMinus: IconUserMinus,
   UserOff: IconUserOff,
   UserPlus: IconUserPlus,
+  Wifi: IconWifi,
+  WifiOff: IconWifiOff,
   X: IconX,
 } as const;

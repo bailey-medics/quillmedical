@@ -106,7 +106,6 @@ nav:
           - Security: code/fastapi/security.md
           - FHIR Client: code/fastapi/fhir_client.md
           - EHRbase Client: code/fastapi/ehrbase_client.md
-          - Patient Records: code/fastapi/patient_records.md
           - Push Notifications: code/fastapi/push.md
           - Push Send: code/fastapi/push_send.md
           - Schemas: code/fastapi/schemas.md

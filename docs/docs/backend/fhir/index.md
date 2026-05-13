@@ -136,7 +136,7 @@ def check_fhir_health() -> dict[str, bool | int | str]:
         return {"available": False, "error": str(e)}
 ```
 
-**Implementation**: [backend/app/main.py](../../backend/app/main.py) (see `check_fhir_health` function)
+**Implementation**: `backend/app/main.py` (see `check_fhir_health` function)
 
 ### Frontend Integration
 
@@ -147,7 +147,7 @@ Frontend implements health polling during startup:
 3. **Patient fetch trigger**: Once FHIR ready, fetch patients from `/api/patients`
 4. **User feedback**: Display "Database is initialising" message during polling
 
-**Implementation**: [frontend/src/pages/Home.tsx](../../frontend/src/pages/Home.tsx) lines 242-295
+**Implementation**: `frontend/src/pages/Home.tsx`
 
 ### Safety Controls
 
