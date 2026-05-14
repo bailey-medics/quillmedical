@@ -6,12 +6,12 @@ import classes from "./TextField.module.css";
 
 const fieldStyles = {
   label: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     color: "var(--mantine-color-text)",
     marginBottom: "0.25rem",
   },
   input: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     "&::placeholder": { color: "var(--mantine-color-placeholder)" },
   },
   required: { color: "var(--mantine-color-secondary-5)" },
@@ -40,7 +40,7 @@ const EmailField = forwardRef<HTMLInputElement, EmailFieldProps>(
           ) : undefined
         }
         error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
-        size="lg"
+        size="md"
         styles={fieldStyles}
         classNames={{ root: classes.root }}
       />

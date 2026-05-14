@@ -17,7 +17,7 @@ export interface FieldDescriptionProps {
 
 export default function FieldDescription({ children }: FieldDescriptionProps) {
   return (
-    <Text size="lg" fw={typographyTokens.fontWeights.body} c="gray.6">
+    <Text size="md" fw={typographyTokens.fontWeights.body} c="gray.6">
       {children}
     </Text>
   );

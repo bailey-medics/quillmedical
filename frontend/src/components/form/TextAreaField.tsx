@@ -5,12 +5,12 @@ import classes from "./TextAreaField.module.css";
 
 const fieldStyles = {
   label: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     color: "var(--mantine-color-text)",
     marginBottom: "0.25rem",
   },
   input: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     fontWeight: 500,
     "&::placeholder": { color: "var(--mantine-color-placeholder)" },
   },
@@ -31,7 +31,7 @@ export default function TextAreaField({
         ) : undefined
       }
       error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
-      size="lg"
+      size="md"
       styles={fieldStyles}
       classNames={{ root: classes.root }}
     />

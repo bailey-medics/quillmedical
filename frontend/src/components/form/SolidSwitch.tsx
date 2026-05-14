@@ -33,7 +33,7 @@ export default function SolidSwitch({
   checked: controlledChecked,
   onChange,
   classNames,
-  size = "lg",
+  size = "md",
   ...rest
 }: SolidSwitchProps) {
   const isControlled = controlledChecked !== undefined;
@@ -81,7 +81,7 @@ export default function SolidSwitch({
         }}
         styles={{
           label: {
-            fontSize: "var(--mantine-font-size-lg)",
+            fontSize: "var(--mantine-font-size-md)",
             fontWeight: 500,
             color: "var(--mantine-color-text)",
           },

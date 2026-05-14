@@ -16,7 +16,7 @@
 }
 
 .topLabel {
-  font-size: var(--mantine-font-size-lg);
+  font-size: var(--mantine-font-size-md);
   font-weight: 500;
   color: var(--mantine-color-text);
   margin-bottom: 0.25rem;
