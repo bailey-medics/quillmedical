@@ -33,7 +33,7 @@ describe("TextAreaField", () => {
 
     const label = screen.getByText("Message");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
       color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });
@@ -46,7 +46,7 @@ describe("TextAreaField", () => {
 
     const textarea = screen.getByRole("textbox");
     expect(textarea).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
     });
   });
 

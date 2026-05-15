@@ -31,7 +31,7 @@ describe("PasswordField", () => {
 
     const label = screen.getByText("Password");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
       color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });

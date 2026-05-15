@@ -1,0 +1,7 @@
+.root {
+  width: 100%;
+
+  @media (width >= 40em) {
+    width: auto;
+  }
+}

@@ -44,10 +44,10 @@
 /**
  * Menu item overrides
  *
- * Mantine defaults to font-size-sm. Match our body text (lg, weight 500).
+ * Mantine defaults to font-size-sm. Match our body text (md, weight 500).
  */
 .mantine-Menu-item {
-  font-size: var(--mantine-font-size-lg) !important;
+  font-size: var(--mantine-font-size-md) !important;
   font-weight: 500 !important;
 }
 

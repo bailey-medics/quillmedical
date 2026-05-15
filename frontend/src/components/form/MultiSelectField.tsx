@@ -5,7 +5,7 @@ import classes from "./MultiSelectField.module.css";
 
 const fieldStyles = {
   label: {
-    fontSize: "var(--mantine-font-size-lg)",
+    fontSize: "var(--mantine-font-size-md)",
     color: "var(--mantine-color-text)",
     marginBottom: "0.25rem",
   },
@@ -28,7 +28,7 @@ export default function MultiSelectField({
         ) : undefined
       }
       error={error ? <ErrorMessage>{error}</ErrorMessage> : undefined}
-      size="lg"
+      size="md"
       styles={fieldStyles}
       classNames={{
         root: classes.root,

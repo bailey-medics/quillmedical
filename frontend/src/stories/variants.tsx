@@ -139,7 +139,7 @@ type StoryNoteProps = {
 export function StoryNote({ children, mt = "sm" }: StoryNoteProps) {
   return (
     <Text
-      size={typographyTokens.sizes.desktop}
+      size="md"
       fw={typographyTokens.fontWeights.body}
       c={STORY_LABEL_COLOR}
       mt={mt}

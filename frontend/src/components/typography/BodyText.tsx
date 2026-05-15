@@ -2,8 +2,7 @@
  * BodyText Component
  *
  * Primary body text component for the application. Renders block-level
- * text at `md` size (16px mobile → 19px desktop) with standard body
- * weight (500). Matches NHS/GOV.UK typography recommendations.
+ * text at `md` size (19px) with standard body weight (500).
  * Inherits the theme text colour (navy) via `--mantine-color-text`.
  */
 
@@ -40,7 +39,7 @@ export default function BodyText({
 }: BodyTextProps) {
   return (
     <Text
-      size={typographyTokens.sizes.desktop}
+      size="md"
       fw={typographyTokens.fontWeights.body}
       c={c}
       ta={alignMap[justify]}

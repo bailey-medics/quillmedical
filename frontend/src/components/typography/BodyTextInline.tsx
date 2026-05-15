@@ -27,7 +27,7 @@ export default function BodyTextInline({ children, c }: BodyTextInlineProps) {
   return (
     <Text
       component="span"
-      size={typographyTokens.sizes.desktop}
+      size="md"
       fw={typographyTokens.fontWeights.body}
       c={c}
       style={{ whiteSpace: "pre-wrap" }}

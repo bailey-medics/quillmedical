@@ -29,7 +29,7 @@ export default function ErrorMessage({ children }: ErrorMessageProps) {
         <IconAlertCircle size="100%" color="var(--error-color)" />
       </Box>
       <Text
-        size={typographyTokens.sizes.desktop}
+        size="md"
         c="var(--error-color)"
         fw={typographyTokens.fontWeights.bold}
       >

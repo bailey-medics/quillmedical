@@ -36,7 +36,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
           {loading ? (
             <Skeleton height={38} width={60} />
           ) : (
-            <Text size="xl" fw={700} lh={1}>
+            <Text size="lg" fw={700} lh={1}>
               {value}
             </Text>
           )}

@@ -1,74 +1,19 @@
 /**
- * Responsive Typography
+ * Fixed Typography
  *
- * Implements responsive font scaling for accessibility.
- * All token values are defined in theme.ts (typographyTokens) and exposed
- * as CSS custom properties via cssVariablesResolver:
- *   --typo-mobile-*  (base sizes)
- *   --typo-desktop-* (large-screen sizes)
- *
- * Font sizes are NOT set in createTheme() because Mantine's runtime <style> tag
- * (rendered in <body>) would override these media-query rules due to source order.
+ * All font sizes are fixed across all screen widths. The 19px body text
+ * standard ensures readability for all users regardless of device.
+ * Token values are defined in theme.ts (typographyTokens) and exposed
+ * as CSS custom properties via cssVariablesResolver.
  */
 
-/* Mobile-first base sizes — from typographyTokens.fontSizes.*.mobile */
+/* Fixed font sizes — from typographyTokens.fontSizes */
 :root {
-  --mantine-font-size-xs: var(--typo-mobile-xs);
-  --mantine-font-size-sm: var(--typo-mobile-sm);
-  --mantine-font-size-md: var(--typo-mobile-md);
-  --mantine-font-size-lg: var(--typo-mobile-lg);
-  --mantine-font-size-xl: var(--typo-mobile-xl);
-}
-
-/* Responsive scaling for tablet and desktop */
-@media (width >= 48em) {
-  /* 768px and up - matches theme.breakpoints.sm */
-
-  /* Override Mantine font sizes with desktop values from theme tokens */
-  :root {
-    --mantine-font-size-xs: var(--typo-desktop-xs);
-    --mantine-font-size-sm: var(--typo-desktop-sm);
-    --mantine-font-size-md: var(--typo-desktop-md);
-    --mantine-font-size-lg: var(--typo-desktop-lg);
-    --mantine-font-size-xl: var(--typo-desktop-xl);
-  }
-
-  /* Heading-specific responsive scaling */
-  h1,
-  .mantine-Title-root[data-order="1"] {
-    font-size: var(--typo-desktop-h1);
-    line-height: 1.3;
-  }
-
-  h2,
-  .mantine-Title-root[data-order="2"] {
-    font-size: var(--typo-desktop-h2);
-    line-height: 1.35;
-  }
-
-  h3,
-  .mantine-Title-root[data-order="3"] {
-    font-size: var(--typo-desktop-h3);
-    line-height: 1.4;
-  }
-
-  h4,
-  .mantine-Title-root[data-order="4"] {
-    font-size: var(--typo-desktop-h4);
-    line-height: 1.5;
-  }
-
-  h5,
-  .mantine-Title-root[data-order="5"] {
-    font-size: var(--typo-desktop-h5);
-    line-height: 1.55;
-  }
-
-  h6,
-  .mantine-Title-root[data-order="6"] {
-    font-size: var(--typo-desktop-h6);
-    line-height: 1.55;
-  }
+  --mantine-font-size-xs: var(--typo-xs);
+  --mantine-font-size-sm: var(--typo-sm);
+  --mantine-font-size-md: var(--typo-md);
+  --mantine-font-size-lg: var(--typo-lg);
+  --mantine-font-size-xl: var(--typo-xl);
 }
 
 /**
@@ -76,30 +21,22 @@
  * Minimum font size should never go below 14px for body content
  */
 body {
-  font-size: 1rem; /* 16px mobile, 19px desktop via CSS var */
+  font-size: 1.1875rem; /* 19px — fixed across all viewports */
   line-height: 1.6;
 }
 
 /**
  * Lead paragraphs - larger text for introductory content
- * 20px mobile → 26px desktop for improved readability
+ * 26px for improved readability
  */
 .lead-text {
-  font-size: 1.25rem; /* 20px mobile */
-  line-height: 1.5;
-}
-
-@media (width >= 48em) {
-  /* matches theme.breakpoints.sm */
-  .lead-text {
-    font-size: 1.625rem; /* 26px desktop */
-    line-height: 1.4;
-  }
+  font-size: 1.625rem; /* 26px */
+  line-height: 1.4;
 }
 
 /**
- * Small text - 14px mobile, 16px desktop
- * Already handled by sm/xs font size variables above
+ * Small text - 16px
+ * Handled by sm/xs font size variables above
  */
 
 /**
@@ -123,8 +60,8 @@ p,
   --badge-padding-x: 0.875rem !important; /* Proportionally smaller padding */
 }
 
-@media (width >= 48em) {
-  /* 768px and up - full desktop size */
+@media (width >= 40em) {
+  /* 640px and up - full desktop size */
   .mantine-Badge-root[data-size="xl"] {
     --badge-height: 2.475rem !important; /* 39.6px (10% taller than 36px) */
     --badge-fz: 1.875rem !important; /* 30px */
