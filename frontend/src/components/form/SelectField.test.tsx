@@ -40,7 +40,7 @@ describe("SelectField", () => {
 
     const label = screen.getByText("Patient");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
       color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });
@@ -53,7 +53,7 @@ describe("SelectField", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
     });
   });
 

@@ -34,7 +34,7 @@ export default function BodyTextBold({
 }: BodyTextBoldProps) {
   return (
     <Text
-      size={typographyTokens.sizes.desktop}
+      size="md"
       fw={typographyTokens.fontWeights.bold}
       ta={alignMap[justify]}
     >

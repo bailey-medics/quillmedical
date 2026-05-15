@@ -200,10 +200,7 @@ const LongContent = () => (
             a reliable default. It avoids brittle assumptions and keeps
             components portable.
           </BodyText>
-          <List
-            size={typographyTokens.sizes.desktop}
-            fw={typographyTokens.fontWeights.body}
-          >
+          <List size="md" fw={typographyTokens.fontWeights.body}>
             <List.Item>Use container queries for visual changes.</List.Item>
             <List.Item>
               Use a ResizeObserver-based hook for JS behaviour tied to component

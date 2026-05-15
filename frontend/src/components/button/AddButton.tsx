@@ -12,10 +12,9 @@
  * ```
  */
 
-import { Button, useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Button } from "@mantine/core";
 import { IconPlus } from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
+import classes from "./AddButton.module.css";
 
 interface AddButtonProps {
   /** Button label text (e.g., "Add user", "Add patient") */
@@ -43,23 +42,16 @@ export default function AddButton({
   onClick,
   disabled = false,
 }: AddButtonProps) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-
   return (
     <Button
-      leftSection={<Icon icon={<IconPlus />} size={isMobile ? "sm" : "md"} />}
+      leftSection={<IconPlus size={20} />}
       onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
-      size={isMobile ? "md" : "lg"}
+      size="md"
       color="primary"
       aria-disabled={disabled || undefined}
+      classNames={{ root: classes.root }}
       styles={{
         root: disabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined,
-        label: {
-          fontSize: isMobile
-            ? "var(--mantine-font-size-md)"
-            : "var(--mantine-font-size-lg)",
-        },
       }}
     >
       {label}

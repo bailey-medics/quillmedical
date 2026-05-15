@@ -22,8 +22,8 @@
  */
 
 import type { ReactNode } from "react";
-import { Button, Group, useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Button, Group } from "@mantine/core";
+import classes from "./ButtonPair.module.css";
 
 interface ButtonPairProps {
   /** Label for the accept/confirm button (defaults to "OK") */
@@ -60,25 +60,8 @@ export default function ButtonPair({
   acceptTestId,
   justify = "flex-end",
 }: ButtonPairProps) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const buttonSize = isMobile ? "md" : "lg";
-  const fontSize = isMobile
-    ? "var(--mantine-font-size-md)"
-    : "var(--mantine-font-size-lg)";
-
   return (
-    <Group justify={justify} mt="xs">
-      {onCancel && (
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          size={buttonSize}
-          styles={{ label: { fontSize } }}
-        >
-          {cancelLabel}
-        </Button>
-      )}
+    <Group justify={justify} mt="xs" className={classes.group}>
       <Button
         type={acceptType}
         onClick={
@@ -88,17 +71,21 @@ export default function ButtonPair({
         }
         loading={acceptLoading}
         aria-disabled={acceptDisabled || undefined}
-        size={buttonSize}
+        size="md"
         styles={{
           root: acceptDisabled
             ? { opacity: 0.6, cursor: "not-allowed" }
             : undefined,
-          label: { fontSize },
         }}
         data-testid={acceptTestId}
       >
         {acceptChildren ?? acceptLabel}
       </Button>
+      {onCancel && (
+        <Button variant="outline" onClick={onCancel} size="md">
+          {cancelLabel}
+        </Button>
+      )}
     </Group>
   );
 }

@@ -29,7 +29,7 @@ describe("TextField", () => {
 
     const label = screen.getByText("Subject");
     expect(label).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
       color: "var(--mantine-color-text)",
       marginBottom: "0.25rem",
     });
@@ -40,7 +40,7 @@ describe("TextField", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveStyle({
-      fontSize: "var(--mantine-font-size-lg)",
+      fontSize: "var(--mantine-font-size-md)",
     });
   });
 

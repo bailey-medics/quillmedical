@@ -4,21 +4,20 @@
  * Centralized theme for consistent typography and styling across the app.
  * All font sizes, spacing, and other design tokens should be defined here.
  *
- * Font Size System (4 sizes - responsive, accessibility-focused):
- * - xs/sm: 0.875rem (14px) → 1rem (16px) - Small text, captions, metadata
- * - md:    1rem (16px) → 1.1875rem (19px) - Body text (accessible standard)
- * - lg:    1.25rem (20px) → 1.5rem (24px) - Subheadings, section titles
- * - xl:    1.625rem (26px) → 2rem (32px)  - Page headings, primary titles
+ * Font Size System (4 sizes — fixed, accessibility-focused):
+ * - xs/sm: 1rem (16px) - Small text, captions, metadata
+ * - md:    1.1875rem (19px) - Body text (accessible standard)
+ * - lg:    1.5rem (24px) - Subheadings, section titles
+ * - xl:    2rem (32px) - Page headings, primary titles
  *
- * Responsive behavior:
- * - Mobile first (base sizes)
- * - Scales up on tablet/desktop (min-width: 48em / 768px)
- * - Designed for healthcare accessibility standards
+ * All sizes are fixed across all screen sizes. 19px body text ensures
+ * readability for all users regardless of device. Screen size does not
+ * change how well someone can read.
  *
  * Usage:
  * ```tsx
  * <Text size="sm">Small text</Text>
- * <Text size="md">Body text (default, 19px on desktop)</Text>
+ * <Text size="md">Body text (default, 19px everywhere)</Text>
  * <Title order={3} size="lg">Subheading</Title>
  * <Title order={1} size="xl">Page heading</Title>
  * ```
@@ -120,9 +119,9 @@ export const statusColourValues = {
 /**
  * Typography tokens — single source of truth for all font sizes.
  *
- * Mobile values are consumed by Mantine's createTheme(). Desktop values
- * are exposed as CSS custom properties (--typo-desktop-*) and applied
- * at the sm breakpoint (48em / 768px) in typography.css.
+ * All sizes are fixed (no responsive scaling). Font sizes remain constant
+ * across all screen widths for maximum readability and consistency.
+ * The 19px body text standard ensures accessibility for all users.
  */
 export const typographyTokens = {
   fontWeights: {
@@ -130,31 +129,19 @@ export const typographyTokens = {
     bold: 700,
   },
   fontSizes: {
-    xs: { mobile: "0.875rem", desktop: "1rem" }, // 14px → 16px
-    sm: { mobile: "0.875rem", desktop: "1rem" }, // 14px → 16px
-    md: { mobile: "1rem", desktop: "1.1875rem" }, // 16px → 19px
-    lg: { mobile: "1.25rem", desktop: "1.5rem" }, // 20px → 24px
-    xl: { mobile: "1.625rem", desktop: "2rem" }, // 26px → 32px
-  },
-  /**
-   * Semantic size aliases — map meaningful names to Mantine size tokens.
-   * Use these in components instead of raw "md" / "xs" strings.
-   *
-   * Each resolves to a responsive CSS variable:
-   * - desktop: 19px — NHS/GOV.UK standard body text on large screens
-   * - mobile: 16px — NHS/GOV.UK standard body text on small screens
-   */
-  sizes: {
-    desktop: "md", // 16px mobile → 19px desktop
-    mobile: "xs", // 14px mobile → 16px desktop
+    xs: "1rem", // 16px
+    sm: "1rem", // 16px
+    md: "1.1875rem", // 19px — body text standard
+    lg: "1.5rem", // 24px
+    xl: "2rem", // 32px
   },
   headings: {
-    h1: { mobile: "1.625rem", desktop: "2rem", lineHeight: "1.3" },
-    h2: { mobile: "1.5rem", desktop: "1.75rem", lineHeight: "1.35" },
-    h3: { mobile: "1.25rem", desktop: "1.5rem", lineHeight: "1.4" },
-    h4: { mobile: "1rem", desktop: "1.1875rem", lineHeight: "1.5" },
-    h5: { mobile: "0.875rem", desktop: "1rem", lineHeight: "1.55" },
-    h6: { mobile: "0.875rem", desktop: "1rem", lineHeight: "1.55" },
+    h1: { fontSize: "2rem", lineHeight: "1.3" }, // 32px
+    h2: { fontSize: "1.75rem", lineHeight: "1.35" }, // 28px
+    h3: { fontSize: "1.5rem", lineHeight: "1.4" }, // 24px
+    h4: { fontSize: "1.1875rem", lineHeight: "1.5" }, // 19px
+    h5: { fontSize: "1rem", lineHeight: "1.55" }, // 16px
+    h6: { fontSize: "1rem", lineHeight: "1.55" }, // 16px
   },
 } as const;
 
@@ -170,24 +157,12 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--button-outline-hover-text": "#d4a854",
     // Burger menu hover background
     "--burger-hover-bg": "#1e2d4a",
-    // Typography — mobile sizes (base, applied on :root in typography.css)
-    "--typo-mobile-xs": typographyTokens.fontSizes.xs.mobile,
-    "--typo-mobile-sm": typographyTokens.fontSizes.sm.mobile,
-    "--typo-mobile-md": typographyTokens.fontSizes.md.mobile,
-    "--typo-mobile-lg": typographyTokens.fontSizes.lg.mobile,
-    "--typo-mobile-xl": typographyTokens.fontSizes.xl.mobile,
-    // Typography — desktop sizes (applied at sm breakpoint via CSS)
-    "--typo-desktop-xs": typographyTokens.fontSizes.xs.desktop,
-    "--typo-desktop-sm": typographyTokens.fontSizes.sm.desktop,
-    "--typo-desktop-md": typographyTokens.fontSizes.md.desktop,
-    "--typo-desktop-lg": typographyTokens.fontSizes.lg.desktop,
-    "--typo-desktop-xl": typographyTokens.fontSizes.xl.desktop,
-    "--typo-desktop-h1": typographyTokens.headings.h1.desktop,
-    "--typo-desktop-h2": typographyTokens.headings.h2.desktop,
-    "--typo-desktop-h3": typographyTokens.headings.h3.desktop,
-    "--typo-desktop-h4": typographyTokens.headings.h4.desktop,
-    "--typo-desktop-h5": typographyTokens.headings.h5.desktop,
-    "--typo-desktop-h6": typographyTokens.headings.h6.desktop,
+    // Typography — fixed font sizes (applied on :root in typography.css)
+    "--typo-xs": typographyTokens.fontSizes.xs,
+    "--typo-sm": typographyTokens.fontSizes.sm,
+    "--typo-md": typographyTokens.fontSizes.md,
+    "--typo-lg": typographyTokens.fontSizes.lg,
+    "--typo-xl": typographyTokens.fontSizes.xl,
     // Status colours — semantic design tokens
     "--success-color": statusColourValues.success,
     "--warning-color": statusColourValues.warning,
@@ -266,37 +241,35 @@ export const theme = createTheme({
   primaryShade: 5,
 
   /**
-   * Font sizes — handled entirely in typography.css for responsive scaling.
-   * Mobile sizes set on :root, desktop overrides in @media (width >= 48em).
-   * Removed from createTheme() to prevent Mantine's runtime <style> tag
-   * from overriding the CSS media query (source-order specificity issue).
+   * Font sizes — handled in typography.css via CSS custom properties.
+   * Fixed across all screen widths (no responsive scaling).
    */
 
-  /** Heading sizes — mobile-first values from typographyTokens */
+  /** Heading sizes — fixed values from typographyTokens */
   headings: {
     sizes: {
       h1: {
-        fontSize: typographyTokens.headings.h1.mobile,
+        fontSize: typographyTokens.headings.h1.fontSize,
         lineHeight: typographyTokens.headings.h1.lineHeight,
       },
       h2: {
-        fontSize: typographyTokens.headings.h2.mobile,
+        fontSize: typographyTokens.headings.h2.fontSize,
         lineHeight: typographyTokens.headings.h2.lineHeight,
       },
       h3: {
-        fontSize: typographyTokens.headings.h3.mobile,
+        fontSize: typographyTokens.headings.h3.fontSize,
         lineHeight: typographyTokens.headings.h3.lineHeight,
       },
       h4: {
-        fontSize: typographyTokens.headings.h4.mobile,
+        fontSize: typographyTokens.headings.h4.fontSize,
         lineHeight: typographyTokens.headings.h4.lineHeight,
       },
       h5: {
-        fontSize: typographyTokens.headings.h5.mobile,
+        fontSize: typographyTokens.headings.h5.fontSize,
         lineHeight: typographyTokens.headings.h5.lineHeight,
       },
       h6: {
-        fontSize: typographyTokens.headings.h6.mobile,
+        fontSize: typographyTokens.headings.h6.fontSize,
         lineHeight: typographyTokens.headings.h6.lineHeight,
       },
     },
@@ -308,7 +281,7 @@ export const theme = createTheme({
    */
   breakpoints: {
     xs: "36em", // 576px
-    sm: "48em", // 768px - Main responsive breakpoint for font scaling
+    sm: "40em", // 640px - Main responsive breakpoint
     md: "62em", // 992px
     lg: "75em", // 1200px
     xl: "88em", // 1408px
