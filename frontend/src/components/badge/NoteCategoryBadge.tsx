@@ -23,8 +23,6 @@ export type NoteCategoryType =
 type Props = {
   /** The note category to display */
   category: NoteCategoryType;
-  /** Badge size (default: "lg") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
@@ -41,22 +39,16 @@ const CATEGORY_CONFIG: Record<
 
 export default function NoteCategoryBadge({
   category,
-  size = "lg",
   isLoading = false,
 }: Props) {
   if (isLoading) {
-    return <BadgeSkeleton size={size} />;
+    return <BadgeSkeleton />;
   }
 
   const { label, colour } = CATEGORY_CONFIG[category];
 
   return (
-    <Badge
-      color={colour.bg}
-      c={colour.text}
-      variant={BADGE_VARIANT}
-      size={size}
-    >
+    <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
       {label}
     </Badge>
   );

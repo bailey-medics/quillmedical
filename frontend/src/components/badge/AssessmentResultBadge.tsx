@@ -18,8 +18,6 @@ type AssessmentResult = "pass" | "fail" | "incomplete";
 type Props = {
   /** Assessment result */
   result: AssessmentResult;
-  /** Badge size (default: "lg") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
@@ -47,22 +45,16 @@ const STATUS_CONFIG: Record<
  */
 export default function AssessmentResultBadge({
   result,
-  size = "lg",
   isLoading = false,
 }: Props) {
   if (isLoading) {
-    return <BadgeSkeleton size={size} />;
+    return <BadgeSkeleton />;
   }
 
   const { label, colour } = STATUS_CONFIG[result];
 
   return (
-    <Badge
-      color={colour.bg}
-      c={colour.text}
-      variant={BADGE_VARIANT}
-      size={size}
-    >
+    <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
       {label}
     </Badge>
   );

@@ -51,7 +51,7 @@ function SettingsFields({ bank }: SettingsFieldsProps) {
       <Stack gap="md">
         <Group justify="space-between">
           <Heading>Exam status</Heading>
-          <ActiveStatusBadge active={isLive} size="lg" />
+          <ActiveStatusBadge active={isLive} />
         </Group>
         <Controller
           name="isLive"

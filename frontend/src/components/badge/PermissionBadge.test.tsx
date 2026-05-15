@@ -61,13 +61,7 @@ describe("PermissionBadge", () => {
   });
 
   describe("Size variants", () => {
-    it("renders with custom size", () => {
-      renderWithMantine(<PermissionBadge permission="admin" size="sm" />);
-      const badge = screen.getByText("ADMIN");
-      expect(badge).toBeInTheDocument();
-    });
-
-    it("defaults to xl size when size not specified", () => {
+    it("renders at default size", () => {
       renderWithMantine(<PermissionBadge permission="admin" />);
       const badge = screen.getByText("ADMIN");
       expect(badge).toBeInTheDocument();
@@ -79,7 +73,6 @@ describe("PermissionBadge", () => {
       renderWithMantine(
         <PermissionBadge
           permission={null as unknown as "staff"}
-          size="md"
           variant="light"
         />,
       );

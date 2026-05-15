@@ -1,7 +1,7 @@
 /**
  * OnQuillBadge Storybook Stories
  *
- * Demonstrates the OnQuillBadge component in various sizes and states.
+ * Demonstrates the OnQuillBadge component.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -13,17 +13,10 @@ const meta: Meta<typeof OnQuillBadge> = {
   parameters: {
     layout: "padded",
   },
-  argTypes: {
-    size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
-      description: "Badge size",
-    },
-  },
 };
 
 export default meta;
 type Story = StoryObj<typeof OnQuillBadge>;
 
-/** Default large size. */
+/** Default badge. */
 export const Default: Story = {};

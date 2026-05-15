@@ -12,15 +12,12 @@
  */
 
 import { Badge } from "@mantine/core";
-import type { MantineSize } from "@mantine/core";
 import { badgeColours, BADGE_VARIANT } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 
 interface CompetencyBadgeProps {
   /** Competency display name */
   label: string;
-  /** Badge size — defaults to lg */
-  size?: MantineSize;
   /** Whether this competency has been removed (uses alert colour) */
   removed?: boolean;
   /** Show loading skeleton instead of badge */
@@ -34,19 +31,17 @@ interface CompetencyBadgeProps {
  */
 export default function CompetencyBadge({
   label,
-  size = "lg",
   removed = false,
   isLoading = false,
 }: CompetencyBadgeProps) {
   if (isLoading) {
-    return <BadgeSkeleton size={size as "sm" | "md" | "lg" | "xl"} />;
+    return <BadgeSkeleton />;
   }
 
   const colours = removed ? badgeColours.alert : badgeColours.info;
 
   return (
     <Badge
-      size={size}
       variant={BADGE_VARIANT}
       color={colours.bg}
       c={colours.text}

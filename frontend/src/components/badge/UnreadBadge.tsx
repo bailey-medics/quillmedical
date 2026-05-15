@@ -11,17 +11,8 @@ import classes from "./UnreadBadge.module.css";
 type Props = {
   /** Number of unread messages */
   count: number;
-  /** Badge size (default: "lg") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
-};
-
-const SKELETON_SIZES: Record<string, number> = {
-  sm: 18,
-  md: 22,
-  lg: 26,
-  xl: 32,
 };
 
 /**
@@ -37,14 +28,9 @@ const SKELETON_SIZES: Record<string, number> = {
  * <UnreadBadge count={12} />      // Shows "9+"
  * ```
  */
-export default function UnreadBadge({
-  count,
-  size = "lg",
-  isLoading = false,
-}: Props) {
+export default function UnreadBadge({ count, isLoading = false }: Props) {
   if (isLoading) {
-    const dim = SKELETON_SIZES[size] ?? 26;
-    return <Skeleton width={dim} height={dim} circle />;
+    return <Skeleton width={32} height={32} circle />;
   }
 
   if (count <= 0) return null;
@@ -52,10 +38,7 @@ export default function UnreadBadge({
   const label = count > 9 ? "9+" : String(count);
 
   return (
-    <span
-      className={`${classes.badge} ${classes[size]}`}
-      aria-label={`${count} unread`}
-    >
+    <span className={classes.badge} aria-label={`${count} unread`}>
       {label}
     </span>
   );

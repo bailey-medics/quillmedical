@@ -1,8 +1,7 @@
 /**
  * AssessmentResultBadge Storybook Stories
  *
- * Demonstrates the AssessmentResultBadge component in all result states
- * and size variants.
+ * Demonstrates the AssessmentResultBadge component in all result states.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -21,11 +20,6 @@ const meta: Meta<typeof AssessmentResultBadge> = {
       options: ["pass", "fail", "incomplete"],
       description: "Assessment result",
     },
-    size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
-      description: "Badge size",
-    },
   },
 };
 
@@ -33,7 +27,7 @@ export default meta;
 type Story = StoryObj<typeof AssessmentResultBadge>;
 
 /**
- * Shows all three result states with default size.
+ * Shows all three result states.
  */
 export const Default: Story = {
   render: () => (

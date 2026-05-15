@@ -1,8 +1,7 @@
 /**
  * FeatureBadge Storybook Stories
  *
- * Demonstrates the FeatureBadge component with different labels
- * and sizes.
+ * Demonstrates the FeatureBadge component with different labels.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

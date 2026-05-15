@@ -1,8 +1,8 @@
 /**
  * PermissionBadge Storybook Stories
  *
- * Demonstrates the PermissionBadge component with different permission levels,
- * sizes, and variants.
+ * Demonstrates the PermissionBadge component with different permission levels
+ * and variants.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -23,7 +23,7 @@ type Story = StoryObj<typeof PermissionBadge>;
 /**
  * Default PermissionBadge
  *
- * Shows the default superadmin permission badge with lg size and filled variant.
+ * Shows all permission levels with filled variant.
  */
 export const Default: Story = {
   render: () => (

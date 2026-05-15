@@ -1,12 +1,11 @@
 /**
  * UnreadBadge Storybook Stories
  *
- * Demonstrates the UnreadBadge component with various counts and sizes.
+ * Demonstrates the UnreadBadge component with various counts.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import UnreadBadge from "./UnreadBadge";
 
 const meta: Meta<typeof UnreadBadge> = {
@@ -28,40 +27,13 @@ export const Default: Story = {
       {counts.map((count) => (
         <UnreadBadge key={count} count={count} />
       ))}
-      <UnreadBadge count={1} isLoading />
     </Group>
   ),
 };
 
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          {counts.map((count) => (
-            <UnreadBadge key={count} count={count} size={size} />
-          ))}
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
+/** Loading skeleton. */
 export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <UnreadBadge count={1} size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
+  render: () => <UnreadBadge count={1} isLoading />,
 };
 
 export const DarkMode: Story = {

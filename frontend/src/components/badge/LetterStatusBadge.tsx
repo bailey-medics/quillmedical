@@ -18,8 +18,6 @@ export type LetterStatusType = "final" | "draft" | "amended";
 type Props = {
   /** The letter status to display */
   status: LetterStatusType;
-  /** Badge size (default: "lg") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
@@ -35,22 +33,16 @@ const STATUS_CONFIG: Record<
 
 export default function LetterStatusBadge({
   status,
-  size = "lg",
   isLoading = false,
 }: Props) {
   if (isLoading) {
-    return <BadgeSkeleton size={size} />;
+    return <BadgeSkeleton />;
   }
 
   const { label, colour } = STATUS_CONFIG[status];
 
   return (
-    <Badge
-      color={colour.bg}
-      c={colour.text}
-      variant={BADGE_VARIANT}
-      size={size}
-    >
+    <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
       {label}
     </Badge>
   );

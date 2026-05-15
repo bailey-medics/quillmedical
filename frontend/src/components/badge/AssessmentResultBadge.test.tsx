@@ -3,7 +3,6 @@
  *
  * Tests for the AssessmentResultBadge component covering:
  * - All three result states (pass, fail, incomplete)
- * - Different size variants
  */
 
 import { describe, it, expect } from "vitest";
@@ -46,30 +45,6 @@ describe("AssessmentResultBadge", () => {
       renderWithMantine(<AssessmentResultBadge result="incomplete" />);
       expect(screen.queryByText("Pass")).not.toBeInTheDocument();
       expect(screen.queryByText("Fail")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Size variants", () => {
-    it("renders with default lg size", () => {
-      renderWithMantine(<AssessmentResultBadge result="pass" />);
-      expect(screen.getByText("Pass")).toBeInTheDocument();
-    });
-
-    it("renders with md size", () => {
-      renderWithMantine(<AssessmentResultBadge result="pass" size="md" />);
-      expect(screen.getByText("Pass")).toBeInTheDocument();
-    });
-
-    it("renders with lg size", () => {
-      renderWithMantine(<AssessmentResultBadge result="fail" size="lg" />);
-      expect(screen.getByText("Fail")).toBeInTheDocument();
-    });
-
-    it("renders with xl size", () => {
-      renderWithMantine(
-        <AssessmentResultBadge result="incomplete" size="xl" />,
-      );
-      expect(screen.getByText("Incomplete")).toBeInTheDocument();
     });
   });
 

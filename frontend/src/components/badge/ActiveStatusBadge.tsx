@@ -16,8 +16,6 @@ import BadgeSkeleton from "./BadgeSkeleton";
 type Props = {
   /** Whether the resource is active */
   active: boolean;
-  /** Badge size (default: "md") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
@@ -32,22 +30,16 @@ const STATUS_CONFIG: Record<
 
 export default function ActiveStatusBadge({
   active,
-  size = "lg",
   isLoading = false,
 }: Props) {
   if (isLoading) {
-    return <BadgeSkeleton size={size} />;
+    return <BadgeSkeleton />;
   }
 
   const { label, colour } = STATUS_CONFIG[active ? "active" : "deactivated"];
 
   return (
-    <Badge
-      color={colour.bg}
-      c={colour.text}
-      variant={BADGE_VARIANT}
-      size={size}
-    >
+    <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
       {label}
     </Badge>
   );
