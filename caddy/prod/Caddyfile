@@ -8,6 +8,10 @@
 # Port 8080 is used because Cloud Run strips Linux file capabilities
 # (cap_net_bind_service), preventing non-root users from binding to :80.
 
+{
+	admin off
+}
+
 :8080 {
 	encode zstd gzip
 
