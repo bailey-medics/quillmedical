@@ -1,8 +1,8 @@
 /**
  * CompetencyBadge Storybook Stories
  *
- * Demonstrates the CompetencyBadge component with different labels,
- * sizes, and the removed state.
+ * Demonstrates the CompetencyBadge component with different labels
+ * and the removed state.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

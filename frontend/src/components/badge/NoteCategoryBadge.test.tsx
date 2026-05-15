@@ -1,7 +1,7 @@
 /**
  * NoteCategoryBadge Tests
  *
- * Verifies badge renders correct labels, colours, sizes,
+ * Verifies badge renders correct labels, colours,
  * and loading state for each clinical note category.
  */
 
@@ -26,22 +26,6 @@ describe("NoteCategoryBadge", () => {
     );
     const badge = container.querySelector(".mantine-Badge-root");
     expect(badge).toHaveAttribute("data-size", "lg");
-  });
-
-  it("renders at sm size when specified", () => {
-    const { container } = renderWithMantine(
-      <NoteCategoryBadge category="consultation" size="sm" />,
-    );
-    const badge = container.querySelector(".mantine-Badge-root");
-    expect(badge).toHaveAttribute("data-size", "sm");
-  });
-
-  it("renders at xl size when specified", () => {
-    const { container } = renderWithMantine(
-      <NoteCategoryBadge category="consultation" size="xl" />,
-    );
-    const badge = container.querySelector(".mantine-Badge-root");
-    expect(badge).toHaveAttribute("data-size", "xl");
   });
 
   it("shows skeleton when loading", () => {

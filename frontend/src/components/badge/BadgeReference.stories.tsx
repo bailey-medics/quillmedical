@@ -1,7 +1,7 @@
 /**
  * Badge Reference Storybook Stories
  *
- * Displays all available badge colours, sizes, and loading states.
+ * Displays all available badge colours and loading states.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -9,7 +9,6 @@ import { Badge, Stack } from "@mantine/core";
 import { badgeColours, BADGE_VARIANT, type BadgeColour } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 import ActiveStatusBadge from "./ActiveStatusBadge";
-import { VariantRow, VariantStack } from "@/stories/variants";
 
 const meta: Meta = {
   title: "Badge/Reference",
@@ -31,54 +30,18 @@ export const AllColours: Story = {
   render: () => (
     <Stack gap="md" align="flex-start">
       {allColours.map(([name, { bg, text }]) => (
-        <Badge key={name} color={bg} c={text} variant={BADGE_VARIANT} size="lg">
+        <Badge key={name} color={bg} c={text} variant={BADGE_VARIANT}>
           {name}
         </Badge>
       ))}
-      <BadgeSkeleton size="lg" />
+      <BadgeSkeleton />
     </Stack>
   ),
 };
 
-/**
- * All Sizes Comparison
- *
- * Shows all size variants side by side for comparison.
- */
-export const AllSizes: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow key={size} label={size === "lg" ? "lg (default)" : size}>
-          <Badge
-            color={badgeColours.success.bg}
-            c={badgeColours.success.text}
-            variant={BADGE_VARIANT}
-            size={size}
-          >
-            SUCCESS
-          </Badge>
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
-};
-
-/** Loading skeleton at each size. */
+/** Loading skeleton. */
 export const Loading: Story = {
-  render: () => (
-    <VariantStack>
-      {(["sm", "md", "lg", "xl"] as const).map((size) => (
-        <VariantRow
-          key={size}
-          label={size === "lg" ? "lg (default)" : size}
-          horizontal={false}
-        >
-          <ActiveStatusBadge active={true} size={size} isLoading />
-        </VariantRow>
-      ))}
-    </VariantStack>
-  ),
+  render: () => <ActiveStatusBadge active={true} isLoading />,
 };
 
 export const DarkMode: Story = {

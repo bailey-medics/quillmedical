@@ -27,14 +27,6 @@ describe("FeatureBadge", () => {
       const badge = container.querySelector(".mantine-Badge-root");
       expect(badge).toBeInTheDocument();
     });
-
-    it("renders with custom size", () => {
-      const { container } = renderWithMantine(
-        <FeatureBadge label="Teaching" size="sm" />,
-      );
-      const badge = container.querySelector(".mantine-Badge-root");
-      expect(badge).toBeInTheDocument();
-    });
   });
 
   describe("Loading state", () => {

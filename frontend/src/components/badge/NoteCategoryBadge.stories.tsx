@@ -20,11 +20,6 @@ const meta: Meta<typeof NoteCategoryBadge> = {
       options: ["consultation", "telephone", "observation", "procedure"],
       description: "Note category",
     },
-    size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
-      description: "Badge size",
-    },
   },
 };
 
@@ -39,7 +34,7 @@ const allCategories: NoteCategoryType[] = [
   "procedure",
 ];
 
-/** Shows all categories with default large size. */
+/** Shows all categories. */
 export const Default: Story = {
   render: () => (
     <Group gap="md">

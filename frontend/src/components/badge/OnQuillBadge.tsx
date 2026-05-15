@@ -11,18 +11,13 @@ import { badgeColours, BADGE_VARIANT } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 
 type Props = {
-  /** Badge size (default: "lg") */
-  size?: "sm" | "md" | "lg" | "xl";
   /** Show loading skeleton instead of badge */
   isLoading?: boolean;
 };
 
-export default function OnQuillBadge({
-  size = "lg",
-  isLoading = false,
-}: Props) {
+export default function OnQuillBadge({ isLoading = false }: Props) {
   if (isLoading) {
-    return <BadgeSkeleton size={size} />;
+    return <BadgeSkeleton />;
   }
 
   const colour = badgeColours.info;
@@ -32,7 +27,6 @@ export default function OnQuillBadge({
       color={colour.bg}
       c={colour.text}
       variant={BADGE_VARIANT}
-      size={size}
       styles={{ label: { textTransform: "none" } }}
     >
       on Quill

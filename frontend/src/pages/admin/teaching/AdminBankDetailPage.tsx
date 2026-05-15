@@ -125,9 +125,7 @@ export default function AdminBankDetailPage() {
                   },
                   {
                     header: "Status",
-                    render: (org) => (
-                      <ActiveStatusBadge active={org.is_live} size="md" />
-                    ),
+                    render: (org) => <ActiveStatusBadge active={org.is_live} />,
                   },
                   ...(bank.email_coordinator_on_pass
                     ? [

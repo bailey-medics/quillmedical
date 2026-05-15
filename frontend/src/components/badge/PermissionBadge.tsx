@@ -7,13 +7,12 @@
  * @example
  * ```tsx
  * <PermissionBadge permission="superadmin" />
- * <PermissionBadge permission="admin" size="lg" />
+ * <PermissionBadge permission="admin" />
  * <PermissionBadge permission="staff" variant="light" />
  * ```
  */
 
 import { Badge } from "@mantine/core";
-import type { MantineSize } from "@mantine/core";
 import {
   badgeColours,
   BADGE_VARIANT,
@@ -25,8 +24,6 @@ export type UserPermission = "superadmin" | "admin" | "staff" | "patient";
 interface PermissionBadgeProps {
   /** System permission level */
   permission: UserPermission;
-  /** Badge size - defaults to lg */
-  size?: MantineSize;
   /** Badge variant - defaults to light */
   variant?: "filled" | "light" | "outline" | "dot" | "default";
   /** Show loading skeleton instead of badge */
@@ -53,12 +50,11 @@ const PERMISSION_CONFIG: Record<UserPermission, BadgeColourConfig> = {
  */
 export default function PermissionBadge({
   permission,
-  size = "lg",
   variant = BADGE_VARIANT,
   isLoading = false,
 }: PermissionBadgeProps) {
   if (isLoading) {
-    return <BadgeSkeleton size={size as "sm" | "md" | "lg" | "xl"} />;
+    return <BadgeSkeleton />;
   }
 
   if (!permission) {
@@ -67,7 +63,6 @@ export default function PermissionBadge({
 
   return (
     <Badge
-      size={size}
       variant={variant}
       color={PERMISSION_CONFIG[permission].bg}
       c={PERMISSION_CONFIG[permission].text}

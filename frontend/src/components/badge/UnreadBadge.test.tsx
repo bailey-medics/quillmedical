@@ -57,11 +57,6 @@ describe("UnreadBadge", () => {
       renderWithMantine(<UnreadBadge count={1} />);
       expect(screen.getByText("1")).toBeInTheDocument();
     });
-
-    it("renders with lg size", () => {
-      renderWithMantine(<UnreadBadge count={1} size="lg" />);
-      expect(screen.getByText("1")).toBeInTheDocument();
-    });
   });
 
   describe("Loading state", () => {

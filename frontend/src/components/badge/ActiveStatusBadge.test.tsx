@@ -4,7 +4,6 @@
  * Tests for the ActiveStatus component covering:
  * - Rendering active status
  * - Rendering deactivated status
- * - Different size variants
  * - Correct colour application
  */
 
@@ -35,33 +34,6 @@ describe("ActiveStatusBadge", () => {
     it("does not render 'Active' when active is false", () => {
       renderWithMantine(<ActiveStatusBadge active={false} />);
       expect(screen.queryByText("Active")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Size variants", () => {
-    it("renders with default size when size prop not provided", () => {
-      renderWithMantine(<ActiveStatusBadge active={true} />);
-      expect(screen.getByText("Active")).toBeInTheDocument();
-    });
-
-    it("renders with sm size", () => {
-      renderWithMantine(<ActiveStatusBadge active={true} size="sm" />);
-      expect(screen.getByText("Active")).toBeInTheDocument();
-    });
-
-    it("renders with md size", () => {
-      renderWithMantine(<ActiveStatusBadge active={true} size="md" />);
-      expect(screen.getByText("Active")).toBeInTheDocument();
-    });
-
-    it("renders with lg size", () => {
-      renderWithMantine(<ActiveStatusBadge active={true} size="lg" />);
-      expect(screen.getByText("Active")).toBeInTheDocument();
-    });
-
-    it("renders with xl size", () => {
-      renderWithMantine(<ActiveStatusBadge active={true} size="xl" />);
-      expect(screen.getByText("Active")).toBeInTheDocument();
     });
   });
 

@@ -1,7 +1,7 @@
 /**
  * LetterStatus Badge Storybook Stories
  *
- * Demonstrates the LetterStatus component across all statuses and sizes.
+ * Demonstrates the LetterStatus component across all statuses.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -21,11 +21,6 @@ const meta: Meta<typeof LetterStatusBadge> = {
       options: ["final", "draft", "amended"],
       description: "Letter status",
     },
-    size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
-      description: "Badge size",
-    },
   },
 };
 
@@ -34,7 +29,7 @@ type Story = StoryObj<typeof LetterStatusBadge>;
 
 const allStatuses: LetterStatusType[] = ["final", "draft", "amended"];
 
-/** Shows all statuses with default large size. */
+/** Shows all statuses. */
 export const Default: Story = {
   render: () => (
     <Group gap="md">

@@ -1,7 +1,7 @@
 /**
  * AppointmentStatus Badge Storybook Stories
  *
- * Demonstrates the AppointmentStatus component across all statuses and sizes.
+ * Demonstrates the AppointmentStatus component across all statuses.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -21,11 +21,6 @@ const meta: Meta<typeof AppointmentStatusBadge> = {
       options: ["upcoming", "completed", "cancelled", "no-show"],
       description: "Appointment status",
     },
-    size: {
-      control: "select",
-      options: ["sm", "md", "lg", "xl"],
-      description: "Badge size",
-    },
   },
 };
 
@@ -39,7 +34,7 @@ const allStatuses: AppointmentStatusType[] = [
   "no-show",
 ];
 
-/** Shows all statuses with default large size. */
+/** Shows all statuses. */
 export const Default: Story = {
   render: () => (
     <Group gap="md">
