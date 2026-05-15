@@ -89,6 +89,12 @@ import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 
+// Learning pages
+import TeachingModuleMain from "./features/teaching/pages/TeachingModuleMain";
+import LearningDashboard from "./features/teaching/pages/LearningDashboard";
+import ModuleOverview from "./features/teaching/pages/ModuleOverview";
+import SlideReader from "./features/teaching/pages/SlideReader";
+
 const router = createBrowserRouter([
   // Public routes (login, register) — placed before protected routes so
   // they are matched directly and not captured by the authenticated
@@ -463,6 +469,50 @@ const router = createBrowserRouter([
             fallback={<NoAccessLayout feature="teaching" />}
           >
             <AssessmentDashboard />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/:bankId",
+        element: (
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
+            <TeachingModuleMain />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/learn",
+        element: (
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
+            <LearningDashboard />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/learn/:moduleId",
+        element: (
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
+            <ModuleOverview />
+          </RequireFeature>
+        ),
+      },
+      {
+        path: "/teaching/learn/:moduleId/slide/:slideIndex",
+        element: (
+          <RequireFeature
+            feature="teaching"
+            fallback={<NoAccessLayout feature="teaching" />}
+          >
+            <SlideReader />
           </RequireFeature>
         ),
       },

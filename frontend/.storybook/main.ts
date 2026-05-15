@@ -14,6 +14,10 @@ const config: StorybookConfig = {
   },
   viteFinal: async (config) => {
     config.plugins = [...(config.plugins ?? []), tsconfigPaths()];
+    config.optimizeDeps = {
+      ...config.optimizeDeps,
+      include: [...(config.optimizeDeps?.include ?? []), "react-player"],
+    };
     config.css = {
       ...config.css,
       postcss: {
