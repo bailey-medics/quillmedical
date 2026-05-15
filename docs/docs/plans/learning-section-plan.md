@@ -26,9 +26,9 @@ This plan adds a **learning section** alongside the existing MCQ (multiple-choic
 ## 2. Architectural decisions
 
 1. **Content format:** MDX for learning modules, YAML for MCQ question banks — both stored in a **single private repo per organisation** (e.g. `eoeeta-teaching` for EoEETA, `respiratory-teaching` for the Chest X-ray interpretation exam). Each repo contains the organisation's assessments AND learning materials. One repo per organisation means we can archive or delete an entire provider's materials cleanly if the relationship ends. The existing `question-bank` repo content is split: colonoscopy content migrates into `eoeeta-teaching`, chest x-ray content into `respiratory-teaching`
-2. **Deployment pipeline:** each organisation repo has its own GitHub Actions workflow that deploys directly into the teaching GCP (Google Cloud Platform) project (same pattern as `question-bank`'s existing `deploy.yml` which syncs to `gs://$GCP_TEACHING_GCS_BUCKET/`)
+2. **Deployment pipeline:** each organisation repo has thin GitHub Actions workflow callers that delegate to reusable workflows in `teaching-tooling` (see Section 3). The reusable deploy workflow deploys into the teaching GCP (Google Cloud Platform) project (same pattern as `question-bank`'s existing `deploy.yml` which syncs to `gs://$GCP_TEACHING_GCS_BUCKET/`)
 3. **Slide-break convention:** both `#` and `##` headings start a new slide, mirroring Quarto. `#` creates a section-title slide (large centred heading, optional body content). `##` creates a content slide. Compile-time AST (Abstract Syntax Tree) transform splits MDX into a slide array
-4. **Per-slide layout:** specified via Quarto-style curly-brace attributes after the heading (e.g. `## Welcome {.intro}`, `# Summary {.dark}`). A custom remark plugin parses these and attaches them to the slide node
+4. **Per-slide layout:** specified via Quarto-style curly-brace attributes after the heading (e.g. `## Recorded lecture {.video-slide}`, `## Polyp morphology {.text-with-figure}`). A custom remark plugin parses these and attaches them to the slide node
 5. **Video hosting:** Google Cloud Storage (private bucket) + Cloud CDN + 8-hour signed URLs minted by the FastAPI backend
 6. **Transcoding:** FFmpeg in a Cloud Run job, triggered on video upload, produces 720p and 1080p H.264 variants plus a poster frame
 7. **Captions:** Whisper-large in a Cloud Run job, produces WebVTT (Web Video Text Tracks), written alongside the video assets. Reviewed by author/editor before content is marked live
@@ -242,7 +242,7 @@ All navigation is handled by the slide reader — content authors never need to 
 
 **Slide-to-slide navigation** — the reader provides previous/next controls via three input methods:
 
-- **On-screen buttons** — a `PreviousNextButton` pair (existing component) pinned to the bottom of the slide area. `onPrevious` is omitted on slide 1 (hides the "Previous" button). On the final slide, `nextLabel` changes to "Complete module" and triggers the end-of-module panel (see below). On mobile, buttons span the full width for easy thumb reach
+- **On-screen buttons** — a `PreviousNextButton` pair (existing component) pinned to the bottom of the slide area. `onPrevious` is omitted on slide 1 (hides the "Previous" button). On the final slide, `nextLabel` changes to "Finish" and navigates back to the `TeachingModuleMain` page (`/teaching/:bankId`) where the learner can choose to start the assessment or revisit learning. Responsive sizing is already built in (`md` on mobile, `lg` on desktop)
 - **Keyboard** — left/right arrow keys advance slides. Focus is managed so arrow keys work immediately without requiring a click into the slide area first
 - **Touch gestures** — horizontal swipe left/right on touch devices. Use a lightweight swipe hook (e.g. `use-gesture` or a minimal custom `onTouchStart`/`onTouchEnd` handler) — no heavy gesture library. Swipe is disabled while a video is playing to avoid conflicts with video scrubbing
 
@@ -250,15 +250,7 @@ All three methods update the URL (`/teaching/learn/:moduleId/slide/:slideIndex`)
 
 **Slide navigation sidebar** — covered in detail in Section 7. Provides a table-of-contents view of all slides with jump-to-slide, current position highlighting, and visited-slide indicators. Rendered in the existing `MainLayout` sidebar on desktop and `NavigationDrawer` on mobile.
 
-**End-of-module navigation** — on the final slide, the "Next" button is replaced by a distinct end-of-module panel:
-
-- **"Next module: [title]"** — an `ActionCard` linking to the next module's overview page, determined by `order_index` from the `GET /api/teaching/modules` response. Shown only when a subsequent live module exists within the same organisation
-- **"Start assessment"** — shown when the current module has an associated assessment (i.e. the module's `assessment/` folder contains an `assessment.yaml`). Links to the existing assessment flow at `/teaching/assessment/new?bank={bankId}`
-- **"Return to learning dashboard"** — always shown as a secondary link (text link, not a button) below the primary actions. If there is no next module and no assessment, this becomes the only action
-
-This approach keeps content files focused on teaching material and avoids authors maintaining cross-module references that would go stale when modules are reordered or added.
-
-Component prop names are part of the public content API. Lock them down now.
+**End-of-module behaviour** — pressing "Finish" on the final slide marks the module as complete (POST to `/api/teaching/modules/{module_id}/complete`) and navigates to the `TeachingModuleMain` page (`/teaching/:bankId`). From there the learner can start the assessment, revisit the learning materials, or navigate elsewhere.
 
 ---
 
@@ -387,9 +379,9 @@ The existing Cloud Run service account needs `roles/storage.objectViewer` on the
 
 ## 6. Content build and deployment pipeline
 
-Each organisation repo (e.g. `eoeeta-teaching`) has its own `deploy.yml` and `validate.yml`. The deploy workflow iterates over each module in `modules/`:
+Each organisation repo (e.g. `eoeeta-teaching`) has thin workflow callers (`deploy.yml` and `validate.yml`) that delegate to the reusable workflows in `teaching-tooling` (see Section 3). The reusable deploy workflow iterates over each module in `modules/`:
 
-1. **Validate** — for each module in `modules/`: parse `module.yaml` against a Pydantic schema (via `scripts/validate.py`); if `learning/` exists, **parse and validate `content.mdx`** (via `scripts/validate_mdx.js`) and verify referenced images and videos exist; if `assessment/` exists, run existing question bank validation. This step runs in both `validate.yml` (on PR) and `deploy.yml` (before sync), so invalid content never merges.
+1. **Validate** — for each module in `modules/`: parse `module.yaml` against a Pydantic schema (via `teaching-tooling/scripts/validate.py`); if `learning/` exists, **parse and validate `content.mdx`** (via `teaching-tooling/scripts/validate_mdx.js`) and verify referenced images and videos exist; if `assessment/` exists, run existing question bank validation. This step runs in both `validate.yml` (on PR) and `deploy.yml` (before sync), so invalid content never merges.
 
    `validate_mdx.js` performs:
    - Full MDX parse via `@mdx-js/mdx` compiler — catches syntax errors, unclosed JSX tags, malformed expressions
@@ -398,7 +390,7 @@ Each organisation repo (e.g. `eoeeta-teaching`) has its own `deploy.yml` and `va
    - Layout attribute validation: curly-brace attributes must be from the defined vocabulary (`.video-slide`, `.image-slide`, `.text-with-figure`, etc.); unknown layouts fail
    - Asset reference check: all image `src` paths in `<Figure>` components resolve to files that exist in the module's `images/` folder; `<Video>` `src` filenames are validated against the GCS source bucket during deploy (not during PR validation, since videos are uploaded separately)
 
-2. **Compile MDX** — new Node.js build step (`scripts/compile_mdx.js`) that:
+2. **Compile MDX** — Node.js build step (`teaching-tooling/scripts/compile_mdx.js`) that:
    a. Parses MDX with custom remark plugin for `{.attribute}` syntax
    b. Splits at `#` and `##` boundaries into a slide array
    c. For each slide, captures its layout class(es) and renders to a JSON structure: `{slideIndex, layout, title, contentAst}`
@@ -425,7 +417,7 @@ The current `/teaching` route renders `AssessmentDashboard` — a page that list
 **Revised route structure** (all under `<RequireFeature feature="teaching">`):
 
 - `/teaching` — existing `AssessmentDashboard` (**stays at this path**). Each question bank `ActionCard` changes from "Start assessment" to navigating to `/teaching/:bankId`
-- `/teaching/:bankId` — **new `TeachingChoicePage`**. Two `ActionCard` components:
+- `/teaching/:bankId` — **new `TeachingModuleMain`**. Two `ActionCard` components:
   - "Learning materials" → navigates to `/teaching/learn`
   - "Start assessment" → navigates to `/teaching/assessment/new?bank={bankId}` (existing flow)
 - `/teaching/learn` — module list with progress overlay
@@ -443,7 +435,7 @@ Deep-linking to a specific slide is supported. The slide index in the URL is the
 
 **Pages** in `src/features/teaching/pages/` (alongside existing `AssessmentDashboard`, `AssessmentAttempt`, etc.):
 
-- `TeachingChoicePage.tsx` — **new**, mounted at `/teaching/:bankId`. Shows the bank title as a `PageHeader` and a `SimpleGrid` of two `ActionCard` components: "Learning materials" (→ `/teaching/learn`) and "Start assessment" (→ existing assessment flow for that bank). The assessment history table stays on `AssessmentDashboard`
+- `TeachingModuleMain.tsx` — **new**, mounted at `/teaching/:bankId`. Shows the bank title as a `PageHeader` and a `SimpleGrid` of two `ActionCard` components: "Learning materials" (→ `/teaching/learn`) and "Start assessment" (→ existing assessment flow for that bank). The assessment history table stays on `AssessmentDashboard`
 - `LearningDashboard.tsx` — lists modules with progress overlay
 - `ModuleOverview.tsx` — module metadata, start/resume CTA (call to action)
 - `SlideReader.tsx` — the main slide runtime
@@ -513,7 +505,7 @@ export interface CompiledSlide {
 
 Non-negotiable, builds in from the start:
 
-- Keyboard navigation: arrow keys for prev/next, `Esc` to return to overview, sensible tab order
+- Keyboard navigation: arrow keys for prev/next, sensible tab order
 - All interactive elements have visible focus indicators (Mantine defaults)
 - Video player has captions on by default for first-time viewers (toggleable, preference saved)
 - Images have meaningful alt text from `<Figure alt>` prop; decorative images use `alt=""`
@@ -563,20 +555,7 @@ New module at `infra/modules/teaching-video-pipeline/` containing:
 
 ---
 
-## 9. Clinical safety (DCB 0129) — minor
-
-Although the teaching content is not a medical device, update the hazard log with the new surface:
-
-- HAZ-TEACH-001: Outdated teaching content informs clinical practice — mitigation: content version, last-reviewed date in module metadata, displayed to learner
-- HAZ-TEACH-002: Signed URL expires mid-video — mitigation: proactive refresh, graceful fallback to re-request
-- HAZ-TEACH-003: Incorrect captions on medical terminology — mitigation: caption review workflow gated by `captions_reviewed` flag on the DB record before module goes live
-- HAZ-TEACH-004: Cross-module video access via path manipulation — mitigation: signed URL endpoint validates video_path belongs to requested module
-
-These are not safety-critical to the same degree as Quill EPR hazards but should be documented for consistency with existing CSO (Clinical Safety Officer) discipline.
-
----
-
-## 10. Testing strategy
+## 9. Testing strategy
 
 ### Backend unit tests (pytest, run in Docker)
 
@@ -603,7 +582,7 @@ These are not safety-critical to the same degree as Quill EPR hazards but should
 
 ---
 
-## 11. `CONTENT_FORMAT.md` (in each organisation repo)
+## 10. `CONTENT_FORMAT.md` (in each organisation repo)
 
 A document at the root of each organisation repo (e.g. `eoeeta-teaching/CONTENT_FORMAT.md`) describing:
 
@@ -649,20 +628,8 @@ This is both internal documentation and the contractual artefact for each conten
 **Phase 4 — Polish and ship**
 
 17. Manual QA (quality assurance) across browsers and PWA modes
-18. Hazard log update
-19. `CONTENT_FORMAT.md` finalisation in organisation repo
-20. First real EoEETA module through the pipeline
-
----
-
-## 13. Open questions to resolve before starting
-
-These are not implementation questions — they are external dependencies on N&N or EoEETA:
-
-1. Final list of layout variants needed for EoEETA's first batch of content (the set in Section 4 is a starting point; may need adjustment when real content arrives)
-2. Who reviews captions for medical terminology? (Author, designated editor, or workflow yet to be defined)
-3. Confirmation that videos will be delivered as standalone files (not PPTX with embedded media) — any common video format is accepted
-4. Maximum acceptable video length per slide (suggest soft cap of 15 minutes, encourage splitting longer recordings)
+18. `CONTENT_FORMAT.md` finalisation in organisation repo
+19. First real EoEETA module through the pipeline
 
 ---
 
