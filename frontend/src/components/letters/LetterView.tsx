@@ -102,7 +102,6 @@ export default function LetterView({
             variant="light"
             onClick={onBack}
             aria-label="Back"
-            size="md"
           />
           <Stack gap={2} style={{ minWidth: 0 }}>
             <Heading>{letter.subject}</Heading>

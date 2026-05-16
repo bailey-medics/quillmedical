@@ -48,7 +48,7 @@ export const WithVideoPlayer: Story = {
   tags: ["!test"],
   render: () => (
     <TeachingLayout sidebar={learningNav(1)} footerText="Logged in: dr.jones">
-      <PageHeader>Recorded lecture</PageHeader>
+      <PageHeader title="Recorded lecture" />
       <VideoPlayer youtubeId="2OTbDQh3MxM" />
       <Box hiddenFrom="sm">
         <PreviousNextButton

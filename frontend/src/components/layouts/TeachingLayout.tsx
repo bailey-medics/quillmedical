@@ -82,7 +82,7 @@ export default function TeachingLayout({
         }}
       >
         <TopRibbon
-          onBurgerClick={hasSidebar ? toggle : undefined}
+          onBurgerClick={hasSidebar ? toggle : () => {}}
           isLoading={false}
           patient={null}
           navOpen={opened}

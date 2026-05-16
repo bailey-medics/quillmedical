@@ -15,7 +15,7 @@ import {
   IconAlertTriangle,
   IconCircleCheck,
 } from "@/components/icons/appIcons";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import BaseCard from "@/components/base-card/BaseCard";
 import Icon from "@/components/icons";
 import BodyText from "@/components/typography/BodyText";
@@ -33,7 +33,7 @@ export interface CalloutProps {
   children: ReactNode;
 }
 
-const iconMap: Record<CalloutType, ReactNode> = {
+const iconMap: Record<CalloutType, ReactElement> = {
   info: <IconInfoCircle />,
   warning: <IconAlertTriangle />,
   success: <IconCircleCheck />,
@@ -41,7 +41,7 @@ const iconMap: Record<CalloutType, ReactNode> = {
 
 export default function Callout({ type, children }: CalloutProps) {
   return (
-    <BaseCard bg={statusColours[type].bg}>
+    <BaseCard bg={statusColours[type].bg} role="alert">
       <Group gap="md" wrap="nowrap" align="center">
         <Box style={{ flexShrink: 0, transform: "translateY(4.5px)" }}>
           <Icon icon={iconMap[type]} size="lg" />

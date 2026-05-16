@@ -278,7 +278,6 @@ export default function PatientAdminPage() {
             <Heading>Linked user account</Heading>
             <IconButton
               icon={<IconPencil />}
-              size="md"
               variant="subtle"
               color="primary"
               onClick={handleEditLink}
@@ -325,7 +324,6 @@ export default function PatientAdminPage() {
               </Badge>
               <IconButton
                 icon={<IconPencil />}
-                size="md"
                 variant="subtle"
                 aria-label="Edit patient details"
                 onClick={() => {
