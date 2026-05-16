@@ -11,9 +11,8 @@
  * ```
  */
 
-import { Button, useMantineTheme } from "@mantine/core";
+import { Button } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import Icon from "@/components/icons";
 import iconTextButtonIcons from "./iconTextButtonIcons";
 import classes from "./IconTextButton.module.css";
@@ -41,9 +40,8 @@ interface IconTextButtonProps {
  * IconTextButton displays a button with a leading icon and text.
  *
  * Features:
- * - Responsive sizing (lg desktop, md mobile)
  * - Type-safe icon selection via string literal union
- * - Consistent with AddButton sizing
+ * - Consistent md sizing with AddButton/ButtonPair
  */
 export default function IconTextButton({
   icon,
@@ -54,16 +52,11 @@ export default function IconTextButton({
   color,
   variant = "filled",
 }: IconTextButtonProps) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-
   return (
     <Button
-      leftSection={
-        <Icon icon={iconTextButtonIcons[icon]} size={isMobile ? "sm" : "md"} />
-      }
+      leftSection={<Icon icon={iconTextButtonIcons[icon]} size="sm" />}
       onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
-      size={isMobile ? "md" : "lg"}
+      size="md"
       variant={variant}
       color={color}
       aria-disabled={disabled || undefined}
@@ -71,11 +64,6 @@ export default function IconTextButton({
       classNames={{ root: classes.root }}
       styles={{
         root: disabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined,
-        label: {
-          fontSize: isMobile
-            ? "var(--mantine-font-size-md)"
-            : "var(--mantine-font-size-lg)",
-        },
       }}
     >
       {label}

@@ -41,7 +41,7 @@ export default function ActionCardButton({
         variant={variant}
         fullWidth
         disabled={disabled}
-        size="lg"
+        size="md"
       >
         {label}
       </Button>
@@ -50,7 +50,7 @@ export default function ActionCardButton({
 
   if (disabled) {
     return (
-      <Button variant={variant} fullWidth disabled size="lg">
+      <Button variant={variant} fullWidth disabled size="md">
         {label}
       </Button>
     );
@@ -62,7 +62,7 @@ export default function ActionCardButton({
       to={url ?? "#"}
       variant={variant}
       fullWidth
-      size="lg"
+      size="md"
     >
       {label}
     </Button>

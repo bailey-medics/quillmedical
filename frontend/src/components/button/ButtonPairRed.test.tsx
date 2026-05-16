@@ -97,7 +97,7 @@ describe("ButtonPairRed", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows submittingLabel text when acceptLoading is true", () => {
+    it("shows submittingLabel when acceptLoading is true", () => {
       renderWithMantine(
         <ButtonPairRed
           {...defaultProps}
@@ -106,17 +106,14 @@ describe("ButtonPairRed", () => {
           acceptLoading
         />,
       );
-      expect(screen.getByText("Deleting…")).toBeVisible();
-      expect(screen.getByText("Delete")).not.toBeVisible();
+      expect(screen.getByText("Deleting…")).toBeInTheDocument();
     });
 
     it("falls back to acceptLabel when submittingLabel is not provided", () => {
       renderWithMantine(
         <ButtonPairRed {...defaultProps} acceptLabel="Remove" acceptLoading />,
       );
-      // Both grid cells show "Remove" — the visible one is the loading row
-      const removeTexts = screen.getAllByText("Remove");
-      expect(removeTexts).toHaveLength(2);
+      expect(screen.getByText("Remove")).toBeInTheDocument();
     });
   });
 });

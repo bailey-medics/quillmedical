@@ -28,15 +28,6 @@ You must meet **both** criteria to pass.`,
   },
 };
 
-export const Disabled: Story = {
-  args: {
-    title: "Before you begin",
-    body: "Loading assessment...",
-    onBegin: () => {},
-    disabled: true,
-  },
-};
-
 export const Loading: Story = {
   args: {
     title: "Before you begin",

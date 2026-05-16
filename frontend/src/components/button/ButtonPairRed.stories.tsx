@@ -36,7 +36,8 @@ export const AcceptDisabled: Story = {
 /** Accept button in submitting state */
 export const Submitting: Story = {
   args: {
-    acceptLabel: "Deactivating...",
+    acceptLabel: "Deactivate",
+    submittingLabel: "Deactivating…",
     acceptLoading: true,
     acceptDisabled: true,
   },

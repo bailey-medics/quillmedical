@@ -15,8 +15,8 @@
  * ```
  */
 
-import { Button, Group, Loader, useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Button, Group, Loader } from "@mantine/core";
+import classes from "./ButtonPair.module.css";
 
 interface ButtonPairRedProps {
   /** Label for the destructive action button (defaults to "OK") */
@@ -29,9 +29,9 @@ interface ButtonPairRedProps {
   onAccept: () => void;
   /** Called when the cancel button is clicked */
   onCancel: () => void;
-  /** Disables the accept button */
+  /** Disables the accept button (aria-disabled, stays focusable) */
   acceptDisabled?: boolean;
-  /** Shows loading spinner on the accept button */
+  /** Shows loading spinner on the accept button (hides label) */
   acceptLoading?: boolean;
   /** HTML button type for the accept button (defaults to "button") */
   acceptType?: "button" | "submit";
@@ -50,65 +50,35 @@ export default function ButtonPairRed({
   acceptType = "button",
   justify = "flex-end",
 }: ButtonPairRedProps) {
-  const loadingLabel = submittingLabel ?? acceptLabel;
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const buttonSize = isMobile ? "md" : "lg";
-  const fontSize = isMobile
-    ? "var(--mantine-font-size-md)"
-    : "var(--mantine-font-size-lg)";
-
   return (
-    <Group justify={justify} mt="xs">
-      <Button
-        variant="outline"
-        onClick={onCancel}
-        size={buttonSize}
-        styles={{ label: { fontSize } }}
-      >
-        {cancelLabel}
-      </Button>
+    <Group justify={justify} mt="xs" className={classes.group}>
       <Button
         type={acceptType}
-        color="var(--alert-color)"
+        color="red"
         onClick={
           acceptDisabled
             ? (e: React.MouseEvent) => e.preventDefault()
             : onAccept
         }
         aria-disabled={acceptDisabled || undefined}
-        size={buttonSize}
+        size="md"
         styles={{
-          root: {
-            backgroundColor: "var(--alert-color)",
-            "&:hover": { backgroundColor: "var(--alert-color)" },
-            ...(acceptDisabled ? { opacity: 0.6, cursor: "not-allowed" } : {}),
-          },
-          label: { fontSize },
+          root: acceptDisabled
+            ? { opacity: 0.6, cursor: "not-allowed" }
+            : undefined,
         }}
       >
-        <span style={{ display: "grid", placeItems: "center" }}>
-          <span
-            style={{
-              gridArea: "1/1",
-              visibility: acceptLoading ? "hidden" : "visible",
-            }}
-          >
-            {acceptLabel}
-          </span>
-          <span
-            style={{
-              gridArea: "1/1",
-              visibility: acceptLoading ? "visible" : "hidden",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <Loader size="xs" color="white" aria-hidden="true" />
-            {loadingLabel}
-          </span>
-        </span>
+        {acceptLoading ? (
+          <Group gap="xs" wrap="nowrap">
+            <Loader size="xs" color="white" />
+            {submittingLabel ?? acceptLabel}
+          </Group>
+        ) : (
+          acceptLabel
+        )}
+      </Button>
+      <Button variant="outline" onClick={onCancel} size="md">
+        {cancelLabel}
       </Button>
     </Group>
   );

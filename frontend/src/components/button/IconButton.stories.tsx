@@ -7,10 +7,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import IconButton from "./IconButton";
 import { IconPencil } from "@/components/icons/appIcons";
-import type { IconSize } from "@/components/icons";
 import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
-
-const SIZES: IconSize[] = ["sm", "md", "lg"];
 
 const meta = {
   title: "Button/Icon button",
@@ -31,29 +28,6 @@ export const Default: Story = {
     icon: <IconPencil />,
     "aria-label": "Edit",
   },
-};
-
-/**
- * All three sizes side-by-side.
- */
-export const Sizes: Story = {
-  args: {
-    icon: <IconPencil />,
-    "aria-label": "Edit",
-  },
-  render: () => (
-    <VariantStack>
-      {SIZES.map((size) => (
-        <StateRow
-          key={size}
-          label={size === "md" ? "md (default)" : size}
-          align="start"
-        >
-          <IconButton icon={<IconPencil />} size={size} aria-label={size} />
-        </StateRow>
-      ))}
-    </VariantStack>
-  ),
 };
 
 const VARIANTS: Array<

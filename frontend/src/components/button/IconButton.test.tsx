@@ -12,30 +12,12 @@ import IconButton from "./IconButton";
 import { IconPencil, IconTrash, IconCheck } from "@/components/icons/appIcons";
 
 describe("IconButton", () => {
-  it("renders with default medium size (42px container)", () => {
+  it("renders with correct size (42px container)", () => {
     renderWithMantine(<IconButton icon={<IconPencil />} aria-label="Edit" />);
 
     const button = screen.getByRole("button", { name: "Edit" });
     expect(button).toBeInTheDocument();
     expect(button).toHaveClass("mantine-ActionIcon-root");
-  });
-
-  it("renders with small size (36px container)", () => {
-    renderWithMantine(
-      <IconButton icon={<IconPencil />} size="sm" aria-label="Edit small" />,
-    );
-
-    const button = screen.getByRole("button", { name: "Edit small" });
-    expect(button).toBeInTheDocument();
-  });
-
-  it("renders with large size (50px container)", () => {
-    renderWithMantine(
-      <IconButton icon={<IconPencil />} size="lg" aria-label="Edit large" />,
-    );
-
-    const button = screen.getByRole("button", { name: "Edit large" });
-    expect(button).toBeInTheDocument();
   });
 
   it("handles onClick events", async () => {
