@@ -42,8 +42,8 @@ const iconMap: Record<CalloutType, ReactNode> = {
 export default function Callout({ type, children }: CalloutProps) {
   return (
     <BaseCard bg={statusColours[type].bg}>
-      <Group gap="md" wrap="nowrap" align="flex-start">
-        <Box style={{ flexShrink: 0 }}>
+      <Group gap="md" wrap="nowrap" align="center">
+        <Box style={{ flexShrink: 0, transform: "translateY(4.5px)" }}>
           <Icon icon={iconMap[type]} size="lg" />
         </Box>
         <Stack gap={4}>

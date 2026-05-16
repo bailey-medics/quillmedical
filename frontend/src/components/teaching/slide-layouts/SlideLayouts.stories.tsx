@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import SlideLayoutSectionTitle from "./SlideLayoutSectionTitle";
 import SlideLayoutVideo from "./SlideLayoutVideo";
 import SlideLayoutTextWithFigure from "./SlideLayoutTextWithFigure";
@@ -19,58 +18,27 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-export const SectionTitle: Story = {
+export const NewSectionSlide: Story = {
   render: () => <SlideLayoutSectionTitle slide={sectionTitleSlide} />,
+};
+
+export const PlainTextSlide: Story = {
+  render: () => <SlideLayoutDefault slide={defaultSlide} />,
 };
 
 export const Video: Story = {
   render: () => <SlideLayoutVideo slide={videoSlide} />,
 };
 
-export const TextWithFigure: Story = {
+export const FigureWithText: Story = {
   render: () => <SlideLayoutTextWithFigure slide={textWithFigureSlide} />,
-};
-
-export const Default: Story = {
-  render: () => <SlideLayoutDefault slide={defaultSlide} />,
 };
 
 export const DefaultWithCallout: Story = {
   render: () => <SlideLayoutDefault slide={calloutSlide} />,
 };
 
-export const AllLayouts: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="Section title" horizontal={false}>
-        <SlideLayoutSectionTitle slide={sectionTitleSlide} />
-      </VariantRow>
-      <VariantRow label="Video" horizontal={false}>
-        <SlideLayoutVideo slide={videoSlide} />
-      </VariantRow>
-      <VariantRow label="Text with figure" horizontal={false}>
-        <SlideLayoutTextWithFigure slide={textWithFigureSlide} />
-      </VariantRow>
-      <VariantRow label="Default" horizontal={false}>
-        <SlideLayoutDefault slide={defaultSlide} />
-      </VariantRow>
-      <VariantRow label="Default with callout" horizontal={false}>
-        <SlideLayoutDefault slide={calloutSlide} />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
 export const DarkMode: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="Section title" horizontal={false}>
-        <SlideLayoutSectionTitle slide={sectionTitleSlide} />
-      </VariantRow>
-      <VariantRow label="Default with callout" horizontal={false}>
-        <SlideLayoutDefault slide={calloutSlide} />
-      </VariantRow>
-    </VariantStack>
-  ),
+  render: () => <SlideLayoutDefault slide={defaultSlide} />,
   globals: { colorScheme: "dark" },
 };

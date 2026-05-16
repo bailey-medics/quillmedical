@@ -13,12 +13,12 @@ const uniformItem: CandidateItem = {
     {
       key: "image_1",
       label: "White light (WLI)",
-      url: "https://placehold.co/400x300?text=WLI",
+      url: "/storybook/white-light-polyp.png",
     },
     {
       key: "image_2",
       label: "Narrow band imaging (NBI)",
-      url: "https://placehold.co/400x300?text=NBI",
+      url: "/storybook/nbi-polyp.png",
     },
   ],
   options: [
@@ -42,7 +42,7 @@ const variableItem: CandidateItem = {
   images: [
     {
       key: "lesion",
-      url: "https://placehold.co/400x300?text=Lesion",
+      url: "/storybook/chest-xray-pneumothorax.png",
     },
   ],
   text: "A 65-year-old patient presents with a 3mm sessile polyp in the sigmoid colon.",
@@ -188,7 +188,7 @@ export const LastQuestion: Story = {
   },
 };
 
-export const Disabled: Story = {
+export const Review: Story = {
   args: {
     item: { ...uniformItem, display_order: 20 },
     selectedOption: "low_confidence_adenoma",

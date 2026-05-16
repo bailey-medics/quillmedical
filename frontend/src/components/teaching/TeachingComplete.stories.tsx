@@ -93,22 +93,6 @@ export const SlideWithCallout: Story = {
   ),
 };
 
-export const LastSlide: Story = {
-  tags: ["!test"],
-  render: () => (
-    <TeachingLayout sidebar={learningNav(6)} footerText="Logged in: dr.jones">
-      <SlideViewer slide={stubSlides[6]} />
-      <Box hiddenFrom="sm">
-        <PreviousNextButton
-          onPrevious={() => {}}
-          onNext={() => {}}
-          nextLabel="Finish"
-        />
-      </Box>
-    </TeachingLayout>
-  ),
-};
-
 export const DarkModeVideo: Story = {
   tags: ["!test"],
   globals: { colorScheme: "dark" },

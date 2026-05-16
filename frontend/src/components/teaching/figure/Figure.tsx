@@ -25,15 +25,14 @@ export default function Figure({ src, alt, caption }: FigureProps) {
         style={{
           overflow: "hidden",
           borderRadius: "var(--mantine-radius-md)",
-          maxHeight: "60vh",
           width: "fit-content",
+          maxWidth: "100%",
         }}
       >
         <Image
           src={src}
           alt={alt}
-          fit="contain"
-          style={{ maxHeight: "60vh" }}
+          style={{ maxHeight: "80vh", maxWidth: "100%", display: "block" }}
         />
       </Box>
       {caption && <BodyText justify="centre">{caption}</BodyText>}

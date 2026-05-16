@@ -12,6 +12,13 @@ export const sectionTitleSlide: CompiledSlide = {
   body: "A comprehensive overview of morphology categories, clinical implications, and standardised reporting.",
 };
 
+export const defaultSlide: CompiledSlide = {
+  slideIndex: 4,
+  layout: "default",
+  title: "What this module covers",
+  body: "A short introduction covering morphology categories of superficial lesions, clinical implications of each, and how to communicate findings consistently.",
+};
+
 export const videoSlide: CompiledSlide = {
   slideIndex: 1,
   layout: "video-slide",
@@ -40,13 +47,6 @@ export const textWithFigureSlide: CompiledSlide = {
   imageCaption: "Figure 2: Polypoid vs non-polypoid morphology",
 };
 
-export const defaultSlide: CompiledSlide = {
-  slideIndex: 4,
-  layout: "default",
-  title: "What this module covers",
-  body: "A short introduction covering morphology categories of superficial lesions, clinical implications of each, and how to communicate findings consistently.",
-};
-
 export const calloutSlide: CompiledSlide = {
   slideIndex: 5,
   layout: "default",
@@ -66,10 +66,10 @@ export const keyTakeawaysSlide: CompiledSlide = {
 /** Complete set of stub slides for a module */
 export const stubSlides: CompiledSlide[] = [
   sectionTitleSlide,
+  defaultSlide,
   videoSlide,
   imageSlide,
   textWithFigureSlide,
-  defaultSlide,
   calloutSlide,
   keyTakeawaysSlide,
 ];

@@ -5,10 +5,11 @@
  * from the question bank config + "Begin" button.
  */
 
-import { Button, Group, Loader, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { PageHeader } from "@/components/typography";
 import MarkdownView from "@/components/typography/MarkdownView";
 import BaseCard from "@/components/base-card/BaseCard";
+import ActionCardButton from "@/components/button/ActionCardButton";
 
 interface AssessmentIntroProps {
   /** Intro page title from config */
@@ -36,16 +37,11 @@ export function AssessmentIntro({
       <BaseCard>
         <MarkdownView source={body} />
       </BaseCard>
-      <Button size="lg" onClick={onBegin} disabled={disabled || loading}>
-        {loading ? (
-          <Group gap="xs">
-            <Loader size="xs" color="white" />
-            Loading exam…
-          </Group>
-        ) : (
-          "Begin"
-        )}
-      </Button>
+      <ActionCardButton
+        label={loading ? "Loading exam…" : "Begin"}
+        onClick={onBegin}
+        disabled={disabled || loading}
+      />
     </Stack>
   );
 }

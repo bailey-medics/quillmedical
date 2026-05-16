@@ -19,7 +19,7 @@ export const WithCaption: Story = {
 
 export const WithoutCaption: Story = {
   args: {
-    src: "https://placehold.co/600x400/e2e8f0/475569?text=Clinical+image",
+    src: "/storybook/paris-classification.png",
     alt: "Clinical image of colorectal polyp",
   },
 };

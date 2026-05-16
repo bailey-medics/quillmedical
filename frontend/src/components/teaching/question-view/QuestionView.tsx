@@ -62,7 +62,11 @@ interface QuestionViewProps {
 function ImagePanel({ image, single }: { image: ItemImage; single: boolean }) {
   return (
     <Stack gap="xs" align="center" className={classes.imagePanel}>
-      <Box className={classes.imageWrapper}>
+      <Box
+        className={
+          single ? classes.imageWrapperSingle : classes.imageWrapperMulti
+        }
+      >
         <Image
           src={image.url}
           alt={image.label ?? "Question image"}
