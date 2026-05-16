@@ -11,13 +11,13 @@ type Story = StoryObj<typeof VideoPlayer>;
 
 export const YouTube: Story = {
   args: {
-    youtubeId: "dQw4w9WgXcQ",
+    youtubeId: "2OTbDQh3MxM",
   },
 };
 
 export const WithResumePosition: Story = {
   args: {
-    youtubeId: "dQw4w9WgXcQ",
+    youtubeId: "2OTbDQh3MxM",
     resumeAt: 30,
   },
 };

@@ -4,12 +4,14 @@
  * Wraps react-player for consistent video playback across the learning
  * section. V1 supports YouTube via `youtubeId`; V2 will add GCS signed
  * URLs via `signedUrl`.
+ *
+ * Uses react-player v3 which wraps platform-specific custom elements
+ * (youtube-video-element etc.) with a native HTML video interface.
  */
 
 import { Box } from "@mantine/core";
 import { useCallback, useRef } from "react";
 import ReactPlayer from "react-player";
-import type { OnProgressProps } from "react-player/base";
 import classes from "./VideoPlayer.module.css";
 
 export interface VideoPlayerProps {
@@ -31,46 +33,38 @@ export default function VideoPlayer({
   onProgress,
   resumeAt,
 }: VideoPlayerProps) {
-  const playerRef = useRef<ReactPlayer>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
   const hasResumed = useRef(false);
 
-  const url = youtubeId
+  const src = youtubeId
     ? `https://www.youtube.com/watch?v=${youtubeId}`
     : signedUrl;
 
   const handleReady = useCallback(() => {
     if (resumeAt && !hasResumed.current && playerRef.current) {
-      playerRef.current.seekTo(resumeAt, "seconds");
+      playerRef.current.currentTime = resumeAt;
       hasResumed.current = true;
     }
   }, [resumeAt]);
 
-  const handleProgress = useCallback(
-    (state: OnProgressProps) => {
-      onProgress?.(state.playedSeconds);
-    },
-    [onProgress],
-  );
+  const handleTimeUpdate = useCallback(() => {
+    if (onProgress && playerRef.current) {
+      onProgress(playerRef.current.currentTime);
+    }
+  }, [onProgress]);
 
-  if (!url) return null;
+  if (!src) return null;
 
   return (
     <Box className={classes.wrapper}>
       <ReactPlayer
         ref={playerRef}
-        url={url}
+        src={src}
         width="100%"
         height="100%"
         controls
         onReady={handleReady}
-        onProgress={handleProgress}
-        progressInterval={5000}
-        config={{
-          playerVars: {
-            modestbranding: 1,
-            rel: 0,
-          },
-        }}
+        onTimeUpdate={handleTimeUpdate}
       />
     </Box>
   );

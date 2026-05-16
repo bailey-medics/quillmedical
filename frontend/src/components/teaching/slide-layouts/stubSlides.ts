@@ -16,7 +16,7 @@ export const videoSlide: CompiledSlide = {
   slideIndex: 1,
   layout: "video-slide",
   title: "Recorded lecture",
-  youtubeId: "dQw4w9WgXcQ",
+  youtubeId: "2OTbDQh3MxM",
   durationSeconds: 1080,
 };
 

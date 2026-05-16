@@ -3,8 +3,8 @@ import { renderWithMantine } from "@test/test-utils";
 
 // Mock react-player to avoid actual YouTube embedding in tests
 vi.mock("react-player", () => ({
-  default: vi.fn(({ url, controls }: { url: string; controls: boolean }) => (
-    <div data-testid="react-player" data-url={url} data-controls={controls} />
+  default: vi.fn(({ src, controls }: { src: string; controls: boolean }) => (
+    <div data-testid="react-player" data-src={src} data-controls={controls} />
   )),
 }));
 
@@ -19,7 +19,7 @@ describe("VideoPlayer", () => {
     const player = getByTestId("react-player");
     expect(player).toBeInTheDocument();
     expect(player).toHaveAttribute(
-      "data-url",
+      "data-src",
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
   });
