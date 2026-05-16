@@ -4,7 +4,7 @@ import { Group } from "@mantine/core";
 import { StoryNote, VariantStack } from "@/stories/variants";
 
 const meta = {
-  title: "Public/Button/PublicButton",
+  title: "Public/Button/Public button",
   component: PublicButton,
   parameters: {
     layout: "fullscreen",

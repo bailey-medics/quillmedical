@@ -9,7 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ErrorFallback } from "./ErrorBoundary";
 
 const meta: Meta<typeof ErrorFallback> = {
-  title: "ErrorBoundary/ErrorFallback",
+  title: "Error boundary/Error fallback",
   component: ErrorFallback,
   parameters: {
     layout: "padded",

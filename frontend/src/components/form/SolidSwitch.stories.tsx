@@ -6,7 +6,7 @@ import ActionCard from "@/components/action-card/ActionCard";
 import SolidSwitch from "./SolidSwitch";
 
 const meta: Meta<typeof SolidSwitch> = {
-  title: "Form/SolidSwitch",
+  title: "Form/Solid switch",
   component: SolidSwitch,
   parameters: { layout: "padded" },
   argTypes: {

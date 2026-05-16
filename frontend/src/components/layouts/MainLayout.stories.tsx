@@ -22,7 +22,7 @@ const Content = () => <StoryNote>Desktop content area.</StoryNote>;
 // ...existing code...
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/Layout-MainLayout",
+  title: "Layouts/Main layout",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   // Default child for most stories

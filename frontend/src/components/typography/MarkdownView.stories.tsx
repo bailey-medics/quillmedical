@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import MarkdownView from "./MarkdownView";
 
 const meta: Meta<typeof MarkdownView> = {
-  title: "Foundations/Typography/MarkdownView",
+  title: "Foundations/Typography/Markdown view",
   component: MarkdownView,
   parameters: {
     layout: "padded",

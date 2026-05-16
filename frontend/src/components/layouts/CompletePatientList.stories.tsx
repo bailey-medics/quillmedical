@@ -14,7 +14,7 @@ import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 import { Container } from "@mantine/core";
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/PatientList",
+  title: "Layouts/Patient list",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
 };

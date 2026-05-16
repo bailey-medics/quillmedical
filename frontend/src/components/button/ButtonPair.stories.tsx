@@ -10,7 +10,7 @@ import { Loader } from "@mantine/core";
 import ButtonPair from "./ButtonPair";
 
 const meta: Meta<typeof ButtonPair> = {
-  title: "Button/ButtonPair",
+  title: "Button/Button pair",
   component: ButtonPair,
   parameters: {
     layout: "padded",

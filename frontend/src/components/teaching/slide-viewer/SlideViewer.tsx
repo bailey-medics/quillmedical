@@ -8,7 +8,6 @@
 import type { CompiledSlide } from "@/features/teaching/types";
 import SlideLayoutSectionTitle from "@/components/teaching/slide-layouts/SlideLayoutSectionTitle";
 import SlideLayoutVideo from "@/components/teaching/slide-layouts/SlideLayoutVideo";
-import SlideLayoutImage from "@/components/teaching/slide-layouts/SlideLayoutImage";
 import SlideLayoutTextWithFigure from "@/components/teaching/slide-layouts/SlideLayoutTextWithFigure";
 import SlideLayoutDefault from "@/components/teaching/slide-layouts/SlideLayoutDefault";
 
@@ -38,7 +37,6 @@ export default function SlideViewer({
         />
       );
     case "image-slide":
-      return <SlideLayoutImage slide={slide} />;
     case "text-with-figure":
       return <SlideLayoutTextWithFigure slide={slide} />;
     default:

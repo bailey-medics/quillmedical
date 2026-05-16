@@ -23,7 +23,7 @@ const sampleOptions = [
 ];
 
 const meta: Meta<typeof RadioField> = {
-  title: "Form/RadioField",
+  title: "Form/Radio field",
   component: RadioField,
   parameters: { layout: "padded" },
 };

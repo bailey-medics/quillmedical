@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicTopRibbon from "./PublicTopRibbon";
 
 const meta: Meta<typeof PublicTopRibbon> = {
-  title: "Public/Ribbons/PublicTopRibbon",
+  title: "Public/Ribbons/Public top ribbon",
   component: PublicTopRibbon,
   parameters: {
     layout: "fullscreen",

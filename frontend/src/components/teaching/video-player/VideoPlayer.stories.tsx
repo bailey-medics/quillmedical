@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import VideoPlayer from "./VideoPlayer";
 
 const meta: Meta<typeof VideoPlayer> = {
-  title: "Teaching/VideoPlayer",
+  title: "Teaching/Video player",
   component: VideoPlayer,
 };
 
@@ -25,10 +25,4 @@ export const WithResumePosition: Story = {
 export const DarkMode: Story = {
   ...YouTube,
   globals: { colorScheme: "dark" },
-};
-
-export const Loading: Story = {
-  args: {
-    youtubeId: "INVALID_ID_FOR_SKELETON",
-  },
 };

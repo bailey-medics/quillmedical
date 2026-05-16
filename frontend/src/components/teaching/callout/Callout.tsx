@@ -1,20 +1,30 @@
 /**
  * Callout Component
  *
- * Styled call-out box for learning content. Renders as a coloured
- * left-bordered box with an icon and body text. Used in MDX slides.
+ * Styled call-out box for learning content. Uses BaseCard with a
+ * status colour background, matching StateMessage and other coloured
+ * cards across the app.
+ *
+ * Uses the shared status colour palette for visual consistency
+ * with badges, StateMessage, and other coloured UI across the app.
  */
 
-import { Alert } from "@mantine/core";
+import { Box, Group, Stack } from "@mantine/core";
 import {
   IconInfoCircle,
   IconAlertTriangle,
   IconCircleCheck,
 } from "@/components/icons/appIcons";
 import type { ReactNode } from "react";
-import classes from "./Callout.module.css";
+import BaseCard from "@/components/base-card/BaseCard";
+import Icon from "@/components/icons";
+import BodyText from "@/components/typography/BodyText";
+import { statusColours, type StatusColourName } from "@/styles/semanticColours";
 
-export type CalloutType = "info" | "warning" | "success";
+export type CalloutType = Extract<
+  StatusColourName,
+  "info" | "warning" | "success"
+>;
 
 export interface CalloutProps {
   /** Callout variant */
@@ -29,22 +39,17 @@ const iconMap: Record<CalloutType, ReactNode> = {
   success: <IconCircleCheck />,
 };
 
-const colourMap: Record<CalloutType, string> = {
-  info: "var(--info-color)",
-  warning: "var(--warning-color)",
-  success: "var(--success-color)",
-};
-
 export default function Callout({ type, children }: CalloutProps) {
   return (
-    <Alert
-      icon={iconMap[type]}
-      className={classes.callout}
-      styles={{
-        root: { borderLeftColor: colourMap[type] },
-      }}
-    >
-      {children}
-    </Alert>
+    <BaseCard bg={statusColours[type].bg}>
+      <Group gap="md" wrap="nowrap" align="flex-start">
+        <Box style={{ flexShrink: 0 }}>
+          <Icon icon={iconMap[type]} size="lg" />
+        </Box>
+        <Stack gap={4}>
+          <BodyText c="white">{children}</BodyText>
+        </Stack>
+      </Group>
+    </BaseCard>
   );
 }

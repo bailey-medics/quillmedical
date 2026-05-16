@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import NotFoundLayout from "./NotFoundLayout";
 
 const meta: Meta<typeof NotFoundLayout> = {
-  title: "Layouts/NotFoundLayout",
+  title: "Layouts/Not found layout",
   component: NotFoundLayout,
   parameters: {
     layout: "fullscreen",

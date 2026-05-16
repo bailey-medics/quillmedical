@@ -4,7 +4,7 @@ import PublicFeatureCardGrid from "./PublicFeatureCardGrid";
 import { IconMessage } from "@/components/icons/appIcons";
 
 const meta = {
-  title: "Public/FeatureCard/PublicFeatureCard",
+  title: "Public/Feature card/Public feature card",
   component: PublicFeatureCard,
   parameters: {
     layout: "fullscreen",

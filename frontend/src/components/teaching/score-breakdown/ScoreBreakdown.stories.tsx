@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ScoreBreakdown } from "./ScoreBreakdown";
 
 const meta: Meta<typeof ScoreBreakdown> = {
-  title: "Teaching/ScoreBreakdown",
+  title: "Teaching/Score breakdown",
   component: ScoreBreakdown,
   parameters: {
     layout: "padded",

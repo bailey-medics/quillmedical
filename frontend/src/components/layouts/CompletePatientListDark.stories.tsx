@@ -12,7 +12,7 @@ import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 import { Container } from "@mantine/core";
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/PatientList-Dark",
+  title: "Layouts/Patient list dark",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   globals: { colorScheme: "dark" },

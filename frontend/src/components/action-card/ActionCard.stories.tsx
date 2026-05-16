@@ -16,7 +16,7 @@ import {
 import { SimpleGrid } from "@mantine/core";
 
 const meta = {
-  title: "ActionCard/ActionCard",
+  title: "Action card/Action card",
   component: ActionCard,
   parameters: {
     layout: "padded",

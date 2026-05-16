@@ -47,7 +47,7 @@ function LayoutDecorator({
 }
 
 const meta: Meta<typeof OfflineStrip> = {
-  title: "Overlays/OfflineStrip",
+  title: "Overlays/Offline strip",
   component: OfflineStrip,
   parameters: {
     layout: "fullscreen",

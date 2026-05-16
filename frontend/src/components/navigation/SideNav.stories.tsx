@@ -11,7 +11,7 @@ import SideNav from "./SideNav";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta = {
-  title: "Navigation/SideNav",
+  title: "Navigation/Side nav",
   component: SideNav,
 } satisfies Meta<typeof SideNav>;
 export default meta;

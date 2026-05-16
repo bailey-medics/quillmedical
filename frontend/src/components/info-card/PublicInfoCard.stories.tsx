@@ -3,7 +3,7 @@ import PublicInfoCard from "./PublicInfoCard";
 import { Box, SimpleGrid } from "@mantine/core";
 
 const meta = {
-  title: "Public/InfoCard/PublicInfoCard",
+  title: "Public/Info card/Public info card",
   component: PublicInfoCard,
   parameters: {
     layout: "fullscreen",

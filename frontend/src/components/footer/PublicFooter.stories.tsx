@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicFooter from "./PublicFooter";
 
 const meta: Meta<typeof PublicFooter> = {
-  title: "Public/Footer/PublicFooter",
+  title: "Public/Footer/Public footer",
   component: PublicFooter,
   parameters: {
     layout: "fullscreen",

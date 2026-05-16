@@ -11,7 +11,7 @@ import { StateRow } from "@/stories/variants";
 import { Group } from "@mantine/core";
 
 const meta: Meta<typeof BurgerButton> = {
-  title: "Button/BurgerButton",
+  title: "Button/Burger button",
   component: BurgerButton,
   parameters: {
     layout: "fullscreen",

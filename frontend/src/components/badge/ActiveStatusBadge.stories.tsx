@@ -9,7 +9,7 @@ import { Group } from "@mantine/core";
 import ActiveStatusBadge from "./ActiveStatusBadge";
 
 const meta: Meta<typeof ActiveStatusBadge> = {
-  title: "Badge/ActiveStatusBadge",
+  title: "Badge/Active status badge",
   component: ActiveStatusBadge,
   parameters: {
     layout: "padded",

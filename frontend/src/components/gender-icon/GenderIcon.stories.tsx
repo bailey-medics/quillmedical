@@ -3,7 +3,7 @@ import { Group, Stack } from "@mantine/core";
 import GenderIcon from "./GenderIcon";
 
 const meta: Meta<typeof GenderIcon> = {
-  title: "Gender/GenderIcon",
+  title: "Gender/Gender icon",
   component: GenderIcon,
   parameters: {
     layout: "padded",

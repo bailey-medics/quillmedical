@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AssessmentIntro } from "./AssessmentIntro";
 
 const meta: Meta<typeof AssessmentIntro> = {
-  title: "Teaching/AssessmentIntro",
+  title: "Teaching/Assessment intro",
   component: AssessmentIntro,
 };
 

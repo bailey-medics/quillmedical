@@ -1,11 +1,11 @@
 /**
  * SlideLayoutTextWithFigure
  *
- * Split layout: text on one side, image on the other.
- * On mobile the image stacks below the text.
+ * Stacked layout: heading, then image with caption, then body text
+ * and optional callout underneath.
  */
 
-import { SimpleGrid, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
 import Figure from "@/components/teaching/figure/Figure";
@@ -22,21 +22,17 @@ export default function SlideLayoutTextWithFigure({
   return (
     <Stack gap="md">
       <Heading>{slide.title}</Heading>
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <Stack gap="md">
-          {slide.body && <BodyText>{slide.body}</BodyText>}
-          {slide.calloutType && slide.calloutBody && (
-            <Callout type={slide.calloutType}>{slide.calloutBody}</Callout>
-          )}
-        </Stack>
-        {slide.imageSrc && (
-          <Figure
-            src={slide.imageSrc}
-            alt={slide.imageAlt ?? slide.title}
-            caption={slide.imageCaption}
-          />
-        )}
-      </SimpleGrid>
+      {slide.imageSrc && (
+        <Figure
+          src={slide.imageSrc}
+          alt={slide.imageAlt ?? slide.title}
+          caption={slide.imageCaption}
+        />
+      )}
+      {slide.body && <BodyText>{slide.body}</BodyText>}
+      {slide.calloutType && slide.calloutBody && (
+        <Callout type={slide.calloutType}>{slide.calloutBody}</Callout>
+      )}
     </Stack>
   );
 }

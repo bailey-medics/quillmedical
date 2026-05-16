@@ -11,7 +11,7 @@ import { StoryNote } from "@/stories/variants";
 import FormStatusNarrow from "./FormStatusNarrow";
 
 const meta: Meta<typeof FormStatusNarrow> = {
-  title: "Form/FormStatusNarrow",
+  title: "Form/Form status narrow",
   component: FormStatusNarrow,
   parameters: {
     layout: "padded",

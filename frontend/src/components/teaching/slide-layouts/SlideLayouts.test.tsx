@@ -3,13 +3,11 @@ import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import SlideLayoutSectionTitle from "./SlideLayoutSectionTitle";
 import SlideLayoutVideo from "./SlideLayoutVideo";
-import SlideLayoutImage from "./SlideLayoutImage";
 import SlideLayoutTextWithFigure from "./SlideLayoutTextWithFigure";
 import SlideLayoutDefault from "./SlideLayoutDefault";
 import {
   sectionTitleSlide,
   videoSlide,
-  imageSlide,
   textWithFigureSlide,
   defaultSlide,
   calloutSlide,
@@ -52,27 +50,6 @@ describe("SlideLayoutVideo", () => {
   it("renders the video player", () => {
     renderWithMantine(<SlideLayoutVideo slide={videoSlide} />);
     expect(screen.getByTestId("react-player")).toBeInTheDocument();
-  });
-});
-
-describe("SlideLayoutImage", () => {
-  it("renders the title", () => {
-    renderWithMantine(<SlideLayoutImage slide={imageSlide} />);
-    expect(
-      screen.getByText("Paris classification overview"),
-    ).toBeInTheDocument();
-  });
-
-  it("renders the image", () => {
-    renderWithMantine(<SlideLayoutImage slide={imageSlide} />);
-    expect(screen.getByRole("img")).toBeInTheDocument();
-  });
-
-  it("renders the caption", () => {
-    renderWithMantine(<SlideLayoutImage slide={imageSlide} />);
-    expect(
-      screen.getByText(/Paris classification of superficial/),
-    ).toBeInTheDocument();
   });
 });
 

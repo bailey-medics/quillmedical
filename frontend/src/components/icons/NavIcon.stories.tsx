@@ -27,7 +27,7 @@ const iconNames = [
 const sizes = ["xs", "sm", "md", "lg", "xl"] as const;
 
 const meta = {
-  title: "Icons/NavIcon",
+  title: "Icons/Nav icon",
   component: NavIcon,
   parameters: {
     layout: "padded",

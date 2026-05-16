@@ -4,7 +4,7 @@ import BodyText from "./BodyText";
 import { Box, Stack } from "@mantine/core";
 
 const meta = {
-  title: "Foundations/Typography/PageHeader",
+  title: "Foundations/Typography/Page header",
   component: PageHeader,
   parameters: {
     layout: "padded",

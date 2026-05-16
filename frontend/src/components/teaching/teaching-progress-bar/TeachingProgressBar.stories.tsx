@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TeachingProgressBar } from "./TeachingProgressBar";
 
 const meta: Meta<typeof TeachingProgressBar> = {
-  title: "Teaching/TeachingProgressBar",
+  title: "Teaching/Teaching progress bar",
   component: TeachingProgressBar,
 };
 

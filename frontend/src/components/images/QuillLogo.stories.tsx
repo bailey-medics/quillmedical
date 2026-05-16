@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import QuillLogo from "./QuillLogo";
 
 const meta: Meta<typeof QuillLogo> = {
-  title: "Images/QuillLogo",
+  title: "Images/Quill logo",
   component: QuillLogo,
   parameters: {
     layout: "padded",

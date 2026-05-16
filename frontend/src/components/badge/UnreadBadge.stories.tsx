@@ -9,7 +9,7 @@ import { Group } from "@mantine/core";
 import UnreadBadge from "./UnreadBadge";
 
 const meta: Meta<typeof UnreadBadge> = {
-  title: "Badge/UnreadBadge",
+  title: "Badge/Unread badge",
   component: UnreadBadge,
   parameters: {
     layout: "padded",

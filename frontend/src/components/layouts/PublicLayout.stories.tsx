@@ -5,7 +5,7 @@ import PublicTitle from "@/components/typography/PublicTitle";
 import PublicBodyText from "@/components/typography/PublicBodyText";
 
 const meta: Meta<typeof PublicLayout> = {
-  title: "Public/Layouts/PublicLayout",
+  title: "Public/Layouts/Public layout",
   component: PublicLayout,
   parameters: {
     layout: "fullscreen",

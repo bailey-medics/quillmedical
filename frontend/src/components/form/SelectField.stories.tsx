@@ -4,7 +4,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import SelectField from "./SelectField";
 
 const meta: Meta<typeof SelectField> = {
-  title: "Form/SelectField",
+  title: "Form/Select field",
   component: SelectField,
   parameters: { layout: "padded" },
 };

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DocumentThumbnail } from "./DocumentThumbnail";
 
 const meta: Meta<typeof DocumentThumbnail> = {
-  title: "Documents/DocumentThumbnail",
+  title: "Documents/Document thumbnail",
   component: DocumentThumbnail,
 };
 export default meta;

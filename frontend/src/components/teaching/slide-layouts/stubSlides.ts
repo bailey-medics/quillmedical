@@ -34,7 +34,8 @@ export const textWithFigureSlide: CompiledSlide = {
   layout: "text-with-figure",
   title: "Polyp morphology",
   body: "Polypoid (0-I) versus non-polypoid (0-II) is the primary axis of the Paris classification. The distinction matters because non-polypoid lesions are harder to detect and have different malignancy risks.",
-  imageSrc: "https://placehold.co/400x300/e2e8f0/475569?text=Polyp+morphology",
+  imageSrc:
+    "/storybook/macroscopic-classification-of-superficial-colorectal-neoplasms.png",
   imageAlt: "Comparison of polypoid and non-polypoid lesions",
   imageCaption: "Figure 2: Polypoid vs non-polypoid morphology",
 };

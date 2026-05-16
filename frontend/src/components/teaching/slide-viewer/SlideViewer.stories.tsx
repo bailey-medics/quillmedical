@@ -11,7 +11,7 @@ import {
 } from "@/components/teaching/slide-layouts/stubSlides";
 
 const meta: Meta<typeof SlideViewer> = {
-  title: "Teaching/SlideViewer",
+  title: "Teaching/Slide viewer",
   component: SlideViewer,
 };
 

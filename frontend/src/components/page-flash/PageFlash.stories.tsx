@@ -31,7 +31,7 @@ function renderStoryWithState(flash: FlashState["flash"]) {
 }
 
 const meta: Meta<typeof PageFlash> = {
-  title: "PageFlash/PageFlash",
+  title: "Page flash/Page flash",
   component: PageFlash,
   parameters: {
     layout: "padded",

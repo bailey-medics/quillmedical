@@ -55,7 +55,7 @@ const variableItem: CandidateItem = {
 };
 
 const meta: Meta<typeof QuestionView> = {
-  title: "Teaching/QuestionView",
+  title: "Teaching/Question view",
   component: QuestionView,
   parameters: {
     layout: "fullscreen",

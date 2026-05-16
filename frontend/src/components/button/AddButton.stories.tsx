@@ -11,7 +11,7 @@ import { StateRow } from "@/stories/variants";
 import { Group } from "@mantine/core";
 
 const meta: Meta<typeof AddButton> = {
-  title: "Button/AddButton",
+  title: "Button/Add button",
   component: AddButton,
   parameters: {
     layout: "padded",

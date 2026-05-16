@@ -106,7 +106,7 @@ All reusable UI must live in `frontend/src/components/` with Storybook stories. 
 | Icons | Icon, NavIcon, PublicNavIcon, PassIcon, FailIcon | `components/icons/` |
 | Images | QuillLogo, QuillName | `components/images/` |
 | InfoCard | PublicInfoCard | `components/info-card/` |
-| Layouts | MainLayout, NotFoundLayout, PublicLayout, PublicNotFound, Complete, Complete.PatientList | `components/layouts/` |
+| Layouts | MainLayout, NotFoundLayout, PublicLayout, PublicNotFound, TeachingLayout, Complete, Complete.PatientList | `components/layouts/` |
 | Letters | LetterList, LetterView | `components/letters/` |
 | MessageCards | ResultMessage, StateMessage | `components/message-cards/` |
 | Messaging | Messaging, MessagesList, MessagingTriagePayment, NewMessageModal | `components/messaging/` |

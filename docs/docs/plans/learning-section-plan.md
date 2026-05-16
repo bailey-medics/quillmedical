@@ -455,17 +455,73 @@ Deep-linking to a specific slide is supported. The slide index in the URL is the
 
 Each new component gets `.stories.tsx` and `.test.tsx`.
 
+### TeachingLayout — clinical safety through separation of concerns
+
+All teaching pages (both learning and assessment) use a dedicated `TeachingLayout` component instead of `MainLayout`. This is a deliberate clinical safety decision: teaching pages have **zero access to patient data** by design, not by flag.
+
+**Why not `MainLayout` + `examMode`?** The current assessment implementation uses `MainLayout` with an `examMode` flag that hides patient UI. This is a clinical safety risk:
+
+- The patient data pipeline (`LayoutCtx`) is still active — if `examMode` fails to toggle (bug, race condition, unmount timing), PHI (Protected Health Information) could leak into a teaching context
+- Developers working on `MainLayout` could accidentally break exam mode or vice versa
+- Harder to audit — the clinical safety officer must understand a flag rather than a structural boundary
+
+**`TeachingLayout` eliminates these risks structurally:**
+
+|                 | MainLayout              | TeachingLayout           |
+| --------------- | ----------------------- | ------------------------ |
+| Purpose         | Clinical pages          | All teaching pages       |
+| Patient context | Yes (via `LayoutCtx`)   | **None — not in scope**  |
+| Sidebar         | `SideNav` (patient nav) | Optional `sidebar` slot  |
+| TopRibbon       | Patient info, search    | No patient, no search    |
+| Footer          | Auth-aware              | Auth-aware (same)        |
+| PHI risk        | By design               | **Eliminated by design** |
+
+**Props:**
+
+```typescript
+interface TeachingLayoutProps {
+  /** Optional sidebar content (e.g. LearningNav). No sidebar when omitted */
+  sidebar?: ReactNode;
+  /** Optional sidebar content for mobile drawer. Falls back to sidebar */
+  drawerContent?: ReactNode;
+  /** Page content */
+  children: ReactNode;
+  /** Override footer text (defaults to auth context) */
+  footerText?: string;
+}
+```
+
+**Usage patterns:**
+
+- **Learning slides:** `<TeachingLayout sidebar={<LearningNav .../>} drawerContent={<LearningNav .../>}>` — sidebar with slide list, drawer on mobile
+- **Module hub (`TeachingModuleMain`):** `<TeachingLayout sidebar={<ModuleNav .../>} drawerContent={<ModuleNav .../>}>` — sidebar with module-level navigation (see below)
+- **Assessments:** `<TeachingLayout>` — no sidebar, full-width content for exam focus
+- **Teaching dashboards (list pages):** `<TeachingLayout>` — no sidebar needed
+
+**Implementation:** lives in `src/components/layouts/TeachingLayout.tsx` alongside `MainLayout`. Composes the same primitives (TopRibbon, Footer, NavigationDrawer) but deliberately excludes patient context. Renders `<Box hiddenFrom="sm"><PreviousNextButton/></Box>` when `onPrevious`/`onNext` props are provided (mobile-only navigation for learning slides).
+
+### Module navigation sidebar
+
+The **`ModuleNav`** component renders in `TeachingLayout`'s sidebar slot on the `TeachingModuleMain` page (`/teaching/:bankId`). It provides module-level navigation with three links:
+
+- **Dashboard** — navigates back to `/teaching` (the main teaching dashboard)
+- **Learning materials** — navigates to `/teaching/learn/:moduleId`
+- **Start assessment** — navigates to the assessment flow for this module
+
+Uses the same Mantine `NavLink` primitives as `LearningNav` and `SideNav`. Lives in `src/components/navigation/ModuleNav.tsx` with `.stories.tsx` and `.test.tsx`.
+
 ### Slide navigation sidebar
 
-Reuse the existing sidebar infrastructure (`MainLayout`'s fixed sidebar on desktop, `<NavigationDrawer>` on mobile) but render a **separate `LearningNav` component** instead of the normal `SideNavContent`. The two navs share the same underlying Mantine `NavLink` / `NestedNavLink` primitives but are separate files with no conditional branching between them.
+The `LearningNav` component renders inside `TeachingLayout`'s optional sidebar slot — **not** inside `MainLayout`. There is no conditional layout switching or sidebar swapping within `MainLayout`.
 
-- **`LearningNav.tsx`** — new component in `src/components/navigation/`. Receives the compiled slide list, current slide index, and visited set as props. Renders:
-  - `slide-progress/` fraction + progress bar at the top
-  - A list of all slide titles as `NavLink` items, each with a type icon (text, video, callout). Current slide highlighted via `active` prop. Video slides show duration as right section. Visited slides marked with a subtle tick icon
+- **`LearningNav.tsx`** — component in `src/components/navigation/`. Receives the compiled slide list, current slide index, and visited set as props. Renders:
+  - `TeachingProgressBar` fraction + progress bar at the top
+  - A list of all slide titles as `NavLink` items, each with a type icon (text, video, callout). Current slide highlighted via `active` prop. Video slides show duration for unvisited slides
   - Click any title to jump directly to that slide (calls `onNavigate` to close drawer on mobile, same pattern as `SideNavContent`)
-- **Layout switching** — `MainLayout` already accepts content for the sidebar area. When the route is under `/teaching/learn/:moduleId/slide/`, the layout renders `<LearningNav>` in place of `<SideNav>`. On all other routes, the normal `<SideNav>` renders. This is a simple conditional at the layout level, not inside `SideNavContent`
-- **Assessments** — `examMode` already hides the sidebar entirely (existing behaviour, no changes needed)
-- **Mobile** — `LearningNav` renders inside the existing `<NavigationDrawer>` on small screens, triggered by the same burger button. No new drawer component needed
+  - Exit link at the bottom to return to the module overview
+- **Desktop** — `LearningNav` renders in `TeachingLayout`'s fixed sidebar (260px wide)
+- **Mobile** — `LearningNav` renders inside `TeachingLayout`'s `<NavigationDrawer>`, triggered by the burger button. `PreviousNextButton` appears below the content for quick prev/next without opening the drawer
+- **Assessments** — `TeachingLayout` with no sidebar slot = no sidebar at all. No `examMode` flag needed
 
 ### Types
 
@@ -605,31 +661,39 @@ This is both internal documentation and the contractual artefact for each conten
 1. `<SlideViewer>` and layout components (with Storybook stories) — stub data, no backend needed
 2. `<VideoPlayer>` component using `react-player` with YouTube embed (Storybook story)
 3. Slide navigation sidebar (`LearningNav`) in Storybook
-4. Frontend: learning dashboard and module overview pages (stub data)
-5. Wire up slide reader end-to-end with stub compiled JSON and YouTube videos
-6. Playwright tests for slide flow (navigation, keyboard, bookmark stub)
-7. Accessibility audit and fixes
+4. `TeachingLayout` component — the shared layout for all teaching pages (learning + assessments). No patient context, optional sidebar slot. Storybook stories showing learning (with `LearningNav` sidebar) and assessment (no sidebar) variants
+5. Frontend: learning dashboard and module overview pages (stub data)
+6. Wire up slide reader end-to-end with stub compiled JSON and YouTube videos, using `TeachingLayout`
+7. Playwright tests for slide flow (navigation, keyboard, bookmark stub)
+8. Accessibility audit and fixes
 
 **Phase 2 — Backend and content pipeline**
 
-8. Database models and Alembic migration (`backend/app/features/teaching/models.py`)
-9. Bookmark/progress endpoints and frontend integration
-10. `teaching-tooling` repo: validation scripts, MDX compiler, reusable GitHub Actions workflows
-11. Content sync API endpoint + thin workflow callers in `eoeeta-teaching` organisation repo
+9. Database models and Alembic migration (`backend/app/features/teaching/models.py`)
+10. Bookmark/progress endpoints and frontend integration
+11. `teaching-tooling` repo: validation scripts, MDX compiler, reusable GitHub Actions workflows
+12. Content sync API endpoint + thin workflow callers in `eoeeta-teaching` organisation repo
 
 **Phase 3 — GCS video infrastructure (replaces YouTube)**
 
-12. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
-13. Cloud Run transcoding job — get one test video through end to end
-14. Cloud Run caption job — Whisper integration
-15. Signed URL minting endpoint — security-critical, prioritise tests
-16. Swap `<VideoPlayer>` from `react-player`/YouTube to GCS signed URLs (evaluate Plyr at this point)
+13. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
+14. Cloud Run transcoding job — get one test video through end to end
+15. Cloud Run caption job — Whisper integration
+16. Signed URL minting endpoint — security-critical, prioritise tests
+17. Swap `<VideoPlayer>` from `react-player`/YouTube to GCS signed URLs (evaluate Plyr at this point)
 
-**Phase 4 — Polish and ship**
+**Phase 4 — Migrate assessments to TeachingLayout**
 
-17. Manual QA (quality assurance) across browsers and PWA modes
-18. `CONTENT_FORMAT.md` finalisation in organisation repo
-19. First real EoEETA module through the pipeline
+18. Move assessment pages (`AssessmentAttempt`, `AssessmentResultPage`) from `MainLayout` + `examMode` to `TeachingLayout` (no sidebar variant)
+19. Remove `examMode` flag from `MainLayout` and `RootLayout` — no longer needed
+20. Update `LayoutCtx` to remove `setExamMode` — assessment pages no longer toggle layout state
+21. Verify all assessment Storybook stories and tests pass with the new layout
+
+**Phase 5 — Polish and ship**
+
+22. Manual QA (quality assurance) across browsers and PWA modes
+23. `CONTENT_FORMAT.md` finalisation in organisation repo
+24. First real EoEETA module through the pipeline
 
 ---
 

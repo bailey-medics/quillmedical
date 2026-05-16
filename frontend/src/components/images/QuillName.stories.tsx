@@ -12,7 +12,7 @@ import QuillName from "./QuillName";
 import Image from "@components/images/Image";
 
 const meta: Meta<typeof QuillName> = {
-  title: "Images/QuillName",
+  title: "Images/Quill name",
   component: QuillName,
   parameters: {
     layout: "padded",

@@ -13,7 +13,7 @@ import { StateRow, VariantRow, VariantStack } from "@/stories/variants";
 const SIZES: IconSize[] = ["sm", "md", "lg"];
 
 const meta = {
-  title: "Button/IconButton",
+  title: "Button/Icon button",
   component: IconButton,
   parameters: {
     layout: "padded",

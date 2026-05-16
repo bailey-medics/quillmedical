@@ -4,7 +4,7 @@ import type { DocumentProps } from "./Document";
 import { VariantStack } from "@/stories/variants";
 
 const meta: Meta<typeof DocumentsList> = {
-  title: "Documents/DocumentsList",
+  title: "Documents/Documents list",
   component: DocumentsList,
 };
 export default meta;

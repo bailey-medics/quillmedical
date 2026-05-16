@@ -3,7 +3,7 @@ import PublicBodyText from "./PublicBodyText";
 import { VariantRow, VariantStack } from "@/stories/variants";
 
 const meta = {
-  title: "Public/Typography/PublicBodyText",
+  title: "Public/Typography/Public body text",
   component: PublicBodyText,
   parameters: {
     layout: "fullscreen",

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import BodyTextClamp from "./BodyTextClamp";
 
 const meta: Meta<typeof BodyTextClamp> = {
-  title: "Foundations/Typography/BodyTextClamp",
+  title: "Foundations/Typography/Body text clamp",
   component: BodyTextClamp,
   parameters: { layout: "padded" },
 };

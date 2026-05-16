@@ -12,7 +12,7 @@ import LetterList from "./LetterList";
 import { fakeLetters } from "@/data/fakeLetters";
 
 const meta: Meta<typeof LetterList> = {
-  title: "Letters/LetterList",
+  title: "Letters/Letter list",
   component: LetterList,
 };
 

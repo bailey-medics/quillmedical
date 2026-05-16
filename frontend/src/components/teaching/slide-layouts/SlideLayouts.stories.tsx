@@ -2,20 +2,18 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { VariantRow, VariantStack } from "@/stories/variants";
 import SlideLayoutSectionTitle from "./SlideLayoutSectionTitle";
 import SlideLayoutVideo from "./SlideLayoutVideo";
-import SlideLayoutImage from "./SlideLayoutImage";
 import SlideLayoutTextWithFigure from "./SlideLayoutTextWithFigure";
 import SlideLayoutDefault from "./SlideLayoutDefault";
 import {
   sectionTitleSlide,
   videoSlide,
-  imageSlide,
   textWithFigureSlide,
   defaultSlide,
   calloutSlide,
 } from "./stubSlides";
 
 const meta: Meta = {
-  title: "Teaching/SlideLayouts",
+  title: "Teaching/Slide layouts",
 };
 
 export default meta;
@@ -27,10 +25,6 @@ export const SectionTitle: Story = {
 
 export const Video: Story = {
   render: () => <SlideLayoutVideo slide={videoSlide} />,
-};
-
-export const ImageSlide: Story = {
-  render: () => <SlideLayoutImage slide={imageSlide} />,
 };
 
 export const TextWithFigure: Story = {
@@ -53,9 +47,6 @@ export const AllLayouts: Story = {
       </VariantRow>
       <VariantRow label="Video" horizontal={false}>
         <SlideLayoutVideo slide={videoSlide} />
-      </VariantRow>
-      <VariantRow label="Image" horizontal={false}>
-        <SlideLayoutImage slide={imageSlide} />
       </VariantRow>
       <VariantRow label="Text with figure" horizontal={false}>
         <SlideLayoutTextWithFigure slide={textWithFigureSlide} />

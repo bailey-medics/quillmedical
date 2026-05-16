@@ -7,7 +7,7 @@ import { StoryNote } from "@/stories/variants";
 import EllipsisMenu from "./EllipsisMenu";
 
 const meta: Meta<typeof EllipsisMenu> = {
-  title: "Button/EllipsisMenu",
+  title: "Button/Ellipsis menu",
   component: EllipsisMenu,
   parameters: { layout: "padded" },
 };

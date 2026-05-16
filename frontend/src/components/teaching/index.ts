@@ -15,7 +15,6 @@ export { VideoPlayer } from "./video-player";
 export {
   SlideLayoutSectionTitle,
   SlideLayoutVideo,
-  SlideLayoutImage,
   SlideLayoutTextWithFigure,
   SlideLayoutDefault,
 } from "./slide-layouts";

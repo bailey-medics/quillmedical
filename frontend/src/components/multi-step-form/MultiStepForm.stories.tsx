@@ -13,7 +13,7 @@ import { SelectField, TextField } from "@/components/form";
 import { Heading } from "@/components/typography";
 
 const meta = {
-  title: "Form/MultiStepForm",
+  title: "Form/Multi step form",
   component: MultiStepForm,
   parameters: {
     layout: "padded",

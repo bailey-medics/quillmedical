@@ -9,7 +9,7 @@ import { fn } from "storybook/test";
 import ButtonPairRed from "./ButtonPairRed";
 
 const meta: Meta<typeof ButtonPairRed> = {
-  title: "Button/ButtonPairRed",
+  title: "Button/Button pair red",
   component: ButtonPairRed,
   parameters: {
     layout: "padded",

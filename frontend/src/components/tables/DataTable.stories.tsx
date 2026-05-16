@@ -26,7 +26,7 @@ interface Patient {
 }
 
 const meta: Meta<typeof DataTable<User>> = {
-  title: "Tables/DataTable",
+  title: "Tables/Data table",
   component: DataTable,
   parameters: {
     layout: "padded",

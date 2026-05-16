@@ -27,7 +27,7 @@ import MainLayout from "./MainLayout";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/Layout-Complete",
+  title: "Layouts/Layout complete",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
 };

@@ -3,7 +3,7 @@ import LearningNav from "./LearningNav";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 
 const meta: Meta<typeof LearningNav> = {
-  title: "Teaching/LearningNav",
+  title: "Teaching/Nav/Learning nav",
   component: LearningNav,
   decorators: [
     (Story) => (

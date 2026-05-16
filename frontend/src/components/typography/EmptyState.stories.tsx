@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import EmptyState from "./EmptyState";
 
 const meta: Meta<typeof EmptyState> = {
-  title: "Foundations/Typography/EmptyState",
+  title: "Foundations/Typography/Empty state",
   component: EmptyState,
   parameters: { layout: "padded" },
 };
