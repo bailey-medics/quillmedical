@@ -23,6 +23,7 @@ export const Default: Story = {
     currentIndex: 2,
     visited: new Set([0, 1]),
     onNavigate: () => {},
+    onExit: () => {},
   },
 };
 
@@ -32,6 +33,7 @@ export const AtStart: Story = {
     currentIndex: 0,
     visited: new Set(),
     onNavigate: () => {},
+    onExit: () => {},
   },
 };
 
@@ -41,6 +43,7 @@ export const AllVisited: Story = {
     currentIndex: 6,
     visited: new Set([0, 1, 2, 3, 4, 5, 6]),
     onNavigate: () => {},
+    onExit: () => {},
   },
 };
 

@@ -68,6 +68,7 @@ function TeachingShell({
           patient={null}
           navOpen={opened}
           isNarrow={isSm}
+          showSearch={false}
         />
       </Box>
 
@@ -78,6 +79,7 @@ function TeachingShell({
             currentIndex={currentIndex}
             visited={visited}
             onNavigate={close}
+            onExit={close}
           />
         </NavigationDrawer>
 
@@ -96,6 +98,7 @@ function TeachingShell({
               currentIndex={currentIndex}
               visited={visited}
               onNavigate={() => {}}
+              onExit={() => {}}
             />
           </Box>
         )}
@@ -126,32 +129,18 @@ export const WithVideoPlayer: Story = {
   ),
 };
 
-export const SlideWithProgress: Story = {
-  tags: ["!test"],
-  render: () => (
-    <TeachingShell currentIndex={1}>
-      <SlideViewer slide={videoSlide} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Next"
-        previousLabel="Previous"
-      />
-    </TeachingShell>
-  ),
-};
-
 export const SlideWithImage: Story = {
   tags: ["!test"],
   render: () => (
     <TeachingShell currentIndex={2}>
       <SlideViewer slide={imageSlide} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Next"
-        previousLabel="Previous"
-      />
+      <Box hiddenFrom="sm">
+        <PreviousNextButton
+          onPrevious={() => {}}
+          onNext={() => {}}
+          nextLabel="Next"
+        />
+      </Box>
     </TeachingShell>
   ),
 };
@@ -161,12 +150,13 @@ export const SlideWithTextAndFigure: Story = {
   render: () => (
     <TeachingShell currentIndex={3}>
       <SlideViewer slide={textWithFigureSlide} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Next"
-        previousLabel="Previous"
-      />
+      <Box hiddenFrom="sm">
+        <PreviousNextButton
+          onPrevious={() => {}}
+          onNext={() => {}}
+          nextLabel="Next"
+        />
+      </Box>
     </TeachingShell>
   ),
 };
@@ -176,12 +166,13 @@ export const SlideWithCallout: Story = {
   render: () => (
     <TeachingShell currentIndex={5}>
       <SlideViewer slide={calloutSlide} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Next"
-        previousLabel="Previous"
-      />
+      <Box hiddenFrom="sm">
+        <PreviousNextButton
+          onPrevious={() => {}}
+          onNext={() => {}}
+          nextLabel="Next"
+        />
+      </Box>
     </TeachingShell>
   ),
 };
@@ -191,12 +182,13 @@ export const LastSlide: Story = {
   render: () => (
     <TeachingShell currentIndex={6}>
       <SlideViewer slide={stubSlides[6]} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Finish"
-        previousLabel="Previous"
-      />
+      <Box hiddenFrom="sm">
+        <PreviousNextButton
+          onPrevious={() => {}}
+          onNext={() => {}}
+          nextLabel="Finish"
+        />
+      </Box>
     </TeachingShell>
   ),
 };
@@ -207,12 +199,13 @@ export const DarkModeVideo: Story = {
   render: () => (
     <TeachingShell currentIndex={1}>
       <SlideViewer slide={videoSlide} />
-      <PreviousNextButton
-        onPrevious={() => {}}
-        onNext={() => {}}
-        nextLabel="Next"
-        previousLabel="Previous"
-      />
+      <Box hiddenFrom="sm">
+        <PreviousNextButton
+          onPrevious={() => {}}
+          onNext={() => {}}
+          nextLabel="Next"
+        />
+      </Box>
     </TeachingShell>
   ),
 };

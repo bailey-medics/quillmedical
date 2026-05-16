@@ -15,13 +15,13 @@
  * 7. Previous/Next navigation buttons
  */
 
-import { Group, Image, SimpleGrid, Stack, rem } from "@mantine/core";
+import { Box, Group, Image, SimpleGrid, Stack, rem } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
 import RadioField from "@/components/form/RadioField";
 import { BodyTextInline, Heading } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
-import { AssessmentProgress } from "@components/teaching/assessment-progress/AssessmentProgress";
+import { TeachingProgressBar } from "@components/teaching/teaching-progress-bar/TeachingProgressBar";
 import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
 import ExamCloseButton from "@components/teaching/exam-close-button/ExamCloseButton";
 import classes from "./QuestionView.module.css";
@@ -59,15 +59,16 @@ interface QuestionViewProps {
   onCloseExam?: () => void;
 }
 
-function ImagePanel({ image }: { image: ItemImage }) {
+function ImagePanel({ image, single }: { image: ItemImage; single: boolean }) {
   return (
     <Stack gap="xs" align="center" className={classes.imagePanel}>
-      <Image
-        src={image.url}
-        alt={image.label ?? "Question image"}
-        radius="md"
-        className={classes.image}
-      />
+      <Box className={classes.imageWrapper}>
+        <Image
+          src={image.url}
+          alt={image.label ?? "Question image"}
+          className={single ? classes.imageSingle : classes.image}
+        />
+      </Box>
       {image.label && <BodyTextInline>{image.label}</BodyTextInline>}
     </Stack>
   );
@@ -109,7 +110,11 @@ export function QuestionView({
       {item.images.length > 0 && (
         <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
           {item.images.map((img) => (
-            <ImagePanel key={img.key} image={img} />
+            <ImagePanel
+              key={img.key}
+              image={img}
+              single={item.images.length === 1}
+            />
           ))}
         </SimpleGrid>
       )}
@@ -137,7 +142,7 @@ export function QuestionView({
 
       {/* Progress bar */}
       {currentQuestion != null && totalQuestions != null && (
-        <AssessmentProgress current={currentQuestion} total={totalQuestions} />
+        <TeachingProgressBar current={currentQuestion} total={totalQuestions} />
       )}
 
       {/* Navigation buttons */}

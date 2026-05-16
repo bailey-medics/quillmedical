@@ -12,7 +12,7 @@ type Story = StoryObj<typeof Figure>;
 
 export const WithCaption: Story = {
   args: {
-    src: "https://placehold.co/600x400/e2e8f0/475569?text=Polyp+morphology",
+    src: "/storybook/paris-classification.png",
     alt: "Overview of polyp morphology categories",
     caption: "Figure 1: Paris classification overview",
   },

@@ -9,8 +9,18 @@
   flex: 1;
 }
 
-.image {
+.imageWrapper {
+  overflow: hidden;
   border-radius: var(--mantine-radius-md);
+  width: fit-content;
+}
+
+.image {
   max-height: 30rem;
+  object-fit: contain;
+}
+
+.imageSingle {
+  max-height: 50rem;
   object-fit: contain;
 }

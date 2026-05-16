@@ -13,7 +13,7 @@ import { Box, Container, Stack } from "@mantine/core";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
-import SlideProgress from "@/components/teaching/slide-progress/SlideProgress";
+import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 import type { CompiledSlide } from "@/features/teaching/types";
@@ -124,7 +124,10 @@ export default function SlideReader() {
     >
       <Container size="lg" py="xl">
         <Stack gap="lg">
-          <SlideProgress current={currentIndex + 1} total={slides.length} />
+          <TeachingProgressBar
+            current={currentIndex + 1}
+            total={slides.length}
+          />
 
           <SlideViewer
             slide={currentSlide}

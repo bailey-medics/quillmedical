@@ -26,3 +26,9 @@ export const DarkMode: Story = {
   ...YouTube,
   globals: { colorScheme: "dark" },
 };
+
+export const Loading: Story = {
+  args: {
+    youtubeId: "INVALID_ID_FOR_SKELETON",
+  },
+};

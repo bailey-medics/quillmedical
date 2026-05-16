@@ -13,6 +13,7 @@ describe("LearningNav", () => {
         currentIndex={0}
         visited={new Set()}
         onNavigate={() => {}}
+        onExit={() => {}}
       />,
     );
 
@@ -32,10 +33,11 @@ describe("LearningNav", () => {
         currentIndex={2}
         visited={new Set()}
         onNavigate={() => {}}
+        onExit={() => {}}
       />,
     );
 
-    expect(screen.getByText("3/7")).toBeInTheDocument();
+    expect(screen.getByText("3 of 7")).toBeInTheDocument();
   });
 
   it("calls onNavigate when a slide title is clicked", async () => {
@@ -48,6 +50,7 @@ describe("LearningNav", () => {
         currentIndex={0}
         visited={new Set()}
         onNavigate={handleNavigate}
+        onExit={() => {}}
       />,
     );
 
@@ -55,19 +58,53 @@ describe("LearningNav", () => {
     expect(handleNavigate).toHaveBeenCalledWith(1);
   });
 
-  it("shows visited indicators for visited slides", () => {
-    const { container } = renderWithMantine(
+  it("shows duration for unvisited slides", () => {
+    renderWithMantine(
+      <LearningNav
+        slides={stubSlides}
+        currentIndex={0}
+        visited={new Set()}
+        onNavigate={() => {}}
+        onExit={() => {}}
+      />,
+    );
+
+    // The video slide has durationSeconds=1080 → "18:00"
+    expect(screen.getByText("18:00")).toBeInTheDocument();
+  });
+
+  it("hides duration for visited slides", () => {
+    renderWithMantine(
       <LearningNav
         slides={stubSlides}
         currentIndex={2}
         visited={new Set([0, 1])}
         onNavigate={() => {}}
+        onExit={() => {}}
       />,
     );
 
-    // Visited slides should have check icons in right section
-    // The tabler icon class confirms the check icon is rendered
-    const svgs = container.querySelectorAll("svg");
-    expect(svgs.length).toBeGreaterThan(0);
+    // Slide 1 (video, 1080s) is visited — duration should not render
+    expect(screen.queryByText("18:00")).not.toBeInTheDocument();
+  });
+
+  it("renders the exit link and calls onExit when clicked", async () => {
+    const handleExit = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithMantine(
+      <LearningNav
+        slides={stubSlides}
+        currentIndex={0}
+        visited={new Set()}
+        onNavigate={() => {}}
+        onExit={handleExit}
+      />,
+    );
+
+    const exitLink = screen.getByText("Exit");
+    expect(exitLink).toBeInTheDocument();
+    await user.click(exitLink);
+    expect(handleExit).toHaveBeenCalledOnce();
   });
 });

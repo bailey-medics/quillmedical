@@ -24,8 +24,7 @@ export const imageSlide: CompiledSlide = {
   slideIndex: 2,
   layout: "image-slide",
   title: "Paris classification overview",
-  imageSrc:
-    "https://placehold.co/800x500/e2e8f0/475569?text=Paris+classification",
+  imageSrc: "/storybook/paris-classification.png",
   imageAlt: "Paris classification diagram showing polyp morphology categories",
   imageCaption: "Figure 1: The Paris classification of superficial neoplasms",
 };

@@ -8,15 +8,15 @@
  */
 
 import { NavLink, Stack } from "@mantine/core";
-import Icon from "@/components/icons";
+import Divider from "@/components/divider/Divider";
 import {
+  IconArrowLeft,
   IconPlayerPlay,
   IconPhoto,
   IconPresentation,
   IconFileText,
-  IconCircleCheck,
 } from "@/components/icons/appIcons";
-import SlideProgress from "@/components/teaching/slide-progress/SlideProgress";
+import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import type { CompiledSlide, SlideLayout } from "@/features/teaching/types";
 import { typographyTokens } from "@/theme";
 import type { ReactElement } from "react";
@@ -30,14 +30,27 @@ export interface LearningNavProps {
   visited: Set<number>;
   /** Called when a slide title is clicked */
   onNavigate: (slideIndex: number) => void;
+  /** Called when the exit link is clicked */
+  onExit: () => void;
 }
 
+/** Icon size matching NavIcon "lg" (22px) */
+const NAV_ICON_SIZE = 22;
+/** Icon colour matching NavIcon */
+const NAV_ICON_COLOUR = "var(--mantine-color-gray-6)";
+
 const layoutIconMap: Record<SlideLayout, ReactElement> = {
-  "section-title": <IconPresentation />,
-  "video-slide": <IconPlayerPlay />,
-  "image-slide": <IconPhoto />,
-  "text-with-figure": <IconFileText />,
-  default: <IconFileText />,
+  "section-title": (
+    <IconPresentation size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
+  ),
+  "video-slide": (
+    <IconPlayerPlay size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
+  ),
+  "image-slide": <IconPhoto size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />,
+  "text-with-figure": (
+    <IconFileText size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
+  ),
+  default: <IconFileText size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />,
 };
 
 function formatDuration(seconds: number): string {
@@ -51,26 +64,21 @@ export default function LearningNav({
   currentIndex,
   visited,
   onNavigate,
+  onExit,
 }: LearningNavProps) {
   return (
     <Stack gap="xs" p="sm">
-      <SlideProgress current={currentIndex + 1} total={slides.length} />
+      <TeachingProgressBar current={currentIndex + 1} total={slides.length} />
 
       {slides.map((slide) => (
         <NavLink
           key={slide.slideIndex}
           label={slide.title}
-          leftSection={<Icon icon={layoutIconMap[slide.layout]} size="sm" />}
+          leftSection={layoutIconMap[slide.layout]}
           rightSection={
-            visited.has(slide.slideIndex) ? (
-              <Icon
-                icon={<IconCircleCheck />}
-                size="sm"
-                colour="var(--success-color)"
-              />
-            ) : slide.durationSeconds ? (
-              formatDuration(slide.durationSeconds)
-            ) : undefined
+            !visited.has(slide.slideIndex) && slide.durationSeconds
+              ? formatDuration(slide.durationSeconds)
+              : undefined
           }
           active={slide.slideIndex === currentIndex}
           onClick={() => onNavigate(slide.slideIndex)}
@@ -82,6 +90,22 @@ export default function LearningNav({
           }}
         />
       ))}
+
+      <Divider my="xs" />
+
+      <NavLink
+        label="Exit"
+        leftSection={
+          <IconArrowLeft size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
+        }
+        onClick={onExit}
+        styles={{
+          label: {
+            fontSize: "var(--mantine-font-size-md)",
+            fontWeight: typographyTokens.fontWeights.body,
+          },
+        }}
+      />
     </Stack>
   );
 }

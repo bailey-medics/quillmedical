@@ -41,6 +41,16 @@ describe("PreviousNextButton", () => {
         screen.getByRole("button", { name: "Submit & finish" }),
       ).toBeInTheDocument();
     });
+
+    it("renders Next before Previous in DOM order", () => {
+      renderWithMantine(
+        <PreviousNextButton onPrevious={() => {}} onNext={() => {}} />,
+      );
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons[0]).toHaveTextContent("Next");
+      expect(buttons[1]).toHaveTextContent("Previous");
+    });
   });
 
   describe("Interactions", () => {

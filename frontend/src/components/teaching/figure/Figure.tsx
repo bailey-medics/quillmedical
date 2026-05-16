@@ -6,7 +6,7 @@
  * will be resolved to a signed GCS URL at runtime.
  */
 
-import { Image, Stack } from "@mantine/core";
+import { Box, Image, Stack } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";
 
 export interface FigureProps {
@@ -20,13 +20,23 @@ export interface FigureProps {
 
 export default function Figure({ src, alt, caption }: FigureProps) {
   return (
-    <Stack gap="xs" component="figure" style={{ margin: 0 }}>
-      <Image src={src} alt={alt} radius="sm" fit="contain" mah="60vh" />
-      {caption && (
-        <BodyText c="dimmed" justify="centre">
-          {caption}
-        </BodyText>
-      )}
+    <Stack gap="xs" component="figure" style={{ margin: 0 }} align="center">
+      <Box
+        style={{
+          overflow: "hidden",
+          borderRadius: "var(--mantine-radius-md)",
+          maxHeight: "60vh",
+          width: "fit-content",
+        }}
+      >
+        <Image
+          src={src}
+          alt={alt}
+          fit="contain"
+          style={{ maxHeight: "60vh" }}
+        />
+      </Box>
+      {caption && <BodyText justify="centre">{caption}</BodyText>}
     </Stack>
   );
 }
