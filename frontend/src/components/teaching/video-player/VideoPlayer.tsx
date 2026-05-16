@@ -7,12 +7,16 @@
  *
  * Uses react-player v3 which wraps platform-specific custom elements
  * (youtube-video-element etc.) with a native HTML video interface.
+ *
+ * react-player is lazily imported because its custom-element registration
+ * hangs during Storybook's static build (no real browser DOM).
  */
 
 import { Box } from "@mantine/core";
-import { useCallback, useRef } from "react";
-import ReactPlayer from "react-player";
+import { lazy, Suspense, useCallback, useRef } from "react";
 import classes from "./VideoPlayer.module.css";
+
+const ReactPlayer = lazy(() => import("react-player"));
 
 export interface VideoPlayerProps {
   /** YouTube video ID (V1) */
@@ -57,15 +61,17 @@ export default function VideoPlayer({
 
   return (
     <Box className={classes.wrapper}>
-      <ReactPlayer
-        ref={playerRef}
-        src={src}
-        width="100%"
-        height="100%"
-        controls
-        onCanPlay={handleReady}
-        onTimeUpdate={handleTimeUpdate}
-      />
+      <Suspense fallback={null}>
+        <ReactPlayer
+          ref={playerRef}
+          src={src}
+          width="100%"
+          height="100%"
+          controls
+          onCanPlay={handleReady}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      </Suspense>
     </Box>
   );
 }
