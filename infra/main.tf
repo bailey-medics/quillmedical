@@ -195,12 +195,13 @@ module "cloud_run_backend" {
 
   env_vars = merge(
     {
-      BACKEND_ENV    = "production"
-      SECURE_COOKIES = "true"
-      COOKIE_DOMAIN  = ".${var.domain}"
-      AUTH_DB_HOST   = module.cloud_sql_auth.private_ip
-      AUTH_DB_NAME   = module.cloud_sql_auth.database_name
-      AUTH_DB_USER   = module.cloud_sql_auth.database_user
+      BACKEND_ENV      = "production"
+      SECURE_COOKIES   = "true"
+      COOKIE_DOMAIN    = ".${var.domain}"
+      AUTH_DB_HOST     = module.cloud_sql_auth.private_ip
+      AUTH_DB_NAME     = module.cloud_sql_auth.database_name
+      AUTH_DB_USER     = module.cloud_sql_auth.database_user
+      AUTH_DB_SSLMODE  = "require"
     },
     var.enable_fhir ? {
       FHIR_SERVER_URL  = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
