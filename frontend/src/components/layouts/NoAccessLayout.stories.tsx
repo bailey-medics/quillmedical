@@ -10,7 +10,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import NoAccessLayout from "./NoAccessLayout";
 
 const meta: Meta<typeof NoAccessLayout> = {
-  title: "Layouts/NoAccessLayout",
+  title: "Layouts/No access layout",
   component: NoAccessLayout,
   parameters: {
     layout: "fullscreen",

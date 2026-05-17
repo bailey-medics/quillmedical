@@ -9,7 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import SearchButton from "./SearchButton";
 
 const meta: Meta<typeof SearchButton> = {
-  title: "Button/SearchButton",
+  title: "Button/Search button",
   component: SearchButton,
   parameters: {
     layout: "fullscreen",

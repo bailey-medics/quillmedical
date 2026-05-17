@@ -3,7 +3,7 @@ import ProfilePic from "./ProfilePic";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof ProfilePic> = {
-  title: "ProfilePic/Single",
+  title: "Profile pic/Single",
   component: ProfilePic,
 };
 

@@ -27,7 +27,7 @@ interface Patient {
 }
 
 const meta: Meta<typeof DataCard<User>> = {
-  title: "Tables/DataCard",
+  title: "Tables/Data card",
   component: DataCard,
   parameters: {
     layout: "padded",

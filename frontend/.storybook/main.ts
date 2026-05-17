@@ -1,7 +1,11 @@
 import type { StorybookConfig } from "@storybook/react-vite";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
 import postcssPresetMantine from "postcss-preset-mantine";
 import postcssSimpleVars from "postcss-simple-vars";
 import tsconfigPaths from "vite-tsconfig-paths";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
@@ -14,6 +18,19 @@ const config: StorybookConfig = {
   },
   viteFinal: async (config) => {
     config.plugins = [...(config.plugins ?? []), tsconfigPaths()];
+
+    // react-player v3 uses youtube-video-element (custom element) which
+    // hangs the Storybook static build. Alias to a stub during build only.
+    if (process.env.NODE_ENV === "production") {
+      config.resolve = {
+        ...config.resolve,
+        alias: {
+          ...(config.resolve?.alias ?? {}),
+          "react-player": resolve(__dirname, "react-player-stub.tsx"),
+        },
+      };
+    }
+
     config.css = {
       ...config.css,
       postcss: {

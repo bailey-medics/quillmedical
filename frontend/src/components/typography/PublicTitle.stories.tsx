@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicTitle from "./PublicTitle";
 
 const meta = {
-  title: "Public/Typography/PublicTitle",
+  title: "Public/Typography/Public title",
   component: PublicTitle,
   parameters: {
     layout: "fullscreen",

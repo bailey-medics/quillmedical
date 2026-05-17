@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import TextLink from "./TextLink";
 
 const meta: Meta<typeof TextLink> = {
-  title: "Foundations/Typography/TextLink",
+  title: "Foundations/Typography/Text link",
   component: TextLink,
   parameters: { layout: "padded" },
 };

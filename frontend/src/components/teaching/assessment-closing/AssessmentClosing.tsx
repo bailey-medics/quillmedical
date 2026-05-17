@@ -5,9 +5,10 @@
  * from config + "View results" button.
  */
 
-import { Button, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { BodyTextInline, PageHeader } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
+import ActionCardButton from "@/components/button/ActionCardButton";
 
 interface AssessmentClosingProps {
   /** Closing page title from config */
@@ -32,9 +33,11 @@ export function AssessmentClosing({
       <BaseCard>
         <BodyTextInline>{body}</BodyTextInline>
       </BaseCard>
-      <Button size="lg" onClick={onViewResults} disabled={disabled}>
-        View results
-      </Button>
+      <ActionCardButton
+        label="View results"
+        onClick={onViewResults}
+        disabled={disabled}
+      />
     </Stack>
   );
 }

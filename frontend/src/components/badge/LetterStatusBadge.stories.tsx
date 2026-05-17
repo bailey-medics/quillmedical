@@ -10,7 +10,7 @@ import LetterStatusBadge from "./LetterStatusBadge";
 import type { LetterStatusType } from "./LetterStatusBadge";
 
 const meta: Meta<typeof LetterStatusBadge> = {
-  title: "Badge/LetterStatusBadge",
+  title: "Badge/Letter status badge",
   component: LetterStatusBadge,
   parameters: {
     layout: "padded",

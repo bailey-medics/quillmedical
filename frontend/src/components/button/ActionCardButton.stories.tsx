@@ -15,7 +15,7 @@ const CONTAINER_NOTE =
 const CONTAINER_WIDTH = "18rem";
 
 const meta: Meta<typeof ActionCardButton> = {
-  title: "Button/ActionCardButton",
+  title: "Button/Action card button",
   component: ActionCardButton,
   parameters: {
     layout: "padded",

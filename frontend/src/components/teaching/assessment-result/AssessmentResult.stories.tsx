@@ -33,7 +33,7 @@ const failCriteria = [
 ];
 
 const meta: Meta<typeof AssessmentResult> = {
-  title: "Teaching/AssessmentResult",
+  title: "Teaching/Assessment result",
   component: AssessmentResult,
   parameters: {
     layout: "padded",

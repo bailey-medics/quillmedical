@@ -10,7 +10,7 @@ import { BodyText, Heading } from "@/components/typography";
 import BaseCard from "./BaseCard";
 
 const meta: Meta<typeof BaseCard> = {
-  title: "Cards/BaseCard",
+  title: "Cards/Base card",
   component: BaseCard,
   parameters: { layout: "padded" },
 };

@@ -274,3 +274,51 @@ export interface SyncAllResult {
   synced: SyncResult[];
   errors: Array<{ bank_id: string; error: string }>;
 }
+
+// ------------------------------------------------------------------
+// Learning modules
+// ------------------------------------------------------------------
+
+export type SlideLayout =
+  | "section-title"
+  | "video-slide"
+  | "image-slide"
+  | "text-with-figure"
+  | "default";
+
+export interface CompiledSlide {
+  slideIndex: number;
+  layout: SlideLayout;
+  title: string;
+  /** Simplified content representation for Phase 1 (stub data) */
+  body?: string;
+  /** YouTube video ID for video slides */
+  youtubeId?: string;
+  /** Video duration in seconds */
+  durationSeconds?: number;
+  /** Image source filename for image/figure slides */
+  imageSrc?: string;
+  /** Image alt text */
+  imageAlt?: string;
+  /** Image caption */
+  imageCaption?: string;
+  /** Callout type if the slide contains a callout */
+  calloutType?: "info" | "warning" | "success";
+  /** Callout body text */
+  calloutBody?: string;
+}
+
+export interface LearningModule {
+  module_id: string;
+  title: string;
+  order_index: number;
+  status: "draft" | "live";
+  slide_count: number;
+}
+
+export interface LearnerProgress {
+  module_id: string;
+  last_slide_index: number;
+  last_video_position_seconds: number | null;
+  completed_at: string | null;
+}

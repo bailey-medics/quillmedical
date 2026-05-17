@@ -8,7 +8,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import OnQuillBadge from "./OnQuillBadge";
 
 const meta: Meta<typeof OnQuillBadge> = {
-  title: "Badge/OnQuillBadge",
+  title: "Badge/On Quill badge",
   component: OnQuillBadge,
   parameters: {
     layout: "padded",

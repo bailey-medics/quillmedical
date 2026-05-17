@@ -2,8 +2,10 @@
  * PreviousNextButton Component
  *
  * A right-aligned button pair for step-by-step navigation (e.g. assessments).
- * Shows Previous (outline) and Next/Submit (filled) buttons.
+ * Shows Next/Submit (filled) before Previous (outline), matching the
+ * ButtonPair convention of primary action first.
  * Previous is hidden when `onPrevious` is not provided.
+ * Buttons go full-width on mobile, matching ButtonPair responsive behaviour.
  *
  * @example
  * ```tsx
@@ -15,8 +17,8 @@
  * ```
  */
 
-import { Button, Group, useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Button, Group } from "@mantine/core";
+import classes from "./ButtonPair.module.css";
 
 interface PreviousNextButtonProps {
   /** Called when Previous is clicked (hidden when undefined) */
@@ -38,41 +40,28 @@ export default function PreviousNextButton({
   nextDisabled = false,
   nextLoading = false,
 }: PreviousNextButtonProps) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const buttonSize = isMobile ? "md" : "lg";
-  const fontSize = isMobile
-    ? "var(--mantine-font-size-md)"
-    : "var(--mantine-font-size-lg)";
-
   return (
-    <Group justify="flex-end">
-      {onPrevious && (
-        <Button
-          variant="outline"
-          onClick={onPrevious}
-          size={buttonSize}
-          styles={{ label: { fontSize } }}
-        >
-          Previous
-        </Button>
-      )}
+    <Group justify="flex-end" className={classes.group}>
       <Button
         onClick={
           nextDisabled ? (e: React.MouseEvent) => e.preventDefault() : onNext
         }
         loading={nextLoading}
         aria-disabled={nextDisabled || undefined}
-        size={buttonSize}
+        size="md"
         styles={{
           root: nextDisabled
             ? { opacity: 0.6, cursor: "not-allowed" }
             : undefined,
-          label: { fontSize },
         }}
       >
         {nextLabel}
       </Button>
+      {onPrevious && (
+        <Button variant="outline" onClick={onPrevious} size="md">
+          Previous
+        </Button>
+      )}
     </Group>
   );
 }

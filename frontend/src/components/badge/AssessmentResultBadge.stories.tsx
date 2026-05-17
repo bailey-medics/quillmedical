@@ -9,7 +9,7 @@ import { Group } from "@mantine/core";
 import AssessmentResultBadge from "./AssessmentResultBadge";
 
 const meta: Meta<typeof AssessmentResultBadge> = {
-  title: "Badge/AssessmentResultBadge",
+  title: "Badge/Assessment result badge",
   component: AssessmentResultBadge,
   parameters: {
     layout: "padded",

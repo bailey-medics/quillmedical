@@ -4,7 +4,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import TextAreaField from "./TextAreaField";
 
 const meta: Meta<typeof TextAreaField> = {
-  title: "Form/TextAreaField",
+  title: "Form/Text area field",
   component: TextAreaField,
   parameters: { layout: "padded" },
 };

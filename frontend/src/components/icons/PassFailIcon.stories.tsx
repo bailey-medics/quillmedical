@@ -13,7 +13,7 @@ import { BodyTextInline } from "@/components/typography";
 import { VariantRow, VariantStack } from "@/stories/variants";
 
 const meta: Meta = {
-  title: "Icons/PassFailIcon",
+  title: "Icons/Pass fail icon",
   parameters: {
     layout: "padded",
   },

@@ -17,7 +17,7 @@ const iconNames = Object.keys(iconTextButtonIcons) as Array<
 >;
 
 const meta: Meta<typeof IconTextButton> = {
-  title: "Button/IconTextButton",
+  title: "Button/Icon text button",
   component: IconTextButton,
   parameters: {
     layout: "padded",

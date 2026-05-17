@@ -3,7 +3,7 @@ import { fn } from "storybook/test";
 import { AssessmentHistoryTable } from "./AssessmentHistoryTable";
 
 const meta: Meta<typeof AssessmentHistoryTable> = {
-  title: "Teaching/AssessmentHistoryTable",
+  title: "Teaching/Assessment history table",
   component: AssessmentHistoryTable,
   args: {
     onSelect: fn(),

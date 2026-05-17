@@ -24,7 +24,7 @@ async function fillAndSubmit(canvasElement: HTMLElement) {
 }
 
 const meta: Meta<typeof ResetPasswordForm> = {
-  title: "Registration/ResetPasswordForm",
+  title: "Registration/Reset password form",
   component: ResetPasswordForm,
   parameters: { layout: "padded" },
   args: {

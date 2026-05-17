@@ -9,8 +9,30 @@
   flex: 1;
 }
 
-.image {
+.imageWrapperSingle {
+  overflow: hidden;
   border-radius: var(--mantine-radius-md);
-  max-height: 30rem;
+  max-width: 100%;
+  width: fit-content;
+}
+
+.imageWrapperMulti {
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  width: 100%;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  max-height: 80vh;
+  height: auto;
   object-fit: contain;
+}
+
+.imageSingle {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  height: auto;
 }

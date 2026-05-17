@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import BodyTextInline from "./BodyTextInline";
 
 const meta: Meta<typeof BodyTextInline> = {
-  title: "Foundations/Typography/BodyTextInline",
+  title: "Foundations/Typography/Body text inline",
   component: BodyTextInline,
   parameters: { layout: "padded" },
 };

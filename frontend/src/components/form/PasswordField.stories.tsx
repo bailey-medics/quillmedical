@@ -4,7 +4,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import PasswordField from "./PasswordField";
 
 const meta: Meta<typeof PasswordField> = {
-  title: "Form/PasswordField",
+  title: "Form/Password field",
   component: PasswordField,
   parameters: { layout: "padded" },
 };

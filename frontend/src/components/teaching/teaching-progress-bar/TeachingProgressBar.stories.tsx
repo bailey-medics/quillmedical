@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AssessmentProgress } from "./AssessmentProgress";
+import { TeachingProgressBar } from "./TeachingProgressBar";
 
-const meta: Meta<typeof AssessmentProgress> = {
-  title: "Teaching/AssessmentProgress",
-  component: AssessmentProgress,
+const meta: Meta<typeof TeachingProgressBar> = {
+  title: "Teaching/Teaching progress bar",
+  component: TeachingProgressBar,
 };
 
 export default meta;
-type Story = StoryObj<typeof AssessmentProgress>;
+type Story = StoryObj<typeof TeachingProgressBar>;
 
 export const Start: Story = {
   args: { current: 1, total: 120 },

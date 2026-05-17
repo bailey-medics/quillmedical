@@ -9,7 +9,7 @@ import { Group } from "@mantine/core";
 import FeatureBadge from "./FeatureBadge";
 
 const meta: Meta<typeof FeatureBadge> = {
-  title: "Badge/FeatureBadge",
+  title: "Badge/Feature badge",
   component: FeatureBadge,
   parameters: {
     layout: "padded",

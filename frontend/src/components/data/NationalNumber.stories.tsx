@@ -12,7 +12,7 @@ import NationalNumber from "./NationalNumber";
 import BodyText from "@/components/typography/BodyText";
 
 const meta = {
-  title: "data/NationalNumber",
+  title: "Data/National number",
   component: NationalNumber,
   parameters: {
     layout: "padded",

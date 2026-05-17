@@ -18,7 +18,7 @@ import SideNavContent from "../navigation/SideNavContent";
 import NavigationDrawer from "./NavigationDrawer";
 
 const meta: Meta<typeof NavigationDrawer> = {
-  title: "Drawers/NavigationDrawer",
+  title: "Drawers/Navigation drawer",
   component: NavigationDrawer,
   parameters: {
     layout: "fullscreen",

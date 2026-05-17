@@ -37,7 +37,7 @@ async function fillAndSubmit(canvasElement: HTMLElement) {
 }
 
 const meta: Meta<typeof RegistrationForm> = {
-  title: "Registration/RegistrationForm",
+  title: "Registration/Registration form",
   component: RegistrationForm,
   parameters: { layout: "padded" },
   args: {

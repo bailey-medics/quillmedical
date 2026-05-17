@@ -14,7 +14,7 @@ import AppointmentsList from "./AppointmentsList";
 import { fakeAppointments } from "@/data/fakeAppointments";
 
 const meta: Meta<typeof AppointmentsList> = {
-  title: "Appointments/AppointmentsList",
+  title: "Appointments/Appointments list",
   component: AppointmentsList,
 };
 

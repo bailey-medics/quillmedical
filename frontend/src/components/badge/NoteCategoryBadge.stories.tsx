@@ -11,7 +11,7 @@ import NoteCategoryBadge from "./NoteCategoryBadge";
 import type { NoteCategoryType } from "./NoteCategoryBadge";
 
 const meta: Meta<typeof NoteCategoryBadge> = {
-  title: "Badge/NoteCategoryBadge",
+  title: "Badge/Note category badge",
   component: NoteCategoryBadge,
   parameters: { layout: "padded" },
   argTypes: {

@@ -4,7 +4,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import EmailField from "./EmailField";
 
 const meta: Meta<typeof EmailField> = {
-  title: "Form/EmailField",
+  title: "Form/Email field",
   component: EmailField,
   parameters: { layout: "padded" },
 };

@@ -19,7 +19,7 @@ import ButtonPair from "@/components/button/ButtonPair";
 import SelectField from "@/components/form/SelectField";
 
 const meta: Meta<typeof ConfirmModal> = {
-  title: "ConfirmModal/ConfirmModal",
+  title: "Confirm modal/Confirm modal",
   component: ConfirmModal,
   parameters: { layout: "padded" },
   args: {

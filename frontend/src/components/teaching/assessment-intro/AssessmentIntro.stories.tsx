@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AssessmentIntro } from "./AssessmentIntro";
 
 const meta: Meta<typeof AssessmentIntro> = {
-  title: "Teaching/AssessmentIntro",
+  title: "Teaching/Assessment intro",
   component: AssessmentIntro,
 };
 
@@ -25,15 +25,6 @@ For each image pair, select the single best answer from the four options.
 
 You must meet **both** criteria to pass.`,
     onBegin: () => {},
-  },
-};
-
-export const Disabled: Story = {
-  args: {
-    title: "Before you begin",
-    body: "Loading assessment...",
-    onBegin: () => {},
-    disabled: true,
   },
 };
 

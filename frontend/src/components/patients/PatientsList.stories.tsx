@@ -16,7 +16,7 @@ import PatientsList from "./PatientsList";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof PatientsList> = {
-  title: "Patients/PatientsList",
+  title: "Patients/Patients list",
   component: PatientsList,
 };
 

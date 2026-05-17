@@ -10,7 +10,7 @@ import { Group } from "@mantine/core";
 import PermissionBadge from "./PermissionBadge";
 
 const meta: Meta<typeof PermissionBadge> = {
-  title: "Badge/PermissionBadge",
+  title: "Badge/Permission badge",
   component: PermissionBadge,
   parameters: {
     layout: "padded",

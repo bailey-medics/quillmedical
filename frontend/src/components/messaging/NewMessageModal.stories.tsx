@@ -23,7 +23,7 @@ const mockSubmit = async (): Promise<FormSubmitResult> => {
 };
 
 const meta: Meta<typeof NewMessageModal> = {
-  title: "Messaging/NewMessageModal",
+  title: "Messaging/New message modal",
   component: NewMessageModal,
   parameters: { layout: "fullscreen" },
   args: {

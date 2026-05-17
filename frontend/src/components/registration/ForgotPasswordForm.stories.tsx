@@ -27,7 +27,7 @@ async function fillAndSubmit(canvasElement: HTMLElement) {
 }
 
 const meta: Meta<typeof ForgotPasswordForm> = {
-  title: "Registration/ForgotPasswordForm",
+  title: "Registration/Forgot password form",
   component: ForgotPasswordForm,
   parameters: { layout: "padded" },
   args: {

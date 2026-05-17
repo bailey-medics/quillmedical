@@ -1,23 +1,25 @@
 /**
- * AssessmentProgress Component
+ * TeachingProgressBar Component
  *
- * Progress bar showing question X of N (from config items_per_attempt).
+ * Progress bar showing current position as "X of N" with a
+ * rounded bar. Used in assessments, slide readers, and the
+ * learning nav sidebar.
  */
 
 import { Group, Progress } from "@mantine/core";
 import { BodyText } from "@/components/typography";
 
-interface AssessmentProgressProps {
-  /** Current question number (1-based) */
+interface TeachingProgressBarProps {
+  /** Current position (1-based) */
   current: number;
-  /** Total number of questions */
+  /** Total number of items */
   total: number;
 }
 
-export function AssessmentProgress({
+export function TeachingProgressBar({
   current,
   total,
-}: AssessmentProgressProps) {
+}: TeachingProgressBarProps) {
   const percentage = total > 0 ? (current / total) * 100 : 0;
 
   return (

@@ -4,7 +4,7 @@ import { Container, Stack } from "@mantine/core";
 import PublicTitle from "@/components/typography/PublicTitle";
 
 const meta = {
-  title: "Public/Background/PublicLightBackground",
+  title: "Public/Background/Public light background",
   component: PublicLightBackground,
   parameters: {
     layout: "fullscreen",

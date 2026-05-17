@@ -14,7 +14,7 @@ import NotesList from "./NotesList";
 import { fakeNotes } from "@/data/fakeNotes";
 
 const meta: Meta<typeof NotesList> = {
-  title: "Notes/NotesList",
+  title: "Notes/Notes list",
   component: NotesList,
 };
 

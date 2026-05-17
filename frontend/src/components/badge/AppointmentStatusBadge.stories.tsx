@@ -10,7 +10,7 @@ import AppointmentStatusBadge from "./AppointmentStatusBadge";
 import type { AppointmentStatusType } from "./AppointmentStatusBadge";
 
 const meta: Meta<typeof AppointmentStatusBadge> = {
-  title: "Badge/AppointmentStatusBadge",
+  title: "Badge/Appointment status badge",
   component: AppointmentStatusBadge,
   parameters: {
     layout: "padded",

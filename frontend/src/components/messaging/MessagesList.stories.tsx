@@ -12,7 +12,7 @@ import MessagesList from "./MessagesList";
 import type { MessageThread } from "./MessagesList";
 
 const meta: Meta<typeof MessagesList> = {
-  title: "Messaging/MessagesList",
+  title: "Messaging/Messages list",
   component: MessagesList,
 };
 

@@ -12,7 +12,7 @@ import { StoryNote } from "@/stories/variants";
 import OfflineModal from "./OfflineModal";
 
 const meta: Meta<typeof OfflineModal> = {
-  title: "Overlays/OfflineModal",
+  title: "Overlays/Offline modal",
   component: OfflineModal,
   parameters: {
     layout: "padded",

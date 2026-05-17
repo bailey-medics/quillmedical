@@ -11,7 +11,7 @@ import StateMessage from "./StateMessage";
 import { IconClock } from "@/components/icons/appIcons";
 
 const meta: Meta<typeof StateMessage> = {
-  title: "MessageCards/StateMessage",
+  title: "Message cards/State message",
   component: StateMessage,
   parameters: {
     layout: "padded",

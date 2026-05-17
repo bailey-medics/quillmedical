@@ -25,7 +25,7 @@ import MainLayout from "./MainLayout";
 import { demoPatientsList } from "@/demo-data/patients/demoPatients";
 
 const meta: Meta<typeof MainLayout> = {
-  title: "Layouts/Layout-Complete-Dark",
+  title: "Layouts/Layout complete dark",
   component: MainLayout,
   parameters: { layout: "fullscreen" },
   globals: { colorScheme: "dark" },

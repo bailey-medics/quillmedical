@@ -4,7 +4,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import MultiSelectField from "./MultiSelectField";
 
 const meta: Meta<typeof MultiSelectField> = {
-  title: "Form/MultiSelectField",
+  title: "Form/Multi select field",
   component: MultiSelectField,
   parameters: { layout: "padded" },
 };

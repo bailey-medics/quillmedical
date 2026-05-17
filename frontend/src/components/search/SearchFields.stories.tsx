@@ -11,7 +11,7 @@ import { Box } from "@mantine/core";
 import SearchField from "./SearchFields";
 
 const meta: Meta<typeof SearchField> = {
-  title: "Search/SearchField",
+  title: "Search/Search field",
   component: SearchField,
   parameters: {
     layout: "padded",

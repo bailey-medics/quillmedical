@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PublicNotFound from "./PublicNotFound";
 
 const meta: Meta<typeof PublicNotFound> = {
-  title: "Public/Layouts/PublicNotFound",
+  title: "Public/Layouts/Public not found",
   component: PublicNotFound,
   parameters: {
     layout: "fullscreen",

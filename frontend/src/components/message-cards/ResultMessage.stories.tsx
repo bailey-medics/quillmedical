@@ -11,7 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ResultMessage from "./ResultMessage";
 
 const meta: Meta<typeof ResultMessage> = {
-  title: "Teaching/ResultMessage",
+  title: "Teaching/Result message",
   component: ResultMessage,
   parameters: {
     layout: "padded",

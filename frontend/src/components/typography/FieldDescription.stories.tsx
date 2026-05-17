@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import FieldDescription from "./FieldDescription";
 
 const meta: Meta<typeof FieldDescription> = {
-  title: "Foundations/Typography/FieldDescription",
+  title: "Foundations/Typography/Field description",
   component: FieldDescription,
   parameters: { layout: "padded" },
 };

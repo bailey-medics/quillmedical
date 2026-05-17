@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ErrorMessage from "./ErrorMessage";
 
 const meta: Meta<typeof ErrorMessage> = {
-  title: "Foundations/Typography/ErrorMessage",
+  title: "Foundations/Typography/Error message",
   component: ErrorMessage,
   parameters: { layout: "padded" },
 };

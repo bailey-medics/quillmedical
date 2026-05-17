@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import ExamCloseButton from "./ExamCloseButton";
 
 const meta: Meta<typeof ExamCloseButton> = {
-  title: "Teaching/ExamCloseButton",
+  title: "Teaching/Exam close button",
   component: ExamCloseButton,
 };
 

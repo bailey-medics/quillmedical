@@ -4,7 +4,7 @@ import PublicHeroBackground from "./PublicHeroBackground";
 import PublicTitle from "@/components/typography/PublicTitle";
 
 const meta: Meta<typeof PublicHeroBackground> = {
-  title: "Public/Background/PublicHeroBackground",
+  title: "Public/Background/Public hero background",
   component: PublicHeroBackground,
   parameters: {
     layout: "fullscreen",

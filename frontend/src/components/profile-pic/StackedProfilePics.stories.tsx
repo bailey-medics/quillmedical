@@ -11,7 +11,7 @@ import { StoryNote, VariantStack } from "@/stories/variants";
 import StackedProfilePics from "./StackedProfilePics";
 
 const meta: Meta<typeof StackedProfilePics> = {
-  title: "ProfilePic/Stacked",
+  title: "Profile pic/Stacked",
   component: StackedProfilePics,
 };
 

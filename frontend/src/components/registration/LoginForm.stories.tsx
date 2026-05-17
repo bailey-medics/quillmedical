@@ -25,7 +25,7 @@ async function fillAndSubmit(
 }
 
 const meta: Meta<typeof LoginForm> = {
-  title: "Registration/LoginForm",
+  title: "Registration/Login form",
   component: LoginForm,
   parameters: { layout: "padded" },
   args: {

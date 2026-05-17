@@ -12,7 +12,7 @@ import { StoryNote } from "@/stories/variants";
 import AppTooltip from "./AppTooltip";
 
 const meta: Meta<typeof AppTooltip> = {
-  title: "Tooltip/AppTooltip",
+  title: "Tooltip/App tooltip",
   component: AppTooltip,
 };
 

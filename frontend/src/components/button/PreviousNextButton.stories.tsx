@@ -11,7 +11,7 @@ import PreviousNextButton from "./PreviousNextButton";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof PreviousNextButton> = {
-  title: "Teaching/PreviousNextButton",
+  title: "Teaching/Previous next button",
   component: PreviousNextButton,
   parameters: {
     layout: "padded",

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AssessmentTimer } from "./AssessmentTimer";
 
 const meta: Meta<typeof AssessmentTimer> = {
-  title: "Teaching/AssessmentTimer",
+  title: "Teaching/Assessment timer",
   component: AssessmentTimer,
   parameters: {
     layout: "padded",

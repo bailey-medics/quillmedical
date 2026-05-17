@@ -3,7 +3,7 @@ import Gender from "./Gender";
 import BodyText from "@/components/typography/BodyText";
 
 const meta: Meta<typeof Gender> = {
-  title: "data/Gender",
+  title: "Data/Gender",
   component: Gender,
   decorators: [
     (Story) => (

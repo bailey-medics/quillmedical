@@ -21,7 +21,7 @@ const mockLocation: Location = {
 };
 
 const meta = {
-  title: "Warnings/DirtyFormNavigation",
+  title: "Warnings/Dirty form navigation",
   component: DirtyFormNavigation,
   parameters: {
     layout: "fullscreen",
