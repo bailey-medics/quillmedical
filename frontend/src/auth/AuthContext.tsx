@@ -44,9 +44,9 @@ export type User = {
  * - authenticated: Valid session with user profile
  */
 type State =
-  | { status: "loading"; user: null }
-  | { status: "unauthenticated"; user: null }
-  | { status: "authenticated"; user: User };
+  | { status: "loading"; user: null; loggedOut?: false }
+  | { status: "unauthenticated"; user: null; loggedOut?: boolean }
+  | { status: "authenticated"; user: User; loggedOut?: false };
 
 /**
  * Auth Context Value
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore errors, proceed to clear local state
     }
-    setState({ status: "unauthenticated", user: null });
+    setState({ status: "unauthenticated", user: null, loggedOut: true });
   }
 
   useEffect(() => {

@@ -27,7 +27,18 @@ export default function LoginPage() {
   async function handleSubmit(data: LoginFormData): Promise<FormSubmitResult> {
     try {
       const user = await login(data.username, data.password, data.totp);
-      if (redirectFrom && redirectFrom !== "/") {
+
+      // Safety net: don't redirect to admin paths if the user lacks
+      // admin permissions — prevents PHI leakage across login sessions.
+      const isAdmin =
+        user.system_permissions === "admin" ||
+        user.system_permissions === "superadmin";
+      const canRedirect =
+        redirectFrom &&
+        redirectFrom !== "/" &&
+        (!redirectFrom.startsWith("/admin") || isAdmin);
+
+      if (canRedirect) {
         window.location.assign(redirectFrom);
       } else if (!user.clinical_services_enabled) {
         window.location.assign("/teaching");
