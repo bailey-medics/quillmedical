@@ -416,6 +416,7 @@
     "spyproject",
     "sqlalchemy",
     "sqlmap",
+    "SSLMODE",
     "staffuser",
     "Starlette",
     "startswith",
