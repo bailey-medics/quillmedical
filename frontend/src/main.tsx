@@ -1,18 +1,36 @@
 /**
  * Main Application Entry Point
  *
- * Root module that initializes the React application with routing, authentication,
+ * Root module that initialises the React application with routing, authentication,
  * UI framework, and service worker registration. Sets up the entire application
  * component tree including AuthProvider, MantineProvider, and React Router.
  *
- * Architecture:
- * - React Router with Mantine UI for styling and components
- * - Auth context wrapping all routes
- * - Service worker for PWA functionality
+ * ## Two layout system
  *
- * Route Structure:
- * - Public routes: /login, /register (guest-only)
- * - Protected routes: /, /settings (require authentication)
+ * Routes use one of two layouts:
+ *
+ * 1. **RootLayout → MainLayout** — the default for most authenticated pages.
+ *    RootLayout renders MainLayout (side-nav, top ribbon, patient context) and
+ *    exposes `useOutletContext<LayoutCtx>()` to child routes.
+ *
+ * 2. **TeachingLayout** — a standalone full-screen layout for teaching/learning
+ *    pages. Each teaching page wraps itself in `<TeachingLayout>` (with optional
+ *    sidebar/drawer props). These routes live OUTSIDE RootLayout's children
+ *    array and supply their own `<RequireAuth>` + `<RequireFeature>` guards.
+ *
+ * ### Where to place new teaching routes
+ *
+ * Add to the "Teaching routes" `children` array below RootLayout. The page
+ * component must wrap its content in `<TeachingLayout>`. The shared layout
+ * route provides `<RequireAuth>` + `<RequireFeature>` guards once — individual
+ * children do not need them.
+ *
+ * ## Route structure
+ *
+ * - Public routes: /login, /register, /forgot-password, /reset-password
+ * - Protected routes (MainLayout): /, /patients, /messages, /settings, /admin
+ * - Protected routes (TeachingLayout): /teaching, /teaching/:bankId,
+ *   /teaching/learn/*, /teaching/assessment/*, /teaching/results, /teaching/sync
  * - 404 fallback for unknown paths
  */
 
@@ -25,7 +43,7 @@ import "./styles/dark-overrides.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
 
 import RootLayout from "./RootLayout";
@@ -141,434 +159,139 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <HomeRedirect /> },
+
+      // Clinical routes — require FHIR/EHRbase connectivity
       {
-        path: "/patients/:id",
         element: (
           <RequireClinical>
-            <Patient />
+            <Outlet />
           </RequireClinical>
         ),
+        children: [
+          {
+            path: "/patients/:id",
+            children: [
+              { index: true, element: <Patient /> },
+              { path: "letters", element: <PatientLetters /> },
+              { path: "letters/:letterId", element: <PatientLetterView /> },
+              { path: "messages", element: <PatientMessages /> },
+              {
+                path: "messages/:conversationId",
+                element: <PatientMessageThread />,
+              },
+              { path: "documents", element: <PatientDocuments /> },
+              {
+                path: "documents/:documentId",
+                element: <PatientDocumentView />,
+              },
+              { path: "notes", element: <PatientNotes /> },
+              { path: "appointments", element: <PatientAppointments /> },
+            ],
+          },
+          { path: "/messages", element: <Messages /> },
+          {
+            path: "/messages/:conversationId",
+            element: <MessageThread />,
+          },
+        ],
       },
-      {
-        path: "/patients/:id/letters",
-        element: (
-          <RequireClinical>
-            <PatientLetters />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/letters/:letterId",
-        element: (
-          <RequireClinical>
-            <PatientLetterView />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/messages",
-        element: (
-          <RequireClinical>
-            <PatientMessages />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/messages/:conversationId",
-        element: (
-          <RequireClinical>
-            <PatientMessageThread />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/documents",
-        element: (
-          <RequireClinical>
-            <PatientDocuments />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/documents/:documentId",
-        element: (
-          <RequireClinical>
-            <PatientDocumentView />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/notes",
-        element: (
-          <RequireClinical>
-            <PatientNotes />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/patients/:id/appointments",
-        element: (
-          <RequireClinical>
-            <PatientAppointments />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/messages",
-        element: (
-          <RequireClinical>
-            <Messages />
-          </RequireClinical>
-        ),
-      },
-      {
-        path: "/messages/:conversationId",
-        element: (
-          <RequireClinical>
-            <MessageThread />
-          </RequireClinical>
-        ),
-      },
+
+      // Admin routes — require admin permission
       {
         path: "/admin",
         element: (
           <RequirePermission level="admin">
-            <AdminPage />
+            <Outlet />
           </RequirePermission>
         ),
+        children: [
+          { index: true, element: <AdminPage /> },
+          { path: "users", element: <AdminUsersPage /> },
+          { path: "users/new", element: <UserInfoUpdatePage /> },
+          { path: "users/list", element: <ViewAllUsersPage /> },
+          { path: "users/edit", element: <EditUserPage /> },
+          { path: "users/deactivate", element: <DeactivateUserPage /> },
+          { path: "users/:id", element: <UserAdminPage /> },
+          { path: "users/:id/edit", element: <UserInfoUpdatePage /> },
+          { path: "patients", element: <AdminPatientsPage /> },
+          { path: "patients/new", element: <NewPatientPage /> },
+          { path: "patients/list", element: <ViewAllPatientsPage /> },
+          { path: "patients/:patientId", element: <PatientAdminPage /> },
+          { path: "patients/:patientId/edit", element: <EditPatientPage /> },
+          {
+            path: "patients/:patientId/deactivate",
+            element: <DeactivatePatientPage />,
+          },
+          {
+            path: "patients/:patientId/activate",
+            element: <ActivatePatientPage />,
+          },
+          { path: "patients/edit", element: <EditPatientPage /> },
+          { path: "patients/deactivate", element: <DeactivatePatientPage /> },
+          { path: "patients/:id/edit", element: <NewPatientPage /> },
+          { path: "organisations", element: <AdminOrganisationsPage /> },
+          { path: "organisations/new", element: <CreateOrganisationPage /> },
+          { path: "organisations/:id", element: <OrganisationAdminPage /> },
+          {
+            path: "organisations/:id/edit",
+            element: <EditOrganisationPage />,
+          },
+          {
+            path: "organisations/:id/add-staff",
+            element: <AddStaffToOrgPage />,
+          },
+          {
+            path: "organisations/:id/add-patient",
+            element: <AddPatientToOrgPage />,
+          },
+          {
+            path: "organisations/:id/features",
+            element: <OrgFeaturesPage />,
+          },
+          { path: "teaching", element: <AdminTeachingPage /> },
+          { path: "teaching/:bankId", element: <AdminBankDetailPage /> },
+          {
+            path: "teaching/:bankId/org/:orgId",
+            element: <AdminBankOrgSettingsPage />,
+          },
+        ],
       },
-      {
-        path: "/admin/users",
-        element: (
-          <RequirePermission level="admin">
-            <AdminUsersPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/new",
-        element: (
-          <RequirePermission level="admin">
-            <UserInfoUpdatePage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/list",
-        element: (
-          <RequirePermission level="admin">
-            <ViewAllUsersPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/edit",
-        element: (
-          <RequirePermission level="admin">
-            <EditUserPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/deactivate",
-        element: (
-          <RequirePermission level="admin">
-            <DeactivateUserPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/:id",
-        element: (
-          <RequirePermission level="admin">
-            <UserAdminPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/users/:id/edit",
-        element: (
-          <RequirePermission level="admin">
-            <UserInfoUpdatePage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients",
-        element: (
-          <RequirePermission level="admin">
-            <AdminPatientsPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/new",
-        element: (
-          <RequirePermission level="admin">
-            <NewPatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/list",
-        element: (
-          <RequirePermission level="admin">
-            <ViewAllPatientsPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/:patientId",
-        element: (
-          <RequirePermission level="admin">
-            <PatientAdminPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/:patientId/edit",
-        element: (
-          <RequirePermission level="admin">
-            <EditPatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/:patientId/deactivate",
-        element: (
-          <RequirePermission level="admin">
-            <DeactivatePatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/:patientId/activate",
-        element: (
-          <RequirePermission level="admin">
-            <ActivatePatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/edit",
-        element: (
-          <RequirePermission level="admin">
-            <EditPatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/deactivate",
-        element: (
-          <RequirePermission level="admin">
-            <DeactivatePatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/patients/:id/edit",
-        element: (
-          <RequirePermission level="admin">
-            <NewPatientPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations",
-        element: (
-          <RequirePermission level="admin">
-            <AdminOrganisationsPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/new",
-        element: (
-          <RequirePermission level="admin">
-            <CreateOrganisationPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/:id",
-        element: (
-          <RequirePermission level="admin">
-            <OrganisationAdminPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/:id/edit",
-        element: (
-          <RequirePermission level="admin">
-            <EditOrganisationPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/:id/add-staff",
-        element: (
-          <RequirePermission level="admin">
-            <AddStaffToOrgPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/:id/add-patient",
-        element: (
-          <RequirePermission level="admin">
-            <AddPatientToOrgPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/organisations/:id/features",
-        element: (
-          <RequirePermission level="admin">
-            <OrgFeaturesPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/teaching",
-        element: (
-          <RequirePermission level="admin">
-            <AdminTeachingPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/teaching/:bankId",
-        element: (
-          <RequirePermission level="admin">
-            <AdminBankDetailPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "/admin/teaching/:bankId/org/:orgId",
-        element: (
-          <RequirePermission level="admin">
-            <AdminBankOrgSettingsPage />
-          </RequirePermission>
-        ),
-      },
+
+      // Settings
       {
         path: "/settings",
         element: import("./pages/Settings").then((m) => <m.default />),
       },
       { path: "/settings/totp", element: <TotpSetup /> },
       { path: "/settings/password", element: <ChangePassword /> },
-
-      // Teaching routes — gated by "teaching" feature flag
-      {
-        path: "/teaching",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <TeachingDashboard />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/learn",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <LearningDashboard />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/learn/:moduleId",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <ModuleOverview />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/assessment/:id",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <AssessmentAttempt />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/assessment/:id/result",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <AssessmentResultPage />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/results",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <AllResults />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/sync",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <SyncStatus />
-          </RequireFeature>
-        ),
-      },
     ],
   },
 
-  // Teaching module landing — uses TeachingLayout (not MainLayout)
+  // Teaching routes — all use TeachingLayout (not MainLayout).
+  // Shared layout route provides RequireAuth + RequireFeature guards once.
   {
-    path: "/teaching/:bankId",
+    path: "/teaching",
     element: (
       <RequireAuth>
         <RequireFeature
           feature="teaching"
           fallback={<NoAccessLayout feature="teaching" />}
         >
-          <TeachingModuleMain />
+          <Outlet />
         </RequireFeature>
       </RequireAuth>
     ),
-  },
-
-  // Slide reader — uses TeachingLayout (not MainLayout)
-  {
-    path: "/teaching/learn/:moduleId/slide/:slideIndex",
-    element: (
-      <RequireAuth>
-        <RequireFeature
-          feature="teaching"
-          fallback={<NoAccessLayout feature="teaching" />}
-        >
-          <SlideReader />
-        </RequireFeature>
-      </RequireAuth>
-    ),
+    children: [
+      { index: true, element: <TeachingDashboard /> },
+      { path: ":bankId", element: <TeachingModuleMain /> },
+      { path: "learn", element: <LearningDashboard /> },
+      { path: "learn/:moduleId", element: <ModuleOverview /> },
+      { path: "learn/:moduleId/slide/:slideIndex", element: <SlideReader /> },
+      { path: "assessment/:id", element: <AssessmentAttempt /> },
+      { path: "assessment/:id/result", element: <AssessmentResultPage /> },
+      { path: "results", element: <AllResults /> },
+      { path: "sync", element: <SyncStatus /> },
+    ],
   },
 
   // Fallback -> show 404 page instead of redirecting to home

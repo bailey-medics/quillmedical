@@ -6,6 +6,7 @@ import {
   Skeleton,
   Stack,
 } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -67,78 +68,84 @@ export default function TeachingDashboard() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={36} width={200} />
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Skeleton height={120} />
-            <Skeleton height={120} />
-          </SimpleGrid>
-          <Skeleton height={24} width={150} />
-          <Skeleton height={50} />
-          <Skeleton height={50} />
-          <Skeleton height={50} />
-        </Stack>
-      </Container>
+      <TeachingLayout>
+        <Container size="lg">
+          <Stack gap="lg">
+            <Skeleton height={36} width={200} />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Skeleton height={120} />
+              <Skeleton height={120} />
+            </SimpleGrid>
+            <Skeleton height={24} width={150} />
+            <Skeleton height={50} />
+            <Skeleton height={50} />
+            <Skeleton height={50} />
+          </Stack>
+        </Container>
+      </TeachingLayout>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error}
-          colour="alert"
-        />
-      </Container>
+      <TeachingLayout>
+        <Container size="lg">
+          <StateMessage
+            icon={<IconAlertCircle />}
+            title="Error loading data"
+            description={error}
+            colour="alert"
+          />
+        </Container>
+      </TeachingLayout>
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Teaching" />
+    <TeachingLayout>
+      <Container size="lg">
+        <Stack gap="lg">
+          <PageHeader title="Teaching" />
 
-        {banks.filter((bank) => bank.is_live).length === 0 ? (
-          <Center p="xl">
-            <BodyText>No assessments are currently open</BodyText>
-          </Center>
-        ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {banks
-              .filter((bank) => bank.is_live)
-              .sort(
-                (a, b) =>
-                  (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
-                  (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
-              )
-              .map((bank) => {
-                const image = MODULE_IMAGES[bank.question_bank_id];
-                return (
-                  <PictureActionCard
-                    key={bank.id}
-                    title={bank.title}
-                    description={bank.description}
-                    imageSrc={image?.src}
-                    imageAlt={image?.alt}
-                    buttonLabel="View module"
-                    buttonUrl={`/teaching/${bank.question_bank_id}`}
-                  />
-                );
-              })}
-          </SimpleGrid>
-        )}
+          {banks.filter((bank) => bank.is_live).length === 0 ? (
+            <Center p="xl">
+              <BodyText>No assessments are currently open</BodyText>
+            </Center>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              {banks
+                .filter((bank) => bank.is_live)
+                .sort(
+                  (a, b) =>
+                    (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
+                    (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
+                )
+                .map((bank) => {
+                  const image = MODULE_IMAGES[bank.question_bank_id];
+                  return (
+                    <PictureActionCard
+                      key={bank.id}
+                      title={bank.title}
+                      description={bank.description}
+                      imageSrc={image?.src}
+                      imageAlt={image?.alt}
+                      buttonLabel="View module"
+                      buttonUrl={`/teaching/${bank.question_bank_id}`}
+                    />
+                  );
+                })}
+            </SimpleGrid>
+          )}
 
-        <Box mt="md">
-          <Heading>My history</Heading>
-        </Box>
-        <AssessmentHistoryTable
-          assessments={history}
-          onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
-        />
-      </Stack>
-    </Container>
+          <Box mt="md">
+            <Heading>My history</Heading>
+          </Box>
+          <AssessmentHistoryTable
+            assessments={history}
+            onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
+          />
+        </Stack>
+      </Container>
+    </TeachingLayout>
   );
 }

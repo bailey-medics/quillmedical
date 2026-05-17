@@ -19,6 +19,13 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// Mock useAuth for TeachingLayout
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: { status: "authenticated", user: { username: "test-user" } },
+  }),
+}));
+
 import { api } from "@/lib/api";
 import TeachingDashboard from "./TeachingDashboard";
 import AllResults from "./AllResults";

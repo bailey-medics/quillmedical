@@ -7,6 +7,7 @@
  */
 
 import { Container, Group, Stack } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@components/typography/PageHeader";
 import { BodyText } from "@/components/typography";
@@ -41,9 +42,11 @@ export default function ModuleOverview() {
 
   if (!mod) {
     return (
-      <Container size="lg">
-        <BodyText>Module not found</BodyText>
-      </Container>
+      <TeachingLayout>
+        <Container size="lg">
+          <BodyText>Module not found</BodyText>
+        </Container>
+      </TeachingLayout>
     );
   }
 
@@ -55,23 +58,25 @@ export default function ModuleOverview() {
   const startSlide = hasProgress ? mod.lastSlide : 0;
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title={mod.title} />
-        <BodyText>{mod.description}</BodyText>
-        <BodyText c="dimmed">
-          {mod.slideCount} slides
-          {hasProgress && ` · Last viewed slide ${mod.lastSlide + 1}`}
-        </BodyText>
-        <Group justify="flex-end">
-          <PreviousNextButton
-            onNext={() =>
-              navigate(`/teaching/learn/${moduleId}/slide/${startSlide}`)
-            }
-            nextLabel={buttonLabel}
-          />
-        </Group>
-      </Stack>
-    </Container>
+    <TeachingLayout>
+      <Container size="lg">
+        <Stack gap="lg">
+          <PageHeader title={mod.title} />
+          <BodyText>{mod.description}</BodyText>
+          <BodyText c="dimmed">
+            {mod.slideCount} slides
+            {hasProgress && ` · Last viewed slide ${mod.lastSlide + 1}`}
+          </BodyText>
+          <Group justify="flex-end">
+            <PreviousNextButton
+              onNext={() =>
+                navigate(`/teaching/learn/${moduleId}/slide/${startSlide}`)
+              }
+              nextLabel={buttonLabel}
+            />
+          </Group>
+        </Stack>
+      </Container>
+    </TeachingLayout>
   );
 }

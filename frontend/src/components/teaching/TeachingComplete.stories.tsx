@@ -30,14 +30,10 @@ type Story = StoryObj;
 
 /** Build a LearningNav sidebar for the given slide index */
 function learningNav(currentIndex: number, onNavigate?: () => void) {
-  const visited = new Set(
-    Array.from({ length: currentIndex + 1 }, (_, i) => i),
-  );
   return (
     <LearningNav
       slides={stubSlides}
       currentIndex={currentIndex}
-      visited={visited}
       onNavigate={onNavigate ?? (() => {})}
       onExit={() => {}}
     />

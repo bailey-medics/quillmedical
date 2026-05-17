@@ -1,11 +1,11 @@
 import { Container, Loader, Stack } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useBlocker,
   useNavigate,
-  useOutletContext,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -15,7 +15,6 @@ import { AssessmentIntro } from "@/components/teaching/assessment-intro/Assessme
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import type { LayoutCtx } from "@/RootLayout";
 import type {
   AnswerResult,
   Assessment,
@@ -31,31 +30,9 @@ export default function AssessmentAttempt() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setExamMode } = useOutletContext<LayoutCtx>();
-
-  // Enter exam mode on mount, exit on unmount
-  useEffect(() => {
-    setExamMode(true);
-    return () => setExamMode(false);
-  }, [setExamMode]);
-
   const [phase, setPhase] = useState<Phase>("loading");
 
   const isActive = phase === "questions" || phase === "intro";
-  const isExamPhase =
-    phase === "questions" || phase === "intro" || phase === "closing";
-
-  // Also clear exam mode if we leave an exam phase without unmounting
-  // (e.g. error during exam). Closing phase keeps exam mode so the
-  // navbar stays hidden until the user presses "View results".
-  const wasInExam = useRef(false);
-  useEffect(() => {
-    if (isExamPhase) {
-      wasInExam.current = true;
-    } else if (wasInExam.current) {
-      setExamMode(false);
-    }
-  }, [isExamPhase, setExamMode]);
 
   // Block React Router navigation during active exam
   // Allow the /new → /assessment/:id replace navigation on begin
@@ -327,7 +304,7 @@ export default function AssessmentAttempt() {
   const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
   return (
-    <>
+    <TeachingLayout>
       {/* Blocker modal — warns when navigating away during active exam */}
       <ConfirmModal
         opened={blocker.state === "blocked"}
@@ -417,6 +394,6 @@ export default function AssessmentAttempt() {
           </Stack>
         </Container>
       )}
-    </>
+    </TeachingLayout>
   );
 }
