@@ -1,18 +1,10 @@
-import {
-  Box,
-  Center,
-  Container,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-} from "@mantine/core";
+import { Box, Center, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { useAuth } from "@/auth/AuthContext";
 import PictureActionCard from "@/components/picture-action-card/PictureActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -43,11 +35,6 @@ const MODULE_ORDER: string[] = [
 
 export default function TeachingDashboard() {
   const navigate = useNavigate();
-  const { logout, state } = useAuth();
-  const hasAdminAccess =
-    state.user !== null &&
-    (state.user.system_permissions === "admin" ||
-      state.user.system_permissions === "superadmin");
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [history, setHistory] = useState<AssessmentHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,19 +63,17 @@ export default function TeachingDashboard() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <Skeleton height={36} width={200} />
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Skeleton height={120} />
-              <Skeleton height={120} />
-            </SimpleGrid>
-            <Skeleton height={24} width={150} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <Skeleton height={36} width={200} />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Skeleton height={120} />
+            <Skeleton height={120} />
+          </SimpleGrid>
+          <Skeleton height={24} width={150} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -96,14 +81,12 @@ export default function TeachingDashboard() {
   if (error) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error loading data"
-            description={error}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
@@ -116,52 +99,44 @@ export default function TeachingDashboard() {
         (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
     );
 
-  const sidebarNav = (
-    <TeachingMainNav
-      onSettings={() => navigate("/settings")}
-      onAdmin={hasAdminAccess ? () => navigate("/admin") : undefined}
-      onLogout={() => void logout()}
-    />
-  );
+  const sidebarNav = <TeachingMainNav />;
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title="Teaching modules" />
+      <Stack gap="lg">
+        <PageHeader title="Teaching modules" />
 
-          {liveBanks.length === 0 ? (
-            <Center p="xl">
-              <BodyText>No assessments are currently open</BodyText>
-            </Center>
-          ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {liveBanks.map((bank) => {
-                const image = MODULE_IMAGES[bank.question_bank_id];
-                return (
-                  <PictureActionCard
-                    key={bank.id}
-                    title={bank.title}
-                    description={bank.description}
-                    imageSrc={image?.src}
-                    imageAlt={image?.alt}
-                    buttonLabel="View module"
-                    buttonUrl={`/teaching/${bank.question_bank_id}`}
-                  />
-                );
-              })}
-            </SimpleGrid>
-          )}
+        {liveBanks.length === 0 ? (
+          <Center p="xl">
+            <BodyText>No assessments are currently open</BodyText>
+          </Center>
+        ) : (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            {liveBanks.map((bank) => {
+              const image = MODULE_IMAGES[bank.question_bank_id];
+              return (
+                <PictureActionCard
+                  key={bank.id}
+                  title={bank.title}
+                  description={bank.description}
+                  imageSrc={image?.src}
+                  imageAlt={image?.alt}
+                  buttonLabel="View module"
+                  buttonUrl={`/teaching/${bank.question_bank_id}`}
+                />
+              );
+            })}
+          </SimpleGrid>
+        )}
 
-          <Box mt="md">
-            <Heading>My history</Heading>
-          </Box>
-          <AssessmentHistoryTable
-            assessments={history}
-            onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
-          />
-        </Stack>
-      </Container>
+        <Box mt="md">
+          <Heading>My history</Heading>
+        </Box>
+        <AssessmentHistoryTable
+          assessments={history}
+          onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
+        />
+      </Stack>
     </TeachingLayout>
   );
 }

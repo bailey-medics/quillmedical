@@ -120,7 +120,7 @@ export default function TeachingLayout({
             ref={mainRef}
             flex={1}
             style={{ overflowY: "auto" }}
-            px={isSm ? 0 : LAYOUT_PADDING_X}
+            px={isSm ? "md" : LAYOUT_PADDING_X}
             pt={LAYOUT_PADDING_TOP}
             pb={LAYOUT_PADDING_BOTTOM}
           >

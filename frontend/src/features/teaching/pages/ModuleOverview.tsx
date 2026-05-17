@@ -6,7 +6,7 @@
  * Phase 1: Uses stub data.
  */
 
-import { Container, Group, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@components/typography/PageHeader";
@@ -43,9 +43,7 @@ export default function ModuleOverview() {
   if (!mod) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <BodyText>Module not found</BodyText>
-        </Container>
+        <BodyText>Module not found</BodyText>
       </TeachingLayout>
     );
   }
@@ -59,24 +57,22 @@ export default function ModuleOverview() {
 
   return (
     <TeachingLayout>
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title={mod.title} />
-          <BodyText>{mod.description}</BodyText>
-          <BodyText c="dimmed">
-            {mod.slideCount} slides
-            {hasProgress && ` · Last viewed slide ${mod.lastSlide + 1}`}
-          </BodyText>
-          <Group justify="flex-end">
-            <PreviousNextButton
-              onNext={() =>
-                navigate(`/teaching/learn/${moduleId}/slide/${startSlide}`)
-              }
-              nextLabel={buttonLabel}
-            />
-          </Group>
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <PageHeader title={mod.title} />
+        <BodyText>{mod.description}</BodyText>
+        <BodyText c="dimmed">
+          {mod.slideCount} slides
+          {hasProgress && ` · Last viewed slide ${mod.lastSlide + 1}`}
+        </BodyText>
+        <Group justify="flex-end">
+          <PreviousNextButton
+            onNext={() =>
+              navigate(`/teaching/learn/${moduleId}/slide/${startSlide}`)
+            }
+            nextLabel={buttonLabel}
+          />
+        </Group>
+      </Stack>
     </TeachingLayout>
   );
 }

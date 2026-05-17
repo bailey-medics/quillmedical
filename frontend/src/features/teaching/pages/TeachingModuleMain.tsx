@@ -1,12 +1,13 @@
 /**
  * TeachingModuleMain Page
  *
- * Intermediate page for a teaching module showing two choices:
- * "Learning materials" and "Start assessment".
+ * Intermediate page for a teaching module showing the
+ * "Start assessment" action card, and optionally
+ * "Learning materials" when content is available.
  * Mounted at /teaching/:bankId.
  */
 
-import { Container, SimpleGrid, Stack, Skeleton } from "@mantine/core";
+import { SimpleGrid, Stack, Skeleton } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -21,13 +22,14 @@ import {
 } from "@/components/icons/appIcons";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
-import { useAuth } from "@/auth/AuthContext";
 import type { QuestionBank } from "@/features/teaching/types";
+
+/** Bank IDs that have learning materials available (Phase 1 stub). */
+const BANKS_WITH_LEARNING = new Set(["colonoscopy-optical-diagnosis-test"]);
 
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
   const navigate = useNavigate();
-  const { logout, state } = useAuth();
   const [bank, setBank] = useState<QuestionBank | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +56,13 @@ export default function TeachingModuleMain() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <Skeleton height={36} width={200} />
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Skeleton height={160} />
-              <Skeleton height={160} />
-            </SimpleGrid>
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <Skeleton height={36} width={200} />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Skeleton height={160} />
+            <Skeleton height={160} />
+          </SimpleGrid>
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -70,38 +70,32 @@ export default function TeachingModuleMain() {
   if (error || !bank) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error"
-            description={error ?? "Module not found"}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error"
+          description={error ?? "Module not found"}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
 
-  const hasAdminAccess =
-    state.status === "authenticated" &&
-    (state.user.system_permissions === "admin" ||
-      state.user.system_permissions === "superadmin");
+  const hasLearning = BANKS_WITH_LEARNING.has(bank.question_bank_id);
 
   const sidebarNav = (
     <TeachingMainNav
-      onSettings={() => navigate("/settings")}
-      onAdmin={hasAdminAccess ? () => navigate("/admin") : undefined}
-      onLogout={() => void logout()}
+      moduleName={bank.title}
+      moduleHref={`/teaching/${bankId}`}
     />
   );
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title={bank.title} />
-          <BodyText>{bank.description}</BodyText>
+      <Stack gap="lg">
+        <PageHeader title={bank.title} />
+        <BodyText>{bank.description}</BodyText>
 
+        {hasLearning ? (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <ActionCard
               icon={<IconBook />}
@@ -124,8 +118,19 @@ export default function TeachingModuleMain() {
               }
             />
           </SimpleGrid>
-        </Stack>
-      </Container>
+        ) : (
+          <ActionCard
+            icon={<IconChalkboardTeacher />}
+            title="Start assessment"
+            subtitle="Test your knowledge with a timed multiple-choice assessment."
+            buttonLabel="Start assessment"
+            fullWidth
+            onClick={() =>
+              navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
+            }
+          />
+        )}
+      </Stack>
     </TeachingLayout>
   );
 }

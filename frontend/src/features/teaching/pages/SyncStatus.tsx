@@ -1,4 +1,4 @@
-import { Badge, Container, Skeleton, Stack, Table } from "@mantine/core";
+import { Badge, Skeleton, Stack, Table } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -41,14 +41,12 @@ export default function SyncStatus() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <Skeleton height={30} width={200} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <Skeleton height={30} width={200} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -56,66 +54,62 @@ export default function SyncStatus() {
   if (error) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error loading data"
-            description={error}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
 
   return (
     <TeachingLayout>
-      <Container size="lg">
-        <Stack gap="lg">
-          <Heading>Sync status</Heading>
+      <Stack gap="lg">
+        <Heading>Sync status</Heading>
 
-          {syncs.length === 0 ? (
-            <EmptyState>No syncs have been performed yet.</EmptyState>
-          ) : (
-            <Table highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Date</Table.Th>
-                  <Table.Th>Question bank</Table.Th>
-                  <Table.Th>Version</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th>Items created</Table.Th>
-                  <Table.Th>Items updated</Table.Th>
+        {syncs.length === 0 ? (
+          <EmptyState>No syncs have been performed yet.</EmptyState>
+        ) : (
+          <Table highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Date</Table.Th>
+                <Table.Th>Question bank</Table.Th>
+                <Table.Th>Version</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Items created</Table.Th>
+                <Table.Th>Items updated</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {syncs.map((sync) => (
+                <Table.Tr key={sync.id}>
+                  <Table.Td>{formatDate(sync.started_at)}</Table.Td>
+                  <Table.Td>{sync.question_bank_id}</Table.Td>
+                  <Table.Td>{sync.version}</Table.Td>
+                  <Table.Td>
+                    <Badge
+                      variant="light"
+                      size="sm"
+                      color={
+                        sync.status === "success"
+                          ? "var(--success-color)"
+                          : "var(--alert-color)"
+                      }
+                    >
+                      {sync.status}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>{sync.items_created}</Table.Td>
+                  <Table.Td>{sync.items_updated}</Table.Td>
                 </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {syncs.map((sync) => (
-                  <Table.Tr key={sync.id}>
-                    <Table.Td>{formatDate(sync.started_at)}</Table.Td>
-                    <Table.Td>{sync.question_bank_id}</Table.Td>
-                    <Table.Td>{sync.version}</Table.Td>
-                    <Table.Td>
-                      <Badge
-                        variant="light"
-                        size="sm"
-                        color={
-                          sync.status === "success"
-                            ? "var(--success-color)"
-                            : "var(--alert-color)"
-                        }
-                      >
-                        {sync.status}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>{sync.items_created}</Table.Td>
-                    <Table.Td>{sync.items_updated}</Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
-        </Stack>
-      </Container>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Stack>
     </TeachingLayout>
   );
 }

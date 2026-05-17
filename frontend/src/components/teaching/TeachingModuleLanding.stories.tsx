@@ -1,8 +1,9 @@
 /**
  * Teaching Module Landing Page Story
  *
- * Full-page composition showing the TeachingModuleMain landing page
- * with two ActionCards: "Learning materials" and "Start assessment".
+ * Full-page composition showing the TeachingModuleMain landing page.
+ * Shows "Learning materials" + "Start assessment" when learning content
+ * is available, or just "Start assessment" otherwise.
  * Uses TeachingLayout with TeachingMainNav sidebar.
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -21,11 +22,11 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-export const Default: Story = {
+export const WithLearning: Story = {
   tags: ["!test"],
   render: () => (
     <TeachingLayout
-      sidebar={<TeachingMainNav onSettings={() => {}} onLogout={() => {}} />}
+      sidebar={<TeachingMainNav />}
       footerText="Logged in: dr.jones"
     >
       <PageHeader title="Colorectal polyps" />
@@ -39,8 +40,8 @@ export const Default: Story = {
         />
         <ActionCard
           icon={<IconChalkboardTeacher />}
-          title="Assessment"
-          subtitle="Test your knowledge with a timed multiple-choice assessment. You must complete the learning materials first."
+          title="Start assessment"
+          subtitle="Test your knowledge with a timed multiple-choice assessment."
           buttonLabel="Start assessment"
           buttonUrl="/teaching/assessment/new"
         />
@@ -49,7 +50,26 @@ export const Default: Story = {
   ),
 };
 
+export const AssessmentOnly: Story = {
+  tags: ["!test"],
+  render: () => (
+    <TeachingLayout
+      sidebar={<TeachingMainNav />}
+      footerText="Logged in: dr.jones"
+    >
+      <PageHeader title="Chest X-ray interpretation" />
+      <ActionCard
+        icon={<IconChalkboardTeacher />}
+        title="Start assessment"
+        subtitle="Test your knowledge with a timed multiple-choice assessment."
+        buttonLabel="Start assessment"
+        buttonUrl="/teaching/assessment/new"
+      />
+    </TeachingLayout>
+  ),
+};
+
 export const DarkMode: Story = {
-  ...Default,
+  ...WithLearning,
   globals: { colorScheme: "dark" },
 };

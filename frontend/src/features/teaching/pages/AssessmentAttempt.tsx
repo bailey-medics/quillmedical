@@ -1,4 +1,4 @@
-import { Container, Loader, Stack } from "@mantine/core";
+import { Loader, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -318,85 +318,71 @@ export default function AssessmentAttempt() {
         will be submitted.
       </ConfirmModal>
 
-      {phase === "loading" && (
-        <Container size="lg">
-          <Loader />
-        </Container>
-      )}
+      {phase === "loading" && <Loader />}
 
       {phase === "error" && (
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error loading data"
-            description={error ?? "An unexpected error occurred"}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "An unexpected error occurred"}
+          colour="alert"
+        />
       )}
 
       {phase === "intro" && (
-        <Container size="lg">
-          <AssessmentIntro
-            title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
-            body={introPage?.body ?? ""}
-            onBegin={handleBegin}
-            onCancel={() => {
-              const bankId = searchParams.get("bank");
-              navigate(bankId ? `/teaching/${bankId}` : "/teaching");
-            }}
-            loading={beginning}
-          />
-        </Container>
+        <AssessmentIntro
+          title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
+          body={introPage?.body ?? ""}
+          onBegin={handleBegin}
+          onCancel={() => {
+            const bankId = searchParams.get("bank");
+            navigate(bankId ? `/teaching/${bankId}` : "/teaching");
+          }}
+          loading={beginning}
+        />
       )}
 
       {phase === "closing" && (
-        <Container size="lg">
-          <AssessmentClosing
-            title={closingPage?.title ?? "Assessment complete"}
-            body={
-              closingPage?.body ??
-              "You have completed all questions. Click below to view your results."
-            }
-            onViewResults={handleComplete}
-            disabled={completing}
-          />
-        </Container>
+        <AssessmentClosing
+          title={closingPage?.title ?? "Assessment complete"}
+          body={
+            closingPage?.body ??
+            "You have completed all questions. Click below to view your results."
+          }
+          onViewResults={handleComplete}
+          disabled={completing}
+        />
       )}
 
       {phase === "questions" && (
-        <Container size="lg">
-          <Stack gap="lg">
-            {currentItem && (
-              <QuestionView
-                item={currentItem}
-                selectedOption={selectedOption}
-                onSelectOption={setSelectedOption}
-                currentQuestion={currentItem.display_order}
-                totalQuestions={assessment?.total_items}
-                timeLimitMinutes={assessment?.time_limit_minutes}
-                startedAt={assessment?.started_at}
-                onExpire={handleExpire}
-                onCloseExam={handleComplete}
-                onPrevious={
-                  currentItem.display_order > 1 ? handlePrevious : undefined
-                }
-                onNext={
-                  viewingPrevious ? handleNextPrevious : handleSubmitAnswer
-                }
-                onSubmit={viewingPrevious ? undefined : handleSubmitAnswer}
-                isLastQuestion={
-                  viewingPrevious
-                    ? false
-                    : assessment
-                      ? answeredCount + 1 >= assessment.total_items
-                      : false
-                }
-                submitting={submitting}
-              />
-            )}
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          {currentItem && (
+            <QuestionView
+              item={currentItem}
+              selectedOption={selectedOption}
+              onSelectOption={setSelectedOption}
+              currentQuestion={currentItem.display_order}
+              totalQuestions={assessment?.total_items}
+              timeLimitMinutes={assessment?.time_limit_minutes}
+              startedAt={assessment?.started_at}
+              onExpire={handleExpire}
+              onCloseExam={handleComplete}
+              onPrevious={
+                currentItem.display_order > 1 ? handlePrevious : undefined
+              }
+              onNext={viewingPrevious ? handleNextPrevious : handleSubmitAnswer}
+              onSubmit={viewingPrevious ? undefined : handleSubmitAnswer}
+              isLastQuestion={
+                viewingPrevious
+                  ? false
+                  : assessment
+                    ? answeredCount + 1 >= assessment.total_items
+                    : false
+              }
+              submitting={submitting}
+            />
+          )}
+        </Stack>
       )}
     </TeachingLayout>
   );

@@ -53,7 +53,7 @@ export default function TeachingLearningNav({
   onExit,
 }: TeachingLearningNavProps) {
   return (
-    <Stack gap="xs" p="sm">
+    <Stack gap="xs" p="sm" pb={60}>
       <TeachingProgressBar current={currentIndex + 1} total={slides.length} />
 
       {slides.map((slide) => (
@@ -70,7 +70,7 @@ export default function TeachingLearningNav({
       <Divider my="xs" />
 
       <NavLink
-        label="Exit"
+        label="Exit lesson"
         leftSection={
           <IconArrowLeft size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
         }

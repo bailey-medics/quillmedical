@@ -13,14 +13,14 @@ export const sectionTitleSlide: CompiledSlide = {
 };
 
 export const defaultSlide: CompiledSlide = {
-  slideIndex: 4,
+  slideIndex: 1,
   layout: "default",
   title: "What this module covers",
   body: "A short introduction covering morphology categories of superficial lesions, clinical implications of each, and how to communicate findings consistently.",
 };
 
 export const videoSlide: CompiledSlide = {
-  slideIndex: 1,
+  slideIndex: 2,
   layout: "video-slide",
   title: "Recorded lecture",
   youtubeId: "2OTbDQh3MxM",
@@ -28,7 +28,7 @@ export const videoSlide: CompiledSlide = {
 };
 
 export const imageSlide: CompiledSlide = {
-  slideIndex: 2,
+  slideIndex: 3,
   layout: "image-slide",
   title: "Paris classification overview",
   imageSrc: "/storybook/paris-classification.png",
@@ -37,7 +37,7 @@ export const imageSlide: CompiledSlide = {
 };
 
 export const textWithFigureSlide: CompiledSlide = {
-  slideIndex: 3,
+  slideIndex: 4,
   layout: "text-with-figure",
   title: "Polyp morphology",
   body: "Polypoid (0-I) versus non-polypoid (0-II) is the primary axis of the Paris classification. The distinction matters because non-polypoid lesions are harder to detect and have different malignancy risks.",

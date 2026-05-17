@@ -16,6 +16,18 @@
       isolation but fails with multiple renders. Try running outside Docker
       or with `--pool=threads` flag.
 
+## Teaching dashboard skeleton flash
+
+- [ ] Eliminate the brief skeleton flash (~0.3s) when navigating to `/teaching`.
+      Caused by `useState(true)` + `useEffect` fetch pattern in
+      `TeachingDashboard.tsx` — every mount shows skeletons immediately until
+      `/teaching/question-banks` and `/teaching/assessments/history` resolve.
+      **Options:** (1) delay skeleton display by ~300ms so fast responses
+      never show it, (2) add a caching layer (React Query / SWR) so revisits
+      render from cache, (3) integrate with Suspense + `startTransition` to
+      keep the previous page visible until data is ready. Option 1 is simplest;
+      option 2 is better long-term as more teaching pages are added.
+
 ## Offline
 
 ## Playwright E2E testing

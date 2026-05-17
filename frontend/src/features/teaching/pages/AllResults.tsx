@@ -1,12 +1,4 @@
-import {
-  Badge,
-  Button,
-  Container,
-  Group,
-  Skeleton,
-  Stack,
-  Table,
-} from "@mantine/core";
+import { Badge, Button, Group, Skeleton, Stack, Table } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -86,15 +78,13 @@ export default function AllResults() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <Skeleton height={30} width={200} />
-            <Skeleton height={40} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <Skeleton height={30} width={200} />
+          <Skeleton height={40} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -102,99 +92,95 @@ export default function AllResults() {
   if (error) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error loading data"
-            description={error}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
 
   return (
     <TeachingLayout>
-      <Container size="lg">
-        <Stack gap="lg">
-          <Group justify="space-between" align="center">
-            <Heading>All results</Heading>
-            {results.length > 0 && (
-              <Button variant="light" onClick={() => exportCsv(results)}>
-                Export CSV
-              </Button>
-            )}
-          </Group>
-
-          {banks.length > 0 && (
-            <SelectField
-              label="Filter by question bank"
-              placeholder="All banks"
-              clearable
-              data={banks.map((b) => ({
-                value: b.question_bank_id,
-                label: b.title,
-              }))}
-              value={selectedBank}
-              onChange={setSelectedBank}
-            />
+      <Stack gap="lg">
+        <Group justify="space-between" align="center">
+          <Heading>All results</Heading>
+          {results.length > 0 && (
+            <Button variant="light" onClick={() => exportCsv(results)}>
+              Export CSV
+            </Button>
           )}
+        </Group>
 
-          {results.length === 0 ? (
-            <EmptyState>No completed results found.</EmptyState>
-          ) : (
-            <Table highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Date</Table.Th>
-                  <Table.Th>User</Table.Th>
-                  <Table.Th>Question bank</Table.Th>
-                  <Table.Th>Version</Table.Th>
-                  <Table.Th>Items</Table.Th>
-                  <Table.Th>Result</Table.Th>
+        {banks.length > 0 && (
+          <SelectField
+            label="Filter by question bank"
+            placeholder="All banks"
+            clearable
+            data={banks.map((b) => ({
+              value: b.question_bank_id,
+              label: b.title,
+            }))}
+            value={selectedBank}
+            onChange={setSelectedBank}
+          />
+        )}
+
+        {results.length === 0 ? (
+          <EmptyState>No completed results found.</EmptyState>
+        ) : (
+          <Table highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Date</Table.Th>
+                <Table.Th>User</Table.Th>
+                <Table.Th>Question bank</Table.Th>
+                <Table.Th>Version</Table.Th>
+                <Table.Th>Items</Table.Th>
+                <Table.Th>Result</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {results.map((r) => (
+                <Table.Tr key={r.id}>
+                  <Table.Td>
+                    {r.completed_at ? formatDate(r.completed_at) : "—"}
+                  </Table.Td>
+                  <Table.Td>{r.user_id}</Table.Td>
+                  <Table.Td>{r.question_bank_id}</Table.Td>
+                  <Table.Td>{r.bank_version}</Table.Td>
+                  <Table.Td>{r.total_items}</Table.Td>
+                  <Table.Td>
+                    {r.is_passed === null ? (
+                      <Badge variant="light" color="gray" size="sm">
+                        Incomplete
+                      </Badge>
+                    ) : r.is_passed ? (
+                      <Badge
+                        variant="light"
+                        color="var(--success-color)"
+                        size="sm"
+                      >
+                        Pass
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="light"
+                        color="var(--alert-color)"
+                        size="sm"
+                      >
+                        Fail
+                      </Badge>
+                    )}
+                  </Table.Td>
                 </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {results.map((r) => (
-                  <Table.Tr key={r.id}>
-                    <Table.Td>
-                      {r.completed_at ? formatDate(r.completed_at) : "—"}
-                    </Table.Td>
-                    <Table.Td>{r.user_id}</Table.Td>
-                    <Table.Td>{r.question_bank_id}</Table.Td>
-                    <Table.Td>{r.bank_version}</Table.Td>
-                    <Table.Td>{r.total_items}</Table.Td>
-                    <Table.Td>
-                      {r.is_passed === null ? (
-                        <Badge variant="light" color="gray" size="sm">
-                          Incomplete
-                        </Badge>
-                      ) : r.is_passed ? (
-                        <Badge
-                          variant="light"
-                          color="var(--success-color)"
-                          size="sm"
-                        >
-                          Pass
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="light"
-                          color="var(--alert-color)"
-                          size="sm"
-                        >
-                          Fail
-                        </Badge>
-                      )}
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          )}
-        </Stack>
-      </Container>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Stack>
     </TeachingLayout>
   );
 }

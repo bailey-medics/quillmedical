@@ -10,22 +10,15 @@ const meta: Meta<typeof TeachingMainNav> = {
 export default meta;
 type Story = StoryObj<typeof TeachingMainNav>;
 
-export const Default: Story = {
-  args: {
-    onSettings: () => {},
-    onAdmin: () => {},
-    onLogout: () => {},
-  },
-};
+export const Default: Story = {};
 
-export const WithoutAdmin: Story = {
+export const WithModuleName: Story = {
   args: {
-    onSettings: () => {},
-    onLogout: () => {},
+    moduleName: "Colonoscopy optical diagnosis",
+    moduleHref: "/teaching/colonoscopy-optical-diagnosis-test",
   },
 };
 
 export const DarkMode: Story = {
-  ...Default,
   globals: { colorScheme: "dark" },
 };

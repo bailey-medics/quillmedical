@@ -1,4 +1,4 @@
-import { Container, Skeleton, Stack } from "@mantine/core";
+import { Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { ResultMessage, StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -48,13 +48,11 @@ export default function AssessmentResultPage() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <Skeleton height={60} />
-            <Skeleton height={200} />
-            <Skeleton height={150} />
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <Skeleton height={60} />
+          <Skeleton height={200} />
+          <Skeleton height={150} />
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -62,14 +60,12 @@ export default function AssessmentResultPage() {
   if (error || !assessment) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <StateMessage
-            icon={<IconAlertCircle />}
-            title="Error loading data"
-            description={error ?? "Assessment not found"}
-            colour="alert"
-          />
-        </Container>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error ?? "Assessment not found"}
+          colour="alert"
+        />
       </TeachingLayout>
     );
   }
@@ -77,16 +73,14 @@ export default function AssessmentResultPage() {
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
       <TeachingLayout>
-        <Container size="lg">
-          <Stack gap="lg">
-            <PageHeader title="Incomplete" />
-            <ResultMessage
-              variant="warning"
-              title="Incomplete"
-              subtitle={bankDetail?.title}
-            />
-          </Stack>
-        </Container>
+        <Stack gap="lg">
+          <PageHeader title="Incomplete" />
+          <ResultMessage
+            variant="warning"
+            title="Incomplete"
+            subtitle={bankDetail?.title}
+          />
+        </Stack>
       </TeachingLayout>
     );
   }
@@ -101,29 +95,27 @@ export default function AssessmentResultPage() {
 
   return (
     <TeachingLayout>
-      <Container size="lg">
-        <Stack gap="lg">
-          <AssessmentResult
-            isPassed={assessment.is_passed}
-            criteria={criteria}
-            bankTitle={bankDetail?.title}
-            assessmentId={assessment.id}
-            showCertificate={!!showCertificate}
-            showTryAgain={
-              fromExam && allowRetry && bankIsLive && !assessment.is_passed
-            }
-            showBackToDashboard={fromExam}
-            onTryAgain={() => {
-              navigate(
-                `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
-              );
-            }}
-            onBackToDashboard={() => {
-              navigate("/teaching");
-            }}
-          />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <AssessmentResult
+          isPassed={assessment.is_passed}
+          criteria={criteria}
+          bankTitle={bankDetail?.title}
+          assessmentId={assessment.id}
+          showCertificate={!!showCertificate}
+          showTryAgain={
+            fromExam && allowRetry && bankIsLive && !assessment.is_passed
+          }
+          showBackToDashboard={fromExam}
+          onTryAgain={() => {
+            navigate(
+              `/teaching/assessment/new?bank=${assessment.question_bank_id}`,
+            );
+          }}
+          onBackToDashboard={() => {
+            navigate("/teaching");
+          }}
+        />
+      </Stack>
     </TeachingLayout>
   );
 }

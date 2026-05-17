@@ -111,7 +111,11 @@ export default tseslint.config(
     // Custom rule: Page layout consistency
     {
       files: ["**/pages/**/*.tsx"],
-      ignores: ["**/*.test.tsx", "**/*.stories.tsx"],
+      ignores: [
+        "**/*.test.tsx",
+        "**/*.stories.tsx",
+        "**/features/teaching/pages/**",
+      ],
       rules: {
         // Warn if page file doesn't import Container from @mantine/core
         // This helps catch pages missing the standard <Container size="lg"> wrapper

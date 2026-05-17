@@ -6,7 +6,7 @@
  * Phase 1: Uses stub data (no backend).
  */
 
-import { Container, SimpleGrid, Stack, Center } from "@mantine/core";
+import { SimpleGrid, Stack, Center } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
@@ -71,35 +71,31 @@ export default function LearningDashboard() {
 
   return (
     <TeachingLayout>
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title="Learning materials" />
+      <Stack gap="lg">
+        <PageHeader title="Learning materials" />
 
-          {modules.length === 0 ? (
-            <Center p="xl">
-              <BodyText>No learning modules available</BodyText>
-            </Center>
-          ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {modules.map((mod) => {
-                const prog = progress.find(
-                  (p) => p.module_id === mod.module_id,
-                );
-                return (
-                  <ActionCard
-                    key={mod.module_id}
-                    icon={<IconBook />}
-                    title={mod.title}
-                    subtitle={getSubtitle(mod, prog)}
-                    buttonLabel={getButtonLabel(prog)}
-                    buttonUrl={`/teaching/learn/${mod.module_id}`}
-                  />
-                );
-              })}
-            </SimpleGrid>
-          )}
-        </Stack>
-      </Container>
+        {modules.length === 0 ? (
+          <Center p="xl">
+            <BodyText>No learning modules available</BodyText>
+          </Center>
+        ) : (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            {modules.map((mod) => {
+              const prog = progress.find((p) => p.module_id === mod.module_id);
+              return (
+                <ActionCard
+                  key={mod.module_id}
+                  icon={<IconBook />}
+                  title={mod.title}
+                  subtitle={getSubtitle(mod, prog)}
+                  buttonLabel={getButtonLabel(prog)}
+                  buttonUrl={`/teaching/learn/${mod.module_id}`}
+                />
+              );
+            })}
+          </SimpleGrid>
+        )}
+      </Stack>
     </TeachingLayout>
   );
 }

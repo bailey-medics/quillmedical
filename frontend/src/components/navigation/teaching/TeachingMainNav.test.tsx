@@ -4,58 +4,99 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import TeachingMainNav from "./TeachingMainNav";
 
-const defaultProps = {
-  onSettings: () => {},
-  onLogout: () => {},
-};
+// Mock useAuth — mirrors SideNav.test.tsx pattern
+const mockLogout = vi.fn();
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { system_permissions: "admin" },
+    },
+    logout: mockLogout,
+    login: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));
 
 describe("TeachingMainNav", () => {
-  it("renders Teaching as active link", () => {
-    renderWithRouter(<TeachingMainNav {...defaultProps} />);
+  it("renders Teaching link highlighted on /teaching", () => {
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
     const link = screen.getByText("Teaching");
     expect(link).toBeTruthy();
     expect(link.closest("[data-active]")).toBeTruthy();
   });
 
   it("renders Settings and Logout links", () => {
-    renderWithRouter(<TeachingMainNav {...defaultProps} />);
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Logout")).toBeTruthy();
   });
 
-  it("calls onSettings when Settings is clicked", async () => {
-    const user = userEvent.setup();
-    const onSettings = vi.fn();
-    renderWithRouter(
-      <TeachingMainNav {...defaultProps} onSettings={onSettings} />,
-    );
-    await user.click(screen.getByText("Settings"));
-    expect(onSettings).toHaveBeenCalledOnce();
-  });
-
-  it("calls onLogout when Logout is clicked", async () => {
-    const user = userEvent.setup();
-    const onLogout = vi.fn();
-    renderWithRouter(<TeachingMainNav {...defaultProps} onLogout={onLogout} />);
-    await user.click(screen.getByText("Logout"));
-    expect(onLogout).toHaveBeenCalledOnce();
-  });
-
-  it("shows Admin link when onAdmin is provided", () => {
-    renderWithRouter(<TeachingMainNav {...defaultProps} onAdmin={() => {}} />);
+  it("renders Admin link for admin users", () => {
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
     expect(screen.getByText("Admin")).toBeTruthy();
   });
 
-  it("hides Admin link when onAdmin is not provided", () => {
-    renderWithRouter(<TeachingMainNav {...defaultProps} />);
-    expect(screen.queryByText("Admin")).toBeNull();
+  it("navigates to /settings when Settings is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
+    await user.click(screen.getByText("Settings"));
+    expect(window.location.pathname).toBe("/settings");
   });
 
-  it("calls onAdmin when Admin is clicked", async () => {
+  it("navigates to /teaching when Teaching is clicked", async () => {
     const user = userEvent.setup();
-    const onAdmin = vi.fn();
-    renderWithRouter(<TeachingMainNav {...defaultProps} onAdmin={onAdmin} />);
-    await user.click(screen.getByText("Admin"));
-    expect(onAdmin).toHaveBeenCalledOnce();
+    renderWithRouter(
+      <TeachingMainNav
+        moduleName="Test module"
+        moduleHref="/teaching/test-id"
+      />,
+      { initialRoute: "/teaching/test-id" },
+    );
+    await user.click(screen.getByText("Teaching"));
+    expect(window.location.pathname).toBe("/teaching");
+  });
+
+  it("calls logout when Logout is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
+    await user.click(screen.getByText("Logout"));
+    expect(mockLogout).toHaveBeenCalledOnce();
+  });
+
+  it("shows module name as child link when provided", () => {
+    renderWithRouter(
+      <TeachingMainNav moduleName="Short name" moduleHref="/teaching/short" />,
+      { initialRoute: "/teaching/short" },
+    );
+    expect(screen.getByText("Short name")).toBeTruthy();
+  });
+
+  it("truncates module name to 15 characters", () => {
+    renderWithRouter(
+      <TeachingMainNav
+        moduleName="Colonoscopy optical diagnosis"
+        moduleHref="/teaching/col"
+      />,
+      { initialRoute: "/teaching/col" },
+    );
+    expect(screen.getByText("Colonoscopy opt…")).toBeTruthy();
+  });
+
+  it("does not show child link when moduleName is omitted", () => {
+    renderWithRouter(<TeachingMainNav />, {
+      initialRoute: "/teaching",
+    });
+    expect(screen.queryByText("Colonoscopy opt…")).toBeNull();
   });
 });

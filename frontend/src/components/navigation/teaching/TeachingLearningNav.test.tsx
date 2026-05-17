@@ -68,7 +68,7 @@ describe("TeachingLearningNav", () => {
       />,
     );
 
-    const exitLink = screen.getByText("Exit");
+    const exitLink = screen.getByText("Exit lesson");
     expect(exitLink).toBeInTheDocument();
     await user.click(exitLink);
     expect(handleExit).toHaveBeenCalledOnce();
