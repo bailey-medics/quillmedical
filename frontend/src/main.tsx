@@ -30,7 +30,7 @@
  * - Public routes: /login, /register, /forgot-password, /reset-password
  * - Protected routes (MainLayout): /, /patients, /messages, /settings, /admin
  * - Protected routes (TeachingLayout): /teaching, /teaching/:bankId,
- *   /teaching/learn/*, /teaching/assessment/*, /teaching/results, /teaching/sync
+ *   /teaching/learn/*, /teaching/assessment/*, /teaching/sync
  * - 404 fallback for unknown paths
  */
 
@@ -101,7 +101,6 @@ import HomeRedirect from "./pages/HomeRedirect";
 import TeachingDashboard from "./features/teaching/pages/TeachingDashboard";
 import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
-import AllResults from "./features/teaching/pages/AllResults";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
@@ -289,7 +288,6 @@ const router = createBrowserRouter([
       { path: "learn/:moduleId/slide/:slideIndex", element: <SlideReader /> },
       { path: "assessment/:id", element: <AssessmentAttempt /> },
       { path: "assessment/:id/result", element: <AssessmentResultPage /> },
-      { path: "results", element: <AllResults /> },
       { path: "sync", element: <SyncStatus /> },
     ],
   },

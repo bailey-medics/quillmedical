@@ -28,7 +28,6 @@ vi.mock("@/auth/AuthContext", () => ({
 
 import { api } from "@/lib/api";
 import TeachingDashboard from "./TeachingDashboard";
-import AllResults from "./AllResults";
 import SyncStatus from "./SyncStatus";
 
 beforeEach(() => {
@@ -69,7 +68,7 @@ describe("TeachingDashboard", () => {
     });
     renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
-      expect(screen.getByText("Test Bank")).toBeTruthy();
+      expect(screen.getAllByText("Test Bank").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -111,14 +110,6 @@ describe("TeachingDashboard", () => {
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeTruthy();
     });
-  });
-});
-
-describe("AllResults", () => {
-  it("shows loading state initially", () => {
-    (api.get as Mock).mockReturnValue(new Promise(() => {}));
-    renderWithRouter(<AllResults />);
-    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 });
 

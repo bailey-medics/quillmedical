@@ -7,10 +7,12 @@ import {
   Stack,
 } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
+import DashboardNav from "@/components/navigation/DashboardNav";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 import PictureActionCard from "@/components/picture-action-card/PictureActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -41,6 +43,11 @@ const MODULE_ORDER: string[] = [
 
 export default function TeachingDashboard() {
   const navigate = useNavigate();
+  const { logout, state } = useAuth();
+  const hasAdminAccess =
+    state.user !== null &&
+    (state.user.system_permissions === "admin" ||
+      state.user.system_permissions === "superadmin");
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [history, setHistory] = useState<AssessmentHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,39 +108,53 @@ export default function TeachingDashboard() {
     );
   }
 
+  const liveBanks = banks
+    .filter((bank) => bank.is_live)
+    .sort(
+      (a, b) =>
+        (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
+        (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
+    );
+
+  const sidebarNav = (
+    <DashboardNav
+      modules={liveBanks.map((b) => ({
+        id: b.question_bank_id,
+        title: b.title,
+      }))}
+      onModule={(id) => navigate(`/teaching/${id}`)}
+      onSettings={() => navigate("/settings")}
+      onAdmin={hasAdminAccess ? () => navigate("/admin") : undefined}
+      onLogout={() => void logout()}
+    />
+  );
+
   return (
-    <TeachingLayout>
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Container size="lg">
         <Stack gap="lg">
           <PageHeader title="Teaching" />
 
-          {banks.filter((bank) => bank.is_live).length === 0 ? (
+          {liveBanks.length === 0 ? (
             <Center p="xl">
               <BodyText>No assessments are currently open</BodyText>
             </Center>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {banks
-                .filter((bank) => bank.is_live)
-                .sort(
-                  (a, b) =>
-                    (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
-                    (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
-                )
-                .map((bank) => {
-                  const image = MODULE_IMAGES[bank.question_bank_id];
-                  return (
-                    <PictureActionCard
-                      key={bank.id}
-                      title={bank.title}
-                      description={bank.description}
-                      imageSrc={image?.src}
-                      imageAlt={image?.alt}
-                      buttonLabel="View module"
-                      buttonUrl={`/teaching/${bank.question_bank_id}`}
-                    />
-                  );
-                })}
+              {liveBanks.map((bank) => {
+                const image = MODULE_IMAGES[bank.question_bank_id];
+                return (
+                  <PictureActionCard
+                    key={bank.id}
+                    title={bank.title}
+                    description={bank.description}
+                    imageSrc={image?.src}
+                    imageAlt={image?.alt}
+                    buttonLabel="View module"
+                    buttonUrl={`/teaching/${bank.question_bank_id}`}
+                  />
+                );
+              })}
             </SimpleGrid>
           )}
 

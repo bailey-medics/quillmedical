@@ -256,7 +256,6 @@ export default function SideNavContent({
         children: [
           { label: "Assessments", href: "/teaching" },
           { label: "Manage items", href: "/teaching/manage" },
-          { label: "Results", href: "/teaching/results" },
         ],
       }
     : {
