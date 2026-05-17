@@ -10,7 +10,7 @@ import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import ActionCard from "@/components/action-card/ActionCard";
+import PictureActionCard from "@/components/picture-action-card/PictureActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
@@ -19,6 +19,24 @@ import type {
   AssessmentHistory,
   QuestionBank,
 } from "@/features/teaching/types";
+
+/** Static cover images for each question bank module. */
+const MODULE_IMAGES: Record<string, { src: string; alt: string }> = {
+  "colonoscopy-optical-diagnosis-test": {
+    src: "/teaching/colonoscopy-optical-diagnosis-test.png",
+    alt: "Colonoscopy image showing a colorectal polyp",
+  },
+  "chest-xray-interpretation-test": {
+    src: "/teaching/chest-xray-interpretation-test.png",
+    alt: "Chest X-ray showing a left-sided pneumothorax",
+  },
+};
+
+/** Display order for modules on the teaching dashboard. */
+const MODULE_ORDER: string[] = [
+  "colonoscopy-optical-diagnosis-test",
+  "chest-xray-interpretation-test",
+];
 
 export default function TeachingDashboard() {
   const navigate = useNavigate();
@@ -91,15 +109,25 @@ export default function TeachingDashboard() {
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {banks
               .filter((bank) => bank.is_live)
-              .map((bank) => (
-                <ActionCard
-                  key={bank.id}
-                  title={bank.title}
-                  subtitle={bank.description}
-                  buttonLabel="View module"
-                  onClick={() => navigate(`/teaching/${bank.question_bank_id}`)}
-                />
-              ))}
+              .sort(
+                (a, b) =>
+                  (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
+                  (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
+              )
+              .map((bank) => {
+                const image = MODULE_IMAGES[bank.question_bank_id];
+                return (
+                  <PictureActionCard
+                    key={bank.id}
+                    title={bank.title}
+                    description={bank.description}
+                    imageSrc={image?.src}
+                    imageAlt={image?.alt}
+                    buttonLabel="View module"
+                    buttonUrl={`/teaching/${bank.question_bank_id}`}
+                  />
+                );
+              })}
           </SimpleGrid>
         )}
 
