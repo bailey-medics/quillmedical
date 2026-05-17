@@ -341,6 +341,10 @@ export default function AssessmentAttempt() {
             title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
             body={introPage?.body ?? ""}
             onBegin={handleBegin}
+            onCancel={() => {
+              const bankId = searchParams.get("bank");
+              navigate(bankId ? `/teaching/${bankId}` : "/teaching");
+            }}
             loading={beginning}
           />
         </Container>

@@ -62,3 +62,10 @@ export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },
 };
+
+/** Full-width buttons at all screen sizes */
+export const FullWidth: Story = {
+  args: {
+    fullWidth: true,
+  },
+};

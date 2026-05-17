@@ -25,6 +25,7 @@ For each image pair, select the single best answer from the four options.
 
 You must meet **both** criteria to pass.`,
     onBegin: () => {},
+    onCancel: () => {},
   },
 };
 
@@ -36,6 +37,7 @@ white light (WLI) and narrow band imaging (NBI).
 
 For each image pair, select the single best answer from the four options.`,
     onBegin: () => {},
+    onCancel: () => {},
     loading: true,
   },
 };
