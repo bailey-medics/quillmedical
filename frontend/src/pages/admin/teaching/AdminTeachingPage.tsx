@@ -121,7 +121,9 @@ export default function AdminTeachingPage() {
           data={banks}
           columns={columns}
           getRowKey={(bank) => bank.bank_id}
-          onRowClick={(bank) => navigate(`/admin/teaching/${bank.bank_id}`)}
+          onRowClick={(bank) =>
+            navigate(`/admin/teaching/modules/${bank.bank_id}`)
+          }
           loading={loading}
           error={error}
           emptyMessage="No teaching modules found"

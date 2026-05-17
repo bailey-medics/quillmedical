@@ -53,6 +53,7 @@ export default function SideNavContent({
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string | null>(null);
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
   // Check if user has admin or superadmin permissions
@@ -84,10 +85,23 @@ export default function SideNavContent({
   const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
   const userId = userIdMatch ? userIdMatch[1] : null;
 
+  // Extract org ID from URL if on organisation admin page
+  const orgIdMatch = location.pathname.match(
+    /^\/admin\/organisations\/([^/]+)$/,
+  );
+  const orgId = orgIdMatch ? orgIdMatch[1] : null;
+
+  // Extract teaching sub-section from URL (modules or all-delegates)
+  const teachingSectionMatch = location.pathname.match(
+    /^\/admin\/teaching\/(modules|all-delegates)/,
+  );
+  const teachingSection = teachingSectionMatch ? teachingSectionMatch[1] : null;
+
   // Extract bank ID from URL if on teaching bank admin page
-  const bankIdMatch = location.pathname.match(/^\/admin\/teaching\/([^/]+)/);
-  const bankId =
-    bankIdMatch && bankIdMatch[1] !== "settings" ? bankIdMatch[1] : null;
+  const bankIdMatch = location.pathname.match(
+    /^\/admin\/teaching\/modules\/([^/]+)/,
+  );
+  const bankId = bankIdMatch ? bankIdMatch[1] : null;
 
   // Fetch patient name when on patient admin page
   useEffect(() => {
@@ -147,6 +161,26 @@ export default function SideNavContent({
 
     fetchUsername();
   }, [userId]);
+
+  // Fetch organisation name when on organisation admin page
+  useEffect(() => {
+    async function fetchOrgName() {
+      if (!orgId) {
+        setOrgName(null);
+        return;
+      }
+
+      try {
+        const org = await api.get<{ name: string }>(`/organizations/${orgId}`);
+        setOrgName(org.name || "Unknown Organisation");
+      } catch (error) {
+        console.error("Failed to fetch organisation name:", error);
+        setOrgName(null);
+      }
+    }
+
+    fetchOrgName();
+  }, [orgId]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
@@ -212,6 +246,14 @@ export default function SideNavContent({
         label: "Organisations",
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
+        children: orgName
+          ? [
+              {
+                label: orgName,
+                href: `/admin/organisations/${orgId}`,
+              },
+            ]
+          : undefined,
       } satisfies NavItem,
       ...(hasTeaching
         ? [
@@ -219,17 +261,33 @@ export default function SideNavContent({
               label: "Teaching",
               href: "/admin/teaching",
               icon: showIcons ? "teaching" : undefined,
-              children: bankTitle
-                ? [
-                    {
-                      label:
-                        bankTitle.length > 8
-                          ? `${bankTitle.slice(0, 8)}…`
-                          : bankTitle,
-                      href: `/admin/teaching/${bankId}`,
-                    },
-                  ]
-                : undefined,
+              children:
+                teachingSection === "modules"
+                  ? [
+                      {
+                        label: "Modules",
+                        href: "/admin/teaching/modules",
+                        children: bankTitle
+                          ? [
+                              {
+                                label:
+                                  bankTitle.length > 8
+                                    ? `${bankTitle.slice(0, 8)}…`
+                                    : bankTitle,
+                                href: `/admin/teaching/modules/${bankId}`,
+                              },
+                            ]
+                          : undefined,
+                      },
+                    ]
+                  : teachingSection === "all-delegates"
+                    ? [
+                        {
+                          label: "All delegates",
+                          href: "/admin/teaching/all-delegates",
+                        },
+                      ]
+                    : undefined,
             } satisfies NavItem,
           ]
         : []),

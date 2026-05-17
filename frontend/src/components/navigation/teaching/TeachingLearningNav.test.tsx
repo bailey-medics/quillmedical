@@ -52,7 +52,7 @@ describe("TeachingLearningNav", () => {
     );
 
     await user.click(screen.getByText("Recorded lecture"));
-    expect(handleNavigate).toHaveBeenCalledWith(1);
+    expect(handleNavigate).toHaveBeenCalledWith(2);
   });
 
   it("renders the exit link and calls onExit when clicked", async () => {

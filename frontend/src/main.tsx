@@ -103,6 +103,8 @@ import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
+import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
+import AdminAllDelegatesPage from "./pages/admin/teaching/AdminAllDelegatesPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 
@@ -247,10 +249,18 @@ const router = createBrowserRouter([
             path: "organisations/:id/features",
             element: <OrgFeaturesPage />,
           },
-          { path: "teaching", element: <AdminTeachingPage /> },
-          { path: "teaching/:bankId", element: <AdminBankDetailPage /> },
+          { path: "teaching", element: <AdminTeachingDashboard /> },
+          { path: "teaching/modules", element: <AdminTeachingPage /> },
           {
-            path: "teaching/:bankId/org/:orgId",
+            path: "teaching/all-delegates",
+            element: <AdminAllDelegatesPage />,
+          },
+          {
+            path: "teaching/modules/:bankId",
+            element: <AdminBankDetailPage />,
+          },
+          {
+            path: "teaching/modules/:bankId/org/:orgId",
             element: <AdminBankOrgSettingsPage />,
           },
         ],

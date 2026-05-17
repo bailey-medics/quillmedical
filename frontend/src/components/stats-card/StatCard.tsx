@@ -14,6 +14,8 @@ export interface StatCardProps {
   title: string;
   /** Numeric value to display */
   value: number;
+  /** Optional suffix shown after the value (e.g. "%") */
+  suffix?: string;
   /** Loading state - shows skeleton when true */
   loading?: boolean;
 }
@@ -27,7 +29,12 @@ export interface StatCardProps {
  * <StatCard title="Total Patients" value={128} loading />
  * ```
  */
-export function StatCard({ title, value, loading = false }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  suffix,
+  loading = false,
+}: StatCardProps) {
   return (
     <BaseCard>
       <Stack gap="xs">
@@ -38,6 +45,7 @@ export function StatCard({ title, value, loading = false }: StatCardProps) {
           ) : (
             <Text size="lg" fw={700} lh={1}>
               {value}
+              {suffix}
             </Text>
           )}
         </Box>

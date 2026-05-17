@@ -139,7 +139,7 @@ export default function AdminBankDetailPage() {
                 ]}
                 onRowClick={(org) =>
                   navigate(
-                    `/admin/teaching/${bankId}/org/${org.organisation_id}`,
+                    `/admin/teaching/modules/${bankId}/org/${org.organisation_id}`,
                   )
                 }
                 getRowKey={(org) => org.organisation_id}

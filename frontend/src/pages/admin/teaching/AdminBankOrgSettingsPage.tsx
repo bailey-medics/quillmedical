@@ -82,7 +82,9 @@ function SettingsFields({ bank }: SettingsFieldsProps) {
         )}
 
         <FormStatus />
-        <SubmitButton onCancel={() => navigate(`/admin/teaching/${bankId}`)} />
+        <SubmitButton
+          onCancel={() => navigate(`/admin/teaching/modules/${bankId}`)}
+        />
       </Stack>
     </BaseCard>
   );
@@ -184,7 +186,7 @@ export default function AdminBankOrgSettingsPage() {
           <IconButton
             icon={<IconArrowLeft />}
             variant="subtle"
-            onClick={() => navigate(`/admin/teaching/${bankId}`)}
+            onClick={() => navigate(`/admin/teaching/modules/${bankId}`)}
             aria-label="Back to bank detail"
           />
           <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
