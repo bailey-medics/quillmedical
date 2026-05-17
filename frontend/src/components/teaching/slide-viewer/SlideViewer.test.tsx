@@ -23,10 +23,10 @@ describe("SlideViewer", () => {
     expect(screen.getByText("Colorectal Polyps")).toBeInTheDocument();
   });
 
-  it("renders video-slide layout", () => {
+  it("renders video-slide layout", async () => {
     renderWithMantine(<SlideViewer slide={videoSlide} />);
     expect(screen.getByText("Recorded lecture")).toBeInTheDocument();
-    expect(screen.getByTestId("react-player")).toBeInTheDocument();
+    expect(await screen.findByTestId("react-player")).toBeInTheDocument();
   });
 
   it("renders image-slide layout", () => {

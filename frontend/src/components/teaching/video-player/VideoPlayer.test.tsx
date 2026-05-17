@@ -11,12 +11,12 @@ vi.mock("react-player", () => ({
 import VideoPlayer from "./VideoPlayer";
 
 describe("VideoPlayer", () => {
-  it("renders YouTube player when youtubeId is provided", () => {
-    const { getByTestId } = renderWithMantine(
+  it("renders YouTube player when youtubeId is provided", async () => {
+    const { findByTestId } = renderWithMantine(
       <VideoPlayer youtubeId="dQw4w9WgXcQ" />,
     );
 
-    const player = getByTestId("react-player");
+    const player = await findByTestId("react-player");
     expect(player).toBeInTheDocument();
     expect(player).toHaveAttribute(
       "data-src",
@@ -29,23 +29,21 @@ describe("VideoPlayer", () => {
     expect(queryByTestId("react-player")).not.toBeInTheDocument();
   });
 
-  it("enables controls", () => {
-    const { getByTestId } = renderWithMantine(
+  it("enables controls", async () => {
+    const { findByTestId } = renderWithMantine(
       <VideoPlayer youtubeId="dQw4w9WgXcQ" />,
     );
 
-    expect(getByTestId("react-player")).toHaveAttribute(
-      "data-controls",
-      "true",
-    );
+    const player = await findByTestId("react-player");
+    expect(player).toHaveAttribute("data-controls", "true");
   });
 
-  it("accepts onProgress callback", () => {
+  it("accepts onProgress callback", async () => {
     const handleProgress = vi.fn();
-    const { getByTestId } = renderWithMantine(
+    const { findByTestId } = renderWithMantine(
       <VideoPlayer youtubeId="dQw4w9WgXcQ" onProgress={handleProgress} />,
     );
 
-    expect(getByTestId("react-player")).toBeInTheDocument();
+    expect(await findByTestId("react-player")).toBeInTheDocument();
   });
 });
