@@ -11,7 +11,7 @@
  * Phase 1: Uses stub compiled JSON with YouTube videos.
  */
 
-import { Box, useMantineTheme } from "@mantine/core";
+import { Stack, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -133,7 +133,11 @@ export default function SlideReader() {
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
-      <Box onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <Stack
+        gap="lg"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {isSm && (
           <TeachingProgressBar
             current={currentIndex + 1}
@@ -153,7 +157,7 @@ export default function SlideReader() {
             nextLabel={isLast ? "Finish" : "Next"}
           />
         )}
-      </Box>
+      </Stack>
     </TeachingLayout>
   );
 }
