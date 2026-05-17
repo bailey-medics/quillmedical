@@ -8,7 +8,11 @@
 import { Container, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
-import { IconStack2, IconUserCheck } from "@/components/icons/appIcons";
+import {
+  IconBuildingHospital,
+  IconStack2,
+  IconUserCheck,
+} from "@/components/icons/appIcons";
 
 export default function AdminTeachingDashboard() {
   return (
@@ -17,6 +21,13 @@ export default function AdminTeachingDashboard() {
         <PageHeader title="Teaching" />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <ActionCard
+            icon={<IconBuildingHospital />}
+            title="Centres"
+            subtitle="Manage which centres are signed up to govern learning and teaching for each module."
+            buttonLabel="View centres"
+            buttonUrl="/admin/teaching/centres"
+          />
           <ActionCard
             icon={<IconStack2 />}
             title="Modules"

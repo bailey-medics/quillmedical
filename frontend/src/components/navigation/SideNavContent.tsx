@@ -91,9 +91,9 @@ export default function SideNavContent({
   );
   const orgId = orgIdMatch ? orgIdMatch[1] : null;
 
-  // Extract teaching sub-section from URL (modules or all-delegates)
+  // Extract teaching sub-section from URL (centres, modules, or all-delegates)
   const teachingSectionMatch = location.pathname.match(
-    /^\/admin\/teaching\/(modules|all-delegates)/,
+    /^\/admin\/teaching\/(centres|modules|all-delegates)/,
   );
   const teachingSection = teachingSectionMatch ? teachingSectionMatch[1] : null;
 
@@ -262,32 +262,39 @@ export default function SideNavContent({
               href: "/admin/teaching",
               icon: showIcons ? "teaching" : undefined,
               children:
-                teachingSection === "modules"
+                teachingSection === "centres"
                   ? [
                       {
-                        label: "Modules",
-                        href: "/admin/teaching/modules",
-                        children: bankTitle
-                          ? [
-                              {
-                                label:
-                                  bankTitle.length > 8
-                                    ? `${bankTitle.slice(0, 8)}…`
-                                    : bankTitle,
-                                href: `/admin/teaching/modules/${bankId}`,
-                              },
-                            ]
-                          : undefined,
+                        label: "Centres",
+                        href: "/admin/teaching/centres",
                       },
                     ]
-                  : teachingSection === "all-delegates"
+                  : teachingSection === "modules"
                     ? [
                         {
-                          label: "All delegates",
-                          href: "/admin/teaching/all-delegates",
+                          label: "Modules",
+                          href: "/admin/teaching/modules",
+                          children: bankTitle
+                            ? [
+                                {
+                                  label:
+                                    bankTitle.length > 8
+                                      ? `${bankTitle.slice(0, 8)}…`
+                                      : bankTitle,
+                                  href: `/admin/teaching/modules/${bankId}`,
+                                },
+                              ]
+                            : undefined,
                         },
                       ]
-                    : undefined,
+                    : teachingSection === "all-delegates"
+                      ? [
+                          {
+                            label: "All delegates",
+                            href: "/admin/teaching/all-delegates",
+                          },
+                        ]
+                      : undefined,
             } satisfies NavItem,
           ]
         : []),

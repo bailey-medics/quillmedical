@@ -105,6 +105,7 @@ import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
 import AdminAllDelegatesPage from "./pages/admin/teaching/AdminAllDelegatesPage";
+import AdminCentresPage from "./pages/admin/teaching/AdminCentresPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 
@@ -250,6 +251,7 @@ const router = createBrowserRouter([
             element: <OrgFeaturesPage />,
           },
           { path: "teaching", element: <AdminTeachingDashboard /> },
+          { path: "teaching/centres", element: <AdminCentresPage /> },
           { path: "teaching/modules", element: <AdminTeachingPage /> },
           {
             path: "teaching/all-delegates",
