@@ -80,7 +80,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
-import AssessmentDashboard from "./features/teaching/pages/AssessmentDashboard";
+import TeachingDashboard from "./features/teaching/pages/TeachingDashboard";
 import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
 import AllResults from "./features/teaching/pages/AllResults";
@@ -468,18 +468,7 @@ const router = createBrowserRouter([
             feature="teaching"
             fallback={<NoAccessLayout feature="teaching" />}
           >
-            <AssessmentDashboard />
-          </RequireFeature>
-        ),
-      },
-      {
-        path: "/teaching/:bankId",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <TeachingModuleMain />
+            <TeachingDashboard />
           </RequireFeature>
         ),
       },
@@ -561,6 +550,21 @@ const router = createBrowserRouter([
         ),
       },
     ],
+  },
+
+  // Teaching module landing — uses TeachingLayout (not MainLayout)
+  {
+    path: "/teaching/:bankId",
+    element: (
+      <RequireAuth>
+        <RequireFeature
+          feature="teaching"
+          fallback={<NoAccessLayout feature="teaching" />}
+        >
+          <TeachingModuleMain />
+        </RequireFeature>
+      </RequireAuth>
+    ),
   },
 
   // Fallback -> show 404 page instead of redirecting to home

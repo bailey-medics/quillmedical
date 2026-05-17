@@ -656,44 +656,71 @@ This is both internal documentation and the contractual artefact for each conten
 
 ## 12. Suggested implementation order
 
-**Phase 1 — Storybook-first frontend (YouTube videos)**
+**Phase 1a — Storybook-first frontend (YouTube videos)** ✅
 
-1. `<SlideViewer>` and layout components (with Storybook stories) — stub data, no backend needed
-2. `<VideoPlayer>` component using `react-player` with YouTube embed (Storybook story)
-3. Slide navigation sidebar (`LearningNav`) in Storybook
-4. `TeachingLayout` component — the shared layout for all teaching pages (learning + assessments). No patient context, optional sidebar slot. Storybook stories showing learning (with `LearningNav` sidebar) and assessment (no sidebar) variants
-5. Frontend: learning dashboard and module overview pages (stub data)
-6. Wire up slide reader end-to-end with stub compiled JSON and YouTube videos, using `TeachingLayout`
-7. Playwright tests for slide flow (navigation, keyboard, bookmark stub)
-8. Accessibility audit and fixes
+1. `<SlideViewer>` and layout components (with Storybook stories) — stub data, no backend needed ✅
+2. `<VideoPlayer>` component using `react-player` with YouTube embed (Storybook story) ✅
+3. Slide navigation sidebar (`LearningNav`) in Storybook ✅
+4. `TeachingLayout` component — the shared layout for all teaching pages (learning + assessments). No patient context, optional sidebar slot. Storybook stories showing learning (with `LearningNav` sidebar) and assessment (no sidebar) variants ✅
+
+**Phase 1b — Static data layer and conference demo**
+
+Wire the scaffolded pages to a data access layer that serves static content through async functions shaped exactly like the future API calls. This produces a working end-to-end demo (navigable from the assessment section) without any backend work. When the backend lands (Phase 2), swap the data layer implementation from static imports to `api.get()` calls — zero page changes needed.
+
+**Architecture:** In production, the frontend never sees MDX — it receives `CompiledSlide[]` JSON (compiled server-side by `teaching-tooling`). Static TypeScript files exporting that same JSON shape are the most realistic mock. No MDX tooling is needed in the frontend.
+
+```
+Pages → learning-data.ts (async functions) → static content files
+                ↓ (later, one-line swap per function)
+Pages → learning-data.ts (async functions) → api.get() calls
+```
+
+Steps:
+
+5. Create static content module at `frontend/src/features/teaching/content/colorectal-polyps.ts` — exports module metadata (`LearningModule`), description, and slides (`CompiledSlide[]`). Move existing stub slide data from `stubSlides.ts` here as the single source of truth. Include a `questionBankId` field to map this module to its assessment bank (`colonoscopy-optical-diagnosis-test`). Add a minimal Barrett's oesophagus entry for the second card on the dashboard
+6. Create content index at `frontend/src/features/teaching/content/index.ts` — exports a `MODULES` map keyed by `moduleId` and a `BANK_TO_MODULE` map for question-bank-ID → module-ID lookup
+7. Create data access layer at `frontend/src/features/teaching/learning-data.ts` with async functions matching the future API shape:
+   - `getModules(): Promise<LearningModule[]>` — returns all live modules
+   - `getModuleDetail(moduleId): Promise<{ module: LearningModule; description: string; slides: CompiledSlide[] } | null>` — returns one module's full data
+   - `getModuleIdForBank(bankId): string | null` — maps question bank ID to learning module ID
+   - All functions are async (returning resolved promises) so the swap to real API calls is signature-compatible
+8. Update `LearningDashboard.tsx` — replace inline `STUB_MODULES` / `STUB_PROGRESS` with `getModules()` call using `useEffect` + state (consistent with assessment pages)
+9. Update `ModuleOverview.tsx` — replace inline `STUB_MODULES` record with `getModuleDetail(moduleId)` call
+10. Update `SlideReader.tsx` — replace `import { stubSlides }` with `getModuleDetail(moduleId)` to load slides; add loading state while data resolves
+11. Fix `TeachingModuleMain.tsx` learning link — use `getModuleIdForBank()` so "Learning materials" navigates to `/teaching/learn/${moduleId}` instead of `/teaching/learn`. Hide the learning card if no learning module exists for the bank
+12. Fix `SlideReader.tsx` finish navigation — "Finish" on the final slide navigates to `/teaching/${bankId}` (the module hub) instead of `/teaching` (the dashboard), so the learner can immediately start the assessment. Data layer provides the reverse mapping (module → bank)
+13. Keep `stubSlides.ts` for Storybook — re-export from the content file so stories work unchanged with a single source of truth
+14. Tests — update any tests whose imports change, add tests for `learning-data.ts` functions (call function, assert shape), verify all existing SlideViewer/SlideReader tests still pass
+15. Accessibility audit and fixes
+16. Playwright tests for slide flow (navigation, keyboard, touch gestures)
 
 **Phase 2 — Backend and content pipeline**
 
-9. Database models and Alembic migration (`backend/app/features/teaching/models.py`)
-10. Bookmark/progress endpoints and frontend integration
-11. `teaching-tooling` repo: validation scripts, MDX compiler, reusable GitHub Actions workflows
-12. Content sync API endpoint + thin workflow callers in `eoeeta-teaching` organisation repo
+17. Database models and Alembic migration (`backend/app/features/teaching/models.py`)
+18. Bookmark/progress endpoints and frontend integration
+19. `teaching-tooling` repo: validation scripts, MDX compiler, reusable GitHub Actions workflows
+20. Content sync API endpoint + thin workflow callers in `eoeeta-teaching` organisation repo
 
 **Phase 3 — GCS video infrastructure (replaces YouTube)**
 
-13. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
-14. Cloud Run transcoding job — get one test video through end to end
-15. Cloud Run caption job — Whisper integration
-16. Signed URL minting endpoint — security-critical, prioritise tests
-17. Swap `<VideoPlayer>` from `react-player`/YouTube to GCS signed URLs (evaluate Plyr at this point)
+21. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
+22. Cloud Run transcoding job — get one test video through end to end
+23. Cloud Run caption job — Whisper integration
+24. Signed URL minting endpoint — security-critical, prioritise tests
+25. Swap `<VideoPlayer>` from `react-player`/YouTube to GCS signed URLs (evaluate Plyr at this point)
 
 **Phase 4 — Migrate assessments to TeachingLayout**
 
-18. Move assessment pages (`AssessmentAttempt`, `AssessmentResultPage`) from `MainLayout` + `examMode` to `TeachingLayout` (no sidebar variant)
-19. Remove `examMode` flag from `MainLayout` and `RootLayout` — no longer needed
-20. Update `LayoutCtx` to remove `setExamMode` — assessment pages no longer toggle layout state
-21. Verify all assessment Storybook stories and tests pass with the new layout
+26. Move assessment pages (`AssessmentAttempt`, `AssessmentResultPage`) from `MainLayout` + `examMode` to `TeachingLayout` (no sidebar variant)
+27. Remove `examMode` flag from `MainLayout` and `RootLayout` — no longer needed
+28. Update `LayoutCtx` to remove `setExamMode` — assessment pages no longer toggle layout state
+29. Verify all assessment Storybook stories and tests pass with the new layout
 
 **Phase 5 — Polish and ship**
 
-22. Manual QA (quality assurance) across browsers and PWA modes
-23. `CONTENT_FORMAT.md` finalisation in organisation repo
-24. First real EoEETA module through the pipeline
+30. Manual QA (quality assurance) across browsers and PWA modes
+31. `CONTENT_FORMAT.md` finalisation in organisation repo
+32. First real EoEETA module through the pipeline
 
 ---
 

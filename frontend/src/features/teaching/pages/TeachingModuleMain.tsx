@@ -19,6 +19,8 @@ import {
   IconBook,
   IconChalkboardTeacher,
 } from "@/components/icons/appIcons";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
+import ModuleNav from "@/components/navigation/ModuleNav";
 import type { QuestionBank } from "@/features/teaching/types";
 
 export default function TeachingModuleMain() {
@@ -49,56 +51,75 @@ export default function TeachingModuleMain() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
-        <Stack gap="lg">
-          <Skeleton height={36} width={200} />
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Skeleton height={160} />
-            <Skeleton height={160} />
-          </SimpleGrid>
-        </Stack>
-      </Container>
+      <TeachingLayout>
+        <Container size="lg" py="xl">
+          <Stack gap="lg">
+            <Skeleton height={36} width={200} />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Skeleton height={160} />
+              <Skeleton height={160} />
+            </SimpleGrid>
+          </Stack>
+        </Container>
+      </TeachingLayout>
     );
   }
 
   if (error || !bank) {
     return (
-      <Container size="lg" py="xl">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error"
-          description={error ?? "Module not found"}
-          colour="alert"
-        />
-      </Container>
+      <TeachingLayout>
+        <Container size="lg" py="xl">
+          <StateMessage
+            icon={<IconAlertCircle />}
+            title="Error"
+            description={error ?? "Module not found"}
+            colour="alert"
+          />
+        </Container>
+      </TeachingLayout>
     );
   }
 
-  return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <PageHeader title={bank.title} />
-        <BodyText>{bank.description}</BodyText>
+  const sidebarNav = (
+    <ModuleNav
+      moduleTitle={bank.title}
+      onLearning={() => navigate("/teaching/learn")}
+      onAssessment={() =>
+        navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
+      }
+      onBack={() => navigate("/teaching")}
+    />
+  );
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <ActionCard
-            icon={<IconBook />}
-            title="Learning materials"
-            subtitle="Work through the learning content at your own pace before attempting the assessment."
-            buttonLabel="Start learning"
-            onClick={() => navigate("/teaching/learn")}
-          />
-          <ActionCard
-            icon={<IconChalkboardTeacher />}
-            title="Start assessment"
-            subtitle="Test your knowledge with a timed multiple-choice assessment."
-            buttonLabel="Start assessment"
-            onClick={() =>
-              navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
-            }
-          />
-        </SimpleGrid>
-      </Stack>
-    </Container>
+  return (
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
+      <Container size="lg" py="xl">
+        <Stack gap="lg">
+          <PageHeader title={bank.title} />
+          <BodyText>{bank.description}</BodyText>
+
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <ActionCard
+              icon={<IconBook />}
+              title="Learning materials"
+              subtitle="Work through the learning content at your own pace before attempting the assessment."
+              buttonLabel="Start learning"
+              onClick={() => navigate("/teaching/learn")}
+            />
+            <ActionCard
+              icon={<IconChalkboardTeacher />}
+              title="Start assessment"
+              subtitle="Test your knowledge with a timed multiple-choice assessment."
+              buttonLabel="Start assessment"
+              onClick={() =>
+                navigate(
+                  `/teaching/assessment/new?bank=${bank.question_bank_id}`,
+                )
+              }
+            />
+          </SimpleGrid>
+        </Stack>
+      </Container>
+    </TeachingLayout>
   );
 }

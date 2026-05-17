@@ -20,7 +20,7 @@ import type {
   QuestionBank,
 } from "@/features/teaching/types";
 
-export default function AssessmentDashboard() {
+export default function TeachingDashboard() {
   const navigate = useNavigate();
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [history, setHistory] = useState<AssessmentHistory[]>([]);
@@ -96,12 +96,8 @@ export default function AssessmentDashboard() {
                   key={bank.id}
                   title={bank.title}
                   subtitle={bank.description}
-                  buttonLabel="Start assessment"
-                  onClick={() =>
-                    navigate(
-                      `/teaching/assessment/new?bank=${bank.question_bank_id}`,
-                    )
-                  }
+                  buttonLabel="View module"
+                  onClick={() => navigate(`/teaching/${bank.question_bank_id}`)}
                 />
               ))}
           </SimpleGrid>

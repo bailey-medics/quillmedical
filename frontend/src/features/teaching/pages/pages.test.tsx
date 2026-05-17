@@ -20,7 +20,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { api } from "@/lib/api";
-import AssessmentDashboard from "./AssessmentDashboard";
+import TeachingDashboard from "./TeachingDashboard";
 import AllResults from "./AllResults";
 import SyncStatus from "./SyncStatus";
 
@@ -28,16 +28,16 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("AssessmentDashboard", () => {
+describe("TeachingDashboard", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {})); // never resolves
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
   });
 
   it("shows empty state when no banks", async () => {
     (api.get as Mock).mockResolvedValue([]);
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
       expect(
         screen.getByText("No assessments are currently open"),
@@ -60,7 +60,7 @@ describe("AssessmentDashboard", () => {
       }
       return Promise.resolve([]);
     });
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
       expect(screen.getByText("Test Bank")).toBeTruthy();
     });
@@ -81,7 +81,7 @@ describe("AssessmentDashboard", () => {
       }
       return Promise.resolve([]);
     });
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
       expect(
         screen.getByText("No assessments are currently open"),
@@ -92,7 +92,7 @@ describe("AssessmentDashboard", () => {
 
   it("shows history section with heading", async () => {
     (api.get as Mock).mockResolvedValue([]);
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
       expect(screen.getByText("My history")).toBeTruthy();
     });
@@ -100,7 +100,7 @@ describe("AssessmentDashboard", () => {
 
   it("shows error on API failure", async () => {
     (api.get as Mock).mockRejectedValue(new Error("Network error"));
-    renderWithRouter(<AssessmentDashboard />);
+    renderWithRouter(<TeachingDashboard />);
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeTruthy();
     });
