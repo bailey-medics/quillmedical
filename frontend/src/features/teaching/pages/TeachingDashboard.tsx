@@ -67,7 +67,7 @@ export default function TeachingDashboard() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -85,7 +85,7 @@ export default function TeachingDashboard() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -97,7 +97,7 @@ export default function TeachingDashboard() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Teaching" />
 

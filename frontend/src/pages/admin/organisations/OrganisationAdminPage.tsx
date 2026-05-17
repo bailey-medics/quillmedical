@@ -140,7 +140,7 @@ export default function OrganisationAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -152,7 +152,7 @@ export default function OrganisationAdminPage() {
 
   if (error || !org) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
@@ -202,7 +202,7 @@ export default function OrganisationAdminPage() {
   ];
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={org.name} />
 

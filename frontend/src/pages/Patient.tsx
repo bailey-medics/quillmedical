@@ -31,7 +31,7 @@ export default function Patient() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <BaseCard>
           <ErrorMessage>{error}</ErrorMessage>
           <TextLink to="/">← Back to patient list</TextLink>
@@ -41,7 +41,7 @@ export default function Patient() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <ActionCard
           icon={<IconMessage />}

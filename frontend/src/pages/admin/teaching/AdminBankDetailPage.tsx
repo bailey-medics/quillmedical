@@ -61,7 +61,7 @@ export default function AdminBankDetailPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={36} width={300} />
           <Skeleton height={100} />
@@ -73,7 +73,7 @@ export default function AdminBankDetailPage() {
 
   if (error || !bank) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -85,7 +85,7 @@ export default function AdminBankDetailPage() {
   }
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={bank.title} />
 

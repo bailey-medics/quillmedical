@@ -32,7 +32,7 @@ export default function AssessmentHistoryPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={30} width={250} />
           <Skeleton height={50} />
@@ -45,7 +45,7 @@ export default function AssessmentHistoryPage() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -57,7 +57,7 @@ export default function AssessmentHistoryPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Heading>Assessment history</Heading>
         <AssessmentHistoryTable

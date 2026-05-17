@@ -148,7 +148,7 @@ export default function AdminPatientsPage() {
   ];
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
           <PageHeader title="Patient management" />

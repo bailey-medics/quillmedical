@@ -62,7 +62,7 @@ export default function ViewAllUsersPage() {
   ];
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="All users" />
 

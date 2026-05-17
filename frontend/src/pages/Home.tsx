@@ -316,7 +316,7 @@ export default function Home() {
   }, [isFhirReady]);
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PatientsList
           patients={patients ?? []}

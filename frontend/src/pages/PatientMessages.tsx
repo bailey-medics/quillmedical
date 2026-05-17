@@ -104,14 +104,14 @@ export default function PatientMessages() {
 
   if (isLoading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Loader />
       </Container>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group justify="flex-end">
           <AddButton label="New message" onClick={() => setModalOpen(true)} />

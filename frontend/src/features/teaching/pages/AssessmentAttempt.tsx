@@ -342,13 +342,13 @@ export default function AssessmentAttempt() {
       </ConfirmModal>
 
       {phase === "loading" && (
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <Loader />
         </Container>
       )}
 
       {phase === "error" && (
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <StateMessage
             icon={<IconAlertCircle />}
             title="Error loading data"
@@ -359,7 +359,7 @@ export default function AssessmentAttempt() {
       )}
 
       {phase === "intro" && (
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <AssessmentIntro
             title={introPage?.title ?? bankDetail?.title ?? "Assessment"}
             body={introPage?.body ?? ""}
@@ -370,7 +370,7 @@ export default function AssessmentAttempt() {
       )}
 
       {phase === "closing" && (
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <AssessmentClosing
             title={closingPage?.title ?? "Assessment complete"}
             body={
@@ -384,7 +384,7 @@ export default function AssessmentAttempt() {
       )}
 
       {phase === "questions" && (
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <Stack gap="lg">
             {currentItem && (
               <QuestionView

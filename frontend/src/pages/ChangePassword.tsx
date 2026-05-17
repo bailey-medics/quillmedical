@@ -108,7 +108,7 @@ export default function ChangePassword() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Form<ChangePasswordFormValues>
         defaultValues={{
           currentPassword: "",

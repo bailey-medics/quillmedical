@@ -27,7 +27,7 @@ export default function PatientNotes() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Heading>Clinical notes</Heading>
         <NotesList notes={fakeNotes} />

@@ -69,7 +69,7 @@ export default function LearningDashboard() {
   const progress = STUB_PROGRESS;
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Learning materials" />
 

@@ -36,7 +36,7 @@ export default function PatientLetterView() {
   }, [patient, id, letterId, letter, setPatientNav]);
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <LetterView
         letter={
           letter

@@ -52,7 +52,7 @@ export default function TeachingModuleMain() {
   if (loading) {
     return (
       <TeachingLayout>
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <Stack gap="lg">
             <Skeleton height={36} width={200} />
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -68,7 +68,7 @@ export default function TeachingModuleMain() {
   if (error || !bank) {
     return (
       <TeachingLayout>
-        <Container size="lg" py="xl">
+        <Container size="lg">
           <StateMessage
             icon={<IconAlertCircle />}
             title="Error"
@@ -93,7 +93,7 @@ export default function TeachingModuleMain() {
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader title={bank.title} />
           <BodyText>{bank.description}</BodyText>

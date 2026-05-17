@@ -271,7 +271,7 @@ function Step3Confirmation({
   isEditMode?: boolean;
 }) {
   return (
-    <Stack gap="md" align="center" py="xl">
+    <Stack gap="md" align="center">
       {success ? (
         <>
           <Icon icon={<IconCheck />} size="xl" colour="var(--success-color)" />
@@ -629,7 +629,7 @@ export default function NewPatientPage() {
         />
 
         {loading ? (
-          <Center py="xl">
+          <Center>
             <Stack align="center" gap="md">
               <Loader size="lg" />
               <BodyText>Loading patient data...</BodyText>

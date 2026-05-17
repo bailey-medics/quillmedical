@@ -122,7 +122,7 @@ export default function SlideReader() {
       onTouchEnd={handleTouchEnd}
       style={{ minHeight: "100%" }}
     >
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <TeachingProgressBar
             current={currentIndex + 1}

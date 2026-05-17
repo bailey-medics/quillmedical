@@ -84,7 +84,7 @@ export default function AllResults() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={30} width={200} />
           <Skeleton height={40} />
@@ -98,7 +98,7 @@ export default function AllResults() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -110,7 +110,7 @@ export default function AllResults() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Heading>All results</Heading>

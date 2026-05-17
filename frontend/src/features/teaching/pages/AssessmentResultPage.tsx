@@ -61,7 +61,7 @@ export default function AssessmentResultPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -73,7 +73,7 @@ export default function AssessmentResultPage() {
 
   if (error || !assessment) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -86,7 +86,7 @@ export default function AssessmentResultPage() {
 
   if (!assessment.completed_at || assessment.is_passed === null) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader title="Incomplete" />
           <ResultMessage
@@ -108,7 +108,7 @@ export default function AssessmentResultPage() {
     assessment.is_passed && config?.results?.certificate_download === true;
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <AssessmentResult
           isPassed={assessment.is_passed}

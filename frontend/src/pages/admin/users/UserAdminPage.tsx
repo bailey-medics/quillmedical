@@ -92,7 +92,7 @@ export default function UserAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -104,7 +104,7 @@ export default function UserAdminPage() {
 
   if (error || !user) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading user"
@@ -117,7 +117,7 @@ export default function UserAdminPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       {" "}
       <Stack gap="lg">
         <PageHeader title={`User: ${user.username}`} />

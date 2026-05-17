@@ -39,7 +39,7 @@ export default function SyncStatus() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={30} width={200} />
           <Skeleton height={50} />
@@ -52,7 +52,7 @@ export default function SyncStatus() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -64,7 +64,7 @@ export default function SyncStatus() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Heading>Sync status</Heading>
 

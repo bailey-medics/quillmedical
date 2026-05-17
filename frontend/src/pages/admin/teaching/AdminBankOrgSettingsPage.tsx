@@ -154,7 +154,7 @@ export default function AdminBankOrgSettingsPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={36} width={300} />
           <Skeleton height={120} />
@@ -166,7 +166,7 @@ export default function AdminBankOrgSettingsPage() {
 
   if (error || !bank || !org) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -178,7 +178,7 @@ export default function AdminBankOrgSettingsPage() {
   }
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group gap="sm">
           <IconButton

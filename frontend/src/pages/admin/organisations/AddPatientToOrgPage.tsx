@@ -99,7 +99,7 @@ export default function AddPatientToOrgPage() {
 
   if (success) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <ResultMessage
           variant="success"
           title="Patient added"
@@ -110,7 +110,7 @@ export default function AddPatientToOrgPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Add patient" />
 

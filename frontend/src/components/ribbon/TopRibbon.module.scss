@@ -12,6 +12,7 @@
   background: var(--brand-primary);
   min-height: 60px;
   color: white;
+  border-bottom: 1px solid var(--card-border, var(--mantine-color-gray-2));
 }
 
 /* Optional outer wrapper for stickiness so we don't tie queries to viewport */

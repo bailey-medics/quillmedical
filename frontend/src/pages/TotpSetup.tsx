@@ -104,7 +104,7 @@ export default function TotpSetup() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <BaseCard maw={480} mx="auto">
         <Stack>
           <Heading>Set up two-factor authentication</Heading>

@@ -670,7 +670,7 @@ export default function UserInfoUpdatePage() {
         <PageHeader title={isEditMode ? "Edit user" : "Create new user"} />
 
         {loading ? (
-          <Center py="xl">
+          <Center>
             <Stack align="center" gap="md">
               <Loader size="lg" />
               <BodyText>Loading user data...</BodyText>

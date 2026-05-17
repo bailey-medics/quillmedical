@@ -148,7 +148,7 @@ export default function EditOrganisationPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -159,7 +159,7 @@ export default function EditOrganisationPage() {
 
   if (loadError) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading organisation"
@@ -172,7 +172,7 @@ export default function EditOrganisationPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Edit organisation" />
 

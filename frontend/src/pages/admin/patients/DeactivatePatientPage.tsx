@@ -148,7 +148,7 @@ export default function DeactivatePatientPage() {
   // If we have a specific patient (from route params or state), show the deactivation confirmation
   if (specificPatient) {
     return (
-      <Container size="lg" pt="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader
             title={`Deactivate ${formatName(specificPatient.name)}`}
@@ -221,7 +221,7 @@ export default function DeactivatePatientPage() {
 
   // Otherwise, show the patient selection list
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Deactivate patient" />
 

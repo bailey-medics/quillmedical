@@ -41,7 +41,7 @@ export default function ModuleOverview() {
 
   if (!mod) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <BodyText>Module not found</BodyText>
       </Container>
     );
@@ -55,7 +55,7 @@ export default function ModuleOverview() {
   const startSlide = hasProgress ? mod.lastSlide : 0;
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={mod.title} />
         <BodyText>{mod.description}</BodyText>
