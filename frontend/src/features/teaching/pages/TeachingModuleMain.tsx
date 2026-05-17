@@ -83,7 +83,9 @@ export default function TeachingModuleMain() {
   const sidebarNav = (
     <ModuleNav
       moduleTitle={bank.title}
-      onLearning={() => navigate("/teaching/learn")}
+      onLearning={() =>
+        navigate(`/teaching/learn/${bank.question_bank_id}/slide/0`)
+      }
       onAssessment={() =>
         navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
       }
@@ -104,7 +106,9 @@ export default function TeachingModuleMain() {
               title="Learning materials"
               subtitle="Work through the learning content at your own pace before attempting the assessment."
               buttonLabel="Start learning"
-              onClick={() => navigate("/teaching/learn")}
+              onClick={() =>
+                navigate(`/teaching/learn/${bank.question_bank_id}/slide/0`)
+              }
             />
             <ActionCard
               icon={<IconChalkboardTeacher />}

@@ -21,7 +21,6 @@ export const Default: Story = {
   args: {
     slides: stubSlides,
     currentIndex: 2,
-    visited: new Set([0, 1]),
     onNavigate: () => {},
     onExit: () => {},
   },

@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-syntax -- TeachingLayout provides Container */
+
 /**
  * SlideReader Page
  *
@@ -9,12 +11,15 @@
  * Phase 1: Uses stub compiled JSON with YouTube videos.
  */
 
-import { Box, Container, Stack } from "@mantine/core";
+import { Box, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
+import LearningNav from "@/components/navigation/LearningNav";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 import type { CompiledSlide } from "@/features/teaching/types";
 
@@ -24,6 +29,8 @@ export default function SlideReader() {
     slideIndex: string;
   }>();
   const navigate = useNavigate();
+  const theme = useMantineTheme();
+  const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   // Phase 1: stub slides. Phase 2 will fetch from API
   const slides: CompiledSlide[] = stubSlides;
@@ -51,12 +58,11 @@ export default function SlideReader() {
 
   const goNext = useCallback(() => {
     if (isLast) {
-      // Mark complete and navigate to module main page
-      navigate(`/teaching`);
+      navigate(`/teaching/${moduleId}`);
     } else {
       goToSlide(currentIndex + 1);
     }
-  }, [isLast, currentIndex, goToSlide, navigate]);
+  }, [isLast, currentIndex, goToSlide, navigate, moduleId]);
 
   const goPrevious = useCallback(() => {
     if (!isFirst) {
@@ -116,31 +122,38 @@ export default function SlideReader() {
     return null;
   }
 
+  const sidebarNav = (
+    <LearningNav
+      slides={slides}
+      currentIndex={currentIndex}
+      onNavigate={goToSlide}
+      onExit={() => navigate(`/teaching/${moduleId}`)}
+    />
+  );
+
   return (
-    <Box
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      style={{ minHeight: "100%" }}
-    >
-      <Container size="lg">
-        <Stack gap="lg">
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
+      <Box onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        {isSm && (
           <TeachingProgressBar
             current={currentIndex + 1}
             total={slides.length}
           />
+        )}
 
-          <SlideViewer
-            slide={currentSlide}
-            onVideoProgress={handleVideoProgress}
-          />
+        <SlideViewer
+          slide={currentSlide}
+          onVideoProgress={handleVideoProgress}
+        />
 
+        {isSm && (
           <PreviousNextButton
             onPrevious={isFirst ? undefined : goPrevious}
             onNext={goNext}
             nextLabel={isLast ? "Finish" : "Next"}
           />
-        </Stack>
-      </Container>
-    </Box>
+        )}
+      </Box>
+    </TeachingLayout>
   );
 }

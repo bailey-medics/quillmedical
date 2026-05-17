@@ -26,8 +26,6 @@ export interface LearningNavProps {
   slides: CompiledSlide[];
   /** Current slide index (0-based) */
   currentIndex: number;
-  /** Set of visited slide indices */
-  visited: Set<number>;
   /** Called when a slide title is clicked */
   onNavigate: (slideIndex: number) => void;
   /** Called when the exit link is clicked */
@@ -53,16 +51,9 @@ const layoutIconMap: Record<SlideLayout, ReactElement> = {
   default: <IconFileText size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />,
 };
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${String(secs).padStart(2, "0")}`;
-}
-
 export default function LearningNav({
   slides,
   currentIndex,
-  visited,
   onNavigate,
   onExit,
 }: LearningNavProps) {
@@ -75,11 +66,6 @@ export default function LearningNav({
           key={slide.slideIndex}
           label={slide.title}
           leftSection={layoutIconMap[slide.layout]}
-          rightSection={
-            !visited.has(slide.slideIndex) && slide.durationSeconds
-              ? formatDuration(slide.durationSeconds)
-              : undefined
-          }
           active={slide.slideIndex === currentIndex}
           onClick={() => onNavigate(slide.slideIndex)}
           styles={{

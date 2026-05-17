@@ -11,7 +11,7 @@
  * - Assessments: no sidebar (full-width content)
  */
 
-import { Box, Container, Flex, Stack, useMantineTheme } from "@mantine/core";
+import { Box, Flex, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
@@ -126,9 +126,7 @@ export default function TeachingLayout({
             pt={LAYOUT_PADDING_TOP}
             pb={LAYOUT_PADDING_BOTTOM}
           >
-            <Container size="lg">
-              <Stack gap="lg">{children}</Stack>
-            </Container>
+            {children}
           </Box>
           <Footer text={resolvedFooterText} loading={footerLoading} />
         </Flex>

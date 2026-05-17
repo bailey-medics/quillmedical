@@ -495,17 +495,6 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "/teaching/learn/:moduleId/slide/:slideIndex",
-        element: (
-          <RequireFeature
-            feature="teaching"
-            fallback={<NoAccessLayout feature="teaching" />}
-          >
-            <SlideReader />
-          </RequireFeature>
-        ),
-      },
-      {
         path: "/teaching/assessment/:id",
         element: (
           <RequireFeature
@@ -562,6 +551,21 @@ const router = createBrowserRouter([
           fallback={<NoAccessLayout feature="teaching" />}
         >
           <TeachingModuleMain />
+        </RequireFeature>
+      </RequireAuth>
+    ),
+  },
+
+  // Slide reader — uses TeachingLayout (not MainLayout)
+  {
+    path: "/teaching/learn/:moduleId/slide/:slideIndex",
+    element: (
+      <RequireAuth>
+        <RequireFeature
+          feature="teaching"
+          fallback={<NoAccessLayout feature="teaching" />}
+        >
+          <SlideReader />
         </RequireFeature>
       </RequireAuth>
     ),

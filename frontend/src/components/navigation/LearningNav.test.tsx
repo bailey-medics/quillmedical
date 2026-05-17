@@ -11,7 +11,6 @@ describe("LearningNav", () => {
       <LearningNav
         slides={stubSlides}
         currentIndex={0}
-        visited={new Set()}
         onNavigate={() => {}}
         onExit={() => {}}
       />,
@@ -31,7 +30,6 @@ describe("LearningNav", () => {
       <LearningNav
         slides={stubSlides}
         currentIndex={2}
-        visited={new Set()}
         onNavigate={() => {}}
         onExit={() => {}}
       />,
@@ -48,7 +46,6 @@ describe("LearningNav", () => {
       <LearningNav
         slides={stubSlides}
         currentIndex={0}
-        visited={new Set()}
         onNavigate={handleNavigate}
         onExit={() => {}}
       />,
@@ -56,36 +53,6 @@ describe("LearningNav", () => {
 
     await user.click(screen.getByText("Recorded lecture"));
     expect(handleNavigate).toHaveBeenCalledWith(1);
-  });
-
-  it("shows duration for unvisited slides", () => {
-    renderWithMantine(
-      <LearningNav
-        slides={stubSlides}
-        currentIndex={0}
-        visited={new Set()}
-        onNavigate={() => {}}
-        onExit={() => {}}
-      />,
-    );
-
-    // The video slide has durationSeconds=1080 → "18:00"
-    expect(screen.getByText("18:00")).toBeInTheDocument();
-  });
-
-  it("hides duration for visited slides", () => {
-    renderWithMantine(
-      <LearningNav
-        slides={stubSlides}
-        currentIndex={2}
-        visited={new Set([0, 1])}
-        onNavigate={() => {}}
-        onExit={() => {}}
-      />,
-    );
-
-    // Slide 1 (video, 1080s) is visited — duration should not render
-    expect(screen.queryByText("18:00")).not.toBeInTheDocument();
   });
 
   it("renders the exit link and calls onExit when clicked", async () => {
@@ -96,7 +63,6 @@ describe("LearningNav", () => {
       <LearningNav
         slides={stubSlides}
         currentIndex={0}
-        visited={new Set()}
         onNavigate={() => {}}
         onExit={handleExit}
       />,
