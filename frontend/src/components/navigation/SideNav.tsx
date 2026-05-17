@@ -44,7 +44,7 @@ export default function SideNav({
     <nav
       role="navigation"
       aria-label="Primary"
-      style={{ minWidth: "6.25rem", height: "100%", paddingRight: "0.875rem" }}
+      style={{ minWidth: "6.25rem", height: "100%" }}
     >
       <Stack p="sm" gap="xs">
         {showSearch && (

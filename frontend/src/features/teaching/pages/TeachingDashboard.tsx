@@ -7,7 +7,7 @@ import {
   Stack,
 } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import DashboardNav from "@/components/navigation/DashboardNav";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -117,12 +117,7 @@ export default function TeachingDashboard() {
     );
 
   const sidebarNav = (
-    <DashboardNav
-      modules={liveBanks.map((b) => ({
-        id: b.question_bank_id,
-        title: b.title,
-      }))}
-      onModule={(id) => navigate(`/teaching/${id}`)}
+    <TeachingMainNav
       onSettings={() => navigate("/settings")}
       onAdmin={hasAdminAccess ? () => navigate("/admin") : undefined}
       onLogout={() => void logout()}
@@ -133,7 +128,7 @@ export default function TeachingDashboard() {
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Container size="lg">
         <Stack gap="lg">
-          <PageHeader title="Teaching" />
+          <PageHeader title="Teaching modules" />
 
           {liveBanks.length === 0 ? (
             <Center p="xl">

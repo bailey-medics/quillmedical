@@ -18,7 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
-import LearningNav from "@/components/navigation/LearningNav";
+import TeachingLearningNav from "@/components/navigation/teaching/TeachingLearningNav";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 import type { CompiledSlide } from "@/features/teaching/types";
@@ -123,7 +123,7 @@ export default function SlideReader() {
   }
 
   const sidebarNav = (
-    <LearningNav
+    <TeachingLearningNav
       slides={slides}
       currentIndex={currentIndex}
       onNavigate={goToSlide}

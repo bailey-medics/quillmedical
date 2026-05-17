@@ -20,12 +20,14 @@ import {
   IconChalkboardTeacher,
 } from "@/components/icons/appIcons";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import ModuleNav from "@/components/navigation/ModuleNav";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
+import { useAuth } from "@/auth/AuthContext";
 import type { QuestionBank } from "@/features/teaching/types";
 
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
   const navigate = useNavigate();
+  const { logout, state } = useAuth();
   const [bank, setBank] = useState<QuestionBank | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,16 +82,16 @@ export default function TeachingModuleMain() {
     );
   }
 
+  const hasAdminAccess =
+    state.status === "authenticated" &&
+    (state.user.system_permissions === "admin" ||
+      state.user.system_permissions === "superadmin");
+
   const sidebarNav = (
-    <ModuleNav
-      moduleTitle={bank.title}
-      onLearning={() =>
-        navigate(`/teaching/learn/${bank.question_bank_id}/slide/0`)
-      }
-      onAssessment={() =>
-        navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
-      }
-      onBack={() => navigate("/teaching")}
+    <TeachingMainNav
+      onSettings={() => navigate("/settings")}
+      onAdmin={hasAdminAccess ? () => navigate("/admin") : undefined}
+      onLogout={() => void logout()}
     />
   );
 

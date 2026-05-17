@@ -18,7 +18,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
-import { typographyTokens } from "@/theme";
+import { navLinkStyles } from "./navStyles";
 
 /**
  * SideNavContent Props
@@ -42,8 +42,6 @@ type Props = {
  * @param props - Component props
  * @returns Navigation links stack
  */
-/** Responsive font size — 16px on mobile, 19px on desktop (matches BodyText) */
-const NAV_FONT_SIZE = "var(--mantine-font-size-md)";
 
 export default function SideNavContent({
   onNavigate,
@@ -172,14 +170,6 @@ export default function SideNavContent({
     fetchBankTitle();
   }, [bankId]);
 
-  const navLinkStyles = {
-    root: { fontSize: NAV_FONT_SIZE },
-    label: {
-      fontSize: NAV_FONT_SIZE,
-      fontWeight: typographyTokens.fontWeights.body,
-    },
-  };
-
   // Build Users nav item with optional username child
   const usersNavItem: NavItem = {
     label: "Users",
@@ -300,6 +290,7 @@ export default function SideNavContent({
         <NavLink
           label="Home"
           styles={navLinkStyles}
+          active={location.pathname === "/"}
           onClick={() => {
             navigate("/");
             if (onNavigate) onNavigate();
@@ -311,6 +302,7 @@ export default function SideNavContent({
         <NavLink
           label="Messages"
           styles={navLinkStyles}
+          active={location.pathname.startsWith("/messages")}
           onClick={() => {
             navigate("/messages");
             if (onNavigate) onNavigate();
@@ -328,6 +320,7 @@ export default function SideNavContent({
       <NavLink
         label="Settings"
         styles={navLinkStyles}
+        active={location.pathname.startsWith("/settings")}
         onClick={() => {
           navigate("/settings");
           if (onNavigate) onNavigate();

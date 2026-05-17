@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
-import LearningNav from "./LearningNav";
+import TeachingLearningNav from "./TeachingLearningNav";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 
-describe("LearningNav", () => {
+describe("TeachingLearningNav", () => {
   it("renders all slide titles", () => {
     renderWithMantine(
-      <LearningNav
+      <TeachingLearningNav
         slides={stubSlides}
         currentIndex={0}
         onNavigate={() => {}}
@@ -27,7 +27,7 @@ describe("LearningNav", () => {
 
   it("renders the progress indicator", () => {
     renderWithMantine(
-      <LearningNav
+      <TeachingLearningNav
         slides={stubSlides}
         currentIndex={2}
         onNavigate={() => {}}
@@ -43,7 +43,7 @@ describe("LearningNav", () => {
     const user = userEvent.setup();
 
     renderWithMantine(
-      <LearningNav
+      <TeachingLearningNav
         slides={stubSlides}
         currentIndex={0}
         onNavigate={handleNavigate}
@@ -60,7 +60,7 @@ describe("LearningNav", () => {
     const user = userEvent.setup();
 
     renderWithMantine(
-      <LearningNav
+      <TeachingLearningNav
         slides={stubSlides}
         currentIndex={0}
         onNavigate={() => {}}

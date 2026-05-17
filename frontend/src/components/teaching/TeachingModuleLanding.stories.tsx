@@ -3,12 +3,12 @@
  *
  * Full-page composition showing the TeachingModuleMain landing page
  * with two ActionCards: "Learning materials" and "Start assessment".
- * Uses TeachingLayout with ModuleNav sidebar.
+ * Uses TeachingLayout with TeachingMainNav sidebar.
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SimpleGrid } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import ModuleNav from "@/components/navigation/ModuleNav";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import PageHeader from "@/components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
 import { IconBook, IconChalkboardTeacher } from "@/components/icons/appIcons";
@@ -25,14 +25,7 @@ export const Default: Story = {
   tags: ["!test"],
   render: () => (
     <TeachingLayout
-      sidebar={
-        <ModuleNav
-          moduleTitle="Colorectal polyps"
-          onLearning={() => {}}
-          onAssessment={() => {}}
-          onBack={() => {}}
-        />
-      }
+      sidebar={<TeachingMainNav onSettings={() => {}} onLogout={() => {}} />}
       footerText="Logged in: dr.jones"
     >
       <PageHeader title="Colorectal polyps" />
