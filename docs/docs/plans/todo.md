@@ -5,7 +5,18 @@
 - http://localhost:6006/?path=/story/messaging-newmessagemodal--default
 - `AddPatientToOrgPage.tsx` — refactor to use `Form<T>`, `FormStatus`, `SubmitButton`
 
-## Off line
+## RequireAuth tests
+
+- [ ] Add unit tests for `RequireAuth` component (`frontend/src/auth/`).
+      Tests should cover: loading state rendering, authenticated pass-through,
+      session expiry preserving `from` location state, and **explicit logout
+      NOT passing `from` state** (PHI safety — prevents next user being
+      redirected to previous user's page). Tests consistently hang vitest
+      workers inside the Docker container (resource/memory issue); works in
+      isolation but fails with multiple renders. Try running outside Docker
+      or with `--pool=threads` flag.
+
+## Offline
 
 ## Playwright E2E testing
 

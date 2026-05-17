@@ -157,10 +157,10 @@ describe("SideNav Component", () => {
       expect(nav).toHaveStyle({ height: "100%" });
     });
 
-    it("has right padding", () => {
+    it("does not set explicit right padding on nav", () => {
       const { container } = renderNav(<SideNav showSearch={false} />);
       const nav = container.querySelector("nav");
-      expect(nav).toHaveStyle({ paddingRight: "0.875rem" });
+      expect(nav?.style.paddingRight).toBe("");
     });
   });
 
