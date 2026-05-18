@@ -8,13 +8,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group } from "@mantine/core";
-import BaseCard from "@components/base-card/BaseCard";
-import { BodyText } from "@components/typography";
-import { VariantRow, VariantStack } from "@/stories/variants";
 import FilterSelect from "./FilterSelect";
 
 const meta: Meta<typeof FilterSelect> = {
-  title: "Form/Filter select",
+  title: "Tables/Filter select",
   component: FilterSelect,
   parameters: { layout: "padded" },
 };
@@ -75,54 +72,32 @@ export const WithActiveFilters: Story = {
   ),
 };
 
-export const AllVariants: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="No filters active">
-        <InteractiveFilterSelect />
-      </VariantRow>
-      <VariantRow label="2 filters active">
-        <InteractiveFilterSelect preselected={["trust:leeds", "lead:morton"]} />
-      </VariantRow>
-      <VariantRow label="5 filters active">
-        <InteractiveFilterSelect
-          preselected={[
-            "trust:leeds",
-            "trust:bradford",
-            "lead:morton",
-            "lead:singh",
-            "first-pass-only",
-          ]}
-        />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
-export const InContext: Story = {
+/** Shows the count indicator at each value from 0 through 9+ */
+export const CountIndicator: Story = {
   render: () => {
-    function Demo() {
-      const [value, setValue] = useState<string[]>([]);
-      return (
-        <BaseCard>
-          <Group justify="space-between" align="center">
-            <BodyText>All delegates</BodyText>
-            <FilterSelect
-              data={trustData}
-              value={value}
-              onChange={setValue}
-              label="Filter delegates"
-              aria-label="Filter delegates"
-            />
-          </Group>
-        </BaseCard>
-      );
-    }
-    return <Demo />;
+    const counts = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    return (
+      <Group gap="lg">
+        {counts.map((n) => (
+          <FilterSelect
+            key={n}
+            data={trustData}
+            value={Array.from({ length: n }, (_, i) => `item-${i}`)}
+            onChange={() => {}}
+            aria-label={`Filter (${n})`}
+          />
+        ))}
+      </Group>
+    );
   },
 };
 
 export const DarkMode: Story = {
-  ...Default,
+  render: () => (
+    <Group gap="lg">
+      <InteractiveFilterSelect />
+      <InteractiveFilterSelect preselected={["trust:leeds", "lead:morton"]} />
+    </Group>
+  ),
   globals: { colorScheme: "dark" },
 };
