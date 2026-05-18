@@ -22,11 +22,14 @@
  * ```
  */
 
+import { useState } from "react";
 import {
   Table,
   Skeleton,
   Stack,
   Center,
+  Pagination,
+  Group,
   useMantineTheme,
   useComputedColorScheme,
 } from "@mantine/core";
@@ -78,6 +81,8 @@ export interface DataTableProps<T> {
   emptyMessage?: string;
   /** Unique key extractor from row data */
   getRowKey: (row: T) => string | number;
+  /** Rows per page. When set, pagination is shown below the table. */
+  pageSize?: number;
 }
 
 /**
@@ -107,6 +112,7 @@ export default function DataTable<T>({
   error = null,
   emptyMessage = "No data found",
   getRowKey,
+  pageSize,
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -114,6 +120,20 @@ export default function DataTable<T>({
   const isDark = colorScheme === "dark";
   const hoverColor = isDark ? "var(--mantine-color-primary-5)" : undefined;
   const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
+
+  const [page, setPage] = useState(1);
+  const totalPages = pageSize ? Math.ceil(data.length / pageSize) : 1;
+
+  // Clamp page to valid range when data shrinks (e.g. after filtering)
+  const activePage = Math.min(page, Math.max(totalPages, 1));
+  if (activePage !== page) {
+    setPage(activePage);
+  }
+
+  // Slice data to current page when pagination is active
+  const visibleData = pageSize
+    ? data.slice((activePage - 1) * pageSize, activePage * pageSize)
+    : data;
 
   // Error state
   if (error) {
@@ -184,7 +204,7 @@ export default function DataTable<T>({
   if (isMobile) {
     return (
       <Stack gap="md">
-        {data.map((row) => (
+        {visibleData.map((row) => (
           <DataCard
             key={getRowKey(row)}
             row={row}
@@ -192,46 +212,66 @@ export default function DataTable<T>({
             onClick={onRowClick ?? (() => {})}
           />
         ))}
+        {pageSize && totalPages > 1 && (
+          <Group justify="center" mt="md">
+            <Pagination
+              total={totalPages}
+              value={activePage}
+              onChange={setPage}
+            />
+          </Group>
+        )}
       </Stack>
     );
   }
 
   // Desktop: Table layout
   return (
-    <Table
-      striped
-      stripedColor={stripedColor}
-      highlightOnHover
-      highlightOnHoverColor={hoverColor}
-    >
-      <Table.Thead>
-        <Table.Tr>
-          {columns.map((column, index) => (
-            <Table.Th key={index} style={{ width: column.width }}>
-              <BodyTextBold>{column.header}</BodyTextBold>
-            </Table.Th>
-          ))}
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {data.map((row) => (
-          <Table.Tr
-            key={getRowKey(row)}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-            style={onRowClick ? { cursor: "pointer" } : undefined}
-          >
+    <Stack gap="md">
+      <Table
+        striped
+        stripedColor={stripedColor}
+        highlightOnHover
+        highlightOnHoverColor={hoverColor}
+      >
+        <Table.Thead>
+          <Table.Tr>
             {columns.map((column, index) => (
-              <Table.Td
-                key={index}
-                className={classes.cell}
-                style={{ verticalAlign: "middle" }}
-              >
-                <BodyTextInline>{column.render(row)}</BodyTextInline>
-              </Table.Td>
+              <Table.Th key={index} style={{ width: column.width }}>
+                <BodyTextBold>{column.header}</BodyTextBold>
+              </Table.Th>
             ))}
           </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
+        </Table.Thead>
+        <Table.Tbody>
+          {visibleData.map((row) => (
+            <Table.Tr
+              key={getRowKey(row)}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              style={onRowClick ? { cursor: "pointer" } : undefined}
+            >
+              {columns.map((column, index) => (
+                <Table.Td
+                  key={index}
+                  className={classes.cell}
+                  style={{ verticalAlign: "middle" }}
+                >
+                  <BodyTextInline>{column.render(row)}</BodyTextInline>
+                </Table.Td>
+              ))}
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+      {pageSize && totalPages > 1 && (
+        <Group justify="center">
+          <Pagination
+            total={totalPages}
+            value={activePage}
+            onChange={setPage}
+          />
+        </Group>
+      )}
+    </Stack>
   );
 }

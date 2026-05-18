@@ -310,4 +310,94 @@ describe("DataTable", () => {
       expect(headers[0]).toHaveStyle({ width: "200px" });
     });
   });
+
+  describe("Pagination", () => {
+    const manyUsers: TestUser[] = Array.from({ length: 12 }, (_, i) => ({
+      id: i + 1,
+      name: `User ${i + 1}`,
+      email: `user${i + 1}@example.com`,
+    }));
+
+    const columns: Column<TestUser>[] = [
+      { header: "Name", render: (u) => u.name },
+      { header: "Email", render: (u) => u.email },
+    ];
+
+    it("shows pagination when data exceeds pageSize", () => {
+      renderWithMantine(
+        <DataTable
+          data={manyUsers}
+          columns={columns}
+          getRowKey={(u) => u.id}
+          pageSize={5}
+        />,
+      );
+
+      // Should show page 1 data
+      expect(screen.getByText("User 1")).toBeInTheDocument();
+      expect(screen.getByText("User 5")).toBeInTheDocument();
+      // Should NOT show page 2 data
+      expect(screen.queryByText("User 6")).not.toBeInTheDocument();
+      // Pagination control should be present
+      expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
+    });
+
+    it("does not show pagination when data fits in one page", () => {
+      const fewUsers = manyUsers.slice(0, 3);
+
+      renderWithMantine(
+        <DataTable
+          data={fewUsers}
+          columns={columns}
+          getRowKey={(u) => u.id}
+          pageSize={5}
+        />,
+      );
+
+      expect(screen.getByText("User 1")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "2" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("navigates to next page on click", async () => {
+      const user = userEvent.setup();
+
+      renderWithMantine(
+        <DataTable
+          data={manyUsers}
+          columns={columns}
+          getRowKey={(u) => u.id}
+          pageSize={5}
+        />,
+      );
+
+      // Click page 2
+      await user.click(screen.getByRole("button", { name: "2" }));
+
+      // Should show page 2 data
+      expect(screen.getByText("User 6")).toBeInTheDocument();
+      expect(screen.getByText("User 10")).toBeInTheDocument();
+      // Should NOT show page 1 data
+      expect(screen.queryByText("User 1")).not.toBeInTheDocument();
+    });
+
+    it("does not show pagination when pageSize is not set", () => {
+      renderWithMantine(
+        <DataTable
+          data={manyUsers}
+          columns={columns}
+          getRowKey={(u) => u.id}
+        />,
+      );
+
+      // All data should be visible
+      expect(screen.getByText("User 1")).toBeInTheDocument();
+      expect(screen.getByText("User 12")).toBeInTheDocument();
+      // No pagination buttons
+      expect(
+        screen.queryByRole("button", { name: "2" }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
