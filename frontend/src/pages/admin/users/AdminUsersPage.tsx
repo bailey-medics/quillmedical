@@ -12,12 +12,16 @@ import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
+import PermissionBadge from "@/components/badge/PermissionBadge";
 import { api } from "@/lib/api";
 
 interface User {
   id: number;
   username: string;
   email: string;
+  system_permissions: "superadmin" | "admin" | "staff" | "patient";
+  is_active: boolean;
 }
 
 interface UsersApiResponse {
@@ -61,6 +65,16 @@ export default function AdminUsersPage() {
     {
       header: "Email",
       render: (user) => user.email,
+    },
+    {
+      header: "Permission",
+      render: (user) => (
+        <PermissionBadge permission={user.system_permissions} />
+      ),
+    },
+    {
+      header: "Status",
+      render: (user) => <ActiveStatusBadge active={user.is_active} />,
     },
     {
       header: "User ID",

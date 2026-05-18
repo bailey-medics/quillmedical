@@ -1124,6 +1124,62 @@ def update_user(
     }
 
 
+@router.post("/users/{user_id}/deactivate")
+def deactivate_user(
+    user_id: int,
+    current_user: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Deactivate User Account.
+
+    Marks a user account as inactive. Deactivated users cannot log in
+    but their data is preserved for audit purposes.
+    Requires admin or superadmin system permissions.
+
+    Args:
+        user_id: ID of the user to deactivate.
+        current_user: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with deactivated user details.
+
+    Raises:
+        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 404 if user not found.
+        HTTPException: 400 if user is already inactive or trying to
+            deactivate self.
+    """
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required",
+        )
+
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=400, detail="Cannot deactivate your own account"
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=400, detail="User is already deactivated"
+        )
+
+    user.is_active = False
+    db.commit()
+
+    return {
+        "detail": "deactivated",
+        "id": user.id,
+        "username": user.username,
+    }
+
+
 class TotpSetupOut(BaseModel):
     """TOTP Setup Response.
 
@@ -1478,6 +1534,7 @@ def list_users(
                     "username": user.username,
                     "email": user.email,
                     "system_permissions": user.system_permissions,
+                    "is_active": user.is_active,
                 }
                 for user in users
             ]
@@ -1511,6 +1568,7 @@ def list_users(
                     "username": user.username,
                     "email": user.email,
                     "system_permissions": user.system_permissions,
+                    "is_active": user.is_active,
                 }
                 for user in users
             ]

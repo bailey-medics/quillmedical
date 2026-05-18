@@ -764,6 +764,85 @@ class TestOrganizationEndpoints:
         )
         assert response.status_code == 400
 
+    def test_deactivate_user_success(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Test admin can deactivate another user."""
+        user = User(
+            username="deactivate-me",
+            email="deactivate@example.com",
+            password_hash=hash_password("Password123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        response = authenticated_admin_client.post(
+            f"/api/users/{user.id}/deactivate"
+        )
+        assert response.status_code == 200
+        assert response.json()["detail"] == "deactivated"
+
+        db_session.refresh(user)
+        assert user.is_active is False
+
+    def test_deactivate_user_cannot_deactivate_self(
+        self,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
+    ):
+        """Test admin cannot deactivate their own account."""
+        response = authenticated_admin_client.post(
+            f"/api/users/{test_admin.id}/deactivate"
+        )
+        assert response.status_code == 400
+        assert "own account" in response.json()["detail"]
+
+    def test_deactivate_user_already_inactive(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Test deactivating an already-inactive user returns 400."""
+        user = User(
+            username="already-inactive",
+            email="inactive@example.com",
+            password_hash=hash_password("Password123!"),
+            is_active=False,
+            system_permissions="staff",
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        response = authenticated_admin_client.post(
+            f"/api/users/{user.id}/deactivate"
+        )
+        assert response.status_code == 400
+        assert "already deactivated" in response.json()["detail"]
+
+    def test_deactivate_user_not_found(
+        self,
+        authenticated_admin_client: TestClient,
+    ):
+        """Test deactivating a non-existent user returns 404."""
+        response = authenticated_admin_client.post(
+            "/api/users/99999/deactivate"
+        )
+        assert response.status_code == 404
+
+    def test_deactivate_user_forbidden_for_staff(
+        self,
+        authenticated_client: TestClient,
+    ):
+        """Test non-admin cannot deactivate users."""
+        response = authenticated_client.post("/api/users/1/deactivate")
+        assert response.status_code == 403
+
     def test_add_patient_unauthenticated(self, test_client: TestClient):
         """Test adding patient without authentication."""
         response = test_client.post(

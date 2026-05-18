@@ -34,6 +34,7 @@ import {
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
 import competenciesData from "@/generated/competencies.json";
 
@@ -68,6 +69,7 @@ export default function UserAdminPage() {
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
 
   useEffect(() => {
     async function fetchUserData() {
@@ -228,13 +230,30 @@ export default function UserAdminPage() {
 
             <ActionCard
               icon={<IconUserMinus />}
-              onClick={() => navigate(`/admin/users/deactivate`)}
+              onClick={() => setDeactivateOpen(true)}
               title="Deactivate user"
               subtitle="Disable this user account"
               buttonLabel="Deactivate"
             />
           </SimpleGrid>
         </Stack>
+
+        <ConfirmModal
+          opened={deactivateOpen}
+          onClose={() => setDeactivateOpen(false)}
+          onAccept={async () => {
+            await api.post(`/users/${id}/deactivate`, {});
+            navigate("/admin/users");
+          }}
+          title="Deactivate user"
+          acceptLabel="Deactivate user"
+          submittingLabel="Deactivating…"
+          icon={<IconUserMinus />}
+        >
+          Are you sure you want to deactivate <strong>{user.username}</strong>?
+          They will no longer be able to log in. This action can be reversed
+          later.
+        </ConfirmModal>
       </Stack>
     </Container>
   );

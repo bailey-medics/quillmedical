@@ -51,10 +51,8 @@ import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
 import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
 import AdminOrganisationsPage from "./pages/admin/organisations/AdminOrganisationsPage";
-import ViewAllUsersPage from "./pages/admin/users/ViewAllUsersPage";
 import UserAdminPage from "./pages/admin/users/UserAdminPage";
 import EditUserPage from "./pages/admin/users/EditUserPage";
-import DeactivateUserPage from "./pages/admin/users/DeactivateUserPage";
 import ViewAllPatientsPage from "./pages/admin/patients/ViewAllPatientsPage";
 import PatientAdminPage from "./pages/admin/patients/PatientAdminPage";
 import EditPatientPage from "./pages/admin/patients/EditPatientPage";
@@ -210,9 +208,7 @@ const router = createBrowserRouter([
           { index: true, element: <AdminPage /> },
           { path: "users", element: <AdminUsersPage /> },
           { path: "users/new", element: <UserInfoUpdatePage /> },
-          { path: "users/list", element: <ViewAllUsersPage /> },
           { path: "users/edit", element: <EditUserPage /> },
-          { path: "users/deactivate", element: <DeactivateUserPage /> },
           { path: "users/:id", element: <UserAdminPage /> },
           { path: "users/:id/edit", element: <UserInfoUpdatePage /> },
           { path: "patients", element: <AdminPatientsPage /> },

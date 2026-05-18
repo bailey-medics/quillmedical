@@ -381,9 +381,11 @@ function Step4Review({
 function Step5Confirmation({
   success,
   isEditMode = false,
+  errorMessage,
 }: Pick<StepContentProps, never> & {
   success: boolean;
   isEditMode?: boolean;
+  errorMessage?: string;
 }) {
   return success ? (
     <StateMessage
@@ -403,9 +405,10 @@ function Step5Confirmation({
       icon={<IconAlertCircle />}
       title={isEditMode ? "Failed to update user" : "Failed to create user"}
       description={
-        isEditMode
+        errorMessage ||
+        (isEditMode
           ? "There was an error updating the user. Please try again."
-          : "There was an error creating the user. Please try again."
+          : "There was an error creating the user. Please try again.")
       }
       colour="alert"
     />
@@ -430,6 +433,7 @@ export default function UserInfoUpdatePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
@@ -589,6 +593,7 @@ export default function UserInfoUpdatePage() {
         error,
       );
       setSuccess(false);
+      setErrorMessage(error instanceof Error ? error.message : null);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
       setActiveStep(4); // Move to confirmation step even on error
     } finally {
@@ -647,6 +652,7 @@ export default function UserInfoUpdatePage() {
           {...props}
           success={success}
           isEditMode={isEditMode}
+          errorMessage={errorMessage ?? undefined}
         />
       ),
       hideCancelButton: true,

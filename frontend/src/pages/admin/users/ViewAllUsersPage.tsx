@@ -12,11 +12,15 @@ import Icon from "@/components/icons";
 import { EmptyState } from "@/components/typography";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import PageHeader from "@/components/page-header";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
+import PermissionBadge from "@/components/badge/PermissionBadge";
 
 interface User {
   id: string;
   username: string;
   email: string;
+  system_permissions: "superadmin" | "admin" | "staff" | "patient";
+  is_active: boolean;
 }
 
 /**
@@ -58,6 +62,14 @@ export default function ViewAllUsersPage() {
   const userColumns: Column<User>[] = [
     { header: "Username", render: (u) => u.username },
     { header: "Email", render: (u) => u.email },
+    {
+      header: "Permission",
+      render: (u) => <PermissionBadge permission={u.system_permissions} />,
+    },
+    {
+      header: "Status",
+      render: (u) => <ActiveStatusBadge active={u.is_active} />,
+    },
     { header: "ID", render: (u) => u.id },
   ];
 
