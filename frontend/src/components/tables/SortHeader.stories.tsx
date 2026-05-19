@@ -19,23 +19,6 @@ const meta: Meta<typeof SortHeader> = {
 
 export default meta;
 type Story = StoryObj<typeof SortHeader>;
-
-export const AllStates: Story = {
-  render: () => (
-    <VariantStack>
-      <VariantRow label="Unsorted">
-        <SortHeader label="Name" direction={null} onClick={() => {}} />
-      </VariantRow>
-      <VariantRow label="Ascending">
-        <SortHeader label="Name" direction="asc" onClick={() => {}} />
-      </VariantRow>
-      <VariantRow label="Descending">
-        <SortHeader label="Name" direction="desc" onClick={() => {}} />
-      </VariantRow>
-    </VariantStack>
-  ),
-};
-
 function InteractiveSortHeader() {
   const [direction, setDirection] = useState<SortDirection | null>(null);
 
@@ -52,8 +35,23 @@ function InteractiveSortHeader() {
   );
 }
 
-export const Interactive: Story = {
+export const Default: Story = {
   render: () => <InteractiveSortHeader />,
+};
+export const AllStates: Story = {
+  render: () => (
+    <VariantStack>
+      <VariantRow label="Unsorted">
+        <SortHeader label="Name" direction={null} onClick={() => {}} />
+      </VariantRow>
+      <VariantRow label="Ascending">
+        <SortHeader label="Name" direction="asc" onClick={() => {}} />
+      </VariantRow>
+      <VariantRow label="Descending">
+        <SortHeader label="Name" direction="desc" onClick={() => {}} />
+      </VariantRow>
+    </VariantStack>
+  ),
 };
 
 export const DarkMode: Story = {

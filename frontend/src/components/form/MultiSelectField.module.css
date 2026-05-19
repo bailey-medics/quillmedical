@@ -30,10 +30,6 @@
   flex: 0 0 0;
 }
 
-.section {
-  transform: scale(1.5);
-}
-
 /* Only expand to full width when no pills are selected (inputField is the only child) */
 .inputField:only-child {
   width: 100%;

@@ -339,7 +339,7 @@ describe("DataTable", () => {
       // Should NOT show page 2 data
       expect(screen.queryByText("User 6")).not.toBeInTheDocument();
       // Pagination control should be present
-      expect(screen.getByRole("button", { name: "2" })).toBeInTheDocument();
+      expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
     });
 
     it("does not show pagination when data fits in one page", () => {
@@ -355,9 +355,7 @@ describe("DataTable", () => {
       );
 
       expect(screen.getByText("User 1")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "2" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Page \d+ of \d+/)).not.toBeInTheDocument();
     });
 
     it("navigates to next page on click", async () => {
@@ -372,8 +370,8 @@ describe("DataTable", () => {
         />,
       );
 
-      // Click page 2
-      await user.click(screen.getByRole("button", { name: "2" }));
+      // Click next page
+      await user.click(screen.getByRole("button", { name: "Next page" }));
 
       // Should show page 2 data
       expect(screen.getByText("User 6")).toBeInTheDocument();
@@ -395,9 +393,7 @@ describe("DataTable", () => {
       expect(screen.getByText("User 1")).toBeInTheDocument();
       expect(screen.getByText("User 12")).toBeInTheDocument();
       // No pagination buttons
-      expect(
-        screen.queryByRole("button", { name: "2" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Page \d+ of \d+/)).not.toBeInTheDocument();
     });
   });
 

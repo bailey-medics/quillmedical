@@ -137,6 +137,7 @@ function FilteredPaginatedTable() {
         columns={columns}
         getRowKey={(d) => d.id}
         pageSize={10}
+        fullControls
       />
     </Stack>
   );

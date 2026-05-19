@@ -41,30 +41,37 @@ describe("SortHeader", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("shows unsorted icon when direction is null", () => {
+  it("shows chevron indicator", () => {
     const { container } = renderWithMantine(
       <SortHeader label="Name" direction={null} onClick={() => {}} />,
     );
-    expect(
-      container.querySelector(".tabler-icon-arrows-sort"),
-    ).toBeInTheDocument();
+    expect(container.querySelector("[aria-hidden='true']")).toBeInTheDocument();
   });
 
-  it("shows ascending icon when direction is asc", () => {
+  it("shows both chevrons inactive when direction is null", () => {
+    const { container } = renderWithMantine(
+      <SortHeader label="Name" direction={null} onClick={() => {}} />,
+    );
+    const spans = container.querySelectorAll("[aria-hidden='true'] > span");
+    expect(spans[0].className).toContain("inactive");
+    expect(spans[1].className).toContain("inactive");
+  });
+
+  it("shows up chevron active when direction is asc", () => {
     const { container } = renderWithMantine(
       <SortHeader label="Name" direction="asc" onClick={() => {}} />,
     );
-    expect(
-      container.querySelector(".tabler-icon-arrow-up"),
-    ).toBeInTheDocument();
+    const spans = container.querySelectorAll("[aria-hidden='true'] > span");
+    expect(spans[0].className).toContain("active");
+    expect(spans[1].className).toContain("inactive");
   });
 
-  it("shows descending icon when direction is desc", () => {
+  it("shows down chevron active when direction is desc", () => {
     const { container } = renderWithMantine(
       <SortHeader label="Name" direction="desc" onClick={() => {}} />,
     );
-    expect(
-      container.querySelector(".tabler-icon-arrow-down"),
-    ).toBeInTheDocument();
+    const spans = container.querySelectorAll("[aria-hidden='true'] > span");
+    expect(spans[0].className).toContain("inactive");
+    expect(spans[1].className).toContain("active");
   });
 });

@@ -220,25 +220,6 @@ export const Loading: Story = {
   },
 };
 
-/**
- * With Pagination
- *
- * Shows the table with pageSize set, demonstrating client-side pagination.
- */
-export const WithPagination: Story = {
-  args: {
-    data: Array.from({ length: 30 }, (_, i) => ({
-      id: i + 1,
-      username: `user${i + 1}`,
-      email: `user${i + 1}@example.com`,
-    })),
-    columns: userColumns,
-    onRowClick: fn(),
-    getRowKey: (user) => user.id,
-    pageSize: 5,
-  },
-};
-
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

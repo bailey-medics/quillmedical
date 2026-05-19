@@ -1,6 +1,7 @@
 import { MultiSelect, type MultiSelectProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
+import SortChevron from "@components/sort/SortChevron";
 import classes from "./MultiSelectField.module.css";
 
 const fieldStyles = {
@@ -22,6 +23,7 @@ export default function MultiSelectField({
     <MultiSelect
       {...props}
       disabled={disabled}
+      rightSection={<SortChevron direction="neutral" />}
       description={
         description ? (
           <FieldDescription>{description}</FieldDescription>
@@ -35,7 +37,6 @@ export default function MultiSelectField({
         input: classes.input,
         pillsList: classes.pillsList,
         inputField: classes.inputField,
-        section: classes.section,
         pill: disabled ? classes.disabledPill : classes.pill,
         option: classes.option,
       }}

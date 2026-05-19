@@ -28,8 +28,6 @@ import {
   Skeleton,
   Stack,
   Center,
-  Pagination,
-  Group,
   useMantineTheme,
   useComputedColorScheme,
 } from "@mantine/core";
@@ -42,6 +40,7 @@ import {
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import SortHeader, { type SortDirection } from "./SortHeader";
+import TablePagination from "./TablePagination";
 import DataCard from "./DataCard";
 import classes from "./DataTable.module.css";
 
@@ -87,8 +86,10 @@ export interface DataTableProps<T> {
   emptyMessage?: string;
   /** Unique key extractor from row data */
   getRowKey: (row: T) => string | number;
-  /** Rows per page. When set, pagination is shown below the table. */
+  /** Initial rows per page. When set, pagination is shown below the table. */
   pageSize?: number;
+  /** Enable full controls: pagination with "Items per page" selector. */
+  fullControls?: boolean;
 }
 
 /**
@@ -118,7 +119,8 @@ export default function DataTable<T>({
   error = null,
   emptyMessage = "No data found",
   getRowKey,
-  pageSize,
+  pageSize: initialPageSize,
+  fullControls = false,
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -128,8 +130,14 @@ export default function DataTable<T>({
   const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [sortColumnIndex, setSortColumnIndex] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(1);
+  };
 
   const handleSort = (columnIndex: number) => {
     if (sortColumnIndex === columnIndex) {
@@ -262,14 +270,20 @@ export default function DataTable<T>({
             onClick={onRowClick ?? (() => {})}
           />
         ))}
-        {pageSize && totalPages > 1 && (
-          <Group justify="center" mt="md">
-            <Pagination
+        {pageSize && (
+          <TablePagination>
+            <TablePagination.Nav
               total={totalPages}
               value={activePage}
               onChange={setPage}
             />
-          </Group>
+            {fullControls && (
+              <TablePagination.PageSize
+                value={pageSize}
+                onChange={handlePageSizeChange}
+              />
+            )}
+          </TablePagination>
         )}
       </Stack>
     );
@@ -321,14 +335,20 @@ export default function DataTable<T>({
           ))}
         </Table.Tbody>
       </Table>
-      {pageSize && totalPages > 1 && (
-        <Group justify="center">
-          <Pagination
+      {pageSize && (
+        <TablePagination>
+          <TablePagination.Nav
             total={totalPages}
             value={activePage}
             onChange={setPage}
           />
-        </Group>
+          {fullControls && (
+            <TablePagination.PageSize
+              value={pageSize}
+              onChange={handlePageSizeChange}
+            />
+          )}
+        </TablePagination>
       )}
     </Stack>
   );

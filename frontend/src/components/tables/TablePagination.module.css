@@ -1,0 +1,24 @@
+.arrow {
+  border: none;
+  background: none;
+}
+
+.arrow:hover:not(:disabled) {
+  background: var(--mantine-color-primary-5);
+}
+
+.arrow svg {
+  width: 30px !important;
+  height: 30px !important;
+  stroke-width: 2;
+}
+
+.pageSizeButton {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.pageSizeButton:hover {
+  background: var(--mantine-color-primary-5);
+}

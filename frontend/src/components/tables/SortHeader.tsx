@@ -2,17 +2,12 @@
  * SortHeader Component
  *
  * A clickable column header button that displays the current sort state
- * (ascending, descending, or unsorted) with an appropriate arrow icon.
+ * (ascending, descending, or unsorted) with a chevron indicator.
  * Used inside DataTable for sortable columns.
  */
 
 import { Group, UnstyledButton } from "@mantine/core";
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconArrowsSort,
-} from "@/components/icons/appIcons";
-import Icon from "@/components/icons/Icon";
+import SortChevron from "@/components/sort/SortChevron";
 import { BodyTextBold } from "@/components/typography";
 import classes from "./SortHeader.module.css";
 
@@ -32,14 +27,8 @@ export default function SortHeader({
   direction,
   onClick,
 }: SortHeaderProps) {
-  const icon =
-    direction === "asc" ? (
-      <IconArrowUp />
-    ) : direction === "desc" ? (
-      <IconArrowDown />
-    ) : (
-      <IconArrowsSort />
-    );
+  const chevronDirection =
+    direction === "asc" ? "up" : direction === "desc" ? "down" : "neutral";
 
   return (
     <UnstyledButton
@@ -49,7 +38,7 @@ export default function SortHeader({
     >
       <Group gap={4} wrap="nowrap">
         <BodyTextBold>{label}</BodyTextBold>
-        <Icon icon={icon} size="sm" />
+        <SortChevron direction={chevronDirection} />
       </Group>
     </UnstyledButton>
   );
