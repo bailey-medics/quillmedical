@@ -11,6 +11,7 @@ import { SearchContext } from "./searchContext";
 
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const location = useLocation();
 
   // Track previous pathname in state (React-recommended pattern for
@@ -21,9 +22,15 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     if (query !== "") {
       setQuery("");
     }
+    if (showSearch) {
+      setShowSearch(false);
+    }
   }
 
-  const value = useMemo(() => ({ query, setQuery }), [query]);
+  const value = useMemo(
+    () => ({ query, setQuery, showSearch, setShowSearch }),
+    [query, showSearch],
+  );
 
   return (
     <SearchContext.Provider value={value}>{children}</SearchContext.Provider>

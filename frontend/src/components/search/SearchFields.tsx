@@ -70,7 +70,7 @@ export default function SearchField({ value, onChange }: SearchFieldProps) {
   return open ? (
     <TextInput
       ref={inputRef}
-      size="lg"
+      size="md"
       aria-label="Search"
       placeholder={"Search\u2026"}
       value={currentValue}
@@ -81,7 +81,11 @@ export default function SearchField({ value, onChange }: SearchFieldProps) {
         </ActionIcon>
       }
       styles={{
-        input: { transition: "width 0.2s ease", width: 220 },
+        root: { position: "relative", top: -5 },
+        input: {
+          transition: "width 0.2s ease",
+          width: 220,
+        },
       }}
       onBlur={handleBlur}
     />

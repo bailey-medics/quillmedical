@@ -17,6 +17,7 @@ import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
+import { useSearch } from "@lib/search";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LAYOUT_RIBBON_Z_INDEX,
@@ -65,6 +66,7 @@ export default function MainLayout({
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const { state } = useAuth();
+  const { showSearch } = useSearch();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -128,10 +130,7 @@ export default function MainLayout({
           onPatientClick={handlePatientClick}
           onPatientDoubleClick={handlePatientDoubleClick}
           examMode={examMode}
-          showSearch={
-            state.status === "authenticated" &&
-            (state.user.clinical_services_enabled ?? true)
-          }
+          showSearch={showSearch}
         />
       </Box>
 
@@ -178,7 +177,7 @@ export default function MainLayout({
               ref={mainRef}
               flex={1}
               style={{ overflowY: "auto" }}
-              px={isSm ? 0 : LAYOUT_PADDING_X}
+              px={isSm ? "md" : LAYOUT_PADDING_X}
               pt={LAYOUT_PADDING_TOP}
               pb={LAYOUT_PADDING_BOTTOM}
             >

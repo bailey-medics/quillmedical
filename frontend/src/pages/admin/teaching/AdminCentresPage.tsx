@@ -5,7 +5,7 @@
  * for each module. Stub data pending backend implementation.
  */
 
-import { Container, Group, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
@@ -67,21 +67,19 @@ const columns: Column<Centre>[] = [
 
 export default function AdminCentresPage() {
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <PageHeader title="Centres" />
+    <Stack gap="md">
+      <PageHeader title="Centres" />
 
-        <Group justify="flex-end">
-          <AddButton label="Add centre" />
-        </Group>
+      <Group justify="flex-end">
+        <AddButton label="Add centre" />
+      </Group>
 
-        <DataTable
-          data={CENTRES}
-          columns={columns}
-          getRowKey={(c) => c.id}
-          emptyMessage="No centres have been added yet"
-        />
-      </Stack>
-    </Container>
+      <DataTable
+        data={CENTRES}
+        columns={columns}
+        getRowKey={(c) => c.id}
+        emptyMessage="No centres have been added yet"
+      />
+    </Stack>
   );
 }

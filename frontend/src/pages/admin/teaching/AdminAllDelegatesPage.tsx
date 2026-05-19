@@ -8,12 +8,13 @@
  * Currently uses stub data — will be wired to an API endpoint.
  */
 
-import { useState } from "react";
-import { Container, Group, SimpleGrid, Stack } from "@mantine/core";
+import { useCallback, useEffect, useState } from "react";
+import { Group, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import StatCard from "@/components/stats-card/StatCard";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import FilterSelect from "@/components/form/FilterSelect";
+import { useSearch, useSearchFilter } from "@lib/search";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import FormattedDate from "@/components/data/Date";
 
@@ -31,96 +32,165 @@ interface Delegate {
   firstTimePass: boolean;
 }
 
-const DELEGATES: Delegate[] = [
-  {
-    id: 1,
-    name: "Dr Sarah Ahmed",
-    email: "s.ahmed@nhs.net",
-    trust: "Leeds Teaching Hospitals",
-    clinicalLead: "Prof James Morton",
-    learningCompleted: true,
-    assessmentResult: "pass",
-    assessmentDate: "2026-05-10",
-    firstTimePass: true,
-  },
-  {
-    id: 2,
-    name: "Dr Tom Chen",
-    email: "t.chen@nhs.net",
-    trust: "Leeds Teaching Hospitals",
-    clinicalLead: "Prof James Morton",
-    learningCompleted: true,
-    assessmentResult: "fail",
-    assessmentDate: "2026-05-08",
-    firstTimePass: false,
-  },
-  {
-    id: 3,
-    name: "Dr Emily Watson",
-    email: "e.watson@nhs.net",
-    trust: "Bradford Teaching Hospitals",
-    clinicalLead: "Dr Rachel Singh",
-    learningCompleted: true,
-    assessmentResult: "pass",
-    assessmentDate: "2026-05-12",
-    firstTimePass: true,
-  },
-  {
-    id: 4,
-    name: "Dr Raj Patel",
-    email: "r.patel@nhs.net",
-    trust: "Bradford Teaching Hospitals",
-    clinicalLead: "Dr Rachel Singh",
-    learningCompleted: false,
-    assessmentResult: "incomplete",
-    assessmentDate: null,
-    firstTimePass: false,
-  },
-  {
-    id: 5,
-    name: "Dr Hannah Brooks",
-    email: "h.brooks@nhs.net",
-    trust: "Airedale NHS Foundation Trust",
-    clinicalLead: "Dr Rachel Singh",
-    learningCompleted: true,
-    assessmentResult: "pass",
-    assessmentDate: "2026-04-28",
-    firstTimePass: false,
-  },
-  {
-    id: 6,
-    name: "Dr Michael O'Brien",
-    email: "m.obrien@nhs.net",
-    trust: "Airedale NHS Foundation Trust",
-    clinicalLead: "Prof James Morton",
-    learningCompleted: null,
-    assessmentResult: "pass",
-    assessmentDate: "2026-05-15",
-    firstTimePass: true,
-  },
-  {
-    id: 7,
-    name: "Dr Priya Sharma",
-    email: "p.sharma@nhs.net",
-    trust: "Leeds Teaching Hospitals",
-    clinicalLead: "Prof James Morton",
-    learningCompleted: true,
-    assessmentResult: "pass",
-    assessmentDate: "2026-05-14",
-    firstTimePass: true,
-  },
-  {
-    id: 8,
-    name: "Dr David Kim",
-    email: "d.kim@nhs.net",
-    trust: "Bradford Teaching Hospitals",
-    clinicalLead: "Dr Rachel Singh",
-    learningCompleted: false,
-    assessmentResult: null,
-    assessmentDate: null,
-    firstTimePass: false,
-  },
+const FIRST_NAMES = [
+  "Sarah",
+  "Tom",
+  "Emily",
+  "Raj",
+  "Hannah",
+  "Michael",
+  "Priya",
+  "David",
+  "Olivia",
+  "James",
+  "Aisha",
+  "George",
+  "Fatima",
+  "William",
+  "Charlotte",
+  "Mohammed",
+  "Sophie",
+  "Daniel",
+  "Grace",
+  "Samuel",
+  "Chloe",
+  "Alex",
+  "Amelia",
+  "Ben",
+  "Lucy",
+  "Nathan",
+  "Eleanor",
+  "Ravi",
+  "Megan",
+  "Owen",
+  "Zara",
+  "Liam",
+  "Isabella",
+  "Ethan",
+  "Noor",
+  "Caleb",
+  "Ruby",
+  "Theo",
+  "Ava",
+  "Finn",
+  "Jasmine",
+  "Harry",
+  "Isla",
+  "Leo",
+  "Mia",
+  "Oscar",
+  "Poppy",
+  "Jack",
+  "Holly",
+  "Alfie",
 ];
+
+const SURNAMES = [
+  "Ahmed",
+  "Chen",
+  "Watson",
+  "Patel",
+  "Brooks",
+  "O'Brien",
+  "Sharma",
+  "Kim",
+  "Thompson",
+  "Nguyen",
+  "Singh",
+  "Williams",
+  "Khan",
+  "Taylor",
+  "Brown",
+  "Jones",
+  "Ali",
+  "Wilson",
+  "Davies",
+  "Evans",
+  "Roberts",
+  "Johnson",
+  "Walker",
+  "Wright",
+  "Robinson",
+  "Clarke",
+  "Hall",
+  "Green",
+  "Lewis",
+  "Wood",
+  "Harris",
+  "Martin",
+  "Jackson",
+  "White",
+  "Thomas",
+  "Moore",
+  "Scott",
+  "King",
+  "Baker",
+  "Adams",
+  "Mitchell",
+  "Campbell",
+  "Turner",
+  "Parker",
+  "Morris",
+  "Cook",
+  "Murphy",
+  "Bell",
+  "Reed",
+  "Bailey",
+];
+
+const TRUSTS = [
+  "Leeds Teaching Hospitals",
+  "Bradford Teaching Hospitals",
+  "Airedale NHS Foundation Trust",
+  "Harrogate and District NHS Foundation Trust",
+  "Mid Yorkshire Teaching NHS Trust",
+];
+
+const CLINICAL_LEADS = [
+  "Prof James Morton",
+  "Dr Rachel Singh",
+  "Dr Karen Fletcher",
+  "Prof Andrew Malik",
+];
+
+function generateDelegates(count: number): Delegate[] {
+  const delegates: Delegate[] = [];
+  for (let i = 1; i <= count; i++) {
+    const firstName = FIRST_NAMES[i % FIRST_NAMES.length];
+    const surname = SURNAMES[i % SURNAMES.length];
+    const trust = TRUSTS[i % TRUSTS.length];
+    const clinicalLead = CLINICAL_LEADS[i % CLINICAL_LEADS.length];
+    const learningCompleted = i % 7 === 0 ? null : i % 3 !== 0;
+    const assessmentResult: Delegate["assessmentResult"] =
+      i % 7 === 0
+        ? null
+        : i % 5 === 0
+          ? "fail"
+          : i % 3 === 0
+            ? "incomplete"
+            : "pass";
+    const assessmentDate =
+      assessmentResult && assessmentResult !== "incomplete"
+        ? `2026-${String((i % 3) + 3).padStart(2, "0")}-${String((i % 28) + 1).padStart(2, "0")}`
+        : null;
+    const firstTimePass = assessmentResult === "pass" && i % 4 !== 0;
+
+    delegates.push({
+      id: i,
+      name: `Dr ${firstName} ${surname}`,
+      email: `${firstName.toLowerCase()}.${surname.toLowerCase().replace("'", "")}@nhs.net`,
+      trust,
+      clinicalLead,
+      learningCompleted,
+      assessmentResult,
+      assessmentDate,
+      firstTimePass,
+    });
+  }
+  return delegates;
+}
+
+const DELEGATES = generateDelegates(100);
 
 const FILTER_OPTIONS = [
   {
@@ -184,7 +254,20 @@ function calcFirstPassRate(delegates: Delegate[]): number {
 // ── Page ─────────────────────────────────────────────────────────────
 
 export default function AdminAllDelegatesPage() {
+  const { setShowSearch } = useSearch();
   const [filters, setFilters] = useState<string[]>([]);
+
+  // Enable ribbon search on mount, disable on unmount
+  useEffect(() => {
+    setShowSearch(true);
+    return () => setShowSearch(false);
+  }, [setShowSearch]);
+
+  const getSearchText = useCallback(
+    (d: Delegate) => `${d.name} ${d.email} ${d.trust}`,
+    [],
+  );
+  const searched = useSearchFilter(DELEGATES, getSearchText);
 
   const trusts = filters
     .filter((f) => f.startsWith("trust:"))
@@ -194,7 +277,7 @@ export default function AdminAllDelegatesPage() {
     .map((f) => f.slice(5));
   const firstPassOnly = filters.includes("first-pass-only");
 
-  let filtered = DELEGATES;
+  let filtered = searched;
 
   if (trusts.length > 0) {
     filtered = filtered.filter((d) => trusts.includes(d.trust));
@@ -209,36 +292,35 @@ export default function AdminAllDelegatesPage() {
   const firstPassRate = calcFirstPassRate(filtered);
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
+    <Stack gap="md">
+      <Group justify="space-between" align="center">
         <PageHeader title="All delegates" />
-
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-          <StatCard title="Total delegates" value={filtered.length} />
-          <StatCard
-            title="Passed"
-            value={filtered.filter((d) => d.assessmentResult === "pass").length}
-          />
-          <StatCard title="1st pass rate" value={firstPassRate} suffix="%" />
-        </SimpleGrid>
-
-        <Group justify="flex-end">
-          <FilterSelect
-            data={FILTER_OPTIONS}
-            value={filters}
-            onChange={setFilters}
-            label="Filter delegates"
-            aria-label="Filter delegates"
-          />
-        </Group>
-
-        <DataTable
-          data={filtered}
-          columns={columns}
-          getRowKey={(d) => d.id}
-          emptyMessage="No delegates match the selected filters"
+        <FilterSelect
+          data={FILTER_OPTIONS}
+          value={filters}
+          onChange={setFilters}
+          label="Filter delegates"
+          aria-label="Filter delegates"
         />
-      </Stack>
-    </Container>
+      </Group>
+
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <StatCard title="Total delegates" value={filtered.length} />
+        <StatCard
+          title="Passed"
+          value={filtered.filter((d) => d.assessmentResult === "pass").length}
+        />
+        <StatCard title="1st pass rate" value={firstPassRate} suffix="%" />
+      </SimpleGrid>
+
+      <DataTable
+        data={filtered}
+        columns={columns}
+        getRowKey={(d) => d.id}
+        pageSize={10}
+        fullControls
+        emptyMessage="No delegates match the selected filters"
+      />
+    </Stack>
   );
 }

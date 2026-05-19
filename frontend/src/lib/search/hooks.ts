@@ -11,6 +11,8 @@ import { SearchContext, type SearchContextValue } from "./searchContext";
 const fallback: SearchContextValue = {
   query: "",
   setQuery: () => {},
+  showSearch: false,
+  setShowSearch: () => {},
 };
 
 /**

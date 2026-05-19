@@ -115,6 +115,7 @@ export default tseslint.config(
         "**/*.test.tsx",
         "**/*.stories.tsx",
         "**/features/teaching/pages/**",
+        "**/pages/admin/teaching/**",
       ],
       rules: {
         // Warn if page file doesn't import Container from @mantine/core
