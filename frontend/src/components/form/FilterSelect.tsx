@@ -6,14 +6,12 @@
  * are active.
  */
 
-import { Group, Popover, Stack } from "@mantine/core";
+import { ActionIcon, Popover } from "@mantine/core";
 import { useClickOutside, useDisclosure } from "@mantine/hooks";
 import type { ComboboxParsedItemGroup } from "@mantine/core";
-import { Anchor } from "@mantine/core";
-import IconButton from "@components/button/IconButton";
 import { IconFilter2 } from "@components/icons/appIcons";
 import { BodyText } from "@components/typography";
-import MultiSelectField from "./MultiSelectField";
+import FilterModal from "./filter/FilterModal";
 import classes from "./FilterSelect.module.css";
 
 interface FilterSelectProps {
@@ -36,7 +34,7 @@ export default function FilterSelect({
   value,
   onChange,
   label = "Filter",
-  placeholder = "Search filters\u2026",
+  placeholder = "Select items\u2026",
   "aria-label": ariaLabel = "Filter",
 }: FilterSelectProps) {
   const [opened, { toggle, close }] = useDisclosure(false);
@@ -50,17 +48,19 @@ export default function FilterSelect({
       opened={opened}
       onClose={close}
       position="bottom-end"
-      shadow="md"
+      shadow="none"
       trapFocus={false}
     >
       <Popover.Target>
         <div className={classes.trigger}>
-          <IconButton
-            icon={<IconFilter2 />}
+          <ActionIcon
             variant="subtle"
+            size="lg"
             onClick={toggle}
             aria-label={ariaLabel}
-          />
+          >
+            <IconFilter2 size={32} stroke={2.5} />
+          </ActionIcon>
           {value.length > 0 && (
             <span className={classes.count}>
               <BodyText>{value.length >= 10 ? "9+" : value.length}</BodyText>
@@ -68,31 +68,14 @@ export default function FilterSelect({
           )}
         </div>
       </Popover.Target>
-      <Popover.Dropdown className={classes.dropdown} ref={dropdownRef}>
-        <Stack gap="xs">
-          <MultiSelectField
-            data={data}
-            value={value}
-            onChange={onChange}
-            label={label}
-            placeholder={value.length === 0 ? placeholder : undefined}
-            comboboxProps={{ withinPortal: false }}
-          />
-          {value.length > 0 && (
-            <Group justify="flex-end">
-              <Anchor
-                component="button"
-                type="button"
-                size="sm"
-                underline="always"
-                className={classes.reset}
-                onClick={() => onChange([])}
-              >
-                Reset
-              </Anchor>
-            </Group>
-          )}
-        </Stack>
+      <Popover.Dropdown ref={dropdownRef} className={classes.dropdown}>
+        <FilterModal
+          data={data}
+          value={value}
+          onChange={onChange}
+          label={label}
+          placeholder={placeholder}
+        />
       </Popover.Dropdown>
     </Popover>
   );

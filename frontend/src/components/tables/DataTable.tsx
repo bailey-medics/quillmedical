@@ -22,7 +22,7 @@
  * ```
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   Skeleton,
@@ -41,6 +41,7 @@ import {
 } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
+import SortHeader, { type SortDirection } from "./SortHeader";
 import DataCard from "./DataCard";
 import classes from "./DataTable.module.css";
 
@@ -61,6 +62,11 @@ export interface Column<T> {
   render: (row: T) => React.ReactNode;
   /** Optional: custom width */
   width?: string;
+  /**
+   * Optional: accessor for sorting. When provided, the column becomes
+   * sortable. Return a string, number, or Date for comparison.
+   */
+  accessor?: (row: T) => string | number | Date | null;
 }
 
 /**
@@ -122,7 +128,51 @@ export default function DataTable<T>({
   const stripedColor = isDark ? "var(--mantine-color-primary-6)" : undefined;
 
   const [page, setPage] = useState(1);
-  const totalPages = pageSize ? Math.ceil(data.length / pageSize) : 1;
+  const [sortColumnIndex, setSortColumnIndex] = useState<number | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const handleSort = (columnIndex: number) => {
+    if (sortColumnIndex === columnIndex) {
+      // Cycle: asc → desc → none
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortColumnIndex(null);
+      }
+    } else {
+      setSortColumnIndex(columnIndex);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedData = useMemo(() => {
+    if (sortColumnIndex === null) return data;
+    const accessor = columns[sortColumnIndex].accessor;
+    if (!accessor) return data;
+
+    return [...data].sort((a, b) => {
+      const aVal = accessor(a);
+      const bVal = accessor(b);
+
+      // Nulls sort last regardless of direction
+      if (aVal === null && bVal === null) return 0;
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+
+      let comparison: number;
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        comparison = aVal.localeCompare(bVal);
+      } else if (aVal instanceof Date && bVal instanceof Date) {
+        comparison = aVal.getTime() - bVal.getTime();
+      } else {
+        comparison = Number(aVal) - Number(bVal);
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [data, sortColumnIndex, sortDirection, columns]);
+
+  const totalPages = pageSize ? Math.ceil(sortedData.length / pageSize) : 1;
 
   // Clamp page to valid range when data shrinks (e.g. after filtering)
   const activePage = Math.min(page, Math.max(totalPages, 1));
@@ -132,8 +182,8 @@ export default function DataTable<T>({
 
   // Slice data to current page when pagination is active
   const visibleData = pageSize
-    ? data.slice((activePage - 1) * pageSize, activePage * pageSize)
-    : data;
+    ? sortedData.slice((activePage - 1) * pageSize, activePage * pageSize)
+    : sortedData;
 
   // Error state
   if (error) {
@@ -192,7 +242,7 @@ export default function DataTable<T>({
   }
 
   // Empty state
-  if (data.length === 0) {
+  if (sortedData.length === 0) {
     return (
       <Center p="xl">
         <BodyText>{emptyMessage}</BodyText>
@@ -238,7 +288,15 @@ export default function DataTable<T>({
           <Table.Tr>
             {columns.map((column, index) => (
               <Table.Th key={index} style={{ width: column.width }}>
-                <BodyTextBold>{column.header}</BodyTextBold>
+                {column.accessor ? (
+                  <SortHeader
+                    label={column.header}
+                    direction={sortColumnIndex === index ? sortDirection : null}
+                    onClick={() => handleSort(index)}
+                  />
+                ) : (
+                  <BodyTextBold>{column.header}</BodyTextBold>
+                )}
               </Table.Th>
             ))}
           </Table.Tr>

@@ -1,15 +1,17 @@
 /**
  * Table Controls Stories
  *
- * Demonstrates FilterSelect and pagination working together.
+ * Demonstrates FilterSelect, sorting, search, and pagination working together.
  * Filtering reduces the dataset, which automatically updates the
- * pagination page count.
+ * pagination page count. Search from the ribbon filters across all columns.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Container, Group, Stack } from "@mantine/core";
 import FilterSelect from "@components/form/FilterSelect";
+import TopRibbon from "@components/ribbon/TopRibbon";
+import { SearchProvider, useSearch } from "@lib/search";
 import DataTable, { type Column } from "./DataTable";
 
 interface Delegate {
@@ -55,47 +57,69 @@ const filterData = [
 ];
 
 const columns: Column<Delegate>[] = [
-  { header: "Name", render: (d) => d.name },
-  { header: "Trust", render: (d) => d.trust },
-  { header: "Clinical lead", render: (d) => d.lead },
-  { header: "Status", render: (d) => d.status },
+  { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
+  { header: "Trust", render: (d) => d.trust, accessor: (d) => d.trust },
+  {
+    header: "Clinical lead",
+    render: (d) => d.lead,
+    accessor: (d) => d.lead,
+  },
+  { header: "Status", render: (d) => d.status, accessor: (d) => d.status },
 ];
 
 function FilteredPaginatedTable() {
   const [filters, setFilters] = useState<string[]>([]);
+  const { query } = useSearch();
 
   const filteredData = useMemo(() => {
-    if (filters.length === 0) return delegates;
+    let result = delegates;
 
-    const trustFilters = filters
-      .filter((f) => f.startsWith("trust:"))
-      .map((f) => {
-        const map: Record<string, string> = {
-          "trust:leeds": "Leeds Teaching Hospitals",
-          "trust:bradford": "Bradford Teaching Hospitals",
-          "trust:airedale": "Airedale NHS Foundation Trust",
-        };
-        return map[f];
+    // Apply category filters
+    if (filters.length > 0) {
+      const trustFilters = filters
+        .filter((f) => f.startsWith("trust:"))
+        .map((f) => {
+          const map: Record<string, string> = {
+            "trust:leeds": "Leeds Teaching Hospitals",
+            "trust:bradford": "Bradford Teaching Hospitals",
+            "trust:airedale": "Airedale NHS Foundation Trust",
+          };
+          return map[f];
+        });
+
+      const leadFilters = filters
+        .filter((f) => f.startsWith("lead:"))
+        .map((f) => {
+          const map: Record<string, string> = {
+            "lead:morton": "Prof James Morton",
+            "lead:singh": "Dr Rachel Singh",
+          };
+          return map[f];
+        });
+
+      result = result.filter((d) => {
+        const matchesTrust =
+          trustFilters.length === 0 || trustFilters.includes(d.trust);
+        const matchesLead =
+          leadFilters.length === 0 || leadFilters.includes(d.lead);
+        return matchesTrust && matchesLead;
       });
+    }
 
-    const leadFilters = filters
-      .filter((f) => f.startsWith("lead:"))
-      .map((f) => {
-        const map: Record<string, string> = {
-          "lead:morton": "Prof James Morton",
-          "lead:singh": "Dr Rachel Singh",
-        };
-        return map[f];
-      });
+    // Apply search query
+    if (query.trim()) {
+      const lower = query.toLowerCase();
+      result = result.filter(
+        (d) =>
+          d.name.toLowerCase().includes(lower) ||
+          d.trust.toLowerCase().includes(lower) ||
+          d.lead.toLowerCase().includes(lower) ||
+          d.status.toLowerCase().includes(lower),
+      );
+    }
 
-    return delegates.filter((d) => {
-      const matchesTrust =
-        trustFilters.length === 0 || trustFilters.includes(d.trust);
-      const matchesLead =
-        leadFilters.length === 0 || leadFilters.includes(d.lead);
-      return matchesTrust && matchesLead;
-    });
-  }, [filters]);
+    return result;
+  }, [filters, query]);
 
   return (
     <Stack gap="md">
@@ -118,26 +142,37 @@ function FilteredPaginatedTable() {
   );
 }
 
+/** Wraps table with TopRibbon and SearchProvider to demonstrate full search flow */
+function WithRibbonSearch() {
+  const noop = useCallback(() => {}, []);
+  return (
+    <SearchProvider>
+      <TopRibbon
+        onBurgerClick={noop}
+        patient={null}
+        isLoading={false}
+        showSearch
+      />
+      <Container size="lg" py="md">
+        <FilteredPaginatedTable />
+      </Container>
+    </SearchProvider>
+  );
+}
+
 const meta: Meta = {
   title: "Tables/Table controls",
-  parameters: { layout: "padded" },
-  decorators: [
-    (Story) => (
-      <Container size="lg">
-        <Story />
-      </Container>
-    ),
-  ],
+  parameters: { layout: "fullscreen" },
 };
 
 export default meta;
 type Story = StoryObj;
 
-export const FilterAndPagination: Story = {
-  render: () => <FilteredPaginatedTable />,
+export const FullControls: Story = {
+  render: () => <WithRibbonSearch />,
 };
 
 export const DarkMode: Story = {
-  render: () => <FilteredPaginatedTable />,
+  render: () => <WithRibbonSearch />,
   globals: { colorScheme: "dark" },
 };

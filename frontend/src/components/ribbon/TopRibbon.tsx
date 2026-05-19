@@ -10,6 +10,7 @@ import type { Patient } from "@/domains/patient";
 import NationalNumber from "@/components/data/NationalNumber";
 import FormattedDate from "@/components/data/Date";
 import SearchField from "@/components/search";
+import { useSearch } from "@lib/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text } from "@mantine/core";
@@ -144,6 +145,7 @@ export default function TopRibbon({
   showSearch = true,
 }: Props) {
   const showBrand = !isNarrow || examMode;
+  const search = useSearch();
 
   if (examMode) {
     return (
@@ -205,7 +207,7 @@ export default function TopRibbon({
         {/* right: search — hidden by @container when narrow */}
         {!isNarrow && showSearch && (
           <div className={classes.right}>
-            <SearchField />
+            <SearchField value={search.query} onChange={search.setQuery} />
           </div>
         )}
       </div>

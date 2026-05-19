@@ -55,7 +55,7 @@ function InteractiveFilterSelect({
         value={value}
         onChange={setValue}
         label="Filter delegates"
-        placeholder={"Search filters\u2026"}
+        placeholder={"Select filters\u2026"}
         aria-label="Filter delegates"
       />
     </Group>

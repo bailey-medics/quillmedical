@@ -13,6 +13,7 @@ import { type Patient } from "@domains/patient";
 import type { NavItem } from "@/components/navigation/NestedNavLink";
 import MainLayout from "./components/layouts/MainLayout";
 import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
+import { SearchProvider } from "@lib/search";
 
 /**
  * Layout Context
@@ -72,7 +73,7 @@ export default function RootLayout() {
   }, [location.pathname]);
 
   return (
-    <>
+    <SearchProvider>
       <MainLayout
         patient={patient}
         isLoading={false}
@@ -94,6 +95,6 @@ export default function RootLayout() {
           />
         </ErrorBoundary>
       </MainLayout>
-    </>
+    </SearchProvider>
   );
 }

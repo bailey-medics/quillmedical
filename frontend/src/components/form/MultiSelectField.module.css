@@ -66,6 +66,10 @@
   font-weight: 500 !important;
 }
 
+[data-mantine-color-scheme="dark"] .pill {
+  background-color: var(--mantine-color-primary-7) !important;
+}
+
 .option {
   font-size: var(--mantine-font-size-md);
   font-weight: 500;

@@ -1,32 +1,20 @@
 .trigger {
   position: relative;
   display: inline-flex;
+  margin-right: 20px;
 }
 
 .count {
   position: absolute;
-  top: -5px;
+  top: -8px;
   left: 100%;
-  margin-left: -6px;
+  margin-left: 0;
   line-height: 1;
   color: var(--mantine-color-text);
 }
 
 .dropdown {
-  padding: var(--mantine-spacing-sm);
-  width: max-content;
-  min-width: 280px;
-}
-
-.dropdown :global(.mantine-PillGroup-group) {
-  flex-flow: column nowrap;
-  align-items: flex-start;
-}
-
-.reset {
-  color: var(--mantine-color-primary-4);
-
-  &:hover {
-    color: var(--mantine-color-primary-8);
-  }
+  background: transparent;
+  border: none;
+  padding: 0;
 }
