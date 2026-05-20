@@ -11,7 +11,11 @@ const fieldStyles = {
   },
   input: {
     fontSize: "var(--mantine-font-size-md)",
+    fontWeight: 500,
     "&::placeholder": { color: "var(--mantine-color-placeholder)" },
+  },
+  option: {
+    fontWeight: 500,
   },
   required: { color: "var(--mantine-color-secondary-5)" },
 };

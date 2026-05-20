@@ -79,6 +79,7 @@ import PatientDocuments from "./pages/PatientDocuments";
 import PatientDocumentView from "./pages/PatientDocumentView";
 import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
+import TeachingRegisterPage from "./pages/TeachingRegisterPage";
 import TotpSetup from "./pages/TotpSetup";
 import ChangePassword from "./pages/ChangePassword";
 
@@ -130,6 +131,14 @@ const router = createBrowserRouter([
     element: (
       <GuestOnly>
         <RegisterPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/teaching/register/:module",
+    element: (
+      <GuestOnly>
+        <TeachingRegisterPage />
       </GuestOnly>
     ),
   },

@@ -3,11 +3,17 @@
  *
  * User registration page for creating new accounts. Delegates form rendering
  * to the RegistrationForm component and handles API submission and navigation.
+ * Teaching environments show a placeholder pending bespoke registration flow.
  */
 
 /* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
+import { Button, Center, Group, Stack } from "@mantine/core";
+import { Heading } from "@components/typography";
+import { QuillLogo } from "@components/images";
+import BaseCard from "@components/base-card/BaseCard";
+import { SelectField, TextField } from "@components/form";
 import { api } from "@/lib/api";
 import type { FormSubmitResult } from "@/components/form/Form";
 import {
@@ -15,14 +21,80 @@ import {
   type RegistrationFormData,
 } from "@components/registration";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+
+const TEACHING_MODULES = [
+  {
+    value: "colonoscopy-optical-diagnosis-test",
+    label: "Colonoscopy optical diagnosis test",
+  },
+  {
+    value: "chest-xray-interpretation-test",
+    label: "Chest x-ray interpretation test",
+  },
+];
+
+const VALID_CLINICAL_LEADS = ["clinicallead@nhs.net"];
+
+function TeachingRegisterPage() {
+  const navigate = useNavigate();
+  const [module, setModule] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleContinue() {
+    setError(null);
+    if (!module) return;
+    if (!VALID_CLINICAL_LEADS.includes(email.toLowerCase().trim())) {
+      setError(
+        "The clinical lead that you entered is not registered at Quill Teaching. Please contact your local lead to organise onboarding for the above teaching module.",
+      );
+      return;
+    }
+    navigate(`/teaching/register/${module}`);
+  }
+
+  return (
+    <Center mih="100dvh">
+      <BaseCard w={400}>
+        <Stack gap="md">
+          <Stack align="center" gap="md">
+            <QuillLogo />
+            <Heading>Register for Quill Teaching</Heading>
+          </Stack>
+          <SelectField
+            label="Teaching module"
+            placeholder="Select a module"
+            data={TEACHING_MODULES}
+            value={module}
+            onChange={setModule}
+          />
+          <TextField
+            label="Clinical lead email address"
+            placeholder="clinicallead@nhs.net"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            error={error ?? undefined}
+          />
+          <Group justify="flex-end">
+            <Button disabled={!module || !email} onClick={handleContinue}>
+              Continue
+            </Button>
+          </Group>
+        </Stack>
+      </BaseCard>
+    </Center>
+  );
+}
 
 interface Organisation {
   id: number;
   name: string;
 }
 
-export default function RegisterPage() {
+function ClinicalRegisterPage() {
   const { login } = useAuth();
   const [organisations, setOrganisations] = useState<
     { value: string; label: string }[]
@@ -88,4 +160,11 @@ export default function RegisterPage() {
   return (
     <RegistrationForm organisations={organisations} onSubmit={handleSubmit} />
   );
+}
+
+export default function RegisterPage() {
+  if (import.meta.env.VITE_CLINICAL_SERVICES_ENABLED === "false") {
+    return <TeachingRegisterPage />;
+  }
+  return <ClinicalRegisterPage />;
 }

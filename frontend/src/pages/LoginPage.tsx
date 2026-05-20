@@ -117,5 +117,16 @@ export default function LoginPage() {
     }
   }
 
-  return <LoginForm onSubmit={handleSubmit} requireTotp={requireTotp} />;
+  const title =
+    import.meta.env.VITE_CLINICAL_SERVICES_ENABLED === "false"
+      ? "Sign in to Quill Teaching"
+      : "Sign in to Quill Medical";
+
+  return (
+    <LoginForm
+      onSubmit={handleSubmit}
+      requireTotp={requireTotp}
+      title={title}
+    />
+  );
 }
