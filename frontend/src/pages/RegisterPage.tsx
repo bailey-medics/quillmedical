@@ -9,28 +9,86 @@
 /* eslint-disable no-restricted-syntax */
 // Auth pages use centred form layout, not Container
 
-import { Button, Center, Group, Stack } from "@mantine/core";
+import { Center, Stack } from "@mantine/core";
 import { Heading } from "@components/typography";
 import { QuillLogo } from "@components/images";
 import BaseCard from "@components/base-card/BaseCard";
 import { SelectField, TextField } from "@components/form";
 import { api } from "@/lib/api";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import {
   RegistrationForm,
   type RegistrationFormData,
 } from "@components/registration";
 import { useEffect, useState } from "react";
+import { Controller } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 
 const VALID_CLINICAL_LEADS = ["clinicallead@nhs.net"];
 
+interface TeachingRegisterFormValues {
+  module: string;
+  clinicalLeadEmail: string;
+}
+
+function TeachingRegisterFields({
+  modules,
+}: {
+  modules: { value: string; label: string }[];
+}) {
+  const { methods } = useFormContext();
+
+  return (
+    <Stack gap="md">
+      <Stack align="center" gap="md">
+        <QuillLogo />
+        <Heading>Register for Quill Teaching</Heading>
+      </Stack>
+      <FormStatus />
+      <Controller
+        name="module"
+        control={methods.control}
+        rules={{ required: "Please select a module" }}
+        render={({ field, fieldState }) => (
+          <SelectField
+            label="Teaching module"
+            placeholder="Select a module"
+            data={modules}
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
+      <Controller
+        name="clinicalLeadEmail"
+        control={methods.control}
+        rules={{ required: "Please enter your clinical lead's email" }}
+        render={({ field, fieldState }) => (
+          <TextField
+            label="Clinical lead email address"
+            placeholder={"clinicallead@nhs.net"}
+            type="email"
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
+      <SubmitButton />
+    </Stack>
+  );
+}
+
 function TeachingRegisterPage() {
   const navigate = useNavigate();
-  const [module, setModule] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<{ value: string; label: string }[]>(
     [],
   );
@@ -46,47 +104,41 @@ function TeachingRegisterPage() {
       });
   }, []);
 
-  function handleContinue() {
-    setError(null);
-    if (!module) return;
-    if (!VALID_CLINICAL_LEADS.includes(email.toLowerCase().trim())) {
-      setError(
-        "The clinical lead that you entered is not registered at Quill Teaching. Please contact your local lead to organise onboarding for the above teaching module.",
-      );
-      return;
+  async function handleSubmit(
+    data: TeachingRegisterFormValues,
+  ): Promise<FormSubmitResult> {
+    if (
+      !VALID_CLINICAL_LEADS.includes(
+        data.clinicalLeadEmail.toLowerCase().trim(),
+      )
+    ) {
+      return {
+        state: "error",
+        message: {
+          title: "Clinical lead not found",
+          description:
+            "The clinical lead that you entered is not registered at Quill Teaching. Please contact your local lead to organise onboarding for the above teaching module.",
+        },
+      };
     }
-    navigate(`/teaching/register/${module}`);
+    navigate(`/teaching/register/${data.module}`);
+    return {
+      state: "success",
+      message: { title: "Redirecting…" },
+    };
   }
 
   return (
     <Center mih="100dvh">
       <BaseCard w={400}>
-        <Stack gap="md">
-          <Stack align="center" gap="md">
-            <QuillLogo />
-            <Heading>Register for Quill Teaching</Heading>
-          </Stack>
-          <SelectField
-            label="Teaching module"
-            placeholder="Select a module"
-            data={modules}
-            value={module}
-            onChange={setModule}
-          />
-          <TextField
-            label="Clinical lead email address"
-            placeholder="clinicallead@nhs.net"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.currentTarget.value)}
-            error={error ?? undefined}
-          />
-          <Group justify="flex-end">
-            <Button disabled={!module || !email} onClick={handleContinue}>
-              Continue
-            </Button>
-          </Group>
-        </Stack>
+        <Form<TeachingRegisterFormValues>
+          defaultValues={{ module: "", clinicalLeadEmail: "" }}
+          onSubmit={handleSubmit}
+          submitLabel="Continue"
+          submittingLabel="Validating…"
+        >
+          <TeachingRegisterFields modules={modules} />
+        </Form>
       </BaseCard>
     </Center>
   );

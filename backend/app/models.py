@@ -600,3 +600,95 @@ class PushSubscription(Base):
     )
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
+# ------------------------------------------------------------------
+# Sites
+# ------------------------------------------------------------------
+
+organisation_site = Table(
+    "organisation_site",
+    Base.metadata,
+    Column(
+        "organisation_id",
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "site_id",
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+"""Association table: many-to-many between organisations and sites."""
+
+
+site_staff_member = Table(
+    "site_staff_member",
+    Base.metadata,
+    Column(
+        "site_id",
+        ForeignKey("sites.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "user_id",
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("role", String(50), nullable=False),
+)
+"""Association table: staff at a site with a role (clinical_lead, staff, trainee)."""
+
+
+class Site(Base):
+    """Physical or virtual location within the healthcare system.
+
+    Sites form a self-referential hierarchy (hospital > building > ward > room).
+    They link to organisations via a many-to-many relationship and can serve
+    both teaching (clinical lead governance) and clinical (EPR/trust) use cases.
+
+    Attributes:
+        id: Primary key.
+        name: Site name (e.g. "Addenbrooke's Hospital").
+        type: Site type (hospital, building, ward, room, clinic,
+            department, virtual).
+        parent_id: FK to parent site (nullable for top-level sites).
+        location: Optional free-text address or description.
+        created_at: Timestamp when site was created.
+        updated_at: Timestamp when site was last updated.
+    """
+
+    __tablename__ = "sites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    parent_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
+    )
+    location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    parent: Mapped[Site | None] = relationship(
+        remote_side="Site.id",
+        foreign_keys=[parent_id],
+    )
+    organisations: Mapped[list[Organization]] = relationship(
+        secondary=organisation_site,
+        backref="sites",
+    )
+    staff: Mapped[list[User]] = relationship(
+        secondary=site_staff_member,
+        backref="sites",
+    )

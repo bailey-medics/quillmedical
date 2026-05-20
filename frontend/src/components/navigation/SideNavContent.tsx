@@ -53,7 +53,9 @@ export default function SideNavContent({
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgNavChildren, setOrgNavChildren] = useState<NavItem[] | undefined>(
+    undefined,
+  );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
   // Check if user has admin or superadmin permissions
@@ -90,6 +92,10 @@ export default function SideNavContent({
     /^\/admin\/organisations\/([^/]+)$/,
   );
   const orgId = orgIdMatch ? orgIdMatch[1] : null;
+
+  // Extract site ID from URL if on site admin page
+  const siteIdMatch = location.pathname.match(/^\/admin\/sites\/([^/]+)/);
+  const siteId = siteIdMatch ? siteIdMatch[1] : null;
 
   // Extract teaching sub-section from URL (centres, modules, or all-delegates)
   const teachingSectionMatch = location.pathname.match(
@@ -162,25 +168,61 @@ export default function SideNavContent({
     fetchUsername();
   }, [userId]);
 
-  // Fetch organisation name when on organisation admin page
+  // Fetch org/site breadcrumb — single effect to avoid flicker during transitions
   useEffect(() => {
-    async function fetchOrgName() {
-      if (!orgId) {
-        setOrgName(null);
-        return;
-      }
+    let cancelled = false;
 
-      try {
-        const org = await api.get<{ name: string }>(`/organizations/${orgId}`);
-        setOrgName(org.name || "Unknown Organisation");
-      } catch (error) {
-        console.error("Failed to fetch organisation name:", error);
-        setOrgName(null);
+    async function fetchOrgNav() {
+      if (orgId) {
+        try {
+          const org = await api.get<{ name: string }>(
+            `/organizations/${orgId}`,
+          );
+          if (cancelled) return;
+          setOrgNavChildren([
+            {
+              label: org.name || "Unknown Organisation",
+              href: `/admin/organisations/${orgId}`,
+            },
+          ]);
+        } catch (error) {
+          console.error("Failed to fetch organisation name:", error);
+          if (!cancelled) setOrgNavChildren(undefined);
+        }
+      } else if (siteId) {
+        try {
+          const site = await api.get<{
+            name: string;
+            organisations: Array<{ id: number; name: string }>;
+          }>(`/sites/${siteId}`);
+          if (cancelled) return;
+          const firstOrg = site.organisations?.[0];
+          const children: NavItem[] = [];
+          if (firstOrg) {
+            children.push({
+              label: firstOrg.name,
+              href: `/admin/organisations/${firstOrg.id}`,
+            });
+          }
+          children.push({
+            label: site.name || "Unknown Site",
+            href: `/admin/sites/${siteId}`,
+          });
+          setOrgNavChildren(children);
+        } catch (error) {
+          console.error("Failed to fetch site name:", error);
+          if (!cancelled) setOrgNavChildren(undefined);
+        }
+      } else {
+        setOrgNavChildren(undefined);
       }
     }
 
-    fetchOrgName();
-  }, [orgId]);
+    fetchOrgNav();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, siteId]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
@@ -234,6 +276,24 @@ export default function SideNavContent({
       : undefined,
   };
 
+  // Compute Organisations nav children.
+  // When on a site page, ensure the children include the site href so
+  // isActiveOrParent keeps the nav expanded (prevents collapse flicker).
+  const orgNavEffective: NavItem[] | undefined = (() => {
+    if (siteId) {
+      const siteHref = `/admin/sites/${siteId}`;
+      // If fetched children already contain the site link, use them
+      if (orgNavChildren?.some((c) => c.href === siteHref)) {
+        return orgNavChildren;
+      }
+      // Otherwise show a loading placeholder so the nav stays expanded
+      return orgNavChildren
+        ? [...orgNavChildren, { label: "…", href: siteHref }]
+        : [{ label: "…", href: siteHref }];
+    }
+    return orgNavChildren;
+  })();
+
   // Admin navigation structure with children
   const adminNavItem: NavItem = {
     label: "Admin",
@@ -246,14 +306,7 @@ export default function SideNavContent({
         label: "Organisations",
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
-        children: orgName
-          ? [
-              {
-                label: orgName,
-                href: `/admin/organisations/${orgId}`,
-              },
-            ]
-          : undefined,
+        children: orgNavEffective,
       } satisfies NavItem,
       ...(hasTeaching
         ? [

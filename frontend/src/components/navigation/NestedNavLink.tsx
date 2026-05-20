@@ -26,6 +26,7 @@ type IconName =
   | "file"
   | "adjustments"
   | "building-community"
+  | "building-hospital"
   | "teaching"
   | "book"
   | "pricing"

@@ -52,6 +52,17 @@ interface PatientMember {
 }
 
 /**
+ * Site linked to organisation
+ */
+interface SiteMember {
+  id: number;
+  name: string;
+  type: string;
+  location: string;
+  clinical_lead: string;
+}
+
+/**
  * Organisation details from API
  */
 interface OrganizationDetails {
@@ -65,6 +76,7 @@ interface OrganizationDetails {
   patient_count: number;
   staff_members: StaffMember[];
   patient_members: PatientMember[];
+  sites: SiteMember[];
 }
 
 interface FeatureOut {
@@ -201,6 +213,16 @@ export default function OrganisationAdminPage() {
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
 
+  const siteColumns: Column<SiteMember>[] = [
+    { header: "Name", render: (site) => site.name },
+    { header: "Type", render: (site) => formatType(site.type) },
+    {
+      header: "Clinical lead",
+      render: (site) => site.clinical_lead || "\u2014",
+    },
+    { header: "Location", render: (site) => site.location || "—" },
+  ];
+
   return (
     <Container size="lg">
       <Stack gap="lg">
@@ -334,6 +356,27 @@ export default function OrganisationAdminPage() {
             ) : (
               <EmptyState>No features enabled</EmptyState>
             )}
+          </Stack>
+        </BaseCard>
+
+        {/* Sites */}
+        <BaseCard>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Heading>Sites</Heading>
+              <AddButton
+                label="Add site"
+                onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
+              />
+            </Group>
+
+            <DataTable<SiteMember>
+              data={org.sites}
+              columns={siteColumns}
+              onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
+              getRowKey={(site) => site.id}
+              emptyMessage="No sites linked"
+            />
           </Stack>
         </BaseCard>
 

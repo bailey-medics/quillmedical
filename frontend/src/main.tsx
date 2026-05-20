@@ -62,6 +62,10 @@ import OrganisationAdminPage from "./pages/admin/organisations/OrganisationAdmin
 import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisationPage";
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
+import AddSiteToOrgPage from "./pages/admin/organisations/AddSiteToOrgPage";
+import SiteAdminPage from "./pages/admin/sites/SiteAdminPage";
+import EditSitePage from "./pages/admin/sites/EditSitePage";
+import AddStaffToSitePage from "./pages/admin/sites/AddStaffToSitePage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import Messages from "./pages/Messages";
@@ -251,6 +255,13 @@ const router = createBrowserRouter([
             path: "organisations/:id/add-patient",
             element: <AddPatientToOrgPage />,
           },
+          {
+            path: "organisations/:id/add-site",
+            element: <AddSiteToOrgPage />,
+          },
+          { path: "sites/:id", element: <SiteAdminPage /> },
+          { path: "sites/:id/edit", element: <EditSitePage /> },
+          { path: "sites/:id/add-staff", element: <AddStaffToSitePage /> },
           {
             path: "organisations/:id/features",
             element: <OrgFeaturesPage />,

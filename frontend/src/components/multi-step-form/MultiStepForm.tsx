@@ -180,7 +180,7 @@ export default function MultiStepForm({
         (currentStepConfig.hideCancelButton ? (
           <Group justify="flex-end" mt="xs">
             <Button
-              size="lg"
+              size="md"
               onClick={isLastStep ? (onSubmit ?? onCancel) : nextStep}
             >
               {isLastStep

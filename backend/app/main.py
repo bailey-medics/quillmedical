@@ -80,9 +80,12 @@ from app.models import (
     OrganisationFeature,
     Organization,
     PatientMetadata,
+    Site,
     User,
     organisation_patient_member,
+    organisation_site,
     organisation_staff_member,
+    site_staff_member,
 )
 from app.organisations import (
     get_accessible_patient_ids,
@@ -1235,6 +1238,53 @@ def deactivate_user(
     }
 
 
+@router.post("/users/{user_id}/reactivate")
+def reactivate_user(
+    user_id: int,
+    current_user: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Reactivate User Account.
+
+    Marks a previously deactivated user account as active again.
+    Requires admin or superadmin system permissions.
+
+    Args:
+        user_id: ID of the user to reactivate.
+        current_user: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Confirmation with reactivated user details.
+
+    Raises:
+        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 404 if user not found.
+        HTTPException: 400 if user is already active.
+    """
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required",
+        )
+
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="User is already active")
+
+    user.is_active = True
+    db.commit()
+
+    return {
+        "detail": "reactivated",
+        "id": user.id,
+        "username": user.username,
+    }
+
+
 class TotpSetupOut(BaseModel):
     """TOTP Setup Response.
 
@@ -1687,6 +1737,7 @@ def get_user(
         "additional_competencies": user.additional_competencies or [],
         "removed_competencies": user.removed_competencies or [],
         "system_permissions": user.system_permissions,
+        "is_active": user.is_active,
     }
 
 
@@ -2734,6 +2785,34 @@ def get_organization(
 
     patient_members = db.execute(patient_query).all()
 
+    # Get linked sites
+    site_query = (
+        select(Site.id, Site.name, Site.type, Site.location)
+        .join(organisation_site, organisation_site.c.site_id == Site.id)
+        .where(organisation_site.c.organisation_id == org_id)
+        .order_by(Site.name)
+    )
+    sites = db.execute(site_query).all()
+
+    # Get clinical leads for each site
+    site_ids = [s.id for s in sites]
+    clinical_leads: dict[int, str] = {}
+    if site_ids:
+        cl_query = (
+            select(
+                site_staff_member.c.site_id,
+                User.full_name,
+                User.username,
+            )
+            .join(User, User.id == site_staff_member.c.user_id)
+            .where(
+                site_staff_member.c.site_id.in_(site_ids),
+                site_staff_member.c.role == "clinical_lead",
+            )
+        )
+        for row in db.execute(cl_query).all():
+            clinical_leads[row.site_id] = row.full_name or row.username
+
     return {
         "id": org.id,
         "name": org.name,
@@ -2759,6 +2838,16 @@ def get_organization(
                 "is_primary": pm.is_primary or False,
             }
             for pm in patient_members
+        ],
+        "sites": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "type": s.type,
+                "location": s.location or "",
+                "clinical_lead": clinical_leads.get(s.id, ""),
+            }
+            for s in sites
         ],
     }
 
@@ -3253,6 +3342,421 @@ def toggle_org_feature(
         db.delete(existing)
         db.commit()
         return {"status": "disabled"}
+
+
+# ==========================================================================
+# SITES
+# ==========================================================================
+
+
+class CreateSiteIn(BaseModel):
+    """Request body for creating a site."""
+
+    name: str
+    type: str
+    parent_id: int | None = None
+    location: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+class UpdateSiteIn(BaseModel):
+    """Request body for updating a site."""
+
+    name: str | None = None
+    type: str | None = None
+    parent_id: int | None = None
+    location: str | None = None
+
+    model_config = {"extra": "forbid"}
+
+
+VALID_SITE_TYPES = {
+    "hospital",
+    "building",
+    "ward",
+    "room",
+    "clinic",
+    "department",
+    "virtual",
+}
+
+
+@router.get("/sites")
+def list_sites(
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, list[dict[str, Any]]]:
+    """List all sites. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    rows = db.execute(select(Site).order_by(Site.name)).scalars().all()
+
+    return {
+        "sites": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "type": s.type,
+                "parent_id": s.parent_id,
+                "location": s.location or "",
+                "created_at": s.created_at.isoformat(),
+                "updated_at": s.updated_at.isoformat(),
+            }
+            for s in rows
+        ]
+    }
+
+
+@router.post("/sites", dependencies=[DEP_REQUIRE_CSRF])
+def create_site(
+    body: CreateSiteIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Create a new site. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    if body.type not in VALID_SITE_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid site type. Must be one of: "
+            f"{', '.join(sorted(VALID_SITE_TYPES))}",
+        )
+
+    if body.parent_id is not None:
+        parent = db.get(Site, body.parent_id)
+        if not parent:
+            raise HTTPException(
+                status_code=404, detail="Parent site not found"
+            )
+
+    site = Site(
+        name=body.name,
+        type=body.type,
+        parent_id=body.parent_id,
+        location=body.location,
+    )
+    db.add(site)
+    db.commit()
+    db.refresh(site)
+
+    return {
+        "id": site.id,
+        "name": site.name,
+        "type": site.type,
+        "parent_id": site.parent_id,
+        "location": site.location or "",
+        "created_at": site.created_at.isoformat(),
+        "updated_at": site.updated_at.isoformat(),
+    }
+
+
+@router.get("/sites/{site_id}")
+def get_site(
+    site_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Get site details including staff. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    # Get staff
+    staff_query = (
+        select(
+            User.id,
+            User.username,
+            User.email,
+            User.full_name,
+            site_staff_member.c.role,
+        )
+        .join(site_staff_member, site_staff_member.c.user_id == User.id)
+        .where(site_staff_member.c.site_id == site_id)
+    )
+    staff = db.execute(staff_query).all()
+
+    # Get linked organisations
+    org_query = (
+        select(Organization.id, Organization.name)
+        .join(
+            organisation_site,
+            organisation_site.c.organisation_id == Organization.id,
+        )
+        .where(organisation_site.c.site_id == site_id)
+    )
+    orgs = db.execute(org_query).all()
+
+    return {
+        "id": site.id,
+        "name": site.name,
+        "type": site.type,
+        "parent_id": site.parent_id,
+        "location": site.location or "",
+        "created_at": site.created_at.isoformat(),
+        "updated_at": site.updated_at.isoformat(),
+        "staff": [
+            {
+                "id": s.id,
+                "username": s.username,
+                "email": s.email,
+                "full_name": s.full_name or "",
+                "role": s.role,
+            }
+            for s in staff
+        ],
+        "organisations": [{"id": o.id, "name": o.name} for o in orgs],
+    }
+
+
+@router.put("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
+def update_site(
+    site_id: int,
+    body: UpdateSiteIn,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Update a site. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    if body.type is not None:
+        if body.type not in VALID_SITE_TYPES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid site type. Must be one of: "
+                f"{', '.join(sorted(VALID_SITE_TYPES))}",
+            )
+        site.type = body.type
+
+    if body.name is not None:
+        site.name = body.name
+    if body.parent_id is not None:
+        if body.parent_id == site_id:
+            raise HTTPException(
+                status_code=422,
+                detail="Site cannot be its own parent",
+            )
+        parent = db.get(Site, body.parent_id)
+        if not parent:
+            raise HTTPException(
+                status_code=404, detail="Parent site not found"
+            )
+        site.parent_id = body.parent_id
+    if body.location is not None:
+        site.location = body.location
+
+    db.commit()
+    db.refresh(site)
+
+    return {
+        "id": site.id,
+        "name": site.name,
+        "type": site.type,
+        "parent_id": site.parent_id,
+        "location": site.location or "",
+        "created_at": site.created_at.isoformat(),
+        "updated_at": site.updated_at.isoformat(),
+    }
+
+
+@router.delete("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
+def delete_site(
+    site_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Delete a site. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    db.delete(site)
+    db.commit()
+    return {"status": "deleted"}
+
+
+@router.post(
+    "/organizations/{org_id}/sites/{site_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def link_site_to_org(
+    org_id: int,
+    site_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Link a site to an organisation. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    # Check if already linked
+    existing = db.execute(
+        select(organisation_site).where(
+            organisation_site.c.organisation_id == org_id,
+            organisation_site.c.site_id == site_id,
+        )
+    ).first()
+    if existing:
+        return {"status": "already_linked"}
+
+    db.execute(
+        organisation_site.insert().values(
+            organisation_id=org_id, site_id=site_id
+        )
+    )
+    db.commit()
+    return {"status": "linked"}
+
+
+@router.delete(
+    "/organizations/{org_id}/sites/{site_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def unlink_site_from_org(
+    org_id: int,
+    site_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Unlink a site from an organisation. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    result = db.execute(
+        organisation_site.delete().where(
+            organisation_site.c.organisation_id == org_id,
+            organisation_site.c.site_id == site_id,
+        )
+    )
+
+    if result.rowcount == 0:  # type: ignore[attr-defined]
+        raise HTTPException(status_code=404, detail="Link not found")
+
+    db.commit()
+
+    return {"status": "unlinked"}
+
+
+@router.post(
+    "/sites/{site_id}/staff",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def add_site_staff(
+    site_id: int,
+    body: dict[str, Any],
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Add a staff member to a site. Admin/superadmin only.
+
+    Body: {user_id: int, role: str}
+    Role must be one of: clinical_lead, staff, trainee.
+    """
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    user_id = body.get("user_id")
+    role = body.get("role")
+
+    if not user_id or not role:
+        raise HTTPException(
+            status_code=422, detail="user_id and role are required"
+        )
+
+    valid_roles = {"clinical_lead", "staff", "trainee"}
+    if role not in valid_roles:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid role. Must be one of: "
+            f"{', '.join(sorted(valid_roles))}",
+        )
+
+    target_user = db.get(User, user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check if already assigned
+    existing = db.execute(
+        select(site_staff_member).where(
+            site_staff_member.c.site_id == site_id,
+            site_staff_member.c.user_id == user_id,
+        )
+    ).first()
+    if existing:
+        # Update role
+        db.execute(
+            site_staff_member.update()
+            .where(
+                site_staff_member.c.site_id == site_id,
+                site_staff_member.c.user_id == user_id,
+            )
+            .values(role=role)
+        )
+        db.commit()
+        return {"status": "updated"}
+
+    db.execute(
+        site_staff_member.insert().values(
+            site_id=site_id, user_id=user_id, role=role
+        )
+    )
+    db.commit()
+    return {"status": "added"}
+
+
+@router.delete(
+    "/sites/{site_id}/staff/{user_id}",
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def remove_site_staff(
+    site_id: int,
+    user_id: int,
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Remove a staff member from a site. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    result = db.execute(
+        site_staff_member.delete().where(
+            site_staff_member.c.site_id == site_id,
+            site_staff_member.c.user_id == user_id,
+        )
+    )
+
+    if result.rowcount == 0:  # type: ignore[attr-defined]
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    db.commit()
+
+    return {"status": "removed"}
 
 
 @router.patch(

@@ -30,6 +30,7 @@ import {
   IconPencil,
   IconAlertCircle,
   IconUserMinus,
+  IconUserPlus,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
@@ -50,6 +51,7 @@ interface UserDetails {
   additional_competencies: string[];
   removed_competencies: string[];
   system_permissions: "superadmin" | "admin" | "staff";
+  is_active: boolean;
 }
 
 /**
@@ -229,11 +231,15 @@ export default function UserAdminPage() {
             />
 
             <ActionCard
-              icon={<IconUserMinus />}
+              icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
               onClick={() => setDeactivateOpen(true)}
-              title="Deactivate user"
-              subtitle="Disable this user account"
-              buttonLabel="Deactivate"
+              title={user.is_active ? "Deactivate user" : "Reactivate user"}
+              subtitle={
+                user.is_active
+                  ? "Disable this user account"
+                  : "Re-enable this user account"
+              }
+              buttonLabel={user.is_active ? "Deactivate" : "Reactivate"}
             />
           </SimpleGrid>
         </Stack>
@@ -242,17 +248,28 @@ export default function UserAdminPage() {
           opened={deactivateOpen}
           onClose={() => setDeactivateOpen(false)}
           onAccept={async () => {
-            await api.post(`/users/${id}/deactivate`, {});
+            const action = user.is_active ? "deactivate" : "reactivate";
+            await api.post(`/users/${id}/${action}`, {});
             navigate("/admin/users");
           }}
-          title="Deactivate user"
-          acceptLabel="Deactivate user"
-          submittingLabel="Deactivating…"
-          icon={<IconUserMinus />}
+          title={user.is_active ? "Deactivate user" : "Reactivate user"}
+          acceptLabel={user.is_active ? "Deactivate user" : "Reactivate user"}
+          submittingLabel={user.is_active ? "Deactivating…" : "Reactivating…"}
+          icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
         >
-          Are you sure you want to deactivate <strong>{user.username}</strong>?
-          They will no longer be able to log in. This action can be reversed
-          later.
+          {user.is_active ? (
+            <>
+              Are you sure you want to deactivate{" "}
+              <strong>{user.username}</strong>? They will no longer be able to
+              log in. This action can be reversed later.
+            </>
+          ) : (
+            <>
+              Are you sure you want to reactivate{" "}
+              <strong>{user.username}</strong>? They will be able to log in
+              again.
+            </>
+          )}
         </ConfirmModal>
       </Stack>
     </Container>

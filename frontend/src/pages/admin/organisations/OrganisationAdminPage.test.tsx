@@ -50,9 +50,10 @@ describe("OrganisationAdminPage", () => {
 
   /** Mock api.get to return org data and empty features by default */
   function mockOrgApi(org: Record<string, unknown>, features = emptyFeatures) {
+    const orgWithDefaults = { sites: [], ...org };
     vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
       if (url.includes("/features")) return Promise.resolve(features);
-      return Promise.resolve(org);
+      return Promise.resolve(orgWithDefaults);
     });
   }
 
