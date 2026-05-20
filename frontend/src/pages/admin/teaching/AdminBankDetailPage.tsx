@@ -11,7 +11,7 @@ import { Container, Group, Paper, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import DataTable from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import {
@@ -127,15 +127,6 @@ export default function AdminBankDetailPage() {
                     header: "Status",
                     render: (org) => <ActiveStatusBadge active={org.is_live} />,
                   },
-                  ...(bank.email_coordinator_on_pass
-                    ? [
-                        {
-                          header: "Coordinator",
-                          render: (org: BankOrganisation) =>
-                            org.coordinator_email ?? "Not set",
-                        } as Column<BankOrganisation>,
-                      ]
-                    : []),
                 ]}
                 onRowClick={(org) =>
                   navigate(

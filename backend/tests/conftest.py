@@ -85,6 +85,7 @@ def test_user(db_session: Session) -> User:
         email="test@example.com",
         password_hash=hash_password("TestPassword123!"),
         is_active=True,
+        email_verified=True,
     )
     db_session.add(user)
     db_session.commit()
@@ -110,6 +111,7 @@ def test_clinician(db_session: Session, clinician_role: Role) -> User:
         email="clinician@example.com",
         password_hash=hash_password("ClinicianPassword123!"),
         is_active=True,
+        email_verified=True,
     )
     user.roles.append(clinician_role)
     db_session.add(user)
@@ -155,6 +157,7 @@ def test_admin(db_session: Session) -> User:
         email="admin@example.com",
         password_hash=hash_password("AdminPassword123!"),
         is_active=True,
+        email_verified=True,
         system_permissions="admin",
     )
     db_session.add(user)

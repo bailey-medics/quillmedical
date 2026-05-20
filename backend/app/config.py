@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     ACCESS_TTL_MIN: int = 15
     REFRESH_TTL_DAYS: int = 7
     PASSWORD_RESET_TTL_MIN: int = 30
+    EMAIL_VERIFY_TTL_MIN: int = 60
     COOKIE_DOMAIN: str | None = None
     SECURE_COOKIES: bool = False
 

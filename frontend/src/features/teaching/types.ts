@@ -229,11 +229,6 @@ export interface BankOrganisation {
   organisation_name: string;
   is_live: boolean;
   site_registration: boolean;
-  coordinator_email: string | null;
-}
-
-export interface CoordinatorEmailInput {
-  coordinator_email: string;
 }
 
 export interface QuestionBankOrgStatusInput {

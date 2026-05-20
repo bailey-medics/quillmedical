@@ -212,6 +212,14 @@ export default function SiteAdminPage() {
               </Group>
 
               <Group gap="xs">
+                <BodyTextBold>Clinical lead email:</BodyTextBold>
+                <BodyTextInline>
+                  {site.staff.find((s) => s.role === "clinical_lead")?.email ||
+                    "N/A"}
+                </BodyTextInline>
+              </Group>
+
+              <Group gap="xs">
                 <BodyTextBold>Site ID:</BodyTextBold>
                 <BodyText>{site.id}</BodyText>
               </Group>

@@ -100,8 +100,10 @@ from app.schemas.auth import (
     ForgotPasswordIn,
     LoginIn,
     RegisterIn,
+    ResendVerificationIn,
     ResetPasswordIn,
     TotpDisableIn,
+    VerifyEmailIn,
 )
 from app.schemas.cbac import (
     PrescriptionRequest,
@@ -124,6 +126,7 @@ from app.schemas.messaging import (
     ParticipantOut,
 )
 from app.security import (
+    create_email_verify_token,
     create_invite_token,
     create_jwt_with_competencies,
     create_password_reset_token,
@@ -135,6 +138,7 @@ from app.security import (
     make_csrf,
     totp_provisioning_uri,
     verify_csrf,
+    verify_email_verify_token,
     verify_password,
     verify_password_reset_token,
     verify_totp_code,
@@ -627,6 +631,15 @@ def login(
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(400, "Invalid credentials")
 
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Email not verified",
+                "error_code": "email_not_verified",
+            },
+        )
+
     if getattr(user, "is_totp_enabled", False):
         if not data.totp_code:
             raise HTTPException(
@@ -735,6 +748,111 @@ def list_teaching_modules_public(
     return {"modules": modules}
 
 
+class ValidateClinicalLeadIn(BaseModel):
+    """Request body for clinical lead validation."""
+
+    email: str
+    bank_id: str
+
+    model_config = {"extra": "forbid"}
+
+
+@router.post("/teaching/public/validate-clinical-lead")
+@limiter.limit("10/minute")
+def validate_clinical_lead(
+    request: Request,
+    payload: ValidateClinicalLeadIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, bool | str | int | None]:
+    """Validate that an email belongs to a clinical lead for a bank.
+
+    Public endpoint used during registration. Checks whether the given
+    email belongs to a user who is a clinical_lead at a site linked to
+    an organisation that has the specified bank enabled for registration.
+
+    Returns:
+        dict with ``valid`` (bool) and ``site_name`` (str | None).
+    """
+    from app.features.teaching.models import QuestionBankOrgStatus
+
+    email = payload.email.lower().strip()
+
+    # Find the user by email (case-insensitive)
+    user = (
+        db.execute(select(User).where(User.email.ilike(email)))
+        .scalars()
+        .first()
+    )
+    if not user:
+        return {"valid": False, "site_name": None}
+
+    # Get org IDs that have this bank with site_registration enabled
+    org_ids = (
+        db.execute(
+            select(QuestionBankOrgStatus.organisation_id).where(
+                QuestionBankOrgStatus.question_bank_id == payload.bank_id,
+                QuestionBankOrgStatus.site_registration.is_(True),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not org_ids:
+        return {"valid": False, "site_name": None}
+
+    # Get site IDs linked to those organisations
+    site_ids = (
+        db.execute(
+            select(organisation_site.c.site_id).where(
+                organisation_site.c.organisation_id.in_(org_ids)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not site_ids:
+        return {"valid": False, "site_name": None}
+
+    # Check if this user is a clinical_lead at any of those sites
+    staff_row = db.execute(
+        select(site_staff_member.c.site_id).where(
+            site_staff_member.c.user_id == user.id,
+            site_staff_member.c.site_id.in_(site_ids),
+            site_staff_member.c.role == "clinical_lead",
+        )
+    ).first()
+    if not staff_row:
+        return {"valid": False, "site_name": None}
+
+    matched_site_id: int = staff_row[0]
+
+    # Look up the site name for display
+    site = (
+        db.execute(select(Site).where(Site.id == matched_site_id))
+        .scalars()
+        .first()
+    )
+
+    # Find the organisation linked to this site that has the bank
+    org_id_for_site = (
+        db.execute(
+            select(organisation_site.c.organisation_id).where(
+                organisation_site.c.site_id == matched_site_id,
+                organisation_site.c.organisation_id.in_(org_ids),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    return {
+        "valid": True,
+        "site_name": site.name if site else None,
+        "organisation_id": org_id_for_site,
+        "site_id": matched_site_id,
+    }
+
+
 @router.post("/auth/register")
 @limiter.limit("3/minute")
 def register(
@@ -835,8 +953,127 @@ def register(
             )
         )
 
+    # Add the user to the selected site as a trainee
+    if payload.site_id is not None:
+        # Validate site exists and is linked to the provided organisation
+        if payload.organisation_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="organisation_id required when site_id is provided",
+            )
+        site_link = db.execute(
+            select(organisation_site.c.site_id).where(
+                organisation_site.c.site_id == payload.site_id,
+                organisation_site.c.organisation_id == payload.organisation_id,
+            )
+        ).first()
+        if site_link is None:
+            raise HTTPException(
+                status_code=400, detail="Site not found for organisation"
+            )
+        db.execute(
+            site_staff_member.insert().values(
+                site_id=payload.site_id,
+                user_id=user.id,
+                role="trainee",
+            )
+        )
+
     db.commit()
+
+    # Send verification email
+    token = create_email_verify_token(email)
+    verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+    send_email(
+        to=email,
+        subject="Verify your Quill email address",
+        html_body=(
+            "<p>Welcome to Quill! Please verify your email address "
+            "to activate your account.</p>"
+            f'<p><a href="{verify_url}">Verify your email</a></p>'
+            f"<p>This link expires in {settings.EMAIL_VERIFY_TTL_MIN}"
+            " minutes.</p>"
+        ),
+    )
+
     return {"detail": "created"}
+
+
+@router.post("/auth/verify-email")
+@limiter.limit("10/minute")
+def verify_email(
+    request: Request,
+    data: VerifyEmailIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Verify a user's email address using a signed token.
+
+    Validates the token from the email link and marks the user's email
+    as verified. Returns a generic error for invalid/expired tokens.
+
+    Args:
+        data: Payload with the verification token.
+        db: Database session for user update.
+
+    Returns:
+        dict: ``{"detail": "verified"}`` on success.
+
+    Raises:
+        HTTPException: 400 if the token is invalid or expired.
+    """
+    email = verify_email_verify_token(data.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    if user.email_verified:
+        return {"detail": "verified"}
+
+    user.email_verified = True
+    db.commit()
+    return {"detail": "verified"}
+
+
+@router.post("/auth/resend-verification")
+@limiter.limit("1/minute")
+def resend_verification(
+    request: Request,
+    data: ResendVerificationIn,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Resend the email verification link.
+
+    Looks up the user by email and sends a new verification token.
+    Always returns success to prevent account enumeration.
+
+    Args:
+        data: Payload with the user's email address.
+        db: Database session for user lookup.
+
+    Returns:
+        dict: Always returns ``{"detail": "ok"}``.
+    """
+    email = data.email.strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    if user and not user.email_verified:
+        token = create_email_verify_token(email)
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+        send_email(
+            to=email,
+            subject="Verify your Quill email address",
+            html_body=(
+                "<p>Please verify your email address to activate "
+                "your Quill account.</p>"
+                f'<p><a href="{verify_url}">Verify your email</a></p>'
+                f"<p>This link expires in "
+                f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
+            ),
+        )
+    # Always return ok to prevent account enumeration
+    return {"detail": "ok"}
 
 
 @router.post("/auth/forgot-password")

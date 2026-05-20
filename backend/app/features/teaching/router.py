@@ -39,6 +39,7 @@ from app.features.teaching.schemas import (
     CandidateItemOut,
     CompletionResultOut,
     CriterionResult,
+    DelegateOut,
     EducatorResultOut,
     EmailTemplateOut,
     ItemImageOut,
@@ -811,16 +812,6 @@ def _maybe_enqueue_certificate_emails(
         )
     ).scalar_one_or_none()
 
-    # Look up per-bank coordinator email
-    bank_status = db.execute(
-        select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.organisation_id
-            == assessment.organisation_id,
-            QuestionBankOrgStatus.question_bank_id
-            == assessment.question_bank_id,
-        )
-    ).scalar_one_or_none()
-
     display_name = user.full_name or user.username
     context: dict[str, str] = {
         "exam_title": config_row.title,
@@ -892,25 +883,55 @@ def _maybe_enqueue_certificate_emails(
                 attachments=att,
             )
 
-    # Coordinator email
+    # Coordinator (clinical lead) email — look up from site staff
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
-        if coord_template and bank_status and bank_status.coordinator_email:
-            ctx = {
-                **context,
-                "recipient_name": (
-                    bank_status.coordinator_email.split("@")[0]
-                ),
-            }
-            rendered = render_email(coord_template, ctx)
-            att = attachments if coord_template["attach_certificate"] else []
-            background_tasks.add_task(
-                send_email,
-                to=bank_status.coordinator_email,
-                subject=rendered["subject"],
-                html_body=rendered["html_body"],
-                attachments=att,
+        if coord_template:
+            from app.models import organisation_site, site_staff_member
+
+            # Find clinical leads at sites linked to this org
+            clinical_leads = (
+                db.execute(
+                    select(User)
+                    .join(
+                        site_staff_member,
+                        site_staff_member.c.user_id == User.id,
+                    )
+                    .join(
+                        organisation_site,
+                        organisation_site.c.site_id
+                        == site_staff_member.c.site_id,
+                    )
+                    .where(
+                        organisation_site.c.organisation_id
+                        == assessment.organisation_id,
+                        site_staff_member.c.role == "clinical_lead",
+                    )
+                )
+                .scalars()
+                .all()
             )
+            for lead in clinical_leads:
+                if lead.email:
+                    ctx = {
+                        **context,
+                        "recipient_name": (
+                            lead.full_name or lead.email.split("@")[0]
+                        ),
+                    }
+                    rendered = render_email(coord_template, ctx)
+                    att = (
+                        attachments
+                        if coord_template["attach_certificate"]
+                        else []
+                    )
+                    background_tasks.add_task(
+                        send_email,
+                        to=lead.email,
+                        subject=rendered["subject"],
+                        html_body=rendered["html_body"],
+                        attachments=att,
+                    )
 
 
 @teaching_router.post(
@@ -1390,6 +1411,167 @@ def list_syncs(
 
 
 # ------------------------------------------------------------------
+# Admin endpoints — delegates
+# ------------------------------------------------------------------
+
+
+@teaching_router.get(
+    "/admin/delegates",
+    response_model=list[DelegateOut],
+    dependencies=[_DEP_MANAGE],
+)
+def list_delegates(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[DelegateOut]:
+    """List all delegates with assessments in the caller's org(s).
+
+    Returns users who have taken assessments under organisations
+    the caller belongs to, with their latest assessment result.
+    """
+    from app.models import (
+        Site,
+        organisation_site,
+        organisation_staff_member,
+        site_staff_member,
+    )
+
+    # Get all orgs the caller belongs to
+    caller_org_ids = [
+        row[0]
+        for row in db.execute(
+            select(organisation_staff_member.c.organisation_id).where(
+                organisation_staff_member.c.user_id == user.id
+            )
+        ).all()
+    ]
+    if not caller_org_ids:
+        return []
+
+    # Get all assessments for those orgs
+    assessments = (
+        db.execute(
+            select(Assessment)
+            .where(Assessment.organisation_id.in_(caller_org_ids))
+            .order_by(Assessment.started_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    # Group by user_id — keep only latest assessment per user
+    latest_by_user: dict[int, Assessment] = {}
+    all_by_user: dict[int, list[Assessment]] = {}
+    for a in assessments:
+        all_by_user.setdefault(a.user_id, []).append(a)
+        if a.user_id not in latest_by_user:
+            latest_by_user[a.user_id] = a
+
+    if not latest_by_user:
+        return []
+
+    # Fetch user details
+    user_ids = list(latest_by_user.keys())
+    users_map: dict[int, User] = {
+        u.id: u
+        for u in db.execute(select(User).where(User.id.in_(user_ids)))
+        .unique()
+        .scalars()
+        .all()
+    }
+
+    # Get site and clinical lead info for each delegate
+    # (user as trainee at a site linked to one of our orgs)
+    site_info: dict[int, tuple[str | None, str | None]] = {}
+    for uid in user_ids:
+        site_row = db.execute(
+            select(Site.name)
+            .join(
+                site_staff_member,
+                site_staff_member.c.site_id == Site.id,
+            )
+            .join(
+                organisation_site,
+                organisation_site.c.site_id == Site.id,
+            )
+            .where(
+                site_staff_member.c.user_id == uid,
+                site_staff_member.c.role == "trainee",
+                organisation_site.c.organisation_id.in_(caller_org_ids),
+            )
+        ).first()
+
+        site_name = site_row[0] if site_row else None
+
+        # Find clinical lead at the same site
+        lead_name: str | None = None
+        if site_row:
+            lead_row = db.execute(
+                select(User.full_name, User.username)
+                .join(
+                    site_staff_member,
+                    site_staff_member.c.user_id == User.id,
+                )
+                .join(
+                    Site,
+                    Site.id == site_staff_member.c.site_id,
+                )
+                .where(
+                    Site.name == site_name,
+                    site_staff_member.c.role == "clinical_lead",
+                )
+            ).first()
+            if lead_row:
+                lead_name = lead_row[0] or lead_row[1]
+
+        site_info[uid] = (site_name, lead_name)
+
+    # Build response
+    delegates: list[DelegateOut] = []
+    for uid, latest in latest_by_user.items():
+        u = users_map.get(uid)
+        if not u:
+            continue
+
+        # Determine assessment result
+        if latest.is_passed is True:
+            result = "pass"
+        elif latest.is_passed is False:
+            result = "fail"
+        elif latest.completed_at is None:
+            result = "incomplete"
+        else:
+            result = None
+
+        # First time pass: passed on first attempt
+        user_assessments = all_by_user.get(uid, [])
+        completed_assessments = [
+            a for a in user_assessments if a.completed_at is not None
+        ]
+        first_time_pass = (
+            latest.is_passed is True and len(completed_assessments) == 1
+        )
+
+        s_name, cl_name = site_info.get(uid, (None, None))
+
+        delegates.append(
+            DelegateOut(
+                id=uid,
+                name=u.full_name or u.username,
+                email=u.email,
+                site_name=s_name,
+                clinical_lead=cl_name,
+                learning_completed=None,
+                assessment_result=result,
+                assessment_date=latest.completed_at,
+                first_time_pass=first_time_pass,
+            )
+        )
+
+    return delegates
+
+
+# ------------------------------------------------------------------
 # Admin endpoints — teaching modules overview
 # ------------------------------------------------------------------
 
@@ -1734,9 +1916,6 @@ def list_bank_organisations(
                 site_registration=(
                     status.site_registration if status else False
                 ),
-                coordinator_email=(
-                    status.coordinator_email if status else None
-                ),
             )
         )
 
@@ -1755,7 +1934,7 @@ def update_bank_org_settings(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgSettingsOut:
-    """Update all settings (status + coordinator) for a bank-org pair."""
+    """Update settings (status) for a bank-org pair."""
     _get_user_org_id(user, db)
 
     org = db.get(Organization, org_id)
@@ -1777,19 +1956,6 @@ def update_bank_org_settings(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # If going live and coordinator email is required, validate
-    if body.is_live:
-        config = config_row.config_yaml
-        email_coordinator = config.get("results", {}).get(
-            "email_coordinator_on_pass", False
-        )
-        if email_coordinator and not body.coordinator_email:
-            raise HTTPException(
-                400,
-                "Coordinator email must be set before "
-                "going live with email-on-pass enabled",
-            )
-
     # Upsert status row
     status_row = db.execute(
         select(QuestionBankOrgStatus).where(
@@ -1801,15 +1967,12 @@ def update_bank_org_settings(
     if status_row:
         status_row.is_live = body.is_live
         status_row.site_registration = body.site_registration
-        if body.coordinator_email is not None:
-            status_row.coordinator_email = body.coordinator_email
     else:
         status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
-            coordinator_email=body.coordinator_email,
         )
         db.add(status_row)
 
@@ -1819,5 +1982,4 @@ def update_bank_org_settings(
         question_bank_id=bank_id,
         is_live=status_row.is_live,
         site_registration=status_row.site_registration,
-        coordinator_email=status_row.coordinator_email,
     )

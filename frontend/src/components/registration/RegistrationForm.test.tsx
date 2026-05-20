@@ -96,6 +96,7 @@ describe("RegistrationForm", () => {
       />,
     );
 
+    await user.type(screen.getByLabelText("Full name *"), "Test User");
     await user.type(screen.getByLabelText("Username *"), "testuser");
     await user.type(screen.getByLabelText("Email *"), "test@example.com");
     await user.type(screen.getByLabelText(/^Password/), "pass1234");

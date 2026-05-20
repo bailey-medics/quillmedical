@@ -59,6 +59,14 @@ export const DarkMode: Story = {
       <BaseCard>
         <EmailField {...args} required />
       </BaseCard>
+      <EmailField {...args} required />
+      <BaseCard>
+        <EmailField
+          label="Email address - disabled"
+          value="gemma.corbett@example.com"
+          disabled
+        />
+      </BaseCard>
       <BaseCard>
         <EmailField
           {...args}

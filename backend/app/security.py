@@ -467,3 +467,44 @@ def verify_password_reset_token(token: str) -> str | None:
         return data.get("email")
     except (SignatureExpired, BadSignature):
         return None
+
+
+# --- Email verification tokens ---
+_email_verify = URLSafeTimedSerializer(
+    settings.JWT_SECRET.get_secret_value(), salt="email-verify"
+)
+
+
+def create_email_verify_token(email: str) -> str:
+    """Create a time-limited email verification token.
+
+    Args:
+        email: User's email address.
+
+    Returns:
+        URL-safe signed token.
+
+    Raises:
+        ValueError: If email is empty.
+    """
+    if not email or not email.strip():
+        raise ValueError("Email cannot be empty")
+    return _email_verify.dumps({"email": email.strip().lower()})
+
+
+def verify_email_verify_token(token: str) -> str | None:
+    """Verify an email verification token and return the email.
+
+    Args:
+        token: Email verification token from email link.
+
+    Returns:
+        The email address if valid, None otherwise.
+    """
+    try:
+        data: dict[str, str] = _email_verify.loads(
+            token, max_age=settings.EMAIL_VERIFY_TTL_MIN * 60
+        )
+        return data.get("email")
+    except (SignatureExpired, BadSignature):
+        return None

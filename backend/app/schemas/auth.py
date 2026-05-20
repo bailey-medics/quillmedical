@@ -32,6 +32,7 @@ class RegisterIn(BaseModel):
         email: Email address (must be unique).
         password: Desired password (min 8 characters).
         organisation_id: ID of the organisation to join (optional).
+        site_id: ID of the site to join as trainee (optional).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -41,6 +42,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str
     organisation_id: int | None = None
+    site_id: int | None = None
 
 
 class ChangePasswordIn(BaseModel):
@@ -95,3 +97,27 @@ class TotpDisableIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     password: str
+
+
+class VerifyEmailIn(BaseModel):
+    """Email verification request payload.
+
+    Attributes:
+        token: Email verification token from the email link.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    token: str
+
+
+class ResendVerificationIn(BaseModel):
+    """Resend verification email request payload.
+
+    Attributes:
+        email: Email address to resend verification to.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr

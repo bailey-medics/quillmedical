@@ -47,13 +47,11 @@ const mockOrgs = [
     organisation_id: 1,
     organisation_name: "Test Hospital",
     is_live: true,
-    coordinator_email: "coord@test.com",
   },
   {
     organisation_id: 2,
     organisation_name: "Another Clinic",
     is_live: false,
-    coordinator_email: null,
   },
 ];
 
@@ -102,18 +100,6 @@ describe("AdminBankDetailPage", () => {
       expect(screen.getByText("Active")).toBeTruthy();
     });
     expect(screen.getByText("Deactivated")).toBeTruthy();
-  });
-
-  it("shows coordinator email column when email_coordinator_on_pass", async () => {
-    (api.get as Mock).mockImplementation((url: string) => {
-      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
-      return Promise.resolve(mockBank);
-    });
-    renderWithRouter(<AdminBankDetailPage />);
-    await waitFor(() => {
-      expect(screen.getByText("coord@test.com")).toBeTruthy();
-    });
-    expect(screen.getByText("Not set")).toBeTruthy();
   });
 
   it("shows email template previews when email flags enabled", async () => {

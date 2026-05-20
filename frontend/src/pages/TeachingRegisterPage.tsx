@@ -1,8 +1,8 @@
 /**
  * Teaching Register Page
  *
- * Registration form for teaching module users. Identical to the clinical
- * registration form but redirects to /teaching after successful registration.
+ * Registration form for teaching module users. Redirects to /teaching
+ * after successful registration.
  */
 
 /* eslint-disable no-restricted-syntax */
@@ -14,35 +14,17 @@ import {
   RegistrationForm,
   type RegistrationFormData,
 } from "@components/registration";
-import { useEffect, useState } from "react";
-import { useAuth } from "../auth/AuthContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
-interface Organisation {
-  id: number;
-  name: string;
+interface LocationState {
+  organisationId?: number | null;
+  siteId?: number | null;
 }
 
 export default function TeachingRegisterPage() {
-  const { login } = useAuth();
-  const [organisations, setOrganisations] = useState<
-    { value: string; label: string }[]
-  >([]);
-
-  useEffect(() => {
-    fetch("/api/auth/organizations")
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data: { organizations: Organisation[] }) => {
-        setOrganisations(
-          data.organizations.map((o) => ({
-            value: String(o.id),
-            label: o.name,
-          })),
-        );
-      })
-      .catch(() => {
-        /* organisations will remain empty if the endpoint is unavailable */
-      });
-  }, []);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state as LocationState) || {};
 
   async function handleSubmit(
     data: RegistrationFormData,
@@ -53,11 +35,11 @@ export default function TeachingRegisterPage() {
         full_name: data.fullName || undefined,
         email: data.email,
         password: data.password,
-        organisation_id: Number(data.organisation),
+        organisation_id: state.organisationId ?? undefined,
+        site_id: state.siteId ?? undefined,
       });
 
-      await login(data.username, data.password);
-      window.location.assign("/teaching");
+      navigate("/verify-email-pending", { state: { email: data.email } });
       return { state: "success", message: { title: "Account created" } };
     } catch (err: unknown) {
       let msg = "Registration failed";
@@ -76,7 +58,5 @@ export default function TeachingRegisterPage() {
     }
   }
 
-  return (
-    <RegistrationForm organisations={organisations} onSubmit={handleSubmit} />
-  );
+  return <RegistrationForm onSubmit={handleSubmit} />;
 }

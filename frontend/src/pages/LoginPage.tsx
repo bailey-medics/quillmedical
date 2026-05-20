@@ -12,11 +12,12 @@
 import { LoginForm, type LoginFormData } from "@components/registration";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [requireTotp, setRequireTotp] = useState(false);
 
   const location = useLocation() as { state?: { from?: Location } };
@@ -86,7 +87,13 @@ export default function LoginPage() {
 
       let errorMessage: string;
 
-      if (code === "invalid_totp") {
+      if (code === "email_not_verified") {
+        navigate("/verify-email-pending");
+        return {
+          state: "error",
+          message: { title: "Please verify your email first" },
+        };
+      } else if (code === "invalid_totp") {
         setRequireTotp(true);
         errorMessage = requireTotp
           ? "Wrong code entered, please try entering your 6-digit authenticator code again"

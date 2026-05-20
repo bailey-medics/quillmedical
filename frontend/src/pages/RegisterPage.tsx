@@ -29,9 +29,6 @@ import {
 import { useEffect, useState } from "react";
 import { Controller } from "react-hook-form";
 import { useNavigate } from "react-router";
-import { useAuth } from "../auth/AuthContext";
-
-const VALID_CLINICAL_LEADS = ["clinicallead@nhs.net"];
 
 interface TeachingRegisterFormValues {
   module: string;
@@ -107,25 +104,48 @@ function TeachingRegisterPage() {
   async function handleSubmit(
     data: TeachingRegisterFormValues,
   ): Promise<FormSubmitResult> {
-    if (
-      !VALID_CLINICAL_LEADS.includes(
-        data.clinicalLeadEmail.toLowerCase().trim(),
-      )
-    ) {
+    try {
+      const result = await api.post<{
+        valid: boolean;
+        site_name: string | null;
+        organisation_id: number | null;
+        site_id: number | null;
+      }>("/teaching/public/validate-clinical-lead", {
+        email: data.clinicalLeadEmail,
+        bank_id: data.module,
+      });
+
+      if (!result.valid) {
+        return {
+          state: "error",
+          message: {
+            title: "Clinical lead not found",
+            description:
+              "The clinical lead that you entered is not registered at Quill Teaching. Please contact your local lead to organise onboarding for the above teaching module.",
+          },
+        };
+      }
+
+      navigate(`/teaching/register/${data.module}`, {
+        state: {
+          organisationId: result.organisation_id,
+          siteId: result.site_id,
+        },
+      });
+      return {
+        state: "success",
+        message: { title: "Redirecting…" },
+      };
+    } catch {
       return {
         state: "error",
         message: {
-          title: "Clinical lead not found",
+          title: "Validation failed",
           description:
-            "The clinical lead that you entered is not registered at Quill Teaching. Please contact your local lead to organise onboarding for the above teaching module.",
+            "Unable to verify clinical lead. Please try again later.",
         },
       };
     }
-    navigate(`/teaching/register/${data.module}`);
-    return {
-      state: "success",
-      message: { title: "Redirecting…" },
-    };
   }
 
   return (
@@ -150,7 +170,7 @@ interface Organisation {
 }
 
 function ClinicalRegisterPage() {
-  const { login } = useAuth();
+  const navigate = useNavigate();
   const [organisations, setOrganisations] = useState<
     { value: string; label: string }[]
   >([]);
@@ -183,17 +203,7 @@ function ClinicalRegisterPage() {
         organisation_id: Number(data.organisation),
       });
 
-      // Auto-login with the credentials just registered
-      const user = await login(data.username, data.password);
-
-      // Redirect based on deployment mode
-      if (!user.clinical_services_enabled) {
-        window.location.assign("/teaching");
-      } else {
-        const rawBase = (import.meta.env.BASE_URL as string) || "/";
-        const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
-        window.location.assign(base);
-      }
+      navigate("/verify-email-pending", { state: { email: data.email } });
       return { state: "success", message: { title: "Account created" } };
     } catch (err: unknown) {
       let msg = "Registration failed";

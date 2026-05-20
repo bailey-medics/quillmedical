@@ -110,7 +110,10 @@ export default function NestedNavLink({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isActive = item.href ? location.pathname === item.href : false;
+  const isActive = item.href
+    ? location.pathname === item.href ||
+      (!item.children?.length && location.pathname.startsWith(item.href + "/"))
+    : false;
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;
 

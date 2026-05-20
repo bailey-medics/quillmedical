@@ -84,7 +84,7 @@ export default function SideNavContent({
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
 
   // Extract user ID from URL if on user admin page
-  const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
+  const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)/);
   const userId = userIdMatch ? userIdMatch[1] : null;
 
   // Extract org ID from URL if on organisation admin page

@@ -312,6 +312,25 @@ class EducatorResultOut(BaseModel):
 
 
 # ------------------------------------------------------------------
+# Delegates (admin view)
+# ------------------------------------------------------------------
+
+
+class DelegateOut(BaseModel):
+    """One delegate row for the admin all-delegates view."""
+
+    id: int
+    name: str
+    email: str | None
+    site_name: str | None
+    clinical_lead: str | None
+    learning_completed: bool | None
+    assessment_result: str | None
+    assessment_date: datetime | None
+    first_time_pass: bool
+
+
+# ------------------------------------------------------------------
 # Bank status (live / closed)
 # ------------------------------------------------------------------
 
@@ -327,7 +346,6 @@ class QuestionBankOrgSettingsIn(BaseModel):
 
     is_live: bool
     site_registration: bool = False
-    coordinator_email: str | None = None
 
 
 class QuestionBankOrgSettingsOut(BaseModel):
@@ -338,7 +356,6 @@ class QuestionBankOrgSettingsOut(BaseModel):
     question_bank_id: str
     is_live: bool
     site_registration: bool = False
-    coordinator_email: str | None = None
 
 
 class QuestionBankOrgStatusOut(BaseModel):
@@ -389,4 +406,3 @@ class BankOrgRow(BaseModel):
     organisation_name: str
     is_live: bool = False
     site_registration: bool = False
-    coordinator_email: str | None = None

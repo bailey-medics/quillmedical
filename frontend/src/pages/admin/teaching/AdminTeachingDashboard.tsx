@@ -8,32 +8,29 @@
 import { SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
-import {
-  IconBuildingHospital,
-  IconStack2,
-  IconUserCheck,
-} from "@/components/icons/appIcons";
+import { IconStack2, IconUserCheck } from "@/components/icons/appIcons";
+import { useAuth } from "@/auth/AuthContext";
 
 export default function AdminTeachingDashboard() {
+  const { state } = useAuth();
+  const isSuperadmin =
+    state.status === "authenticated" &&
+    state.user.system_permissions === "superadmin";
+
   return (
     <Stack gap="md">
       <PageHeader title="Teaching" />
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        <ActionCard
-          icon={<IconBuildingHospital />}
-          title="Centres"
-          subtitle="Manage which centres are signed up to govern learning and teaching for each module."
-          buttonLabel="View centres"
-          buttonUrl="/admin/teaching/centres"
-        />
-        <ActionCard
-          icon={<IconStack2 />}
-          title="Modules"
-          subtitle="Manage question banks, sync status, and organisation settings for each teaching module."
-          buttonLabel="View modules"
-          buttonUrl="/admin/teaching/modules"
-        />
+        {isSuperadmin && (
+          <ActionCard
+            icon={<IconStack2 />}
+            title="Modules"
+            subtitle="Manage question banks, sync status, and organisation settings for each teaching module."
+            buttonLabel="View modules"
+            buttonUrl="/admin/teaching/modules"
+          />
+        )}
         <ActionCard
           icon={<IconUserCheck />}
           title="All delegates"

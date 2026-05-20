@@ -95,9 +95,13 @@ import RequirePermission from "./auth/RequirePermission";
 import { RequireFeature } from "./auth/RequireFeature";
 import RequireClinical from "./auth/RequireClinical";
 import { NoAccessLayout } from "@/components/layouts";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
@@ -108,7 +112,6 @@ import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
 import AdminAllDelegatesPage from "./pages/admin/teaching/AdminAllDelegatesPage";
-import AdminCentresPage from "./pages/admin/teaching/AdminCentresPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 
@@ -159,6 +162,22 @@ const router = createBrowserRouter([
     element: (
       <GuestOnly>
         <ResetPasswordPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/verify-email",
+    element: (
+      <GuestOnly>
+        <VerifyEmailPage />
+      </GuestOnly>
+    ),
+  },
+  {
+    path: "/verify-email-pending",
+    element: (
+      <GuestOnly>
+        <VerifyEmailPendingPage />
       </GuestOnly>
     ),
   },
@@ -267,19 +286,30 @@ const router = createBrowserRouter([
             element: <OrgFeaturesPage />,
           },
           { path: "teaching", element: <AdminTeachingDashboard /> },
-          { path: "teaching/centres", element: <AdminCentresPage /> },
-          { path: "teaching/modules", element: <AdminTeachingPage /> },
+          {
+            element: (
+              <RequirePermission level="superadmin">
+                <Outlet />
+              </RequirePermission>
+            ),
+            children: [
+              {
+                path: "teaching/modules",
+                element: <AdminTeachingPage />,
+              },
+              {
+                path: "teaching/modules/:bankId",
+                element: <AdminBankDetailPage />,
+              },
+              {
+                path: "teaching/modules/:bankId/org/:orgId",
+                element: <AdminBankOrgSettingsPage />,
+              },
+            ],
+          },
           {
             path: "teaching/all-delegates",
             element: <AdminAllDelegatesPage />,
-          },
-          {
-            path: "teaching/modules/:bankId",
-            element: <AdminBankDetailPage />,
-          },
-          {
-            path: "teaching/modules/:bankId/org/:orgId",
-            element: <AdminBankOrgSettingsPage />,
           },
         ],
       },
@@ -302,7 +332,14 @@ const router = createBrowserRouter([
       <RequireAuth>
         <RequireFeature
           feature="teaching"
-          fallback={<NoAccessLayout feature="teaching" />}
+          fallback={
+            <TeachingLayout
+              sidebar={<TeachingMainNav />}
+              drawerContent={<TeachingMainNav />}
+            >
+              <NoAccessLayout feature="teaching" />
+            </TeachingLayout>
+          }
         >
           <Outlet />
         </RequireFeature>

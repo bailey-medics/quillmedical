@@ -2,7 +2,7 @@
  * Admin Bank Organisation Settings Page
  *
  * Per-organisation settings for a question bank: live/closed toggle
- * and coordinator email (when the bank requires it).
+ * and site registration.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -14,7 +14,6 @@ import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
-import TextField from "@/components/form/TextField";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import { StateMessage } from "@/components/message-cards";
 import { Heading } from "@/components/typography";
@@ -34,15 +33,13 @@ import type {
 interface BankOrgSettingsFormValues {
   isLive: boolean;
   siteRegistration: boolean;
-  coordinatorEmail: string;
 }
 
 interface SettingsFieldsProps {
-  bank: AdminBankDetail;
   savedIsLive: boolean;
 }
 
-function SettingsFields({ bank, savedIsLive }: SettingsFieldsProps) {
+function SettingsFields({ savedIsLive }: SettingsFieldsProps) {
   const navigate = useNavigate();
   const { bankId } = useParams<{ bankId: string }>();
   const { methods } = useFormContext();
@@ -77,22 +74,6 @@ function SettingsFields({ bank, savedIsLive }: SettingsFieldsProps) {
             />
           )}
         />
-
-        {bank.email_coordinator_on_pass && (
-          <>
-            <Heading>Coordinator email</Heading>
-            <TextField
-              label="Email address"
-              description="Receives certificate copies when students pass"
-              placeholder="coordinator@example.com"
-              type="email"
-              {...methods.register("coordinatorEmail")}
-              error={
-                methods.formState.errors.coordinatorEmail?.message as string
-              }
-            />
-          </>
-        )}
 
         <SubmitButton
           onCancel={() => navigate(`/admin/teaching/modules/${bankId}`)}
@@ -150,7 +131,6 @@ export default function AdminBankOrgSettingsPage() {
         {
           is_live: data.isLive,
           site_registration: data.siteRegistration,
-          coordinator_email: data.coordinatorEmail || null,
         },
       );
       setSavedIsLive(data.isLive);
@@ -212,14 +192,13 @@ export default function AdminBankOrgSettingsPage() {
           defaultValues={{
             isLive: org.is_live,
             siteRegistration: org.site_registration,
-            coordinatorEmail: org.coordinator_email ?? "",
           }}
           onSubmit={handleSubmit}
           submitLabel="Save"
           submittingLabel="Saving…"
           disableWhenClean
         >
-          <SettingsFields bank={bank} savedIsLive={savedIsLive} />
+          <SettingsFields savedIsLive={savedIsLive} />
         </Form>
       </Stack>
     </Container>
