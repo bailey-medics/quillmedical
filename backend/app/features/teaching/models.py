@@ -272,6 +272,9 @@ class QuestionBankOrgStatus(Base):
     is_live: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    site_registration: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     coordinator_email: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )

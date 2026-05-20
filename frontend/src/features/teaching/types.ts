@@ -228,6 +228,7 @@ export interface BankOrganisation {
   organisation_id: number;
   organisation_name: string;
   is_live: boolean;
+  site_registration: boolean;
   coordinator_email: string | null;
 }
 

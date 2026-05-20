@@ -326,6 +326,7 @@ class QuestionBankOrgSettingsIn(BaseModel):
     """Combined settings update for a bank-org pair."""
 
     is_live: bool
+    site_registration: bool = False
     coordinator_email: str | None = None
 
 
@@ -336,6 +337,7 @@ class QuestionBankOrgSettingsOut(BaseModel):
 
     question_bank_id: str
     is_live: bool
+    site_registration: bool = False
     coordinator_email: str | None = None
 
 
@@ -386,4 +388,5 @@ class BankOrgRow(BaseModel):
     organisation_id: int
     organisation_name: str
     is_live: bool = False
+    site_registration: bool = False
     coordinator_email: str | None = None

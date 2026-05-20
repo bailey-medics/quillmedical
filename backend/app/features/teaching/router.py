@@ -1731,6 +1731,9 @@ def list_bank_organisations(
                 organisation_id=org.id,
                 organisation_name=org.name,
                 is_live=status.is_live if status else False,
+                site_registration=(
+                    status.site_registration if status else False
+                ),
                 coordinator_email=(
                     status.coordinator_email if status else None
                 ),
@@ -1797,6 +1800,7 @@ def update_bank_org_settings(
 
     if status_row:
         status_row.is_live = body.is_live
+        status_row.site_registration = body.site_registration
         if body.coordinator_email is not None:
             status_row.coordinator_email = body.coordinator_email
     else:
@@ -1804,6 +1808,7 @@ def update_bank_org_settings(
             organisation_id=org_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
+            site_registration=body.site_registration,
             coordinator_email=body.coordinator_email,
         )
         db.add(status_row)
@@ -1813,5 +1818,6 @@ def update_bank_org_settings(
     return QuestionBankOrgSettingsOut(
         question_bank_id=bank_id,
         is_live=status_row.is_live,
+        site_registration=status_row.site_registration,
         coordinator_email=status_row.coordinator_email,
     )

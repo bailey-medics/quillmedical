@@ -33,32 +33,45 @@ import type {
 
 interface BankOrgSettingsFormValues {
   isLive: boolean;
+  siteRegistration: boolean;
   coordinatorEmail: string;
 }
 
 interface SettingsFieldsProps {
   bank: AdminBankDetail;
+  savedIsLive: boolean;
 }
 
-function SettingsFields({ bank }: SettingsFieldsProps) {
+function SettingsFields({ bank, savedIsLive }: SettingsFieldsProps) {
   const navigate = useNavigate();
   const { bankId } = useParams<{ bankId: string }>();
   const { methods } = useFormContext();
-  const isLive = methods.watch("isLive");
 
   return (
     <BaseCard>
       <Stack gap="md">
         <Group justify="space-between">
           <Heading>Exam status</Heading>
-          <ActiveStatusBadge active={isLive} />
+          <ActiveStatusBadge active={savedIsLive} />
         </Group>
+        <FormStatus />
         <Controller
           name="isLive"
           control={methods.control}
           render={({ field }) => (
             <SolidSwitch
               label="Open for assessments"
+              checked={field.value}
+              onChange={(e) => field.onChange(e.currentTarget.checked)}
+            />
+          )}
+        />
+        <Controller
+          name="siteRegistration"
+          control={methods.control}
+          render={({ field }) => (
+            <SolidSwitch
+              label="Site registration"
               checked={field.value}
               onChange={(e) => field.onChange(e.currentTarget.checked)}
             />
@@ -81,7 +94,6 @@ function SettingsFields({ bank }: SettingsFieldsProps) {
           </>
         )}
 
-        <FormStatus />
         <SubmitButton
           onCancel={() => navigate(`/admin/teaching/modules/${bankId}`)}
         />
@@ -98,6 +110,7 @@ export default function AdminBankOrgSettingsPage() {
   const [org, setOrg] = useState<BankOrganisation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savedIsLive, setSavedIsLive] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -116,6 +129,7 @@ export default function AdminBankOrgSettingsPage() {
         return;
       }
       setOrg(thisOrg);
+      setSavedIsLive(thisOrg.is_live);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
@@ -135,9 +149,11 @@ export default function AdminBankOrgSettingsPage() {
         `/teaching/admin/banks/${bankId}/organisations/${orgId}/settings`,
         {
           is_live: data.isLive,
+          site_registration: data.siteRegistration,
           coordinator_email: data.coordinatorEmail || null,
         },
       );
+      setSavedIsLive(data.isLive);
       return {
         state: "success",
         message: { title: "Saved", description: "Settings updated" },
@@ -195,6 +211,7 @@ export default function AdminBankOrgSettingsPage() {
         <Form<BankOrgSettingsFormValues>
           defaultValues={{
             isLive: org.is_live,
+            siteRegistration: org.site_registration,
             coordinatorEmail: org.coordinator_email ?? "",
           }}
           onSubmit={handleSubmit}
@@ -202,7 +219,7 @@ export default function AdminBankOrgSettingsPage() {
           submittingLabel="Saving…"
           disableWhenClean
         >
-          <SettingsFields bank={bank} />
+          <SettingsFields bank={bank} savedIsLive={savedIsLive} />
         </Form>
       </Stack>
     </Container>

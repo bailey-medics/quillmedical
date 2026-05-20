@@ -677,6 +677,61 @@ def list_organizations_public(
     }
 
 
+@router.get("/teaching/public/modules")
+def list_teaching_modules_public(
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, list[dict[str, str]]]:
+    """List teaching modules available for registration.
+
+    Public endpoint (no authentication required) that returns question
+    banks where at least one organisation has site registration enabled.
+    Used by the teaching registration page to populate the module selector.
+
+    Returns:
+        dict with key ``modules`` containing a list of
+        ``{value, label}`` objects.
+    """
+    from app.features.teaching.models import (
+        QuestionBankConfig,
+        QuestionBankOrgStatus,
+    )
+
+    registrable_bank_ids = (
+        db.execute(
+            select(QuestionBankOrgStatus.question_bank_id).where(
+                QuestionBankOrgStatus.site_registration.is_(True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    if not registrable_bank_ids:
+        return {"modules": []}
+
+    configs = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(
+                QuestionBankConfig.question_bank_id.in_(registrable_bank_ids)
+            )
+            .order_by(QuestionBankConfig.title)
+        )
+        .scalars()
+        .all()
+    )
+
+    # Deduplicate by question_bank_id (may exist for multiple orgs)
+    seen: set[str] = set()
+    modules: list[dict[str, str]] = []
+    for c in configs:
+        if c.question_bank_id not in seen:
+            seen.add(c.question_bank_id)
+            modules.append({"value": c.question_bank_id, "label": c.title})
+
+    return {"modules": modules}
+
+
 @router.post("/auth/register")
 @limiter.limit("3/minute")
 def register(

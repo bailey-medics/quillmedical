@@ -24,17 +24,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 
-const TEACHING_MODULES = [
-  {
-    value: "colonoscopy-optical-diagnosis-test",
-    label: "Colonoscopy optical diagnosis test",
-  },
-  {
-    value: "chest-xray-interpretation-test",
-    label: "Chest x-ray interpretation test",
-  },
-];
-
 const VALID_CLINICAL_LEADS = ["clinicallead@nhs.net"];
 
 function TeachingRegisterPage() {
@@ -42,6 +31,20 @@ function TeachingRegisterPage() {
   const [module, setModule] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [modules, setModules] = useState<{ value: string; label: string }[]>(
+    [],
+  );
+
+  useEffect(() => {
+    fetch("/api/teaching/public/modules")
+      .then((res) => res.json())
+      .then((data: { modules: { value: string; label: string }[] }) => {
+        setModules(data.modules);
+      })
+      .catch(() => {
+        setModules([]);
+      });
+  }, []);
 
   function handleContinue() {
     setError(null);
@@ -66,7 +69,7 @@ function TeachingRegisterPage() {
           <SelectField
             label="Teaching module"
             placeholder="Select a module"
-            data={TEACHING_MODULES}
+            data={modules}
             value={module}
             onChange={setModule}
           />
