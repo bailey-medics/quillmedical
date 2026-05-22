@@ -9,7 +9,7 @@
 import { Center, Loader } from "@mantine/core";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import type { ReactNode } from "@tabler/icons-react";
+import type { ReactNode } from "react";
 
 /**
  * RequireAuth
@@ -43,7 +43,13 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   if (state.status === "unauthenticated") {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    // Only preserve the intended destination when the user was kicked out
+    // by session expiry / token failure — NOT after an explicit logout.
+    // Passing the previous path after logout leaks PHI: the next person
+    // to log in on this tab would be redirected to whatever page the
+    // previous user was viewing.
+    const from = state.loggedOut ? undefined : { from: location };
+    return <Navigate to="/login" replace state={from} />;
   }
 
   return children;

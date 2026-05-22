@@ -17,7 +17,15 @@ import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
+import { useSearch } from "@lib/search";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  LAYOUT_RIBBON_Z_INDEX,
+  LAYOUT_PADDING_BOTTOM,
+  LAYOUT_PADDING_TOP,
+  LAYOUT_PADDING_X,
+  LAYOUT_SIDEBAR_WIDTH,
+} from "./layoutConstants";
 
 /**
  * MainLayout Props
@@ -58,6 +66,7 @@ export default function MainLayout({
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const { state } = useAuth();
+  const { showSearch } = useSearch();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -93,8 +102,6 @@ export default function MainLayout({
     }
   }, [patient, navigate]);
 
-  const DRAWER_W = 260;
-
   return (
     <Flex
       direction="column"
@@ -110,8 +117,7 @@ export default function MainLayout({
         top={0}
         bg="var(--mantine-color-body)"
         style={{
-          zIndex: 100,
-          borderBottom: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
+          zIndex: LAYOUT_RIBBON_Z_INDEX,
           flexShrink: 0,
         }}
       >
@@ -124,10 +130,7 @@ export default function MainLayout({
           onPatientClick={handlePatientClick}
           onPatientDoubleClick={handlePatientDoubleClick}
           examMode={examMode}
-          showSearch={
-            state.status === "authenticated" &&
-            (state.user.clinical_services_enabled ?? true)
-          }
+          showSearch={showSearch}
         />
       </Box>
 
@@ -137,9 +140,9 @@ export default function MainLayout({
             opened={opened}
             onClose={close}
             topOffset={0}
-            width={`${DRAWER_W}px`}
+            width={`${LAYOUT_SIDEBAR_WIDTH}px`}
           >
-            <div style={{ width: DRAWER_W }}>
+            <div style={{ width: LAYOUT_SIDEBAR_WIDTH }}>
               <SideNav
                 showSearch={isSm}
                 showIcons
@@ -174,8 +177,9 @@ export default function MainLayout({
               ref={mainRef}
               flex={1}
               style={{ overflowY: "auto" }}
-              px={isSm ? 0 : "md"}
-              py={isSm ? 0 : "md"}
+              px={isSm ? "md" : LAYOUT_PADDING_X}
+              pt={LAYOUT_PADDING_TOP}
+              pb={LAYOUT_PADDING_BOTTOM}
             >
               {isLoading ? (
                 <Stack gap="md">

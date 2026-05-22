@@ -1,0 +1,32 @@
+.panel {
+  padding: var(--mantine-spacing-sm);
+  width: max-content;
+  min-width: 280px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .panel {
+  background-color: var(--mantine-color-primary-7) !important;
+}
+
+.panel :global(.mantine-PillGroup-group) {
+  flex-flow: column nowrap;
+  align-items: flex-start;
+}
+
+.panel :global(.mantine-MultiSelect-groupLabel) {
+  font-size: 1.1875rem;
+}
+
+.panel :global(.mantine-Pill-root) {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.reset {
+  color: var(--mantine-color-primary-4);
+
+  &:hover {
+    color: var(--mantine-color-primary-8);
+  }
+}

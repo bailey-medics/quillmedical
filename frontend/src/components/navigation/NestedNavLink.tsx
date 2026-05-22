@@ -11,7 +11,7 @@
 import { NavLink } from "@mantine/core";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavIcon from "../icons/NavIcon";
-import { typographyTokens } from "@/theme";
+import { navLinkStyles } from "./navStyles";
 
 /**
  * Icon name type (from NavIcon component)
@@ -26,6 +26,7 @@ type IconName =
   | "file"
   | "adjustments"
   | "building-community"
+  | "building-hospital"
   | "teaching"
   | "book"
   | "pricing"
@@ -99,8 +100,6 @@ function isActiveOrParent(navItem: NavItem, path: string): boolean {
  * @param props - Component props
  * @returns Navigation link with optional nested children
  */
-/** Responsive font size — 16px on mobile, 19px on desktop (matches BodyText) */
-const NAV_FONT_SIZE = "var(--mantine-font-size-md)";
 
 export default function NestedNavLink({
   item,
@@ -111,7 +110,10 @@ export default function NestedNavLink({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isActive = item.href ? location.pathname === item.href : false;
+  const isActive = item.href
+    ? location.pathname === item.href ||
+      (!item.children?.length && location.pathname.startsWith(item.href + "/"))
+    : false;
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;
 
@@ -130,22 +132,19 @@ export default function NestedNavLink({
   const levelIndent = level === 1 ? 1.9 : level * 1.5;
   const totalPaddingLeft = level > 0 ? levelIndent : undefined;
 
-  const navLinkStyles = {
+  const nestedStyles = {
     root: {
+      ...navLinkStyles.root,
       paddingLeft: totalPaddingLeft ? `${totalPaddingLeft}rem` : undefined,
-      fontSize: NAV_FONT_SIZE,
     },
-    label: {
-      fontSize: NAV_FONT_SIZE,
-      fontWeight: typographyTokens.fontWeights.body,
-    },
+    label: navLinkStyles.label,
   };
 
   return (
     <>
       <NavLink
         label={item.label}
-        styles={navLinkStyles}
+        styles={nestedStyles}
         active={isActive}
         onClick={handleClick}
         leftSection={

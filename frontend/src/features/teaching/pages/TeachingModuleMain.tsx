@@ -1,12 +1,13 @@
 /**
  * TeachingModuleMain Page
  *
- * Intermediate page for a teaching module showing two choices:
- * "Learning materials" and "Start assessment".
+ * Intermediate page for a teaching module showing the
+ * "Start assessment" action card, and optionally
+ * "Learning materials" when content is available.
  * Mounted at /teaching/:bankId.
  */
 
-import { Container, SimpleGrid, Stack, Skeleton } from "@mantine/core";
+import { SimpleGrid, Stack, Skeleton } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -19,7 +20,12 @@ import {
   IconBook,
   IconChalkboardTeacher,
 } from "@/components/icons/appIcons";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import type { QuestionBank } from "@/features/teaching/types";
+
+/** Bank IDs that have learning materials available (Phase 1 stub). */
+const BANKS_WITH_LEARNING = new Set(["colonoscopy-optical-diagnosis-test"]);
 
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
@@ -49,7 +55,7 @@ export default function TeachingModuleMain() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -57,48 +63,74 @@ export default function TeachingModuleMain() {
             <Skeleton height={160} />
           </SimpleGrid>
         </Stack>
-      </Container>
+      </TeachingLayout>
     );
   }
 
   if (error || !bank) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error"
           description={error ?? "Module not found"}
           colour="alert"
         />
-      </Container>
+      </TeachingLayout>
     );
   }
 
+  const hasLearning = BANKS_WITH_LEARNING.has(bank.question_bank_id);
+
+  const sidebarNav = (
+    <TeachingMainNav
+      moduleName={bank.title}
+      moduleHref={`/teaching/${bankId}`}
+    />
+  );
+
   return (
-    <Container size="lg" py="xl">
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <PageHeader title={bank.title} />
         <BodyText>{bank.description}</BodyText>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <ActionCard
-            icon={<IconBook />}
-            title="Learning materials"
-            subtitle="Work through the learning content at your own pace before attempting the assessment."
-            buttonLabel="Start learning"
-            onClick={() => navigate("/teaching/learn")}
-          />
+        {hasLearning ? (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <ActionCard
+              icon={<IconBook />}
+              title="Learning materials"
+              subtitle="Work through the learning content at your own pace before attempting the assessment."
+              buttonLabel="Start learning"
+              onClick={() =>
+                navigate(`/teaching/learn/${bank.question_bank_id}/slide/0`)
+              }
+            />
+            <ActionCard
+              icon={<IconChalkboardTeacher />}
+              title="Start assessment"
+              subtitle="Test your knowledge with a timed multiple-choice assessment."
+              buttonLabel="Start assessment"
+              onClick={() =>
+                navigate(
+                  `/teaching/assessment/new?bank=${bank.question_bank_id}`,
+                )
+              }
+            />
+          </SimpleGrid>
+        ) : (
           <ActionCard
             icon={<IconChalkboardTeacher />}
             title="Start assessment"
             subtitle="Test your knowledge with a timed multiple-choice assessment."
             buttonLabel="Start assessment"
+            fullWidth
             onClick={() =>
               navigate(`/teaching/assessment/new?bank=${bank.question_bank_id}`)
             }
           />
-        </SimpleGrid>
+        )}
       </Stack>
-    </Container>
+    </TeachingLayout>
   );
 }

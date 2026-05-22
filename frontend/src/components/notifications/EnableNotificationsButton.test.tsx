@@ -22,7 +22,7 @@ const mockServiceWorkerRegistration = {
 describe("EnableNotificationsButton Component", () => {
   beforeEach(() => {
     // Setup VAPID key
-    import.meta.env.VITE_VAPID_PUBLIC = "test-vapid-key";
+    vi.stubEnv("VITE_VAPID_PUBLIC", "test-vapid-key");
 
     // Setup global mocks
     global.Notification = mockNotification;
@@ -43,6 +43,7 @@ describe("EnableNotificationsButton Component", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   describe("Initial state", () => {

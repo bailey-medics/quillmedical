@@ -51,10 +51,13 @@ describe("AssessmentIntro", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Begin" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Begin" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
-  it("shows loading spinner when loading prop is true", () => {
+  it("shows loading state when loading prop is true", () => {
     renderWithMantine(
       <AssessmentIntro
         title="Ready"
@@ -64,8 +67,48 @@ describe("AssessmentIntro", () => {
       />,
     );
 
-    const button = screen.getByRole("button");
-    expect(button).toBeDisabled();
-    expect(screen.getByText("Loading exam…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Loading exam…" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("renders cancel button when onCancel is provided", () => {
+    renderWithMantine(
+      <AssessmentIntro
+        title="Ready"
+        body="Go."
+        onBegin={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("calls onCancel when cancel button is clicked", async () => {
+    const handleCancel = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithMantine(
+      <AssessmentIntro
+        title="Ready"
+        body="Go."
+        onBegin={() => {}}
+        onCancel={handleCancel}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(handleCancel).toHaveBeenCalledOnce();
+  });
+
+  it("hides cancel button when onCancel is not provided", () => {
+    renderWithMantine(
+      <AssessmentIntro title="Ready" body="Go." onBegin={() => {}} />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
   });
 });

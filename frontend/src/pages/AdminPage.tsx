@@ -218,7 +218,7 @@ export default function AdminPage() {
   // Note: User and patient creation now handled by dedicated pages (/admin/users/new, /admin/patients/new)
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Admin
         userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
         clinicalServicesEnabled={clinicalServicesEnabled}

@@ -11,7 +11,7 @@
  * - Assessments: no sidebar (full-width content)
  */
 
-import { Box, Container, Flex, Stack, useMantineTheme } from "@mantine/core";
+import { Box, Flex, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
@@ -20,8 +20,12 @@ import TopRibbon from "@/components/ribbon/TopRibbon";
 import Footer from "@/components/footer/Footer";
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import { useAuth } from "@/auth/AuthContext";
-
-const SIDEBAR_W = 260;
+import {
+  LAYOUT_RIBBON_Z_INDEX,
+  LAYOUT_PADDING_BOTTOM,
+  LAYOUT_PADDING_TOP,
+  LAYOUT_PADDING_X,
+} from "./layoutConstants";
 
 export interface TeachingLayoutProps {
   /** Optional sidebar content (e.g. LearningNav). No sidebar when omitted */
@@ -76,8 +80,7 @@ export default function TeachingLayout({
         top={0}
         bg="var(--mantine-color-body)"
         style={{
-          zIndex: 100,
-          borderBottom: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
+          zIndex: LAYOUT_RIBBON_Z_INDEX,
           flexShrink: 0,
         }}
       >
@@ -101,7 +104,6 @@ export default function TeachingLayout({
         {!isSm && hasSidebar && (
           <Box
             component="aside"
-            w={SIDEBAR_W}
             style={{
               borderRight: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
               overflowY: "auto",
@@ -118,12 +120,11 @@ export default function TeachingLayout({
             ref={mainRef}
             flex={1}
             style={{ overflowY: "auto" }}
-            px={isSm ? 0 : "md"}
-            py={isSm ? 0 : "md"}
+            px={isSm ? "md" : LAYOUT_PADDING_X}
+            pt={LAYOUT_PADDING_TOP}
+            pb={LAYOUT_PADDING_BOTTOM}
           >
-            <Container size="lg" py="xl">
-              <Stack gap="lg">{children}</Stack>
-            </Container>
+            {children}
           </Box>
           <Footer text={resolvedFooterText} loading={footerLoading} />
         </Flex>

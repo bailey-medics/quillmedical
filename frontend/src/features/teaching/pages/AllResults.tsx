@@ -1,12 +1,5 @@
-import {
-  Badge,
-  Button,
-  Container,
-  Group,
-  Skeleton,
-  Stack,
-  Table,
-} from "@mantine/core";
+import { Badge, Button, Group, Skeleton, Stack, Table } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Heading, EmptyState } from "@/components/typography";
@@ -84,7 +77,7 @@ export default function AllResults() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <Stack gap="lg">
           <Skeleton height={30} width={200} />
           <Skeleton height={40} />
@@ -92,25 +85,25 @@ export default function AllResults() {
           <Skeleton height={50} />
           <Skeleton height={50} />
         </Stack>
-      </Container>
+      </TeachingLayout>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
           description={error}
           colour="alert"
         />
-      </Container>
+      </TeachingLayout>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
+    <TeachingLayout>
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Heading>All results</Heading>
@@ -188,6 +181,6 @@ export default function AllResults() {
           </Table>
         )}
       </Stack>
-    </Container>
+    </TeachingLayout>
   );
 }

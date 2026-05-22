@@ -114,7 +114,7 @@ export default function CreateOrganisationPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Create organisation" />
 

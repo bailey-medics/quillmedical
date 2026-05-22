@@ -265,7 +265,7 @@ export default function Messages() {
   }, [isFhirReady]);
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-end">
           <PageHeader title="Messages" />

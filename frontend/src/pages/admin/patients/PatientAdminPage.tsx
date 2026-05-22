@@ -240,7 +240,7 @@ export default function PatientAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg" pt="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -252,7 +252,7 @@ export default function PatientAdminPage() {
 
   if (error || !patient) {
     return (
-      <Container size="lg" pt="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading patient"
@@ -268,7 +268,7 @@ export default function PatientAdminPage() {
   const nationalId = getNationalIdentifier();
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={patientName} />
 

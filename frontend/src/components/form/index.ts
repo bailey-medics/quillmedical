@@ -1,5 +1,6 @@
 export { default as EmailField } from "./EmailField";
 export { EMAIL_PATTERN } from "./emailPattern";
+export { default as FilterSelect } from "./FilterSelect";
 export { default as MultiSelectField } from "./MultiSelectField";
 export { default as PasswordField } from "./PasswordField";
 export { default as SelectField } from "./SelectField";

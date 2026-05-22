@@ -7,30 +7,26 @@
  * Provides action cards for editing and managing organisations.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
+import { Container, Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
-  BodyText,
   BodyTextInline,
   BodyTextBold,
   Heading,
   EmptyState,
 } from "@/components/typography";
-import {
-  IconPencil,
-  IconAlertCircle,
-  IconUserMinus,
-} from "@components/icons/appIcons";
+import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import AddButton from "@/components/button/AddButton";
 import FeatureBadge from "@/components/badge/FeatureBadge";
+import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
@@ -52,6 +48,17 @@ interface PatientMember {
 }
 
 /**
+ * Site linked to organisation
+ */
+interface SiteMember {
+  id: number;
+  name: string;
+  type: string;
+  location: string;
+  clinical_lead: string;
+}
+
+/**
  * Organisation details from API
  */
 interface OrganizationDetails {
@@ -65,6 +72,7 @@ interface OrganizationDetails {
   patient_count: number;
   staff_members: StaffMember[];
   patient_members: PatientMember[];
+  sites: SiteMember[];
 }
 
 interface FeatureOut {
@@ -138,9 +146,42 @@ export default function OrganisationAdminPage() {
     await fetchOrganizationData();
   }
 
+  const formatType = (type: string): string => {
+    return type
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const siteFilterOptions = useMemo(() => {
+    const types = [...new Set((org?.sites ?? []).map((s) => s.type))].sort();
+    return [
+      {
+        group: "Type",
+        items: types.map((t) => ({
+          value: `type:${t}`,
+          label: formatType(t),
+        })),
+      },
+    ];
+  }, [org?.sites]);
+
+  const siteFilterPredicate = useCallback((filters: string[]) => {
+    const typeFilters = filters
+      .filter((f) => f.startsWith("type:"))
+      .map((f) => f.slice(5));
+
+    return (site: SiteMember) => {
+      if (typeFilters.length > 0 && !typeFilters.includes(site.type)) {
+        return false;
+      }
+      return true;
+    };
+  }, []);
+
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -151,33 +192,25 @@ export default function OrganisationAdminPage() {
   }
 
   if (error || !org) {
-    return (
-      <Container size="lg" py="xl">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading organisation"
-          color="var(--alert-color)"
-        >
-          {error || "Organisation not found"}
-        </Alert>
-      </Container>
-    );
+    return <NotFoundLayout />;
   }
-
-  const formatType = (type: string): string => {
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
 
   const staffColumns: Column<StaffMember>[] = [
     {
       header: "Full name",
       render: (member) => member.full_name || member.username,
+      accessor: (member) => member.full_name || member.username,
     },
-    { header: "Username", render: (member) => member.username },
-    { header: "Email", render: (member) => member.email },
+    {
+      header: "Username",
+      render: (member) => member.username,
+      accessor: (member) => member.username,
+    },
+    {
+      header: "Email",
+      render: (member) => member.email,
+      accessor: (member) => member.email,
+    },
     {
       header: "",
       width: "50px",
@@ -201,8 +234,31 @@ export default function OrganisationAdminPage() {
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
 
+  const siteColumns: Column<SiteMember>[] = [
+    {
+      header: "Name",
+      render: (site) => site.name,
+      accessor: (site) => site.name,
+    },
+    {
+      header: "Type",
+      render: (site) => formatType(site.type),
+      accessor: (site) => site.type,
+    },
+    {
+      header: "Clinical lead",
+      render: (site) => site.clinical_lead || "\u2014",
+      accessor: (site) => site.clinical_lead || "",
+    },
+    {
+      header: "Location",
+      render: (site) => site.location || "—",
+      accessor: (site) => site.location || "",
+    },
+  ];
+
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={org.name} />
 
@@ -235,33 +291,7 @@ export default function OrganisationAdminPage() {
                   {org.location || "Not specified"}
                 </BodyTextInline>
               </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Organisation ID:</BodyTextBold>
-                <BodyText>{org.id}</BodyText>
-              </Group>
             </Stack>
-          </Stack>
-        </BaseCard>
-
-        {/* Statistics */}
-        <BaseCard>
-          <Stack gap="md">
-            <Heading>Statistics</Heading>
-
-            <Group gap="xl">
-              <Stack gap={4}>
-                <BodyText>Staff members</BodyText>
-                <BodyTextBold>{org.staff_count}</BodyTextBold>
-              </Stack>
-
-              {clinicalServicesEnabled && (
-                <Stack gap={4}>
-                  <BodyText>Patients</BodyText>
-                  <BodyTextBold>{org.patient_count}</BodyTextBold>
-                </Stack>
-              )}
-            </Group>
           </Stack>
         </BaseCard>
 
@@ -269,19 +299,20 @@ export default function OrganisationAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Heading>Staff members</Heading>
+              <Heading>Organisation staff members</Heading>
               <AddButton
-                label="Add staff member"
+                label="Add staff"
                 onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
               />
             </Group>
 
-            <DataTable<StaffMember>
+            <DataTableControlled<StaffMember>
               data={org.staff_members}
               columns={staffColumns}
               onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
               getRowKey={(member) => member.id}
               emptyMessage="No staff members assigned"
+              searchFields={(m) => [m.full_name, m.username, m.email]}
             />
           </Stack>
         </BaseCard>
@@ -300,7 +331,7 @@ export default function OrganisationAdminPage() {
                 />
               </Group>
 
-              <DataTable<PatientMember>
+              <DataTableControlled<PatientMember>
                 data={org.patient_members}
                 columns={patientColumns}
                 onRowClick={(patient) =>
@@ -308,6 +339,7 @@ export default function OrganisationAdminPage() {
                 }
                 getRowKey={(patient) => patient.patient_id}
                 emptyMessage="No patients assigned"
+                searchFields={(p) => [p.patient_id]}
               />
             </Stack>
           </BaseCard>
@@ -334,6 +366,37 @@ export default function OrganisationAdminPage() {
             ) : (
               <EmptyState>No features enabled</EmptyState>
             )}
+          </Stack>
+        </BaseCard>
+
+        {/* Sites */}
+        <BaseCard>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Heading>Sites</Heading>
+              <AddButton
+                label="Add site"
+                onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
+              />
+            </Group>
+
+            <DataTableControlled<SiteMember>
+              data={org.sites}
+              columns={siteColumns}
+              onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
+              getRowKey={(site) => site.id}
+              emptyMessage="No sites linked"
+              searchFields={(s) => [
+                s.name,
+                s.type,
+                s.location,
+                s.clinical_lead,
+              ]}
+              filterData={siteFilterOptions}
+              filterLabel="Filter sites"
+              filterAriaLabel="Filter sites"
+              filterPredicate={siteFilterPredicate}
+            />
           </Stack>
         </BaseCard>
 

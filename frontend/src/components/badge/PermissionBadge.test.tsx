@@ -38,6 +38,12 @@ describe("PermissionBadge", () => {
       const badge = screen.getByText("PATIENT");
       expect(badge).toBeInTheDocument();
     });
+
+    it("displays TEACHING DELEGATE badge", () => {
+      renderWithMantine(<PermissionBadge permission="teaching_delegate" />);
+      const badge = screen.getByText("TEACHING DELEGATE");
+      expect(badge).toBeInTheDocument();
+    });
   });
 
   describe("Text transformation", () => {

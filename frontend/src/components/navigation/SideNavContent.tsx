@@ -18,7 +18,7 @@ import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import NavIcon from "../icons/NavIcon";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
-import { typographyTokens } from "@/theme";
+import { navLinkStyles } from "./navStyles";
 
 /**
  * SideNavContent Props
@@ -42,8 +42,6 @@ type Props = {
  * @param props - Component props
  * @returns Navigation links stack
  */
-/** Responsive font size — 16px on mobile, 19px on desktop (matches BodyText) */
-const NAV_FONT_SIZE = "var(--mantine-font-size-md)";
 
 export default function SideNavContent({
   onNavigate,
@@ -55,6 +53,9 @@ export default function SideNavContent({
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [orgNavChildren, setOrgNavChildren] = useState<NavItem[] | undefined>(
+    undefined,
+  );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
   // Check if user has admin or superadmin permissions
@@ -83,13 +84,30 @@ export default function SideNavContent({
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
 
   // Extract user ID from URL if on user admin page
-  const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)$/);
+  const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)/);
   const userId = userIdMatch ? userIdMatch[1] : null;
 
+  // Extract org ID from URL if on organisation admin page
+  const orgIdMatch = location.pathname.match(
+    /^\/admin\/organisations\/([^/]+)$/,
+  );
+  const orgId = orgIdMatch ? orgIdMatch[1] : null;
+
+  // Extract site ID from URL if on site admin page
+  const siteIdMatch = location.pathname.match(/^\/admin\/sites\/([^/]+)/);
+  const siteId = siteIdMatch ? siteIdMatch[1] : null;
+
+  // Extract teaching sub-section from URL (centres, modules, or all-delegates)
+  const teachingSectionMatch = location.pathname.match(
+    /^\/admin\/teaching\/(centres|modules|all-delegates)/,
+  );
+  const teachingSection = teachingSectionMatch ? teachingSectionMatch[1] : null;
+
   // Extract bank ID from URL if on teaching bank admin page
-  const bankIdMatch = location.pathname.match(/^\/admin\/teaching\/([^/]+)/);
-  const bankId =
-    bankIdMatch && bankIdMatch[1] !== "settings" ? bankIdMatch[1] : null;
+  const bankIdMatch = location.pathname.match(
+    /^\/admin\/teaching\/modules\/([^/]+)/,
+  );
+  const bankId = bankIdMatch ? bankIdMatch[1] : null;
 
   // Fetch patient name when on patient admin page
   useEffect(() => {
@@ -150,6 +168,62 @@ export default function SideNavContent({
     fetchUsername();
   }, [userId]);
 
+  // Fetch org/site breadcrumb — single effect to avoid flicker during transitions
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchOrgNav() {
+      if (orgId) {
+        try {
+          const org = await api.get<{ name: string }>(
+            `/organizations/${orgId}`,
+          );
+          if (cancelled) return;
+          setOrgNavChildren([
+            {
+              label: org.name || "Unknown Organisation",
+              href: `/admin/organisations/${orgId}`,
+            },
+          ]);
+        } catch (error) {
+          console.error("Failed to fetch organisation name:", error);
+          if (!cancelled) setOrgNavChildren(undefined);
+        }
+      } else if (siteId) {
+        try {
+          const site = await api.get<{
+            name: string;
+            organisations: Array<{ id: number; name: string }>;
+          }>(`/sites/${siteId}`);
+          if (cancelled) return;
+          const firstOrg = site.organisations?.[0];
+          const children: NavItem[] = [];
+          if (firstOrg) {
+            children.push({
+              label: firstOrg.name,
+              href: `/admin/organisations/${firstOrg.id}`,
+            });
+          }
+          children.push({
+            label: site.name || "Unknown Site",
+            href: `/admin/sites/${siteId}`,
+          });
+          setOrgNavChildren(children);
+        } catch (error) {
+          console.error("Failed to fetch site name:", error);
+          if (!cancelled) setOrgNavChildren(undefined);
+        }
+      } else {
+        setOrgNavChildren(undefined);
+      }
+    }
+
+    fetchOrgNav();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, siteId]);
+
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
     async function fetchBankTitle() {
@@ -171,14 +245,6 @@ export default function SideNavContent({
 
     fetchBankTitle();
   }, [bankId]);
-
-  const navLinkStyles = {
-    root: { fontSize: NAV_FONT_SIZE },
-    label: {
-      fontSize: NAV_FONT_SIZE,
-      fontWeight: typographyTokens.fontWeights.body,
-    },
-  };
 
   // Build Users nav item with optional username child
   const usersNavItem: NavItem = {
@@ -210,6 +276,24 @@ export default function SideNavContent({
       : undefined,
   };
 
+  // Compute Organisations nav children.
+  // When on a site page, ensure the children include the site href so
+  // isActiveOrParent keeps the nav expanded (prevents collapse flicker).
+  const orgNavEffective: NavItem[] | undefined = (() => {
+    if (siteId) {
+      const siteHref = `/admin/sites/${siteId}`;
+      // If fetched children already contain the site link, use them
+      if (orgNavChildren?.some((c) => c.href === siteHref)) {
+        return orgNavChildren;
+      }
+      // Otherwise show a loading placeholder so the nav stays expanded
+      return orgNavChildren
+        ? [...orgNavChildren, { label: "…", href: siteHref }]
+        : [{ label: "…", href: siteHref }];
+    }
+    return orgNavChildren;
+  })();
+
   // Admin navigation structure with children
   const adminNavItem: NavItem = {
     label: "Admin",
@@ -222,6 +306,7 @@ export default function SideNavContent({
         label: "Organisations",
         href: "/admin/organisations",
         icon: showIcons ? "building-community" : undefined,
+        children: orgNavEffective,
       } satisfies NavItem,
       ...(hasTeaching
         ? [
@@ -229,17 +314,40 @@ export default function SideNavContent({
               label: "Teaching",
               href: "/admin/teaching",
               icon: showIcons ? "teaching" : undefined,
-              children: bankTitle
-                ? [
-                    {
-                      label:
-                        bankTitle.length > 8
-                          ? `${bankTitle.slice(0, 8)}…`
-                          : bankTitle,
-                      href: `/admin/teaching/${bankId}`,
-                    },
-                  ]
-                : undefined,
+              children:
+                teachingSection === "centres"
+                  ? [
+                      {
+                        label: "Centres",
+                        href: "/admin/teaching/centres",
+                      },
+                    ]
+                  : teachingSection === "modules"
+                    ? [
+                        {
+                          label: "Modules",
+                          href: "/admin/teaching/modules",
+                          children: bankTitle
+                            ? [
+                                {
+                                  label:
+                                    bankTitle.length > 8
+                                      ? `${bankTitle.slice(0, 8)}…`
+                                      : bankTitle,
+                                  href: `/admin/teaching/modules/${bankId}`,
+                                },
+                              ]
+                            : undefined,
+                        },
+                      ]
+                    : teachingSection === "all-delegates"
+                      ? [
+                          {
+                            label: "All delegates",
+                            href: "/admin/teaching/all-delegates",
+                          },
+                        ]
+                      : undefined,
             } satisfies NavItem,
           ]
         : []),
@@ -256,7 +364,6 @@ export default function SideNavContent({
         children: [
           { label: "Assessments", href: "/teaching" },
           { label: "Manage items", href: "/teaching/manage" },
-          { label: "Results", href: "/teaching/results" },
         ],
       }
     : {
@@ -301,6 +408,7 @@ export default function SideNavContent({
         <NavLink
           label="Home"
           styles={navLinkStyles}
+          active={location.pathname === "/"}
           onClick={() => {
             navigate("/");
             if (onNavigate) onNavigate();
@@ -312,6 +420,7 @@ export default function SideNavContent({
         <NavLink
           label="Messages"
           styles={navLinkStyles}
+          active={location.pathname.startsWith("/messages")}
           onClick={() => {
             navigate("/messages");
             if (onNavigate) onNavigate();
@@ -329,6 +438,7 @@ export default function SideNavContent({
       <NavLink
         label="Settings"
         styles={navLinkStyles}
+        active={location.pathname.startsWith("/settings")}
         onClick={() => {
           navigate("/settings");
           if (onNavigate) onNavigate();

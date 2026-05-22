@@ -18,7 +18,20 @@ import UserInfoUpdatePage from "./UserInfoUpdatePage";
 vi.mock("@/lib/api", () => ({
   api: {
     post: vi.fn(),
-    get: vi.fn(),
+    get: vi.fn().mockImplementation((url: string) => {
+      if (url === "/organizations") {
+        return Promise.resolve({
+          organizations: [{ id: 1, name: "Test Org" }],
+        });
+      }
+      if (url.startsWith("/organizations/")) {
+        return Promise.resolve({
+          sites: [{ id: 10, name: "Test Site" }],
+        });
+      }
+      return Promise.resolve({});
+    }),
+    patch: vi.fn(),
   },
 }));
 
@@ -129,13 +142,13 @@ describe("UserInfoUpdatePage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Competency configuration"),
+          screen.getByRole("heading", { name: "Organisation/site" }),
         ).toBeInTheDocument();
       });
     }, 10000);
   });
 
-  describe("Step 2: Competencies", () => {
+  describe("Step 3: Competencies", () => {
     async function fillStep1AndProceed(
       user: ReturnType<typeof userEvent.setup>,
     ) {
@@ -157,6 +170,15 @@ describe("UserInfoUpdatePage", () => {
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
+      // Step 1 → Step 2 (Organisation/site)
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
+
+      // Step 2 → Step 3 (Competencies)
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
 
@@ -190,7 +212,7 @@ describe("UserInfoUpdatePage", () => {
       });
     }, 10000);
 
-    it("navigates back to step 1", async () => {
+    it("navigates back to organisation step", async () => {
       const user = userEvent.setup();
       renderWithRouter(<UserInfoUpdatePage />);
 
@@ -206,12 +228,12 @@ describe("UserInfoUpdatePage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("heading", { name: "Basic details" }),
+          screen.getByRole("heading", { name: "Organisation/site" }),
         ).toBeInTheDocument();
       });
     }, 10000);
 
-    it("proceeds to step 3 permissions", async () => {
+    it("proceeds to step 4 permissions", async () => {
       const user = userEvent.setup();
       renderWithRouter(<UserInfoUpdatePage />);
 
@@ -231,7 +253,7 @@ describe("UserInfoUpdatePage", () => {
     }, 10000);
   });
 
-  describe("Step 3: Permissions & Review", () => {
+  describe("Step 4: Permissions & Review", () => {
     async function fillStepsAndProceed(
       user: ReturnType<typeof userEvent.setup>,
     ) {
@@ -253,20 +275,30 @@ describe("UserInfoUpdatePage", () => {
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{Enter}");
 
+      // Step 1 → Step 2 (Organisation/site)
       await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
 
+      // Step 2 → Step 3 (Competencies)
+      await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
           screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
 
+      // Step 3 → Step 4 (Permissions)
       await user.click(screen.getByRole("button", { name: /next/i }));
 
       await waitFor(() => {
         expect(screen.getByText("System permissions")).toBeInTheDocument();
       });
 
+      // Step 4 → Step 5 (Review)
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
 
@@ -329,7 +361,15 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Skip step 2
+      // Step 2 - Organisation/site
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Step 3 - Competencies
       await waitFor(() => {
         expect(
           screen.getByText("Competency configuration"),
@@ -337,13 +377,13 @@ describe("UserInfoUpdatePage", () => {
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Step 3 - permissions
+      // Step 4 - permissions
       await waitFor(() => {
         expect(screen.getByText("System permissions")).toBeInTheDocument();
       });
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Step 4 - review and submit
+      // Step 5 - review and submit
       await waitFor(() => {
         expect(
           screen.getByRole("heading", { name: "Review" }),
@@ -393,6 +433,12 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
+        expect(
           screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
@@ -423,7 +469,7 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /cancel/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith("/admin");
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
     });
 
     it("navigates back to admin from confirmation", async () => {
@@ -455,6 +501,12 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /next/i }));
       await waitFor(() => {
         expect(
+          screen.getByRole("heading", { name: "Organisation/site" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /next/i }));
+      await waitFor(() => {
+        expect(
           screen.getByText("Competency configuration"),
         ).toBeInTheDocument();
       });
@@ -478,7 +530,7 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /finished/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith("/admin");
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
     }, 15000);
   });
 });

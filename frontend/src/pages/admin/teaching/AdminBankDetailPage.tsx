@@ -11,7 +11,7 @@ import { Container, Group, Paper, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import DataTable from "@/components/tables/DataTable";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import {
@@ -61,7 +61,7 @@ export default function AdminBankDetailPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={36} width={300} />
           <Skeleton height={100} />
@@ -73,7 +73,7 @@ export default function AdminBankDetailPage() {
 
   if (error || !bank) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -85,7 +85,7 @@ export default function AdminBankDetailPage() {
   }
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={bank.title} />
 
@@ -127,19 +127,10 @@ export default function AdminBankDetailPage() {
                     header: "Status",
                     render: (org) => <ActiveStatusBadge active={org.is_live} />,
                   },
-                  ...(bank.email_coordinator_on_pass
-                    ? [
-                        {
-                          header: "Coordinator",
-                          render: (org: BankOrganisation) =>
-                            org.coordinator_email ?? "Not set",
-                        } as Column<BankOrganisation>,
-                      ]
-                    : []),
                 ]}
                 onRowClick={(org) =>
                   navigate(
-                    `/admin/teaching/${bankId}/org/${org.organisation_id}`,
+                    `/admin/teaching/modules/${bankId}/org/${org.organisation_id}`,
                   )
                 }
                 getRowKey={(org) => org.organisation_id}

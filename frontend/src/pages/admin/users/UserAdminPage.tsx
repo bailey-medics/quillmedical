@@ -30,12 +30,16 @@ import {
   IconPencil,
   IconAlertCircle,
   IconUserMinus,
+  IconUserPlus,
+  IconMail,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
 import ActionCard from "@/components/action-card";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
 import competenciesData from "@/generated/competencies.json";
+import baseProfessionsData from "@/generated/base-professions.json";
 
 /**
  * User details from API
@@ -48,7 +52,13 @@ interface UserDetails {
   base_profession: string | null;
   additional_competencies: string[];
   removed_competencies: string[];
-  system_permissions: "superadmin" | "admin" | "staff";
+  system_permissions:
+    | "superadmin"
+    | "admin"
+    | "staff"
+    | "teaching_delegate"
+    | "patient";
+  is_active: boolean;
 }
 
 /**
@@ -68,6 +78,9 @@ export default function UserAdminPage() {
   const [user, setUser] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
 
   useEffect(() => {
     async function fetchUserData() {
@@ -92,7 +105,7 @@ export default function UserAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -104,7 +117,7 @@ export default function UserAdminPage() {
 
   if (error || !user) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading user"
@@ -117,7 +130,7 @@ export default function UserAdminPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       {" "}
       <Stack gap="lg">
         <PageHeader title={`User: ${user.username}`} />
@@ -145,11 +158,6 @@ export default function UserAdminPage() {
                 <BodyTextBold>Email:</BodyTextBold>
                 <BodyTextInline>{user.email}</BodyTextInline>
               </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>User ID:</BodyTextBold>
-                <BodyText>{user.id}</BodyText>
-              </Group>
             </Stack>
           </Stack>
         </BaseCard>
@@ -163,7 +171,11 @@ export default function UserAdminPage() {
               <Group gap="xs">
                 <BodyTextBold>Base profession:</BodyTextBold>
                 <BodyTextInline>
-                  {user.base_profession || "Not set"}
+                  {user.base_profession
+                    ? (baseProfessionsData.base_professions.find(
+                        (p) => p.id === user.base_profession,
+                      )?.display_name ?? user.base_profession)
+                    : "Not set"}
                 </BodyTextInline>
               </Group>
 
@@ -227,14 +239,65 @@ export default function UserAdminPage() {
             />
 
             <ActionCard
-              icon={<IconUserMinus />}
-              onClick={() => navigate(`/admin/users/deactivate`)}
-              title="Deactivate user"
-              subtitle="Disable this user account"
-              buttonLabel="Deactivate"
+              icon={<IconMail />}
+              onClick={async () => {
+                setInviteSending(true);
+                try {
+                  await api.post(`/users/${id}/send-invite`, {});
+                  setInviteSent(true);
+                } finally {
+                  setInviteSending(false);
+                }
+              }}
+              title="Send invite email"
+              subtitle="Email the user a link to set up their credentials"
+              buttonLabel={
+                inviteSent ? "Sent" : inviteSending ? "Sending…" : "Send"
+              }
+              disabled={inviteSending || inviteSent}
+            />
+
+            <ActionCard
+              icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
+              onClick={() => setDeactivateOpen(true)}
+              title={user.is_active ? "Deactivate user" : "Reactivate user"}
+              subtitle={
+                user.is_active
+                  ? "Disable this user account"
+                  : "Re-enable this user account"
+              }
+              buttonLabel={user.is_active ? "Deactivate" : "Reactivate"}
             />
           </SimpleGrid>
         </Stack>
+
+        <ConfirmModal
+          opened={deactivateOpen}
+          onClose={() => setDeactivateOpen(false)}
+          onAccept={async () => {
+            const action = user.is_active ? "deactivate" : "reactivate";
+            await api.post(`/users/${id}/${action}`, {});
+            navigate("/admin/users");
+          }}
+          title={user.is_active ? "Deactivate user" : "Reactivate user"}
+          acceptLabel={user.is_active ? "Deactivate user" : "Reactivate user"}
+          submittingLabel={user.is_active ? "Deactivating…" : "Reactivating…"}
+          icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
+        >
+          {user.is_active ? (
+            <>
+              Are you sure you want to deactivate{" "}
+              <strong>{user.username}</strong>? They will no longer be able to
+              log in. This action can be reversed later.
+            </>
+          ) : (
+            <>
+              Are you sure you want to reactivate{" "}
+              <strong>{user.username}</strong>? They will be able to log in
+              again.
+            </>
+          )}
+        </ConfirmModal>
       </Stack>
     </Container>
   );

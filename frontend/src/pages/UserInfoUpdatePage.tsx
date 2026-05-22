@@ -3,9 +3,10 @@
  *
  * Multi-step form for creating or editing a user with:
  * - Step 1: Basic details (name, email, username, base profession)
- * - Step 2: Competency editor (add/remove competencies)
- * - Step 3: System permissions + review
- * - Step 4: Confirmation
+ * - Step 2: Organisation/site assignment
+ * - Step 3: Competency editor (add/remove competencies)
+ * - Step 4: System permissions + review
+ * - Step 5: Confirmation
  *
  * @module UserInfoUpdatePage
  */
@@ -58,6 +59,15 @@ import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
 
 /**
+ * Organisation option from the API
+ */
+interface OrgOption {
+  id: number;
+  name: string;
+  sites: { id: number; name: string }[];
+}
+
+/**
  * User form data state
  */
 interface UserFormData {
@@ -69,6 +79,8 @@ interface UserFormData {
   additionalCompetencies: CompetencyId[];
   removedCompetencies: CompetencyId[];
   systemPermissions: SystemPermission;
+  organisationIds: string[];
+  siteIds: string[];
 }
 
 /**
@@ -174,7 +186,85 @@ function Step1BasicDetails({
 }
 
 /**
- * Step 2: Competency Editor
+ * Step 2: Organisation/Site
+ */
+function Step2Organisation({
+  formData,
+  setFormData,
+  organisations,
+}: Pick<StepContentProps, never> & {
+  formData: UserFormData;
+  setFormData: (data: UserFormData) => void;
+  organisations: OrgOption[];
+}) {
+  const orgOptions = organisations.map((o) => ({
+    value: String(o.id),
+    label: o.name,
+  }));
+
+  const siteOptions = organisations.flatMap((org) =>
+    org.sites.map((s) => ({
+      value: String(s.id),
+      label: `${org.name} - ${s.name}`,
+    })),
+  );
+
+  // Only show IDs that exist in available options (admin may not see all)
+  const validOrgIds = new Set(orgOptions.map((o) => o.value));
+  const validSiteIds = new Set(siteOptions.map((s) => s.value));
+  const visibleOrgIds = formData.organisationIds.filter((id) =>
+    validOrgIds.has(id),
+  );
+  const visibleSiteIds = formData.siteIds.filter((id) => validSiteIds.has(id));
+
+  return (
+    <Stack gap="md">
+      <Heading>Organisation/site</Heading>
+      <BodyText>
+        Optionally assign this user to an organisation and/or a site.
+      </BodyText>
+
+      <MultiSelectField
+        label="Organisation"
+        description="Only add user here if they require organisation access (this is not needed for 'Teaching delegates')"
+        placeholder="Select organisations (optional)"
+        data={orgOptions}
+        value={visibleOrgIds}
+        onChange={(value) =>
+          setFormData({
+            ...formData,
+            organisationIds: [
+              ...formData.organisationIds.filter((id) => !validOrgIds.has(id)),
+              ...value,
+            ],
+          })
+        }
+        searchable
+      />
+
+      <MultiSelectField
+        label="Site"
+        description="Teaching delegates normally only need site access"
+        placeholder="Select sites (optional)"
+        data={siteOptions}
+        value={visibleSiteIds}
+        onChange={(value) =>
+          setFormData({
+            ...formData,
+            siteIds: [
+              ...formData.siteIds.filter((id) => !validSiteIds.has(id)),
+              ...value,
+            ],
+          })
+        }
+        searchable
+      />
+    </Stack>
+  );
+}
+
+/**
+ * Step 3: Competency Editor
  */
 function Step2Competencies({
   formData,
@@ -261,6 +351,10 @@ function Step3Permissions({
 }) {
   const permissionOptions = [
     { value: "patient", label: "Patient - No staff access" },
+    {
+      value: "teaching_delegate",
+      label: "Teaching delegate - Assessments only",
+    },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
     { value: "superadmin", label: "Super Admin - Full system access" },
@@ -294,12 +388,23 @@ function Step3Permissions({
  */
 function Step4Review({
   formData,
+  organisations,
 }: Pick<StepContentProps, never> & {
   formData: UserFormData;
+  organisations: OrgOption[];
 }) {
   const profession = formData.baseProfession
     ? getBaseProfessionDetails(formData.baseProfession)
     : null;
+
+  const selectedOrgs = organisations.filter((o) =>
+    formData.organisationIds.includes(String(o.id)),
+  );
+  const selectedSites = organisations.flatMap((org) =>
+    org.sites
+      .filter((s) => formData.siteIds.includes(String(s.id)))
+      .map((s) => `${org.name} - ${s.name}`),
+  );
 
   return (
     <Stack gap="md">
@@ -334,6 +439,20 @@ function Step4Review({
               }
             />
           </Group>
+          {selectedOrgs.length > 0 && (
+            <Group justify="space-between">
+              <BodyTextBold>Organisations:</BodyTextBold>
+              <BodyTextInline>
+                {selectedOrgs.map((o) => o.name).join(", ")}
+              </BodyTextInline>
+            </Group>
+          )}
+          {selectedSites.length > 0 && (
+            <Group justify="space-between">
+              <BodyTextBold>Sites:</BodyTextBold>
+              <BodyTextInline>{selectedSites.join(", ")}</BodyTextInline>
+            </Group>
+          )}
           {formData.additionalCompetencies.length > 0 && (
             <Box>
               <BodyTextBold>Additional competencies:</BodyTextBold>
@@ -381,9 +500,11 @@ function Step4Review({
 function Step5Confirmation({
   success,
   isEditMode = false,
+  errorMessage,
 }: Pick<StepContentProps, never> & {
   success: boolean;
   isEditMode?: boolean;
+  errorMessage?: string;
 }) {
   return success ? (
     <StateMessage
@@ -403,9 +524,10 @@ function Step5Confirmation({
       icon={<IconAlertCircle />}
       title={isEditMode ? "Failed to update user" : "Failed to create user"}
       description={
-        isEditMode
+        errorMessage ||
+        (isEditMode
           ? "There was an error updating the user. Please try again."
-          : "There was an error creating the user. Please try again."
+          : "There was an error creating the user. Please try again.")
       }
       colour="alert"
     />
@@ -430,10 +552,12 @@ export default function UserInfoUpdatePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [organisations, setOrganisations] = useState<OrgOption[]>([]);
 
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
@@ -444,6 +568,8 @@ export default function UserInfoUpdatePage() {
     additionalCompetencies: [],
     removedCompetencies: [],
     systemPermissions: "staff",
+    organisationIds: [],
+    siteIds: [],
   });
 
   // Fetch user data in edit mode
@@ -474,6 +600,10 @@ export default function UserInfoUpdatePage() {
           additionalCompetencies: data.additional_competencies || [],
           removedCompetencies: data.removed_competencies || [],
           systemPermissions: data.system_permissions || "staff",
+          organisationIds: data.organisation_ids
+            ? data.organisation_ids.map(String)
+            : [],
+          siteIds: data.site_ids ? data.site_ids.map(String) : [],
         });
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -487,6 +617,41 @@ export default function UserInfoUpdatePage() {
 
     fetchUser();
   }, [isEditMode, userId]);
+
+  // Fetch organisations with their sites
+  useEffect(() => {
+    async function fetchOrgs() {
+      try {
+        const orgsResp = await api.get<{
+          organizations: { id: number; name: string }[];
+        }>("/organizations");
+
+        // Fetch sites for each org
+        const orgsWithSites: OrgOption[] = await Promise.all(
+          orgsResp.organizations.map(async (org) => {
+            try {
+              const detail = await api.get<{
+                sites: { id: number; name: string }[];
+              }>(`/organizations/${org.id}`);
+              return {
+                id: org.id,
+                name: org.name,
+                sites: detail.sites || [],
+              };
+            } catch {
+              return { id: org.id, name: org.name, sites: [] };
+            }
+          }),
+        );
+
+        setOrganisations(orgsWithSites);
+      } catch (error) {
+        console.error("Failed to fetch organisations:", error);
+      }
+    }
+
+    fetchOrgs();
+  }, []);
 
   // Block navigation when form is dirty and not yet submitted
   const blocker = useBlocker(
@@ -502,7 +667,7 @@ export default function UserInfoUpdatePage() {
 
   function handleCancel() {
     setDirty(false); // Allow navigation
-    navigate("/admin");
+    navigate("/admin/users");
   }
 
   function validateStep1(): boolean {
@@ -557,6 +722,8 @@ export default function UserInfoUpdatePage() {
         removed_competencies: CompetencyId[];
         system_permissions: SystemPermission;
         password?: string;
+        organisation_ids: number[];
+        site_ids: number[];
       } = {
         name: formData.name,
         email: formData.email,
@@ -565,6 +732,8 @@ export default function UserInfoUpdatePage() {
         additional_competencies: formData.additionalCompetencies,
         removed_competencies: formData.removedCompetencies,
         system_permissions: formData.systemPermissions,
+        organisation_ids: formData.organisationIds.map(Number),
+        site_ids: formData.siteIds.map(Number),
       };
 
       // Only include password if provided (required for create, optional for edit)
@@ -582,15 +751,16 @@ export default function UserInfoUpdatePage() {
 
       setSuccess(true);
       setDirty(false); // Clear dirty flag on successful submission
-      setActiveStep(4); // Move to confirmation step
+      setActiveStep(5); // Move to confirmation step
     } catch (error) {
       console.error(
         `Failed to ${isEditMode ? "update" : "create"} user:`,
         error,
       );
       setSuccess(false);
+      setErrorMessage(error instanceof Error ? error.message : null);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
-      setActiveStep(4); // Move to confirmation step even on error
+      setActiveStep(5); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
     }
@@ -610,6 +780,18 @@ export default function UserInfoUpdatePage() {
         />
       ),
       validate: validateStep1,
+    },
+    {
+      label: "Organisation/site",
+      description: "Assign to organisation and site",
+      content: (props) => (
+        <Step2Organisation
+          {...props}
+          formData={formData}
+          setFormData={updateFormData}
+          organisations={organisations}
+        />
+      ),
     },
     {
       label: "Competencies",
@@ -636,7 +818,13 @@ export default function UserInfoUpdatePage() {
     {
       label: "Review",
       description: "Review and submit",
-      content: (props) => <Step4Review {...props} formData={formData} />,
+      content: (props) => (
+        <Step4Review
+          {...props}
+          formData={formData}
+          organisations={organisations}
+        />
+      ),
       nextButtonLabel: isEditMode ? "Update User" : "Create User",
     },
     {
@@ -647,6 +835,7 @@ export default function UserInfoUpdatePage() {
           {...props}
           success={success}
           isEditMode={isEditMode}
+          errorMessage={errorMessage ?? undefined}
         />
       ),
       hideCancelButton: true,
@@ -655,9 +844,9 @@ export default function UserInfoUpdatePage() {
     },
   ];
 
-  // Intercept step 3 -> 4 transition to submit form
+  // Intercept step 4 -> 5 transition to submit form
   function handleStepChange(newStep: number) {
-    if (activeStep === 3 && newStep === 4) {
+    if (activeStep === 4 && newStep === 5) {
       handleSubmit();
     } else {
       setActiveStep(newStep);
@@ -670,7 +859,7 @@ export default function UserInfoUpdatePage() {
         <PageHeader title={isEditMode ? "Edit user" : "Create new user"} />
 
         {loading ? (
-          <Center py="xl">
+          <Center>
             <Stack align="center" gap="md">
               <Loader size="lg" />
               <BodyText>Loading user data...</BodyText>
@@ -684,7 +873,11 @@ export default function UserInfoUpdatePage() {
             mt="md"
           >
             {loadError}
-            <Button onClick={() => navigate("/admin")} variant="light" mt="md">
+            <Button
+              onClick={() => navigate("/admin/users")}
+              variant="light"
+              mt="md"
+            >
               Return to Admin
             </Button>
           </Alert>

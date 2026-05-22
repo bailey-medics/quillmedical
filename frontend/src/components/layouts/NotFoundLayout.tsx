@@ -25,7 +25,7 @@ export default function NotFoundLayout() {
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg" pt="md" pb="xl">
       <Center mih="60vh">
         <Stack align="center" gap="lg">
           <Heading>404 — Page not found</Heading>

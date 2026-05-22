@@ -137,7 +137,7 @@ export default function AddStaffToOrgPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Add staff member" />
 

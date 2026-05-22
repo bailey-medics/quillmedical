@@ -22,7 +22,7 @@ export interface RegistrationFormData {
   fullName: string;
   email: string;
   password: string;
-  organisation: string;
+  organisation?: string;
 }
 
 interface RegistrationFormValues {
@@ -35,8 +35,8 @@ interface RegistrationFormValues {
 }
 
 export interface RegistrationFormProps {
-  /** Available organisations for the dropdown */
-  organisations: { value: string; label: string }[];
+  /** Available organisations for the dropdown — omit to hide the field */
+  organisations?: { value: string; label: string }[];
   /** Called when the form is submitted with valid data — should return a FormSubmitResult */
   onSubmit: (data: RegistrationFormData) => Promise<FormSubmitResult>;
 }
@@ -44,7 +44,7 @@ export interface RegistrationFormProps {
 function RegistrationFields({
   organisations,
 }: {
-  organisations: { value: string; label: string }[];
+  organisations?: { value: string; label: string }[];
 }) {
   const { methods } = useFormContext();
 
@@ -52,14 +52,15 @@ function RegistrationFields({
     <Stack>
       <Heading>Create an account</Heading>
       <TextField
-        label="Username"
-        {...methods.register("username", { required: true })}
+        label="Full name"
+        {...methods.register("fullName", { required: true })}
+        placeholder="As it should appear on certificates"
         required
       />
       <TextField
-        label="Full name"
-        {...methods.register("fullName")}
-        placeholder="As it should appear on certificates"
+        label="Username"
+        {...methods.register("username", { required: true })}
+        required
       />
       <EmailField
         label="Email"
@@ -69,22 +70,24 @@ function RegistrationFields({
         })}
         required
       />
-      <Controller
-        name="organisation"
-        control={methods.control}
-        rules={{ required: true }}
-        render={({ field }) => (
-          <SelectField
-            label="Organisation"
-            placeholder="Select your organisation"
-            data={organisations}
-            value={field.value as string | null}
-            onChange={field.onChange}
-            required
-            searchable
-          />
-        )}
-      />
+      {organisations && (
+        <Controller
+          name="organisation"
+          control={methods.control}
+          rules={{ required: true }}
+          render={({ field }) => (
+            <SelectField
+              label="Organisation"
+              placeholder="Select your organisation"
+              data={organisations}
+              value={field.value as string | null}
+              onChange={field.onChange}
+              required
+              searchable
+            />
+          )}
+        />
+      )}
       <PasswordField
         label="Password"
         {...methods.register("password", { required: true })}
@@ -119,7 +122,7 @@ export default function RegistrationForm({
       fullName: data.fullName.trim(),
       email: data.email.trim(),
       password: data.password,
-      organisation: data.organisation!,
+      ...(data.organisation ? { organisation: data.organisation } : {}),
     });
   }
 

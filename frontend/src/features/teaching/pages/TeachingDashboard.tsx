@@ -1,16 +1,11 @@
-import {
-  Box,
-  Center,
-  Container,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-} from "@mantine/core";
+import { Box, Center, SimpleGrid, Skeleton, Stack } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import ActionCard from "@/components/action-card/ActionCard";
+import PictureActionCard from "@/components/picture-action-card/PictureActionCard";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { AssessmentHistoryTable } from "@/components/teaching/assessment-history-table/AssessmentHistoryTable";
@@ -20,7 +15,25 @@ import type {
   QuestionBank,
 } from "@/features/teaching/types";
 
-export default function AssessmentDashboard() {
+/** Static cover images for each question bank module. */
+const MODULE_IMAGES: Record<string, { src: string; alt: string }> = {
+  "colonoscopy-optical-diagnosis-test": {
+    src: "/teaching/colonoscopy-optical-diagnosis-test.png",
+    alt: "Colonoscopy image showing a colorectal polyp",
+  },
+  "chest-xray-interpretation-test": {
+    src: "/teaching/chest-xray-interpretation-test.png",
+    alt: "Chest X-ray showing a left-sided pneumothorax",
+  },
+};
+
+/** Display order for modules on the teaching dashboard. */
+const MODULE_ORDER: string[] = [
+  "colonoscopy-optical-diagnosis-test",
+  "chest-xray-interpretation-test",
+];
+
+export default function TeachingDashboard() {
   const navigate = useNavigate();
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [history, setHistory] = useState<AssessmentHistory[]>([]);
@@ -49,7 +62,7 @@ export default function AssessmentDashboard() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -61,49 +74,58 @@ export default function AssessmentDashboard() {
           <Skeleton height={50} />
           <Skeleton height={50} />
         </Stack>
-      </Container>
+      </TeachingLayout>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
           description={error}
           colour="alert"
         />
-      </Container>
+      </TeachingLayout>
     );
   }
 
-  return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <PageHeader title="Teaching" />
+  const liveBanks = banks
+    .filter((bank) => bank.is_live)
+    .sort(
+      (a, b) =>
+        (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
+        (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
+    );
 
-        {banks.filter((bank) => bank.is_live).length === 0 ? (
+  const sidebarNav = <TeachingMainNav />;
+
+  return (
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
+      <Stack gap="lg">
+        <PageHeader title="Teaching modules" />
+
+        {liveBanks.length === 0 ? (
           <Center p="xl">
             <BodyText>No assessments are currently open</BodyText>
           </Center>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {banks
-              .filter((bank) => bank.is_live)
-              .map((bank) => (
-                <ActionCard
+            {liveBanks.map((bank) => {
+              const image = MODULE_IMAGES[bank.question_bank_id];
+              return (
+                <PictureActionCard
                   key={bank.id}
                   title={bank.title}
-                  subtitle={bank.description}
-                  buttonLabel="Start assessment"
-                  onClick={() =>
-                    navigate(
-                      `/teaching/assessment/new?bank=${bank.question_bank_id}`,
-                    )
-                  }
+                  description={bank.description}
+                  imageSrc={image?.src}
+                  imageAlt={image?.alt}
+                  buttonLabel="View module"
+                  buttonUrl={`/teaching/${bank.question_bank_id}`}
                 />
-              ))}
+              );
+            })}
           </SimpleGrid>
         )}
 
@@ -115,6 +137,6 @@ export default function AssessmentDashboard() {
           onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
         />
       </Stack>
-    </Container>
+    </TeachingLayout>
   );
 }

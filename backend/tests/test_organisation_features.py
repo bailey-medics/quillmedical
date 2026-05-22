@@ -2,7 +2,12 @@
 
 from sqlalchemy import select
 
-from app.models import OrganisationFeature, Organization, User
+from app.models import (
+    OrganisationFeature,
+    Organization,
+    User,
+    organisation_staff_member,
+)
 from app.security import hash_password
 
 # ---------------------------------------------------------------------------
@@ -148,16 +153,26 @@ class TestOrganisationFeatureModel:
 # ---------------------------------------------------------------------------
 
 
-def _make_admin(db_session) -> User:
-    """Create an admin user and return it."""
+def _make_admin(db_session, org: Organization | None = None) -> User:
+    """Create an admin user and optionally link to an org."""
     user = User(
         username="featureadmin",
         email="featureadmin@example.com",
         password_hash=hash_password("AdminPassword123!"),
         is_active=True,
+        email_verified=True,
         system_permissions="admin",
     )
     db_session.add(user)
+    db_session.flush()
+    if org:
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=user.id,
+                is_primary=True,
+            )
+        )
     db_session.commit()
     db_session.refresh(user)
     return user
@@ -176,8 +191,8 @@ class TestFeatureEndpoints:
 
     def test_list_features_empty(self, test_client, db_session):
         """New org has no features."""
-        _make_admin(db_session)
         org = _make_org(db_session)
+        _make_admin(db_session, org)
         test_client.post(
             "/api/auth/login",
             json={
@@ -192,8 +207,8 @@ class TestFeatureEndpoints:
 
     def test_enable_feature(self, test_client, db_session):
         """PUT with enabled=true creates the feature row."""
-        _make_admin(db_session)
         org = _make_org(db_session)
+        _make_admin(db_session, org)
         test_client.post(
             "/api/auth/login",
             json={
@@ -221,8 +236,8 @@ class TestFeatureEndpoints:
 
     def test_enable_feature_idempotent(self, test_client, db_session):
         """Enabling an already-enabled feature returns already_enabled."""
-        _make_admin(db_session)
         org = _make_org(db_session)
+        _make_admin(db_session, org)
         test_client.post(
             "/api/auth/login",
             json={
@@ -246,8 +261,8 @@ class TestFeatureEndpoints:
 
     def test_disable_feature(self, test_client, db_session):
         """PUT with enabled=false removes the row."""
-        _make_admin(db_session)
         org = _make_org(db_session)
+        _make_admin(db_session, org)
         test_client.post(
             "/api/auth/login",
             json={
@@ -276,8 +291,8 @@ class TestFeatureEndpoints:
 
     def test_disable_nonexistent_feature(self, test_client, db_session):
         """Disabling a feature that was never enabled returns already_disabled."""
-        _make_admin(db_session)
         org = _make_org(db_session)
+        _make_admin(db_session, org)
         test_client.post(
             "/api/auth/login",
             json={
@@ -301,6 +316,7 @@ class TestFeatureEndpoints:
             email="regular@example.com",
             password_hash=hash_password("Password123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="patient",
         )
         db_session.add(user)
@@ -322,6 +338,7 @@ class TestFeatureEndpoints:
             email="regular2@example.com",
             password_hash=hash_password("Password123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="patient",
         )
         db_session.add(user)
@@ -379,6 +396,7 @@ class TestMeEnabledFeatures:
             email="fuser@example.com",
             password_hash=hash_password("Pass12345!"),
             is_active=True,
+            email_verified=True,
         )
         db_session.add(user)
         db_session.flush()
@@ -418,6 +436,7 @@ class TestMeEnabledFeatures:
             email="noorg@example.com",
             password_hash=hash_password("Pass12345!"),
             is_active=True,
+            email_verified=True,
         )
         db_session.add(user)
         db_session.commit()

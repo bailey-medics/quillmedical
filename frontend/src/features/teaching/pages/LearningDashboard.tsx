@@ -6,7 +6,8 @@
  * Phase 1: Uses stub data (no backend).
  */
 
-import { Container, SimpleGrid, Stack, Center } from "@mantine/core";
+import { SimpleGrid, Stack, Center } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
 import { BodyText } from "@/components/typography";
@@ -69,7 +70,7 @@ export default function LearningDashboard() {
   const progress = STUB_PROGRESS;
 
   return (
-    <Container size="lg" py="xl">
+    <TeachingLayout>
       <Stack gap="lg">
         <PageHeader title="Learning materials" />
 
@@ -95,6 +96,6 @@ export default function LearningDashboard() {
           </SimpleGrid>
         )}
       </Stack>
-    </Container>
+    </TeachingLayout>
   );
 }

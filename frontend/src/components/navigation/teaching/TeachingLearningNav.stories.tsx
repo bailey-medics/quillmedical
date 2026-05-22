@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import LearningNav from "./LearningNav";
+import TeachingLearningNav from "./TeachingLearningNav";
 import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
 
-const meta: Meta<typeof LearningNav> = {
+const meta: Meta<typeof TeachingLearningNav> = {
   title: "Teaching/Nav/Learning nav",
-  component: LearningNav,
+  component: TeachingLearningNav,
   decorators: [
     (Story) => (
       <div style={{ width: 260 }}>
@@ -15,13 +15,12 @@ const meta: Meta<typeof LearningNav> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof LearningNav>;
+type Story = StoryObj<typeof TeachingLearningNav>;
 
 export const Default: Story = {
   args: {
     slides: stubSlides,
     currentIndex: 2,
-    visited: new Set([0, 1]),
     onNavigate: () => {},
     onExit: () => {},
   },

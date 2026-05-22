@@ -11,6 +11,7 @@ from typing import Literal
 PERMISSION_PATIENT = "patient"
 PERMISSION_EXTERNAL_HCP = "external_hcp"
 PERMISSION_PATIENT_ADVOCATE = "patient_advocate"
+PERMISSION_TEACHING_DELEGATE = "teaching_delegate"
 PERMISSION_STAFF = "staff"
 PERMISSION_ADMIN = "admin"
 PERMISSION_SUPERADMIN = "superadmin"
@@ -29,19 +30,25 @@ ALL_PERMISSIONS = [
     PERMISSION_PATIENT,
     PERMISSION_EXTERNAL_HCP,
     PERMISSION_PATIENT_ADVOCATE,
+    PERMISSION_TEACHING_DELEGATE,
     PERMISSION_STAFF,
     PERMISSION_ADMIN,
     PERMISSION_SUPERADMIN,
 ]
 
-# External user types that use per-patient access grants
-EXTERNAL_PERMISSIONS = {PERMISSION_EXTERNAL_HCP, PERMISSION_PATIENT_ADVOCATE}
+# External user types that map to patient-level for hierarchy checks
+EXTERNAL_PERMISSIONS = {
+    PERMISSION_EXTERNAL_HCP,
+    PERMISSION_PATIENT_ADVOCATE,
+    PERMISSION_TEACHING_DELEGATE,
+}
 
 # Type alias for type hints
 SystemPermission = Literal[
     "patient",
     "external_hcp",
     "patient_advocate",
+    "teaching_delegate",
     "staff",
     "admin",
     "superadmin",

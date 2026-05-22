@@ -32,22 +32,26 @@ export interface LoginFormProps {
   registerPath?: string | null;
   /** Path for the forgot password link (set to null to hide) */
   forgotPasswordPath?: string | null;
+  /** Heading text displayed above the form */
+  title?: string;
 }
 
 function LoginFields({
   requireTotp,
   registerPath,
   forgotPasswordPath,
+  title,
 }: {
   requireTotp: boolean;
   registerPath: string | null;
   forgotPasswordPath: string | null;
+  title: string;
 }) {
   const { methods } = useFormContext();
 
   return (
     <Stack>
-      <Heading>Sign in to Quill</Heading>
+      <Heading>{title}</Heading>
       <TextField
         label="Username"
         {...methods.register("username", { required: true })}
@@ -93,6 +97,7 @@ export default function LoginForm({
   requireTotp = false,
   registerPath = "/register",
   forgotPasswordPath = "/forgot-password",
+  title = "Sign in to Quill",
 }: LoginFormProps) {
   async function handleSubmit(
     data: LoginFormValues,
@@ -121,6 +126,7 @@ export default function LoginForm({
             requireTotp={requireTotp}
             registerPath={registerPath ?? null}
             forgotPasswordPath={forgotPasswordPath ?? null}
+            title={title}
           />
         </Form>
       </BaseCard>

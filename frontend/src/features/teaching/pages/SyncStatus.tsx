@@ -1,4 +1,5 @@
-import { Badge, Container, Skeleton, Stack, Table } from "@mantine/core";
+import { Badge, Skeleton, Stack, Table } from "@mantine/core";
+import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
@@ -39,32 +40,32 @@ export default function SyncStatus() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <Stack gap="lg">
           <Skeleton height={30} width={200} />
           <Skeleton height={50} />
           <Skeleton height={50} />
           <Skeleton height={50} />
         </Stack>
-      </Container>
+      </TeachingLayout>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <TeachingLayout>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
           description={error}
           colour="alert"
         />
-      </Container>
+      </TeachingLayout>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
+    <TeachingLayout>
       <Stack gap="lg">
         <Heading>Sync status</Heading>
 
@@ -109,6 +110,6 @@ export default function SyncStatus() {
           </Table>
         )}
       </Stack>
-    </Container>
+    </TeachingLayout>
   );
 }

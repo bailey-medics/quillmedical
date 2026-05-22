@@ -39,13 +39,11 @@ const mockOrgs = [
     organisation_id: 1,
     organisation_name: "Test Hospital",
     is_live: false,
-    coordinator_email: "coord@test.com",
   },
   {
     organisation_id: 2,
     organisation_name: "Another Clinic",
     is_live: true,
-    coordinator_email: null,
   },
 ];
 
@@ -85,35 +83,11 @@ describe("AdminBankOrgSettingsPage", () => {
     expect(screen.getByText("Deactivated")).toBeTruthy();
   });
 
-  it("shows coordinator email section when email_coordinator_on_pass", async () => {
-    mockApiCalls();
-    renderWithRouter(<AdminBankOrgSettingsPage />);
-    await waitFor(() => {
-      expect(screen.getByText("Coordinator email")).toBeTruthy();
-    });
-    expect(screen.getByDisplayValue("coord@test.com")).toBeTruthy();
-  });
-
-  it("hides coordinator email section when not needed", async () => {
-    (api.get as Mock).mockImplementation((url: string) => {
-      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
-      return Promise.resolve({
-        ...mockBank,
-        email_coordinator_on_pass: false,
-      });
-    });
-    renderWithRouter(<AdminBankOrgSettingsPage />);
-    await waitFor(() => {
-      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
-    });
-    expect(screen.queryByText("Coordinator email")).toBeNull();
-  });
-
   it("save button is disabled when form is not dirty", async () => {
     mockApiCalls();
     renderWithRouter(<AdminBankOrgSettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText("Coordinator email")).toBeTruthy();
+      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
     });
     expect(screen.getByTestId("submit-button")).toHaveAttribute(
       "aria-disabled",

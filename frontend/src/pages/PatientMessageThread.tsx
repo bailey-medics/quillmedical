@@ -122,7 +122,7 @@ export default function PatientMessageThread() {
 
   if (isLoading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Loader />
       </Container>
     );

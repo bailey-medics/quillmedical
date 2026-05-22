@@ -67,6 +67,7 @@ def second_user(db_session: Session, test_org: Organization) -> User:
         email="second@example.com",
         password_hash=hash_password("SecondPassword123!"),
         is_active=True,
+        email_verified=True,
         system_permissions="staff",
     )
     db_session.add(user)
@@ -92,6 +93,7 @@ def patient_user(db_session: Session) -> User:
         email="patient@example.com",
         password_hash=hash_password("PatientPassword123!"),
         is_active=True,
+        email_verified=True,
         system_permissions="patient",
     )
     db_session.add(user)
@@ -1057,6 +1059,7 @@ class TestOrgScopedAccess:
             email="outsider@example.com",
             password_hash=hash_password("OutsiderPass123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="staff",
         )
         db_session.add(outsider)
@@ -1228,6 +1231,7 @@ class TestRevokeExternalAccess:
             email="ext@example.com",
             password_hash=hash_password("ExtPass123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="external_hcp",
         )
         db_session.add(ext_user)
@@ -1286,6 +1290,16 @@ class TestRemoveStaffFromOrg:
         db_session: Session,
     ):
         """Admin can remove a staff member from an org."""
+        # Add admin to org so they pass the membership check
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=test_org.id,
+                user_id=test_admin.id,
+                is_primary=False,
+            )
+        )
+        db_session.commit()
+
         authenticated_client.post(
             "/api/auth/login",
             json={"username": "testadmin", "password": "AdminPassword123!"},
@@ -1322,8 +1336,19 @@ class TestRemovePatientFromOrg:
         authenticated_client: TestClient,
         test_admin: User,
         test_org: Organization,
+        db_session: Session,
     ):
         """Admin can remove a patient from an org."""
+        # Add admin to org so they pass the membership check
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=test_org.id,
+                user_id=test_admin.id,
+                is_primary=False,
+            )
+        )
+        db_session.commit()
+
         authenticated_client.post(
             "/api/auth/login",
             json={"username": "testadmin", "password": "AdminPassword123!"},
@@ -1381,6 +1406,7 @@ class TestLinkPatient:
             email="other@example.com",
             password_hash=hash_password("OtherPass123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="patient",
         )
         db_session.add(other)

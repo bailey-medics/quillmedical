@@ -1,4 +1,4 @@
-import { Container, Skeleton, Stack } from "@mantine/core";
+import { Skeleton, Stack } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
@@ -32,39 +32,33 @@ export default function AssessmentHistoryPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
-        <Stack gap="lg">
-          <Skeleton height={30} width={250} />
-          <Skeleton height={50} />
-          <Skeleton height={50} />
-          <Skeleton height={50} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={30} width={250} />
+        <Skeleton height={50} />
+        <Skeleton height={50} />
+        <Skeleton height={50} />
+      </Stack>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error}
-          colour="alert"
-        />
-      </Container>
+      <StateMessage
+        icon={<IconAlertCircle />}
+        title="Error loading data"
+        description={error}
+        colour="alert"
+      />
     );
   }
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="lg">
-        <Heading>Assessment history</Heading>
-        <AssessmentHistoryTable
-          assessments={history}
-          onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
-        />
-      </Stack>
-    </Container>
+    <Stack gap="lg">
+      <Heading>Assessment history</Heading>
+      <AssessmentHistoryTable
+        assessments={history}
+        onSelect={(id) => navigate(`/teaching/assessment/${id}/result`)}
+      />
+    </Stack>
   );
 }

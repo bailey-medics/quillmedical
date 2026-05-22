@@ -53,6 +53,7 @@ def _make_educator(db: Session, org: Organization) -> User:
         email="educator@test.local",
         password_hash=hash_password("Educator123!"),
         is_active=True,
+        email_verified=True,
         base_profession="educator",
         system_permissions="staff",
     )
@@ -74,6 +75,7 @@ def _make_learner(db: Session, org: Organization) -> User:
         email="learner@test.local",
         password_hash=hash_password("Learner123!"),
         is_active=True,
+        email_verified=True,
         base_profession="learner",
         system_permissions="staff",
     )
@@ -230,6 +232,7 @@ class TestFeatureGating:
             email="nofeature@test.local",
             password_hash=hash_password("Password123!"),
             is_active=True,
+            email_verified=True,
             base_profession="learner",
         )
         db_session.add(user)
@@ -257,6 +260,7 @@ class TestFeatureGating:
             email="noorg@test.local",
             password_hash=hash_password("Password123!"),
             is_active=True,
+            email_verified=True,
             base_profession="learner",
         )
         db_session.add(user)

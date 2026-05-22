@@ -8,6 +8,15 @@
 
 .root :global(.mantine-TextInput-input[data-disabled]) {
   background-color: var(--mantine-color-gray-3);
+  color: var(--mantine-color-gray-6);
+  opacity: 1;
+}
+
+[data-mantine-color-scheme="dark"]
+  .root
+  :global(.mantine-TextInput-input[data-disabled]) {
+  background-color: var(--mantine-color-gray-5);
+  color: var(--mantine-color-gray-7);
 }
 
 .root :global(.mantine-TextInput-input[data-error]) {

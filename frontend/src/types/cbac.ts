@@ -12,7 +12,12 @@ export type BaseProfession =
   (typeof baseProfessionsData.base_professions)[number];
 
 // System permission levels
-export type SystemPermission = "patient" | "staff" | "admin" | "superadmin";
+export type SystemPermission =
+  | "patient"
+  | "teaching_delegate"
+  | "staff"
+  | "admin"
+  | "superadmin";
 
 // Type guard
 export function isCompetencyId(value: string): value is CompetencyId {

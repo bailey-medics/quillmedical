@@ -116,7 +116,7 @@ export default function EditPatientPage() {
   // If we have a selected patient (from route params or state), show the edit form
   if (selectedPatient) {
     return (
-      <Container size="lg" pt="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader title={`Edit ${formatName(selectedPatient.name)}`} />
 
@@ -147,7 +147,7 @@ export default function EditPatientPage() {
 
   // Otherwise, show the patient selection list
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Edit patient" />
 

@@ -314,6 +314,13 @@ base_professions:
   # TEACHING PROFESSIONS
   # ==========================================================================
 
+  - id: teaching_delegate
+    display_name: "Teaching delegate"
+    description: "External delegate with teaching assessment access only (no clinical access)"
+    base_competencies:
+      - view_teaching_cases
+    notes: "Teaching delegates can only take teaching assessments. They have no clinical competencies and cannot access any clinical data, including their own medical records on Quill."
+
   - id: learner
     display_name: "Learner"
     description: "Teaching assessment candidate"

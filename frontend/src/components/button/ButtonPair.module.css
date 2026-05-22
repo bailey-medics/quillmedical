@@ -15,3 +15,11 @@
     width: auto;
   }
 }
+
+.fullWidth {
+  flex-direction: column;
+}
+
+.fullWidth > button {
+  width: 100%;
+}

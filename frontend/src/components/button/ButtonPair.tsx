@@ -46,6 +46,8 @@ interface ButtonPairProps {
   acceptTestId?: string;
   /** Horizontal alignment of the button group (defaults to "flex-end") */
   justify?: "flex-end" | "center";
+  /** Keep buttons full-width at all screen sizes */
+  fullWidth?: boolean;
 }
 
 export default function ButtonPair({
@@ -59,9 +61,14 @@ export default function ButtonPair({
   acceptChildren,
   acceptTestId,
   justify = "flex-end",
+  fullWidth = false,
 }: ButtonPairProps) {
   return (
-    <Group justify={justify} mt="xs" className={classes.group}>
+    <Group
+      justify={justify}
+      mt="xs"
+      className={`${classes.group} ${fullWidth ? classes.fullWidth : ""}`}
+    >
       <Button
         type={acceptType}
         onClick={

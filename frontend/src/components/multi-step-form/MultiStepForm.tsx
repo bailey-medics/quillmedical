@@ -152,10 +152,10 @@ export default function MultiStepForm({
         }
         styles={{
           stepLabel: {
-            fontSize: "var(--mantine-font-size-lg)",
+            fontSize: "var(--mantine-font-size-md)",
           },
           stepIcon: {
-            fontSize: "var(--mantine-font-size-lg)",
+            fontSize: "var(--mantine-font-size-md)",
             color: "var(--mantine-color-text)",
           },
         }}
@@ -180,7 +180,7 @@ export default function MultiStepForm({
         (currentStepConfig.hideCancelButton ? (
           <Group justify="flex-end" mt="xs">
             <Button
-              size="lg"
+              size="md"
               onClick={isLastStep ? (onSubmit ?? onCancel) : nextStep}
             >
               {isLastStep

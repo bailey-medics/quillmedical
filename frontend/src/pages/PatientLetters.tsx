@@ -28,7 +28,7 @@ export default function PatientLetters() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Heading>Clinical letters</Heading>
 

@@ -247,7 +247,7 @@ export default function OrgFeaturesPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={60} />
           <Skeleton height={200} />
@@ -258,7 +258,7 @@ export default function OrgFeaturesPage() {
 
   if (error) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Alert
           icon={<Icon icon={<IconAlertCircle />} size="lg" />}
           title="Error loading features"
@@ -271,7 +271,7 @@ export default function OrgFeaturesPage() {
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Features" />
 

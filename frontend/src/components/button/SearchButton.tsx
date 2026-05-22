@@ -12,9 +12,16 @@ import { IconSearch } from "@/components/icons/appIcons";
 interface SearchButtonProps {
   /** Click handler to toggle the search field */
   onClick: () => void;
+  /** Visual variant: "dark" for dark backgrounds, "light" for light backgrounds */
+  variant?: "dark" | "light";
 }
 
-export default function SearchButton({ onClick }: SearchButtonProps) {
+export default function SearchButton({
+  onClick,
+  variant = "dark",
+}: SearchButtonProps) {
+  const isDark = variant === "dark";
+
   return (
     <ActionIcon
       variant="subtle"
@@ -22,9 +29,11 @@ export default function SearchButton({ onClick }: SearchButtonProps) {
       onClick={onClick}
       aria-label="Open search"
       style={{
-        color: "white",
-        "--ai-hover": "var(--mantine-color-primary-6)",
-        "--ai-hover-color": "white",
+        color: isDark ? "white" : "var(--mantine-color-primary-5)",
+        "--ai-hover": isDark
+          ? "var(--mantine-color-primary-6)"
+          : "var(--mantine-color-gray-1)",
+        "--ai-hover-color": isDark ? "white" : "var(--mantine-color-primary-5)",
       }}
     >
       <IconSearch size={30} stroke={2.5} />

@@ -5,7 +5,30 @@
 - http://localhost:6006/?path=/story/messaging-newmessagemodal--default
 - `AddPatientToOrgPage.tsx` — refactor to use `Form<T>`, `FormStatus`, `SubmitButton`
 
-## Off line
+## RequireAuth tests
+
+- [ ] Add unit tests for `RequireAuth` component (`frontend/src/auth/`).
+      Tests should cover: loading state rendering, authenticated pass-through,
+      session expiry preserving `from` location state, and **explicit logout
+      NOT passing `from` state** (PHI safety — prevents next user being
+      redirected to previous user's page). Tests consistently hang vitest
+      workers inside the Docker container (resource/memory issue); works in
+      isolation but fails with multiple renders. Try running outside Docker
+      or with `--pool=threads` flag.
+
+## Teaching dashboard skeleton flash
+
+- [ ] Eliminate the brief skeleton flash (~0.3s) when navigating to `/teaching`.
+      Caused by `useState(true)` + `useEffect` fetch pattern in
+      `TeachingDashboard.tsx` — every mount shows skeletons immediately until
+      `/teaching/question-banks` and `/teaching/assessments/history` resolve.
+      **Options:** (1) delay skeleton display by ~300ms so fast responses
+      never show it, (2) add a caching layer (React Query / SWR) so revisits
+      render from cache, (3) integrate with Suspense + `startTransition` to
+      keep the previous page visible until data is ready. Option 1 is simplest;
+      option 2 is better long-term as more teaching pages are added.
+
+## Offline
 
 ## Playwright E2E testing
 

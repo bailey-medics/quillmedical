@@ -16,6 +16,7 @@ import {
   IconFileText,
   IconAdjustmentsHorizontal,
   IconBuildingCommunity,
+  IconBuildingHospital,
   IconChalkboardTeacher,
   IconBook,
   IconCurrencyPound,
@@ -34,6 +35,7 @@ type IconName =
   | "file"
   | "adjustments"
   | "building-community"
+  | "building-hospital"
   | "teaching"
   | "book"
   | "pricing"
@@ -64,6 +66,7 @@ const iconMap = {
   file: IconFileText,
   adjustments: IconAdjustmentsHorizontal,
   "building-community": IconBuildingCommunity,
+  "building-hospital": IconBuildingHospital,
   teaching: IconChalkboardTeacher,
   book: IconBook,
   pricing: IconCurrencyPound,

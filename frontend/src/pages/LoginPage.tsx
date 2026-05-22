@@ -12,11 +12,12 @@
 import { LoginForm, type LoginFormData } from "@components/registration";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [requireTotp, setRequireTotp] = useState(false);
 
   const location = useLocation() as { state?: { from?: Location } };
@@ -27,7 +28,18 @@ export default function LoginPage() {
   async function handleSubmit(data: LoginFormData): Promise<FormSubmitResult> {
     try {
       const user = await login(data.username, data.password, data.totp);
-      if (redirectFrom && redirectFrom !== "/") {
+
+      // Safety net: don't redirect to admin paths if the user lacks
+      // admin permissions — prevents PHI leakage across login sessions.
+      const isAdmin =
+        user.system_permissions === "admin" ||
+        user.system_permissions === "superadmin";
+      const canRedirect =
+        redirectFrom &&
+        redirectFrom !== "/" &&
+        (!redirectFrom.startsWith("/admin") || isAdmin);
+
+      if (canRedirect) {
         window.location.assign(redirectFrom);
       } else if (!user.clinical_services_enabled) {
         window.location.assign("/teaching");
@@ -75,7 +87,13 @@ export default function LoginPage() {
 
       let errorMessage: string;
 
-      if (code === "invalid_totp") {
+      if (code === "email_not_verified") {
+        navigate("/verify-email-pending");
+        return {
+          state: "error",
+          message: { title: "Please verify your email first" },
+        };
+      } else if (code === "invalid_totp") {
         setRequireTotp(true);
         errorMessage = requireTotp
           ? "Wrong code entered, please try entering your 6-digit authenticator code again"
@@ -106,5 +124,16 @@ export default function LoginPage() {
     }
   }
 
-  return <LoginForm onSubmit={handleSubmit} requireTotp={requireTotp} />;
+  const title =
+    import.meta.env.VITE_CLINICAL_SERVICES_ENABLED === "false"
+      ? "Sign in to Quill Teaching"
+      : "Sign in to Quill Medical";
+
+  return (
+    <LoginForm
+      onSubmit={handleSubmit}
+      requireTotp={requireTotp}
+      title={title}
+    />
+  );
 }

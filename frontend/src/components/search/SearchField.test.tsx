@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
@@ -87,7 +87,7 @@ describe("SearchField Component", () => {
       });
     });
 
-    it("collapses on blur", async () => {
+    it("collapses on blur when input is empty", async () => {
       const user = userEvent.setup();
       renderWithMantine(<SearchField />);
 
@@ -96,17 +96,39 @@ describe("SearchField Component", () => {
       await user.click(openButton);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText("Search…")).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Search\u2026")).toBeInTheDocument();
       });
 
-      // Blur the input
+      // Blur the input (empty)
       await user.click(document.body);
 
       await waitFor(() => {
         expect(
-          screen.queryByPlaceholderText("Search…"),
+          screen.queryByPlaceholderText("Search\u2026"),
         ).not.toBeInTheDocument();
       });
+    });
+
+    it("stays open on blur when input has text", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(<SearchField />);
+
+      // Expand
+      const openButton = screen.getByLabelText("Open search");
+      await user.click(openButton);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Search\u2026")).toBeInTheDocument();
+      });
+
+      // Type something, then blur
+      const input = screen.getByPlaceholderText("Search\u2026");
+      await user.type(input, "query");
+      await user.click(document.body);
+
+      // Should stay open since there's text
+      expect(screen.getByPlaceholderText("Search\u2026")).toBeInTheDocument();
+      expect(input).toHaveValue("query");
     });
 
     it("returns to search icon after closing", async () => {
@@ -187,6 +209,55 @@ describe("SearchField Component", () => {
         const input = container.querySelector("input");
         expect(input).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("Controlled mode", () => {
+    it("displays controlled value", async () => {
+      const handleChange = vi.fn();
+
+      renderWithMantine(<SearchField value="hello" onChange={handleChange} />);
+
+      // Should auto-expand when value is non-empty
+      await waitFor(() => {
+        const input = screen.getByPlaceholderText("Search\u2026");
+        expect(input).toHaveValue("hello");
+      });
+    });
+
+    it("calls onChange when user types", async () => {
+      const user = userEvent.setup();
+      const handleChange = vi.fn();
+
+      renderWithMantine(<SearchField value="" onChange={handleChange} />);
+
+      // Expand
+      const openButton = screen.getByLabelText("Open search");
+      await user.click(openButton);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Search\u2026")).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText("Search\u2026");
+      await user.type(input, "a");
+
+      expect(handleChange).toHaveBeenCalledWith("a");
+    });
+
+    it("calls onChange with empty string when close is clicked", async () => {
+      const user = userEvent.setup();
+      const handleChange = vi.fn();
+
+      renderWithMantine(<SearchField value="query" onChange={handleChange} />);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Search\u2026")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByLabelText("Close search"));
+
+      expect(handleChange).toHaveBeenCalledWith("");
     });
   });
 });

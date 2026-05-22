@@ -9,7 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@/components/typography/PageHeader";
-import LearningNav from "@/components/navigation/LearningNav";
+import TeachingLearningNav from "@/components/navigation/teaching/TeachingLearningNav";
 import VideoPlayer from "./video-player/VideoPlayer";
 import SlideViewer from "./slide-viewer/SlideViewer";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
@@ -28,16 +28,12 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-/** Build a LearningNav sidebar for the given slide index */
+/** Build a TeachingLearningNav sidebar for the given slide index */
 function learningNav(currentIndex: number, onNavigate?: () => void) {
-  const visited = new Set(
-    Array.from({ length: currentIndex + 1 }, (_, i) => i),
-  );
   return (
-    <LearningNav
+    <TeachingLearningNav
       slides={stubSlides}
       currentIndex={currentIndex}
-      visited={visited}
       onNavigate={onNavigate ?? (() => {})}
       onExit={() => {}}
     />

@@ -26,7 +26,7 @@ interface NoAccessLayoutProps {
  */
 export default function NoAccessLayout({ feature }: NoAccessLayoutProps) {
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg" pt="md" pb="xl">
       <Stack gap="lg">
         <PageHeader title="Welcome to Quill" />
         <StateMessage

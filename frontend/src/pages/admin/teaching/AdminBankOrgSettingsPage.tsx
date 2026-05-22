@@ -2,7 +2,7 @@
  * Admin Bank Organisation Settings Page
  *
  * Per-organisation settings for a question bank: live/closed toggle
- * and coordinator email (when the bank requires it).
+ * and site registration.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -14,7 +14,6 @@ import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import BaseCard from "@/components/base-card/BaseCard";
 import SolidSwitch from "@/components/form/SolidSwitch";
-import TextField from "@/components/form/TextField";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import { StateMessage } from "@/components/message-cards";
 import { Heading } from "@/components/typography";
@@ -33,26 +32,26 @@ import type {
 
 interface BankOrgSettingsFormValues {
   isLive: boolean;
-  coordinatorEmail: string;
+  siteRegistration: boolean;
 }
 
 interface SettingsFieldsProps {
-  bank: AdminBankDetail;
+  savedIsLive: boolean;
 }
 
-function SettingsFields({ bank }: SettingsFieldsProps) {
+function SettingsFields({ savedIsLive }: SettingsFieldsProps) {
   const navigate = useNavigate();
   const { bankId } = useParams<{ bankId: string }>();
   const { methods } = useFormContext();
-  const isLive = methods.watch("isLive");
 
   return (
     <BaseCard>
       <Stack gap="md">
         <Group justify="space-between">
           <Heading>Exam status</Heading>
-          <ActiveStatusBadge active={isLive} />
+          <ActiveStatusBadge active={savedIsLive} />
         </Group>
+        <FormStatus />
         <Controller
           name="isLive"
           control={methods.control}
@@ -64,25 +63,21 @@ function SettingsFields({ bank }: SettingsFieldsProps) {
             />
           )}
         />
-
-        {bank.email_coordinator_on_pass && (
-          <>
-            <Heading>Coordinator email</Heading>
-            <TextField
-              label="Email address"
-              description="Receives certificate copies when students pass"
-              placeholder="coordinator@example.com"
-              type="email"
-              {...methods.register("coordinatorEmail")}
-              error={
-                methods.formState.errors.coordinatorEmail?.message as string
-              }
+        <Controller
+          name="siteRegistration"
+          control={methods.control}
+          render={({ field }) => (
+            <SolidSwitch
+              label="Site registration"
+              checked={field.value}
+              onChange={(e) => field.onChange(e.currentTarget.checked)}
             />
-          </>
-        )}
+          )}
+        />
 
-        <FormStatus />
-        <SubmitButton onCancel={() => navigate(`/admin/teaching/${bankId}`)} />
+        <SubmitButton
+          onCancel={() => navigate(`/admin/teaching/modules/${bankId}`)}
+        />
       </Stack>
     </BaseCard>
   );
@@ -96,6 +91,7 @@ export default function AdminBankOrgSettingsPage() {
   const [org, setOrg] = useState<BankOrganisation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savedIsLive, setSavedIsLive] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -114,6 +110,7 @@ export default function AdminBankOrgSettingsPage() {
         return;
       }
       setOrg(thisOrg);
+      setSavedIsLive(thisOrg.is_live);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
@@ -133,9 +130,10 @@ export default function AdminBankOrgSettingsPage() {
         `/teaching/admin/banks/${bankId}/organisations/${orgId}/settings`,
         {
           is_live: data.isLive,
-          coordinator_email: data.coordinatorEmail || null,
+          site_registration: data.siteRegistration,
         },
       );
+      setSavedIsLive(data.isLive);
       return {
         state: "success",
         message: { title: "Saved", description: "Settings updated" },
@@ -154,7 +152,7 @@ export default function AdminBankOrgSettingsPage() {
 
   if (loading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <Skeleton height={36} width={300} />
           <Skeleton height={120} />
@@ -166,7 +164,7 @@ export default function AdminBankOrgSettingsPage() {
 
   if (error || !bank || !org) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -178,13 +176,13 @@ export default function AdminBankOrgSettingsPage() {
   }
 
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <Group gap="sm">
           <IconButton
             icon={<IconArrowLeft />}
             variant="subtle"
-            onClick={() => navigate(`/admin/teaching/${bankId}`)}
+            onClick={() => navigate(`/admin/teaching/modules/${bankId}`)}
             aria-label="Back to bank detail"
           />
           <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
@@ -193,14 +191,14 @@ export default function AdminBankOrgSettingsPage() {
         <Form<BankOrgSettingsFormValues>
           defaultValues={{
             isLive: org.is_live,
-            coordinatorEmail: org.coordinator_email ?? "",
+            siteRegistration: org.site_registration,
           }}
           onSubmit={handleSubmit}
           submitLabel="Save"
           submittingLabel="Saving…"
           disableWhenClean
         >
-          <SettingsFields bank={bank} />
+          <SettingsFields savedIsLive={savedIsLive} />
         </Form>
       </Stack>
     </Container>

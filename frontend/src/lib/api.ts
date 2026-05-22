@@ -90,9 +90,23 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
 
   if (res.status === 401) {
     // Redirect to the login page relative to the configured base URL.
+    // Skip redirect for guest-accessible paths (password reset, register, etc.)
     const base = (import.meta.env.BASE_URL as string) || "/";
     const loginPath = `${base.replace(/\/$/, "")}/login`;
-    if (window.location.pathname !== loginPath) {
+    const guestPaths = [
+      "/login",
+      "/register",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+      "/verify-email-pending",
+      "/teaching/register",
+    ];
+    const currentPath = window.location.pathname;
+    const isGuestPath = guestPaths.some(
+      (p) => currentPath === p || currentPath.startsWith(p + "/"),
+    );
+    if (!isGuestPath && currentPath !== loginPath) {
       window.location.assign(loginPath);
     }
   }

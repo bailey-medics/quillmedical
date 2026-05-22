@@ -162,7 +162,7 @@ export default function ActivatePatientPage() {
   // If we have a specific patient (from route params or state), show the activation confirmation
   if (specificPatient) {
     return (
-      <Container size="lg" pt="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader title={`Activate ${formatName(specificPatient.name)}`} />
 
@@ -237,7 +237,7 @@ export default function ActivatePatientPage() {
 
   // Otherwise, show patient selection list
   return (
-    <Container size="lg" pt="xl">
+    <Container size="lg">
       <Stack gap="lg">
         <PageHeader title="Activate patient" />
 

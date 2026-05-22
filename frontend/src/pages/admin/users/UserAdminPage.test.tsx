@@ -56,6 +56,7 @@ const mockUserDetails = {
   additional_competencies: ["cardiology", "surgery"],
   removed_competencies: ["dermatology"],
   system_permissions: "staff" as const,
+  is_active: true,
 };
 
 describe("UserAdminPage", () => {
@@ -119,19 +120,6 @@ describe("UserAdminPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("test@example.com")).toBeInTheDocument();
-      });
-    });
-
-    it("displays user ID", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockUserDetails);
-
-      renderWithRouter(<UserAdminPage />, {
-        routePath: "/admin/users/:id",
-        initialRoute: "/admin/users/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("1")).toBeInTheDocument();
       });
     });
   });
@@ -301,6 +289,22 @@ describe("UserAdminPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Deactivate user")).toBeInTheDocument();
+      });
+    });
+
+    it("displays reactivate user action card when user is inactive", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockUserDetails,
+        is_active: false,
+      });
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Reactivate user")).toBeInTheDocument();
       });
     });
   });

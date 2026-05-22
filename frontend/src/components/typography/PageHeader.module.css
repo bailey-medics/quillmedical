@@ -2,16 +2,15 @@
  * PageHeader styles
  *
  * Responsive page-level heading: 1.875rem mobile → 2.5rem desktop.
- * Uses primary-6 from the navy scale.
+ * Breakpoint controlled by theme.breakpoints.sm via useMediaQuery.
  */
 
-.lgTitle {
+.smTitle {
   font-size: 1.875rem !important;
   color: var(--mantine-color-text);
 }
 
-@media (width >= 48em) {
-  .lgTitle {
-    font-size: 2.5rem !important;
-  }
+.lgTitle {
+  font-size: 2.5rem !important;
+  color: var(--mantine-color-text);
 }

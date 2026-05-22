@@ -1,9 +1,9 @@
 /**
- * LearningNav Component
+ * TeachingLearningNav Component
  *
  * Slide navigation sidebar for the learning section. Renders a
  * table-of-contents view with slide titles, type icons, and
- * current position highlighting. Used in MainLayout's sidebar
+ * current position highlighting. Used in TeachingLayout's sidebar
  * area on desktop and NavigationDrawer on mobile.
  */
 
@@ -18,26 +18,19 @@ import {
 } from "@/components/icons/appIcons";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import type { CompiledSlide, SlideLayout } from "@/features/teaching/types";
-import { typographyTokens } from "@/theme";
+import { NAV_ICON_COLOUR, NAV_ICON_SIZE, navLinkStyles } from "../navStyles";
 import type { ReactElement } from "react";
 
-export interface LearningNavProps {
+export interface TeachingLearningNavProps {
   /** Compiled slide list */
   slides: CompiledSlide[];
   /** Current slide index (0-based) */
   currentIndex: number;
-  /** Set of visited slide indices */
-  visited: Set<number>;
   /** Called when a slide title is clicked */
   onNavigate: (slideIndex: number) => void;
   /** Called when the exit link is clicked */
   onExit: () => void;
 }
-
-/** Icon size matching NavIcon "lg" (22px) */
-const NAV_ICON_SIZE = 22;
-/** Icon colour matching NavIcon */
-const NAV_ICON_COLOUR = "var(--mantine-color-gray-6)";
 
 const layoutIconMap: Record<SlideLayout, ReactElement> = {
   "section-title": (
@@ -53,21 +46,14 @@ const layoutIconMap: Record<SlideLayout, ReactElement> = {
   default: <IconFileText size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />,
 };
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${String(secs).padStart(2, "0")}`;
-}
-
-export default function LearningNav({
+export default function TeachingLearningNav({
   slides,
   currentIndex,
-  visited,
   onNavigate,
   onExit,
-}: LearningNavProps) {
+}: TeachingLearningNavProps) {
   return (
-    <Stack gap="xs" p="sm">
+    <Stack gap="xs" p="sm" pb={60}>
       <TeachingProgressBar current={currentIndex + 1} total={slides.length} />
 
       {slides.map((slide) => (
@@ -75,36 +61,21 @@ export default function LearningNav({
           key={slide.slideIndex}
           label={slide.title}
           leftSection={layoutIconMap[slide.layout]}
-          rightSection={
-            !visited.has(slide.slideIndex) && slide.durationSeconds
-              ? formatDuration(slide.durationSeconds)
-              : undefined
-          }
           active={slide.slideIndex === currentIndex}
           onClick={() => onNavigate(slide.slideIndex)}
-          styles={{
-            label: {
-              fontSize: "var(--mantine-font-size-md)",
-              fontWeight: typographyTokens.fontWeights.body,
-            },
-          }}
+          styles={navLinkStyles}
         />
       ))}
 
       <Divider my="xs" />
 
       <NavLink
-        label="Exit"
+        label="Exit lesson"
         leftSection={
           <IconArrowLeft size={NAV_ICON_SIZE} color={NAV_ICON_COLOUR} />
         }
         onClick={onExit}
-        styles={{
-          label: {
-            fontSize: "var(--mantine-font-size-md)",
-            fontWeight: typographyTokens.fontWeights.body,
-          },
-        }}
+        styles={navLinkStyles}
       />
     </Stack>
   );

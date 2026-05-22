@@ -218,7 +218,7 @@ export default function MessageThread() {
 
   if (isLoading) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Loader />
       </Container>
     );
@@ -226,7 +226,7 @@ export default function MessageThread() {
 
   if (error || !conversation) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <Stack gap="lg">
           <PageHeader title="Conversation not found" />
         </Stack>

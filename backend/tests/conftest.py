@@ -20,6 +20,8 @@ os.environ.setdefault("VAPID_PRIVATE", "test_vapid_private_key")
 os.environ.setdefault("COMPANY_EMAIL", "test@example.com")
 os.environ.setdefault("AUTH_DB_PASSWORD", "test_auth_password")
 os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
+# Force dry-run to prevent tests from sending real emails via Resend
+os.environ["EMAIL_DRY_RUN"] = "true"
 
 from app.db import get_session
 from app.main import app, limiter, require_clinical_services
@@ -85,6 +87,7 @@ def test_user(db_session: Session) -> User:
         email="test@example.com",
         password_hash=hash_password("TestPassword123!"),
         is_active=True,
+        email_verified=True,
     )
     db_session.add(user)
     db_session.commit()
@@ -110,6 +113,7 @@ def test_clinician(db_session: Session, clinician_role: Role) -> User:
         email="clinician@example.com",
         password_hash=hash_password("ClinicianPassword123!"),
         is_active=True,
+        email_verified=True,
     )
     user.roles.append(clinician_role)
     db_session.add(user)
@@ -155,6 +159,7 @@ def test_admin(db_session: Session) -> User:
         email="admin@example.com",
         password_hash=hash_password("AdminPassword123!"),
         is_active=True,
+        email_verified=True,
         system_permissions="admin",
     )
     db_session.add(user)

@@ -37,14 +37,14 @@ export default function PatientDocumentView() {
 
   if (!doc) {
     return (
-      <Container size="lg" py="xl">
+      <Container size="lg">
         <ErrorMessage>Document not found.</ErrorMessage>
       </Container>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg">
       <Document {...doc} />
     </Container>
   );
