@@ -250,21 +250,22 @@ prune-branches:
 
 
 alias rb := rebase
-# Rebase current feature branch onto an up-to-date main
+# Rebase current feature branch onto an up-to-date main (or just pull if on main)
 rebase:
     #!/usr/bin/env bash
     {{initialise}} "rebase"
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [ "$BRANCH" = "main" ]; then
-        echo "Already on main — switch to a feature branch first"
-        exit 1
+        echo "On main — pulling latest..."
+        git pull
+    else
+        echo "Updating main and rebasing $BRANCH onto it..."
+        git checkout main
+        git pull
+        git checkout "$BRANCH"
+        git rebase main
+        git push --force-with-lease
     fi
-    echo "Updating main and rebasing $BRANCH onto it..."
-    git checkout main
-    git pull
-    git checkout "$BRANCH"
-    git rebase main
-    git push --force-with-lease
 
 
 alias pi := poetry-install
