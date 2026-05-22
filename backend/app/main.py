@@ -933,9 +933,9 @@ def register(
         user.base_profession = "learner"
 
     db.add(user)
-    db.flush()  # Assigns user.id so we can create the org membership
+    db.flush()  # Assigns user.id so we can create memberships
 
-    # Add the user to the selected organisation as a primary member
+    # Add the user to the selected organisation
     if payload.organisation_id is not None:
         org = db.scalar(
             select(Organization).where(
@@ -956,22 +956,25 @@ def register(
 
     # Add the user to the selected site as a trainee
     if payload.site_id is not None:
-        # Validate site exists and is linked to the provided organisation
         if payload.organisation_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="organisation_id required when site_id is provided",
             )
-        site_link = db.execute(
-            select(organisation_site.c.site_id).where(
-                organisation_site.c.site_id == payload.site_id,
+        # Verify site exists AND is linked to the provided organisation
+        site = db.scalar(
+            select(Site)
+            .join(
+                organisation_site,
+                organisation_site.c.site_id == Site.id,
+            )
+            .where(
+                Site.id == payload.site_id,
                 organisation_site.c.organisation_id == payload.organisation_id,
             )
-        ).first()
-        if site_link is None:
-            raise HTTPException(
-                status_code=400, detail="Site not found for organisation"
-            )
+        )
+        if site is None:
+            raise HTTPException(status_code=400, detail="Site not found")
         db.execute(
             site_staff_member.insert().values(
                 site_id=payload.site_id,
@@ -1180,6 +1183,8 @@ class AdminUserCreateIn(BaseModel):
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
         system_permissions: System permission level (patient, staff, admin, superadmin).
+        organisation_ids: Organisations to assign user to (optional).
+        site_ids: Sites to assign user to as trainee (optional).
     """
 
     model_config = {"extra": "forbid"}
@@ -1192,6 +1197,8 @@ class AdminUserCreateIn(BaseModel):
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
     system_permissions: str = "patient"
+    organisation_ids: list[int] = []
+    site_ids: list[int] = []
 
 
 class AdminUserUpdateIn(BaseModel):
@@ -1221,6 +1228,8 @@ class AdminUserUpdateIn(BaseModel):
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
     system_permissions: str | None = None
+    organisation_ids: list[int] | None = None
+    site_ids: list[int] | None = None
 
 
 @router.post("/users")
@@ -1285,6 +1294,29 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
+    # Validate organisation access for non-superadmins
+    for org_id in payload.organisation_ids:
+        org = db.scalar(select(Organization).where(Organization.id == org_id))
+        if not org:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Organisation {org_id} not found",
+            )
+        if current_user.system_permissions == "admin":
+            if org_id not in get_user_org_ids(db, current_user.id):
+                raise HTTPException(
+                    status_code=403,
+                    detail="You do not have access to this organisation",
+                )
+
+    for s_id in payload.site_ids:
+        site = db.get(Site, s_id)
+        if not site:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Site {s_id} not found",
+            )
+
     # Create user
     user = User(
         username=username,
@@ -1297,6 +1329,28 @@ def create_user_with_cbac(
         system_permissions=payload.system_permissions,
     )
     db.add(user)
+    db.flush()
+
+    # Assign to organisations
+    for org_id in payload.organisation_ids:
+        db.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org_id,
+                user_id=user.id,
+                is_primary=(org_id == payload.organisation_ids[0]),
+            )
+        )
+
+    # Assign to sites as trainee
+    for s_id in payload.site_ids:
+        db.execute(
+            site_staff_member.insert().values(
+                site_id=s_id,
+                user_id=user.id,
+                role="trainee",
+            )
+        )
+
     db.commit()
     db.refresh(user)
 
@@ -1407,6 +1461,56 @@ def update_user(
 
     if payload.system_permissions is not None:
         user.system_permissions = payload.system_permissions
+
+    # Update organisation memberships if provided
+    if payload.organisation_ids is not None:
+        # Remove existing org memberships
+        db.execute(
+            organisation_staff_member.delete().where(
+                organisation_staff_member.c.user_id == user_id
+            )
+        )
+        # Add new org memberships
+        for i, org_id in enumerate(payload.organisation_ids):
+            org = db.scalar(
+                select(Organization).where(Organization.id == org_id)
+            )
+            if not org:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Organisation {org_id} not found",
+                )
+            db.execute(
+                organisation_staff_member.insert().values(
+                    user_id=user_id,
+                    organisation_id=org_id,
+                    is_primary=(i == 0),
+                )
+            )
+
+    # Update site memberships if provided
+    if payload.site_ids is not None:
+        # Remove existing site memberships
+        db.execute(
+            site_staff_member.delete().where(
+                site_staff_member.c.user_id == user_id
+            )
+        )
+        # Add new site memberships
+        for s_id in payload.site_ids:
+            site = db.scalar(select(Site).where(Site.id == s_id))
+            if not site:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Site {s_id} not found",
+                )
+            db.execute(
+                site_staff_member.insert().values(
+                    user_id=user_id,
+                    site_id=s_id,
+                    role="trainee",
+                )
+            )
 
     # Commit changes
     db.commit()
@@ -1960,9 +2064,31 @@ def list_users(
     if u.system_permissions == "admin":
         admin_orgs = get_user_org_ids(db, u.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
-        if not org_scoped_ids:
+
+        # Also include site-only members for sites linked to admin's orgs
+        site_ids_for_orgs = {
+            row[0]
+            for row in db.execute(
+                select(organisation_site.c.site_id).where(
+                    organisation_site.c.organisation_id.in_(admin_orgs)
+                )
+            ).all()
+        }
+        site_scoped_ids: set[int] = set()
+        if site_ids_for_orgs:
+            site_scoped_ids = {
+                row[0]
+                for row in db.execute(
+                    select(site_staff_member.c.user_id).where(
+                        site_staff_member.c.site_id.in_(site_ids_for_orgs)
+                    )
+                ).all()
+            }
+
+        all_scoped_ids = org_scoped_ids | site_scoped_ids
+        if not all_scoped_ids:
             return {"users": []}
-        stmt = stmt.where(User.id.in_(org_scoped_ids))
+        stmt = stmt.where(User.id.in_(all_scoped_ids))
 
     try:
         users = db.execute(stmt).scalars().unique().all()
@@ -2064,6 +2190,24 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Get user's org and site memberships
+    user_org_ids = [
+        row[0]
+        for row in db.execute(
+            select(organisation_staff_member.c.organisation_id).where(
+                organisation_staff_member.c.user_id == user_id
+            )
+        ).all()
+    ]
+    user_site_ids = [
+        row[0]
+        for row in db.execute(
+            select(site_staff_member.c.site_id).where(
+                site_staff_member.c.user_id == user_id
+            )
+        ).all()
+    ]
+
     return {
         "id": user.id,
         "username": user.username,
@@ -2074,6 +2218,8 @@ def get_user(
         "removed_competencies": user.removed_competencies or [],
         "system_permissions": user.system_permissions,
         "is_active": user.is_active,
+        "organisation_ids": user_org_ids,
+        "site_ids": user_site_ids,
     }
 
 

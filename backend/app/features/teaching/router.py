@@ -1424,10 +1424,11 @@ def list_delegates(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[DelegateOut]:
-    """List all delegates with assessments in the caller's org(s).
+    """List all delegates with access to the caller's org(s).
 
-    Returns users who have taken assessments under organisations
-    the caller belongs to, with their latest assessment result.
+    Returns all users who are members of the caller's organisations
+    (either direct org staff or site staff), with their latest
+    assessment result if they have one.
     """
     from app.models import (
         Site,
@@ -1448,30 +1449,41 @@ def list_delegates(
     if not caller_org_ids:
         return []
 
-    # Get all assessments for those orgs
-    assessments = (
-        db.execute(
-            select(Assessment)
-            .where(Assessment.organisation_id.in_(caller_org_ids))
-            .order_by(Assessment.started_at.desc())
-        )
-        .scalars()
-        .all()
+    # Get all members: org staff + site staff for linked sites
+    org_member_ids = set(
+        row[0]
+        for row in db.execute(
+            select(organisation_staff_member.c.user_id).where(
+                organisation_staff_member.c.organisation_id.in_(
+                    caller_org_ids
+                ),
+            )
+        ).all()
     )
 
-    # Group by user_id — keep only latest assessment per user
-    latest_by_user: dict[int, Assessment] = {}
-    all_by_user: dict[int, list[Assessment]] = {}
-    for a in assessments:
-        all_by_user.setdefault(a.user_id, []).append(a)
-        if a.user_id not in latest_by_user:
-            latest_by_user[a.user_id] = a
+    site_member_ids = set(
+        row[0]
+        for row in db.execute(
+            select(site_staff_member.c.user_id)
+            .join(
+                organisation_site,
+                organisation_site.c.site_id == site_staff_member.c.site_id,
+            )
+            .where(
+                organisation_site.c.organisation_id.in_(caller_org_ids),
+            )
+        ).all()
+    )
 
-    if not latest_by_user:
+    member_ids = org_member_ids | site_member_ids
+    # Exclude the caller themselves
+    member_ids.discard(user.id)
+
+    if not member_ids:
         return []
 
     # Fetch user details
-    user_ids = list(latest_by_user.keys())
+    user_ids = list(member_ids)
     users_map: dict[int, User] = {
         u.id: u
         for u in db.execute(select(User).where(User.id.in_(user_ids)))
@@ -1480,8 +1492,28 @@ def list_delegates(
         .all()
     }
 
+    # Get assessments for these users in caller's orgs
+    assessments = (
+        db.execute(
+            select(Assessment)
+            .where(
+                Assessment.organisation_id.in_(caller_org_ids),
+                Assessment.user_id.in_(user_ids),
+            )
+            .order_by(Assessment.started_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    latest_by_user: dict[int, Assessment] = {}
+    all_by_user: dict[int, list[Assessment]] = {}
+    for a in assessments:
+        all_by_user.setdefault(a.user_id, []).append(a)
+        if a.user_id not in latest_by_user:
+            latest_by_user[a.user_id] = a
+
     # Get site and clinical lead info for each delegate
-    # (user as trainee at a site linked to one of our orgs)
     site_info: dict[int, tuple[str | None, str | None]] = {}
     for uid in user_ids:
         site_row = db.execute(
@@ -1528,29 +1560,35 @@ def list_delegates(
 
     # Build response
     delegates: list[DelegateOut] = []
-    for uid, latest in latest_by_user.items():
+    for uid in user_ids:
         u = users_map.get(uid)
         if not u:
             continue
 
-        # Determine assessment result
-        if latest.is_passed is True:
-            result = "pass"
-        elif latest.is_passed is False:
-            result = "fail"
-        elif latest.completed_at is None:
-            result = "incomplete"
-        else:
-            result = None
+        latest = latest_by_user.get(uid)
 
-        # First time pass: passed on first attempt
-        user_assessments = all_by_user.get(uid, [])
-        completed_assessments = [
-            a for a in user_assessments if a.completed_at is not None
-        ]
-        first_time_pass = (
-            latest.is_passed is True and len(completed_assessments) == 1
-        )
+        # Determine assessment result
+        result: str | None = None
+        first_time_pass = False
+        assessment_date = None
+
+        if latest:
+            if latest.is_passed is True:
+                result = "pass"
+            elif latest.is_passed is False:
+                result = "fail"
+            elif latest.completed_at is None:
+                result = "incomplete"
+            assessment_date = latest.completed_at
+
+            # First time pass: passed on first attempt
+            user_assessments = all_by_user.get(uid, [])
+            completed_assessments = [
+                a for a in user_assessments if a.completed_at is not None
+            ]
+            first_time_pass = (
+                latest.is_passed is True and len(completed_assessments) == 1
+            )
 
         s_name, cl_name = site_info.get(uid, (None, None))
 
@@ -1563,7 +1601,7 @@ def list_delegates(
                 clinical_lead=cl_name,
                 learning_completed=None,
                 assessment_result=result,
-                assessment_date=latest.completed_at,
+                assessment_date=assessment_date,
                 first_time_pass=first_time_pass,
             )
         )
