@@ -75,7 +75,7 @@ function DataTableControlledInner<T>({
   error,
   emptyMessage,
   getRowKey,
-  pageSize,
+  pageSize = 10,
   filterData,
   filterLabel = "Filter",
   filterAriaLabel = "Filter",

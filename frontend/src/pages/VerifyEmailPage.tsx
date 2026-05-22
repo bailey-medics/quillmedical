@@ -12,8 +12,9 @@ import { useEffect, useState } from "react";
 import { Center, Stack } from "@mantine/core";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Heading, BodyText, TextLink } from "@components/typography";
+import { BodyText, TextLink } from "@components/typography";
 import { ResultMessage, StateMessage } from "@components/message-cards";
+import { IconClock, IconAlertCircle } from "@components/icons/appIcons";
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -36,7 +37,12 @@ export default function VerifyEmailPage() {
   if (status === "loading") {
     return (
       <Center mih="100vh">
-        <StateMessage state="loading" title="Verifying your email…" />
+        <StateMessage
+          icon={<IconClock />}
+          title="Verifying your email…"
+          description="Please wait while we verify your email address."
+          colour="info"
+        />
       </Center>
     );
   }
@@ -45,11 +51,8 @@ export default function VerifyEmailPage() {
     return (
       <Center mih="100vh">
         <Stack align="center" gap="md">
-          <ResultMessage
-            result="pass"
-            title="Email verified"
-            description="Your email has been verified. You can now log in."
-          />
+          <ResultMessage variant="success" title="Email verified" />
+          <BodyText>Your email has been verified. You can now log in.</BodyText>
           <TextLink to="/login">Go to login</TextLink>
         </Stack>
       </Center>
@@ -59,11 +62,12 @@ export default function VerifyEmailPage() {
   return (
     <Center mih="100vh">
       <Stack align="center" gap="md">
-        <Heading order={2}>Verification failed</Heading>
-        <BodyText>
-          This link is invalid or has expired. Please request a new verification
-          email.
-        </BodyText>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Verification failed"
+          description="This link is invalid or has expired. Please request a new verification email."
+          colour="alert"
+        />
         <TextLink to="/verify-email-pending">
           Resend verification email
         </TextLink>

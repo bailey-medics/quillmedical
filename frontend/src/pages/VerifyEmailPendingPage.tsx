@@ -36,13 +36,13 @@ export default function VerifyEmailPendingPage() {
   return (
     <Center mih="100vh">
       <Stack align="center" gap="md" maw={420}>
-        <Heading order={2}>Check your email</Heading>
-        <BodyText ta="center">
+        <Heading>Check your email</Heading>
+        <BodyText justify="centre">
           We&apos;ve sent a verification link to{" "}
           {email ? <strong>{email}</strong> : "your email address"}. Please
           click the link to activate your account.
         </BodyText>
-        <BodyText ta="center" c="dimmed" size="sm">
+        <BodyText justify="centre" c="dimmed">
           The link expires in 60 minutes. Check your spam folder if you
           don&apos;t see it.
         </BodyText>
@@ -51,11 +51,7 @@ export default function VerifyEmailPendingPage() {
             Resend verification email
           </Button>
         )}
-        {resent && (
-          <BodyText c="green" size="sm">
-            Verification email resent.
-          </BodyText>
-        )}
+        {resent && <BodyText c="green">Verification email resent.</BodyText>}
         <TextLink to="/login">Back to login</TextLink>
       </Stack>
     </Center>

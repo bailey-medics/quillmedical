@@ -198,6 +198,11 @@ export default function DataTable<T>({
     ? sortedData.slice((activePage - 1) * pageSize, activePage * pageSize)
     : sortedData;
 
+  // Show pagination footer when data exceeds the default threshold (10 items)
+  const showPagination = pageSize && sortedData.length > 10;
+  // Only show nav buttons when there are multiple pages
+  const showNav = totalPages > 1;
+
   // Error state
   if (error) {
     return (
@@ -287,13 +292,15 @@ export default function DataTable<T>({
             onClick={onRowClick ?? (() => {})}
           />
         ))}
-        {pageSize && (
+        {showPagination && (
           <TablePagination>
-            <TablePagination.Nav
-              total={totalPages}
-              value={activePage}
-              onChange={setPage}
-            />
+            {showNav && (
+              <TablePagination.Nav
+                total={totalPages}
+                value={activePage}
+                onChange={setPage}
+              />
+            )}
             {fullControls && (
               <TablePagination.PageSize
                 value={pageSize}
@@ -357,13 +364,15 @@ export default function DataTable<T>({
           ))}
         </Table.Tbody>
       </Table>
-      {pageSize && (
+      {showPagination && (
         <TablePagination>
-          <TablePagination.Nav
-            total={totalPages}
-            value={activePage}
-            onChange={setPage}
-          />
+          {showNav && (
+            <TablePagination.Nav
+              total={totalPages}
+              value={activePage}
+              onChange={setPage}
+            />
+          )}
           {fullControls && (
             <TablePagination.PageSize
               value={pageSize}

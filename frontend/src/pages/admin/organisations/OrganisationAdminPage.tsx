@@ -12,7 +12,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
-  BodyText,
   BodyTextInline,
   BodyTextBold,
   Heading,
@@ -293,27 +292,6 @@ export default function OrganisationAdminPage() {
                 </BodyTextInline>
               </Group>
             </Stack>
-          </Stack>
-        </BaseCard>
-
-        {/* Statistics */}
-        <BaseCard>
-          <Stack gap="md">
-            <Heading>Statistics</Heading>
-
-            <Group gap="xl">
-              <Stack gap={4}>
-                <BodyText>Staff members</BodyText>
-                <BodyTextBold>{org.staff_count}</BodyTextBold>
-              </Stack>
-
-              {clinicalServicesEnabled && (
-                <Stack gap={4}>
-                  <BodyText>Patients</BodyText>
-                  <BodyTextBold>{org.patient_count}</BodyTextBold>
-                </Stack>
-              )}
-            </Group>
           </Stack>
         </BaseCard>
 
