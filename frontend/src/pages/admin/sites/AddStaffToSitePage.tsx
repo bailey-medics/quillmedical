@@ -35,6 +35,15 @@ interface ApiUser {
   email: string;
 }
 
+interface SiteStaff {
+  id: number;
+  role: string;
+}
+
+interface SiteData {
+  staff: SiteStaff[];
+}
+
 interface AddStaffFormValues {
   userId: string | null;
   role: string | null;
@@ -44,13 +53,21 @@ function AddStaffFields({
   siteId,
   users,
   usersLoading,
+  hasClinicalLead,
 }: {
   siteId: string;
   users: ApiUser[];
   usersLoading: boolean;
+  hasClinicalLead: boolean;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
+
+  const roleOptions = ROLE_OPTIONS.map((opt) =>
+    opt.value === "clinical_lead" && hasClinicalLead
+      ? { ...opt, disabled: true }
+      : opt,
+  );
 
   return (
     <Stack gap="md">
@@ -87,7 +104,7 @@ function AddStaffFields({
               <SelectField
                 label="Role"
                 placeholder="Select a role"
-                data={ROLE_OPTIONS}
+                data={roleOptions}
                 value={field.value as string | null}
                 onChange={field.onChange}
                 error={fieldState.error?.message}
@@ -112,25 +129,30 @@ export default function AddStaffToSitePage() {
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasClinicalLead, setHasClinicalLead] = useState(false);
 
   useEffect(() => {
-    async function fetchUsers() {
+    async function fetchData() {
       try {
-        const response = await api.get<{ users: ApiUser[] }>(
-          "/users?permission_level=staff",
+        const [usersResponse, siteResponse] = await Promise.all([
+          api.get<{ users: ApiUser[] }>("/users?permission_level=staff"),
+          api.get<SiteData>(`/sites/${id}`),
+        ]);
+        setUsers(usersResponse.users);
+        setHasClinicalLead(
+          siteResponse.staff.some((s) => s.role === "clinical_lead"),
         );
-        setUsers(response.users);
       } catch (err) {
         setLoadError(
-          err instanceof Error ? err.message : "Failed to load users",
+          err instanceof Error ? err.message : "Failed to load data",
         );
       } finally {
         setUsersLoading(false);
       }
     }
 
-    fetchUsers();
-  }, []);
+    fetchData();
+  }, [id]);
 
   async function handleSubmit(
     data: AddStaffFormValues,
@@ -182,6 +204,7 @@ export default function AddStaffToSitePage() {
             siteId={id!}
             users={users}
             usersLoading={usersLoading}
+            hasClinicalLead={hasClinicalLead}
           />
         </Form>
       </Stack>

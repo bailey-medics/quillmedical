@@ -243,11 +243,6 @@ export default function OrganisationAdminPage() {
                   {org.location || "Not specified"}
                 </BodyTextInline>
               </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Organisation ID:</BodyTextBold>
-                <BodyText>{org.id}</BodyText>
-              </Group>
             </Stack>
           </Stack>
         </BaseCard>
@@ -277,9 +272,9 @@ export default function OrganisationAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Heading>Staff members</Heading>
+              <Heading>Organisation staff members</Heading>
               <AddButton
-                label="Add staff member"
+                label="Add staff"
                 onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
               />
             </Group>

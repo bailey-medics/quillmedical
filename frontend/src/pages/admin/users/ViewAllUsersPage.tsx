@@ -19,7 +19,12 @@ interface User {
   id: string;
   username: string;
   email: string;
-  system_permissions: "superadmin" | "admin" | "staff" | "patient";
+  system_permissions:
+    | "superadmin"
+    | "admin"
+    | "staff"
+    | "teaching_delegate"
+    | "patient";
   is_active: boolean;
 }
 

@@ -23,6 +23,7 @@ from app.system_permissions.permissions import (
     PERMISSION_PATIENT,
     PERMISSION_STAFF,
     PERMISSION_SUPERADMIN,
+    PERMISSION_TEACHING_DELEGATE,
     SystemPermission,
     check_permission_level,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "PERMISSION_STAFF",
     "PERMISSION_ADMIN",
     "PERMISSION_SUPERADMIN",
+    "PERMISSION_TEACHING_DELEGATE",
     "SystemPermission",
     "check_permission_level",
     "requires_staff",

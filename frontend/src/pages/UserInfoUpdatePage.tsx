@@ -261,6 +261,10 @@ function Step3Permissions({
 }) {
   const permissionOptions = [
     { value: "patient", label: "Patient - No staff access" },
+    {
+      value: "teaching_delegate",
+      label: "Teaching delegate - Assessments only",
+    },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
     { value: "superadmin", label: "Super Admin - Full system access" },

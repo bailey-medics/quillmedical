@@ -230,7 +230,7 @@ export default function SiteAdminPage() {
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Heading>Staff</Heading>
+              <Heading>Site specific staff members</Heading>
               <AddButton
                 label="Add staff"
                 onClick={() => navigate(`/admin/sites/${id}/add-staff`)}

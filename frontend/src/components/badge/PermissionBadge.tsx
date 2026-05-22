@@ -20,7 +20,12 @@ import {
 } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 
-export type UserPermission = "superadmin" | "admin" | "staff" | "patient";
+export type UserPermission =
+  | "superadmin"
+  | "admin"
+  | "staff"
+  | "teaching_delegate"
+  | "patient";
 interface PermissionBadgeProps {
   /** System permission level */
   permission: UserPermission;
@@ -34,7 +39,16 @@ const PERMISSION_CONFIG: Record<UserPermission, BadgeColourConfig> = {
   superadmin: badgeColours.info,
   admin: badgeColours.success,
   staff: badgeColours.neutral,
+  teaching_delegate: badgeColours.accent,
   patient: badgeColours.alert,
+};
+
+const PERMISSION_LABELS: Record<UserPermission, string> = {
+  superadmin: "SUPERADMIN",
+  admin: "ADMIN",
+  staff: "STAFF",
+  teaching_delegate: "TEACHING DELEGATE",
+  patient: "PATIENT",
 };
 
 /**
@@ -68,7 +82,7 @@ export default function PermissionBadge({
       c={PERMISSION_CONFIG[permission].text}
       radius="xl"
     >
-      {permission.toUpperCase()}
+      {PERMISSION_LABELS[permission]}
     </Badge>
   );
 }

@@ -4102,6 +4102,21 @@ def add_site_staff(
             f"{', '.join(sorted(valid_roles))}",
         )
 
+    # Enforce max 1 clinical lead per site
+    if role == "clinical_lead":
+        existing_lead = db.execute(
+            select(site_staff_member).where(
+                site_staff_member.c.site_id == site_id,
+                site_staff_member.c.role == "clinical_lead",
+                site_staff_member.c.user_id != user_id,
+            )
+        ).first()
+        if existing_lead:
+            raise HTTPException(
+                status_code=409,
+                detail="Site already has a clinical lead",
+            )
+
     target_user = db.get(User, user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")

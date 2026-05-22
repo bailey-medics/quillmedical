@@ -51,7 +51,12 @@ interface UserDetails {
   base_profession: string | null;
   additional_competencies: string[];
   removed_competencies: string[];
-  system_permissions: "superadmin" | "admin" | "staff";
+  system_permissions:
+    | "superadmin"
+    | "admin"
+    | "staff"
+    | "teaching_delegate"
+    | "patient";
   is_active: boolean;
 }
 

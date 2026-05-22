@@ -21,7 +21,12 @@ interface User {
   id: number;
   username: string;
   email: string;
-  system_permissions: "superadmin" | "admin" | "staff" | "patient";
+  system_permissions:
+    | "superadmin"
+    | "admin"
+    | "staff"
+    | "teaching_delegate"
+    | "patient";
   is_active: boolean;
   organisations: string[];
   sites: string[];
