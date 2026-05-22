@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithRouter } from "@test/test-utils";
 import DataTableControlled from "./DataTableControlled";
 import type { Column } from "./DataTable";
 
@@ -23,7 +23,7 @@ const columns: Column<Item>[] = [
 
 describe("DataTableControlled", () => {
   it("renders all rows initially", () => {
-    renderWithMantine(
+    renderWithRouter(
       <DataTableControlled
         data={items}
         columns={columns}
@@ -41,7 +41,7 @@ describe("DataTableControlled", () => {
   it("filters rows by search query", async () => {
     const user = userEvent.setup();
 
-    renderWithMantine(
+    renderWithRouter(
       <DataTableControlled
         data={items}
         columns={columns}
@@ -64,7 +64,7 @@ describe("DataTableControlled", () => {
   it("shows empty message when no results match", async () => {
     const user = userEvent.setup();
 
-    renderWithMantine(
+    renderWithRouter(
       <DataTableControlled
         data={items}
         columns={columns}
@@ -81,8 +81,8 @@ describe("DataTableControlled", () => {
     expect(screen.getByText("No items found")).toBeInTheDocument();
   });
 
-  it("renders search button without filter when filterData not provided", () => {
-    renderWithMantine(
+  it("renders search and filter buttons", () => {
+    renderWithRouter(
       <DataTableControlled
         data={items}
         columns={columns}
@@ -93,7 +93,7 @@ describe("DataTableControlled", () => {
     );
 
     expect(screen.getByLabelText("Open search")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Filter")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Filter")).toBeInTheDocument();
   });
 
   it("renders filter button when filterData is provided", () => {
@@ -104,7 +104,7 @@ describe("DataTableControlled", () => {
       },
     ];
 
-    renderWithMantine(
+    renderWithRouter(
       <DataTableControlled
         data={items}
         columns={columns}

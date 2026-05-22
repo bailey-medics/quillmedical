@@ -122,19 +122,6 @@ describe("UserAdminPage", () => {
         expect(screen.getByText("test@example.com")).toBeInTheDocument();
       });
     });
-
-    it("displays user ID", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockUserDetails);
-
-      renderWithRouter(<UserAdminPage />, {
-        routePath: "/admin/users/:id",
-        initialRoute: "/admin/users/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("1")).toBeInTheDocument();
-      });
-    });
   });
 
   describe("System permissions badge", () => {

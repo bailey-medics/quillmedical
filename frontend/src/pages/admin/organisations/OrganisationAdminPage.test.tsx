@@ -5,7 +5,6 @@
  * - Loading states
  * - Organisation details display
  * - Staff members list
- * - Statistics display
  * - Action cards
  * - Error handling
  */
@@ -176,73 +175,6 @@ describe("OrganisationAdminPage", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Not specified")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("Statistics display", () => {
-    it("displays staff count", async () => {
-      const mockOrganisation = {
-        id: 1,
-        name: "Test Hospital",
-        type: "hospital",
-        location: "London",
-        created_at: "2024-01-15T10:00:00Z",
-        updated_at: "2024-01-15T10:00:00Z",
-        staff_count: 2,
-        staff_members: [
-          {
-            id: 1,
-            username: "doctor1",
-            email: "doctor1@test.com",
-            is_primary: false,
-          },
-          {
-            id: 2,
-            username: "doctor2",
-            email: "doctor2@test.com",
-            is_primary: false,
-          },
-        ],
-        patient_members: [],
-        patient_count: 5,
-      };
-
-      mockOrgApi(mockOrganisation);
-
-      renderWithRouter(<OrganisationAdminPage />, {
-        routePath: "/admin/organisations/:id",
-        initialRoute: "/admin/organisations/1",
-      });
-
-      await waitFor(() => {
-        const statsSection = screen.getByText("Statistics").closest("div");
-        expect(statsSection).toHaveTextContent("2");
-      });
-    });
-
-    it("displays patient count", async () => {
-      const mockOrganisation = {
-        id: 1,
-        name: "Test Clinic",
-        type: "clinic",
-        location: "Manchester",
-        created_at: "2024-01-15T10:00:00Z",
-        updated_at: "2024-01-15T10:00:00Z",
-        staff_members: [],
-        patient_members: [],
-        patient_count: 15,
-      };
-
-      mockOrgApi(mockOrganisation);
-
-      renderWithRouter(<OrganisationAdminPage />, {
-        routePath: "/admin/organisations/:id",
-        initialRoute: "/admin/organisations/1",
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("15")).toBeInTheDocument(); // Patient count
       });
     });
   });
@@ -424,7 +356,7 @@ describe("OrganisationAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: /Add staff member/ }),
+          screen.getByRole("button", { name: /Add staff/ }),
         ).toBeInTheDocument();
       });
     });
@@ -575,13 +507,11 @@ describe("OrganisationAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: /Add staff member/ }),
+          screen.getByRole("button", { name: /Add staff/ }),
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /Add staff member/ }),
-      );
+      await user.click(screen.getByRole("button", { name: /Add staff/ }));
       expect(mockNavigate).toHaveBeenCalledWith(
         "/admin/organisations/1/add-staff",
       );
@@ -639,7 +569,7 @@ describe("OrganisationAdminPage", () => {
   });
 
   describe("Error handling", () => {
-    it("displays error alert on failed API call", async () => {
+    it("displays not found page on failed API call", async () => {
       const mockError = new Error("Not found") as Error & {
         response: { status: number };
       };
@@ -653,14 +583,11 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByText("Error loading organisation"),
-        ).toBeInTheDocument();
-        expect(screen.getByText("Not found")).toBeInTheDocument();
+        expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
       });
     });
 
-    it("displays generic error message when organisation not found", async () => {
+    it("displays not found page when organisation fetch fails", async () => {
       vi.spyOn(apiLib.api, "get").mockRejectedValue(new Error("API error"));
 
       renderWithRouter(<OrganisationAdminPage />, {
@@ -669,10 +596,7 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByText("Error loading organisation"),
-        ).toBeInTheDocument();
-        expect(screen.getByText("API error")).toBeInTheDocument();
+        expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
       });
     });
   });

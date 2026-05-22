@@ -469,7 +469,7 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /cancel/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith("/admin");
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
     });
 
     it("navigates back to admin from confirmation", async () => {
@@ -530,7 +530,7 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /finished/i }));
 
-      expect(mockNavigate).toHaveBeenCalledWith("/admin");
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
     }, 15000);
   });
 });
