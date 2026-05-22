@@ -9,12 +9,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Group, Skeleton, SimpleGrid, Stack } from "@mantine/core";
+import { Skeleton, SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import StatCard from "@/components/stats-card/StatCard";
-import DataTable, { type Column } from "@/components/tables/DataTable";
-import FilterSelect from "@/components/form/FilterSelect";
-import { useSearch, useSearchFilter } from "@lib/search";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import FormattedDate from "@/components/data/Date";
 import { StateMessage } from "@/components/message-cards";
@@ -88,16 +87,10 @@ function calcFirstPassRate(delegates: Delegate[]): number {
 // ── Page ─────────────────────────────────────────────────────────────
 
 export default function AdminAllDelegatesPage() {
-  const { setShowSearch } = useSearch();
   const [delegates, setDelegates] = useState<Delegate[]>([]);
+  const [filteredDelegates, setFilteredDelegates] = useState<Delegate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<string[]>([]);
-
-  useEffect(() => {
-    setShowSearch(true);
-    return () => setShowSearch(false);
-  }, [setShowSearch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,34 +150,43 @@ export default function AdminAllDelegatesPage() {
     ];
   }, [delegates]);
 
-  const getSearchText = useCallback(
-    (d: Delegate) => `${d.name} ${d.email ?? ""} ${d.site_name ?? ""}`,
+  const filterPredicate = useCallback((filters: string[]) => {
+    const siteFilters = filters
+      .filter((f) => f.startsWith("site:"))
+      .map((f) => f.slice(5));
+    const leadFilters = filters
+      .filter((f) => f.startsWith("lead:"))
+      .map((f) => f.slice(5));
+    const firstPassOnly = filters.includes("first-pass-only");
+
+    return (d: Delegate) => {
+      if (
+        siteFilters.length > 0 &&
+        (!d.site_name || !siteFilters.includes(d.site_name))
+      ) {
+        return false;
+      }
+      if (
+        leadFilters.length > 0 &&
+        (!d.clinical_lead || !leadFilters.includes(d.clinical_lead))
+      ) {
+        return false;
+      }
+      if (firstPassOnly && !d.first_time_pass) {
+        return false;
+      }
+      return true;
+    };
+  }, []);
+
+  const searchFields = useCallback(
+    (d: Delegate) => [d.name, d.email, d.site_name],
     [],
   );
-  const searched = useSearchFilter(delegates, getSearchText);
 
-  const siteFilters = filters
-    .filter((f) => f.startsWith("site:"))
-    .map((f) => f.slice(5));
-  const leadFilters = filters
-    .filter((f) => f.startsWith("lead:"))
-    .map((f) => f.slice(5));
-  const firstPassOnly = filters.includes("first-pass-only");
-
-  let filtered = searched;
-  if (siteFilters.length > 0) {
-    filtered = filtered.filter(
-      (d) => d.site_name && siteFilters.includes(d.site_name),
-    );
-  }
-  if (leadFilters.length > 0) {
-    filtered = filtered.filter(
-      (d) => d.clinical_lead && leadFilters.includes(d.clinical_lead),
-    );
-  }
-  if (firstPassOnly) {
-    filtered = filtered.filter((d) => d.first_time_pass);
-  }
+  const handleFilteredData = useCallback((data: Delegate[]) => {
+    setFilteredDelegates(data);
+  }, []);
 
   if (loading) {
     return (
@@ -211,36 +213,35 @@ export default function AdminAllDelegatesPage() {
     );
   }
 
-  const firstPassRate = calcFirstPassRate(filtered);
+  const firstPassRate = calcFirstPassRate(filteredDelegates);
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="center">
-        <PageHeader title="All delegates" />
-        <FilterSelect
-          data={filterOptions}
-          value={filters}
-          onChange={setFilters}
-          label="Filter delegates"
-          aria-label="Filter delegates"
-        />
-      </Group>
+      <PageHeader title="All delegates" />
 
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-        <StatCard title="Total delegates" value={filtered.length} />
+        <StatCard title="Total delegates" value={filteredDelegates.length} />
         <StatCard
           title="Passed"
-          value={filtered.filter((d) => d.assessment_result === "pass").length}
+          value={
+            filteredDelegates.filter((d) => d.assessment_result === "pass")
+              .length
+          }
         />
         <StatCard title="1st pass rate" value={firstPassRate} suffix="%" />
       </SimpleGrid>
 
-      <DataTable
-        data={filtered}
+      <DataTableControlled
+        data={delegates}
         columns={columns}
         getRowKey={(d) => d.id}
         pageSize={10}
-        fullControls
+        filterData={filterOptions}
+        filterLabel="Filter delegates"
+        filterAriaLabel="Filter delegates"
+        searchFields={searchFields}
+        filterPredicate={filterPredicate}
+        onFilteredData={handleFilteredData}
         emptyMessage="No delegates match the selected filters"
       />
     </Stack>

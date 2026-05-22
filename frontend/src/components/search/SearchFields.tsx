@@ -18,6 +18,8 @@ interface SearchFieldProps {
   value?: string;
   /** Called when the search text changes */
   onChange?: (value: string) => void;
+  /** Visual variant: "dark" for dark backgrounds, "light" for white/light backgrounds */
+  variant?: "dark" | "light";
 }
 
 /**
@@ -31,7 +33,11 @@ interface SearchFieldProps {
  * - Controlled: pass value/onChange to manage externally
  * - Uncontrolled: works standalone with internal state
  */
-export default function SearchField({ value, onChange }: SearchFieldProps) {
+export default function SearchField({
+  value,
+  onChange,
+  variant = "dark",
+}: SearchFieldProps) {
   const [open, setOpen] = useState(() => !!value && value.length > 0);
   const [internalValue, setInternalValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +88,7 @@ export default function SearchField({ value, onChange }: SearchFieldProps) {
         </ActionIcon>
       }
       styles={{
-        root: { position: "relative", top: -5 },
+        root: { width: 220, height: 42, display: "flex", alignItems: "center" },
         input: {
           transition: "width 0.2s ease",
           width: 220,
@@ -93,6 +99,6 @@ export default function SearchField({ value, onChange }: SearchFieldProps) {
       onBlur={handleBlur}
     />
   ) : (
-    <SearchButton onClick={() => setOpen(true)} />
+    <SearchButton onClick={() => setOpen(true)} variant={variant} />
   );
 }

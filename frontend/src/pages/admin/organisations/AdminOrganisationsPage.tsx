@@ -6,12 +6,13 @@
  * Includes an "Add organisation" button to create new organisations.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import FormattedDate from "@/components/data/Date";
 import { api } from "@/lib/api";
 
@@ -65,22 +66,57 @@ export default function AdminOrganisationsPage() {
       .join(" ");
   };
 
+  const searchFields = useCallback(
+    (org: Organization) => [org.name, org.type, org.location],
+    [],
+  );
+
+  const filterOptions = useMemo(() => {
+    const types = [...new Set(organizations.map((o) => o.type))].sort();
+    return [
+      {
+        group: "Type",
+        items: types.map((t) => ({
+          value: `type:${t}`,
+          label: formatType(t),
+        })),
+      },
+    ];
+  }, [organizations]);
+
+  const filterPredicate = useCallback((filters: string[]) => {
+    const typeFilters = filters
+      .filter((f) => f.startsWith("type:"))
+      .map((f) => f.slice(5));
+
+    return (org: Organization) => {
+      if (typeFilters.length > 0 && !typeFilters.includes(org.type)) {
+        return false;
+      }
+      return true;
+    };
+  }, []);
+
   const columns: Column<Organization>[] = [
     {
       header: "Name",
       render: (org) => org.name,
+      accessor: (org) => org.name,
     },
     {
       header: "Type",
       render: (org) => formatType(org.type),
+      accessor: (org) => org.type,
     },
     {
       header: "Location",
       render: (org) => org.location || "N/A",
+      accessor: (org) => org.location ?? "",
     },
     {
       header: "Created",
       render: (org) => <FormattedDate date={org.created_at} locale="en-GB" />,
+      accessor: (org) => org.created_at,
     },
   ];
 
@@ -95,7 +131,7 @@ export default function AdminOrganisationsPage() {
           />
         </Group>
 
-        <DataTable
+        <DataTableControlled
           data={organizations}
           columns={columns}
           onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}
@@ -103,6 +139,11 @@ export default function AdminOrganisationsPage() {
           loading={loading}
           error={error}
           emptyMessage="No organisations found"
+          searchFields={searchFields}
+          filterData={filterOptions}
+          filterLabel="Filter organisations"
+          filterAriaLabel="Filter organisations"
+          filterPredicate={filterPredicate}
         />
       </Stack>
     </Container>

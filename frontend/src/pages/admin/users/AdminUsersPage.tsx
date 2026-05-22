@@ -6,15 +6,15 @@
  * Includes an "Add user" button to create new user accounts.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import PermissionBadge from "@/components/badge/PermissionBadge";
-import { useSearch, useSearchFilter } from "@lib/search";
 import { api } from "@/lib/api";
 
 interface User {
@@ -47,15 +47,9 @@ interface UsersApiResponse {
  */
 export default function AdminUsersPage() {
   const navigate = useNavigate();
-  const { setShowSearch } = useSearch();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setShowSearch(true);
-    return () => setShowSearch(false);
-  }, [setShowSearch]);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -72,19 +66,62 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, []);
 
-  const getSearchText = useCallback(
-    (user: User) =>
-      [
-        user.full_name,
-        user.username,
-        user.email,
-        ...user.organisations,
-        ...user.sites,
-        user.system_permissions,
-      ].join(" "),
+  const searchFields = useCallback(
+    (user: User) => [
+      user.full_name,
+      user.username,
+      user.email,
+      ...user.organisations,
+      ...user.sites,
+      user.system_permissions,
+    ],
     [],
   );
-  const filteredUsers = useSearchFilter(users, getSearchText);
+
+  const filterOptions = useMemo(() => {
+    const permissions = [
+      ...new Set(users.map((u) => u.system_permissions)),
+    ].sort();
+    return [
+      {
+        group: "Permission",
+        items: permissions.map((p) => ({
+          value: `perm:${p}`,
+          label: p.charAt(0).toUpperCase() + p.slice(1).replace(/_/g, " "),
+        })),
+      },
+      {
+        group: "Status",
+        items: [
+          { value: "status:active", label: "Active" },
+          { value: "status:inactive", label: "Inactive" },
+        ],
+      },
+    ];
+  }, [users]);
+
+  const filterPredicate = useCallback((filters: string[]) => {
+    const permFilters = filters
+      .filter((f) => f.startsWith("perm:"))
+      .map((f) => f.slice(5));
+    const statusFilters = filters
+      .filter((f) => f.startsWith("status:"))
+      .map((f) => f.slice(7));
+
+    return (user: User) => {
+      if (
+        permFilters.length > 0 &&
+        !permFilters.includes(user.system_permissions)
+      ) {
+        return false;
+      }
+      if (statusFilters.length > 0) {
+        const userStatus = user.is_active ? "active" : "inactive";
+        if (!statusFilters.includes(userStatus)) return false;
+      }
+      return true;
+    };
+  }, []);
 
   const columns: Column<User>[] = [
     {
@@ -139,16 +176,20 @@ export default function AdminUsersPage() {
           />
         </Group>
 
-        <DataTable
-          data={filteredUsers}
+        <DataTableControlled
+          data={users}
           columns={columns}
           onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
           getRowKey={(user) => user.id}
           pageSize={10}
-          fullControls
           loading={loading}
           error={error}
           emptyMessage="No users found"
+          searchFields={searchFields}
+          filterData={filterOptions}
+          filterLabel="Filter users"
+          filterAriaLabel="Filter users"
+          filterPredicate={filterPredicate}
         />
       </Stack>
     </Container>

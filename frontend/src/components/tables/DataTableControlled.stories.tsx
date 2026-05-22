@@ -1,14 +1,14 @@
 /**
- * Table Controls Stories
+ * DataTableControlled Stories
  *
- * Demonstrates DataTableControlled with integrated search, filter,
- * sorting, and pagination working together.
+ * Demonstrates the controlled table component with integrated
+ * search, filter, and pagination.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Container } from "@mantine/core";
-import type { Column } from "./DataTable";
 import DataTableControlled from "./DataTableControlled";
+import type { Column } from "./DataTable";
 
 interface Delegate {
   id: number;
@@ -34,6 +34,17 @@ const delegates: Delegate[] = Array.from({ length: 45 }, (_, i) => {
   };
 });
 
+const columns: Column<Delegate>[] = [
+  { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
+  { header: "Trust", render: (d) => d.trust, accessor: (d) => d.trust },
+  {
+    header: "Clinical lead",
+    render: (d) => d.lead,
+    accessor: (d) => d.lead,
+  },
+  { header: "Status", render: (d) => d.status, accessor: (d) => d.status },
+];
+
 const filterData = [
   {
     group: "Trust",
@@ -50,17 +61,6 @@ const filterData = [
       { value: "lead:singh", label: "Dr Rachel Singh" },
     ],
   },
-];
-
-const columns: Column<Delegate>[] = [
-  { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
-  { header: "Trust", render: (d) => d.trust, accessor: (d) => d.trust },
-  {
-    header: "Clinical lead",
-    render: (d) => d.lead,
-    accessor: (d) => d.lead,
-  },
-  { header: "Status", render: (d) => d.status, accessor: (d) => d.status },
 ];
 
 function filterPredicate(filters: string[]) {
@@ -94,15 +94,19 @@ function filterPredicate(filters: string[]) {
   };
 }
 
-const meta: Meta = {
-  title: "Tables/Table controls",
+const meta: Meta<typeof DataTableControlled> = {
+  title: "Tables/DataTable controlled",
+  component: DataTableControlled,
   parameters: { layout: "fullscreen" },
 };
 
 export default meta;
 type Story = StoryObj;
 
-export const FullControls: Story = {
+/**
+ * Full controls with search, filter, sorting, and pagination.
+ */
+export const Default: Story = {
   render: () => (
     <Container size="lg" py="md">
       <DataTableControlled
@@ -120,6 +124,27 @@ export const FullControls: Story = {
   ),
 };
 
+/**
+ * Search only — no filter dropdown.
+ */
+export const SearchOnly: Story = {
+  render: () => (
+    <Container size="lg" py="md">
+      <DataTableControlled
+        data={delegates}
+        columns={columns}
+        getRowKey={(d) => d.id}
+        pageSize={10}
+        searchFields={(d) => [d.name, d.trust, d.lead, d.status]}
+        filterPredicate={() => () => true}
+      />
+    </Container>
+  ),
+};
+
+/**
+ * Dark mode variant.
+ */
 export const DarkMode: Story = {
   render: () => (
     <Container size="lg" py="md">

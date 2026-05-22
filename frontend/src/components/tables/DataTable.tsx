@@ -22,8 +22,10 @@
  * ```
  */
 
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import {
+  Group,
   Table,
   Skeleton,
   Stack,
@@ -90,6 +92,8 @@ export interface DataTableProps<T> {
   pageSize?: number;
   /** Enable full controls: pagination with "Items per page" selector. */
   fullControls?: boolean;
+  /** Optional controls (search, filter) rendered above the table, right-aligned. */
+  controls?: ReactNode;
 }
 
 /**
@@ -121,6 +125,7 @@ export default function DataTable<T>({
   getRowKey,
   pageSize: initialPageSize,
   fullControls = false,
+  controls,
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -252,9 +257,16 @@ export default function DataTable<T>({
   // Empty state
   if (sortedData.length === 0) {
     return (
-      <Center p="xl">
-        <BodyText>{emptyMessage}</BodyText>
-      </Center>
+      <Stack gap="md">
+        {controls && (
+          <Group justify="flex-end" h={42} align="center">
+            {controls}
+          </Group>
+        )}
+        <Center p="xl">
+          <BodyText>{emptyMessage}</BodyText>
+        </Center>
+      </Stack>
     );
   }
 
@@ -262,6 +274,11 @@ export default function DataTable<T>({
   if (isMobile) {
     return (
       <Stack gap="md">
+        {controls && (
+          <Group justify="flex-end" h={42} align="center">
+            {controls}
+          </Group>
+        )}
         {visibleData.map((row) => (
           <DataCard
             key={getRowKey(row)}
@@ -292,6 +309,11 @@ export default function DataTable<T>({
   // Desktop: Table layout
   return (
     <Stack gap="md">
+      {controls && (
+        <Group justify="flex-end" h={42} align="center">
+          {controls}
+        </Group>
+      )}
       <Table
         striped
         stripedColor={stripedColor}

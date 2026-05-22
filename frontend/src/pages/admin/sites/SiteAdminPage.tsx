@@ -6,7 +6,7 @@
  * Only accessible to admin/superadmin.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -22,10 +22,10 @@ import Icon from "@/components/icons";
 import AddButton from "@/components/button/AddButton";
 import IconButton from "@/components/button/IconButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
-import { useSearch, useSearchFilter } from "@lib/search";
 
 interface SiteStaff {
   id: number;
@@ -55,16 +55,10 @@ interface SiteDetails {
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { setShowSearch } = useSearch();
   const [site, setSite] = useState<SiteDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingStaff, setRemovingStaff] = useState<SiteStaff | null>(null);
-
-  useEffect(() => {
-    setShowSearch(true);
-    return () => setShowSearch(false);
-  }, [setShowSearch]);
 
   const fetchSite = useCallback(async () => {
     if (!id) {
@@ -87,18 +81,44 @@ export default function SiteAdminPage() {
     fetchSite();
   }, [fetchSite]);
 
-  const getStaffSearchText = useCallback(
-    (member: SiteStaff) =>
-      [member.full_name, member.username, member.email, member.role].join(" "),
-    [],
-  );
-  const filteredStaff = useSearchFilter(site?.staff ?? [], getStaffSearchText);
-
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
     await api.del(`/sites/${id}/staff/${removingStaff.id}`);
     await fetchSite();
   }
+
+  const formatRole = (role: string): string => {
+    return role
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const staffFilterOptions = useMemo(() => {
+    const roles = [...new Set((site?.staff ?? []).map((s) => s.role))].sort();
+    return [
+      {
+        group: "Role",
+        items: roles.map((r) => ({
+          value: `role:${r}`,
+          label: formatRole(r),
+        })),
+      },
+    ];
+  }, [site?.staff]);
+
+  const staffFilterPredicate = useCallback((filters: string[]) => {
+    const roleFilters = filters
+      .filter((f) => f.startsWith("role:"))
+      .map((f) => f.slice(5));
+
+    return (member: SiteStaff) => {
+      if (roleFilters.length > 0 && !roleFilters.includes(member.role)) {
+        return false;
+      }
+      return true;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -128,13 +148,6 @@ export default function SiteAdminPage() {
 
   const formatType = (type: string): string => {
     return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
-  const formatRole = (role: string): string => {
-    return role
       .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
@@ -258,13 +271,17 @@ export default function SiteAdminPage() {
               />
             </Group>
 
-            <DataTable<SiteStaff>
-              data={filteredStaff}
+            <DataTableControlled<SiteStaff>
+              data={site.staff}
               columns={staffColumns}
               getRowKey={(member) => member.id}
               pageSize={10}
-              fullControls
               emptyMessage="No staff assigned"
+              searchFields={(m) => [m.full_name, m.username, m.email, m.role]}
+              filterData={staffFilterOptions}
+              filterLabel="Filter staff"
+              filterAriaLabel="Filter staff"
+              filterPredicate={staffFilterPredicate}
             />
           </Stack>
         </BaseCard>

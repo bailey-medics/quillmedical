@@ -7,7 +7,7 @@
  * Provides action cards for editing and managing organisations.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -23,7 +23,8 @@ import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
-import DataTable, { type Column } from "@/components/tables/DataTable";
+import type { Column } from "@/components/tables/DataTable";
+import DataTableControlled from "@/components/tables/DataTableControlled";
 import AddButton from "@/components/button/AddButton";
 import FeatureBadge from "@/components/badge/FeatureBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
@@ -146,6 +147,39 @@ export default function OrganisationAdminPage() {
     await fetchOrganizationData();
   }
 
+  const formatType = (type: string): string => {
+    return type
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const siteFilterOptions = useMemo(() => {
+    const types = [...new Set((org?.sites ?? []).map((s) => s.type))].sort();
+    return [
+      {
+        group: "Type",
+        items: types.map((t) => ({
+          value: `type:${t}`,
+          label: formatType(t),
+        })),
+      },
+    ];
+  }, [org?.sites]);
+
+  const siteFilterPredicate = useCallback((filters: string[]) => {
+    const typeFilters = filters
+      .filter((f) => f.startsWith("type:"))
+      .map((f) => f.slice(5));
+
+    return (site: SiteMember) => {
+      if (typeFilters.length > 0 && !typeFilters.includes(site.type)) {
+        return false;
+      }
+      return true;
+    };
+  }, []);
+
   if (loading) {
     return (
       <Container size="lg">
@@ -162,20 +196,22 @@ export default function OrganisationAdminPage() {
     return <NotFoundLayout />;
   }
 
-  const formatType = (type: string): string => {
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
   const staffColumns: Column<StaffMember>[] = [
     {
       header: "Full name",
       render: (member) => member.full_name || member.username,
+      accessor: (member) => member.full_name || member.username,
     },
-    { header: "Username", render: (member) => member.username },
-    { header: "Email", render: (member) => member.email },
+    {
+      header: "Username",
+      render: (member) => member.username,
+      accessor: (member) => member.username,
+    },
+    {
+      header: "Email",
+      render: (member) => member.email,
+      accessor: (member) => member.email,
+    },
     {
       header: "",
       width: "50px",
@@ -200,13 +236,26 @@ export default function OrganisationAdminPage() {
   ];
 
   const siteColumns: Column<SiteMember>[] = [
-    { header: "Name", render: (site) => site.name },
-    { header: "Type", render: (site) => formatType(site.type) },
+    {
+      header: "Name",
+      render: (site) => site.name,
+      accessor: (site) => site.name,
+    },
+    {
+      header: "Type",
+      render: (site) => formatType(site.type),
+      accessor: (site) => site.type,
+    },
     {
       header: "Clinical lead",
       render: (site) => site.clinical_lead || "\u2014",
+      accessor: (site) => site.clinical_lead || "",
     },
-    { header: "Location", render: (site) => site.location || "—" },
+    {
+      header: "Location",
+      render: (site) => site.location || "—",
+      accessor: (site) => site.location || "",
+    },
   ];
 
   return (
@@ -279,12 +328,13 @@ export default function OrganisationAdminPage() {
               />
             </Group>
 
-            <DataTable<StaffMember>
+            <DataTableControlled<StaffMember>
               data={org.staff_members}
               columns={staffColumns}
               onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
               getRowKey={(member) => member.id}
               emptyMessage="No staff members assigned"
+              searchFields={(m) => [m.full_name, m.username, m.email]}
             />
           </Stack>
         </BaseCard>
@@ -303,7 +353,7 @@ export default function OrganisationAdminPage() {
                 />
               </Group>
 
-              <DataTable<PatientMember>
+              <DataTableControlled<PatientMember>
                 data={org.patient_members}
                 columns={patientColumns}
                 onRowClick={(patient) =>
@@ -311,6 +361,7 @@ export default function OrganisationAdminPage() {
                 }
                 getRowKey={(patient) => patient.patient_id}
                 emptyMessage="No patients assigned"
+                searchFields={(p) => [p.patient_id]}
               />
             </Stack>
           </BaseCard>
@@ -351,12 +402,22 @@ export default function OrganisationAdminPage() {
               />
             </Group>
 
-            <DataTable<SiteMember>
+            <DataTableControlled<SiteMember>
               data={org.sites}
               columns={siteColumns}
               onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
               getRowKey={(site) => site.id}
               emptyMessage="No sites linked"
+              searchFields={(s) => [
+                s.name,
+                s.type,
+                s.location,
+                s.clinical_lead,
+              ]}
+              filterData={siteFilterOptions}
+              filterLabel="Filter sites"
+              filterAriaLabel="Filter sites"
+              filterPredicate={siteFilterPredicate}
             />
           </Stack>
         </BaseCard>
