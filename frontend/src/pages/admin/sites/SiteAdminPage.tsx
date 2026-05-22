@@ -132,6 +132,11 @@ export default function SiteAdminPage() {
       accessor: (member) => member.full_name || member.username,
     },
     {
+      header: "Username",
+      render: (member) => member.username,
+      accessor: (member) => member.username,
+    },
+    {
       header: "Email",
       render: (member) => member.email,
       accessor: (member) => member.email,

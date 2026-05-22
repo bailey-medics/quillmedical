@@ -21,6 +21,7 @@ interface User {
   id: number;
   username: string;
   email: string;
+  full_name: string;
   system_permissions:
     | "superadmin"
     | "admin"
@@ -68,7 +69,9 @@ export default function AdminUsersPage() {
   const getSearchText = useCallback(
     (user: User) =>
       [
+        user.full_name,
         user.username,
+        user.email,
         ...user.organisations,
         ...user.sites,
         user.system_permissions,
@@ -79,9 +82,19 @@ export default function AdminUsersPage() {
 
   const columns: Column<User>[] = [
     {
+      header: "Full name",
+      render: (user) => user.full_name || user.username,
+      accessor: (user) => user.full_name || user.username,
+    },
+    {
       header: "Username",
       render: (user) => user.username,
       accessor: (user) => user.username,
+    },
+    {
+      header: "Email",
+      render: (user) => user.email,
+      accessor: (user) => user.email,
     },
     {
       header: "Organisation/site",

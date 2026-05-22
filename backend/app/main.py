@@ -2005,6 +2005,7 @@ def list_users(
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "full_name": user.full_name or "",
                     "system_permissions": user.system_permissions,
                     "is_active": user.is_active,
                     "organisations": user_orgs.get(user.id, []),
