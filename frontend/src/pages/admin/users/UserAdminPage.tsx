@@ -31,6 +31,7 @@ import {
   IconAlertCircle,
   IconUserMinus,
   IconUserPlus,
+  IconMail,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
@@ -72,6 +73,8 @@ export default function UserAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
 
   useEffect(() => {
     async function fetchUserData() {
@@ -228,6 +231,25 @@ export default function UserAdminPage() {
               title="Edit user"
               subtitle="Modify user account and permissions"
               buttonLabel="Edit"
+            />
+
+            <ActionCard
+              icon={<IconMail />}
+              onClick={async () => {
+                setInviteSending(true);
+                try {
+                  await api.post(`/users/${id}/send-invite`, {});
+                  setInviteSent(true);
+                } finally {
+                  setInviteSending(false);
+                }
+              }}
+              title="Send invite email"
+              subtitle="Email the user a link to set up their credentials"
+              buttonLabel={
+                inviteSent ? "Sent" : inviteSending ? "Sending…" : "Send"
+              }
+              disabled={inviteSending || inviteSent}
             />
 
             <ActionCard

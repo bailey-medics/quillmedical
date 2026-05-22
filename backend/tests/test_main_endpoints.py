@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.models import User
+from app.models import Organization, User, organisation_staff_member
 from app.security import hash_password
 
 
@@ -283,10 +283,15 @@ class TestOrganizationEndpoints:
         assert data["organizations"] == []
 
     def test_get_organizations_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
-        """Test getting list of organizations."""
-        from app.models import Organization
+        """Test getting list of organizations (admin sees only own)."""
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
 
         # Create test organizations
         org1 = Organization(
@@ -298,6 +303,17 @@ class TestOrganizationEndpoints:
         db_session.add_all([org1, org2])
         db_session.commit()
 
+        # Add admin as staff to both orgs
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                [
+                    {"organisation_id": org1.id, "user_id": test_admin.id},
+                    {"organisation_id": org2.id, "user_id": test_admin.id},
+                ]
+            )
+        )
+        db_session.commit()
+
         response = authenticated_admin_client.get("/api/organizations")
         assert response.status_code == 200
         data = response.json()
@@ -306,6 +322,57 @@ class TestOrganizationEndpoints:
         assert data["organizations"][0]["name"] == "Test Hospital"
         assert data["organizations"][0]["type"] == "hospital"
         assert data["organizations"][1]["name"] == "Test Clinic"
+
+    def test_get_organizations_admin_only_sees_own(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test admin only sees organisations they are a member of."""
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        org1 = Organization(name="My Org", type="hospital", location="London")
+        org2 = Organization(
+            name="Other Org", type="clinic", location="Manchester"
+        )
+        db_session.add_all([org1, org2])
+        db_session.commit()
+
+        # Admin is only a member of org1
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org1.id, user_id=test_admin.id
+            )
+        )
+        db_session.commit()
+
+        response = authenticated_admin_client.get("/api/organizations")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["organizations"]) == 1
+        assert data["organizations"][0]["name"] == "My Org"
+
+    def test_get_organization_by_id_admin_not_member(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Test admin cannot access org they are not a member of."""
+        from app.models import Organization
+
+        org = Organization(
+            name="Restricted Org", type="hospital", location="London"
+        )
+        db_session.add(org)
+        db_session.commit()
+
+        response = authenticated_admin_client.get(
+            f"/api/organizations/{org.id}"
+        )
+        assert response.status_code == 404
 
     def test_get_organization_by_id_not_found(
         self, authenticated_admin_client: TestClient
@@ -468,23 +535,34 @@ class TestOrganizationEndpoints:
         assert response.status_code == 404
 
     def test_update_organization_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test successfully updating an organisation."""
-        # Create an organisation first
-        create_response = authenticated_admin_client.post(
-            "/api/organizations",
-            json={
-                "name": "Original Hospital",
-                "type": "hospital_team",
-                "location": "London",
-            },
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(
+            name="Original Hospital",
+            type="hospital_team",
+            location="London",
         )
-        org_id = create_response.json()["id"]
+        db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
+        db_session.commit()
 
         # Update it
         response = authenticated_admin_client.put(
-            f"/api/organizations/{org_id}",
+            f"/api/organizations/{org.id}",
             json={"name": "Updated Hospital", "location": "Manchester"},
         )
         assert response.status_code == 200
@@ -494,36 +572,60 @@ class TestOrganizationEndpoints:
         assert data["location"] == "Manchester"
 
     def test_update_organization_invalid_type(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test updating organisation with invalid type."""
-        create_response = authenticated_admin_client.post(
-            "/api/organizations",
-            json={"name": "Test Org", "type": "hospital_team"},
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(name="Test Org", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
         )
-        org_id = create_response.json()["id"]
+        db_session.commit()
 
         response = authenticated_admin_client.put(
-            f"/api/organizations/{org_id}", json={"type": "invalid_type"}
+            f"/api/organizations/{org.id}", json={"type": "invalid_type"}
         )
         assert response.status_code == 400
 
     def test_update_organization_partial(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test partial update only changes specified fields."""
-        create_response = authenticated_admin_client.post(
-            "/api/organizations",
-            json={
-                "name": "Test Hospital",
-                "type": "hospital_team",
-                "location": "London",
-            },
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
+
+        org = Organization(
+            name="Test Hospital",
+            type="hospital_team",
+            location="London",
         )
-        org_id = create_response.json()["id"]
+        db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
+        db_session.commit()
 
         response = authenticated_admin_client.put(
-            f"/api/organizations/{org_id}", json={"name": "New Name"}
+            f"/api/organizations/{org.id}", json={"name": "New Name"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -555,13 +657,25 @@ class TestOrganizationEndpoints:
         assert response.status_code == 404
 
     def test_add_staff_user_not_found(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test adding non-existent user as staff."""
-        from app.models import Organization
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
 
         org = Organization(name="Test Org", type="hospital_team")
         db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.post(
@@ -577,21 +691,42 @@ class TestOrganizationEndpoints:
         test_admin: User,
     ):
         """Test successfully adding a staff member."""
-        from app.models import Organization
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
 
         org = Organization(name="Staff Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
+        # Pre-add admin as member so they can manage this org
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
+        db_session.commit()
+
+        # Create a second staff user to add
+        staff_user = User(
+            username="newstaff",
+            email="newstaff@example.com",
+            password_hash=hash_password("StaffPass123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add(staff_user)
+        db_session.commit()
+
         response = authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
-            json={"user_id": test_admin.id},
+            json={"user_id": staff_user.id},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["organisation_id"] == org.id
-        assert data["user_id"] == test_admin.id
-        assert data["username"] == test_admin.username
+        assert data["user_id"] == staff_user.id
+        assert data["username"] == staff_user.username
 
     def test_add_staff_auto_sets_primary(
         self,
@@ -600,7 +735,7 @@ class TestOrganizationEndpoints:
         test_admin: User,
     ):
         """Test first org membership is auto-set as primary."""
-        from sqlalchemy import select
+        from sqlalchemy import insert, select
 
         from app.models import Organization, organisation_staff_member
 
@@ -608,14 +743,33 @@ class TestOrganizationEndpoints:
         db_session.add(org)
         db_session.commit()
 
+        # Pre-add admin as member so they can manage this org
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
+        db_session.commit()
+
+        # Create a new staff user with no existing memberships
+        staff_user = User(
+            username="primarytest",
+            email="primarytest@example.com",
+            password_hash=hash_password("StaffPass123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add(staff_user)
+        db_session.commit()
+
         authenticated_admin_client.post(
             f"/api/organizations/{org.id}/staff",
-            json={"user_id": test_admin.id},
+            json={"user_id": staff_user.id},
         )
 
         row = db_session.execute(
             select(organisation_staff_member).where(
-                organisation_staff_member.c.user_id == test_admin.id,
+                organisation_staff_member.c.user_id == staff_user.id,
                 organisation_staff_member.c.organisation_id == org.id,
             )
         ).first()
@@ -638,23 +792,52 @@ class TestOrganizationEndpoints:
         db_session.add_all([org1, org2])
         db_session.commit()
 
+        # Admin is member of both orgs
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                [
+                    {
+                        "organisation_id": org1.id,
+                        "user_id": test_admin.id,
+                    },
+                    {
+                        "organisation_id": org2.id,
+                        "user_id": test_admin.id,
+                    },
+                ]
+            )
+        )
+        db_session.commit()
+
+        # Create a staff user with primary in org1
+        staff_user = User(
+            username="multiorgstaff",
+            email="multiorgstaff@example.com",
+            password_hash=hash_password("StaffPass123!"),
+            is_active=True,
+            system_permissions="staff",
+        )
+        db_session.add(staff_user)
+        db_session.commit()
+
         db_session.execute(
             insert(organisation_staff_member).values(
                 organisation_id=org1.id,
-                user_id=test_admin.id,
+                user_id=staff_user.id,
                 is_primary=True,
             )
         )
         db_session.commit()
 
+        # Add staff_user to org2 — should NOT be primary
         authenticated_admin_client.post(
             f"/api/organizations/{org2.id}/staff",
-            json={"user_id": test_admin.id},
+            json={"user_id": staff_user.id},
         )
 
         row = db_session.execute(
             select(organisation_staff_member).where(
-                organisation_staff_member.c.user_id == test_admin.id,
+                organisation_staff_member.c.user_id == staff_user.id,
                 organisation_staff_member.c.organisation_id == org2.id,
             )
         ).first()
@@ -695,12 +878,22 @@ class TestOrganizationEndpoints:
         self,
         authenticated_admin_client: TestClient,
         db_session,
+        test_admin: User,
     ):
         """Test adding a patient-level user as staff is rejected."""
-        from app.models import Organization
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
 
         org = Organization(name="Staff Only Org", type="hospital_team")
         db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
         db_session.commit()
 
         patient_user = User(
@@ -727,11 +920,25 @@ class TestOrganizationEndpoints:
         test_admin: User,
     ):
         """Test filtering users by minimum permission level."""
+        # Create an org and add admin + test users to it
+        org = Organization(name="Filter Org")
+        db_session.add(org)
+        db_session.flush()
+
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+
         patient_user = User(
             username="listpatient",
             email="listpatient@example.com",
             password_hash=hash_password("PatientPass123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="patient",
         )
         staff_user = User(
@@ -739,9 +946,29 @@ class TestOrganizationEndpoints:
             email="liststaff@example.com",
             password_hash=hash_password("StaffPass123!"),
             is_active=True,
+            email_verified=True,
             system_permissions="staff",
         )
         db_session.add_all([patient_user, staff_user])
+        db_session.flush()
+
+        # Add both to the org so the admin can see them
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": patient_user.id,
+                        "is_primary": True,
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": staff_user.id,
+                        "is_primary": True,
+                    },
+                ]
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.get(
@@ -753,6 +980,54 @@ class TestOrganizationEndpoints:
         assert "liststaff" in usernames
         assert "testadmin" in usernames
         assert "listpatient" not in usernames
+
+    def test_list_users_admin_only_sees_own_org(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Admin cannot see users in other organisations."""
+        # Admin's org
+        org_a = Organization(name="Org A")
+        db_session.add(org_a)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org_a.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+
+        # Another org with a user the admin should NOT see
+        org_b = Organization(name="Org B")
+        db_session.add(org_b)
+        db_session.flush()
+        other_user = User(
+            username="otherorguser",
+            email="other@example.com",
+            password_hash=hash_password("OtherPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="staff",
+        )
+        db_session.add(other_user)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org_b.id,
+                user_id=other_user.id,
+                is_primary=True,
+            )
+        )
+        db_session.commit()
+
+        response = authenticated_admin_client.get("/api/users")
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.json()["users"]]
+        assert "testadmin" in usernames
+        assert "otherorguser" not in usernames
 
     def test_list_users_invalid_permission_level(
         self,
@@ -870,13 +1145,25 @@ class TestOrganizationEndpoints:
         assert response.status_code == 404
 
     def test_add_patient_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test successfully adding a patient."""
-        from app.models import Organization
+        from sqlalchemy import insert
+
+        from app.models import Organization, organisation_staff_member
 
         org = Organization(name="Patient Org", type="hospital_team")
         db_session.add(org)
+        db_session.commit()
+
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.post(
@@ -889,23 +1176,36 @@ class TestOrganizationEndpoints:
         assert data["patient_id"] == "fhir-456"
 
     def test_add_patient_duplicate(
-        self, authenticated_admin_client: TestClient, db_session
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
     ):
         """Test adding patient who is already a member."""
         from sqlalchemy import insert
 
-        from app.models import Organization, organisation_patient_member
+        from app.models import (
+            Organization,
+            organisation_patient_member,
+            organisation_staff_member,
+        )
 
         org = Organization(name="Dup Patient Org", type="hospital_team")
         db_session.add(org)
         db_session.commit()
 
-        stmt = insert(organisation_patient_member).values(
-            organisation_id=org.id,
-            patient_id="fhir-789",
-            is_primary=False,
+        db_session.execute(
+            insert(organisation_staff_member).values(
+                organisation_id=org.id, user_id=test_admin.id
+            )
         )
-        db_session.execute(stmt)
+        db_session.execute(
+            insert(organisation_patient_member).values(
+                organisation_id=org.id,
+                patient_id="fhir-789",
+                is_primary=False,
+            )
+        )
         db_session.commit()
 
         response = authenticated_admin_client.post(

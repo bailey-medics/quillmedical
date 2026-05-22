@@ -10,12 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import {
-  BodyText,
-  BodyTextInline,
-  BodyTextBold,
-  Heading,
-} from "@/components/typography";
+import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
   IconAlertCircle,
   IconPencil,
@@ -134,9 +129,18 @@ export default function SiteAdminPage() {
     {
       header: "Full name",
       render: (member) => member.full_name || member.username,
+      accessor: (member) => member.full_name || member.username,
     },
-    { header: "Email", render: (member) => member.email },
-    { header: "Role", render: (member) => formatRole(member.role) },
+    {
+      header: "Email",
+      render: (member) => member.email,
+      accessor: (member) => member.email,
+    },
+    {
+      header: "Role",
+      render: (member) => formatRole(member.role),
+      accessor: (member) => member.role,
+    },
     {
       header: "",
       width: "50px",
@@ -218,11 +222,6 @@ export default function SiteAdminPage() {
                     "N/A"}
                 </BodyTextInline>
               </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Site ID:</BodyTextBold>
-                <BodyText>{site.id}</BodyText>
-              </Group>
             </Stack>
           </Stack>
         </BaseCard>
@@ -242,6 +241,8 @@ export default function SiteAdminPage() {
               data={site.staff}
               columns={staffColumns}
               getRowKey={(member) => member.id}
+              pageSize={10}
+              fullControls
               emptyMessage="No staff assigned"
             />
           </Stack>

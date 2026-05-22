@@ -144,7 +144,6 @@ function EditSiteFields({
                 error={fieldState.error?.message}
                 searchable
                 disabled={usersLoading}
-                clearable
               />
             )}
           />

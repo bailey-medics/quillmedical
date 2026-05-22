@@ -92,6 +92,7 @@ from app.organisations import (
     get_org_staff_ids,
     get_patient_org_ids,
     get_shared_org_ids,
+    get_user_org_ids,
 )
 from app.push import router as push_router
 from app.push_send import router as push_send_router
@@ -1522,6 +1523,59 @@ def reactivate_user(
     }
 
 
+@router.post("/users/{user_id}/send-invite")
+def send_invite_email(
+    user_id: int,
+    current_user: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Send Invite Email.
+
+    Sends an email to the user inviting them to set up or update their
+    credentials via a password reset link.
+    Requires admin or superadmin system permissions.
+
+    Args:
+        user_id: ID of the user to invite.
+        current_user: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Confirmation that the invite was sent.
+
+    Raises:
+        HTTPException: 403 if requesting user lacks admin permissions.
+        HTTPException: 404 if user not found.
+    """
+    if current_user.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or superadmin permissions required",
+        )
+
+    user = db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    token = create_password_reset_token(user.email)
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    send_email(
+        to=user.email,
+        subject="You're invited to Quill – set up your account",
+        html_body=(
+            f"<p>Hi {user.username},</p>"
+            "<p>An administrator has invited you to set up your "
+            "Quill account. Please use the link below to create "
+            "your password and get started.</p>"
+            f'<p><a href="{reset_url}">Set up your account</a></p>'
+            "<p>This link expires in "
+            f"{settings.PASSWORD_RESET_TTL_MIN} minutes.</p>"
+        ),
+    )
+
+    return {"detail": "Invite email sent"}
+
+
 class TotpSetupOut(BaseModel):
     """TOTP Setup Response.
 
@@ -1901,8 +1955,50 @@ def list_users(
     else:
         stmt = select(User)
 
+    # Admins only see users in their own organisations;
+    # superadmins see all users.
+    if u.system_permissions == "admin":
+        admin_orgs = get_user_org_ids(db, u.id)
+        org_scoped_ids = get_org_staff_ids(db, admin_orgs)
+        if not org_scoped_ids:
+            return {"users": []}
+        stmt = stmt.where(User.id.in_(org_scoped_ids))
+
     try:
         users = db.execute(stmt).scalars().unique().all()
+
+        # Batch-load organisation and site memberships
+        user_ids = [user.id for user in users]
+        org_rows = db.execute(
+            select(
+                organisation_staff_member.c.user_id,
+                Organization.name,
+            )
+            .join(
+                Organization,
+                Organization.id == organisation_staff_member.c.organisation_id,
+            )
+            .where(organisation_staff_member.c.user_id.in_(user_ids))
+        ).all()
+        user_orgs: dict[int, list[str]] = {}
+        for row in org_rows:
+            user_orgs.setdefault(row[0], []).append(row[1])
+
+        site_rows = db.execute(
+            select(
+                site_staff_member.c.user_id,
+                Site.name,
+            )
+            .join(
+                Site,
+                Site.id == site_staff_member.c.site_id,
+            )
+            .where(site_staff_member.c.user_id.in_(user_ids))
+        ).all()
+        user_sites: dict[int, list[str]] = {}
+        for row in site_rows:
+            user_sites.setdefault(row[0], []).append(row[1])
+
         return {
             "users": [
                 {
@@ -1911,6 +2007,8 @@ def list_users(
                     "email": user.email,
                     "system_permissions": user.system_permissions,
                     "is_active": user.is_active,
+                    "organisations": user_orgs.get(user.id, []),
+                    "sites": user_sites.get(user.id, []),
                 }
                 for user in users
             ]
@@ -2941,7 +3039,19 @@ def list_organizations(
         )
 
     try:
-        organizations = db.execute(select(Organization)).scalars().all()
+        if u.system_permissions == "superadmin":
+            organizations = db.execute(select(Organization)).scalars().all()
+        else:
+            user_org_ids = get_user_org_ids(db, u.id)
+            organizations = (
+                db.execute(
+                    select(Organization).where(
+                        Organization.id.in_(user_org_ids)
+                    )
+                )
+                .scalars()
+                .all()
+            )
         return {
             "organizations": [
                 {
@@ -2995,6 +3105,15 @@ def get_organization(
     org = db.scalar(select(Organization).where(Organization.id == org_id))
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Admin users can only view orgs they belong to
+    if u.system_permissions == "admin":
+        user_org_ids = get_user_org_ids(db, u.id)
+        if org_id not in user_org_ids:
+            raise HTTPException(
+                status_code=404,
+                detail="Organization not found",
+            )
 
     # Get staff members with primary status
     staff_query = (
@@ -3145,6 +3264,13 @@ def update_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organisation not found"
+            )
+
     valid_types = [
         "hospital_team",
         "gp_practice",
@@ -3285,6 +3411,13 @@ def add_staff_to_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organization not found"
+            )
+
     user = db.scalar(select(User).where(User.id == body.user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -3380,6 +3513,13 @@ def add_patient_to_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organization not found"
+            )
+
     # Check if already a member
     existing = db.scalar(
         select(organisation_patient_member).where(
@@ -3434,6 +3574,13 @@ def remove_staff_from_organization(
     if u.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organization not found"
+            )
+
     existing = db.scalar(
         select(organisation_staff_member).where(
             organisation_staff_member.c.organisation_id == org_id,
@@ -3479,6 +3626,13 @@ def remove_patient_from_organization(
     if u.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organization not found"
+            )
+
     existing = db.scalar(
         select(organisation_patient_member).where(
             organisation_patient_member.c.organisation_id == org_id,
@@ -3520,6 +3674,13 @@ def list_org_features(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
+    # Admin users can only view orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organisation not found"
+            )
+
     return {
         "features": [
             FeatureOut(
@@ -3554,6 +3715,13 @@ def toggle_org_feature(
     org = db.get(Organization, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
+
+    # Admin users can only modify orgs they belong to
+    if u.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, u.id):
+            raise HTTPException(
+                status_code=404, detail="Organisation not found"
+            )
 
     existing = db.scalar(
         select(OrganisationFeature).where(

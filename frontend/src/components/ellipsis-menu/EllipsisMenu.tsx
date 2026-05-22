@@ -7,10 +7,9 @@
  */
 
 import type { ReactElement } from "react";
-import { Menu } from "@mantine/core";
+import { ActionIcon, Menu } from "@mantine/core";
 import { IconDots } from "@/components/icons/appIcons";
 import Icon from "@/components/icons";
-import IconButton from "@/components/button/IconButton";
 import classes from "./EllipsisMenu.module.css";
 
 export interface EllipsisMenuItem {
@@ -38,14 +37,16 @@ export default function EllipsisMenu({
   return (
     <Menu position="bottom-end" shadow="md">
       <Menu.Target>
-        <IconButton
-          icon={<IconDots />}
+        <ActionIcon
           variant="transparent"
           color="gray"
+          size={30}
           className={classes.trigger}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           aria-label={ariaLabel}
-        />
+        >
+          <Icon icon={<IconDots />} size="sm" />
+        </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
         {items.map((item) => (

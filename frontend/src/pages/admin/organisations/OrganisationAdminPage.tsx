@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
+import { Container, Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyText,
@@ -18,19 +18,15 @@ import {
   Heading,
   EmptyState,
 } from "@/components/typography";
-import {
-  IconPencil,
-  IconAlertCircle,
-  IconUserMinus,
-} from "@components/icons/appIcons";
+import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
-import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import AddButton from "@/components/button/AddButton";
 import FeatureBadge from "@/components/badge/FeatureBadge";
+import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
 
@@ -163,17 +159,7 @@ export default function OrganisationAdminPage() {
   }
 
   if (error || !org) {
-    return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading organisation"
-          color="var(--alert-color)"
-        >
-          {error || "Organisation not found"}
-        </Alert>
-      </Container>
-    );
+    return <NotFoundLayout />;
   }
 
   const formatType = (type: string): string => {

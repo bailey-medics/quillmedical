@@ -47,7 +47,6 @@ export function AssessmentIntro({
         acceptLoading={loading}
         onCancel={onCancel}
         cancelLabel="Cancel"
-        fullWidth
       />
     </Stack>
   );
