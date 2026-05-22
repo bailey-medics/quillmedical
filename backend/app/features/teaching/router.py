@@ -1482,15 +1482,25 @@ def list_delegates(
     if not member_ids:
         return []
 
-    # Fetch user details
+    # Fetch user details — exclude admins/superadmins
     user_ids = list(member_ids)
     users_map: dict[int, User] = {
         u.id: u
-        for u in db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in db.execute(
+            select(User).where(
+                User.id.in_(user_ids),
+                User.system_permissions.notin_(["admin", "superadmin"]),
+            )
+        )
         .unique()
         .scalars()
         .all()
     }
+
+    # Narrow to only non-admin user IDs
+    user_ids = list(users_map.keys())
+    if not user_ids:
+        return []
 
     # Get assessments for these users in caller's orgs
     assessments = (

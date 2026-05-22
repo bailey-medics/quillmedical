@@ -209,6 +209,14 @@ function Step2Organisation({
     })),
   );
 
+  // Only show IDs that exist in available options (admin may not see all)
+  const validOrgIds = new Set(orgOptions.map((o) => o.value));
+  const validSiteIds = new Set(siteOptions.map((s) => s.value));
+  const visibleOrgIds = formData.organisationIds.filter((id) =>
+    validOrgIds.has(id),
+  );
+  const visibleSiteIds = formData.siteIds.filter((id) => validSiteIds.has(id));
+
   return (
     <Stack gap="md">
       <Heading>Organisation/site</Heading>
@@ -221,11 +229,14 @@ function Step2Organisation({
         description="Only add user here if they require organisation access (this is not needed for 'Teaching delegates')"
         placeholder="Select organisations (optional)"
         data={orgOptions}
-        value={formData.organisationIds}
+        value={visibleOrgIds}
         onChange={(value) =>
           setFormData({
             ...formData,
-            organisationIds: value,
+            organisationIds: [
+              ...formData.organisationIds.filter((id) => !validOrgIds.has(id)),
+              ...value,
+            ],
           })
         }
         searchable
@@ -236,8 +247,16 @@ function Step2Organisation({
         description="Teaching delegates normally only need site access"
         placeholder="Select sites (optional)"
         data={siteOptions}
-        value={formData.siteIds}
-        onChange={(value) => setFormData({ ...formData, siteIds: value })}
+        value={visibleSiteIds}
+        onChange={(value) =>
+          setFormData({
+            ...formData,
+            siteIds: [
+              ...formData.siteIds.filter((id) => !validSiteIds.has(id)),
+              ...value,
+            ],
+          })
+        }
         searchable
       />
     </Stack>

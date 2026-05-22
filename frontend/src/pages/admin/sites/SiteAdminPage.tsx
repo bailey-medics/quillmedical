@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import { PageFlash } from "@/components/page-flash";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
   IconAlertCircle,
@@ -24,6 +25,7 @@ import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
+import { useSearch, useSearchFilter } from "@lib/search";
 
 interface SiteStaff {
   id: number;
@@ -53,10 +55,16 @@ interface SiteDetails {
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { setShowSearch } = useSearch();
   const [site, setSite] = useState<SiteDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingStaff, setRemovingStaff] = useState<SiteStaff | null>(null);
+
+  useEffect(() => {
+    setShowSearch(true);
+    return () => setShowSearch(false);
+  }, [setShowSearch]);
 
   const fetchSite = useCallback(async () => {
     if (!id) {
@@ -78,6 +86,13 @@ export default function SiteAdminPage() {
   useEffect(() => {
     fetchSite();
   }, [fetchSite]);
+
+  const getStaffSearchText = useCallback(
+    (member: SiteStaff) =>
+      [member.full_name, member.username, member.email, member.role].join(" "),
+    [],
+  );
+  const filteredStaff = useSearchFilter(site?.staff ?? [], getStaffSearchText);
 
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
@@ -169,6 +184,7 @@ export default function SiteAdminPage() {
     <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={site.name} />
+        <PageFlash />
 
         {/* Site Information */}
         <BaseCard>
@@ -243,7 +259,7 @@ export default function SiteAdminPage() {
             </Group>
 
             <DataTable<SiteStaff>
-              data={site.staff}
+              data={filteredStaff}
               columns={staffColumns}
               getRowKey={(member) => member.id}
               pageSize={10}

@@ -39,6 +39,7 @@ import ActionCard from "@/components/action-card";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
 import competenciesData from "@/generated/competencies.json";
+import baseProfessionsData from "@/generated/base-professions.json";
 
 /**
  * User details from API
@@ -157,11 +158,6 @@ export default function UserAdminPage() {
                 <BodyTextBold>Email:</BodyTextBold>
                 <BodyTextInline>{user.email}</BodyTextInline>
               </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>User ID:</BodyTextBold>
-                <BodyText>{user.id}</BodyText>
-              </Group>
             </Stack>
           </Stack>
         </BaseCard>
@@ -175,7 +171,11 @@ export default function UserAdminPage() {
               <Group gap="xs">
                 <BodyTextBold>Base profession:</BodyTextBold>
                 <BodyTextInline>
-                  {user.base_profession || "Not set"}
+                  {user.base_profession
+                    ? (baseProfessionsData.base_professions.find(
+                        (p) => p.id === user.base_profession,
+                      )?.display_name ?? user.base_profession)
+                    : "Not set"}
                 </BodyTextInline>
               </Group>
 

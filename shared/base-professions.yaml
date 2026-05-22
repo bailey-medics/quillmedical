@@ -315,7 +315,7 @@ base_professions:
   # ==========================================================================
 
   - id: teaching_delegate
-    display_name: "Teaching Delegate"
+    display_name: "Teaching delegate"
     description: "External delegate with teaching assessment access only (no clinical access)"
     base_competencies:
       - view_teaching_cases

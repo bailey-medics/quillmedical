@@ -135,10 +135,14 @@ export default function AddStaffToSitePage() {
     async function fetchData() {
       try {
         const [usersResponse, siteResponse] = await Promise.all([
-          api.get<{ users: ApiUser[] }>("/users?permission_level=staff"),
+          api.get<{ users: ApiUser[] }>("/users"),
           api.get<SiteData>(`/sites/${id}`),
         ]);
-        setUsers(usersResponse.users);
+        // Filter out users already assigned to this site
+        const existingStaffIds = new Set(siteResponse.staff.map((s) => s.id));
+        setUsers(
+          usersResponse.users.filter((u) => !existingStaffIds.has(u.id)),
+        );
         setHasClinicalLead(
           siteResponse.staff.some((s) => s.role === "clinical_lead"),
         );
@@ -162,11 +166,10 @@ export default function AddStaffToSitePage() {
         user_id: Number(data.userId),
         role: data.role,
       });
-      navigate(`/admin/sites/${id}`);
-      return {
-        state: "success",
-        message: { title: "Staff member added" },
-      };
+      navigate(`/admin/sites/${id}`, {
+        state: { flash: { title: "Staff member added" } },
+      });
+      return { state: "success", message: { title: "Staff member added" } };
     } catch (err) {
       return {
         state: "error",

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, TextInput } from "@mantine/core";
 import { IconX } from "@/components/icons/appIcons";
 import SearchButton from "@/components/button/SearchButton";
+import { typographyTokens } from "@/theme";
 
 interface SearchFieldProps {
   /** Controlled value — when provided, component is controlled */
@@ -85,6 +86,8 @@ export default function SearchField({ value, onChange }: SearchFieldProps) {
         input: {
           transition: "width 0.2s ease",
           width: 220,
+          fontSize: "var(--mantine-font-size-md)",
+          fontWeight: typographyTokens.fontWeights.body,
         },
       }}
       onBlur={handleBlur}

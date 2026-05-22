@@ -14,7 +14,7 @@ import AddButton from "@/components/button/AddButton";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import PermissionBadge from "@/components/badge/PermissionBadge";
-import { useSearchFilter } from "@lib/search";
+import { useSearch, useSearchFilter } from "@lib/search";
 import { api } from "@/lib/api";
 
 interface User {
@@ -47,9 +47,15 @@ interface UsersApiResponse {
  */
 export default function AdminUsersPage() {
   const navigate = useNavigate();
+  const { setShowSearch } = useSearch();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setShowSearch(true);
+    return () => setShowSearch(false);
+  }, [setShowSearch]);
 
   useEffect(() => {
     async function fetchUsers() {

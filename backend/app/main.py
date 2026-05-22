@@ -1327,6 +1327,7 @@ def create_user_with_cbac(
         additional_competencies=payload.additional_competencies,
         removed_competencies=payload.removed_competencies,
         system_permissions=payload.system_permissions,
+        email_verified=True,
     )
     db.add(user)
     db.flush()
@@ -1464,12 +1465,24 @@ def update_user(
 
     # Update organisation memberships if provided
     if payload.organisation_ids is not None:
-        # Remove existing org memberships
-        db.execute(
-            organisation_staff_member.delete().where(
-                organisation_staff_member.c.user_id == user_id
+        if current_user.system_permissions == "superadmin":
+            # Superadmin: replace all memberships
+            db.execute(
+                organisation_staff_member.delete().where(
+                    organisation_staff_member.c.user_id == user_id
+                )
             )
-        )
+        else:
+            # Admin: only remove memberships within admin's own orgs
+            admin_org_ids = get_user_org_ids(db, current_user.id)
+            db.execute(
+                organisation_staff_member.delete().where(
+                    organisation_staff_member.c.user_id == user_id,
+                    organisation_staff_member.c.organisation_id.in_(
+                        admin_org_ids
+                    ),
+                )
+            )
         # Add new org memberships
         for i, org_id in enumerate(payload.organisation_ids):
             org = db.scalar(
@@ -1490,12 +1503,31 @@ def update_user(
 
     # Update site memberships if provided
     if payload.site_ids is not None:
-        # Remove existing site memberships
-        db.execute(
-            site_staff_member.delete().where(
-                site_staff_member.c.user_id == user_id
+        if current_user.system_permissions == "superadmin":
+            # Superadmin: replace all site memberships
+            db.execute(
+                site_staff_member.delete().where(
+                    site_staff_member.c.user_id == user_id
+                )
             )
-        )
+        else:
+            # Admin: only remove memberships for sites within admin's orgs
+            admin_org_ids = get_user_org_ids(db, current_user.id)
+            admin_site_ids = [
+                row[0]
+                for row in db.execute(
+                    select(organisation_site.c.site_id).where(
+                        organisation_site.c.organisation_id.in_(admin_org_ids)
+                    )
+                ).all()
+            ]
+            if admin_site_ids:
+                db.execute(
+                    site_staff_member.delete().where(
+                        site_staff_member.c.user_id == user_id,
+                        site_staff_member.c.site_id.in_(admin_site_ids),
+                    )
+                )
         # Add new site memberships
         for s_id in payload.site_ids:
             site = db.scalar(select(Site).where(Site.id == s_id))

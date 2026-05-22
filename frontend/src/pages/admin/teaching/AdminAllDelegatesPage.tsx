@@ -38,15 +38,25 @@ interface Delegate {
 // ── Columns ─────────────────────────────────────────────────────────
 
 const columns: Column<Delegate>[] = [
-  { header: "Name", render: (d) => d.name },
-  { header: "Site", render: (d) => d.site_name ?? "—" },
-  { header: "Clinical lead", render: (d) => d.clinical_lead ?? "—" },
+  { header: "Name", render: (d) => d.name, accessor: (d) => d.name },
+  {
+    header: "Site",
+    render: (d) => d.site_name ?? "—",
+    accessor: (d) => d.site_name ?? "",
+  },
+  {
+    header: "Clinical lead",
+    render: (d) => d.clinical_lead ?? "—",
+    accessor: (d) => d.clinical_lead ?? "",
+  },
   {
     header: "Learning",
     render: (d) => {
       if (d.learning_completed === null) return "—";
       return d.learning_completed ? "Complete" : "In progress";
     },
+    accessor: (d) =>
+      d.learning_completed === null ? "" : d.learning_completed ? "1" : "0",
   },
   {
     header: "Assessment",
@@ -54,6 +64,7 @@ const columns: Column<Delegate>[] = [
       if (!d.assessment_result) return "—";
       return <AssessmentResultBadge result={d.assessment_result} />;
     },
+    accessor: (d) => d.assessment_result ?? "",
   },
   {
     header: "Date",
@@ -61,6 +72,7 @@ const columns: Column<Delegate>[] = [
       if (!d.assessment_date) return "—";
       return <FormattedDate date={d.assessment_date} />;
     },
+    accessor: (d) => d.assessment_date ?? "",
   },
 ];
 
