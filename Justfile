@@ -37,6 +37,40 @@ abbreviate-just:
     echo "source ~/.zshrc"
 
 
+alias ii := initial-install
+# Clone all *-teaching repos into teaching-repos/ (safe to re-run)
+initial-install:
+    #!/usr/bin/env bash
+    {{initialise}} "initial-install"
+    set -euo pipefail
+
+    DEST="teaching-repos"
+    ORG="bailey-medics"
+
+    mkdir -p "$DEST"
+
+    echo "Discovering teaching repos in ${ORG}..."
+    REPOS=$(gh repo list "$ORG" --json name --jq '.[].name' | grep -- '-teaching$' || true)
+
+    if [ -z "$REPOS" ]; then
+        echo "No *-teaching repos found in ${ORG}."
+        exit 0
+    fi
+
+    for REPO in $REPOS; do
+        if [ -d "$DEST/$REPO" ]; then
+            echo "✓ $REPO already cloned — pulling latest..."
+            git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
+        else
+            echo "Cloning $REPO..."
+            gh repo clone "$ORG/$REPO" "$DEST/$REPO"
+        fi
+    done
+
+    echo ""
+    echo "Done. Teaching repos are in ./$DEST/"
+
+
 alias cu := create-user
 # Create a new user in the database
 create-user:

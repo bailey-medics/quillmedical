@@ -22,5 +22,6 @@ prompt-output.md
 site/
 .claude/
 
-# Question bank (private repo cloned locally)
+# Teaching content repos (cloned locally)
+teaching-repos/
 question-bank/
