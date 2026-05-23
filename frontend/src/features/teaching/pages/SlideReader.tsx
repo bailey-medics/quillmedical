@@ -6,19 +6,19 @@
  * URL with the current slide index.
  *
  * Mounted at /teaching/learn/:moduleId/slide/:slideIndex.
- * Phase 1: Uses stub compiled JSON with YouTube videos.
+ * Phase 1: Static content via learning-data. Phase 2: API calls.
  */
 
-import { Stack, useMantineTheme } from "@mantine/core";
+import { Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
 import TeachingLearningNav from "@/components/navigation/teaching/TeachingLearningNav";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import { stubSlides } from "@/components/teaching/slide-layouts/stubSlides";
+import { getModuleSlides } from "@/features/teaching/learning-data";
 import type { CompiledSlide } from "@/features/teaching/types";
 
 export default function SlideReader() {
@@ -30,8 +30,17 @@ export default function SlideReader() {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
-  // Phase 1: stub slides. Phase 2 will fetch from API
-  const slides: CompiledSlide[] = stubSlides;
+  const [slides, setSlides] = useState<CompiledSlide[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!moduleId) {
+      return;
+    }
+    getModuleSlides(moduleId)
+      .then((data) => setSlides(data ?? []))
+      .finally(() => setLoading(false));
+  }, [moduleId]);
 
   const currentIndex = useMemo(() => {
     const parsed = Number(slideIndexParam);
@@ -115,6 +124,16 @@ export default function SlideReader() {
   const handleVideoProgress = useCallback(() => {
     // Phase 2: debounced POST to bookmark endpoint
   }, []);
+
+  if (loading) {
+    return (
+      <TeachingLayout>
+        <Stack gap="lg">
+          <Skeleton height={400} />
+        </Stack>
+      </TeachingLayout>
+    );
+  }
 
   if (!currentSlide) {
     return null;

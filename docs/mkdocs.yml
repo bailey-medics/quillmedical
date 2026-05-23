@@ -28,6 +28,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Getting Started: getting-started.md
   - Concepts:
       - Overview: concepts/index.md
       - Organisation: concepts/organisation.md

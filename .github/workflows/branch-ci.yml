@@ -279,7 +279,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Open pull request
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create PR if none exists
         env:

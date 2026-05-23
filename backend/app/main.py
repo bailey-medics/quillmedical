@@ -194,7 +194,10 @@ async def limit_request_body_size(
 
 
 # --- Rate limiting (slowapi) ---
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=settings.BACKEND_ENV != "development",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -1970,20 +1973,25 @@ def me(
             - totp_enabled: Whether 2FA is active
             - enabled_features: Features enabled on user's primary org
     """
-    # Resolve features from user's primary org
-    enabled_features: list[str] = []
-    primary_org_row = db.execute(
-        select(organisation_staff_member.c.organisation_id).where(
-            organisation_staff_member.c.user_id == u.id,
-            organisation_staff_member.c.is_primary.is_(True),
+    # Resolve features from all user's organisations (union)
+    user_org_ids = (
+        db.execute(
+            select(organisation_staff_member.c.organisation_id).where(
+                organisation_staff_member.c.user_id == u.id,
+            )
         )
-    ).first()
-    if primary_org_row:
+        .scalars()
+        .all()
+    )
+    enabled_features: list[str] = []
+    if user_org_ids:
         features = (
             db.execute(
-                select(OrganisationFeature.feature_key).where(
-                    OrganisationFeature.organisation_id == primary_org_row[0],
+                select(OrganisationFeature.feature_key)
+                .where(
+                    OrganisationFeature.organisation_id.in_(user_org_ids),
                 )
+                .distinct()
             )
             .scalars()
             .all()
@@ -5093,17 +5101,37 @@ app.include_router(router)
 
 # --- Conditional static file serving for local dev ---
 if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
-    from pathlib import Path
+    import mimetypes
 
-    from starlette.staticfiles import StaticFiles
+    from starlette.responses import FileResponse
 
-    _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
-    _static_root = (
-        _qb_path.parent
-    )  # Serve from parent so /questions/ in URLs resolves
-    if _static_root.is_dir():
-        app.mount(
-            "/api/teaching/images",
-            StaticFiles(directory=str(_static_root)),
-            name="teaching-images",
+    _qb_base = settings.TEACHING_QUESTION_BANK_PATH
+
+    @app.get(
+        "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
+    )
+    async def _serve_teaching_image(
+        bank_id: str,
+        item_folder: str,
+        filename: str,
+    ) -> FileResponse:
+        """Serve question bank images from local teaching-repos."""
+        from app.features.teaching.storage import resolve_local_bank
+
+        # Validate path components
+        for part in (bank_id, item_folder, filename):
+            if ".." in part or "/" in part:
+                raise HTTPException(400, "Invalid path")
+
+        bank_dir = resolve_local_bank(_qb_base, bank_id)
+        if not bank_dir:
+            raise HTTPException(404, "Bank not found")
+
+        file_path = bank_dir / item_folder / filename
+        if not file_path.is_file():
+            raise HTTPException(404, "Image not found")
+
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
+        return FileResponse(file_path, media_type=content_type)

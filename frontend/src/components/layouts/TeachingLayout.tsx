@@ -25,6 +25,7 @@ import {
   LAYOUT_PADDING_BOTTOM,
   LAYOUT_PADDING_TOP,
   LAYOUT_PADDING_X,
+  LAYOUT_SIDEBAR_WIDTH,
 } from "./layoutConstants";
 
 export interface TeachingLayoutProps {
@@ -104,6 +105,8 @@ export default function TeachingLayout({
         {!isSm && hasSidebar && (
           <Box
             component="aside"
+            w={LAYOUT_SIDEBAR_WIDTH}
+            miw={LAYOUT_SIDEBAR_WIDTH}
             style={{
               borderRight: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
               overflowY: "auto",

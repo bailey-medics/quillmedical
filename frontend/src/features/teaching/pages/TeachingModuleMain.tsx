@@ -24,9 +24,6 @@ import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import type { QuestionBank } from "@/features/teaching/types";
 
-/** Bank IDs that have learning materials available (Phase 1 stub). */
-const BANKS_WITH_LEARNING = new Set(["colonoscopy-optical-diagnosis-test"]);
-
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
   const navigate = useNavigate();
@@ -80,7 +77,7 @@ export default function TeachingModuleMain() {
     );
   }
 
-  const hasLearning = BANKS_WITH_LEARNING.has(bank.question_bank_id);
+  const hasLearning = bank.has_learning;
 
   const sidebarNav = (
     <TeachingMainNav

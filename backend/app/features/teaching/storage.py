@@ -117,6 +117,123 @@ def get_storage_backend() -> StorageBackend:
 _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
+def _has_assessment_config(directory: Path) -> bool:
+    """Check if a directory contains assessment.yaml or config.yaml."""
+    return (directory / "assessment.yaml").is_file() or (
+        directory / "config.yaml"
+    ).is_file()
+
+
+def discover_local_banks(base_path: str) -> list[str]:
+    """Discover question bank IDs from the local teaching-repos layout.
+
+    Supports three directory structures:
+    - Modules (current): ``<base>/<repo>/modules/<module_id>/assessment/``
+    - Nested (legacy): ``<base>/<repo>/questions/<bank_id>/``
+    - Flat (legacy): ``<base>/<bank_id>/``
+
+    Looks for ``assessment.yaml`` or ``config.yaml`` in the bank directory.
+    Returns a sorted list of unique bank IDs.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return []
+
+    bank_ids: set[str] = set()
+
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        # Check flat layout: <base>/<bank_id>/{assessment,config}.yaml
+        if _has_assessment_config(child):
+            bank_ids.add(child.name)
+            continue
+        # Check modules layout: <base>/<repo>/modules/<module_id>/assessment/
+        modules_dir = child / "modules"
+        if modules_dir.is_dir():
+            for module_dir in modules_dir.iterdir():
+                if not module_dir.is_dir():
+                    continue
+                assessment_dir = module_dir / "assessment"
+                if assessment_dir.is_dir() and _has_assessment_config(
+                    assessment_dir
+                ):
+                    bank_ids.add(module_dir.name)
+        # Check legacy nested layout: <base>/<repo>/questions/<bank_id>/
+        questions_dir = child / "questions"
+        if questions_dir.is_dir():
+            for bank_dir in questions_dir.iterdir():
+                if bank_dir.is_dir() and _has_assessment_config(bank_dir):
+                    bank_ids.add(bank_dir.name)
+
+    return sorted(bank_ids)
+
+
+def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
+    """Resolve a bank_id to its filesystem path.
+
+    Supports three directory structures:
+    - Modules (current): ``<base>/<repo>/modules/<bank_id>/assessment/``
+    - Nested (legacy): ``<base>/<repo>/questions/<bank_id>/``
+    - Flat (legacy): ``<base>/<bank_id>/``
+
+    Returns the path to the directory containing assessment content
+    (question directories and assessment/config YAML), or None if not found.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return None
+
+    # Check flat layout first
+    flat = base / bank_id
+    if flat.is_dir() and _has_assessment_config(flat):
+        return flat
+
+    # Check repo subdirectories
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        # Check modules layout: <base>/<repo>/modules/<bank_id>/assessment/
+        assessment_dir = child / "modules" / bank_id / "assessment"
+        if assessment_dir.is_dir() and _has_assessment_config(assessment_dir):
+            return assessment_dir
+        # Check legacy nested layout: <base>/<repo>/questions/<bank_id>/
+        nested = child / "questions" / bank_id
+        if nested.is_dir() and _has_assessment_config(nested):
+            return nested
+
+    return None
+
+
+def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
+    """Resolve a module_id to its top-level module directory.
+
+    Returns the path to ``<repo>/modules/<module_id>/`` which contains
+    ``module.yaml``, ``assessment/``, and optionally ``learning/``.
+    Only works for the modules layout.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return None
+
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        module_dir = child / "modules" / module_id
+        if module_dir.is_dir() and (module_dir / "module.yaml").is_file():
+            return module_dir
+
+    return None
+
+
+def has_learning_content(base_path: str, module_id: str) -> bool:
+    """Check if a module has learning content (content.mdx)."""
+    module_dir = resolve_module_dir(base_path, module_id)
+    if module_dir is None:
+        return False
+    return (module_dir / "learning" / "content.mdx").is_file()
+
+
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 

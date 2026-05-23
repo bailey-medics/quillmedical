@@ -25,12 +25,52 @@ class QuestionBankOut(BaseModel):
     type: str
     synced_at: datetime
     is_live: bool = False
+    has_learning: bool = False
 
 
 class QuestionBankDetailOut(QuestionBankOut):
     """Full config detail (includes assessment params, options, etc.)."""
 
     config_yaml: dict[str, Any]
+
+
+# ------------------------------------------------------------------
+# Learning
+# ------------------------------------------------------------------
+
+
+class LearningSlideOut(BaseModel):
+    """A single parsed slide from learning content."""
+
+    slide_index: int
+    layout: str
+    title: str
+    body: str | None = None
+    callout_type: str | None = None
+    callout_body: str | None = None
+    youtube_id: str | None = None
+    duration_seconds: int | None = None
+
+
+class LearningModuleOut(BaseModel):
+    """Module metadata from module.yaml."""
+
+    module_id: str
+    title: str
+    order: int
+    status: str
+    renewal_months: int | None = None
+    has_learning: bool = False
+    slide_count: int = 0
+    description: str | None = None
+
+
+class LearningContentOut(BaseModel):
+    """Full learning content for a module."""
+
+    module_id: str
+    title: str
+    slides: list[LearningSlideOut]
 
 
 # ------------------------------------------------------------------

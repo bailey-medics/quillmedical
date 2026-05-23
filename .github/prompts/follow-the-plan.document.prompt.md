@@ -13,6 +13,7 @@ A plan document has been attached to this prompt. Follow it to complete the task
 - Before beginning each step, re-read that section of the plan document.
 - Do not proceed to the next step until the current one is complete.
 - If a step is unclear or blocked, stop and ask for clarification rather than improvising.
+- Use markdown checkboxes to track progress through the plan document, checking off each step as it is completed.
 
 ## Committing
 

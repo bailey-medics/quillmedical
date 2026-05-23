@@ -80,7 +80,7 @@ class ValidationResult:
 # ------------------------------------------------------------------
 
 
-REQUIRED_CONFIG_FIELDS = {"id", "version", "title", "description", "type"}
+REQUIRED_CONFIG_FIELDS = {"version", "title", "description", "type"}
 VALID_TYPES = {"uniform", "variable"}
 REQUIRED_ASSESSMENT_FIELDS = {
     "items_per_attempt",
@@ -608,19 +608,26 @@ def validate_question_bank(
     result = ValidationResult(bank_id="unknown", version=0)
 
     # --- Config ---
-    config_path = bank_dir / "config.yaml"
+    config_path = bank_dir / "assessment.yaml"
     if not config_path.is_file():
-        # Try .yml extension as well
+        config_path = bank_dir / "config.yaml"
+    if not config_path.is_file():
         config_path = bank_dir / "config.yml"
     if not config_path.is_file():
-        result.add_error(str(bank_dir), "config.yaml not found")
+        result.add_error(
+            str(bank_dir), "assessment.yaml or config.yaml not found"
+        )
         result.finalise()
         return result
 
     with open(config_path) as f:
         config: dict[str, Any] = yaml.safe_load(f) or {}
 
-    result.bank_id = config.get("id", "unknown")
+    # Derive bank_id from config "id" field or directory name
+    derived_id = config.get("id") or bank_dir.name
+    if derived_id == "assessment":
+        derived_id = bank_dir.parent.name
+    result.bank_id = derived_id
     result.version = config.get("version", 0)
 
     config_ok = _validate_config(config, str(config_path), result)

@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 
 def _load_config(bank_dir: Path) -> dict[str, Any]:
     """Load and return the config YAML from a bank directory."""
-    for name in ("config.yaml", "config.yml"):
+    for name in ("assessment.yaml", "config.yaml", "config.yml"):
         path = bank_dir / name
         if path.is_file():
             with open(path) as f:
                 return yaml.safe_load(f) or {}
-    msg = f"No config.yaml found in {bank_dir}"
+    msg = f"No assessment.yaml or config.yaml found in {bank_dir}"
     raise FileNotFoundError(msg)
 
 
@@ -135,7 +135,11 @@ def sync_question_bank(
         return validation, None
 
     config = _load_config(bank_dir)
-    bank_id = config["id"]
+    # Derive bank_id from config "id" field (legacy) or directory name
+    bank_id = config.get("id") or bank_dir.name
+    # If bank_dir is an "assessment" subdirectory, use the parent name
+    if bank_id == "assessment":
+        bank_id = bank_dir.parent.name
     version = config["version"]
     bank_type = config["type"]
 
