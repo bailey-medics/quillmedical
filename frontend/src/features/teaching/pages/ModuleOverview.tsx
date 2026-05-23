@@ -9,6 +9,7 @@
 import { Group, Skeleton, Stack } from "@mantine/core";
 import { useEffect, useState } from "react";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@components/typography/PageHeader";
 import { BodyText } from "@/components/typography";
@@ -31,9 +32,16 @@ export default function ModuleOverview() {
       .finally(() => setLoading(false));
   }, [moduleId]);
 
+  const sidebarNav = (
+    <TeachingMainNav
+      moduleName={content?.module.title}
+      moduleHref={moduleId ? `/teaching/${moduleId}` : undefined}
+    />
+  );
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <Skeleton height={60} />
@@ -45,7 +53,7 @@ export default function ModuleOverview() {
 
   if (!content) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <BodyText>Module not found</BodyText>
       </TeachingLayout>
     );
@@ -61,7 +69,7 @@ export default function ModuleOverview() {
   const startSlide = hasProgress ? lastSlide : 0;
 
   return (
-    <TeachingLayout>
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <PageHeader title={content.module.title} />
         <BodyText>{content.description}</BodyText>
