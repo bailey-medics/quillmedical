@@ -3,10 +3,11 @@
  *
  * Lists all learning modules with progress overlay.
  * Mounted at /teaching/learn.
- * Phase 1: Uses stub data (no backend).
+ * Phase 1: Static content via learning-data. Phase 2: API calls.
  */
 
-import { SimpleGrid, Stack, Center } from "@mantine/core";
+import { SimpleGrid, Stack, Center, Skeleton } from "@mantine/core";
+import { useEffect, useState } from "react";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import PageHeader from "@components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
@@ -16,29 +17,12 @@ import type {
   LearningModule,
   LearnerProgress,
 } from "@/features/teaching/types";
+import { getModules } from "@/features/teaching/learning-data";
 
-/** Stub modules for Phase 1 */
-const STUB_MODULES: LearningModule[] = [
-  {
-    module_id: "colorectal-polyps",
-    title: "Colorectal Polyps",
-    order_index: 1,
-    status: "live",
-    slide_count: 7,
-  },
-  {
-    module_id: "barrett-oesophagus",
-    title: "Barrett's Oesophagus",
-    order_index: 2,
-    status: "live",
-    slide_count: 12,
-  },
-];
-
-/** Stub progress for Phase 1 */
+/** Stub progress for Phase 1 — Phase 2 will fetch from API */
 const STUB_PROGRESS: LearnerProgress[] = [
   {
-    module_id: "colorectal-polyps",
+    module_id: "colonoscopy-optical-diagnosis-test",
     last_slide_index: 3,
     last_video_position_seconds: null,
     completed_at: null,
@@ -65,9 +49,30 @@ function getButtonLabel(progress: LearnerProgress | undefined): string {
 }
 
 export default function LearningDashboard() {
-  // Phase 1: stub data. Phase 2 will fetch from API
-  const modules = STUB_MODULES;
+  const [modules, setModules] = useState<LearningModule[]>([]);
+  const [loading, setLoading] = useState(true);
+  // Phase 1: stub progress. Phase 2 will fetch from API
   const progress = STUB_PROGRESS;
+
+  useEffect(() => {
+    getModules()
+      .then(setModules)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <TeachingLayout>
+        <Stack gap="lg">
+          <Skeleton height={36} width={200} />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Skeleton height={160} />
+            <Skeleton height={160} />
+          </SimpleGrid>
+        </Stack>
+      </TeachingLayout>
+    );
+  }
 
   return (
     <TeachingLayout>

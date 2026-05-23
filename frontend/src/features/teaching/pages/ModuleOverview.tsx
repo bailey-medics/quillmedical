@@ -3,44 +3,47 @@
  *
  * Module metadata with start/resume CTA.
  * Mounted at /teaching/learn/:moduleId.
- * Phase 1: Uses stub data.
+ * Phase 1: Static content via learning-data. Phase 2: API calls.
  */
 
-import { Group, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
+import { useEffect, useState } from "react";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@components/typography/PageHeader";
 import { BodyText } from "@/components/typography";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
-
-/** Stub metadata for Phase 1 */
-const STUB_MODULES: Record<
-  string,
-  { title: string; description: string; slideCount: number; lastSlide: number }
-> = {
-  "colorectal-polyps": {
-    title: "Colorectal Polyps",
-    description:
-      "This module covers the morphology categories of superficial lesions, clinical implications of each, and how to communicate findings consistently using the Paris classification.",
-    slideCount: 7,
-    lastSlide: 3,
-  },
-  "barrett-oesophagus": {
-    title: "Barrett's Oesophagus",
-    description:
-      "An introduction to Barrett's oesophagus: definition, surveillance protocols, and endoscopic assessment.",
-    slideCount: 12,
-    lastSlide: 0,
-  },
-};
+import { getModuleDetail } from "@/features/teaching/learning-data";
+import type { ModuleContent } from "@/features/teaching/content";
 
 export default function ModuleOverview() {
   const { moduleId } = useParams<{ moduleId: string }>();
   const navigate = useNavigate();
+  const [content, setContent] = useState<ModuleContent | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const mod = moduleId ? STUB_MODULES[moduleId] : undefined;
+  useEffect(() => {
+    if (!moduleId) {
+      return;
+    }
+    getModuleDetail(moduleId)
+      .then(setContent)
+      .finally(() => setLoading(false));
+  }, [moduleId]);
 
-  if (!mod) {
+  if (loading) {
+    return (
+      <TeachingLayout>
+        <Stack gap="lg">
+          <Skeleton height={36} width={200} />
+          <Skeleton height={60} />
+          <Skeleton height={20} width={120} />
+        </Stack>
+      </TeachingLayout>
+    );
+  }
+
+  if (!content) {
     return (
       <TeachingLayout>
         <BodyText>Module not found</BodyText>
@@ -48,21 +51,23 @@ export default function ModuleOverview() {
     );
   }
 
-  const hasProgress = mod.lastSlide > 0;
+  // Phase 1: no progress tracking. Phase 2 will fetch from API
+  const lastSlide = 0;
+  const hasProgress = lastSlide > 0;
   const buttonLabel = hasProgress
-    ? `Resume from slide ${mod.lastSlide + 1}`
+    ? `Resume from slide ${lastSlide + 1}`
     : "Start learning";
 
-  const startSlide = hasProgress ? mod.lastSlide : 0;
+  const startSlide = hasProgress ? lastSlide : 0;
 
   return (
     <TeachingLayout>
       <Stack gap="lg">
-        <PageHeader title={mod.title} />
-        <BodyText>{mod.description}</BodyText>
+        <PageHeader title={content.module.title} />
+        <BodyText>{content.description}</BodyText>
         <BodyText c="dimmed">
-          {mod.slideCount} slides
-          {hasProgress && ` · Last viewed slide ${mod.lastSlide + 1}`}
+          {content.module.slide_count} slides
+          {hasProgress && ` · Last viewed slide ${lastSlide + 1}`}
         </BodyText>
         <Group justify="flex-end">
           <PreviousNextButton
