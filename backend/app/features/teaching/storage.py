@@ -117,13 +117,22 @@ def get_storage_backend() -> StorageBackend:
 _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
+def _has_assessment_config(directory: Path) -> bool:
+    """Check if a directory contains assessment.yaml or config.yaml."""
+    return (directory / "assessment.yaml").is_file() or (
+        directory / "config.yaml"
+    ).is_file()
+
+
 def discover_local_banks(base_path: str) -> list[str]:
     """Discover question bank IDs from the local teaching-repos layout.
 
-    Supports two directory structures:
-    - Nested (teaching-repos): ``<base>/<repo>/questions/<bank_id>/config.yaml``
-    - Flat (legacy): ``<base>/<bank_id>/config.yaml``
+    Supports three directory structures:
+    - Modules (current): ``<base>/<repo>/modules/<module_id>/assessment/``
+    - Nested (legacy): ``<base>/<repo>/questions/<bank_id>/``
+    - Flat (legacy): ``<base>/<bank_id>/``
 
+    Looks for ``assessment.yaml`` or ``config.yaml`` in the bank directory.
     Returns a sorted list of unique bank IDs.
     """
     base = Path(base_path)
@@ -135,15 +144,26 @@ def discover_local_banks(base_path: str) -> list[str]:
     for child in base.iterdir():
         if not child.is_dir():
             continue
-        # Check flat layout: <base>/<bank_id>/config.yaml
-        if (child / "config.yaml").is_file():
+        # Check flat layout: <base>/<bank_id>/{assessment,config}.yaml
+        if _has_assessment_config(child):
             bank_ids.add(child.name)
             continue
-        # Check nested layout: <base>/<repo>/questions/<bank_id>/
+        # Check modules layout: <base>/<repo>/modules/<module_id>/assessment/
+        modules_dir = child / "modules"
+        if modules_dir.is_dir():
+            for module_dir in modules_dir.iterdir():
+                if not module_dir.is_dir():
+                    continue
+                assessment_dir = module_dir / "assessment"
+                if assessment_dir.is_dir() and _has_assessment_config(
+                    assessment_dir
+                ):
+                    bank_ids.add(module_dir.name)
+        # Check legacy nested layout: <base>/<repo>/questions/<bank_id>/
         questions_dir = child / "questions"
         if questions_dir.is_dir():
             for bank_dir in questions_dir.iterdir():
-                if bank_dir.is_dir() and (bank_dir / "config.yaml").is_file():
+                if bank_dir.is_dir() and _has_assessment_config(bank_dir):
                     bank_ids.add(bank_dir.name)
 
     return sorted(bank_ids)
@@ -152,11 +172,13 @@ def discover_local_banks(base_path: str) -> list[str]:
 def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
     """Resolve a bank_id to its filesystem path.
 
-    Supports two directory structures:
-    - Nested (teaching-repos): ``<base>/<repo>/questions/<bank_id>/``
+    Supports three directory structures:
+    - Modules (current): ``<base>/<repo>/modules/<bank_id>/assessment/``
+    - Nested (legacy): ``<base>/<repo>/questions/<bank_id>/``
     - Flat (legacy): ``<base>/<bank_id>/``
 
-    Returns the path to the bank directory, or None if not found.
+    Returns the path to the directory containing assessment content
+    (question directories and assessment/config YAML), or None if not found.
     """
     base = Path(base_path)
     if not base.is_dir():
@@ -164,15 +186,20 @@ def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
 
     # Check flat layout first
     flat = base / bank_id
-    if flat.is_dir() and (flat / "config.yaml").is_file():
+    if flat.is_dir() and _has_assessment_config(flat):
         return flat
 
-    # Check nested layout: <base>/<repo>/questions/<bank_id>/
+    # Check repo subdirectories
     for child in base.iterdir():
         if not child.is_dir():
             continue
+        # Check modules layout: <base>/<repo>/modules/<bank_id>/assessment/
+        assessment_dir = child / "modules" / bank_id / "assessment"
+        if assessment_dir.is_dir() and _has_assessment_config(assessment_dir):
+            return assessment_dir
+        # Check legacy nested layout: <base>/<repo>/questions/<bank_id>/
         nested = child / "questions" / bank_id
-        if nested.is_dir() and (nested / "config.yaml").is_file():
+        if nested.is_dir() and _has_assessment_config(nested):
             return nested
 
     return None

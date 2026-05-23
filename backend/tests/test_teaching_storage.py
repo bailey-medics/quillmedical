@@ -319,6 +319,34 @@ class TestDiscoverLocalBanks:
         result = discover_local_banks("/nonexistent/path")
         assert result == []
 
+    def test_modules_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        repo = tmp_path / "org-teaching"  # type: ignore[operator]
+        assessment = repo / "modules" / "my-module" / "assessment"
+        assessment.mkdir(parents=True)
+        (assessment / "assessment.yaml").touch()
+
+        result = discover_local_banks(str(tmp_path))
+        assert result == ["my-module"]
+
+    def test_modules_with_assessment_yaml(
+        self, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        repo = tmp_path / "org-teaching"  # type: ignore[operator]
+        assessment = repo / "modules" / "bank-a" / "assessment"
+        assessment.mkdir(parents=True)
+        (assessment / "assessment.yaml").touch()
+        # Also a legacy repo with questions/
+        repo2 = tmp_path / "other-teaching"  # type: ignore[operator]
+        (repo2 / "questions" / "bank-b").mkdir(parents=True)
+        (repo2 / "questions" / "bank-b" / "config.yaml").touch()
+
+        result = discover_local_banks(str(tmp_path))
+        assert result == ["bank-a", "bank-b"]
+
 
 class TestResolveLocalBank:
     """resolve_local_bank finds bank paths in flat and nested layouts."""
@@ -355,3 +383,27 @@ class TestResolveLocalBank:
 
         result = resolve_local_bank("/nonexistent/path", "bank")
         assert result is None
+
+    def test_modules_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        repo = tmp_path / "org-teaching"  # type: ignore[operator]
+        assessment = repo / "modules" / "my-module" / "assessment"
+        assessment.mkdir(parents=True)
+        (assessment / "assessment.yaml").touch()
+
+        result = resolve_local_bank(str(tmp_path), "my-module")
+        assert result == assessment
+
+    def test_modules_layout_prefers_over_questions(
+        self, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        repo = tmp_path / "org-teaching"  # type: ignore[operator]
+        assessment = repo / "modules" / "my-bank" / "assessment"
+        assessment.mkdir(parents=True)
+        (assessment / "assessment.yaml").touch()
+
+        result = resolve_local_bank(str(tmp_path), "my-bank")
+        assert result == assessment
