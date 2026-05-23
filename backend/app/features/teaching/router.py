@@ -98,15 +98,19 @@ _DEP_USER = Depends(_get_current_user)
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
-    """Return the user's primary organisation ID or raise 403."""
+    """Return the user's first organisation ID or raise 403.
+
+    Prefers the primary org if set, otherwise falls back to any org.
+    """
     org_id = db.execute(
-        select(organisation_staff_member.c.organisation_id).where(
-            organisation_staff_member.c.user_id == user.id,
-            organisation_staff_member.c.is_primary.is_(True),
+        select(organisation_staff_member.c.organisation_id)
+        .where(organisation_staff_member.c.user_id == user.id)
+        .order_by(
+            organisation_staff_member.c.is_primary.desc(),
         )
-    ).scalar_one_or_none()
+    ).scalar()
     if org_id is None:
-        raise HTTPException(403, "User has no primary organisation")
+        raise HTTPException(403, "User has no organisation")
     return int(org_id)
 
 

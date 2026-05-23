@@ -194,7 +194,10 @@ async def limit_request_body_size(
 
 
 # --- Rate limiting (slowapi) ---
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=settings.BACKEND_ENV != "development",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -1970,20 +1973,25 @@ def me(
             - totp_enabled: Whether 2FA is active
             - enabled_features: Features enabled on user's primary org
     """
-    # Resolve features from user's primary org
-    enabled_features: list[str] = []
-    primary_org_row = db.execute(
-        select(organisation_staff_member.c.organisation_id).where(
-            organisation_staff_member.c.user_id == u.id,
-            organisation_staff_member.c.is_primary.is_(True),
+    # Resolve features from all user's organisations (union)
+    user_org_ids = (
+        db.execute(
+            select(organisation_staff_member.c.organisation_id).where(
+                organisation_staff_member.c.user_id == u.id,
+            )
         )
-    ).first()
-    if primary_org_row:
+        .scalars()
+        .all()
+    )
+    enabled_features: list[str] = []
+    if user_org_ids:
         features = (
             db.execute(
-                select(OrganisationFeature.feature_key).where(
-                    OrganisationFeature.organisation_id == primary_org_row[0],
+                select(OrganisationFeature.feature_key)
+                .where(
+                    OrganisationFeature.organisation_id.in_(user_org_ids),
                 )
+                .distinct()
             )
             .scalars()
             .all()

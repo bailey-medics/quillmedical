@@ -1,7 +1,7 @@
 """Feature-gating utilities.
 
 Provides ``requires_feature`` — a FastAPI dependency that checks whether
-the authenticated user's primary organisation has a given feature enabled.
+any of the authenticated user's organisations has a given feature enabled.
 Same ergonomics as ``has_competency`` in ``app.cbac.decorators``.
 """
 
@@ -38,22 +38,25 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         user = current_user(request, db)
 
-        primary = db.execute(
-            select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == user.id,
-                organisation_staff_member.c.is_primary.is_(True),
+        user_org_ids = (
+            db.execute(
+                select(organisation_staff_member.c.organisation_id).where(
+                    organisation_staff_member.c.user_id == user.id,
+                )
             )
-        ).scalar_one_or_none()
+            .scalars()
+            .all()
+        )
 
-        if primary is None:
+        if not user_org_ids:
             raise HTTPException(
                 status_code=403,
-                detail="User has no primary organisation",
+                detail="User has no organisation",
             )
 
         enabled = db.scalar(
             select(OrganisationFeature.id).where(
-                OrganisationFeature.organisation_id == primary,
+                OrganisationFeature.organisation_id.in_(user_org_ids),
                 OrganisationFeature.feature_key == feature_key,
             )
         )
