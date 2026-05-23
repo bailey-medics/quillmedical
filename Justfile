@@ -38,15 +38,16 @@ abbreviate-just:
 
 
 alias ii := initial-install
-# Clone all *-teaching repos into teaching-repos/ (safe to re-run)
+# Clone all *-teaching repos and teaching-tooling into local dirs (safe to re-run)
 initial-install:
     #!/usr/bin/env bash
     {{initialise}} "initial-install"
     set -euo pipefail
 
-    DEST="teaching-repos"
     ORG="bailey-medics"
 
+    # --- Teaching content repos ---
+    DEST="teaching-repos"
     mkdir -p "$DEST"
 
     echo "Discovering teaching repos in ${ORG}..."
@@ -54,21 +55,29 @@ initial-install:
 
     if [ -z "$REPOS" ]; then
         echo "No *-teaching repos found in ${ORG}."
-        exit 0
+    else
+        for REPO in $REPOS; do
+            if [ -d "$DEST/$REPO" ]; then
+                echo "✓ $REPO already cloned — pulling latest..."
+                git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
+            else
+                echo "Cloning $REPO..."
+                gh repo clone "$ORG/$REPO" "$DEST/$REPO"
+            fi
+        done
     fi
 
-    for REPO in $REPOS; do
-        if [ -d "$DEST/$REPO" ]; then
-            echo "✓ $REPO already cloned — pulling latest..."
-            git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
-        else
-            echo "Cloning $REPO..."
-            gh repo clone "$ORG/$REPO" "$DEST/$REPO"
-        fi
-    done
+    # --- Teaching tooling repo ---
+    if [ -d "teaching-tooling" ]; then
+        echo "✓ teaching-tooling already cloned — pulling latest..."
+        git -C "teaching-tooling" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
+    else
+        echo "Cloning teaching-tooling..."
+        gh repo clone "$ORG/teaching-tooling" "teaching-tooling"
+    fi
 
     echo ""
-    echo "Done. Teaching repos are in ./$DEST/"
+    echo "Done. Teaching repos are in ./teaching-repos/, tooling in ./teaching-tooling/"
 
 
 alias cu := create-user
@@ -236,6 +245,34 @@ sync-teaching:
     #!/usr/bin/env bash
     {{initialise}} "sync-teaching"
     ./dev-scripts/sync-teaching-data.sh
+
+
+alias vt := validate-teaching
+# Validate all teaching content (module.yaml + MDX) using teaching-tooling
+validate-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "validate-teaching"
+    set -euo pipefail
+    if [ ! -d "teaching-tooling" ]; then
+        echo "teaching-tooling not found. Run: just initial-install"
+        exit 1
+    fi
+    cd teaching-tooling
+    npm ci --silent 2>/dev/null
+    # Ensure Python deps are available in a local venv
+    if [ ! -d ".venv" ]; then
+        python3 -m venv .venv
+        .venv/bin/pip install -q -r requirements.txt
+    fi
+    for REPO in ../teaching-repos/*/; do
+        if [ -d "${REPO}modules" ]; then
+            echo "▸ Validating ${REPO}..."
+            .venv/bin/python scripts/validate.py "${REPO}modules/"
+            node scripts/validate_mdx.js "${REPO}modules/"
+            echo ""
+        fi
+    done
+    echo "✓ All teaching content valid."
 
 
 alias pcert := preview-certificate
