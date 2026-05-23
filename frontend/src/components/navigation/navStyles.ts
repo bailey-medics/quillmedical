@@ -27,5 +27,8 @@ export const navLinkStyles = {
   label: {
     fontSize: NAV_FONT_SIZE,
     fontWeight: typographyTokens.fontWeights.body,
+    whiteSpace: "normal" as const,
+    wordBreak: "break-word" as const,
+    lineHeight: 1.3,
   },
 };

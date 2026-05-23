@@ -43,6 +43,8 @@ from app.features.teaching.schemas import (
     EducatorResultOut,
     EmailTemplateOut,
     ItemImageOut,
+    LearningContentOut,
+    LearningModuleOut,
     QuestionBankDetailOut,
     QuestionBankItemOut,
     QuestionBankOrgSettingsIn,
@@ -66,8 +68,10 @@ from app.features.teaching.scoring import (
 from app.features.teaching.storage import (
     download_bank_from_gcs,
     get_storage_backend,
+    has_learning_content,
     list_bank_images_in_gcs,
     list_banks_in_gcs,
+    resolve_module_dir,
 )
 from app.models import (
     OrganisationFeature,
@@ -97,21 +101,25 @@ def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
 _DEP_USER = Depends(_get_current_user)
 
 
-def _get_user_org_id(user: User, db: Session) -> int:
-    """Return the user's first organisation ID or raise 403.
-
-    Prefers the primary org if set, otherwise falls back to any org.
-    """
-    org_id = db.execute(
-        select(organisation_staff_member.c.organisation_id)
-        .where(organisation_staff_member.c.user_id == user.id)
-        .order_by(
-            organisation_staff_member.c.is_primary.desc(),
+def _get_user_org_ids(user: User, db: Session) -> list[int]:
+    """Return all organisation IDs the user belongs to, or raise 403."""
+    rows = (
+        db.execute(
+            select(organisation_staff_member.c.organisation_id).where(
+                organisation_staff_member.c.user_id == user.id
+            )
         )
-    ).scalar()
-    if org_id is None:
+        .scalars()
+        .all()
+    )
+    if not rows:
         raise HTTPException(403, "User has no organisation")
-    return int(org_id)
+    return [int(r) for r in rows]
+
+
+def _get_user_org_id(user: User, db: Session) -> int:
+    """Return the user's first organisation ID or raise 403."""
+    return _get_user_org_ids(user, db)[0]
 
 
 def _build_candidate_item(
@@ -176,45 +184,63 @@ def list_question_banks(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
-    """List question bank configs for the user's organisation."""
-    org_id = _get_user_org_id(user, db)
+    """List question bank configs for all the user's organisations."""
+    from app.config import settings
+
+    org_ids = _get_user_org_ids(user, db)
     configs = (
         db.execute(
             select(QuestionBankConfig)
-            .where(QuestionBankConfig.organisation_id == org_id)
+            .where(QuestionBankConfig.organisation_id.in_(org_ids))
             .order_by(QuestionBankConfig.question_bank_id)
         )
         .scalars()
         .all()
     )
 
-    # Look up is_live status for each bank
+    # Look up is_live status for each bank across all orgs
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
             )
         )
         .scalars()
         .all()
     )
-    live_map: dict[str, bool] = {
-        s.question_bank_id: s.is_live for s in statuses
-    }
+    # A bank is live if ANY of the user's orgs has it live
+    live_map: dict[str, bool] = {}
+    for s in statuses:
+        if s.is_live:
+            live_map[s.question_bank_id] = True
 
-    return [
-        {
-            "id": c.id,
-            "question_bank_id": c.question_bank_id,
-            "version": c.version,
-            "title": c.title,
-            "description": c.description,
-            "type": c.type,
-            "synced_at": c.synced_at,
-            "is_live": live_map.get(c.question_bank_id, False),
-        }
-        for c in configs
-    ]
+    # Check which banks have learning content in the local repos
+    base_path = settings.TEACHING_QUESTION_BANK_PATH or ""
+
+    # De-duplicate by question_bank_id (user may be in multiple orgs
+    # with the same bank configured)
+    seen: set[str] = set()
+    results: list[dict[str, Any]] = []
+    for c in configs:
+        if c.question_bank_id in seen:
+            continue
+        seen.add(c.question_bank_id)
+        results.append(
+            {
+                "id": c.id,
+                "question_bank_id": c.question_bank_id,
+                "version": c.version,
+                "title": c.title,
+                "description": c.description,
+                "type": c.type,
+                "synced_at": c.synced_at,
+                "is_live": live_map.get(c.question_bank_id, False),
+                "has_learning": has_learning_content(
+                    base_path, c.question_bank_id
+                ),
+            }
+        )
+    return results
 
 
 @teaching_router.get(
@@ -227,12 +253,14 @@ def get_question_bank(
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Get full detail for a question bank config."""
-    org_id = _get_user_org_id(user, db)
+    from app.config import settings
+
+    org_ids = _get_user_org_ids(user, db)
     config = (
         db.execute(
             select(QuestionBankConfig)
             .where(
-                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.organisation_id.in_(org_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -246,8 +274,9 @@ def get_question_bank(
     status_row = (
         db.execute(
             select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
                 QuestionBankOrgStatus.question_bank_id == bank_id,
+                QuestionBankOrgStatus.is_live.is_(True),
             )
         )
         .scalars()
@@ -264,7 +293,114 @@ def get_question_bank(
         "synced_at": config.synced_at,
         "config_yaml": config.config_yaml,
         "is_live": status_row.is_live if status_row else False,
+        "has_learning": has_learning_content(
+            settings.TEACHING_QUESTION_BANK_PATH or "",
+            config.question_bank_id,
+        ),
     }
+
+
+# ------------------------------------------------------------------
+# Learning modules (read — all teaching users)
+# ------------------------------------------------------------------
+
+
+@teaching_router.get(
+    "/modules/{module_id}/learning",
+    response_model=LearningContentOut,
+)
+def get_learning_content(
+    module_id: str,
+    user: User = _DEP_USER,
+) -> dict[str, Any]:
+    """Get parsed learning slides for a module."""
+    from app.config import settings
+    from app.features.teaching.mdx_parser import (
+        load_learning_content,
+        load_module_yaml,
+    )
+
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+    if not base_path:
+        raise HTTPException(404, "Teaching content not configured")
+
+    module_dir = resolve_module_dir(base_path, module_id)
+    if not module_dir:
+        raise HTTPException(404, "Module not found")
+
+    meta = load_module_yaml(module_dir)
+    slides = load_learning_content(module_dir)
+    if not slides:
+        raise HTTPException(404, "No learning content for this module")
+
+    return {
+        "module_id": module_id,
+        "title": meta.get("title", module_id),
+        "slides": [
+            {
+                "slide_index": s.slide_index,
+                "layout": s.layout,
+                "title": s.title,
+                "body": s.body,
+                "callout_type": s.callout_type,
+                "callout_body": s.callout_body,
+                "youtube_id": s.youtube_id,
+                "duration_seconds": s.duration_seconds,
+            }
+            for s in slides
+        ],
+    }
+
+
+@teaching_router.get(
+    "/modules",
+    response_model=list[LearningModuleOut],
+)
+def list_learning_modules(
+    user: User = _DEP_USER,
+) -> list[dict[str, Any]]:
+    """List all modules that have learning content."""
+    from app.config import settings
+    from app.features.teaching.mdx_parser import (
+        load_learning_content,
+        load_module_yaml,
+    )
+    from app.features.teaching.storage import discover_local_banks
+
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+    if not base_path:
+        return []
+
+    bank_ids = discover_local_banks(base_path)
+    modules: list[dict[str, Any]] = []
+
+    for bank_id in bank_ids:
+        module_dir = resolve_module_dir(base_path, bank_id)
+        if not module_dir:
+            continue
+        meta = load_module_yaml(module_dir)
+        if not meta:
+            continue
+        learning_path = module_dir / "learning" / "content.mdx"
+        has_learning = learning_path.is_file()
+        slide_count = (
+            len(load_learning_content(module_dir)) if has_learning else 0
+        )
+        modules.append(
+            {
+                "module_id": meta.get("moduleId", bank_id),
+                "title": meta.get("title", bank_id),
+                "order": meta.get("order", 0),
+                "status": meta.get("status", "draft"),
+                "renewal_months": meta.get("renewalMonths"),
+                "has_learning": has_learning,
+                "slide_count": slide_count,
+                "description": meta.get("description"),
+            }
+        )
+
+    modules.sort(key=lambda m: m["order"])
+    return modules
 
 
 # ------------------------------------------------------------------

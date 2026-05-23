@@ -43,7 +43,12 @@ import "./styles/dark-overrides.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";
-import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+} from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
 
 import RootLayout from "./RootLayout";
@@ -118,7 +123,6 @@ import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSetting
 // Learning pages
 import TeachingModuleMain from "./features/teaching/pages/TeachingModuleMain";
 import LearningDashboard from "./features/teaching/pages/LearningDashboard";
-import ModuleOverview from "./features/teaching/pages/ModuleOverview";
 import SlideReader from "./features/teaching/pages/SlideReader";
 
 const router = createBrowserRouter([
@@ -349,7 +353,7 @@ const router = createBrowserRouter([
       { index: true, element: <TeachingDashboard /> },
       { path: ":bankId", element: <TeachingModuleMain /> },
       { path: "learn", element: <LearningDashboard /> },
-      { path: "learn/:moduleId", element: <ModuleOverview /> },
+      { path: "learn/:moduleId", element: <Navigate to="slide/0" replace /> },
       { path: "learn/:moduleId/slide/:slideIndex", element: <SlideReader /> },
       { path: "assessment/:id", element: <AssessmentAttempt /> },
       { path: "assessment/:id/result", element: <AssessmentResultPage /> },

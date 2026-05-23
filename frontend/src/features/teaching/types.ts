@@ -18,6 +18,7 @@ export interface QuestionBank {
   type: "uniform" | "variable";
   synced_at: string;
   is_live: boolean;
+  has_learning: boolean;
 }
 
 export interface AssessmentPageConfig {
@@ -307,9 +308,18 @@ export interface CompiledSlide {
 export interface LearningModule {
   module_id: string;
   title: string;
-  order_index: number;
+  order: number;
   status: "draft" | "live";
+  has_learning: boolean;
   slide_count: number;
+  renewal_months: number | null;
+  description: string | null;
+}
+
+export interface LearningContentResponse {
+  module_id: string;
+  title: string;
+  slides: CompiledSlide[];
 }
 
 export interface LearnerProgress {

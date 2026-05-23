@@ -94,7 +94,7 @@ export default function LearningDashboard() {
                   title={mod.title}
                   subtitle={getSubtitle(mod, prog)}
                   buttonLabel={getButtonLabel(prog)}
-                  buttonUrl={`/teaching/learn/${mod.module_id}`}
+                  buttonUrl={`/teaching/learn/${mod.module_id}/slide/0`}
                 />
               );
             })}

@@ -23,7 +23,6 @@ import {
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import type { QuestionBank } from "@/features/teaching/types";
-import { MODULES } from "@/features/teaching/content";
 
 export default function TeachingModuleMain() {
   const { bankId } = useParams<{ bankId: string }>();
@@ -78,7 +77,7 @@ export default function TeachingModuleMain() {
     );
   }
 
-  const hasLearning = bank.question_bank_id in MODULES;
+  const hasLearning = bank.has_learning;
 
   const sidebarNav = (
     <TeachingMainNav
@@ -101,7 +100,7 @@ export default function TeachingModuleMain() {
               subtitle="Work through the learning content at your own pace before attempting the assessment."
               buttonLabel="Start learning"
               onClick={() =>
-                navigate(`/teaching/learn/${bank.question_bank_id}`)
+                navigate(`/teaching/learn/${bank.question_bank_id}/slide/0`)
               }
             />
             <ActionCard

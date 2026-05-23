@@ -205,6 +205,35 @@ def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
     return None
 
 
+def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
+    """Resolve a module_id to its top-level module directory.
+
+    Returns the path to ``<repo>/modules/<module_id>/`` which contains
+    ``module.yaml``, ``assessment/``, and optionally ``learning/``.
+    Only works for the modules layout.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return None
+
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        module_dir = child / "modules" / module_id
+        if module_dir.is_dir() and (module_dir / "module.yaml").is_file():
+            return module_dir
+
+    return None
+
+
+def has_learning_content(base_path: str, module_id: str) -> bool:
+    """Check if a module has learning content (content.mdx)."""
+    module_dir = resolve_module_dir(base_path, module_id)
+    if module_dir is None:
+        return False
+    return (module_dir / "learning" / "content.mdx").is_file()
+
+
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 

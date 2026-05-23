@@ -157,6 +157,8 @@ export default function MainLayout({
           {!isSm && !examMode && (
             <Box
               component="aside"
+              w={LAYOUT_SIDEBAR_WIDTH}
+              miw={LAYOUT_SIDEBAR_WIDTH}
               style={{
                 borderRight: `1px solid var(--card-border, ${theme.colors.gray[2]})`,
                 height: "100%",
