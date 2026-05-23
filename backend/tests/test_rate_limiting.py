@@ -2,10 +2,20 @@
 
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import limiter
 from app.models import User
+
+
+@pytest.fixture(autouse=True)
+def _enable_limiter():
+    """Force-enable the rate limiter for these tests."""
+    original = limiter.enabled
+    limiter.enabled = True
+    yield
+    limiter.enabled = original
 
 
 class TestLoginRateLimit:
