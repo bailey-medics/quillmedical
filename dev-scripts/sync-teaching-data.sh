@@ -44,13 +44,12 @@ try:
         sys.exit(1)
 
     synced = 0
-    for bank_dir in sorted(Path(base).iterdir()):
-        if not bank_dir.is_dir():
+    from app.features.teaching.storage import discover_local_banks, resolve_local_bank
+    bank_ids = discover_local_banks(base)
+    for bank_id in bank_ids:
+        bank_dir = resolve_local_bank(base, bank_id)
+        if not bank_dir:
             continue
-        config_file = bank_dir / 'config.yaml'
-        if not config_file.is_file():
-            continue
-        bank_id = bank_dir.name
         print(f'Syncing {bank_id}...')
         result, sync_record = sync_question_bank(bank_dir, org_id, user.id, db)
         if not result.is_valid:

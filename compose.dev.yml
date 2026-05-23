@@ -9,7 +9,7 @@ services:
     environment:
       BACKEND_ENV: development
       TEACHING_STORAGE_BACKEND: local
-      TEACHING_QUESTION_BANK_PATH: /question-banks/questions
+      TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
       EMAIL_DRY_RUN: "false"
@@ -24,7 +24,7 @@ services:
     volumes:
       - ./backend:/app
       - ./shared:/shared
-      - ./question-bank:/question-banks
+      - ./teaching-repos:/teaching-repos
 
   frontend:
     build:

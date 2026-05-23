@@ -786,6 +786,7 @@ class TestResolveBankPath:
 
         bank_dir = tmp_path / "my-bank"
         bank_dir.mkdir()
+        (bank_dir / "config.yaml").touch()
 
         monkeypatch.setattr(
             "app.config.settings.TEACHING_QUESTION_BANK_PATH",
@@ -818,6 +819,7 @@ class TestResolveBankPathOrGcs:
 
         bank_dir = tmp_path / "my-bank"
         bank_dir.mkdir()
+        (bank_dir / "config.yaml").touch()
 
         monkeypatch.setattr(
             "app.config.settings.TEACHING_QUESTION_BANK_PATH",

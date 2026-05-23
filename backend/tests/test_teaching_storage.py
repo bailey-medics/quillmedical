@@ -272,3 +272,86 @@ class TestListBankImagesInGcs:
     def test_invalid_bank_id_raises(self) -> None:
         with pytest.raises(ValueError, match="Invalid bank_id"):
             list_bank_images_in_gcs("test-bucket", "../escape")
+
+
+class TestDiscoverLocalBanks:
+    """discover_local_banks finds banks in flat and nested layouts."""
+
+    def test_flat_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        (tmp_path / "bank-a").mkdir()  # type: ignore[operator]
+        (tmp_path / "bank-a" / "config.yaml").touch()  # type: ignore[operator]
+        (tmp_path / "bank-b").mkdir()  # type: ignore[operator]
+        (tmp_path / "bank-b" / "config.yaml").touch()  # type: ignore[operator]
+        (tmp_path / "not-a-bank").mkdir()  # type: ignore[operator]
+
+        result = discover_local_banks(str(tmp_path))
+        assert result == ["bank-a", "bank-b"]
+
+    def test_nested_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        repo = tmp_path / "my-teaching"  # type: ignore[operator]
+        (repo / "questions" / "bank-x").mkdir(parents=True)
+        (repo / "questions" / "bank-x" / "config.yaml").touch()
+
+        result = discover_local_banks(str(tmp_path))
+        assert result == ["bank-x"]
+
+    def test_mixed_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        # Flat bank
+        (tmp_path / "flat-bank").mkdir()  # type: ignore[operator]
+        (tmp_path / "flat-bank" / "config.yaml").touch()  # type: ignore[operator]
+        # Nested bank
+        repo = tmp_path / "repo-teaching"  # type: ignore[operator]
+        (repo / "questions" / "nested-bank").mkdir(parents=True)
+        (repo / "questions" / "nested-bank" / "config.yaml").touch()
+
+        result = discover_local_banks(str(tmp_path))
+        assert result == ["flat-bank", "nested-bank"]
+
+    def test_missing_dir_returns_empty(self) -> None:
+        from app.features.teaching.storage import discover_local_banks
+
+        result = discover_local_banks("/nonexistent/path")
+        assert result == []
+
+
+class TestResolveLocalBank:
+    """resolve_local_bank finds bank paths in flat and nested layouts."""
+
+    def test_flat_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        (tmp_path / "bank-a").mkdir()  # type: ignore[operator]
+        (tmp_path / "bank-a" / "config.yaml").touch()  # type: ignore[operator]
+
+        result = resolve_local_bank(str(tmp_path), "bank-a")
+        assert result == tmp_path / "bank-a"  # type: ignore[operator]
+
+    def test_nested_layout(self, tmp_path: pytest.TempPathFactory) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        repo = tmp_path / "my-teaching"  # type: ignore[operator]
+        (repo / "questions" / "bank-x").mkdir(parents=True)
+        (repo / "questions" / "bank-x" / "config.yaml").touch()
+
+        result = resolve_local_bank(str(tmp_path), "bank-x")
+        assert result == repo / "questions" / "bank-x"
+
+    def test_not_found_returns_none(
+        self, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        result = resolve_local_bank(str(tmp_path), "nonexistent")
+        assert result is None
+
+    def test_missing_base_returns_none(self) -> None:
+        from app.features.teaching.storage import resolve_local_bank
+
+        result = resolve_local_bank("/nonexistent/path", "bank")
+        assert result is None

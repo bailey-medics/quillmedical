@@ -117,6 +117,67 @@ def get_storage_backend() -> StorageBackend:
 _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
+def discover_local_banks(base_path: str) -> list[str]:
+    """Discover question bank IDs from the local teaching-repos layout.
+
+    Supports two directory structures:
+    - Nested (teaching-repos): ``<base>/<repo>/questions/<bank_id>/config.yaml``
+    - Flat (legacy): ``<base>/<bank_id>/config.yaml``
+
+    Returns a sorted list of unique bank IDs.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return []
+
+    bank_ids: set[str] = set()
+
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        # Check flat layout: <base>/<bank_id>/config.yaml
+        if (child / "config.yaml").is_file():
+            bank_ids.add(child.name)
+            continue
+        # Check nested layout: <base>/<repo>/questions/<bank_id>/
+        questions_dir = child / "questions"
+        if questions_dir.is_dir():
+            for bank_dir in questions_dir.iterdir():
+                if bank_dir.is_dir() and (bank_dir / "config.yaml").is_file():
+                    bank_ids.add(bank_dir.name)
+
+    return sorted(bank_ids)
+
+
+def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
+    """Resolve a bank_id to its filesystem path.
+
+    Supports two directory structures:
+    - Nested (teaching-repos): ``<base>/<repo>/questions/<bank_id>/``
+    - Flat (legacy): ``<base>/<bank_id>/``
+
+    Returns the path to the bank directory, or None if not found.
+    """
+    base = Path(base_path)
+    if not base.is_dir():
+        return None
+
+    # Check flat layout first
+    flat = base / bank_id
+    if flat.is_dir() and (flat / "config.yaml").is_file():
+        return flat
+
+    # Check nested layout: <base>/<repo>/questions/<bank_id>/
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        nested = child / "questions" / bank_id
+        if nested.is_dir() and (nested / "config.yaml").is_file():
+            return nested
+
+    return None
+
+
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 

@@ -5101,17 +5101,37 @@ app.include_router(router)
 
 # --- Conditional static file serving for local dev ---
 if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
-    from pathlib import Path
+    import mimetypes
 
-    from starlette.staticfiles import StaticFiles
+    from starlette.responses import FileResponse
 
-    _qb_path = Path(settings.TEACHING_QUESTION_BANK_PATH)
-    _static_root = (
-        _qb_path.parent
-    )  # Serve from parent so /questions/ in URLs resolves
-    if _static_root.is_dir():
-        app.mount(
-            "/api/teaching/images",
-            StaticFiles(directory=str(_static_root)),
-            name="teaching-images",
+    _qb_base = settings.TEACHING_QUESTION_BANK_PATH
+
+    @app.get(
+        "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
+    )
+    async def _serve_teaching_image(
+        bank_id: str,
+        item_folder: str,
+        filename: str,
+    ) -> FileResponse:
+        """Serve question bank images from local teaching-repos."""
+        from app.features.teaching.storage import resolve_local_bank
+
+        # Validate path components
+        for part in (bank_id, item_folder, filename):
+            if ".." in part or "/" in part:
+                raise HTTPException(400, "Invalid path")
+
+        bank_dir = resolve_local_bank(_qb_base, bank_id)
+        if not bank_dir:
+            raise HTTPException(404, "Bank not found")
+
+        file_path = bank_dir / item_folder / filename
+        if not file_path.is_file():
+            raise HTTPException(404, "Image not found")
+
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
+        return FileResponse(file_path, media_type=content_type)

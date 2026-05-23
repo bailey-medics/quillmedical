@@ -769,7 +769,6 @@ def _maybe_enqueue_certificate_emails(
     from app.email_send import send_email
     from app.features.teaching.certificate import (
         download_certificate_background_from_gcs,
-        find_certificate_background,
         generate_certificate_pdf,
     )
     from app.features.teaching.email_templates import (
@@ -838,7 +837,13 @@ def _maybe_enqueue_certificate_emails(
     tmp_bg: Path | None = None
     bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
     if bank_path_str:
-        bg = find_certificate_background(Path(bank_path_str), bank_id)
+        from app.features.teaching.storage import resolve_local_bank
+
+        bank_dir = resolve_local_bank(bank_path_str, bank_id)
+        if bank_dir:
+            cert_file = bank_dir / "certificate-blank.png"
+            if cert_file.is_file():
+                bg = cert_file
 
     if not bg and app_settings.TEACHING_GCS_BUCKET:
         tmp_bg = download_certificate_background_from_gcs(
@@ -1062,7 +1067,6 @@ def download_certificate(
     from app.config import settings
     from app.features.teaching.certificate import (
         download_certificate_background_from_gcs,
-        find_certificate_background,
         generate_certificate_pdf,
         parse_certificate_style,
     )
@@ -1102,9 +1106,15 @@ def download_certificate(
     tmp_bg: Path | None = None
     bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
     if bank_path_str:
-        bg = find_certificate_background(
-            Path(bank_path_str), assessment.question_bank_id
+        from app.features.teaching.storage import resolve_local_bank
+
+        bank_dir = resolve_local_bank(
+            bank_path_str, assessment.question_bank_id
         )
+        if bank_dir:
+            cert_file = bank_dir / "certificate-blank.png"
+            if cert_file.is_file():
+                bg = cert_file
 
     if not bg and settings.TEACHING_GCS_BUCKET:
         tmp_bg = download_certificate_background_from_gcs(
@@ -1211,6 +1221,7 @@ def _resolve_bank_path(bank_id: str) -> Path:
     exist.  Rejects path-traversal attempts (``..`` or ``/``).
     """
     from app.config import settings
+    from app.features.teaching.storage import resolve_local_bank
 
     if not bank_id or "/" in bank_id or ".." in bank_id:
         raise HTTPException(400, "Invalid bank_id")
@@ -1222,8 +1233,8 @@ def _resolve_bank_path(bank_id: str) -> Path:
             "TEACHING_QUESTION_BANK_PATH is not configured",
         )
 
-    resolved = Path(base) / bank_id
-    if not resolved.is_dir():
+    resolved = resolve_local_bank(base, bank_id)
+    if not resolved:
         raise HTTPException(404, f"Question bank '{bank_id}' not found")
     return resolved
 
@@ -1234,6 +1245,7 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     Returns (path, is_temp) — caller must clean up when is_temp is True.
     """
     from app.config import settings
+    from app.features.teaching.storage import resolve_local_bank
 
     if not bank_id or "/" in bank_id or ".." in bank_id:
         raise HTTPException(400, "Invalid bank_id")
@@ -1241,8 +1253,8 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     # Try local path first
     base = settings.TEACHING_QUESTION_BANK_PATH
     if base:
-        resolved = Path(base) / bank_id
-        if resolved.is_dir():
+        resolved = resolve_local_bank(base, bank_id)
+        if resolved:
             return resolved, False
 
     # Fall back to GCS
@@ -1732,13 +1744,9 @@ def sync_all_banks(
         except Exception:
             logger.exception("Failed to list GCS banks")
     elif base_path:
-        base = Path(base_path)
-        if base.is_dir():
-            bank_ids = sorted(
-                d.name
-                for d in base.iterdir()
-                if d.is_dir() and (d / "config.yaml").is_file()
-            )
+        from app.features.teaching.storage import discover_local_banks
+
+        bank_ids = discover_local_banks(base_path)
 
     synced: list[QuestionBankSync] = []
     errors: list[dict[str, str]] = []
