@@ -5,6 +5,10 @@ import { renderWithMantine } from "@test/test-utils";
 import type { FormSubmitResult } from "@/components/form/Form";
 import RegistrationForm from "./RegistrationForm";
 
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => ({ isOnline: true }),
+}));
+
 const sampleOrganisations = [
   { value: "nhs-highland", label: "NHS Highland" },
   { value: "nhs-grampian", label: "NHS Grampian" },

@@ -5,6 +5,10 @@ import { renderWithRouter } from "@test/test-utils";
 import type { FormSubmitResult } from "@/components/form/Form";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => ({ isOnline: true }),
+}));
+
 const successResult: FormSubmitResult = {
   state: "success",
   message: {

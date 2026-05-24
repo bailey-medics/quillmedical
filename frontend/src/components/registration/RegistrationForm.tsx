@@ -8,6 +8,9 @@ import {
   TextField,
 } from "@components/form";
 import { Heading } from "@components/typography";
+import StateMessage from "@components/message-cards/StateMessage";
+import { IconWifiOff } from "@/components/icons/appIcons";
+import { useConnectivity } from "@lib/connectivity";
 import {
   Form,
   FormStatusNarrow,
@@ -47,10 +50,19 @@ function RegistrationFields({
   organisations?: { value: string; label: string }[];
 }) {
   const { methods } = useFormContext();
+  const { isOnline } = useConnectivity();
 
   return (
     <Stack>
       <Heading>Create an account</Heading>
+      {!isOnline && (
+        <StateMessage
+          icon={<IconWifiOff />}
+          title="Quill is offline"
+          description="Please check your connection to register."
+          colour="alert"
+        />
+      )}
       <TextField
         label="Full name"
         {...methods.register("fullName", { required: true })}

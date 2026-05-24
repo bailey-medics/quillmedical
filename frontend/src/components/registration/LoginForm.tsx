@@ -3,6 +3,9 @@ import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField, TextField } from "@components/form";
 import { QuillLogo } from "@components/images";
 import { Heading, TextLink } from "@components/typography";
+import StateMessage from "@components/message-cards/StateMessage";
+import { IconWifiOff } from "@/components/icons/appIcons";
+import { useConnectivity } from "@lib/connectivity";
 import {
   Form,
   FormStatusNarrow,
@@ -48,10 +51,19 @@ function LoginFields({
   title: string;
 }) {
   const { methods } = useFormContext();
+  const { isOnline } = useConnectivity();
 
   return (
     <Stack>
       <Heading>{title}</Heading>
+      {!isOnline && (
+        <StateMessage
+          icon={<IconWifiOff />}
+          title="Quill is offline"
+          description="Please check your connection to log in."
+          colour="alert"
+        />
+      )}
       <TextField
         label="Username"
         {...methods.register("username", { required: true })}

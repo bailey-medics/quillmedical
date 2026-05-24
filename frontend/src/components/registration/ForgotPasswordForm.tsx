@@ -3,6 +3,9 @@ import BaseCard from "@components/base-card/BaseCard";
 import { EmailField, EMAIL_PATTERN } from "@components/form";
 import { QuillLogo } from "@components/images";
 import { BodyText, Heading, TextLink } from "@components/typography";
+import StateMessage from "@components/message-cards/StateMessage";
+import { IconWifiOff } from "@/components/icons/appIcons";
+import { useConnectivity } from "@lib/connectivity";
 import {
   Form,
   FormStatusNarrow,
@@ -22,11 +25,20 @@ export interface ForgotPasswordFormProps {
 
 function ForgotPasswordFields() {
   const { formState, statusMessage, methods } = useFormContext();
+  const { isOnline } = useConnectivity();
   const isSuccess = formState === "success";
 
   return (
     <Stack>
       <Heading>Forgot password</Heading>
+      {!isOnline && (
+        <StateMessage
+          icon={<IconWifiOff />}
+          title="Quill is offline"
+          description="Please check your connection to reset your password."
+          colour="alert"
+        />
+      )}
       {isSuccess && statusMessage && (
         <BodyText>{statusMessage.description ?? statusMessage.title}</BodyText>
       )}
