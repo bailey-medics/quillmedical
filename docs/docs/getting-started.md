@@ -58,14 +58,14 @@ To add a new teaching organisation, create a repo named `<org>-teaching` in `bai
 
 Run `just --list` for all available recipes. Key ones:
 
-| Command                  | Alias  | Description                                   |
-| ------------------------ | ------ | --------------------------------------------- |
-| `just start-teaching`    | `j st` | Start dev (teaching only, no FHIR/EHRbase)    |
-| `just start-dev`         | `j sd` | Start dev (full EPR with clinical services)   |
-| `just stop`              | `j sc` | Stop all containers                           |
-| `just initial-install`   | `j ii` | Clone/pull teaching repos and tooling         |
-| `just validate-teaching` | `j vt` | Validate all teaching content locally         |
-| `just sync-teaching`     | `j syt`| Sync question banks into the DB               |
-| `just uf`                |        | Run frontend unit tests                       |
-| `just ub`                |        | Run backend unit tests                        |
-| `just docs`              | `j d`  | Rebuild API docs                              |
+| Command                  | Alias   | Description                                 |
+| ------------------------ | ------- | ------------------------------------------- |
+| `just start-teaching`    | `j st`  | Start dev (teaching only, no FHIR/EHRbase)  |
+| `just start-dev`         | `j sd`  | Start dev (full EPR with clinical services) |
+| `just stop`              | `j sc`  | Stop all containers                         |
+| `just initial-install`   | `j ii`  | Clone/pull teaching repos and tooling       |
+| `just validate-teaching` | `j vt`  | Validate all teaching content locally       |
+| `just sync-teaching`     | `j syt` | Sync question banks into the DB             |
+| `just uf`                |         | Run frontend unit tests                     |
+| `just ub`                |         | Run backend unit tests                      |
+| `just docs`              | `j d`   | Rebuild API docs                            |

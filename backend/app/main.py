@@ -21,10 +21,12 @@ Architecture:
 - Push notifications: Persistent subscriptions (PostgreSQL)
 """
 
+import hmac
 import logging
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -5097,6 +5099,97 @@ def mark_read_endpoint(
 from app.features.teaching.router import teaching_router  # noqa: E402
 
 router.include_router(teaching_router)
+
+
+# --- CI/CD sync endpoint (service token auth) ---
+@router.post("/ci/teaching/sync")
+def ci_teaching_sync(
+    request: Request,
+    db: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Trigger teaching content sync from CI/CD pipeline.
+
+    Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
+    Syncs all banks found in GCS or local filesystem.
+    """
+    import shutil
+
+    from app.features.teaching.router import (
+        _build_image_inventory,
+        _resolve_bank_path_or_gcs,
+        list_banks_in_gcs,
+    )
+    from app.features.teaching.storage import discover_local_banks
+    from app.features.teaching.sync import sync_question_bank
+
+    # Validate service token
+    token = settings.TEACHING_SYNC_TOKEN
+    if not token:
+        raise HTTPException(503, "Sync token not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(provided, token.get_secret_value()):
+        raise HTTPException(401, "Invalid token")
+
+    # Discover banks
+    bucket = settings.TEACHING_GCS_BUCKET
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+    bank_ids: list[str] = []
+
+    if bucket:
+        try:
+            bank_ids = list_banks_in_gcs(bucket)
+        except Exception:
+            logger.exception("CI sync: failed to list GCS banks")
+    elif base_path:
+        bank_ids = discover_local_banks(base_path)
+
+    if not bank_ids:
+        return {"synced": [], "errors": [], "message": "No banks found"}
+
+    # Resolve the organisation — use the first org that has
+    # a teaching bank configured, or the first org in the system
+    from app.features.teaching.models import QuestionBankConfig
+
+    existing_config = db.execute(
+        select(QuestionBankConfig).limit(1)
+    ).scalar_one_or_none()
+    org_id = existing_config.organisation_id if existing_config else 1
+
+    synced: list[dict[str, str]] = []
+    errors: list[dict[str, str]] = []
+
+    for bank_id in bank_ids:
+        bank_path: Path | None = None
+        is_temp = False
+        try:
+            bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+            inventory = _build_image_inventory(bank_id, is_temp)
+            _validation, sync_record = sync_question_bank(
+                bank_path,
+                org_id,
+                0,  # system user (no real user in CI)
+                db,
+                image_inventory=inventory,
+            )
+            if sync_record:
+                synced.append(
+                    {"bank_id": bank_id, "version": str(sync_record.version)}
+                )
+        except Exception as exc:
+            logger.exception("CI sync: failed to sync bank '%s'", bank_id)
+            errors.append({"bank_id": bank_id, "error": str(exc)})
+        finally:
+            if is_temp and bank_path:
+                shutil.rmtree(bank_path.parent, ignore_errors=True)
+
+    return {"synced": synced, "errors": errors}
+
+
 app.include_router(router)
 
 # --- Conditional static file serving for local dev ---
