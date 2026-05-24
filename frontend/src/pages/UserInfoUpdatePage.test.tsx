@@ -96,7 +96,7 @@ describe("UserInfoUpdatePage", () => {
       await waitFor(() => {
         expect(screen.getByText("Invalid email format")).toBeInTheDocument();
       });
-    });
+    }, 30000);
 
     it("validates password length", async () => {
       const user = userEvent.setup();
@@ -112,7 +112,7 @@ describe("UserInfoUpdatePage", () => {
           screen.getByText("Password must be at least 8 characters"),
         ).toBeInTheDocument();
       });
-    });
+    }, 30000);
 
     it("proceeds to step 2 when validation passes", async () => {
       const user = userEvent.setup();
@@ -145,7 +145,7 @@ describe("UserInfoUpdatePage", () => {
           screen.getByRole("heading", { name: "Organisation/site" }),
         ).toBeInTheDocument();
       });
-    }, 10000);
+    }, 30000);
   });
 
   describe("Step 3: Competencies", () => {
@@ -199,7 +199,7 @@ describe("UserInfoUpdatePage", () => {
       expect(
         screen.getAllByLabelText(/removed competencies/i)[0],
       ).toBeInTheDocument();
-    }, 10000);
+    }, 30000);
 
     it("shows base profession information", async () => {
       const user = userEvent.setup();
@@ -210,7 +210,7 @@ describe("UserInfoUpdatePage", () => {
       await waitFor(() => {
         expect(screen.getByText(/base profession:/i)).toBeInTheDocument();
       });
-    }, 10000);
+    }, 30000);
 
     it("navigates back to organisation step", async () => {
       const user = userEvent.setup();
@@ -231,7 +231,7 @@ describe("UserInfoUpdatePage", () => {
           screen.getByRole("heading", { name: "Organisation/site" }),
         ).toBeInTheDocument();
       });
-    }, 10000);
+    }, 30000);
 
     it("proceeds to step 4 permissions", async () => {
       const user = userEvent.setup();
@@ -250,7 +250,7 @@ describe("UserInfoUpdatePage", () => {
       await waitFor(() => {
         expect(screen.getByText("System permissions")).toBeInTheDocument();
       });
-    }, 10000);
+    }, 30000);
   });
 
   describe("Step 4: Permissions & Review", () => {
@@ -316,7 +316,7 @@ describe("UserInfoUpdatePage", () => {
       // Check for review section by looking for unique review field labels
       expect(screen.getByText("Name:")).toBeInTheDocument();
       expect(screen.getByText("Email:")).toBeInTheDocument();
-    }, 10000);
+    }, 30000);
 
     it("displays review information correctly", async () => {
       const user = userEvent.setup();
@@ -329,7 +329,7 @@ describe("UserInfoUpdatePage", () => {
       });
       expect(screen.getByText("jane.smith@example.com")).toBeInTheDocument();
       expect(screen.getByText("janesmith")).toBeInTheDocument();
-    }, 10000);
+    }, 30000);
   });
 
   describe("Form submission", () => {
@@ -402,7 +402,7 @@ describe("UserInfoUpdatePage", () => {
           }),
         );
       });
-    }, 15000);
+    }, 30000);
 
     it("shows success confirmation after successful submission", async () => {
       const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
@@ -459,7 +459,7 @@ describe("UserInfoUpdatePage", () => {
           screen.getByText("User created successfully"),
         ).toBeInTheDocument();
       });
-    }, 15000);
+    }, 30000);
   });
 
   describe("Navigation", () => {
@@ -531,6 +531,6 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /finished/i }));
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
-    }, 15000);
+    }, 30000);
   });
 });

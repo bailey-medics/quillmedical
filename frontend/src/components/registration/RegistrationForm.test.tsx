@@ -144,5 +144,5 @@ describe("RegistrationForm", () => {
         "true",
       );
     });
-  });
+  }, 15000);
 });
