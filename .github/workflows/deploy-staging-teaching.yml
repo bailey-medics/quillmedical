@@ -106,6 +106,7 @@ jobs:
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:main
           build-args: |
             VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
+            VITE_CLINICAL_SERVICES_ENABLED=false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

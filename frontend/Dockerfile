@@ -46,6 +46,10 @@ COPY shared/ /shared/
 ARG VITE_VAPID_PUBLIC
 ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 
+# Feature flag — disables clinical services UI for teaching-only environments
+ARG VITE_CLINICAL_SERVICES_ENABLED=true
+ENV VITE_CLINICAL_SERVICES_ENABLED=${VITE_CLINICAL_SERVICES_ENABLED}
+
 # Generate TypeScript types from shared YAML (Yarn 4 skips pre* hooks)
 RUN yarn generate:types
 
