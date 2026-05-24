@@ -292,6 +292,43 @@ def download_module_yaml_from_gcs(
     return yaml.safe_load(content) or {}  # type: ignore[no-any-return]
 
 
+def get_learning_image_url_gcs(
+    bucket_name: str, module_id: str, filename: str
+) -> str:
+    """Generate a signed URL for a learning image in GCS."""
+    import datetime as dt
+
+    from google.auth import default  # type: ignore[import-untyped]
+    from google.auth.transport import (
+        requests as auth_requests,  # type: ignore[import-untyped]
+    )
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        msg = f"Invalid module_id: {module_id!r}"
+        raise ValueError(msg)
+    if not filename or not _SAFE_BANK_ID.match(filename.rsplit(".", 1)[0]):
+        msg = f"Invalid filename: {filename!r}"
+        raise ValueError(msg)
+
+    credentials, _project = default()
+    client = storage.Client(credentials=credentials)
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"learning/{module_id}/images/{filename}")
+
+    auth_req = auth_requests.Request()
+    credentials.refresh(auth_req)
+    sa_email: str = credentials.service_account_email
+
+    return blob.generate_signed_url(
+        version="v4",
+        expiration=dt.timedelta(minutes=15),
+        method="GET",
+        service_account_email=sa_email,
+        access_token=credentials.token,
+    )
+
+
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 

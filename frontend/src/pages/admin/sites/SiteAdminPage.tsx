@@ -16,9 +16,11 @@ import {
   IconAlertCircle,
   IconPencil,
   IconUserMinus,
+  IconUserOff,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import AddButton from "@/components/button/AddButton";
 import IconButton from "@/components/button/IconButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
@@ -46,6 +48,7 @@ interface SiteDetails {
   type: string;
   parent_id: number | null;
   location: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
   staff: SiteStaff[];
@@ -84,6 +87,14 @@ export default function SiteAdminPage() {
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
     await api.del(`/sites/${id}/staff/${removingStaff.id}`);
+    await fetchSite();
+  }
+
+  async function toggleActive() {
+    if (!id || !site) return;
+    await api.patch(`/sites/${id}/active`, {
+      is_active: !site.is_active,
+    });
     await fetchSite();
   }
 
@@ -204,11 +215,31 @@ export default function SiteAdminPage() {
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Heading>Site information</Heading>
-              <IconButton
-                icon={<IconPencil />}
-                onClick={() => navigate(`/admin/sites/${id}/edit`)}
-                aria-label="Edit site"
-              />
+              <Group gap="xs">
+                <IconButton
+                  icon={<IconPencil />}
+                  onClick={() => navigate(`/admin/sites/${id}/edit`)}
+                  aria-label="Edit site"
+                />
+                <EllipsisMenu
+                  aria-label="Site actions"
+                  items={[
+                    {
+                      label: site.is_active
+                        ? "Deactivate site"
+                        : "Reactivate site",
+                      icon: <IconUserOff />,
+                      color: site.is_active ? "var(--alert-color)" : undefined,
+                      onClick: toggleActive,
+                    },
+                  ]}
+                />
+              </Group>
+            </Group>
+
+            <Group gap="xs">
+              <BodyTextBold>Status:</BodyTextBold>
+              <ActiveStatusBadge active={site.is_active} />
             </Group>
 
             <Stack gap="xs">

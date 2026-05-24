@@ -50,6 +50,10 @@ class LearningSlideOut(BaseModel):
     callout_body: str | None = None
     youtube_id: str | None = None
     duration_seconds: int | None = None
+    image_src: str | None = None
+    image_alt: str | None = None
+    image_caption: str | None = None
+    image_position: str | None = None
 
 
 class LearningModuleOut(BaseModel):

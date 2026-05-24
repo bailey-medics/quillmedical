@@ -44,6 +44,10 @@ interface ApiSlide {
   callout_body?: string;
   youtube_id?: string;
   duration_seconds?: number;
+  image_src?: string;
+  image_alt?: string;
+  image_caption?: string;
+  image_position?: string;
 }
 
 /** Map API snake_case slide to frontend camelCase CompiledSlide */
@@ -57,6 +61,10 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
     calloutBody: s.callout_body,
     youtubeId: s.youtube_id,
     durationSeconds: s.duration_seconds,
+    imageSrc: s.image_src,
+    imageAlt: s.image_alt,
+    imageCaption: s.image_caption,
+    imagePosition: s.image_position as CompiledSlide["imagePosition"],
   };
 }
 

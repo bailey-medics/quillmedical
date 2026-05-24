@@ -40,8 +40,7 @@ jobs:
               - "shared/**"
             frontend:
               - "frontend/**"
-              - "caddy/prod/**"
-              - "shared/**"
+                  - "shared/**
 
       # workflow_dispatch always builds everything
       - name: Resolve outputs

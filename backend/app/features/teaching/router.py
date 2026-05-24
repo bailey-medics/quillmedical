@@ -347,6 +347,16 @@ def get_learning_content(
     else:
         raise HTTPException(404, "Teaching content not configured")
 
+    def _resolve_image_url(module_id: str, filename: str) -> str:
+        """Build a URL for a learning image."""
+        if bucket:
+            from app.features.teaching.storage import (
+                get_learning_image_url_gcs,
+            )
+
+            return get_learning_image_url_gcs(bucket, module_id, filename)
+        return f"/api/teaching/images/learning/{module_id}/{filename}"
+
     return {
         "module_id": module_id,
         "title": meta.get("title", module_id),
@@ -360,6 +370,14 @@ def get_learning_content(
                 "callout_body": s.callout_body,
                 "youtube_id": s.youtube_id,
                 "duration_seconds": s.duration_seconds,
+                "image_src": (
+                    _resolve_image_url(module_id, s.figure_src)
+                    if s.figure_src
+                    else None
+                ),
+                "image_alt": s.figure_alt,
+                "image_caption": s.figure_caption,
+                "image_position": s.figure_position,
             }
             for s in slides
         ],

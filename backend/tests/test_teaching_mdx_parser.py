@@ -122,6 +122,53 @@ class TestParseMdxToSlides:
         assert slides[0].youtube_id == "vid1"
         assert "Watch this lecture." in (slides[0].body or "")
 
+    def test_figure_creates_text_with_figure_slide(self) -> None:
+        content = (
+            "## Diagram\n\n"
+            "Some text.\n\n"
+            '<Figure src="diagram.png" alt="A diagram" '
+            'caption="Figure 1" />\n'
+        )
+        slides = parse_mdx_to_slides(content)
+        assert len(slides) == 1
+        assert slides[0].layout == "text-with-figure"
+        assert slides[0].figure_src == "diagram.png"
+        assert slides[0].figure_alt == "A diagram"
+        assert slides[0].figure_caption == "Figure 1"
+        assert slides[0].figure_position == "below"
+        assert slides[0].body == "Some text."
+
+    def test_figure_without_caption(self) -> None:
+        content = "## Image\n\n" '<Figure src="img.png" alt="An image" />\n'
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].layout == "text-with-figure"
+        assert slides[0].figure_src == "img.png"
+        assert slides[0].figure_alt == "An image"
+        assert slides[0].figure_caption is None
+        assert slides[0].figure_position == "above"
+
+    def test_figure_position_above(self) -> None:
+        content = (
+            "## Top image\n\n"
+            '<Figure src="top.png" alt="Top" caption="At top" />\n\n'
+            "Body text below the figure.\n"
+        )
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].figure_position == "above"
+        assert slides[0].body == "Body text below the figure."
+
+    def test_figure_with_callout(self) -> None:
+        content = (
+            "## Mixed\n\n"
+            '<Figure src="pic.png" alt="Pic" caption="Cap" />\n\n'
+            '<Callout type="info">\n  Note.\n</Callout>\n'
+        )
+        slides = parse_mdx_to_slides(content)
+        assert slides[0].layout == "text-with-figure"
+        assert slides[0].figure_src == "pic.png"
+        assert slides[0].callout_type == "info"
+        assert slides[0].callout_body == "Note."
+
 
 class TestLoadModuleYaml:
     """load_module_yaml reads module.yaml metadata."""
