@@ -94,6 +94,7 @@ import ChangePassword from "./pages/ChangePassword";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
+import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
 import RequirePermission from "./auth/RequirePermission";
@@ -371,9 +372,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     cssVariablesResolver={cssVariablesResolver}
     defaultColorScheme="light"
   >
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <ConnectivityProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ConnectivityProvider>
   </MantineProvider>,
 );
 
