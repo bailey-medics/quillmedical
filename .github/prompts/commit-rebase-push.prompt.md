@@ -1,12 +1,27 @@
 ---
 agent: "agent"
-name: commit-rebase-push
+name: crp
 description: Commit, rebase, and push code
 ---
 
 # Commit, rebase, and push code
 
-1. Only operate on the **quillmedical** repository — never commit or push to `question-bank/` (quill-question-bank)
+## Target repository
+
+The user may specify a repo name after the command (e.g. `/crp eoeeta-teaching`). Use this mapping:
+
+| Argument | Repository path |
+|----------|----------------|
+| *(none or "quillmedical")* | `/Users/markbailey/github/quillmedical` |
+| `tooling` | `/Users/markbailey/github/quillmedical/teaching-tooling` |
+| `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching` |
+| `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
+
+If no argument is given, default to **quillmedical**.
+
+## Steps
+
+1. Only operate on the resolved target repository (see above)
 2. Check git status and confirm there are changes to commit
 3. Review the changes and create a clear, descriptive commit message following conventional commit format (e.g., "feat:", "fix:", "refactor:")
 4. Stage and commit the changes
