@@ -127,6 +127,7 @@ function Step1BasicDetails({
         placeholder="jane.smith@example.com"
         required
         type="email"
+        autoComplete="off"
         value={formData.email}
         onChange={(e) =>
           setFormData({ ...formData, email: e.currentTarget.value })
@@ -138,6 +139,7 @@ function Step1BasicDetails({
         label="Username"
         placeholder="janesmith"
         required
+        autoComplete="off"
         value={formData.username}
         onChange={(e) =>
           setFormData({ ...formData, username: e.currentTarget.value })
@@ -154,6 +156,7 @@ function Step1BasicDetails({
         }
         required={!isEditMode}
         type="password"
+        autoComplete="new-password"
         value={formData.password}
         onChange={(e) =>
           setFormData({ ...formData, password: e.currentTarget.value })
@@ -299,8 +302,20 @@ function Step2Competencies({
             Base profession: {profession.display_name}
           </BodyTextBold>
           <BodyText>
-            Default competencies: {baseCompetencyIds.length} included
+            Default competencies ({baseCompetencyIds.length}):
           </BodyText>
+          <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
+            {baseCompetencyIds.map((id) => {
+              const comp = competenciesData.competencies.find(
+                (c: Competency) => c.id === id,
+              );
+              return (
+                <li key={id}>
+                  <BodyTextInline>{comp?.display_name || id}</BodyTextInline>
+                </li>
+              );
+            })}
+          </ul>
         </Alert>
       )}
 
@@ -308,7 +323,10 @@ function Step2Competencies({
         label="Additional competencies"
         description="Add competencies beyond the base profession"
         placeholder="Select additional competencies"
-        data={competencyOptions}
+        data={competencyOptions.filter(
+          (c: { value: string; label: string }) =>
+            !baseCompetencyIds.includes(c.value as CompetencyId),
+        )}
         value={formData.additionalCompetencies}
         onChange={(value) =>
           setFormData({
