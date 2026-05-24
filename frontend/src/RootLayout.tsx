@@ -14,6 +14,7 @@ import type { NavItem } from "@/components/navigation/NestedNavLink";
 import MainLayout from "./components/layouts/MainLayout";
 import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 import { SearchProvider } from "@lib/search";
+import { NavigationBlocker } from "@lib/connectivity";
 
 /**
  * Layout Context
@@ -74,6 +75,7 @@ export default function RootLayout() {
 
   return (
     <SearchProvider>
+      <NavigationBlocker />
       <MainLayout
         patient={patient}
         isLoading={false}

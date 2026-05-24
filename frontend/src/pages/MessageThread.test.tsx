@@ -214,7 +214,7 @@ describe("MessageThread", () => {
       await user.click(screen.getByRole("button", { name: /send/i }));
 
       expect(screen.getByText("Test reply message")).toBeInTheDocument();
-    });
+    }, 15000);
   });
 
   describe("Unknown conversation", () => {

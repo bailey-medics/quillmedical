@@ -57,6 +57,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     throw new Error(`API path must start with '/', got: ${path}`);
   }
 
+  // Pre-check: if browser reports offline, fail fast
+  if (!navigator.onLine) {
+    window.dispatchEvent(new CustomEvent("app:network-error"));
+    throw new Error("No network connection");
+  }
+
   // Auto-include CSRF token for state-changing requests
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = {
@@ -72,12 +78,21 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     }
   }
 
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    credentials: "include",
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers,
+      credentials: "include",
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch (err) {
+    // TypeError from fetch indicates a network failure (DNS, connection refused, etc.)
+    if (err instanceof TypeError) {
+      window.dispatchEvent(new CustomEvent("app:network-error"));
+    }
+    throw err;
+  }
 
   // Silent, single refresh try on 401
   if (res.status === 401 && !opts.retry) {
@@ -152,7 +167,13 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     throw err;
   }
 
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) {
+    window.dispatchEvent(new CustomEvent("app:api-success"));
+    return undefined as T;
+  }
+
+  // Signal successful API communication for connectivity tracking
+  window.dispatchEvent(new CustomEvent("app:api-success"));
 
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) {

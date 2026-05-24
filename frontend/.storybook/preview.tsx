@@ -36,6 +36,13 @@ import { theme, cssVariablesResolver } from "../src/theme";
   if (url.includes("/auth/refresh")) {
     return new Response(null, { status: 401, statusText: "Unauthorised" });
   }
+  // Mock /api/health for ConnectivityProvider
+  if (url.includes("/api/health")) {
+    return new Response(JSON.stringify({ status: "ok" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   // Mock /patients endpoint for NewMessageModal
   if (url.includes("/patients")) {
     return new Response(
@@ -74,6 +81,7 @@ import { theme, cssVariablesResolver } from "../src/theme";
 
 // Import real AuthProvider after mocking fetch
 import { AuthProvider, useAuth } from "../src/auth/AuthContext";
+import { ConnectivityProvider } from "../src/lib/connectivity/ConnectivityContext";
 
 // Wrapper to ensure auth is available (renders immediately, auth loads in background)
 // eslint-disable-next-line react-refresh/only-export-components
@@ -118,18 +126,20 @@ const decorators = [
                 cssVariablesResolver={cssVariablesResolver}
                 forceColorScheme={colorScheme}
               >
-                <AuthWrapper>
-                  <div
-                    style={{
-                      padding: 0,
-                      background: "var(--mantine-color-body)",
-                      color: "var(--mantine-color-text)",
-                      minHeight: "100vh",
-                    }}
-                  >
-                    {Story()}
-                  </div>
-                </AuthWrapper>
+                <ConnectivityProvider>
+                  <AuthWrapper>
+                    <div
+                      style={{
+                        padding: 0,
+                        background: "var(--mantine-color-body)",
+                        color: "var(--mantine-color-text)",
+                        minHeight: "100vh",
+                      }}
+                    >
+                      {Story()}
+                    </div>
+                  </AuthWrapper>
+                </ConnectivityProvider>
               </MantineProvider>
             </AuthProvider>
           ),

@@ -93,9 +93,28 @@ vi.mock("@components/footer/Footer", () => ({
   ),
 }));
 
+vi.mock("@components/offline-strip/OfflineStrip", () => ({
+  default: () => <div data-testid="offline-strip" />,
+}));
+
+vi.mock("@components/offline-modal/OfflineModal", () => ({
+  default: () => null,
+}));
+
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/" }),
+}));
+
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => ({
+    isOnline: true,
+    isReconnected: false,
+    lastSyncedAt: null,
+    showOfflineModal: false,
+    dismissOfflineModal: vi.fn(),
+    clearReconnected: vi.fn(),
+  }),
 }));
 
 const mockPatient: Patient = {

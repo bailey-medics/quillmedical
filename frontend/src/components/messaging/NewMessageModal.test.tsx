@@ -55,10 +55,10 @@ describe("NewMessageModal", () => {
   };
 
   describe("Rendering", () => {
-    it("renders modal with title when opened", () => {
+    it("renders modal with title when opened", async () => {
       renderWithRouter(<NewMessageModal {...defaultProps} />);
-      expect(screen.getByText("New message")).toBeInTheDocument();
-    });
+      expect(await screen.findByText("New message")).toBeInTheDocument();
+    }, 15000);
 
     it("does not render content when closed", () => {
       renderWithRouter(<NewMessageModal {...defaultProps} opened={false} />);

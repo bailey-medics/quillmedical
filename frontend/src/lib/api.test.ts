@@ -86,4 +86,69 @@ describe("api.request", () => {
 
     await expect(api.get("/auth/me")).rejects.toThrow("Failed to fetch");
   });
+
+  it("dispatches app:network-error when navigator.onLine is false", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      configurable: true,
+    });
+    const handler = vi.fn();
+    window.addEventListener("app:network-error", handler);
+
+    await expect(api.get("/auth/me")).rejects.toThrow("No network connection");
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(fetch).not.toHaveBeenCalled();
+
+    window.removeEventListener("app:network-error", handler);
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      configurable: true,
+    });
+  });
+
+  it("dispatches app:network-error on TypeError from fetch", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const handler = vi.fn();
+    window.addEventListener("app:network-error", handler);
+
+    await expect(api.get("/auth/me")).rejects.toThrow("Failed to fetch");
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("app:network-error", handler);
+  });
+
+  it("dispatches app:api-success on successful response", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const handler = vi.fn();
+    window.addEventListener("app:api-success", handler);
+
+    await api.get("/test");
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("app:api-success", handler);
+  });
+
+  it("dispatches app:api-success on 204 response", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const handler = vi.fn();
+    window.addEventListener("app:api-success", handler);
+
+    await api.post("/auth/logout");
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("app:api-success", handler);
+  });
+
+  it("does not dispatch app:api-success on error response", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ detail: "Forbidden" }, 403),
+    );
+    const handler = vi.fn();
+    window.addEventListener("app:api-success", handler);
+
+    await expect(api.get("/protected")).rejects.toThrow();
+    expect(handler).not.toHaveBeenCalled();
+
+    window.removeEventListener("app:api-success", handler);
+  });
 });
