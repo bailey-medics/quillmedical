@@ -12,6 +12,8 @@ import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
 import Footer from "@components/footer/Footer";
+import OfflineStrip from "@components/offline-strip/OfflineStrip";
+import OfflineModal from "@components/offline-modal/OfflineModal";
 import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
@@ -19,6 +21,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { useSearch } from "@lib/search";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useConnectivity } from "@lib/connectivity";
 import {
   LAYOUT_RIBBON_Z_INDEX,
   LAYOUT_PADDING_BOTTOM,
@@ -74,6 +77,24 @@ export default function MainLayout({
   // Reset scroll position when navigating to a new page
   useEffect(() => {
     mainRef.current?.scrollTo?.(0, 0);
+  }, [location.pathname]);
+
+  // Connectivity state for offline strip/modal
+  const {
+    isOnline,
+    isReconnected,
+    lastSyncedAt,
+    showOfflineModal,
+    dismissOfflineModal,
+    clearReconnected,
+  } = useConnectivity();
+
+  // Clear reconnected strip on route change
+  useEffect(() => {
+    if (isReconnected) {
+      clearReconnected();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on path change
   }, [location.pathname]);
 
   // Prepare footer text based on auth state
@@ -133,6 +154,15 @@ export default function MainLayout({
           showSearch={showSearch}
         />
       </Box>
+
+      {(!isOnline || isReconnected) && lastSyncedAt && (
+        <OfflineStrip
+          state={isReconnected ? "reconnected" : "offline"}
+          lastSyncedAt={lastSyncedAt}
+        />
+      )}
+
+      <OfflineModal opened={showOfflineModal} onClose={dismissOfflineModal} />
 
       <Flex flex={1} style={{ overflow: "hidden", position: "relative" }}>
         {!examMode && (
