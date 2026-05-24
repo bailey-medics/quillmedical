@@ -198,6 +198,7 @@ module "cloud_run_backend" {
       BACKEND_ENV      = "production"
       SECURE_COOKIES   = "true"
       COOKIE_DOMAIN    = ".${var.domain}"
+      FRONTEND_URL     = "https://${var.lb_domains[0]}"
       AUTH_DB_HOST     = module.cloud_sql_auth.private_ip
       AUTH_DB_NAME     = module.cloud_sql_auth.database_name
       AUTH_DB_USER     = module.cloud_sql_auth.database_user
