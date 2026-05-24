@@ -40,6 +40,7 @@ jobs:
               - "shared/**"
             frontend:
               - "frontend/**"
+              - "caddy/prod/**"
               - "shared/**"
 
       # workflow_dispatch always builds everything
