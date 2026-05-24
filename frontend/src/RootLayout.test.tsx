@@ -48,6 +48,19 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => ({
+    isOnline: true,
+    isChecking: false,
+    lastSyncedAt: null,
+    showOfflineModal: false,
+    dismissOfflineModal: vi.fn(),
+    triggerOfflineModal: vi.fn(),
+    retry: vi.fn(),
+  }),
+  NavigationBlocker: () => null,
+}));
+
 /**
  * Child component that sets patient via outlet context, simulating usePatientLoader.
  * Also provides a button to navigate to the home page.
