@@ -14,6 +14,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyTextInline,
   BodyTextBold,
+  BodyTextClamp,
   Heading,
   EmptyState,
 } from "@/components/typography";
@@ -26,6 +27,7 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import AddButton from "@/components/button/AddButton";
 import FeatureBadge from "@/components/badge/FeatureBadge";
+import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
@@ -55,6 +57,7 @@ interface SiteMember {
   name: string;
   type: string;
   location: string;
+  is_active: boolean;
   clinical_lead: string;
 }
 
@@ -237,7 +240,9 @@ export default function OrganisationAdminPage() {
   const siteColumns: Column<SiteMember>[] = [
     {
       header: "Name",
-      render: (site) => site.name,
+      render: (site) => (
+        <BodyTextClamp lineClamp={1}>{site.name}</BodyTextClamp>
+      ),
       accessor: (site) => site.name,
     },
     {
@@ -251,9 +256,9 @@ export default function OrganisationAdminPage() {
       accessor: (site) => site.clinical_lead || "",
     },
     {
-      header: "Location",
-      render: (site) => site.location || "—",
-      accessor: (site) => site.location || "",
+      header: "Status",
+      render: (site) => <ActiveStatusBadge active={site.is_active} />,
+      accessor: (site) => (site.is_active ? "active" : "deactivated"),
     },
   ];
 

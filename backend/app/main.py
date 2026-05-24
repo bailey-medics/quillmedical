@@ -3390,6 +3390,7 @@ def get_organization(
                 "name": s.name,
                 "type": s.type,
                 "location": s.location or "",
+                "is_active": s.is_active,
                 "clinical_lead": clinical_leads.get(s.id, ""),
             }
             for s in sites
@@ -3995,6 +3996,7 @@ def list_sites(
                 "type": s.type,
                 "parent_id": s.parent_id,
                 "location": s.location or "",
+                "is_active": s.is_active,
                 "created_at": s.created_at.isoformat(),
                 "updated_at": s.updated_at.isoformat(),
             }
@@ -4043,6 +4045,7 @@ def create_site(
         "type": site.type,
         "parent_id": site.parent_id,
         "location": site.location or "",
+        "is_active": site.is_active,
         "created_at": site.created_at.isoformat(),
         "updated_at": site.updated_at.isoformat(),
     }
@@ -4093,6 +4096,7 @@ def get_site(
         "type": site.type,
         "parent_id": site.parent_id,
         "location": site.location or "",
+        "is_active": site.is_active,
         "created_at": site.created_at.isoformat(),
         "updated_at": site.updated_at.isoformat(),
         "staff": [
@@ -4159,6 +4163,41 @@ def update_site(
         "type": site.type,
         "parent_id": site.parent_id,
         "location": site.location or "",
+        "is_active": site.is_active,
+        "created_at": site.created_at.isoformat(),
+        "updated_at": site.updated_at.isoformat(),
+    }
+
+
+@router.patch("/sites/{site_id}/active", dependencies=[DEP_REQUIRE_CSRF])
+def toggle_site_active(
+    site_id: int,
+    body: dict[str, bool],
+    u: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, Any]:
+    """Toggle a site's active status. Admin/superadmin only."""
+    if u.system_permissions not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    site = db.get(Site, site_id)
+    if not site:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    if "is_active" not in body:
+        raise HTTPException(status_code=422, detail="is_active field required")
+
+    site.is_active = body["is_active"]
+    db.commit()
+    db.refresh(site)
+
+    return {
+        "id": site.id,
+        "name": site.name,
+        "type": site.type,
+        "parent_id": site.parent_id,
+        "location": site.location or "",
+        "is_active": site.is_active,
         "created_at": site.created_at.isoformat(),
         "updated_at": site.updated_at.isoformat(),
     }
@@ -5221,6 +5260,32 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             raise HTTPException(404, "Bank not found")
 
         file_path = bank_dir / item_folder / filename
+        if not file_path.is_file():
+            raise HTTPException(404, "Image not found")
+
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        return FileResponse(file_path, media_type=content_type)
+
+    @app.get("/api/teaching/images/learning/{module_id}/{filename}")
+    async def _serve_learning_image(
+        module_id: str,
+        filename: str,
+    ) -> FileResponse:
+        """Serve learning content images from local teaching-repos."""
+        from app.features.teaching.storage import resolve_module_dir
+
+        # Validate path components
+        for part in (module_id, filename):
+            if ".." in part or "/" in part:
+                raise HTTPException(400, "Invalid path")
+
+        module_dir = resolve_module_dir(_qb_base, module_id)
+        if not module_dir:
+            raise HTTPException(404, "Module not found")
+
+        file_path = module_dir / "learning" / "images" / filename
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 

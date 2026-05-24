@@ -21,13 +21,19 @@ class ParsedSlide:
     """A single slide parsed from MDX content."""
 
     slide_index: int
-    layout: str  # "section-title" | "default" | "video-slide"
+    layout: (
+        str  # "section-title" | "default" | "video-slide" | "text-with-figure"
+    )
     title: str
     body: str | None = None
     callout_type: str | None = None
     callout_body: str | None = None
     youtube_id: str | None = None
     duration_seconds: int | None = None
+    figure_src: str | None = None
+    figure_alt: str | None = None
+    figure_caption: str | None = None
+    figure_position: str | None = None  # "above" | "below"
 
 
 def _strip_frontmatter(content: str) -> str:
@@ -79,6 +85,40 @@ def _extract_youtube(
     return remaining, youtube_id, duration
 
 
+def _extract_figure(
+    body: str,
+) -> tuple[str, str | None, str | None, str | None, str | None]:
+    """Extract <Figure> component from body text.
+
+    Supports self-closing form:
+      <Figure src="img.png" alt="description" caption="caption text" />
+
+    Returns (remaining_body, src, alt, caption, position).
+    Position is "above" if figure appears before body text, "below" otherwise.
+    """
+    pattern = r"<Figure\s+([^>]*)/>"
+    match = re.search(pattern, body)
+    if not match:
+        return body, None, None, None, None
+
+    attrs = match.group(1)
+    src_m = re.search(r'src="([^"]+)"', attrs)
+    alt_m = re.search(r'alt="([^"]+)"', attrs)
+    cap_m = re.search(r'caption="([^"]+)"', attrs)
+
+    src = src_m.group(1) if src_m else None
+    alt = alt_m.group(1) if alt_m else None
+    caption = cap_m.group(1) if cap_m else None
+
+    # Determine position: "above" if no text before the figure
+    text_before = body[: match.start()].strip()
+    position = "above" if not text_before else "below"
+
+    remaining = body[: match.start()] + body[match.end() :]
+    remaining = remaining.strip()
+    return remaining, src, alt, caption, position
+
+
 def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
     """Parse MDX content into a list of slides.
 
@@ -108,6 +148,10 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
         callout_body = None
         youtube_id = None
         duration_seconds = None
+        figure_src = None
+        figure_alt = None
+        figure_caption = None
+        figure_position = None
 
         if body_text:
             body_text, callout_type, callout_body = _extract_callout(body_text)
@@ -118,6 +162,19 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
             if youtube_id:
                 layout = "video-slide"
                 body_text = body_text_check or None
+
+            fig_text = body_text or ""
+            (
+                fig_text,
+                figure_src,
+                figure_alt,
+                figure_caption,
+                figure_position,
+            ) = _extract_figure(fig_text)
+            if figure_src:
+                layout = "text-with-figure"
+                body_text = fig_text or None
+
             if not body_text:
                 body_text = None
 
@@ -131,6 +188,10 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
                 callout_body=callout_body,
                 youtube_id=youtube_id,
                 duration_seconds=duration_seconds,
+                figure_src=figure_src,
+                figure_alt=figure_alt,
+                figure_caption=figure_caption,
+                figure_position=figure_position,
             )
         )
         current_title = None

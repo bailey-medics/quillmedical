@@ -671,6 +671,9 @@ class Site(Base):
         Integer, ForeignKey("sites.id", ondelete="SET NULL"), nullable=True
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

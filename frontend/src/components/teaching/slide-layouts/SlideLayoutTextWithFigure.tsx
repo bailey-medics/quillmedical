@@ -1,7 +1,8 @@
 /**
  * SlideLayoutTextWithFigure
  *
- * Stacked layout: heading, then image with caption, then body text
+ * Stacked layout: heading, then body text and figure in the order
+ * specified by imagePosition ("above" or "below" body text),
  * and optional callout underneath.
  */
 
@@ -19,17 +20,30 @@ export interface SlideLayoutTextWithFigureProps {
 export default function SlideLayoutTextWithFigure({
   slide,
 }: SlideLayoutTextWithFigureProps) {
+  const figure = slide.imageSrc && (
+    <Figure
+      src={slide.imageSrc}
+      alt={slide.imageAlt ?? slide.title}
+      caption={slide.imageCaption}
+    />
+  );
+
+  const body = slide.body && <MarkdownView source={slide.body} />;
+
   return (
     <Stack gap="md">
       <Heading>{slide.title}</Heading>
-      {slide.imageSrc && (
-        <Figure
-          src={slide.imageSrc}
-          alt={slide.imageAlt ?? slide.title}
-          caption={slide.imageCaption}
-        />
+      {slide.imagePosition === "above" ? (
+        <>
+          {figure}
+          {body}
+        </>
+      ) : (
+        <>
+          {body}
+          {figure}
+        </>
       )}
-      {slide.body && <MarkdownView source={slide.body} />}
       {slide.calloutType && slide.calloutBody && (
         <Callout type={slide.calloutType}>{slide.calloutBody}</Callout>
       )}

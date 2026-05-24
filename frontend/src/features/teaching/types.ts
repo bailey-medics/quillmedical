@@ -299,6 +299,8 @@ export interface CompiledSlide {
   imageAlt?: string;
   /** Image caption */
   imageCaption?: string;
+  /** Image position relative to body text */
+  imagePosition?: "above" | "below";
   /** Callout type if the slide contains a callout */
   calloutType?: "info" | "warning" | "success";
   /** Callout body text */
