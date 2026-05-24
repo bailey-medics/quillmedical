@@ -237,6 +237,9 @@ module "cloud_run_backend" {
       EHRBASE_DB_PASSWORD        = "ehrbase-db-password"
       EHRBASE_API_PASSWORD       = "ehrbase-api-password"
       EHRBASE_API_ADMIN_PASSWORD = "ehrbase-admin-password"
+    } : {},
+    var.environment == "teaching" ? {
+      TEACHING_SYNC_TOKEN = "teaching-sync-token"
     } : {}
   )
 

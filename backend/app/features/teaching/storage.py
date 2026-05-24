@@ -14,6 +14,7 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from app.config import settings
 
@@ -227,11 +228,68 @@ def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
 
 
 def has_learning_content(base_path: str, module_id: str) -> bool:
-    """Check if a module has learning content (content.mdx)."""
+    """Check if a module has learning content (content.mdx).
+
+    Works for both local filesystem and GCS.
+    """
+    # Try GCS first if configured
+    bucket = settings.TEACHING_GCS_BUCKET
+    if bucket:
+        return has_learning_content_gcs(bucket, module_id)
+    # Fall back to local filesystem
     module_dir = resolve_module_dir(base_path, module_id)
     if module_dir is None:
         return False
     return (module_dir / "learning" / "content.mdx").is_file()
+
+
+def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
+    """Check if a module has learning content in GCS."""
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        return False
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"learning/{module_id}/content.mdx")
+    return blob.exists()
+
+
+def download_learning_mdx_from_gcs(
+    bucket_name: str, module_id: str
+) -> str | None:
+    """Download learning/content.mdx from GCS and return as string."""
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        return None
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"learning/{module_id}/content.mdx")
+    if not blob.exists():
+        return None
+    return blob.download_as_text(encoding="utf-8")
+
+
+def download_module_yaml_from_gcs(
+    bucket_name: str, module_id: str
+) -> dict[str, Any] | None:
+    """Download modules/<module_id>/module.yaml from GCS."""
+    import yaml  # type: ignore[import-untyped]
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        return None
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"modules/{module_id}/module.yaml")
+    if not blob.exists():
+        return None
+    content = blob.download_as_text(encoding="utf-8")
+    return yaml.safe_load(content) or {}  # type: ignore[no-any-return]
 
 
 def list_banks_in_gcs(bucket_name: str) -> list[str]:

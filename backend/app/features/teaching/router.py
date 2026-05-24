@@ -318,20 +318,34 @@ def get_learning_content(
     from app.features.teaching.mdx_parser import (
         load_learning_content,
         load_module_yaml,
+        parse_mdx_to_slides,
+    )
+    from app.features.teaching.storage import (
+        download_learning_mdx_from_gcs,
+        download_module_yaml_from_gcs,
     )
 
+    bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
-    if not base_path:
+
+    if bucket:
+        # Production: load from GCS
+        meta = download_module_yaml_from_gcs(bucket, module_id) or {}
+        mdx_content = download_learning_mdx_from_gcs(bucket, module_id)
+        if not mdx_content:
+            raise HTTPException(404, "No learning content for this module")
+        slides = parse_mdx_to_slides(mdx_content)
+    elif base_path:
+        # Local dev: load from filesystem
+        module_dir = resolve_module_dir(base_path, module_id)
+        if not module_dir:
+            raise HTTPException(404, "Module not found")
+        meta = load_module_yaml(module_dir)
+        slides = load_learning_content(module_dir)
+        if not slides:
+            raise HTTPException(404, "No learning content for this module")
+    else:
         raise HTTPException(404, "Teaching content not configured")
-
-    module_dir = resolve_module_dir(base_path, module_id)
-    if not module_dir:
-        raise HTTPException(404, "Module not found")
-
-    meta = load_module_yaml(module_dir)
-    slides = load_learning_content(module_dir)
-    if not slides:
-        raise HTTPException(404, "No learning content for this module")
 
     return {
         "module_id": module_id,
@@ -364,28 +378,56 @@ def list_learning_modules(
     from app.features.teaching.mdx_parser import (
         load_learning_content,
         load_module_yaml,
+        parse_mdx_to_slides,
     )
-    from app.features.teaching.storage import discover_local_banks
+    from app.features.teaching.storage import (
+        discover_local_banks,
+        download_learning_mdx_from_gcs,
+        download_module_yaml_from_gcs,
+        has_learning_content_gcs,
+        list_banks_in_gcs,
+    )
 
+    bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
-    if not base_path:
+
+    if bucket:
+        # Production: discover from GCS
+        try:
+            bank_ids = list_banks_in_gcs(bucket)
+        except Exception:
+            return []
+    elif base_path:
+        bank_ids = discover_local_banks(base_path)
+    else:
         return []
 
-    bank_ids = discover_local_banks(base_path)
     modules: list[dict[str, Any]] = []
 
     for bank_id in bank_ids:
-        module_dir = resolve_module_dir(base_path, bank_id)
-        if not module_dir:
-            continue
-        meta = load_module_yaml(module_dir)
-        if not meta:
-            continue
-        learning_path = module_dir / "learning" / "content.mdx"
-        has_learning = learning_path.is_file()
-        slide_count = (
-            len(load_learning_content(module_dir)) if has_learning else 0
-        )
+        if bucket:
+            meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
+            if not meta:
+                continue
+            has_learning = has_learning_content_gcs(bucket, bank_id)
+            if has_learning:
+                mdx = download_learning_mdx_from_gcs(bucket, bank_id)
+                slide_count = len(parse_mdx_to_slides(mdx)) if mdx else 0
+            else:
+                slide_count = 0
+        else:
+            module_dir = resolve_module_dir(base_path or "", bank_id)
+            if not module_dir:
+                continue
+            meta = load_module_yaml(module_dir)
+            if not meta:
+                continue
+            learning_path = module_dir / "learning" / "content.mdx"
+            has_learning = learning_path.is_file()
+            slide_count = (
+                len(load_learning_content(module_dir)) if has_learning else 0
+            )
+
         modules.append(
             {
                 "module_id": meta.get("moduleId", bank_id),

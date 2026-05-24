@@ -163,6 +163,10 @@ class Settings(BaseSettings):
         None,
         description="Local filesystem path to question bank content",
     )
+    TEACHING_SYNC_TOKEN: SecretStr | None = Field(
+        None,
+        description="Service token for CI/CD teaching content sync",
+    )
 
     # --- Email ---
     RESEND_API_KEY: SecretStr | None = Field(
