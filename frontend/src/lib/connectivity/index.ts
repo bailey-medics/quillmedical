@@ -5,3 +5,4 @@ export {
   type ConnectivityState,
   type ConnectivityActions,
 } from "./ConnectivityContext";
+export { NavigationBlocker } from "./NavigationBlocker";
