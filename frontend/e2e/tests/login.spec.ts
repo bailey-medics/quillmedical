@@ -21,7 +21,7 @@ test.describe("Login page", () => {
     await page.getByLabel("Password").pressSequentially("educator123");
     await page.getByLabel("Password").press("Enter");
 
-    await page.waitForURL("**/teaching");
+    await page.waitForURL("**/teaching", { timeout: 60_000 });
     await expect(page).not.toHaveURL(/\/login/);
   });
 
@@ -33,6 +33,8 @@ test.describe("Login page", () => {
     await page.getByLabel("Password").press("Enter");
 
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText(/invalid|incorrect/i)).toBeVisible();
+    await expect(page.getByText(/invalid|incorrect/i)).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });

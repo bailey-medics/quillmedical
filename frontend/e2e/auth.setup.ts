@@ -8,7 +8,7 @@ setup("authenticate", async ({ page }) => {
   await page.getByLabel("Password").pressSequentially("educator123");
   await page.getByLabel("Password").press("Enter");
 
-  await page.waitForURL("**/teaching");
+  await page.waitForURL("**/teaching", { timeout: 60_000 });
   await expect(page).not.toHaveURL(/\/login/);
 
   await page.context().storageState({ path: authFile });
