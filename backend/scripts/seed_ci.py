@@ -67,7 +67,6 @@ def seed() -> None:
                 name="CI Teaching Hospital",
                 type="teaching_establishment",
                 location="CI",
-                teaching_enabled=True,
             )
             db.add(org)
             db.flush()
