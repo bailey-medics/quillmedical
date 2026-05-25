@@ -13,20 +13,17 @@ services:
       target: prod
     container_name: ci_backend
     environment:
-      AUTH_DATABASE_URL: postgresql+asyncpg://auth_user:ci_password@postgres-auth:5432/quill_auth
-      AUTH_DATABASE_URL_SYNC: postgresql://auth_user:ci_password@postgres-auth:5432/quill_auth
+      # Auth DB — individual components (Settings computes the URL)
+      AUTH_DB_PASSWORD: ci_password
+      # Defaults match: AUTH_DB_NAME=quill_auth, AUTH_DB_USER=auth_user,
+      # AUTH_DB_HOST=postgres-auth, AUTH_DB_PORT=5432
+      JWT_SECRET: ci-e2e-jwt-secret-key-minimum-32-chars
       BACKEND_ENV: testing
-      SECRET_KEY: ci-secret-key-not-for-production
-      JWT_SECRET: ci-jwt-secret-not-for-production
-      CSRF_SECRET: ci-csrf-secret-not-for-production
       CLINICAL_SERVICES_ENABLED: "false"
       TEACHING_STORAGE_BACKEND: local
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       EMAIL_DRY_RUN: "true"
-      FIRST_SUPERADMIN_USERNAME: admin
-      FIRST_SUPERADMIN_PASSWORD: admin123
-      FIRST_SUPERADMIN_EMAIL: admin@ci.local
     expose:
       - "8000"
     depends_on:
