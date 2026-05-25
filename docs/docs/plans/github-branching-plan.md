@@ -573,12 +573,12 @@ The `gcrane copy` step in `deploy.yml` copies exact image bytes — no rebuild.
 
 ### Phase 3: retire `clinical-live` (irreversible)
 
-- [ ] Ensure `main` tip matches `clinical-live` tip (no drift).
-- [ ] Update Terraform rulesets: remove `clinical-live` protection, remove `release/**`.
-- [ ] Delete `clinical-live` branch.
-- [ ] Remove `release-hotfix.yml`, `hotfix-backmerge.yml`.
-- [ ] Update `deploy-production.yml` references / delete.
-- [ ] Update `copilot-instructions.md` and repo documentation.
+- [x] Ensure `main` tip matches `clinical-live` tip (no drift).
+- [x] Update Terraform rulesets: remove `clinical-live` protection, remove `release/**`.
+- [ ] Delete `clinical-live` branch (manual — after PR merges).
+- [x] Remove `release-hotfix.yml`, `hotfix-backmerge.yml`.
+- [x] Update `deploy-production.yml` references / delete.
+- [x] Update `copilot-instructions.md` and repo documentation.
 
 ### Phase 4: E2E in CI (parallel work)
 
