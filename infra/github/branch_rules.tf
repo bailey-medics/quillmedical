@@ -141,6 +141,16 @@ resource "github_repository_ruleset" "protected_branches" {
       }
     }
 
+    # Require merge queue for merging into main
+    merge_queue {
+      merge_method                     = "SQUASH"
+      min_entries_to_merge             = 1
+      max_entries_to_merge             = 5
+      min_entries_to_merge_wait_minutes = 0
+      grouping_strategy                = "ALLGREEN"
+      check_response_timeout_minutes   = 60
+    }
+
     # Block force pushes (rewriting history on protected branches)
     non_fast_forward = true
 
