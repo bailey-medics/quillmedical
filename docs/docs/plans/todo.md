@@ -33,8 +33,6 @@ clinical/NHS go-live.
 
 ## Application bugs and missing features
 
-- [ ] Redirect `/` to `/teaching` when `CLINICAL_SERVICES_ENABLED` is false (currently shows clinical home page)
-- [ ] Create `/settings/password` page — settings links to it but no route or component exists (404)
 - [ ] Eliminate teaching dashboard skeleton flash (~0.3s) — add caching layer or delay skeleton display
 - [ ] Implement automatic auth state refresh via `visibilitychange` listener in `AuthContext.tsx`
 - [ ] Wire up CBAC frontend hooks — `useHasCompetency` etc. are hardcoded to `false`, hiding entitled features _(clinical)_
@@ -49,7 +47,6 @@ clinical/NHS go-live.
 
 ## Testing
 
-- [ ] Add unit tests for `RequireAuth` component (loading, auth pass-through, session expiry, explicit logout PHI safety)
 - [ ] Increase `required_approving_review_count` from 0 to 1 in branch rules when a second developer joins
 
 ## Web push notifications (production-readiness)
