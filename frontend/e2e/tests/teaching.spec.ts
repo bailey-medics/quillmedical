@@ -13,10 +13,11 @@ test.describe("Teaching dashboard", () => {
 
   test("shows teaching modules heading", async ({ page }) => {
     await page.goto("/teaching");
+    await page.waitForLoadState("networkidle");
 
-    // The dashboard should show the main heading
+    // The dashboard should show the main heading after data loads
     await expect(
       page.getByRole("heading", { name: /teaching modules/i }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   });
 });

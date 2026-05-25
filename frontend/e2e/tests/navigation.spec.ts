@@ -21,18 +21,21 @@ test.describe("Navigation", () => {
 
   test("logout redirects to login page", async ({ page }) => {
     await page.goto("/teaching");
+    await page.waitForLoadState("networkidle");
 
-    // Logout is a NavLink (renders as <a>) in the sidebar navigation
-    const logoutLink = page.getByRole("link", { name: /log\s*out/i });
-    if (await logoutLink.isVisible()) {
-      await logoutLink.click();
+    // Logout is a Mantine NavLink in the sidebar
+    const logoutEl = page.getByText("Logout");
+    if (await logoutEl.isVisible()) {
+      await logoutEl.click();
     } else {
-      // May be in a mobile nav drawer — open it first
-      const burger = page.getByRole("button", { name: /menu|navigation/i });
-      if (await burger.isVisible()) {
-        await burger.click();
+      // May be in a mobile nav drawer — open burger first
+      const burger = page
+        .locator("button[aria-label]")
+        .filter({ hasText: /menu/i });
+      if (await burger.count()) {
+        await burger.first().click();
       }
-      await page.getByRole("link", { name: /log\s*out/i }).click();
+      await page.getByText("Logout").click();
     }
 
     await expect(page).toHaveURL(/\/login/);

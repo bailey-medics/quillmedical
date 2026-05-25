@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, "/app")
 
 from app.db import SessionLocal  # noqa: E402
-from app.models import Organization, User  # noqa: E402
+from app.models import OrganisationFeature, Organization, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
@@ -76,7 +76,26 @@ def seed() -> None:
         else:
             print("Teaching organisation already exists")
 
-        # 4. Add educator to organisation (staff)
+        # 4. Enable teaching feature for organisation
+        feat = (
+            db.query(OrganisationFeature)
+            .filter(
+                OrganisationFeature.organisation_id == org.id,
+                OrganisationFeature.feature_key == "teaching",
+            )
+            .first()
+        )
+        if not feat:
+            feat = OrganisationFeature(
+                organisation_id=org.id,
+                feature_key="teaching",
+                enabled_by=admin.id,
+            )
+            db.add(feat)
+            db.flush()
+            print("Enabled teaching feature")
+
+        # 5. Add educator to organisation (staff)
         if educator not in org.staff_members:
             org.staff_members.append(educator)
             print("Added educator to organisation")
