@@ -601,9 +601,9 @@ The `gcrane copy` step in `deploy.yml` copies exact image bytes — no rebuild.
 
 ### Phase 4: E2E in CI (parallel work)
 
-- [ ] Create a CI-specific Docker Compose file (lighter than dev).
-- [ ] Add E2E job to `pr-heavy.yml` with service container setup.
-- [ ] Expand E2E test coverage beyond `login.spec.ts`.
+- [x] Create a CI-specific Docker Compose file (lighter than dev).
+- [x] Add E2E job to `branch-ci.yml` heavy tier with Docker Compose setup.
+- [x] Expand E2E test coverage beyond `login.spec.ts`.
 - [ ] When stable: enable GitHub merge queue.
 
 ---
