@@ -20,15 +20,15 @@ Configured in `.github/dependabot.yml`.
 
 Dependabot monitors the following ecosystems for known vulnerabilities:
 
-| Ecosystem               | Directory   | Branch targets          |
-| ----------------------- | ----------- | ----------------------- |
-| pip (Python / Poetry)   | `/backend`  | `main`, `clinical-live` |
-| npm (TypeScript / Yarn) | `/frontend` | `main`, `clinical-live` |
-| Docker                  | `/`         | `main`, `clinical-live` |
-| Terraform               | `/infra`    | `main`, `clinical-live` |
-| GitHub Actions          | `/`         | `main`, `clinical-live` |
+| Ecosystem               | Directory   | Branch targets |
+| ----------------------- | ----------- | -------------- |
+| pip (Python / Poetry)   | `/backend`  | `main`         |
+| npm (TypeScript / Yarn) | `/frontend` | `main`         |
+| Docker                  | `/`         | `main`         |
+| Terraform               | `/infra`    | `main`         |
+| GitHub Actions          | `/`         | `main`         |
 
-Both `main` (development) and `clinical-live` (production) are monitored so that vulnerability alerts cover what is in development _and_ what is currently deployed to patients.
+`main` is the only long-lived branch. Vulnerability alerts and routine updates both target `main`.
 
 `open-pull-requests-limit: 0` is set for all ecosystems — Dependabot raises alerts only; Renovate creates the fix PRs.
 
@@ -64,7 +64,7 @@ Packages: **fhirclient** (HAPI FHIR), **httpx** (EHRbase via direct HTTP)
 - **No automerge under any circumstances.**
 - PRs labelled `tier-1-clinical`.
 - Vulnerability alerts bypass the Wednesday schedule and fire immediately.
-- Vulnerability alert PRs target `clinical-live` directly with branch prefix `hotfix/sec-`, labelled `security` + `hotfix`.
+- Vulnerability alert PRs target `main` with branch prefix `hotfix/sec-`, labelled `security` + `hotfix`.
 
 ### Tier 2 — Infrastructure
 
@@ -73,35 +73,34 @@ Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, Re
 - **No automerge**; code review required.
 - Major version bumps labelled `major-version-bump`.
 - Vulnerability alerts bypass schedule and fire immediately.
-- Vulnerability alert PRs target `clinical-live` as a hotfix branch.
+- Vulnerability alert PRs target `main` as a hotfix branch.
 
 ### Tier 3 — Tooling
 
 Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commit hooks
 
 - **Automerge on CI pass permitted** for routine updates.
-- Vulnerability alerts still bypass the Wednesday schedule and fire immediately, but **target `main`** — tooling vulnerabilities do not require a hotfix release to `clinical-live`.
+- Vulnerability alerts still bypass the Wednesday schedule and fire immediately, but tooling vulnerabilities do not require urgency beyond normal CI validation.
 
 ## Severity-based response policy
 
-| Severity        | Tier             | Action                                                                                       |
-| --------------- | ---------------- | -------------------------------------------------------------------------------------------- |
-| Critical / High | Tier 1 or Tier 2 | Hotfix branch off `clinical-live` within 24–48 hrs. Safety assessment required before merge. |
-| Medium          | Tier 2           | Next available working day. Include in next release if imminent.                             |
-| Low             | Any              | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                        |
-| Any severity    | Tier 3           | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                        |
+| Severity        | Tier             | Action                                                                                          |
+| --------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
+| Critical / High | Tier 1 or Tier 2 | Hotfix branch off latest production tag within 24–48 hrs. Safety assessment required before merge. |
+| Medium          | Tier 2           | Next available working day. Include in next promotion if imminent.                              |
+| Low             | Any              | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
+| Any severity    | Tier 3           | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
 
-## Hotfix back-merge
+## Hotfix flow
 
-When a hotfix is merged into `clinical-live`, `main` must be updated to include the fix so it is not lost when the next release is cut.
+For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies:
 
-The workflow `.github/workflows/hotfix-backmerge.yml` handles this automatically:
+1. Create a `hotfix/sec-*` branch from the latest production CalVer tag.
+2. Apply the dependency fix.
+3. CI validates (fast tier on push, heavy tier when PR is marked ready).
+4. Merge to `main` and promote to production via the deploy workflow approval gate.
 
-1. Triggered on any push to `clinical-live` where the commit message references a `hotfix/*` branch.
-2. Runs a conflict-detection dry-run merge.
-3. Creates a PR merging `clinical-live` → `main`, labelled `hotfix` + `back-merge`, assigned to the repo owner.
-4. If merge conflicts are detected, the PR is opened as a **draft** with a comment explaining that manual resolution is required.
-5. **No automerge** — a human must review and approve.
+See the [branching plan](../plans/github-branching-plan.md#production-hotfixes) for full hotfix details.
 
 ## Notifications
 

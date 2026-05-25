@@ -13,8 +13,7 @@ After every merge to `main` it also re-evaluates open PRs — rebasing
 them or regenerating lock files as needed. This is normal and expected.
 
 Vulnerability alert PRs bypass the schedule and appear immediately.
-Tier 1 and Tier 2 alerts target `clinical-live` as `hotfix/sec-*`
-branches; Tier 3 alerts target `main`.
+All vulnerability PRs now target `main` with `hotfix/sec-*` branch names.
 
 ## Triage workflow
 
@@ -91,14 +90,12 @@ Major bumps (labelled `major-version-bump`) often require code changes.
 ## Hotfix PRs (vulnerability alerts)
 
 Tier 1 and Tier 2 vulnerability alerts create `hotfix/sec-*` branches
-targeting `clinical-live`.
+targeting `main`.
 
 1. Review the security advisory linked in the PR
-2. Verify CI passes
-3. Get the required approval (clinical-live requires 1 reviewer)
-4. Merge to `clinical-live`
-5. The hotfix back-merge workflow automatically creates a PR to bring
-   the fix into `main`
+2. Verify CI passes (fast tier on push, heavy tier when marked ready)
+3. Merge to `main`
+4. Promote to production via the deploy workflow approval gate
 
 ## Troubleshooting
 

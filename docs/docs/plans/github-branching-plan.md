@@ -548,7 +548,7 @@ Key differences from today:
 - [x] Remove Slack notifications from `branch-ci.yml` (moved to `deploy.yml` per notification policy).
 - [ ] Configure GitHub Environment `production` with required reviewers (manual — see below).
 - [x] Add annotated tag creation step after production deploy.
-- [ ] Delete `deploy-staging-teaching.yml` and `deploy-production.yml` (after validation).
+- [x] Delete `deploy-staging-teaching.yml` and `deploy-production.yml` (after validation).
 - [ ] Validate: merge to `main` → teaching auto-deploys → approve → production deploys same image.
 
 #### Production environment status
