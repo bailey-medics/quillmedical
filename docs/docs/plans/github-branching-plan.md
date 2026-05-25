@@ -539,15 +539,37 @@ Key differences from today:
 - [x] Pin fast jobs with `if: github.event_name == 'push'`, heavy jobs with `if: github.event_name == 'pull_request'`.
 - [x] Update `open-pr` job to create draft PRs.
 - [x] Register new pytest markers (`e2e`, `slow`) in `pyproject.toml`.
-- [ ] Validate: push to a feature branch → only fast runs. Mark ready → heavy runs.
+- [x] Validate: push to a feature branch → only fast runs. Mark ready → heavy runs.
 
 ### Phase 2: build-once-promote (medium risk)
 
-- [ ] Refactor deploy workflows into a single `deploy.yml`.
-- [ ] Build images tagged with commit SHA only.
-- [ ] Configure GitHub Environment `production` with required reviewers.
-- [ ] Add annotated tag creation step after production deploy.
-- [ ] Validate: merge to `main` → staging auto-deploys → approve → production deploys same image.
+- [x] Refactor deploy workflows into a single `deploy.yml`.
+- [x] Build images tagged with commit SHA only.
+- [x] Remove Slack notifications from `branch-ci.yml` (moved to `deploy.yml` per notification policy).
+- [ ] Configure GitHub Environment `production` with required reviewers (manual — see below).
+- [x] Add annotated tag creation step after production deploy.
+- [ ] Delete `deploy-staging-teaching.yml` and `deploy-production.yml` (after validation).
+- [ ] Validate: merge to `main` → teaching auto-deploys → approve → production deploys same image.
+
+#### Production environment status
+
+**Production (clinical) is currently not running on GCP** — spun down to save costs. The `promote-to-production` job in `deploy.yml` is ready but will not run until the environment is brought back online. When production is re-enabled:
+
+1. Go to **Settings → Environments → production**.
+2. Add required reviewers (CSO + at least one other).
+3. Ensure the `GCP_PROD_WIF_PROVIDER` and `GCP_PROD_SERVICE_ACCOUNT` secrets are scoped to this environment.
+4. Ensure the production service account has Artifact Registry Reader on the teaching project (for `gcrane copy` to pull source images).
+5. Remove the `if: false` guard from the `promote-to-production` job.
+
+#### Image promotion flow
+
+```
+teaching AR (build target)         production AR (promotion target)
+  quill/backend:<sha>       ──gcrane copy──▶  quill/backend:<sha>
+  quill/frontend:<sha>      ──gcrane copy──▶  quill/frontend:<sha>
+```
+
+The `gcrane copy` step in `deploy.yml` copies exact image bytes — no rebuild.
 
 ### Phase 3: retire `clinical-live` (irreversible)
 
