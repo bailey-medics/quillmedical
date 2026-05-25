@@ -2,7 +2,7 @@
 
 ## Status
 
-**Draft** — awaiting implementation.
+**Phase 4 complete** — E2E in CI is stable and merged. Remaining items are deferred until production environment is re-enabled.
 
 ## Motivation
 
@@ -604,7 +604,10 @@ The `gcrane copy` step in `deploy.yml` copies exact image bytes — no rebuild.
 - [x] Create a CI-specific Docker Compose file (lighter than dev).
 - [x] Add E2E job to `branch-ci.yml` heavy tier with Docker Compose setup.
 - [x] Expand E2E test coverage beyond `login.spec.ts`.
-- [ ] When stable: enable GitHub merge queue.
+- [x] ~~When stable: enable GitHub merge queue.~~ Removed — strict status
+      checks (`strict_required_status_checks_policy = true`) already require the
+      branch to be up-to-date with `main` before merging, making the merge queue
+      redundant for a small team.
 
 ---
 
