@@ -1,15 +1,15 @@
 # Branch CI — runs on all development branches.
-# - Runs all code quality checks (fully self-contained)
-# - Opens a pull request to main for feature/* and copilot/* branches
+# - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
+# - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep)
+# - Opens a draft pull request to main for feature/* and copilot/* branches
 #
 # Covers: feature/*, copilot/*, renovate/*, dependabot/*, and any
-# other non-protected branch. Release/hotfix branches have their own
-# workflow (release-hotfix.yml).
+# other non-protected branch.
 #
 # When the PR is merged by a human, the push to main triggers
-# deploy-staging.yml. This workflow is intentionally self-contained
+# deploy.yml. This workflow is intentionally self-contained
 # and does NOT share code with other pipelines — a change here
-# cannot affect release or production workflows.
+# cannot affect production workflows.
 name: Branch CI
 
 on:
@@ -19,6 +19,9 @@ on:
       - clinical-live
       - "release/**"
       - "hotfix/**"
+  pull_request:
+    types: [ready_for_review, synchronize]
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,8 +32,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ==========================================================================
+  # FAST TIER — runs on every push (github.event_name == 'push')
+  # ==========================================================================
+
   # ---------- Python ----------
   python_checks:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
@@ -149,12 +157,13 @@ jobs:
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: true
       matrix:
-        task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build", "storybook:test:ci"]
+        task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build"]
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
@@ -184,17 +193,8 @@ jobs:
         working-directory: frontend
         run: yarn install --immutable
 
-      - name: Cache Playwright browsers
-        if: matrix.task == 'storybook:test:ci'
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
       - name: Cache Storybook build artifacts
-        if: matrix.task == 'storybook:build' || matrix.task == 'storybook:test:ci'
+        if: matrix.task == 'storybook:build'
         uses: actions/cache@v5
         with:
           path: |
@@ -213,11 +213,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-eslint-
 
-      - name: Install Playwright browsers (for storybook tests)
-        if: matrix.task == 'storybook:test:ci'
-        working-directory: frontend
-        run: npx playwright install --with-deps chromium
-
       - name: Run ${{ matrix.task }}
         working-directory: frontend
         run: |
@@ -229,7 +224,6 @@ jobs:
             "typecheck:all") yarn typecheck:all ;;
             "unit-test:run") yarn unit-test:run ;;
             "storybook:build") yarn storybook:build ;;
-            "storybook:test:ci") yarn storybook:test:ci ;;
           esac
 
       - name: Notify Slack on TypeScript checks failure
@@ -252,30 +246,14 @@ jobs:
               ]
             }
 
-  # ---------- Frontend security (Semgrep) ----------
-  frontend_security:
-    runs-on: ubuntu-latest
-    name: Semgrep (frontend SAST)
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-        with: { fetch-depth: 0 }
-
-      - name: Install Semgrep
-        run: pipx install semgrep
-
-      - name: Run Semgrep
-        working-directory: frontend
-        env:
-          SEMGREP_LOG_LEVEL: error
-          SEMGREP_DISABLE_ANALYTICS: "1"
-          SEMGREP_NO_VERSION_CHECK: "1"
-        run: semgrep --config .semgrep.yml --error
+  # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
+  # Kept here commented for reference; the heavy_semgrep job below runs this.
+  # frontend_security:
 
   # ---------- Open PR to main ----------
   # Only for feature/* and copilot/* branches — Renovate/Dependabot create their own PRs.
   open-pr:
-    if: startsWith(github.ref_name, 'feature/') || startsWith(github.ref_name, 'copilot/')
+    if: github.event_name == 'push' && (startsWith(github.ref_name, 'feature/') || startsWith(github.ref_name, 'copilot/'))
     runs-on: ubuntu-latest
     name: Open pull request
     steps:
@@ -313,7 +291,8 @@ jobs:
             --head "$GITHUB_REF_NAME" \
             --title "$TITLE" \
             --body "Auto-created PR for \`$GITHUB_REF_NAME\`." \
-            --label "$LABEL"
+            --label "$LABEL" \
+            --draft
 
       - name: Notify Slack on PR creation failure
         if: failure()
@@ -330,6 +309,133 @@ jobs:
                   "text": {
                     "type": "mrkdwn",
                     "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+  # ==========================================================================
+  # HEAVY TIER — runs on non-draft PRs only (github.event_name == 'pull_request')
+  # ==========================================================================
+
+  # ---------- Storybook interaction tests ----------
+  # Name matches the required check in branch_rules.tf (backward compat)
+  heavy_storybook_tests:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    name: typescript_checks (storybook:test:ci)
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Enable Corepack & pin Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.10.3 --activate
+          yarn --version
+
+      - name: Cache Yarn
+        uses: actions/cache@v5
+        with:
+          path: |
+            frontend/.yarn/cache
+            frontend/.yarn/install-state.gz
+            frontend/node_modules
+          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn4-nm-
+
+      - name: Install deps
+        working-directory: frontend
+        run: yarn install --immutable
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Cache Storybook build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            frontend/node_modules/.vite
+            frontend/.storybook-cache
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-storybook-
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Storybook interaction tests
+        working-directory: frontend
+        run: yarn storybook:test:ci
+
+      - name: Notify Slack on Storybook tests failure
+        if: failure()
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Heavy: Storybook interaction tests failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Heavy: Storybook interaction tests failed*\n\n*PR:* #${{ github.event.pull_request.number }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+  # ---------- Semgrep (frontend SAST) ----------
+  heavy_semgrep:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    name: Semgrep (frontend SAST)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+
+      - name: Install Semgrep
+        run: pipx install semgrep
+
+      - name: Run Semgrep
+        working-directory: frontend
+        env:
+          SEMGREP_LOG_LEVEL: error
+          SEMGREP_DISABLE_ANALYTICS: "1"
+          SEMGREP_NO_VERSION_CHECK: "1"
+        run: semgrep --config .semgrep.yml --error
+
+      - name: Notify Slack on Semgrep failure
+        if: failure()
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Heavy: Semgrep SAST failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Heavy: Semgrep SAST failed*\n\n*PR:* #${{ github.event.pull_request.number }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
