@@ -3,6 +3,12 @@
 dist/
 storybook-static/
 
+# Playwright
+e2e/.auth/
+playwright-report/
+test-results/
+blob-report/
+
 # Generated files - DO NOT COMMIT
 # Backend uses YAML directly, only frontend needs generated JSON
 # Ignore JSON files but keep type declarations

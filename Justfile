@@ -533,6 +533,21 @@ unit-tests-frontend:
     docker exec quill_frontend sh -lc "yarn unit-test:run"
 
 
+alias ee := e2e
+# Run the end-to-end tests
+e2e:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e"
+    cd frontend && npx playwright test
+
+alias eeu := e2e-ui
+# Run the end-to-end tests in interactive UI mode
+e2e-ui:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e-ui"
+    cd frontend && npx playwright test --ui
+
+
 alias vk := vapid-key
 # Generate a new VAPID key pair
 vapid-key:
