@@ -19,6 +19,7 @@ test.describe("Login page", () => {
 
     await page.getByLabel("Username").fill("educator");
     await page.getByLabel("Password").fill("educator123");
+    await page.getByLabel("Password").blur();
 
     const submitBtn = page.getByRole("button", { name: "Sign in" });
     await expect(submitBtn).toBeEnabled({ timeout: 10000 });
@@ -33,6 +34,7 @@ test.describe("Login page", () => {
 
     await page.getByLabel("Username").fill("educator");
     await page.getByLabel("Password").fill("wrong-password");
+    await page.getByLabel("Password").blur();
 
     const submitBtn = page.getByRole("button", { name: "Sign in" });
     await expect(submitBtn).toBeEnabled({ timeout: 10000 });

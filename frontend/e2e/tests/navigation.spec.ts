@@ -23,20 +23,8 @@ test.describe("Navigation", () => {
     await page.goto("/teaching");
     await page.waitForLoadState("networkidle");
 
-    // Logout is a Mantine NavLink in the sidebar
-    const logoutEl = page.getByText("Logout");
-    if (await logoutEl.isVisible()) {
-      await logoutEl.click();
-    } else {
-      // May be in a mobile nav drawer — open burger first
-      const burger = page
-        .locator("button[aria-label]")
-        .filter({ hasText: /menu/i });
-      if (await burger.count()) {
-        await burger.first().click();
-      }
-      await page.getByText("Logout").click();
-    }
+    // Logout is a Mantine NavLink — scope to sidebar to avoid strict mode violation
+    await page.locator("#app-navbar").getByText("Logout").click();
 
     await expect(page).toHaveURL(/\/login/);
   });
