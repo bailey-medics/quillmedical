@@ -1,0 +1,10 @@
+# Gitleaks configuration — allowlisting known false positives.
+# See https://github.com/gitleaks/gitleaks#configuration
+
+title = "Quill Medical gitleaks config"
+
+[allowlist]
+description = "VAPID public keys are intentionally public (used by browsers for web push)"
+paths = [
+  '''\.github/workflows/deploy.*\.yml''',
+]

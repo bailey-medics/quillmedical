@@ -1,0 +1,387 @@
+# Unified build-once-promote deployment pipeline.
+# Teaching: auto-deploys on merge to main.
+# Production: promotes the SAME image via GitHub Environment approval gate.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "safety/**"
+      - ".github/prompts/**"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build and deploy (for hotfixes from a tag/branch)"
+        required: false
+        default: ""
+      deploy_tag:
+        description: "Cloud Run traffic tag for isolated smoke testing (e.g. 'hotfix')"
+        required: false
+        default: ""
+
+permissions:
+  contents: write  # Needed for annotated tag creation
+  id-token: write  # Workload Identity Federation
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel a deploy in progress
+
+env:
+  GCP_REGION: europe-west2
+  AR_REGISTRY: europe-west2-docker.pkg.dev
+  VITE_VAPID_PUBLIC: BC0B26JO27tGc5qkbt2-QzY8M7_0u3gt5hmFj1RGWvZp9Vr9fDQ3-lpQ6YxqNlU0fFKlIUzCnb-baAE0rzIL-Ys
+
+jobs:
+  # ---------- Resolve the ref to build ----------
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      short_sha: ${{ steps.resolve.outputs.short_sha }}
+      backend_changed: ${{ steps.changes.outputs.backend }}
+      frontend_changed: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - name: Resolve build ref
+        id: resolve
+        run: |
+          if [ -n "${{ inputs.ref }}" ]; then
+            echo "sha=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "short_sha=$(echo '${{ inputs.ref }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "short_sha=$(echo '${{ github.sha }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.resolve.outputs.sha }}
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "backend/**"
+              - "shared/**"
+            frontend:
+              - "frontend/**"
+              - "shared/**"
+
+      # workflow_dispatch always builds everything
+      - name: Resolve change outputs
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------- Build and push Docker images (to teaching AR) ----------
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: ${{ needs.prepare.outputs.backend_changed == 'true' || needs.prepare.outputs.frontend_changed == 'true' }}
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            context: .
+            dockerfile: ./backend/Dockerfile
+            changed: ${{ needs.prepare.outputs.backend_changed }}
+            target: prod
+          - service: frontend
+            context: .
+            dockerfile: ./frontend/Dockerfile
+            changed: ${{ needs.prepare.outputs.frontend_changed }}
+            target: prod
+    steps:
+      - uses: actions/checkout@v6
+        if: ${{ matrix.changed == 'true' }}
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Authenticate to GCP (teaching)
+        if: ${{ matrix.changed == 'true' }}
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        if: ${{ matrix.changed == 'true' }}
+        run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
+
+      - name: Set up Docker Buildx
+        if: ${{ matrix.changed == 'true' }}
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push
+        if: ${{ matrix.changed == 'true' }}
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: |
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:latest
+          build-args: |
+            VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
+            VITE_CLINICAL_SERVICES_ENABLED=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------- Deploy to teaching ----------
+  deploy-teaching:
+    name: Deploy to teaching
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    if: always() && !failure() && !cancelled()
+    environment: teaching
+    steps:
+      - name: Authenticate to GCP (teaching)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Deploy backend
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          gcloud run services update quill-backend-teaching \
+            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+
+      - name: Deploy frontend
+        if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
+        run: |
+          gcloud run services update quill-frontend-teaching \
+            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
+
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://teaching.quill-medical.com/api/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Teaching health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Teaching health check failed after 5 attempts"
+          exit 1
+
+  # ---------- Promote to production ----------
+  # NOTE: Production (clinical) environment is currently offline to save GCP costs.
+  # Remove `if: false` when production is re-enabled.
+  promote-to-production:
+    if: false
+    name: Promote to production
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy-teaching]
+    # Only runs after teaching succeeds; requires manual approval via environment
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Authenticate to GCP (teaching — source registry)
+        id: auth-teaching
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Authenticate to GCP (production — target registry)
+        id: auth-prod
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Install gcrane
+        run: |
+          curl -sSL "https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz" \
+            | tar -xzf - gcrane
+          chmod +x gcrane
+          sudo mv gcrane /usr/local/bin/
+
+      - name: Copy images to production registry
+        run: |
+          SRC_REGISTRY="${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill"
+          DST_REGISTRY="${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill"
+          SHA="${{ needs.prepare.outputs.sha }}"
+
+          # Configure credentials for both registries
+          echo '${{ steps.auth-teaching.outputs.access_token }}' | \
+            gcrane auth login "${{ env.AR_REGISTRY }}" --username=oauth2accesstoken --password-stdin
+
+          if [ "${{ needs.prepare.outputs.backend_changed }}" = "true" ]; then
+            echo "Copying backend image..."
+            gcrane copy "${SRC_REGISTRY}/backend:${SHA}" "${DST_REGISTRY}/backend:${SHA}"
+            gcrane copy "${SRC_REGISTRY}/backend:${SHA}" "${DST_REGISTRY}/backend:latest"
+          fi
+
+          if [ "${{ needs.prepare.outputs.frontend_changed }}" = "true" ]; then
+            echo "Copying frontend image..."
+            gcrane copy "${SRC_REGISTRY}/frontend:${SHA}" "${DST_REGISTRY}/frontend:${SHA}"
+            gcrane copy "${SRC_REGISTRY}/frontend:${SHA}" "${DST_REGISTRY}/frontend:latest"
+          fi
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Deploy backend to production
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          gcloud run services update quill-backend-prod \
+            --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+
+      - name: Deploy frontend to production
+        if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
+        run: |
+          gcloud run services update quill-frontend-prod \
+            --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
+
+      - name: Smoke test production
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://app.quill-medical.com/api/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Production health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Production health check failed after 5 attempts"
+          exit 1
+
+      - name: Create CalVer tag
+        run: |
+          YEAR_MONTH=$(date -u +"%Y.%m")
+          # Find latest tag matching this month
+          LATEST=$(git tag -l "${YEAR_MONTH}.*" --sort=-v:refname | head -n1)
+          if [ -z "$LATEST" ]; then
+            NEXT_TAG="${YEAR_MONTH}.0"
+          else
+            PATCH=$(echo "$LATEST" | awk -F. '{print $3}')
+            NEXT_TAG="${YEAR_MONTH}.$((PATCH + 1))"
+          fi
+          echo "Creating tag: $NEXT_TAG"
+          git tag -a "$NEXT_TAG" "${{ needs.prepare.outputs.sha }}" \
+            -m "Approved-by: ${{ github.actor }}
+          Approved-at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          Safety-review: routine"
+          git push origin "$NEXT_TAG"
+
+  # ---------- Slack notifications ----------
+  notify:
+    name: Slack notification
+    runs-on: ubuntu-latest
+    needs: [deploy-teaching, promote-to-production]
+    if: always()
+    steps:
+      - name: Notify teaching deploy success
+        if: ${{ needs.deploy-teaching.result == 'success' }}
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "✅ Deployed to teaching",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Deployed to teaching*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify teaching deploy failure
+        if: ${{ needs.deploy-teaching.result == 'failure' }}
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Teaching deploy failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Teaching deploy failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify production promotion success
+        if: ${{ needs.promote-to-production.result == 'success' }}
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🚀 Promoted to production",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚀 Promoted to production*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify production promotion failure
+        if: ${{ needs.promote-to-production.result == 'failure' }}
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Production promotion failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Production promotion failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
