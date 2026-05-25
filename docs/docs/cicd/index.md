@@ -42,26 +42,26 @@ CI is split into two tiers to give fast feedback on every push while reserving e
 
 Runs on every push to any non-`main` branch. Gives feedback in ~2 minutes.
 
-| Job | Check name | What it does |
-|-----|-----------|--------------|
-| Python styling | `Python styling` | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
-| Python unit | `Python unit` | pytest (excludes integration and e2e markers) |
-| TypeScript (eslint) | `typescript_checks (eslint)` | ESLint |
-| TypeScript (prettier) | `typescript_checks (prettier)` | Prettier formatting |
-| TypeScript (stylelint) | `typescript_checks (stylelint)` | CSS linting |
-| TypeScript (typecheck) | `typescript_checks (typecheck:all)` | TypeScript strict compilation |
-| TypeScript (unit tests) | `typescript_checks (unit-test:run)` | Vitest unit tests |
-| TypeScript (storybook build) | `typescript_checks (storybook:build)` | Storybook static build |
+| Job                          | Check name                            | What it does                                                         |
+| ---------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| Python styling               | `Python styling`                      | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
+| Python unit                  | `Python unit`                         | pytest (excludes integration and e2e markers)                        |
+| TypeScript (eslint)          | `typescript_checks (eslint)`          | ESLint                                                               |
+| TypeScript (prettier)        | `typescript_checks (prettier)`        | Prettier formatting                                                  |
+| TypeScript (stylelint)       | `typescript_checks (stylelint)`       | CSS linting                                                          |
+| TypeScript (typecheck)       | `typescript_checks (typecheck:all)`   | TypeScript strict compilation                                        |
+| TypeScript (unit tests)      | `typescript_checks (unit-test:run)`   | Vitest unit tests                                                    |
+| TypeScript (storybook build) | `typescript_checks (storybook:build)` | Storybook static build                                               |
 
 ### Heavy tier (non-draft PRs only)
 
 Runs when a PR is marked ready for review or updated. Takes ~5–10 minutes.
 
-| Job | Check name | What it does |
-|-----|-----------|--------------|
+| Job                         | Check name                              | What it does                                   |
+| --------------------------- | --------------------------------------- | ---------------------------------------------- |
 | Storybook interaction tests | `typescript_checks (storybook:test:ci)` | Playwright interaction tests against Storybook |
-| Semgrep | `Semgrep (frontend SAST)` | Static application security testing |
-| E2E | `E2E (Playwright)` | Full-stack end-to-end tests via Docker Compose |
+| Semgrep                     | `Semgrep (frontend SAST)`               | Static application security testing            |
+| E2E                         | `E2E (Playwright)`                      | Full-stack end-to-end tests via Docker Compose |
 
 ### Draft PR mechanism
 
@@ -118,13 +118,13 @@ Managed via Terraform in `infra/github/branch_rules.tf`.
 
 **Rules on `main`:**
 
-| Rule | Setting |
-|------|---------|
-| PR required | Yes (0 approvals while solo dev) |
+| Rule                   | Setting                                            |
+| ---------------------- | -------------------------------------------------- |
+| PR required            | Yes (0 approvals while solo dev)                   |
 | Required status checks | All 11 checks (strict — branch must be up-to-date) |
-| Force push | Blocked |
-| Branch deletion | Blocked |
-| Bypass actors | None |
+| Force push             | Blocked                                            |
+| Branch deletion        | Blocked                                            |
+| Bypass actors          | None                                               |
 
 **Branch naming:**
 
@@ -145,14 +145,14 @@ The `admin` stage is the last stage — building without `--target` produces the
 
 ## Secrets
 
-| Secret | Purpose |
-|--------|---------|
-| `GCP_TEACHING_WIF_PROVIDER` | Workload Identity Federation for teaching |
-| `GCP_TEACHING_SERVICE_ACCOUNT` | Teaching deploy service account |
-| `GCP_TEACHING_PROJECT_ID` | Teaching GCP project ID |
-| `GCP_PROD_WIF_PROVIDER` | WIF for production _(not yet active)_ |
-| `GCP_PROD_SERVICE_ACCOUNT` | Production service account _(not yet active)_ |
-| `GCP_PROD_PROJECT_ID` | Production GCP project ID _(not yet active)_ |
+| Secret                         | Purpose                                       |
+| ------------------------------ | --------------------------------------------- |
+| `GCP_TEACHING_WIF_PROVIDER`    | Workload Identity Federation for teaching     |
+| `GCP_TEACHING_SERVICE_ACCOUNT` | Teaching deploy service account               |
+| `GCP_TEACHING_PROJECT_ID`      | Teaching GCP project ID                       |
+| `GCP_PROD_WIF_PROVIDER`        | WIF for production _(not yet active)_         |
+| `GCP_PROD_SERVICE_ACCOUNT`     | Production service account _(not yet active)_ |
+| `GCP_PROD_PROJECT_ID`          | Production GCP project ID _(not yet active)_  |
 
 Authentication uses **Workload Identity Federation** — no long-lived service account keys.
 

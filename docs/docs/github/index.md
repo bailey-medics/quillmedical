@@ -6,12 +6,12 @@ This page documents the GitHub configuration, branch protection rules, and opera
 
 ## Organisation
 
-| Setting | Value |
-|---------|-------|
-| Organisation | `bailey-medics` |
-| Plan | GitHub Enterprise |
-| Primary repository | `quillmedical` |
-| Data repository | `quill-question-bank` |
+| Setting            | Value                 |
+| ------------------ | --------------------- |
+| Organisation       | `bailey-medics`       |
+| Plan               | GitHub Enterprise     |
+| Primary repository | `quillmedical`        |
+| Data repository    | `quill-question-bank` |
 
 The Enterprise plan is required for **metadata restrictions** (branch naming enforcement via repository rulesets). The Team plan only supports branch naming rules in "evaluate" mode.
 
@@ -37,13 +37,13 @@ graph LR
 
 ### Branch types
 
-| Branch | Purpose | Deploys to |
-|--------|---------|-----------|
-| `feature/*` | New features and non-urgent fixes | CI checks only |
-| `hotfix/*` | Urgent fixes | CI checks only |
-| `copilot/*` | AI-generated branches | CI checks only |
-| `renovate/*` | Automated dependency updates | CI checks only |
-| `main` | Trunk — single protected branch | Teaching (auto), Production (approved) |
+| Branch       | Purpose                           | Deploys to                             |
+| ------------ | --------------------------------- | -------------------------------------- |
+| `feature/*`  | New features and non-urgent fixes | CI checks only                         |
+| `hotfix/*`   | Urgent fixes                      | CI checks only                         |
+| `copilot/*`  | AI-generated branches             | CI checks only                         |
+| `renovate/*` | Automated dependency updates      | CI checks only                         |
+| `main`       | Trunk — single protected branch   | Teaching (auto), Production (approved) |
 
 ### Rules
 
@@ -57,7 +57,7 @@ graph LR
 Managed by Terraform in `infra/github/branch_rules.tf`. Four rulesets are defined across both repositories.
 
 !!! warning "Manual apply required for GitHub rulesets"
-    The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` changes to `main` does not automatically apply them. You must run `terraform apply` locally:
+The `infra/github/` Terraform uses a **local state backend**. Merging `.tf` changes to `main` does not automatically apply them. You must run `terraform apply` locally:
 
     ```bash
     export GITHUB_TOKEN=$(gh auth token)
@@ -72,14 +72,14 @@ Managed by Terraform in `infra/github/branch_rules.tf`. Four rulesets are define
 
 **Targets:** `main`
 
-| Rule | Setting |
-|------|---------|
-| Pull request required | Yes (0 approvals while solo; increase when team grows) |
-| Dismiss stale reviews on push | Yes |
-| Required status checks | All 11 CI checks (strict — branch must be up-to-date) |
-| Force push | Blocked |
-| Branch deletion | Blocked |
-| Bypass actors | None (applies to admins too) |
+| Rule                          | Setting                                                |
+| ----------------------------- | ------------------------------------------------------ |
+| Pull request required         | Yes (0 approvals while solo; increase when team grows) |
+| Dismiss stale reviews on push | Yes                                                    |
+| Required status checks        | All 11 CI checks (strict — branch must be up-to-date)  |
+| Force push                    | Blocked                                                |
+| Branch deletion               | Blocked                                                |
+| Bypass actors                 | None (applies to admins too)                           |
 
 ### Ruleset 2 — Branch naming (quillmedical)
 
@@ -103,41 +103,41 @@ All 11 checks must pass before a PR can merge to `main`. The strict policy also 
 
 ### Fast tier (every push)
 
-| Check name | What it does |
-|-----------|--------------|
-| `Python styling` | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
-| `Python unit` | pytest (excludes integration and e2e markers) |
-| `typescript_checks (eslint)` | ESLint on frontend source |
-| `typescript_checks (prettier)` | Prettier formatting check |
-| `typescript_checks (stylelint)` | CSS/SCSS linting |
-| `typescript_checks (typecheck:all)` | TypeScript strict mode compilation |
-| `typescript_checks (unit-test:run)` | Vitest unit tests |
-| `typescript_checks (storybook:build)` | Storybook static build succeeds |
+| Check name                            | What it does                                                         |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `Python styling`                      | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
+| `Python unit`                         | pytest (excludes integration and e2e markers)                        |
+| `typescript_checks (eslint)`          | ESLint on frontend source                                            |
+| `typescript_checks (prettier)`        | Prettier formatting check                                            |
+| `typescript_checks (stylelint)`       | CSS/SCSS linting                                                     |
+| `typescript_checks (typecheck:all)`   | TypeScript strict mode compilation                                   |
+| `typescript_checks (unit-test:run)`   | Vitest unit tests                                                    |
+| `typescript_checks (storybook:build)` | Storybook static build succeeds                                      |
 
 ### Heavy tier (ready PRs only)
 
-| Check name | What it does |
-|-----------|--------------|
+| Check name                              | What it does                                      |
+| --------------------------------------- | ------------------------------------------------- |
 | `typescript_checks (storybook:test:ci)` | Storybook interaction tests (Playwright/Chromium) |
-| `Semgrep (frontend SAST)` | Static application security testing |
-| `E2E (Playwright)` | Full-stack end-to-end tests |
+| `Semgrep (frontend SAST)`               | Static application security testing               |
+| `E2E (Playwright)`                      | Full-stack end-to-end tests                       |
 
 ## Pre-commit hooks
 
 Local pre-commit hooks run on every commit (configured in `.pre-commit-config.yaml`). These match what CI runs in the `Python styling` check.
 
-| Hook | Purpose |
-|------|---------|
-| **ruff** | Python linting (rules: E, F, W, I, UP, B) with auto-fix |
-| **black** | Python formatting (line-length 79) |
-| **trailing-whitespace** | Remove trailing whitespace |
-| **end-of-file-fixer** | Ensure files end with a newline |
-| **check-yaml** | Validate YAML syntax |
-| **check-toml** | Validate TOML syntax |
-| **check-json** | Validate JSON syntax |
-| **cspell** | Spelling checker (custom dictionary in `cspell.config.json`) |
-| **mypy** | Python static type checking (strict mode) |
-| **bandit** | Python security linting |
+| Hook                    | Purpose                                                      |
+| ----------------------- | ------------------------------------------------------------ |
+| **ruff**                | Python linting (rules: E, F, W, I, UP, B) with auto-fix      |
+| **black**               | Python formatting (line-length 79)                           |
+| **trailing-whitespace** | Remove trailing whitespace                                   |
+| **end-of-file-fixer**   | Ensure files end with a newline                              |
+| **check-yaml**          | Validate YAML syntax                                         |
+| **check-toml**          | Validate TOML syntax                                         |
+| **check-json**          | Validate JSON syntax                                         |
+| **cspell**              | Spelling checker (custom dictionary in `cspell.config.json`) |
+| **mypy**                | Python static type checking (strict mode)                    |
+| **bandit**              | Python security linting                                      |
 
 Frontend lint-staged hooks also run via Husky but only when frontend files are staged.
 
@@ -145,14 +145,14 @@ Frontend lint-staged hooks also run via Husky but only when frontend files are s
 
 GitHub Actions secrets are configured per-environment. Never commit tokens or keys.
 
-| Secret | Used by |
-|--------|---------|
-| `GCP_TEACHING_WIF_PROVIDER` | Workload Identity Federation for teaching |
-| `GCP_TEACHING_SERVICE_ACCOUNT` | Teaching service account |
-| `GCP_TEACHING_PROJECT_ID` | Teaching GCP project ID |
-| `GCP_PROD_WIF_PROVIDER` | WIF for production _(not yet active)_ |
-| `GCP_PROD_SERVICE_ACCOUNT` | Production service account _(not yet active)_ |
-| `GCP_PROD_PROJECT_ID` | Production GCP project ID _(not yet active)_ |
+| Secret                         | Used by                                       |
+| ------------------------------ | --------------------------------------------- |
+| `GCP_TEACHING_WIF_PROVIDER`    | Workload Identity Federation for teaching     |
+| `GCP_TEACHING_SERVICE_ACCOUNT` | Teaching service account                      |
+| `GCP_TEACHING_PROJECT_ID`      | Teaching GCP project ID                       |
+| `GCP_PROD_WIF_PROVIDER`        | WIF for production _(not yet active)_         |
+| `GCP_PROD_SERVICE_ACCOUNT`     | Production service account _(not yet active)_ |
+| `GCP_PROD_PROJECT_ID`          | Production GCP project ID _(not yet active)_  |
 
 Authentication to GCP uses **Workload Identity Federation** — no long-lived service account keys.
 

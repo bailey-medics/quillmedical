@@ -6,11 +6,11 @@ Caddy is our reverse proxy, handling path-based routing in development and servi
 
 ## Configuration files
 
-| File | Environment | Purpose |
-|------|-------------|---------|
-| `caddy/dev/Caddyfile` | Local Docker Compose | Routes to backend, frontend dev server, and EHRbase |
+| File                   | Environment            | Purpose                                                 |
+| ---------------------- | ---------------------- | ------------------------------------------------------- |
+| `caddy/dev/Caddyfile`  | Local Docker Compose   | Routes to backend, frontend dev server, and EHRbase     |
 | `caddy/prod/Caddyfile` | Production (Cloud Run) | Serves built SPA with security headers and health check |
-| `caddy/ci/Caddyfile` | E2E testing | Routes API to backend, SPA to frontend prod container |
+| `caddy/ci/Caddyfile`   | E2E testing            | Routes API to backend, SPA to frontend prod container   |
 
 ## Development (`caddy/dev/Caddyfile`)
 
@@ -46,12 +46,12 @@ Caddy listens on port 80 and reverse-proxies to local Docker services:
 
 ### Routing
 
-| Path | Destination | Service |
-|------|-------------|---------|
-| `/api/*` | `backend:8000` | FastAPI |
-| `/ehrbase/*` | `ehrbase:8080` | OpenEHR server |
-| `/*.webmanifest` | Headers applied | PWA manifest |
-| `/*` | `frontend:5173` | Vite dev server |
+| Path             | Destination     | Service         |
+| ---------------- | --------------- | --------------- |
+| `/api/*`         | `backend:8000`  | FastAPI         |
+| `/ehrbase/*`     | `ehrbase:8080`  | OpenEHR server  |
+| `/*.webmanifest` | Headers applied | PWA manifest    |
+| `/*`             | `frontend:5173` | Vite dev server |
 
 ## Production (`caddy/prod/Caddyfile`)
 
