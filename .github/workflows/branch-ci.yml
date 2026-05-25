@@ -135,25 +135,7 @@ jobs:
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
-      - name: Notify Slack on Python checks failure
-        if: failure()
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} python ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
@@ -226,25 +208,7 @@ jobs:
             "storybook:build") yarn storybook:build ;;
           esac
 
-      - name: Notify Slack on TypeScript checks failure
-        if: failure()
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Renovate' || '❌ Feature' }} TypeScript ${{ matrix.task }} checks failed*\n\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+
 
   # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
   # Kept here commented for reference; the heavy_semgrep job below runs this.
@@ -294,25 +258,7 @@ jobs:
             --label "$LABEL" \
             --draft
 
-      - name: Notify Slack on PR creation failure
-        if: failure()
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*${{ startsWith(github.ref_name, 'renovate/') && '🔄 ❌ Failed to create PR for Renovate' || '❌ Failed to create PR for feature' }} branch*\n\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+
 
   # ==========================================================================
   # HEAVY TIER — runs on non-draft PRs only (github.event_name == 'pull_request')
@@ -380,25 +326,7 @@ jobs:
         working-directory: frontend
         run: yarn storybook:test:ci
 
-      - name: Notify Slack on Storybook tests failure
-        if: failure()
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Heavy: Storybook interaction tests failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Heavy: Storybook interaction tests failed*\n\n*PR:* #${{ github.event.pull_request.number }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+
 
   # ---------- Semgrep (frontend SAST) ----------
   heavy_semgrep:
@@ -420,23 +348,3 @@ jobs:
           SEMGREP_DISABLE_ANALYTICS: "1"
           SEMGREP_NO_VERSION_CHECK: "1"
         run: semgrep --config .semgrep.yml --error
-
-      - name: Notify Slack on Semgrep failure
-        if: failure()
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Heavy: Semgrep SAST failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Heavy: Semgrep SAST failed*\n\n*PR:* #${{ github.event.pull_request.number }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
