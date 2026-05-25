@@ -22,17 +22,17 @@ test.describe("Navigation", () => {
   test("logout redirects to login page", async ({ page }) => {
     await page.goto("/teaching");
 
-    // Open navigation and click logout
-    const logoutButton = page.getByRole("button", { name: /log\s*out/i });
-    if (await logoutButton.isVisible()) {
-      await logoutButton.click();
+    // Logout is a NavLink (renders as <a>) in the sidebar navigation
+    const logoutLink = page.getByRole("link", { name: /log\s*out/i });
+    if (await logoutLink.isVisible()) {
+      await logoutLink.click();
     } else {
-      // May be in a mobile nav drawer
-      const burger = page.getByRole("button", { name: /menu/i });
+      // May be in a mobile nav drawer — open it first
+      const burger = page.getByRole("button", { name: /menu|navigation/i });
       if (await burger.isVisible()) {
         await burger.click();
       }
-      await page.getByRole("button", { name: /log\s*out/i }).click();
+      await page.getByRole("link", { name: /log\s*out/i }).click();
     }
 
     await expect(page).toHaveURL(/\/login/);

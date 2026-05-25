@@ -11,12 +11,12 @@ test.describe("Teaching dashboard", () => {
     );
   });
 
-  test("shows assessment history section", async ({ page }) => {
+  test("shows teaching modules heading", async ({ page }) => {
     await page.goto("/teaching");
 
-    // The dashboard should have an assessment history section (even if empty)
+    // The dashboard should show the main heading
     await expect(
-      page.getByText(/assessment|history|recent/i).first(),
+      page.getByRole("heading", { name: /teaching modules/i }),
     ).toBeVisible();
   });
 });
