@@ -7,6 +7,7 @@
 
 services:
   backend:
+    image: quillmedical-ci_backend:latest
     build:
       context: .
       dockerfile: ./backend/Dockerfile
@@ -43,6 +44,7 @@ services:
       - ci
 
   frontend:
+    image: quillmedical-ci_frontend:latest
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
