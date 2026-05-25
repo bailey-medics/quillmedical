@@ -534,11 +534,11 @@ Key differences from today:
 
 ### Phase 1: test tiering (low risk, no branch changes)
 
-- [ ] Split `branch-ci.yml`: move `storybook:test:ci` and Semgrep into heavy jobs gated on `draft == false`.
-- [ ] Add `pull_request` trigger to `branch-ci.yml` (types: `ready_for_review`, `synchronize`).
-- [ ] Pin fast jobs with `if: github.event_name == 'push'`, heavy jobs with `if: github.event_name == 'pull_request'`.
-- [ ] Update `open-pr` job to create draft PRs.
-- [ ] Register new pytest markers (`e2e`, `slow`) in `pyproject.toml`.
+- [x] Split `branch-ci.yml`: move `storybook:test:ci` and Semgrep into heavy jobs gated on `draft == false`.
+- [x] Add `pull_request` trigger to `branch-ci.yml` (types: `ready_for_review`, `synchronize`).
+- [x] Pin fast jobs with `if: github.event_name == 'push'`, heavy jobs with `if: github.event_name == 'pull_request'`.
+- [x] Update `open-pr` job to create draft PRs.
+- [x] Register new pytest markers (`e2e`, `slow`) in `pyproject.toml`.
 - [ ] Validate: push to a feature branch → only fast runs. Mark ready → heavy runs.
 
 ### Phase 2: build-once-promote (medium risk)
