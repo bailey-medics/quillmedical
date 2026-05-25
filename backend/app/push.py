@@ -10,15 +10,15 @@ Example:
     {"endpoint": "https://...", "keys": {"p256dh": "...", "auth": "..."}}
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
+from app.deps import DEP_CURRENT_USER
 from app.models import PushSubscription as PushSubscriptionModel
 from app.models import User
-from app.security import decode_token
 
 router = APIRouter(prefix="/push", tags=["push"])
 
@@ -49,30 +49,10 @@ class PushSubscriptionIn(BaseModel):
     keys: PushKeys
 
 
-def _get_user_id_from_request(request: Request, db: Session) -> int:
-    """Extract user ID from access_token cookie.
-
-    Raises:
-        HTTPException: 401 if not authenticated or token invalid.
-    """
-    tok = request.cookies.get("access_token")
-    if not tok:
-        raise HTTPException(401, "Not authenticated")
-    try:
-        payload = decode_token(tok)
-    except Exception as e:
-        raise HTTPException(401, "Invalid token") from e
-    username = payload["sub"]
-    user = db.scalar(select(User).where(User.username == username))
-    if not user:
-        raise HTTPException(401, "User not found")
-    return user.id
-
-
 @router.post("/subscribe")
 def subscribe(
     sub: PushSubscriptionIn,
-    request: Request,
+    u: User = DEP_CURRENT_USER,
     db: Session = Depends(get_session),
 ) -> dict[str, bool | int]:
     """Register a new push notification subscription.
@@ -82,7 +62,7 @@ def subscribe(
 
     Args:
         sub: Push subscription from browser's Push API.
-        request: HTTP request (for cookie validation).
+        u: Authenticated user (injected via DEP_CURRENT_USER override).
         db: Database session.
 
     Returns:
@@ -91,12 +71,10 @@ def subscribe(
     Raises:
         HTTPException: 401 if not authenticated.
     """
-    user_id = _get_user_id_from_request(request, db)
-
     # Check if subscription already exists for this user + endpoint
     existing = db.scalar(
         select(PushSubscriptionModel).where(
-            PushSubscriptionModel.user_id == user_id,
+            PushSubscriptionModel.user_id == u.id,
             PushSubscriptionModel.endpoint == sub.endpoint,
         )
     )
@@ -108,7 +86,7 @@ def subscribe(
     else:
         db.add(
             PushSubscriptionModel(
-                user_id=user_id,
+                user_id=u.id,
                 endpoint=sub.endpoint,
                 keys_p256dh=sub.keys.p256dh,
                 keys_auth=sub.keys.auth,
@@ -119,7 +97,7 @@ def subscribe(
 
     count = db.scalar(
         select(func.count(PushSubscriptionModel.id)).where(
-            PushSubscriptionModel.user_id == user_id
+            PushSubscriptionModel.user_id == u.id
         )
     )
     return {"ok": True, "count": count or 0}

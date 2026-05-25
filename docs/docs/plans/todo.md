@@ -77,8 +77,7 @@ clinical/NHS go-live.
 
 ## Public site
 
-- [ ] Update EPR nav link from staging URL to production URL once production is active _(deferred)_
-- [ ] Add public pages to production build and configure 404 page in Caddy
+- [ ] Reenable EPR nav link to production URL once production is active _(deferred)_
 
 ## Dependency management
 

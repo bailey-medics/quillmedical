@@ -21,7 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.models import PushSubscription
+from app.deps import DEP_REQUIRE_ADMIN
+from app.models import PushSubscription, User
 
 router = APIRouter(prefix="/api/push", tags=["push-send"])
 
@@ -31,9 +32,12 @@ VAPID_CLAIM = os.environ.get("COMPANY_EMAIL") or "mailto:admin@example.com"
 
 @router.post("/send-test")
 def send_test(
+    _u: User = DEP_REQUIRE_ADMIN,
     db: Session = Depends(get_session),
 ) -> dict[str, bool | list[str]]:
     """Send test push notification to all subscribed clients.
+
+    Requires admin or superadmin permissions.
 
     Attempts to send a test notification to all subscriptions. If a subscription
     fails (e.g., expired or invalid), it is automatically removed from the DB.
@@ -42,6 +46,8 @@ def send_test(
         dict: Result with sent=True and list of removed endpoints.
 
     Raises:
+        HTTPException: 401 if not authenticated.
+        HTTPException: 403 if user is not admin.
         HTTPException: 400 if no subscriptions exist.
 
     Example:

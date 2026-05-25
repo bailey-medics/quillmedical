@@ -170,9 +170,9 @@ class TestPushSubscription:
         assert response.status_code == 200
         assert response.json()["ok"] is True
 
-    def test_subscribe_missing_fields(self, test_client: TestClient):
+    def test_subscribe_missing_fields(self, authenticated_client: TestClient):
         """Test subscription with missing required fields."""
-        response = test_client.post(
+        response = authenticated_client.post(
             "/api/push/subscribe",
             json={
                 "endpoint": "https://push.example.com/missing",
