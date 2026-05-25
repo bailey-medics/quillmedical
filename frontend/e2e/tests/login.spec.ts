@@ -18,8 +18,8 @@ test.describe("Login page", () => {
     await page.goto("/login");
 
     await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").fill("educator123");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("Password").pressSequentially("educator123");
+    await page.getByLabel("Password").press("Enter");
 
     await page.waitForURL("**/teaching");
     await expect(page).not.toHaveURL(/\/login/);
@@ -29,8 +29,8 @@ test.describe("Login page", () => {
     await page.goto("/login");
 
     await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").fill("wrong-password");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("Password").pressSequentially("wrong-password");
+    await page.getByLabel("Password").press("Enter");
 
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText(/invalid|incorrect/i)).toBeVisible();

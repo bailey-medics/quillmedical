@@ -134,6 +134,11 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "Semgrep (frontend SAST)"
       }
+
+      # E2E
+      required_check {
+        context = "E2E (Playwright)"
+      }
     }
 
     # Block force pushes (rewriting history on protected branches)

@@ -594,16 +594,16 @@ The `gcrane copy` step in `deploy.yml` copies exact image bytes — no rebuild.
 
 - [x] Ensure `main` tip matches `clinical-live` tip (no drift).
 - [x] Update Terraform rulesets: remove `clinical-live` protection, remove `release/**`.
-- [ ] Delete `clinical-live` branch (manual — after PR merges).
+- [x] Delete `clinical-live` branch (and `release/v0.1.0`).
 - [x] Remove `release-hotfix.yml`, `hotfix-backmerge.yml`.
 - [x] Update `deploy-production.yml` references / delete.
 - [x] Update `copilot-instructions.md` and repo documentation.
 
 ### Phase 4: E2E in CI (parallel work)
 
-- [ ] Create a CI-specific Docker Compose file (lighter than dev).
-- [ ] Add E2E job to `pr-heavy.yml` with service container setup.
-- [ ] Expand E2E test coverage beyond `login.spec.ts`.
+- [x] Create a CI-specific Docker Compose file (lighter than dev).
+- [x] Add E2E job to `branch-ci.yml` heavy tier with Docker Compose setup.
+- [x] Expand E2E test coverage beyond `login.spec.ts`.
 - [ ] When stable: enable GitHub merge queue.
 
 ---
