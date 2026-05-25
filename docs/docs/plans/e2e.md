@@ -8,17 +8,20 @@ Add `@playwright/test` to the frontend, create a Playwright config targeting the
 
 Run `yarn add -D @playwright/test` in `frontend/`. The existing `playwright` dep (v1.58.2) is the browser engine for Storybook's test runner; `@playwright/test` is the actual test framework that wraps it.
 
+**Version alignment**: `@playwright/test` and the existing `playwright` package share browser binaries. They must be on the same major.minor version to avoid conflicts. Pin `@playwright/test` to match (currently ^1.58.2).
+
 ### 2. Create `frontend/playwright.config.ts`
 
-- `testDir: "./e2e/tests"`
+- `testDir: "./e2e"` (root e2e directory — setup files live here alongside `tests/`)
 - `baseURL: "http://localhost"` (Caddy on port 80 — routes `/api/*` to backend, rest to frontend)
-- A `setup` project for auth, and a `chromium` project that depends on it with `storageState`
+- A `setup` project with `testMatch: /.*\.setup\.ts/` for auth
+- A `chromium` project with `testDir: "./e2e/tests"` that depends on setup, using `storageState`
 - Trace on first retry, screenshot on failure
 - No `webServer` — Docker Compose stack is already running
 
 ### 3. Add `.gitignore` entries
 
-Add `e2e/.auth/`, `playwright-report/`, `test-results/` to `frontend/.gitignore`.
+Add `e2e/.auth/`, `playwright-report/`, `test-results/`, `blob-report/` to `frontend/.gitignore`.
 
 ### 4. Add package.json scripts
 
@@ -32,28 +35,48 @@ Playwright setup file that:
 
 - Navigates to `/login`
 - Fills "Username" with `educator`, "Password" with `educator123` (from `seed-teaching-data.sh`)
+- TOTP is not enabled for this seeded user, so no authenticator code is needed
 - Clicks "Sign in"
-- Waits for navigation away from `/login`
+- Waits for `window.location.assign()` to complete — the app uses full page navigation (not React Router) after login, so use `page.waitForURL('**/teaching')` rather than waiting for a route change
+- The `educator` user has `clinical_services_enabled: false`, so the redirect target is `/teaching`
 - Saves `storageState` to `e2e/.auth/user.json`
 
 ### 6. Create `frontend/e2e/tests/login.spec.ts`
 
 Test that:
 
-- Asserts login page renders correctly
-- Fills credentials, submits
-- Asserts redirect to authenticated page
-- Asserts authenticated content is visible
+- Asserts login page renders correctly (heading "Sign in to Quill", Username/Password fields)
+- Fills credentials, submits via "Sign in" button
+- Asserts redirect to `/teaching` (full page reload via `window.location.assign`)
+- Asserts teaching page content is visible
 
 ## Phase 3: Justfile and developer experience
 
-### 7. Add `just e2e`
+### 7. Add `just e2e` (alias `ee`)
 
-Runs `cd frontend && npx playwright test` (follows existing Justfile patterns).
+Follows existing Justfile conventions (`#!/usr/bin/env bash`, `{{initialise}}`):
 
-### 8. Add `just e2e-ui`
+```just
+alias ee := e2e
+# Run the end-to-end tests
+e2e:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e"
+    cd frontend && npx playwright test
+```
 
-Runs `cd frontend && npx playwright test --ui` for interactive visual mode.
+Runs on the host (not in Docker) — same pattern as `storybook`, `docs`, `frontend-update`.
+
+### 8. Add `just e2e-ui` (alias `eeu`)
+
+```just
+alias eeu := e2e-ui
+# Run the end-to-end tests in interactive UI mode
+e2e-ui:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e-ui"
+    cd frontend && npx playwright test --ui
+```
 
 ### 9. One-time browser install
 
@@ -99,6 +122,14 @@ Multi-browser can be added later.
 ### `storageState` pattern for auth
 
 Log in once in a setup project, reuse cookies across all tests. This is Playwright's recommended approach and avoids logging in at the start of every test.
+
+### Version alignment with Storybook's `playwright`
+
+The `playwright` package (used by `@storybook/test-runner`) and `@playwright/test` share the same browser binaries. They must stay on the same version to avoid downloading duplicate browsers or version mismatch errors. Use a single Playwright version across both.
+
+### Full page navigation after login
+
+The app uses `window.location.assign()` after login (not React Router `navigate()`). This causes a full page reload, meaning Playwright should wait for URL change via `waitForURL` rather than waiting for a React route transition.
 
 ## Further considerations
 

@@ -3532,6 +3532,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@playwright/test@npm:^1.60.0":
+  version: 1.60.0
+  resolution: "@playwright/test@npm:1.60.0"
+  dependencies:
+    playwright: "npm:1.60.0"
+  bin:
+    playwright: cli.js
+  checksum: 10c0/86b06e6437933e741c7cd43f362024e857e7bc28a55fcbb0553ef55e01a2a403c64f4786868de8af86a6e303fe99e98a18a42ba19489f43ae122e457f9e2d189
+  languageName: node
+  linkType: hard
+
 "@rolldown/binding-android-arm64@npm:1.0.0-rc.12":
   version: 1.0.0-rc.12
   resolution: "@rolldown/binding-android-arm64@npm:1.0.0-rc.12"
@@ -8310,6 +8321,7 @@ __metadata:
     "@mantine/core": "npm:^8.3.1"
     "@mantine/hooks": "npm:^8.3.1"
     "@mantine/notifications": "npm:^8.3.1"
+    "@playwright/test": "npm:^1.60.0"
     "@storybook/addon-a11y": "npm:10.3.3"
     "@storybook/addon-docs": "npm:^10.3.6"
     "@storybook/addon-links": "npm:10.3.3"
@@ -8352,7 +8364,7 @@ __metadata:
     js-yaml: "npm:^4.1.0"
     jsdom: "npm:^29.0.0"
     lint-staged: "npm:^16.0.0"
-    playwright: "npm:^1.58.2"
+    playwright: "npm:^1.60.0"
     postcss: "npm:^8.5.6"
     postcss-preset-mantine: "npm:^1.18.0"
     postcss-scss: "npm:^4.0.9"
@@ -11754,7 +11766,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright-core@npm:1.58.2, playwright-core@npm:>=1.2.0":
+"playwright-core@npm:1.60.0":
+  version: 1.60.0
+  resolution: "playwright-core@npm:1.60.0"
+  bin:
+    playwright-core: cli.js
+  checksum: 10c0/99ccd43923b6e9355e0723b7fe221e6326efd4687f8dafff951313662aea11db51f542a9c2122c704c445fb9baae1c9ec9fa6f895126bbddd9fe92313f6942c9
+  languageName: node
+  linkType: hard
+
+"playwright-core@npm:>=1.2.0":
   version: 1.58.2
   resolution: "playwright-core@npm:1.58.2"
   bin:
@@ -11763,18 +11784,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright@npm:^1.14.0, playwright@npm:^1.58.2":
-  version: 1.58.2
-  resolution: "playwright@npm:1.58.2"
+"playwright@npm:1.60.0, playwright@npm:^1.14.0, playwright@npm:^1.60.0":
+  version: 1.60.0
+  resolution: "playwright@npm:1.60.0"
   dependencies:
     fsevents: "npm:2.3.2"
-    playwright-core: "npm:1.58.2"
+    playwright-core: "npm:1.60.0"
   dependenciesMeta:
     fsevents:
       optional: true
   bin:
     playwright: cli.js
-  checksum: 10c0/d060d9b7cc124bd8b5dffebaab5e84f6b34654a553758fe7b19cc598dfbee93f6ecfbdc1832b40a6380ae04eade86ef3285ba03aa0b136799e83402246dc0727
+  checksum: 10c0/714ad76d85b4865d7e43c0012f9039800c1485373388973ed39d79339cee5ad467052d1e2f1eaeca107a1cb6e65342186a8578a4c3504853d84c3a691250d5db
   languageName: node
   linkType: hard
 

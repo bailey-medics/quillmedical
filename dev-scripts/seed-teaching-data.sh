@@ -124,7 +124,7 @@ echo ""
 # ──────────────────────────────
 
 info "Creating teaching organisation..."
-parse_response "$(api_call POST /organizations '{"name":"Teaching Hospital","type":"teaching","location":"London"}')"
+parse_response "$(api_call POST /organizations '{"name":"Teaching Hospital","type":"teaching_establishment","location":"London"}')"
 
 if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
     ORG_ID=$(echo "$RESPONSE_BODY" | jq -r '.id')
@@ -164,14 +164,13 @@ EDUCATOR_EMAIL="educator@teaching.local"
 EDUCATOR_PASSWORD="educator123"
 
 info "Creating educator user..."
-parse_response "$(api_call POST /users "{
-    \"name\": \"Dr Sarah Educator\",
-    \"username\": \"$EDUCATOR_USERNAME\",
-    \"email\": \"$EDUCATOR_EMAIL\",
-    \"password\": \"$EDUCATOR_PASSWORD\",
-    \"base_profession\": \"educator\",
-    \"system_permissions\": \"staff\"
-}")"
+EDUCATOR_JSON=$(jq -n \
+    --arg name "Dr Sarah Educator" \
+    --arg username "$EDUCATOR_USERNAME" \
+    --arg email "$EDUCATOR_EMAIL" \
+    --arg password "$EDUCATOR_PASSWORD" \
+    '{name: $name, username: $username, email: $email, password: $password, base_profession: "educator", system_permissions: "staff"}')
+parse_response "$(api_call POST /users "$EDUCATOR_JSON")"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
     EDUCATOR_ID=$(echo "$RESPONSE_BODY" | jq -r '.id // .user_id')
@@ -197,14 +196,13 @@ LEARNER_EMAIL="learner@teaching.local"
 LEARNER_PASSWORD="learner123"
 
 info "Creating learner user..."
-parse_response "$(api_call POST /users "{
-    \"name\": \"Alex Learner\",
-    \"username\": \"$LEARNER_USERNAME\",
-    \"email\": \"$LEARNER_EMAIL\",
-    \"password\": \"$LEARNER_PASSWORD\",
-    \"base_profession\": \"learner\",
-    \"system_permissions\": \"staff\"
-}")"
+LEARNER_JSON=$(jq -n \
+    --arg name "Alex Learner" \
+    --arg username "$LEARNER_USERNAME" \
+    --arg email "$LEARNER_EMAIL" \
+    --arg password "$LEARNER_PASSWORD" \
+    '{name: $name, username: $username, email: $email, password: $password, base_profession: "learner", system_permissions: "staff"}')
+parse_response "$(api_call POST /users "$LEARNER_JSON")"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
     LEARNER_ID=$(echo "$RESPONSE_BODY" | jq -r '.id // .user_id')
