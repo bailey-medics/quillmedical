@@ -337,48 +337,46 @@ Terraform and the `gh` CLI were installed via Homebrew on the admin account.
 ## Branching and deployment model
 
 ```
-feature/*  ──►  main  ──►  release/*  ──►  clinical-live
-                  │                            │
-           deploys to:                   deploys to:
-           staging                       production
+feature/*  ──►  main  ──►  promote to production
+                  │
+           deploys to:
            teaching
            landing page
            docs
 ```
 
-### Staging deployment (push to main)
+### Teaching deployment (merge to main)
 
-Workflow: `.github/workflows/deploy-staging-teaching.yml`
+Workflow: `.github/workflows/deploy.yml`
 
 1. Detect what changed (backend, frontend, shared)
-2. Build and push container images to Artifact Registry, tagged `main-{sha}`
-3. Deploy to staging and teaching Cloud Run
+2. Build and push container images to Artifact Registry, tagged `{sha}`
+3. Deploy to teaching Cloud Run
 4. Smoke test: `GET /api/health` (5 retries, 10s intervals)
 5. Slack notification
 
 Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
 
-### Production deployment (push to clinical-live)
+### Production deployment (promotion)
 
-Workflow: `.github/workflows/deploy-production.yml`
+Workflow: `.github/workflows/deploy.yml` (same workflow, gated by GitHub Environment approval)
 
-1. Detect what changed
-2. Build and push container images to Artifact Registry, tagged `clinical-live-{sha}` and `latest`
-3. Deploy to production Cloud Run
-4. Smoke test: `GET /api/health`
+1. Copy exact image bytes from teaching AR to production AR via `gcrane`
+2. Deploy to production Cloud Run
+3. Smoke test: `GET /api/health`
+4. Create annotated CalVer git tag
 5. Slack notification
 
-Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
+Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted — no rebuild.
 
-Production deploys are never cancelled mid-flight.
+**Note:** Production is currently offline to save costs. The promotion job is disabled (`if: false`) until re-enabled.
 
 ### Infrastructure changes (changes to infra/)
 
 Workflow: `.github/workflows/terraform.yml`
 
 - **Pull requests** — runs `terraform plan` and posts the diff as a PR comment
-- **Merge to main** — runs `terraform apply` for staging and teaching
-- **Merge to clinical-live** — runs `terraform apply` for production
+- **Merge to main** — runs `terraform apply` for teaching
 
 ## Environment configuration
 
@@ -548,11 +546,10 @@ The job is defined in the `cloud-run-job` Terraform module and uses a separate D
 
 ### Production go-live
 
-1. Cut a `release/*` branch from `main`
-2. Test on staging
-3. PR to `clinical-live`
-4. CI deploys to production
-5. Verify health checks pass
+1. Merge feature branch to `main`
+2. Verify teaching deployment passes smoke tests
+3. Approve production promotion via GitHub Environment gate
+4. Verify health checks pass
 
 ### Future improvements
 
@@ -628,8 +625,8 @@ gcloud compute ssl-certificates describe quill-cert-v3-prod \
   --format="value(managed.status)"
 # Repeat until status is ACTIVE (can take up to 30 minutes)
 
-# 7. Trigger a deployment (push to clinical-live or manually deploy)
-# The CI pipeline will build, push images, and deploy to Cloud Run
+# 7. Trigger a deployment (merge to main or use workflow_dispatch)
+# The deploy.yml workflow will build, push images, and deploy to Cloud Run
 
 # 8. Run database migrations
 # Either via CI or manually inside the backend container
