@@ -281,3 +281,36 @@ notifications are production-ready:
       The component currently builds its own icon-centred modal layout. Once
       `ConfirmModal` exists, delegate the visual to it and keep only the React
       Router `useBlocker` logic in `DirtyFormNavigation`.
+
+## CI/CD branching plan — remaining items
+
+_From [github-branching-plan.md](github-branching-plan.md). Core phases 1–4
+are complete. These items are deferred or documentation polish._
+
+- [ ] **Configure GitHub Environment `production` with required reviewers** —
+      deferred until production GCP project is re-enabled. Steps documented in
+      the branching plan under "Production environment status".
+
+- [ ] **Validate full deploy pipeline** — merge to `main` → teaching
+      auto-deploys → approve → production deploys same image. Blocked on
+      production environment above.
+
+- [ ] **Expand-contract migration lint** — create
+      `backend/scripts/check_migrations.py` CI script that rejects destructive
+      Alembic operations (DROP COLUMN, DROP TABLE, ALTER TYPE) without an
+      explicit opt-in marker. Add to heavy CI tier.
+
+- [ ] **Backend Copilot instructions** — create
+      `.github/instructions/backend.instructions.md` scoped to `backend/**`
+      with Alembic expand-contract rules and backend conventions.
+
+- [ ] **Rewrite CI/CD documentation** — update `docs/docs/cicd/index.md` to
+      reflect trunk-based model, build-once-promote, test tiering, and merge
+      queue.
+
+- [ ] **Update GitHub docs page** — update `docs/docs/github/index.md` to
+      remove GitFlow/clinical-live references and document new branching model.
+
+- [ ] **MkDocs build in CI** — add `mkdocs build --strict` to the heavy tier
+      in `branch-ci.yml` to catch broken internal links and missing nav entries
+      on PRs.
