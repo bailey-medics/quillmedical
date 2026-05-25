@@ -7,7 +7,6 @@ clinical/NHS go-live.
 ## Security and compliance
 
 - [ ] Rotate temporary postgres admin password (`temp-admin-pw-2026`) on the `quill-ehrbase-staging` Cloud SQL instance
-- [ ] Add authentication to push notification endpoints — `/api/push/subscribe` and `/api/push/send-test` are completely unauthenticated
 - [ ] Document current secrets and rotation procedure (JWT key, DB passwords, VAPID keys, CSRF secret, API keys) with rotation schedule _(pre-clinical)_
 - [ ] Add a `security.txt` and responsible disclosure policy at `/.well-known/security.txt`
 - [ ] Define data retention periods for UK GDPR compliance — user accounts, messages, assessments, audit logs _(pre-NHS)_
@@ -70,9 +69,6 @@ clinical/NHS go-live.
 
 ## Documentation
 
-- [ ] Rewrite `docs/docs/cicd/index.md` to reflect trunk-based model, build-once-promote, test tiering, and merge queue
-- [ ] Update `docs/docs/github/index.md` — remove GitFlow/clinical-live references, document new branching model
-- [ ] Audit Caddy documentation — replace generic examples with accurate snippets matching actual Caddyfiles
 - [ ] Create `.github/instructions/backend.instructions.md` scoped to `backend/**` with Alembic expand-contract rules
 
 ## Public site

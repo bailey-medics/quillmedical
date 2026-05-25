@@ -1,44 +1,20 @@
-# Caddy Web Server
+# Caddy web server
 
-## Overview
+**Last updated:** 25 May 2026
 
-Caddy is a powerful, enterprise-ready web server with automatic HTTPS. In Quill Medical, Caddy serves as our reverse proxy, handling incoming HTTP/HTTPS requests and routing them to the appropriate backend services (FastAPI, FHIR, OpenEHR, frontend).
+Caddy is our reverse proxy, handling path-based routing in development and serving the production SPA with security headers. Three Caddyfiles exist for different environments.
 
-## Why Caddy?
+## Configuration files
 
-### Automatic HTTPS
+| File                   | Environment            | Purpose                                                 |
+| ---------------------- | ---------------------- | ------------------------------------------------------- |
+| `caddy/dev/Caddyfile`  | Local Docker Compose   | Routes to backend, frontend dev server, and EHRbase     |
+| `caddy/prod/Caddyfile` | Production (Cloud Run) | Serves built SPA with security headers and health check |
+| `caddy/ci/Caddyfile`   | E2E testing            | Routes API to backend, SPA to frontend prod container   |
 
-- **Zero Configuration**: Automatically obtains and renews TLS certificates from Let's Encrypt
-- **Always Secure**: HTTPS is the default, not an afterthought
-- **No Manual Renewal**: Certificates are renewed automatically before expiration
-- **Modern Security**: Uses secure defaults and modern TLS configurations
+## Development (`caddy/dev/Caddyfile`)
 
-### Simple Configuration
-
-- **Caddyfile**: Human-readable configuration format
-- **No Complex Syntax**: Much simpler than nginx or Apache configurations
-- **Sensible Defaults**: Works out of the box with minimal configuration
-- **Hot Reloading**: Configuration changes applied without downtime
-
-### Modern Architecture
-
-- **HTTP/2 & HTTP/3**: Native support for modern protocols
-- **WebSockets**: Built-in WebSocket proxying
-- **Reverse Proxy**: Powerful reverse proxy capabilities
-- **Load Balancing**: Built-in load balancing and health checks
-
-### Developer Experience
-
-- **Written in Go**: Fast, single binary, no dependencies
-- **Easy Deployment**: Single binary makes deployment trivial
-- **Excellent Documentation**: Clear, comprehensive documentation
-- **Active Development**: Regular updates and improvements
-
-## Our Implementation
-
-### Configuration Structure
-
-Our Caddy configuration is in `caddy/dev/Caddyfile`:
+Caddy listens on port 80 and reverse-proxies to local Docker services:
 
 ```caddyfile
 :80 {
@@ -68,90 +44,134 @@ Our Caddy configuration is in `caddy/dev/Caddyfile`:
 }
 ```
 
-### Architecture Role
+### Routing
 
-Caddy sits at the edge of our application stack:
+| Path             | Destination     | Service         |
+| ---------------- | --------------- | --------------- |
+| `/api/*`         | `backend:8000`  | FastAPI         |
+| `/ehrbase/*`     | `ehrbase:8080`  | OpenEHR server  |
+| `/*.webmanifest` | Headers applied | PWA manifest    |
+| `/*`             | `frontend:5173` | Vite dev server |
 
-```
-Client Browser
-      ↓
-   Caddy (Port 80)
-      ↓
-      ├→ FastAPI Backend (Port 8000)    - /api/*
-      ├→ EHRbase Server (Port 8080)     - /ehrbase/*
-      └→ Frontend SPA (Port 5173)       - /* (Vite dev server)
-```
+## Production (`caddy/prod/Caddyfile`)
 
-## Key Features in Use
+In production, the **GCP Global HTTPS Load Balancer** handles:
 
-### Reverse Proxy
+- TLS termination (Google-managed certificate)
+- Path routing: `/api/*` → backend Cloud Run, `/*` → frontend Cloud Run
+- Cloud Armor WAF + rate limiting
+- HTTP → HTTPS redirect
 
-Caddy forwards requests to backend services based on path matching, as shown in the [Caddyfile above](#our-implementation). In production, the GCP Global HTTPS Load Balancer handles path-based routing (`/api/*` → backend, `/*` → frontend), so Caddy only serves static files and a health check endpoint.
-
-> **Note:** The config snippets below are illustrative Caddy examples showing capabilities we intend to implement. The actual dev and production Caddyfiles are simpler — see [Our Implementation](#our-implementation) above for the real config. Updating these sections is tracked in the [project to-do list](../../plans/todo.md#caddy-documentation).
-
-### Static File Serving
-
-In production, Caddy serves the built React SPA from `/srv/app`:
+Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net_bind_service`, preventing non-root users from binding to :80). It serves the built React SPA with security headers:
 
 ```caddyfile
-root * /srv/app
-file_server
-try_files {path} /index.html
+{
+  admin off
+}
+
+:8080 {
+  encode zstd gzip
+
+  # Security headers
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self'; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
+    X-Frame-Options "DENY"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    -Server
+  }
+
+  # Health check for Cloud Run container probes
+  handle /healthz {
+    respond "ok" 200
+  }
+
+  # PWA manifest
+  @webmanifest path /*.webmanifest
+  header @webmanifest Content-Type "application/manifest+json"
+  header @webmanifest Cache-Control "no-cache"
+
+  # SPA — React app
+  handle {
+    root * /srv/app
+
+    # Static assets with hashed filenames — cache aggressively (1 year)
+    @hashed path_regexp \.[-a-zA-Z0-9]{8,}\.(js|css|woff2?|png|jpg|svg|ico)$
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+    # HTML and non-hashed files — always revalidate
+    @html path *.html /
+    header @html Cache-Control "no-cache"
+
+    try_files {path} /index.html
+    file_server
+  }
+}
 ```
 
-### CORS Handling
+### Key production features
 
-CORS is handled by the FastAPI backend middleware, not by Caddy. The backend uses `CORSMiddleware` with configurable `CORS_ORIGINS`.
+- **`admin off`** — disables the Caddy admin API (not needed in Cloud Run)
+- **Security headers** — HSTS (2 years, preload), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
+- **`/healthz`** — returns `200 ok` for Cloud Run startup/liveness probes
+- **Cache strategy** — hashed assets get 1 year immutable cache; HTML always revalidates
+- **`try_files`** — SPA fallback to `index.html` for client-side routing
 
-### Request Logging
+## CI (`caddy/ci/Caddyfile`)
 
-Currently not configured in either Caddyfile. To be added when needed.
+Used in E2E tests. Routes API to backend and everything else to the frontend production container (which runs its own Caddy serving static files):
 
-## Development vs Production
+```caddyfile
+{
+  admin off
+}
+
+:80 {
+  # API requests → backend
+  @api path /api/*
+  handle @api {
+    reverse_proxy backend:8000
+  }
+
+  # SPA → frontend (prod Caddy container serving static files)
+  handle {
+    reverse_proxy frontend:8080
+  }
+}
+```
+
+## Architecture
 
 ### Development
 
-In development (`caddy/dev/Caddyfile`), Caddy listens on port 80 and reverse-proxies to local Docker services (backend on 8000, frontend Vite dev server on 5173, EHRbase on 8080).
+```
+Browser → Caddy (:80) → backend:8000 (/api/*)
+                       → ehrbase:8080 (/ehrbase/*)
+                       → frontend:5173 (everything else)
+```
 
 ### Production
 
-In production (`caddy/prod/Caddyfile`), the GCP Global HTTPS Load Balancer handles TLS termination, path routing, and Cloud Armor WAF. Caddy runs inside the frontend container on port 80 and serves:
+```
+Browser → GCP HTTPS LB → backend Cloud Run (/api/*)
+                        → frontend Cloud Run (:8080) → Caddy → static SPA
+```
 
-- Security headers (HSTS, CSP, X-Frame-Options, etc.)
-- A `/healthz` health check endpoint for Cloud Run probes
-- The built React SPA with `try_files` fallback to `index.html`
+### CI (E2E tests)
 
-## Routing Strategy
+```
+Playwright → Caddy (:80) → backend:8000 (/api/*)
+                          → frontend:8080 (prod Caddy, static SPA)
+```
 
-### Development (Caddy handles routing)
+## CORS
 
-| Path pattern | Destination          | Purpose             |
-| ------------ | -------------------- | ------------------- |
-| `/api/*`     | Backend (port 8000)  | FastAPI application |
-| `/ehrbase/*` | EHRbase (port 8080)  | OpenEHR server      |
-| `/*`         | Frontend (port 5173) | Vite dev server     |
+CORS is handled by the FastAPI backend middleware (`CORSMiddleware`), not by Caddy.
 
-### Production (Load Balancer handles routing)
+## Notes
 
-In production, the GCP Global HTTPS Load Balancer performs path-based routing before traffic reaches Caddy:
-
-| Path pattern | Destination        | Purpose                       |
-| ------------ | ------------------ | ----------------------------- |
-| `/api/*`     | Backend Cloud Run  | FastAPI application           |
-| `/*`         | Frontend Cloud Run | Caddy serves static SPA files |
-
-FHIR and EHRbase are not publicly exposed — they run on a private VPC and are accessed only by the backend.
-
-## Security Features
-
-In production, Caddy enforces security headers on all responses. See the [cybersecurity documentation](../../cybersecurity/index.md#http-security-headers) for the full header list.
-
-Key headers: HSTS (2 years, preload), CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, and Server header removal.
-
-## Resources
-
-- [Caddy Official Documentation](https://caddyserver.com/docs/)
-- [Caddyfile Reference](https://caddyserver.com/docs/caddyfile)
-- [Caddy Docker Image](https://hub.docker.com/_/caddy)
-- [Let's Encrypt](https://letsencrypt.org/)
+- FHIR and EHRbase are **not** publicly exposed in production — they run on a private VPC and are accessed only by the backend
+- Request logging is not currently configured in any Caddyfile
+- Let's Encrypt is not used — GCP manages TLS certificates at the load balancer level
