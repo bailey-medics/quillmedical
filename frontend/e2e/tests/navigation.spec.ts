@@ -23,8 +23,8 @@ test.describe("Navigation", () => {
     await page.goto("/teaching");
     await page.waitForLoadState("networkidle");
 
-    // Logout is a Mantine NavLink — scope to sidebar to avoid strict mode violation
-    await page.locator("#app-navbar").getByText("Logout").click();
+    // Logout NavLink lives in the <aside> (desktop sidebar)
+    await page.getByRole("complementary").getByText("Logout").click();
 
     await expect(page).toHaveURL(/\/login/);
   });

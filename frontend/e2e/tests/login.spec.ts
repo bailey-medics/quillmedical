@@ -21,9 +21,7 @@ test.describe("Login page", () => {
     await page.getByLabel("Password").fill("educator123");
     await page.getByLabel("Password").blur();
 
-    const submitBtn = page.getByRole("button", { name: "Sign in" });
-    await expect(submitBtn).toBeEnabled({ timeout: 10000 });
-    await submitBtn.click();
+    await page.getByRole("button", { name: "Sign in" }).click();
 
     await page.waitForURL("**/teaching");
     await expect(page).not.toHaveURL(/\/login/);
@@ -36,9 +34,7 @@ test.describe("Login page", () => {
     await page.getByLabel("Password").fill("wrong-password");
     await page.getByLabel("Password").blur();
 
-    const submitBtn = page.getByRole("button", { name: "Sign in" });
-    await expect(submitBtn).toBeEnabled({ timeout: 10000 });
-    await submitBtn.click();
+    await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText(/invalid|incorrect/i)).toBeVisible();
