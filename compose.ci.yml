@@ -1,0 +1,96 @@
+# CI Docker Compose — lightweight stack for E2E (Playwright) tests.
+# Excludes clinical services (FHIR, EHRbase) and dev tooling.
+# Usage: docker compose -f compose.ci.yml up --build --wait
+#
+# After services are healthy, seed the educator user via the API,
+# then run Playwright against http://localhost.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+      target: prod
+    container_name: ci_backend
+    environment:
+      AUTH_DATABASE_URL: postgresql+asyncpg://auth_user:ci_password@postgres-auth:5432/quill_auth
+      AUTH_DATABASE_URL_SYNC: postgresql://auth_user:ci_password@postgres-auth:5432/quill_auth
+      BACKEND_ENV: testing
+      SECRET_KEY: ci-secret-key-not-for-production
+      JWT_SECRET: ci-jwt-secret-not-for-production
+      CSRF_SECRET: ci-csrf-secret-not-for-production
+      CLINICAL_SERVICES_ENABLED: "false"
+      TEACHING_STORAGE_BACKEND: local
+      TEACHING_QUESTION_BANK_PATH: /teaching-repos
+      TEACHING_IMAGES_BASE_URL: /api/teaching/images
+      EMAIL_DRY_RUN: "true"
+      FIRST_SUPERADMIN_USERNAME: admin
+      FIRST_SUPERADMIN_PASSWORD: admin123
+      FIRST_SUPERADMIN_EMAIL: admin@ci.local
+    expose:
+      - "8000"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks:
+      - ci
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: prod
+      args:
+        VITE_CLINICAL_SERVICES_ENABLED: "false"
+    container_name: ci_frontend
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - ci
+
+  postgres-auth:
+    image: postgres:18-alpine
+    container_name: ci_postgres_auth
+    environment:
+      POSTGRES_DB: quill_auth
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: ci_password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_auth"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    networks:
+      - ci
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ci_caddy
+    ports:
+      - "80:80"
+    volumes:
+      - ./caddy/ci/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - ci
+
+networks:
+  ci: {}

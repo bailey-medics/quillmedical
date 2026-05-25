@@ -1,0 +1,17 @@
+# CI Caddyfile — routes API to backend, everything else to frontend (prod Caddy)
+{
+	admin off
+}
+
+:80 {
+	# API requests → backend
+	@api path /api/*
+	handle @api {
+		reverse_proxy backend:8000
+	}
+
+	# SPA → frontend (prod Caddy container serving static files)
+	handle {
+		reverse_proxy frontend:8080
+	}
+}
