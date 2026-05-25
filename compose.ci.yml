@@ -24,6 +24,8 @@ services:
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       EMAIL_DRY_RUN: "true"
+      # Required by push_send.py (imported unconditionally at startup)
+      VAPID_PRIVATE: ci-placeholder-vapid-key-not-real
     expose:
       - "8000"
     depends_on:
