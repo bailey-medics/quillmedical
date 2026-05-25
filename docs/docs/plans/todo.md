@@ -30,6 +30,7 @@ clinical/NHS go-live.
 - [ ] Add `mkdocs build --strict` to the heavy CI tier to catch broken links and missing nav entries
 - [ ] Create `backend/scripts/check_migrations.py` — expand-contract migration lint rejecting destructive Alembic operations
 - [ ] Add `pip-audit --strict` and `yarn audit --level moderate` to CI pipeline (nice-to-have gate for dependency vulnerabilities)
+- [ ] Enable GitHub merge queue when 3+ developers are merging PRs in parallel (add `merge_group` trigger to `branch-ci.yml`, update job `if:` conditions, re-add `merge_queue` block in Terraform)
 
 ## Application bugs and missing features
 
