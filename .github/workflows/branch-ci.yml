@@ -319,10 +319,11 @@ jobs:
   # ==========================================================================
 
   # ---------- Storybook interaction tests ----------
+  # Name matches the required check in branch_rules.tf (backward compat)
   heavy_storybook_tests:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    name: Storybook interaction tests
+    name: typescript_checks (storybook:test:ci)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6

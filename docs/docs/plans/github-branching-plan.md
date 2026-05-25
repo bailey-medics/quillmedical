@@ -583,20 +583,20 @@ Key differences from today:
 
 ## Files to create/modify
 
-| File                                            | Action                                                                                 |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| File                                            | Action                                                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `.github/workflows/branch-ci.yml`               | Add `pull_request` trigger + heavy jobs; move `storybook:test:ci` and Semgrep to heavy; add `--draft` to `open-pr` |
-| `.github/workflows/deploy.yml`                  | **New** — unified build-once-promote                                                   |
-| `.github/workflows/deploy-staging-teaching.yml` | Delete (replaced by `deploy.yml`)                                                      |
-| `.github/workflows/deploy-production.yml`       | Delete (replaced by `deploy.yml`)                                                      |
-| `.github/workflows/release-hotfix.yml`          | Delete                                                                                 |
-| `.github/workflows/hotfix-backmerge.yml`        | Delete                                                                                 |
-| `infra/github/branch_rules.tf`                  | Remove `clinical_live_protection`, update required checks                              |
-| `backend/pyproject.toml`                        | Add `e2e`, `slow` markers                                                             |
-| `backend/scripts/check_migrations.py`           | **New** — CI lint script for expand-contract enforcement                               |
-| `docs/mkdocs.yml`                               | No change (already correct)                                                            |
-| `docs/docs/cicd/index.md`                       | Rewrite to reflect new pipeline (trunk-based, build-once-promote, test tiering)        |
-| `docs/docs/github/index.md`                     | Update branching model, remove GitFlow/clinical-live references                        |
-| `docs/docs/plans/branching-rules.md`            | Update or redirect to this plan                                                        |
-| `.github/instructions/backend.instructions.md`  | **New** — scoped instructions for `backend/**`; includes Alembic expand-contract rules |
-| `.github/copilot-instructions.md`               | Update branching references                                                            |
+| `.github/workflows/deploy.yml`                  | **New** — unified build-once-promote                                                                               |
+| `.github/workflows/deploy-staging-teaching.yml` | Delete (replaced by `deploy.yml`)                                                                                  |
+| `.github/workflows/deploy-production.yml`       | Delete (replaced by `deploy.yml`)                                                                                  |
+| `.github/workflows/release-hotfix.yml`          | Delete                                                                                                             |
+| `.github/workflows/hotfix-backmerge.yml`        | Delete                                                                                                             |
+| `infra/github/branch_rules.tf`                  | Remove `clinical_live_protection`, update required checks                                                          |
+| `backend/pyproject.toml`                        | Add `e2e`, `slow` markers                                                                                          |
+| `backend/scripts/check_migrations.py`           | **New** — CI lint script for expand-contract enforcement                                                           |
+| `docs/mkdocs.yml`                               | No change (already correct)                                                                                        |
+| `docs/docs/cicd/index.md`                       | Rewrite to reflect new pipeline (trunk-based, build-once-promote, test tiering)                                    |
+| `docs/docs/github/index.md`                     | Update branching model, remove GitFlow/clinical-live references                                                    |
+| `docs/docs/plans/branching-rules.md`            | Update or redirect to this plan                                                                                    |
+| `.github/instructions/backend.instructions.md`  | **New** — scoped instructions for `backend/**`; includes Alembic expand-contract rules                             |
+| `.github/copilot-instructions.md`               | Update branching references                                                                                        |
