@@ -26,6 +26,8 @@ services:
       EMAIL_DRY_RUN: "true"
       # Required by push_send.py (imported unconditionally at startup)
       VAPID_PRIVATE: ci-placeholder-vapid-key-not-real
+    volumes:
+      - ./backend/scripts/seed_ci.py:/app/scripts/seed_ci.py:ro
     expose:
       - "8000"
     depends_on:
