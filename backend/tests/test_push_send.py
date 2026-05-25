@@ -12,9 +12,21 @@ from app.models import PushSubscription, User
 class TestPushSend:
     """Test push notification sending endpoint."""
 
-    def test_send_test_no_subscribers(self, test_client: TestClient):
-        """Test send-test with no subscribers."""
+    def test_send_test_requires_auth(self, test_client: TestClient):
+        """Test send-test rejects unauthenticated requests."""
         response = test_client.post("/api/push/send-test")
+        assert response.status_code == 401
+
+    def test_send_test_requires_admin(self, authenticated_client: TestClient):
+        """Test send-test rejects non-admin users."""
+        response = authenticated_client.post("/api/push/send-test")
+        assert response.status_code == 403
+
+    def test_send_test_no_subscribers(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test send-test with no subscribers."""
+        response = authenticated_admin_client.post("/api/push/send-test")
 
         assert response.status_code == 400
         assert "No subscribers" in response.json()["detail"]
@@ -23,14 +35,14 @@ class TestPushSend:
     def test_send_test_success(
         self,
         mock_webpush,
-        test_client: TestClient,
-        test_user: User,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session: Session,
     ):
         """Test successful push notification send."""
         db_session.add(
             PushSubscription(
-                user_id=test_user.id,
+                user_id=test_admin.id,
                 endpoint="https://push.example.com/test",
                 keys_p256dh="key1",
                 keys_auth="auth1",
@@ -40,7 +52,7 @@ class TestPushSend:
 
         mock_webpush.return_value = None  # Success
 
-        response = test_client.post("/api/push/send-test")
+        response = authenticated_admin_client.post("/api/push/send-test")
 
         assert response.status_code == 200
         data = response.json()
@@ -52,14 +64,14 @@ class TestPushSend:
     def test_send_test_removes_failed_subscriptions(
         self,
         mock_webpush,
-        test_client: TestClient,
-        test_user: User,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session: Session,
     ):
         """Test that failed subscriptions are removed from DB."""
         db_session.add(
             PushSubscription(
-                user_id=test_user.id,
+                user_id=test_admin.id,
                 endpoint="https://push.example.com/fail",
                 keys_p256dh="key1",
                 keys_auth="auth1",
@@ -67,7 +79,7 @@ class TestPushSend:
         )
         db_session.add(
             PushSubscription(
-                user_id=test_user.id,
+                user_id=test_admin.id,
                 endpoint="https://push.example.com/success",
                 keys_p256dh="key2",
                 keys_auth="auth2",
@@ -78,7 +90,7 @@ class TestPushSend:
         # First call fails, second succeeds
         mock_webpush.side_effect = [WebPushException("Gone"), None]
 
-        response = test_client.post("/api/push/send-test")
+        response = authenticated_admin_client.post("/api/push/send-test")
 
         assert response.status_code == 200
         data = response.json()
@@ -94,15 +106,15 @@ class TestPushSend:
     def test_send_test_multiple_subscribers(
         self,
         mock_webpush,
-        test_client: TestClient,
-        test_user: User,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
         db_session: Session,
     ):
         """Test sending to multiple subscribers."""
         for i in range(3):
             db_session.add(
                 PushSubscription(
-                    user_id=test_user.id,
+                    user_id=test_admin.id,
                     endpoint=f"https://push.example.com/sub{i}",
                     keys_p256dh=f"key{i}",
                     keys_auth=f"auth{i}",
@@ -112,7 +124,7 @@ class TestPushSend:
 
         mock_webpush.return_value = None  # All succeed
 
-        response = test_client.post("/api/push/send-test")
+        response = authenticated_admin_client.post("/api/push/send-test")
 
         assert response.status_code == 200
         data = response.json()
