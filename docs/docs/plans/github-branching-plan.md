@@ -530,6 +530,25 @@ Key differences from today:
 
 ---
 
+## Slack notifications
+
+Slack notifications are restricted to **main-branch CI/CD actions only** — never for feature-branch CI.
+
+| Event                          | Notify? | Channel        |
+| ------------------------------ | ------- | -------------- |
+| Feature branch fast/heavy CI   | No      | —              |
+| Deploy to staging (success)    | Yes     | `#deployments` |
+| Deploy to staging (failure)    | Yes     | `#deployments` |
+| Deploy to production (success) | Yes     | `#deployments` |
+| Deploy to production (failure) | Yes     | `#deployments` |
+| Main CI failure                | Yes     | `#ci-alerts`   |
+
+**Rationale**: feature-branch failures are visible in the PR checks tab and don't need to interrupt the team. Main-branch failures and deployments are shared-state events that everyone should be aware of.
+
+**Implementation**: remove all `slack-notify` steps from `branch-ci.yml`. Add notification steps to `deploy.yml` jobs using `if: always()` (to fire on both success and failure) with `${{ job.status }}` in the message payload.
+
+---
+
 ## Migration plan
 
 ### Phase 1: test tiering (low risk, no branch changes)
