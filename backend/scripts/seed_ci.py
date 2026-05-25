@@ -32,6 +32,7 @@ def seed() -> None:
                 password_hash=hash_password("admin123"),
                 system_permissions="superadmin",
                 is_active=True,
+                email_verified=True,
             )
             db.add(admin)
             db.flush()
@@ -49,6 +50,7 @@ def seed() -> None:
                 system_permissions="staff",
                 base_profession="educator",
                 is_active=True,
+                email_verified=True,
             )
             db.add(educator)
             db.flush()
