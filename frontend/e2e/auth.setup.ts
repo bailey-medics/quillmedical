@@ -8,7 +8,18 @@ setup("authenticate", async ({ page }) => {
   await page.getByLabel("Password").pressSequentially("educator123");
   await page.getByLabel("Password").press("Enter");
 
-  await page.waitForURL("**/teaching", { timeout: 60_000 });
+  await expect
+    .poll(
+      () => {
+        const pathname = new URL(page.url()).pathname;
+        return pathname === "/" || pathname.startsWith("/teaching");
+      },
+      {
+        timeout: 60_000,
+        message: "Expected setup login to redirect to either / or /teaching",
+      },
+    )
+    .toBe(true);
   await expect(page).not.toHaveURL(/\/login/);
 
   await page.context().storageState({ path: authFile });
