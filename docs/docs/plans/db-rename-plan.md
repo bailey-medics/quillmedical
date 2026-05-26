@@ -81,7 +81,7 @@ Inventory notes:
 ### A3 Terraform updates
 
 - [x] In `infra/main.tf`, set auth module `db_name` from `quill_auth` to
-   `quill_core`
+      `quill_core`
 - [x] Keep module name and outputs stable (`cloud_sql_auth`) for this phase
 - [ ] Generate and review Terraform plan for each environment
 
@@ -93,10 +93,17 @@ Blocker note:
 
 ### A3.5 Local preflight (before teaching)
 
-- [ ] Start local stack with renamed auth DB and verify backend boots
-- [ ] Run auth smoke checks locally (login, refresh, protected endpoint)
-- [ ] Run non-integration backend tests in container locally
-- [ ] Confirm no auth DB connection errors in local logs
+- [x] Start local stack with renamed auth DB and verify backend boots
+- [x] Run auth smoke checks locally (login, refresh, protected endpoint)
+- [x] Run non-integration backend tests in container locally
+- [x] Confirm no auth DB connection errors in local logs
+
+Local validation notes:
+
+1. `docker compose -f compose.dev.yml up -d --build postgres-auth backend frontend caddy` succeeded and backend reached healthy startup.
+2. Auth smoke checks passed locally: `/api/auth/login`, `/api/auth/refresh`, and `/api/auth/me` returned success.
+3. `just ub` passed (`pytest -q -m 'not integration'`) inside container.
+4. Backend logs show successful auth requests and no auth DB connection errors.
 
 ### A4 Rehearsal in teaching
 
