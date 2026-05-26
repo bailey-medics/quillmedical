@@ -71,10 +71,10 @@ Inventory notes:
 
 ### A2 Introduce compatibility defaults
 
-- [ ] Keep `AUTH_DB_*` variable names unchanged to reduce code churn
-- [ ] Update default `AUTH_DB_NAME` to `quill_core` in backend settings
-- [ ] Update Compose dev/CI database names and health checks to `quill_core`
-- [ ] Update docs and runbooks that mention `quill_auth`
+- [x] Keep `AUTH_DB_*` variable names unchanged to reduce code churn
+- [x] Update default `AUTH_DB_NAME` to `quill_core` in backend settings
+- [x] Update Compose dev/CI database names and health checks to `quill_core`
+- [x] Update docs and runbooks that mention `quill_auth`
 
 ### A3 Terraform updates
 

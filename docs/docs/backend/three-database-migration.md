@@ -46,7 +46,7 @@ The following new environment variables are required in `backend/.env`:
 
 ```bash
 # Auth Database
-AUTH_DB_NAME=quill_auth
+AUTH_DB_NAME=quill_core
 AUTH_DB_USER=auth_user
 AUTH_DB_PASSWORD=[secure password]
 AUTH_DB_HOST=postgres-auth

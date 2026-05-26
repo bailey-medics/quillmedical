@@ -57,13 +57,13 @@ services:
     image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
     container_name: quill_postgres_auth
     environment:
-      POSTGRES_DB: quill_auth
+      POSTGRES_DB: quill_core
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: vspct8I2iLUkfC3JsXxefy
     volumes:
       - postgres_auth_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_auth"]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_core"]
       interval: 5s
       timeout: 3s
       retries: 10

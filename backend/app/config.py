@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     )
 
     # --- Auth Database ---
-    AUTH_DB_NAME: str = Field("quill_auth", description="Auth database name")
+    AUTH_DB_NAME: str = Field("quill_core", description="Auth database name")
     AUTH_DB_USER: str = Field("auth_user", description="Auth database user")
     AUTH_DB_PASSWORD: SecretStr = Field(
         ..., description="Auth database password"
