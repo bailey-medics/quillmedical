@@ -13,6 +13,7 @@ import sys
 from pythonjsonlogger.json import JsonFormatter
 
 from app.config import settings
+from app.log_context import RequestContextFilter
 
 _DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
@@ -30,14 +31,19 @@ def setup_logging() -> None:
     if _DEV_MODE:
         handler.setFormatter(
             logging.Formatter(
-                "%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+                "%(asctime)s %(levelname)-8s %(name)s "
+                "[%(request_id)s] — %(message)s",
                 datefmt="%H:%M:%S",
+                defaults={"request_id": "-"},
             )
         )
     else:
         handler.setFormatter(
             JsonFormatter(
-                fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+                fmt=(
+                    "%(asctime)s %(levelname)s %(name)s %(message)s "
+                    "%(request_id)s %(user_id)s"
+                ),
                 rename_fields={
                     "asctime": "timestamp",
                     "levelname": "severity",
@@ -46,6 +52,7 @@ def setup_logging() -> None:
             )
         )
 
+    handler.addFilter(RequestContextFilter())
     root.addHandler(handler)
 
     # Quieten noisy libraries

@@ -15,7 +15,6 @@ clinical/NHS go-live.
 
 ## Monitoring and operations
 
-- [ ] Set up uptime monitoring and alerting for the teaching environment (GCP Cloud Monitoring uptime checks, alert policies, dashboard)
 - [ ] Add structured error logging — backend logs with request ID, user ID (not PHI), and error context
 - [ ] Create basic runbooks for common incidents (502s, DB connection exhaustion, cold start latency, rollback procedure)
 - [ ] Write a one-page incident response plan (escalation chain, P1/P2/P3 classification, comms template, post-incident review)
@@ -43,7 +42,7 @@ clinical/NHS go-live.
 - [ ] Replace inline modal in `DirtyFormNavigation` with `ConfirmModal` (keep only `useBlocker` logic)
 - [ ] Deduplicate push notification subscription logic into a shared `usePushSubscription` hook
 - [ ] Use `api` client in push notification code (currently raw `fetch()`, bypasses CSRF and auth cookies)
-- [ ] Lock value in teaching schema — once locked, same version `config.yaml` cannot be reused; must iterate upwards
+- [ ] Lock **version** value in teaching schema — once locked, same version `config.yaml` cannot be reused; must iterate upwards
 
 ## Testing
 
@@ -54,6 +53,7 @@ clinical/NHS go-live.
 - [ ] Persistent subscription storage — move from in-memory list to `PushSubscription` DB model
 - [ ] Automated triggers — send notifications on real events (messages, appointments, clinical alerts)
 - [ ] VAPID key documentation — ensure `dev-env-check.sh` validates keys exist
+- [ ] Need user to confirm we are enabling notifications and they are happy (a legal requirement)
 
 ## Infrastructure
 

@@ -65,6 +65,7 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
+from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
 from app.messaging import (
     add_participant,
@@ -239,10 +240,25 @@ async def log_requests(
     call_next: Callable,  # type: ignore[type-arg]
 ) -> Response:
     """Log every request with timing, method, path, and status."""
-    request_id = uuid4().hex[:12]
+    # Use inbound trace header if present, otherwise generate a new ID
+    request_id = (
+        request.headers.get("x-request-id")
+        or request.headers.get("x-cloud-trace-context", "").split("/")[0]
+        or uuid4().hex[:12]
+    )
+    # Set context var so all loggers within this request include request_id
+    token = request_id_var.set(request_id)
+    request.state.request_id = request_id
+
     start = time.monotonic()
-    response: Response = await call_next(request)
+    try:
+        response: Response = await call_next(request)
+    finally:
+        user_id_var.set(None)
+        request_id_var.reset(token)
+
     elapsed_ms = round((time.monotonic() - start) * 1000, 1)
+    response.headers["X-Request-ID"] = request_id
 
     logger.info(
         "%s %s %s %.1fms",
@@ -251,7 +267,6 @@ async def log_requests(
         response.status_code,
         elapsed_ms,
         extra={
-            "request_id": request_id,
             "method": request.method,
             "path": request.url.path,
             "status": response.status_code,

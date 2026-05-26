@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
+from app.log_context import user_id_var
 from app.models import User
 from app.security import decode_token
 
@@ -36,6 +37,7 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
     request.state.roles = [r.name for r in user.roles]
+    user_id_var.set(str(user.id))
     return user
 
 
