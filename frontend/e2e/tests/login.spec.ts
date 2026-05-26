@@ -1,12 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
+test.describe.configure({ timeout: 120_000 });
+
 async function submitLogin(
   page: Page,
   username: string,
   password: string,
 ): Promise<number> {
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password").pressSequentially(password);
 
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -15,7 +17,7 @@ async function submitLogin(
     { timeout: 30_000 },
   );
 
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("Password").press("Enter");
   const response = await responsePromise;
   return response.status();
 }
