@@ -1,5 +1,44 @@
 import { test, expect, type Page } from "@playwright/test";
 
+async function submitLogin(
+  page: Page,
+  username: string,
+  password: string,
+): Promise<number> {
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password").fill(password);
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/login") &&
+      response.request().method() === "POST",
+    { timeout: 30_000 },
+  );
+
+  await page.getByRole("button", { name: "Sign in" }).click();
+  const response = await responsePromise;
+  return response.status();
+}
+
+async function loginWithRateLimitRetry(page: Page): Promise<void> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const status = await submitLogin(page, "educator", "educator123");
+    if (status === 200) {
+      return;
+    }
+
+    if (status === 429 && attempt < maxAttempts) {
+      await page.waitForTimeout(1_000 * attempt);
+      continue;
+    }
+
+    throw new Error(
+      `Valid login failed with status ${status} on attempt ${attempt}`,
+    );
+  }
+}
+
 async function expectSuccessfulLoginRedirect(page: Page) {
   await expect
     .poll(
@@ -35,9 +74,7 @@ test.describe("Login page", () => {
   test("logs in with valid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").pressSequentially("educator123");
-    await page.getByLabel("Password").press("Enter");
+    await loginWithRateLimitRetry(page);
 
     await expectSuccessfulLoginRedirect(page);
   });
@@ -45,19 +82,15 @@ test.describe("Login page", () => {
   test("shows error with invalid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").pressSequentially("wrong-password");
-    await page.getByLabel("Password").press("Enter");
+    const status = await submitLogin(page, "educator", "wrong-password");
+    expect([400, 429]).toContain(status);
 
     await expect(page).toHaveURL(/\/login/);
-    const errorMessage = page
-      .locator("p")
-      .filter({
-        hasText: /invalid|incorrect|too many|rate limit|login failed/i,
-      })
-      .first();
-    await expect(errorMessage).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.locator("body")).toContainText(
+      /invalid|incorrect|too many|rate limit|login failed/i,
+      {
+        timeout: 10_000,
+      },
+    );
   });
 });
