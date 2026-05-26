@@ -48,6 +48,8 @@ Use a two-phase migration with rehearsal.
 1. Phase A: Prepare and dual-support naming in code/config
 2. Phase B: Switch active DB name to `quill_core` and verify
 
+Within phase A, run a local preflight before teaching rollout.
+
 ## Phase A prepare
 
 ### A1 Inventory and freeze
@@ -88,6 +90,13 @@ Blocker note:
 1. `terraform plan` for teaching failed due GCP auth session expiry
    (`invalid_grant`, `invalid_rapt`) when reading remote state.
 2. Re-authenticate Google Cloud CLI and rerun plan for teaching/staging/prod.
+
+### A3.5 Local preflight (before teaching)
+
+- [ ] Start local stack with renamed auth DB and verify backend boots
+- [ ] Run auth smoke checks locally (login, refresh, protected endpoint)
+- [ ] Run non-integration backend tests in container locally
+- [ ] Confirm no auth DB connection errors in local logs
 
 ### A4 Rehearsal in teaching
 
