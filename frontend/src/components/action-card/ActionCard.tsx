@@ -12,6 +12,7 @@ import ActionCardButton from "@/components/button/ActionCardButton";
 import BodyText from "@/components/typography/BodyText";
 import Heading from "@/components/typography/Heading";
 import BaseCard from "@/components/base-card/BaseCard";
+import classes from "./ActionCard.module.css";
 
 interface ActionCardProps {
   /** Icon element to display (from @tabler/icons-react) */
@@ -62,12 +63,20 @@ export default function ActionCard({
   action,
 }: ActionCardProps) {
   return (
-    <BaseCard maw={fullWidth ? undefined : "37.05rem"} h="100%">
+    <BaseCard
+      maw={fullWidth ? undefined : "37.05rem"}
+      h="100%"
+      className={classes.card}
+    >
       <Stack gap="md" h="100%">
         {icon ? (
-          <Group>
-            <Icon icon={icon} size={iconSize} />
-            <Heading>{title}</Heading>
+          <Group className={classes.iconRow}>
+            <div className={classes.iconWrap}>
+              <Icon icon={icon} size={iconSize} />
+            </div>
+            <div className={classes.titleWrap}>
+              <Heading>{title}</Heading>
+            </div>
           </Group>
         ) : (
           <Heading>{title}</Heading>

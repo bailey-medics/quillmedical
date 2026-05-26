@@ -34,6 +34,8 @@ interface IconTextButtonProps {
   color?: MantineColor;
   /** Mantine button variant (default: "filled") */
   variant?: "filled" | "light" | "outline";
+  /** Stretch button to fill parent width */
+  fullWidth?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export default function IconTextButton({
   loading = false,
   color,
   variant = "filled",
+  fullWidth = false,
 }: IconTextButtonProps) {
   return (
     <Button
@@ -59,6 +62,7 @@ export default function IconTextButton({
       size="md"
       variant={variant}
       color={color}
+      fullWidth={fullWidth}
       aria-disabled={disabled || undefined}
       loading={loading}
       classNames={{ root: classes.root }}
