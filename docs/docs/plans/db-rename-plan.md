@@ -78,10 +78,16 @@ Inventory notes:
 
 ### A3 Terraform updates
 
-- [ ] In `infra/main.tf`, set auth module `db_name` from `quill_auth` to
-      `quill_core`
-- [ ] Keep module name and outputs stable (`cloud_sql_auth`) for this phase
+- [x] In `infra/main.tf`, set auth module `db_name` from `quill_auth` to
+   `quill_core`
+- [x] Keep module name and outputs stable (`cloud_sql_auth`) for this phase
 - [ ] Generate and review Terraform plan for each environment
+
+Blocker note:
+
+1. `terraform plan` for teaching failed due GCP auth session expiry
+   (`invalid_grant`, `invalid_rapt`) when reading remote state.
+2. Re-authenticate Google Cloud CLI and rerun plan for teaching/staging/prod.
 
 ### A4 Rehearsal in teaching
 
