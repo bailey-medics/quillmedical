@@ -1,4 +1,4 @@
-import { test as setup, expect, type Response } from "@playwright/test";
+import { test as setup, expect } from "@playwright/test";
 
 const authFile = "e2e/.auth/user.json";
 setup.setTimeout(120_000);
@@ -6,12 +6,17 @@ setup.setTimeout(120_000);
 async function loginWithRateLimitRetry(
   page: Parameters<typeof setup>[0]["page"],
 ): Promise<void> {
-  const submitLogin = async (): Promise<Response | null> => {
-    await page.getByLabel("Username").fill("educator");
+  const submitLoginFromUi = async (): Promise<number | null> => {
+    const usernameInput = page.getByLabel("Username");
     const passwordInput = page.getByLabel("Password");
+
+    await expect(usernameInput).toBeVisible();
+    await expect(passwordInput).toBeVisible();
+
+    await usernameInput.fill("educator");
     await passwordInput.fill("educator123");
 
-    const waitForLoginResponse = async (): Promise<Response | null> =>
+    const waitForLoginResponse = async (): Promise<number | null> =>
       page
         .waitForResponse(
           (response) =>
@@ -19,14 +24,23 @@ async function loginWithRateLimitRetry(
             response.request().method() === "POST",
           { timeout: 10_000 },
         )
+        .then((response) => response.status())
         .catch(() => null);
 
     let responsePromise = waitForLoginResponse();
-    await passwordInput.press("Enter");
-    let response = await responsePromise;
+    await page.getByRole("button", { name: "Sign in" }).click();
+    let status = await responsePromise;
 
-    if (response) {
-      return response;
+    if (status !== null) {
+      return status;
+    }
+
+    responsePromise = waitForLoginResponse();
+    await passwordInput.press("Enter");
+    status = await responsePromise;
+
+    if (status !== null) {
+      return status;
     }
 
     responsePromise = waitForLoginResponse();
@@ -37,27 +51,31 @@ async function loginWithRateLimitRetry(
         (el as HTMLFormElement).requestSubmit();
       });
 
-    response = await responsePromise;
-    return response;
+    return responsePromise;
   };
 
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await page.goto("/login");
-    const response = await submitLogin();
+    const status = await submitLoginFromUi();
 
-    if (!response) {
-      throw new Error(`No setup login response received on attempt ${attempt}`);
-    }
-
-    if (response.status() === 429 && attempt < maxAttempts) {
+    if (status === null && attempt < maxAttempts) {
       await page.waitForTimeout(1_000 * attempt);
       continue;
     }
 
-    if (response.status() !== 200) {
+    if (status === null) {
+      throw new Error(`No setup login response received on attempt ${attempt}`);
+    }
+
+    if (status === 429 && attempt < maxAttempts) {
+      await page.waitForTimeout(1_000 * attempt);
+      continue;
+    }
+
+    if (status !== 200) {
       throw new Error(
-        `Setup login returned status ${response.status()} on attempt ${attempt}`,
+        `Setup login returned status ${status} on attempt ${attempt}`,
       );
     }
 
