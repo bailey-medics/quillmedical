@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect, type Response } from "@playwright/test";
 
 const authFile = "e2e/.auth/user.json";
 setup.setTimeout(120_000);
@@ -6,18 +6,60 @@ setup.setTimeout(120_000);
 async function loginWithRateLimitRetry(
   page: Parameters<typeof setup>[0]["page"],
 ): Promise<void> {
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    await page.goto("/login");
+  const submitLogin = async (): Promise<Response | null> => {
     await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").fill("educator123");
+    const passwordInput = page.getByLabel("Password");
+    await passwordInput.fill("educator123");
 
+    const waitForLoginResponse = async (): Promise<Response | null> =>
+      page
+        .waitForResponse(
+          (response) =>
+            response.url().includes("/api/auth/login") &&
+            response.request().method() === "POST",
+          { timeout: 10_000 },
+        )
+        .catch(() => null);
+
+    let responsePromise = waitForLoginResponse();
+    await passwordInput.press("Enter");
+    let response = await responsePromise;
+
+    if (response) {
+      return response;
+    }
+
+    responsePromise = waitForLoginResponse();
     await page
       .locator("form")
       .first()
       .evaluate((el) => {
         (el as HTMLFormElement).requestSubmit();
       });
+
+    response = await responsePromise;
+    return response;
+  };
+
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    await page.goto("/login");
+    const response = await submitLogin();
+
+    if (!response) {
+      throw new Error(`No setup login response received on attempt ${attempt}`);
+    }
+
+    if (response.status() === 429 && attempt < maxAttempts) {
+      await page.waitForTimeout(1_000 * attempt);
+      continue;
+    }
+
+    if (response.status() !== 200) {
+      throw new Error(
+        `Setup login returned status ${response.status()} on attempt ${attempt}`,
+      );
+    }
 
     const isRedirected = await expect
       .poll(
@@ -35,15 +77,6 @@ async function loginWithRateLimitRetry(
 
     if (isRedirected) {
       return;
-    }
-
-    const bodyText = (await page.locator("body").innerText()).toLowerCase();
-    const hitRateLimit =
-      bodyText.includes("rate limit") || bodyText.includes("too many");
-
-    if (hitRateLimit && attempt < maxAttempts) {
-      await page.waitForTimeout(1_000 * attempt);
-      continue;
     }
 
     throw new Error(`Setup login did not redirect on attempt ${attempt}`);

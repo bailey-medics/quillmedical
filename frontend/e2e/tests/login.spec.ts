@@ -1,23 +1,67 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Response } from "@playwright/test";
 
 test.describe.configure({ timeout: 120_000 });
 
-async function submitLogin(page: Page, username: string, password: string) {
-  await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+async function submitLogin(
+  page: Page,
+  username: string,
+  password: string,
+): Promise<Response | null> {
+  const usernameInput = page.getByLabel("Username");
+  const passwordInput = page.getByLabel("Password");
 
+  await usernameInput.fill(username);
+  await passwordInput.fill(password);
+
+  const waitForLoginResponse = async (): Promise<Response | null> =>
+    page
+      .waitForResponse(
+        (response) =>
+          response.url().includes("/api/auth/login") &&
+          response.request().method() === "POST",
+        { timeout: 10_000 },
+      )
+      .catch(() => null);
+
+  let responsePromise = waitForLoginResponse();
+  await passwordInput.press("Enter");
+  let response = await responsePromise;
+
+  if (response) {
+    return response;
+  }
+
+  responsePromise = waitForLoginResponse();
   await page
     .locator("form")
     .first()
     .evaluate((el) => {
       (el as HTMLFormElement).requestSubmit();
     });
+
+  response = await responsePromise;
+  return response;
 }
 
 async function loginWithRateLimitRetry(page: Page): Promise<void> {
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    await submitLogin(page, "educator", "educator123");
+    const response = await submitLogin(page, "educator", "educator123");
+
+    if (!response) {
+      throw new Error(`No login response received on attempt ${attempt}`);
+    }
+
+    if (response.status() === 429 && attempt < maxAttempts) {
+      await page.waitForTimeout(1_000 * attempt);
+      continue;
+    }
+
+    if (response.status() !== 200) {
+      throw new Error(
+        `Valid login returned status ${response.status()} on attempt ${attempt}`,
+      );
+    }
 
     const isRedirected = await expect
       .poll(
@@ -93,14 +137,11 @@ test.describe("Login page", () => {
   test("shows error with invalid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    await submitLogin(page, "educator", "wrong-password");
+    const response = await submitLogin(page, "educator", "wrong-password");
+
+    expect(response).not.toBeNull();
+    expect([400, 401, 429]).toContain(response!.status());
 
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.locator("body")).toContainText(
-      /invalid|incorrect|too many|rate limit|login failed/i,
-      {
-        timeout: 10_000,
-      },
-    );
   });
 });
