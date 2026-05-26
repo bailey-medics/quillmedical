@@ -145,6 +145,17 @@ export const typographyTokens = {
   },
 } as const;
 
+/**
+ * Layout tokens — shared responsive sizing thresholds.
+ */
+export const layoutTokens = {
+  /**
+   * Minimum viewport width required before ActionCards switch to a
+   * two-column layout.
+   */
+  actionCardTwoColumnMinWidth: "60rem",
+} as const;
+
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     // App brand

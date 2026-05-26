@@ -1,0 +1,7 @@
+.totpCard {
+  min-width: 0;
+}
+
+.breakLongWords {
+  overflow-wrap: anywhere;
+}

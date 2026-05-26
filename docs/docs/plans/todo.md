@@ -25,6 +25,7 @@ clinical/NHS go-live.
 
 - [ ] Configure GitHub Environment `production` with required reviewers _(deferred — production GCP is spun down)_
 - [ ] Validate full deploy pipeline: merge to `main` → teaching auto-deploys → approve → production deploys same image _(deferred)_
+- [ ] Define feature flag strategy (Terraform vs runtime config vs in-code flags), with governance and rollout policy for teaching and clinical production
 - [ ] Add `mkdocs build --strict` to the heavy CI tier to catch broken links and missing nav entries
 - [ ] Create `backend/scripts/check_migrations.py` — expand-contract migration lint rejecting destructive Alembic operations
 - [ ] Add `pip-audit --strict` and `yarn audit --level moderate` to CI pipeline (nice-to-have gate for dependency vulnerabilities)
@@ -50,6 +51,7 @@ clinical/NHS go-live.
 
 ## Web push notifications (production-readiness)
 
+- [ ] Re-enable notifications ActionCard on `/settings` page once push notifications are needed
 - [ ] Persistent subscription storage — move from in-memory list to `PushSubscription` DB model
 - [ ] Automated triggers — send notifications on real events (messages, appointments, clinical alerts)
 - [ ] VAPID key documentation — ensure `dev-env-check.sh` validates keys exist
