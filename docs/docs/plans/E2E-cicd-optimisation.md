@@ -121,6 +121,7 @@ Progress note:
 
 - Pull only flow verified in `.github/workflows/branch-ci.yml` using `heavy_e2e_images` + `needs: [heavy_e2e_images]` + explicit pull and local tag step
 - Conditional Playwright install implemented in `.github/workflows/branch-ci.yml` using cache step output `steps.cache_playwright.outputs.cache-hit`
+- E2E dependency install now runs only on exact Yarn cache miss in `.github/workflows/branch-ci.yml` using `steps.cache_yarn.outputs.cache-hit`; two consecutive PR-run validations are still pending
 
 ## Success criteria
 
