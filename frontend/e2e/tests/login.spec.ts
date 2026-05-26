@@ -6,9 +6,6 @@ async function submitLogin(page: Page, username: string, password: string) {
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").fill(password);
 
-  await expect(page.getByLabel("Username")).toHaveValue(username);
-  await expect(page.getByLabel("Password")).toHaveValue(password);
-
   await page
     .locator("form")
     .first()

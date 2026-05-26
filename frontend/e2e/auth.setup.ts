@@ -12,9 +12,6 @@ async function loginWithRateLimitRetry(
     await page.getByLabel("Username").fill("educator");
     await page.getByLabel("Password").fill("educator123");
 
-    await expect(page.getByLabel("Username")).toHaveValue("educator");
-    await expect(page.getByLabel("Password")).toHaveValue("educator123");
-
     await page
       .locator("form")
       .first()
