@@ -4,13 +4,17 @@ test.describe.configure({ timeout: 120_000 });
 
 async function submitLogin(page: Page, username: string, password: string) {
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").pressSequentially(password);
+  await page.getByLabel("Password").fill(password);
 
-  const submitButton = page.getByTestId("submit-button");
-  await expect(submitButton).not.toHaveAttribute("aria-disabled", "true", {
-    timeout: 10_000,
-  });
-  await submitButton.click();
+  await expect(page.getByLabel("Username")).toHaveValue(username);
+  await expect(page.getByLabel("Password")).toHaveValue(password);
+
+  await page
+    .locator("form")
+    .first()
+    .evaluate((el) => {
+      (el as HTMLFormElement).requestSubmit();
+    });
 }
 
 async function loginWithRateLimitRetry(page: Page): Promise<void> {

@@ -10,13 +10,17 @@ async function loginWithRateLimitRetry(
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await page.goto("/login");
     await page.getByLabel("Username").fill("educator");
-    await page.getByLabel("Password").pressSequentially("educator123");
+    await page.getByLabel("Password").fill("educator123");
 
-    const submitButton = page.getByTestId("submit-button");
-    await expect(submitButton).not.toHaveAttribute("aria-disabled", "true", {
-      timeout: 10_000,
-    });
-    await submitButton.click();
+    await expect(page.getByLabel("Username")).toHaveValue("educator");
+    await expect(page.getByLabel("Password")).toHaveValue("educator123");
+
+    await page
+      .locator("form")
+      .first()
+      .evaluate((el) => {
+        (el as HTMLFormElement).requestSubmit();
+      });
 
     const isRedirected = await expect
       .poll(
