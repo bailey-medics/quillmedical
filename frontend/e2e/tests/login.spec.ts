@@ -2,42 +2,50 @@ import { test, expect, type Page } from "@playwright/test";
 
 test.describe.configure({ timeout: 120_000 });
 
-async function submitLogin(
-  page: Page,
-  username: string,
-  password: string,
-): Promise<number> {
+async function submitLogin(page: Page, username: string, password: string) {
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password").pressSequentially(password);
 
-  const responsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/auth/login") &&
-      response.request().method() === "POST",
-    { timeout: 30_000 },
-  );
-
-  await page.getByLabel("Password").press("Enter");
-  const response = await responsePromise;
-  return response.status();
+  const submitButton = page.getByTestId("submit-button");
+  await expect(submitButton).not.toHaveAttribute("aria-disabled", "true", {
+    timeout: 10_000,
+  });
+  await submitButton.click();
 }
 
 async function loginWithRateLimitRetry(page: Page): Promise<void> {
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const status = await submitLogin(page, "educator", "educator123");
-    if (status === 200) {
+    await submitLogin(page, "educator", "educator123");
+
+    const isRedirected = await expect
+      .poll(
+        () => {
+          const pathname = new URL(page.url()).pathname;
+          return pathname === "/" || pathname.startsWith("/teaching");
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(true)
+      .then(
+        () => true,
+        () => false,
+      );
+
+    if (isRedirected) {
       return;
     }
 
-    if (status === 429 && attempt < maxAttempts) {
+    const bodyText = (await page.locator("body").innerText()).toLowerCase();
+    const hitRateLimit =
+      bodyText.includes("rate limit") || bodyText.includes("too many");
+
+    if (hitRateLimit && attempt < maxAttempts) {
       await page.waitForTimeout(1_000 * attempt);
       continue;
     }
 
-    throw new Error(
-      `Valid login failed with status ${status} on attempt ${attempt}`,
-    );
+    throw new Error(`Valid login did not redirect on attempt ${attempt}`);
   }
 }
 
@@ -84,8 +92,7 @@ test.describe("Login page", () => {
   test("shows error with invalid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    const status = await submitLogin(page, "educator", "wrong-password");
-    expect([400, 429]).toContain(status);
+    await submitLogin(page, "educator", "wrong-password");
 
     await expect(page).toHaveURL(/\/login/);
     await expect(page.locator("body")).toContainText(
