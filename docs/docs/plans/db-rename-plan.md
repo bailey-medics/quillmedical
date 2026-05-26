@@ -1,0 +1,143 @@
+# Auth database rename plan
+
+## Goal
+
+Rename the current auth database logical name from `quill_auth` to
+`quill_core` with minimal downtime and a safe rollback path.
+
+## Why this rename
+
+The database now stores data and workflows broader than authentication.
+`quill_core` better reflects current and future usage.
+
+## Scope
+
+This plan covers:
+
+1. Terraform auth Cloud SQL module inputs and dependent env wiring
+2. Backend configuration defaults and runtime env resolution
+3. Docker Compose dev and CI service config and health checks
+4. Deployment validation in teaching/staging before production
+5. Rollback if startup checks fail
+
+This plan does not change application table names or ORM model names.
+
+## Proposed naming
+
+1. Database name: `quill_core`
+2. Cloud SQL instance suffix: keep as `auth` for now to reduce blast radius
+3. Env variable names: keep `AUTH_DB_*` for phase 1, optionally rename later
+
+## Risk profile
+
+Primary risks:
+
+1. Backend cannot connect after deploy due to mismatched DB name
+2. CI/dev Compose health checks fail if they still reference `quill_auth`
+3. Jobs/scripts using old defaults fail silently until exercised
+
+Risk level:
+
+1. Medium for infrastructure and deployment
+2. High if attempted as a one-step production cutover without rehearsal
+
+## Delivery strategy
+
+Use a two-phase migration with rehearsal.
+
+1. Phase A: Prepare and dual-support naming in code/config
+2. Phase B: Switch active DB name to `quill_core` and verify
+
+## Phase A prepare
+
+### A1 Inventory and freeze
+
+- [ ] Confirm all `quill_auth` references in backend, infra, compose, CI, docs
+- [ ] Freeze unrelated infra changes during rename window
+- [ ] Announce change window and rollback owner
+
+### A2 Introduce compatibility defaults
+
+- [ ] Keep `AUTH_DB_*` variable names unchanged to reduce code churn
+- [ ] Update default `AUTH_DB_NAME` to `quill_core` in backend settings
+- [ ] Update Compose dev/CI database names and health checks to `quill_core`
+- [ ] Update docs and runbooks that mention `quill_auth`
+
+### A3 Terraform updates
+
+- [ ] In `infra/main.tf`, set auth module `db_name` from `quill_auth` to
+      `quill_core`
+- [ ] Keep module name and outputs stable (`cloud_sql_auth`) for this phase
+- [ ] Generate and review Terraform plan for each environment
+
+### A4 Rehearsal in teaching
+
+- [ ] Apply Terraform in teaching only
+- [ ] Deploy backend and admin job against new DB name
+- [ ] Run smoke tests for login, token refresh, admin actions, migrations
+- [ ] Run non-integration backend tests in container
+
+Exit criteria for phase A:
+
+- [ ] Teaching healthy through smoke tests and a focused verification run
+- [ ] No reconnect loops, startup failures, or migration failures
+
+## Phase B production cutover
+
+### B1 Pre-cutover
+
+- [ ] Confirm latest backups and restore viability
+- [ ] Confirm no pending DB migrations
+- [ ] Confirm rollback commands are prepared and reviewed
+
+### B2 Execute
+
+- [ ] Apply Terraform change for production auth DB name
+- [ ] Roll backend and related jobs
+- [ ] Confirm Cloud Run revisions healthy
+- [ ] Run smoke test suite immediately
+
+### B3 Post-cutover verification
+
+- [ ] Auth flows: login, refresh, logout, protected route access
+- [ ] Admin workflows that read or write core data
+- [ ] Error logs and monitoring checks for DB connection issues
+
+## Rollback plan
+
+Rollback trigger examples:
+
+1. Backend fails to start or repeated DB connection errors
+2. Auth endpoints failing in smoke tests
+3. Migration or job failures tied to database name mismatch
+
+Rollback steps:
+
+- [ ] Revert Terraform `db_name` for auth module to `quill_auth`
+- [ ] Revert backend and compose defaults if changed in same release
+- [ ] Redeploy previous known-good backend revision
+- [ ] Re-run smoke tests and monitor recovery
+
+## Implementation checklist
+
+- [ ] `backend/app/config.py` default `AUTH_DB_NAME`
+- [ ] `infra/main.tf` auth Cloud SQL module `db_name`
+- [ ] `compose.dev.yml` auth `POSTGRES_DB` and healthcheck
+- [ ] `compose.ci.yml` auth `POSTGRES_DB` and healthcheck
+- [ ] Any scripts/docs referencing `quill_auth`
+
+## Validation checklist
+
+- [ ] `terraform plan` is clean and reviewed for all target environments
+- [ ] Backend starts with expected `AUTH_DB_NAME=quill_core`
+- [ ] Health checks green in Cloud Run
+- [ ] Login and token refresh pass manually and in automated checks
+- [ ] No sustained DB errors in logs during and after cutover validation window
+
+## Follow-up optional phase
+
+After stable cutover, consider a separate cleanup phase:
+
+1. Rename `AUTH_DB_*` env vars to `CORE_DB_*`
+2. Rename module labels if desired (`cloud_sql_auth` to `cloud_sql_core`)
+3. Keep compatibility aliases temporarily to avoid cross-repo breakage
