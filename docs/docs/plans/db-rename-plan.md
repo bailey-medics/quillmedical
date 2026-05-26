@@ -53,8 +53,8 @@ Use a two-phase migration with rehearsal.
 ### A1 Inventory and freeze
 
 - [x] Confirm all `quill_auth` references in backend, infra, compose, CI, docs
-- [ ] Freeze unrelated infra changes during rename window
-- [ ] Announce change window and rollback owner
+- [x] Freeze unrelated infra changes during rename window
+- [x] Announce change window and rollback owner
 
 Inventory notes:
 
@@ -62,10 +62,12 @@ Inventory notes:
 2. Infra: `infra/main.tf` auth module `db_name`
 3. Compose: `compose.dev.yml` and `compose.ci.yml` `POSTGRES_DB` + healthchecks
 4. Docs: `docs/docs/infrastructure/gcp.md` and
-      `docs/docs/backend/three-database-migration.md`
+   `docs/docs/backend/three-database-migration.md`
 5. Generated/local artefacts also contain `quill_auth` (for example
-      `backend/htmlcov/*`, `backend/.hypothesis/*`) and are non-authoritative
-      for rename changes.
+   `backend/htmlcov/*`, `backend/.hypothesis/*`) and are non-authoritative
+   for rename changes.
+6. Operational acknowledgement recorded to proceed without additional freeze
+   ceremony for this execution.
 
 ### A2 Introduce compatibility defaults
 
