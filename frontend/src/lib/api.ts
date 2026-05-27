@@ -129,6 +129,7 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   if (!res.ok) {
     let message = res.statusText;
     let errorCode: string | undefined = undefined;
+    let extraEmail: string | undefined = undefined;
     try {
       const data = await res.json();
       // FastAPI often returns { detail: { message: ..., error_code: ... } }
@@ -143,6 +144,7 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
           else if (typeof d["detail"] === "string")
             message = d["detail"] as string;
           errorCode = (d["error_code"] as string) ?? undefined;
+          if (typeof d["email"] === "string") extraEmail = d["email"] as string;
         } else {
           // detail is likely a string
           message = (data?.detail ?? data?.message ?? message) as string;
@@ -161,8 +163,10 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     const err = new Error(message || `HTTP ${res.status}`) as Error & {
       error_code?: string;
       status?: number;
+      email?: string;
     };
     if (errorCode) err.error_code = errorCode;
+    if (extraEmail) err.email = extraEmail;
     err.status = res.status;
     throw err;
   }

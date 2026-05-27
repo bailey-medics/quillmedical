@@ -68,6 +68,7 @@ class TestLoginBlocksUnverified:
         assert resp.status_code == 403
         detail = resp.json()["detail"]
         assert detail["error_code"] == "email_not_verified"
+        assert detail["email"] == "unverified@example.com"
 
     def test_login_allows_verified_user(
         self, test_client: TestClient, db_session: Session
