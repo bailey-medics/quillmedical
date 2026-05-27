@@ -93,6 +93,27 @@ def _parse_variable_item(
     }
 
 
+def _load_module_status(bank_dir: Path) -> str | None:
+    """Read module status from module.yaml in the parent directory.
+
+    Returns the status string ('draft', 'live', 'retired') or None
+    if module.yaml is not found (e.g. legacy flat layout or GCS temp).
+    """
+    module_yaml = bank_dir.parent / "module.yaml"
+    if not module_yaml.is_file():
+        return None
+    try:
+        with open(module_yaml) as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict):
+            status = data.get("status")
+            if isinstance(status, str):
+                return status
+    except (yaml.YAMLError, OSError):
+        pass
+    return None
+
+
 def sync_question_bank(
     bank_dir: Path,
     organisation_id: int,
@@ -101,6 +122,7 @@ def sync_question_bank(
     *,
     validate_only: bool = False,
     image_inventory: dict[str, set[str]] | None = None,
+    module_status: str | None = None,
 ) -> tuple[ValidationResult, QuestionBankSync | None]:
     """Sync a question bank from the filesystem to the database.
 
@@ -120,6 +142,9 @@ def sync_question_bank(
         Optional mapping of item directory names to sets of image
         filenames (from GCS).  Passed through to validation so
         image existence can be checked against the bucket.
+    module_status:
+        Module lifecycle status ('draft', 'live', 'retired').
+        If not provided, read from module.yaml in the parent directory.
 
     Returns
     -------
@@ -142,6 +167,49 @@ def sync_question_bank(
         bank_id = bank_dir.parent.name
     version = config["version"]
     bank_type = config["type"]
+
+    # Step 2: Version guard (defence-in-depth)
+    status = module_status or _load_module_status(bank_dir)
+
+    if status == "draft" and version != 1:
+        logger.warning(
+            "Rejecting sync for draft bank '%s': version must be 1 "
+            "(got %d)",
+            bank_id,
+            version,
+        )
+        validation.add_error(
+            str(bank_dir),
+            f"Draft module version must be 1, got {version}",
+        )
+        return validation, None
+
+    if status == "live":
+        # Check monotonicity: version must exceed the stored version
+        stored = db.execute(
+            select(QuestionBankConfig.version)
+            .where(
+                QuestionBankConfig.organisation_id == organisation_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+            .order_by(QuestionBankConfig.version.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+        if stored is not None and version <= stored:
+            logger.warning(
+                "Rejecting sync for live bank '%s': version %d "
+                "<= stored version %d",
+                bank_id,
+                version,
+                stored,
+            )
+            validation.add_error(
+                str(bank_dir),
+                f"Version {version} is not greater than stored "
+                f"version {stored}",
+            )
+            return validation, None
 
     # Create sync record
     sync_record = QuestionBankSync(

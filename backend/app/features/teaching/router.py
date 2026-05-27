@@ -67,6 +67,7 @@ from app.features.teaching.scoring import (
 )
 from app.features.teaching.storage import (
     download_bank_from_gcs,
+    get_module_status_from_gcs,
     get_storage_backend,
     has_learning_content,
     list_bank_images_in_gcs,
@@ -1561,12 +1562,23 @@ def sync_items(
     try:
         org_id = _get_user_org_id(user, db)
         inventory = _build_image_inventory(bank_id, is_temp)
+
+        # Resolve module status for version guard
+        status: str | None = None
+        if is_temp:
+            from app.config import settings
+
+            bucket = settings.TEACHING_GCS_BUCKET
+            if bucket:
+                status = get_module_status_from_gcs(bucket, bank_id)
+
         validation, sync_record = sync_question_bank(
             bank_path,
             org_id,
             user.id,
             db,
             image_inventory=inventory,
+            module_status=status,
         )
     finally:
         if is_temp:
@@ -1953,12 +1965,19 @@ def sync_all_banks(
         try:
             bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
             inventory = _build_image_inventory(bank_id, is_temp)
+
+            # Resolve module status for version guard
+            status: str | None = None
+            if is_temp and bucket:
+                status = get_module_status_from_gcs(bucket, bank_id)
+
             _validation, sync_record = sync_question_bank(
                 bank_path,
                 org_id,
                 user.id,
                 db,
                 image_inventory=inventory,
+                module_status=status,
             )
             if sync_record:
                 synced.append(sync_record)
