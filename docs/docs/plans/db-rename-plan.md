@@ -197,3 +197,4 @@ Rollback steps:
 - [x] Keep compatibility aliases via pydantic `validation_alias=AliasChoices("CORE_DB_*", "AUTH_DB_*")`
 - [ ] Later revert compatibility aliases via pydantic
 - [ ] Run full test suite (deferred — Docker offline, verify on next `docker compose up`)
+- [ ] cd infra, terraform state push errored.tfstate, terraform apply -var-file=environments/teaching/terraform.tfvars

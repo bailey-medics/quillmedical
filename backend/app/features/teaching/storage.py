@@ -423,6 +423,37 @@ def download_bank_from_gcs(
 ImageInventory = dict[str, set[str]]
 
 
+def get_module_status_from_gcs(
+    bucket_name: str,
+    bank_id: str,
+) -> str | None:
+    """Read module status from module.yaml in GCS.
+
+    Returns the status string ('draft', 'live', 'retired') or None
+    if not found.
+    """
+    import yaml
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+
+    if not blob.exists():
+        return None
+
+    content = blob.download_as_text()
+    try:
+        data = yaml.safe_load(content)
+        if isinstance(data, dict):
+            status = data.get("status")
+            if isinstance(status, str):
+                return status
+    except yaml.YAMLError:
+        pass
+    return None
+
+
 def list_bank_images_in_gcs(
     bucket_name: str,
     bank_id: str,
