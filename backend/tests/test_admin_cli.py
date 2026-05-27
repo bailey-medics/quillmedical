@@ -58,6 +58,7 @@ class TestCreateSuperadmin:
         user = db_session.query(User).filter(User.username == "mark").first()
         assert user is not None
         assert user.email == "mark@example.com"
+        assert user.email_verified is True
         assert user.system_permissions == "superadmin"
         assert user.base_profession == "consultant"
         assert verify_password("SecurePass123!", user.password_hash)
@@ -90,6 +91,7 @@ class TestCreateSuperadmin:
         assert result == 0
         db_session.refresh(existing)
         assert existing.email == "new@example.com"
+        assert existing.email_verified is True
         assert existing.system_permissions == "superadmin"
         assert verify_password("NewPass123!", existing.password_hash)
 
@@ -291,3 +293,66 @@ class TestMain:
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
+
+
+class TestVerifyEmail:
+    """Tests for the verify-email action."""
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_marks_user_email_verified(self, db_session: Session) -> None:
+        user = User(
+            username="email-pending",
+            email="pending@example.com",
+            password_hash=hash_password("Pass123!"),
+            email_verified=False,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        env = {
+            "ADMIN_ACTION": "verify-email",
+            "ADMIN_USERNAME": "email-pending",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.admin_cli import verify_email
+
+            result = verify_email()
+
+        assert result == 0
+        db_session.refresh(user)
+        assert user.email_verified is True
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_verify_email_idempotent(self, db_session: Session) -> None:
+        user = User(
+            username="already-verified",
+            email="already@example.com",
+            password_hash=hash_password("Pass123!"),
+            email_verified=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        env = {
+            "ADMIN_ACTION": "verify-email",
+            "ADMIN_USERNAME": "already-verified",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.admin_cli import verify_email
+
+            result = verify_email()
+
+        assert result == 0
+
+    @pytest.mark.usefixtures("_patch_session")
+    def test_verify_email_user_not_found(self, db_session: Session) -> None:
+        env = {
+            "ADMIN_ACTION": "verify-email",
+            "ADMIN_USERNAME": "ghost",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.admin_cli import verify_email
+
+            result = verify_email()
+
+        assert result == 1

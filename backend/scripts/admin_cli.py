@@ -96,6 +96,7 @@ def create_superadmin() -> int:
         # Set superadmin permissions and consultant base profession
         user.system_permissions = "superadmin"
         user.base_profession = "consultant"
+        user.email_verified = True
 
         # Add System Administrator role if it exists and not already assigned
         role = (
@@ -205,6 +206,38 @@ def add_role() -> int:
         db.close()
 
 
+def verify_email() -> int:
+    """Mark an existing user's email as verified."""
+    env = _require_env("ADMIN_USERNAME")
+    username = env["ADMIN_USERNAME"]
+
+    from app.db.auth_db import AuthSessionLocal
+    from app.models import User
+
+    db = AuthSessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            print(f"✗ User '{username}' not found", file=sys.stderr)
+            return 1
+
+        if user.email_verified:
+            print(f"ℹ User '{username}' email is already verified")
+            return 0
+
+        user.email_verified = True
+        db.commit()
+        print(f"✓ Marked '{username}' email as verified")
+        return 0
+
+    except Exception as exc:
+        db.rollback()
+        print(f"✗ Database error: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "create-superadmin": (
         create_superadmin,
@@ -217,6 +250,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "add-role": (
         add_role,
         "Add a role to an existing user",
+    ),
+    "verify-email": (
+        verify_email,
+        "Mark a user's email as verified",
     ),
 }
 

@@ -88,7 +88,10 @@ export default function LoginPage() {
       let errorMessage: string;
 
       if (code === "email_not_verified") {
-        navigate("/verify-email-pending");
+        const email = (errObj as unknown as Record<string, unknown>).email as
+          | string
+          | undefined;
+        navigate("/verify-email-pending", { state: { email } });
         return {
           state: "error",
           message: { title: "Please verify your email first" },

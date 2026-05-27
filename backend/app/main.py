@@ -658,6 +658,7 @@ def login(
             detail={
                 "message": "Email not verified",
                 "error_code": "email_not_verified",
+                "email": user.email,
             },
         )
 

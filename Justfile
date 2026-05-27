@@ -628,7 +628,7 @@ build-admin env:
         --vpc-egress=private-ranges-only \
         --max-retries=0 \
         --task-timeout=300s \
-        --set-env-vars "AUTH_DB_HOST=${AUTH_DB_HOST},AUTH_DB_NAME=quill_auth,AUTH_DB_USER=quill" \
+        --set-env-vars "AUTH_DB_HOST=${AUTH_DB_HOST},AUTH_DB_NAME=quill_core,AUTH_DB_USER=quill" \
         --set-secrets "AUTH_DB_PASSWORD=auth-db-password:latest,JWT_SECRET=jwt-secret:latest" \
         --quiet
     echo "✓ Cloud Run Job deployed"
