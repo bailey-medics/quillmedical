@@ -540,6 +540,14 @@ e2e:
     {{initialise}} "e2e"
     cd frontend && npx playwright test
 
+
+alias eer := e2e-report
+# Run end-to-end tests, then open the Playwright HTML report
+e2e-report:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e-report"
+    cd frontend && npx playwright test && npx playwright show-report
+
 alias eeu := e2e-ui
 # Run the end-to-end tests in interactive UI mode
 e2e-ui:

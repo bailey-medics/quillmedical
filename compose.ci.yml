@@ -16,7 +16,7 @@ services:
     environment:
       # Auth DB — individual components (Settings computes the URL)
       AUTH_DB_PASSWORD: ci_password
-      # Defaults match: AUTH_DB_NAME=quill_auth, AUTH_DB_USER=auth_user,
+      # Defaults match: AUTH_DB_NAME=quill_core, AUTH_DB_USER=auth_user,
       # AUTH_DB_HOST=postgres-auth, AUTH_DB_PORT=5432
       JWT_SECRET: ci-e2e-jwt-secret-key-minimum-32-chars
       BACKEND_ENV: testing
@@ -67,13 +67,13 @@ services:
     image: postgres:18-alpine
     container_name: ci_postgres_auth
     environment:
-      POSTGRES_DB: quill_auth
+      POSTGRES_DB: quill_core
       POSTGRES_USER: auth_user
       POSTGRES_PASSWORD: ci_password
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_auth"]
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_core"]
       interval: 3s
       timeout: 2s
       retries: 10
