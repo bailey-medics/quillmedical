@@ -69,9 +69,13 @@ resource "google_sql_database" "database" {
   project  = var.project_id
   name     = var.db_name
   instance = google_sql_database_instance.instance.name
-  # Keep policy unchanged for the existing tracked database to avoid provider
-  # update failures during app-database cutover.
-  deletion_policy = "DELETE"
+  # Keep legacy DB during cutover and do not attempt in-place policy updates,
+  # which fail intermittently on provider-side DB update operations.
+  deletion_policy = "ABANDON"
+
+  lifecycle {
+    ignore_changes = [deletion_policy]
+  }
 }
 
 resource "google_sql_database" "app_database" {
