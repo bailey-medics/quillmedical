@@ -58,66 +58,66 @@ explanatory text) is exempt because:
 ### Phase 1: Version lock validation in CI
 
 - [x] 1. Update `teaching-tooling/.github/workflows/validate.yml`:
-   - Add `fetch-depth: 0` to content repo checkout (need git history)
-   - Add `git fetch origin main` step
-   - Add new validation step: `python tooling/scripts/check_version_lock.py content/modules/`
+  - Add `fetch-depth: 0` to content repo checkout (need git history)
+  - Add `git fetch origin main` step
+  - Add new validation step: `python tooling/scripts/check_version_lock.py content/modules/`
 
 - [x] 2. Create `teaching-tooling/scripts/check_version_lock.py`:
 
-   ```
-   For each module directory:
-     Read module.yaml from origin/main via:
-       git show origin/main:modules/<id>/module.yaml
-     If module doesn't exist on main → new module, skip (nothing to protect)
-     main_status = status from main's module.yaml
+  ```
+  For each module directory:
+    Read module.yaml from origin/main via:
+      git show origin/main:modules/<id>/module.yaml
+    If module doesn't exist on main → new module, skip (nothing to protect)
+    main_status = status from main's module.yaml
 
-     If main_status == "draft":
-       pr_version = version from PR branch's assessment.yaml
-       If pr_version != 1 → FAIL (version must stay at 1 until module is live)
-       → pass
+    If main_status == "draft":
+      pr_version = version from PR branch's assessment.yaml
+      If pr_version != 1 → FAIL (version must stay at 1 until module is live)
+      → pass
 
-     If main_status == "retired":
-       → FAIL (retired modules are permanently frozen; create a new module instead)
+    If main_status == "retired":
+      → FAIL (retired modules are permanently frozen; create a new module instead)
 
-     If main_status == "live":
-       Read assessment/assessment.yaml from origin/main
-       main_version = version from main's assessment.yaml
-       pr_version = version from PR branch's assessment.yaml
-       changed_assessment = git diff --name-only origin/main -- modules/<id>/assessment/
-       (note: modules/<id>/learning/ is NOT checked — exempt from lock)
-       If no assessment files changed → pass (no-op)
-       If assessment files changed AND pr_version == main_version → FAIL
-       If assessment files changed AND pr_version == main_version + 1 → PASS
-       If assessment files changed AND pr_version > main_version + 1 → FAIL (no skipping)
-       If assessment files changed AND pr_version < main_version → FAIL (no decrease)
-   ```
+    If main_status == "live":
+      Read assessment/assessment.yaml from origin/main
+      main_version = version from main's assessment.yaml
+      pr_version = version from PR branch's assessment.yaml
+      changed_assessment = git diff --name-only origin/main -- modules/<id>/assessment/
+      (note: modules/<id>/learning/ is NOT checked — exempt from lock)
+      If no assessment files changed → pass (no-op)
+      If assessment files changed AND pr_version == main_version → FAIL
+      If assessment files changed AND pr_version == main_version + 1 → PASS
+      If assessment files changed AND pr_version > main_version + 1 → FAIL (no skipping)
+      If assessment files changed AND pr_version < main_version → FAIL (no decrease)
+  ```
 
 ### Phase 2: Branch protection via Terraform
 
 - [x] 3. Create `teaching-tooling/infra/main.tf`:
-   - GitHub provider with `bailey-medics` org
-   - `github_branch_protection` resource using `for_each` over teaching repos
-   - Require PRs to merge to main
-   - Require "Validate teaching content" status check to pass
-   - Terraform state stored in GCS (or local — small enough)
-   - Apply via GitHub Actions on push to `teaching-tooling/infra/`
+  - GitHub provider with `bailey-medics` org
+  - `github_branch_protection` resource using `for_each` over teaching repos
+  - Require PRs to merge to main
+  - Require "Validate teaching content" status check to pass
+  - Terraform state stored in GCS (or local — small enough)
+  - Apply via GitHub Actions on push to `teaching-tooling/infra/`
 
 ### Phase 3: Backend defence-in-depth
 
 - [x] 4. In `backend/app/features/teaching/sync.py`:
-   - **Draft modules**: reject sync if `version != 1`
-   - **Live modules**: reject sync if incoming `version <= stored_version`
-     (log warning, skip bank, don't error the whole sync)
-   - **Retired modules**: import normally (backend needs to know the module
-     is retired so it can hide it from delegates and block new assessments)
+  - **Draft modules**: reject sync if `version != 1`
+  - **Live modules**: reject sync if incoming `version <= stored_version`
+    (log warning, skip bank, don't error the whole sync)
+  - **Retired modules**: import normally (backend needs to know the module
+    is retired so it can hide it from delegates and block new assessments)
 
 ### Phase 4: Sync UI feedback
 
 - [ ] 5. Update the sync admin page to show a detailed result breakdown:
-   - `StateMessage` summary: "Sync complete: X imported, Y skipped, Z errors"
-   - `DataTable` below with per-module rows: name, status (imported/skipped/error),
-     version (previous → new), and reason for any skip/failure
-   - Results persist on screen until the next sync is triggered
+  - `StateMessage` summary: "Sync complete: X imported, Y skipped, Z errors"
+  - `DataTable` below with per-module rows: name, status (imported/skipped/error),
+    version (previous → new), and reason for any skip/failure
+  - Results persist on screen until the next sync is triggered
 
 ## Files to change
 
@@ -135,15 +135,29 @@ explanatory text) is exempt because:
 
 ## Verification
 
-1. `python teaching-tooling/scripts/validate.py teaching-repos/eoeeta-teaching/modules/` — passes
-2. `check_version_lock.py` with unchanged files + same version → passes
-3. `check_version_lock.py` with changed files + same version → fails
-4. `check_version_lock.py` with changed files + version bumped → passes
-5. Backend tests pass: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"`
-6. Teaching-tooling tests pass: `cd teaching-tooling && pytest`
+- [x] 1. `check_version_lock.py` unit tests pass (10 tests — draft, live, retired, new module)
+- [ ] 2. `python teaching-tooling/scripts/validate.py teaching-repos/eoeeta-teaching/modules/` — passes
+- [ ] 3. Backend tests pass: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"`
+- [ ] 4. Backend sync version guard tests (new tests for draft/live/retired rejection)
+- [ ] 5. Teaching-tooling full test suite: `cd teaching-tooling && pytest`
+- [ ] 6. Frontend sync UI tests (Phase 4)
+
+## Outstanding test work (requires Docker)
+
+- [ ] Backend: test `_load_module_status` reads from parent dir correctly
+- [ ] Backend: test draft module rejected when version != 1
+- [ ] Backend: test live module rejected when version <= stored
+- [ ] Backend: test live module accepted when version > stored
+- [ ] Backend: test retired module imports normally (no version guard)
+- [ ] Backend: test `get_module_status_from_gcs` (mock GCS client)
+- [ ] Teaching-tooling: integration test with real git repo fixture
 
 ## Rollout order
 
 1. `teaching-tooling` — lock script + branch protection Terraform (merged first)
 2. `quillmedical` backend — add monotonicity guard
-3. Run `terraform apply` in teaching-tooling/infra to activate branch protection
+3. Run `terraform apply` in teaching-tooling/infra to activate:
+   - Content repos: require "Validate teaching content" status check
+   - `teaching-tooling` itself: require "python-tests" + "node-tests" status checks
+   - All teaching repos: branch naming restricted to `main` or `feature/*` only
+4. All repos use PRs to main — no direct pushes
