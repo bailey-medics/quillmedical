@@ -12,6 +12,7 @@ from app.features.teaching.storage import (
     GCSStorageBackend,
     LocalStorageBackend,
     download_bank_from_gcs,
+    get_module_status_from_gcs,
     get_storage_backend,
     list_bank_images_in_gcs,
     list_banks_in_gcs,
@@ -407,3 +408,84 @@ class TestResolveLocalBank:
 
         result = resolve_local_bank(str(tmp_path), "my-bank")
         assert result == assessment
+
+
+class TestGetModuleStatusFromGcs:
+    """get_module_status_from_gcs reads module.yaml from GCS."""
+
+    def test_returns_status_when_blob_exists(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = True
+        mock_blob.download_as_text.return_value = (
+            "moduleId: my-module\nstatus: live\n"
+        )
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = get_module_status_from_gcs("test-bucket", "my-module")
+
+        assert result == "live"
+        mock_bucket.blob.assert_called_with("modules/my-module/module.yaml")
+
+    def test_returns_none_when_blob_missing(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = False
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = get_module_status_from_gcs("test-bucket", "my-module")
+
+        assert result is None
+
+    def test_returns_none_for_invalid_yaml(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = True
+        mock_blob.download_as_text.return_value = ": bad: yaml: ["
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = get_module_status_from_gcs("test-bucket", "my-module")
+
+        assert result is None
+
+    def test_returns_none_when_status_not_string(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = True
+        mock_blob.download_as_text.return_value = "status: 42\n"
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = get_module_status_from_gcs("test-bucket", "my-module")
+
+        assert result is None
+
+    def test_returns_retired_status(self) -> None:
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_blob.exists.return_value = True
+        mock_blob.download_as_text.return_value = "status: retired\n"
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = get_module_status_from_gcs("test-bucket", "my-module")
+
+        assert result == "retired"
