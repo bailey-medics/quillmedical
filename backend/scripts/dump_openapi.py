@@ -52,10 +52,10 @@ def main():
                 "using in-memory SQLite for export"
             )
         # Database passwords
-        if not os.environ.get("AUTH_DB_PASSWORD"):
-            os.environ["AUTH_DB_PASSWORD"] = "dev-auth-password"
+        if not os.environ.get("CORE_DB_PASSWORD"):
+            os.environ["CORE_DB_PASSWORD"] = "dev-auth-password"
             print(
-                "(export_openapi) WARNING: AUTH_DB_PASSWORD not set; "
+                "(export_openapi) WARNING: CORE_DB_PASSWORD not set; "
                 "using temporary dev password for export"
             )
         if not os.environ.get("FHIR_DB_PASSWORD"):

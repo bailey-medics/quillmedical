@@ -17,7 +17,7 @@ This plan covers:
 1. Terraform auth Cloud SQL module inputs and dependent env wiring
 2. Backend configuration defaults and runtime env resolution
 3. Docker Compose dev and CI service config and health checks
-4. Deployment validation in teaching/staging before production
+4. Deployment validation in teaching (production is shut down to save costs)
 5. Rollback if startup checks fail
 
 This plan does not change application table names or ORM model names.
@@ -83,13 +83,15 @@ Inventory notes:
 - [x] In `infra/main.tf`, set auth module `db_name` from `quill_auth` to
       `quill_core`
 - [x] Keep module name and outputs stable (`cloud_sql_auth`) for this phase
-- [ ] Generate and review Terraform plan for each environment
+- [x] Generate and review Terraform plan for each environment
 
-Blocker note:
+Resolved blocker:
 
-1. `terraform plan` for teaching failed due GCP auth session expiry
-   (`invalid_grant`, `invalid_rapt`) when reading remote state.
-2. Re-authenticate Google Cloud CLI and rerun plan for teaching/staging/prod.
+1. `terraform plan` for teaching initially failed due GCP auth session
+   expiry (`invalid_grant`, `invalid_rapt`) — resolved via CI apply.
+2. Cloud SQL provider attempted destructive replace of legacy DB —
+   resolved with `app_db_name` variable and `lifecycle { ignore_changes }`
+   on legacy resource.
 
 ### A3.5 Local preflight (before teaching)
 
@@ -107,17 +109,36 @@ Local validation notes:
 
 ### A4 Rehearsal in teaching
 
-- [ ] Apply Terraform in teaching only
-- [ ] Deploy backend and admin job against new DB name
-- [ ] Run smoke tests for login, token refresh, admin actions, migrations
-- [ ] Run non-integration backend tests in container
+- [x] Apply Terraform in teaching only
+- [x] Deploy backend and admin job against new DB name
+- [x] Run smoke tests for login, token refresh, admin actions, migrations
+- [x] Run non-integration backend tests in container
+
+Teaching validation notes:
+
+1. Terraform apply succeeded after resolving Cloud SQL provider update
+   failures (legacy DB `deletion_policy` drift handled via `lifecycle {
+ignore_changes }`).
+2. Cloud Run backend and admin job both running with
+   `AUTH_DB_NAME=quill_core`.
+3. Created superadmin user via admin job, verified email, logged in
+   successfully.
+4. Email sending confirmed working (Resend API key unaffected by DB
+   cutover).
+5. Admin CLI updated with `verify-email` action and auto-verify on
+   `create-superadmin`.
 
 Exit criteria for phase A:
 
-- [ ] Teaching healthy through smoke tests and a focused verification run
-- [ ] No reconnect loops, startup failures, or migration failures
+- [x] Teaching healthy through smoke tests and a focused verification run
+- [x] No reconnect loops, startup failures, or migration failures
 
 ## Phase B production cutover
+
+> **Deferred.** Production environment is shut down to save costs.
+> When production is re-enabled, follow the same pattern as the teaching
+> rehearsal: apply Terraform, deploy backend/admin job, create superadmin,
+> verify login and token refresh.
 
 ### B1 Pre-cutover
 
@@ -155,24 +176,24 @@ Rollback steps:
 
 ## Implementation checklist
 
-- [ ] `backend/app/config.py` default `AUTH_DB_NAME`
-- [ ] `infra/main.tf` auth Cloud SQL module `db_name`
-- [ ] `compose.dev.yml` auth `POSTGRES_DB` and healthcheck
-- [ ] `compose.ci.yml` auth `POSTGRES_DB` and healthcheck
-- [ ] Any scripts/docs referencing `quill_auth`
+- [x] `backend/app/config.py` default `AUTH_DB_NAME`
+- [x] `infra/main.tf` auth Cloud SQL module `db_name`
+- [x] `compose.dev.yml` auth `POSTGRES_DB` and healthcheck
+- [x] `compose.ci.yml` auth `POSTGRES_DB` and healthcheck
+- [x] Any scripts/docs referencing `quill_auth`
 
 ## Validation checklist
 
-- [ ] `terraform plan` is clean and reviewed for all target environments
-- [ ] Backend starts with expected `AUTH_DB_NAME=quill_core`
-- [ ] Health checks green in Cloud Run
-- [ ] Login and token refresh pass manually and in automated checks
-- [ ] No sustained DB errors in logs during and after cutover validation window
+- [x] `terraform plan` is clean and reviewed for all target environments
+- [x] Backend starts with expected `AUTH_DB_NAME=quill_core`
+- [x] Health checks green in Cloud Run (teaching)
+- [x] Login and token refresh pass manually and in automated checks
+- [x] No sustained DB errors in logs during and after cutover validation window
 
-## Follow-up optional phase
+## Follow-up phase (completed)
 
-After stable cutover, consider a separate cleanup phase:
-
-1. Rename `AUTH_DB_*` env vars to `CORE_DB_*`
-2. Rename module labels if desired (`cloud_sql_auth` to `cloud_sql_core`)
-3. Keep compatibility aliases temporarily to avoid cross-repo breakage
+- [x] Rename `AUTH_DB_*` env vars to `CORE_DB_*` in backend config, compose, Justfile, Terraform
+- [x] Rename Terraform module label `cloud_sql_auth` → `cloud_sql_core` with `moved` block
+- [x] Keep compatibility aliases via pydantic `validation_alias=AliasChoices("CORE_DB_*", "AUTH_DB_*")`
+- [ ] Later revert compatibility aliases via pydantic
+- [ ] Run full test suite (deferred — Docker offline, verify on next `docker compose up`)

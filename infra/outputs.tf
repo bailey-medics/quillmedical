@@ -15,9 +15,9 @@ output "frontend_url" {
   value       = module.cloud_run_frontend.service_url
 }
 
-output "auth_db_connection" {
-  description = "Auth database Cloud SQL connection name"
-  value       = module.cloud_sql_auth.connection_name
+output "core_db_connection" {
+  description = "Core database Cloud SQL connection name"
+  value       = module.cloud_sql_core.connection_name
 }
 
 output "fhir_vm_ip" {

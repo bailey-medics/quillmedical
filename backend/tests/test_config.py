@@ -10,7 +10,7 @@ class TestSettingsComputedFields:
         """Test FHIR database URL construction."""
         settings = Settings(
             JWT_SECRET="test_secret_long_enough_32_chars_min",
-            AUTH_DB_PASSWORD="auth_pass",
+            CORE_DB_PASSWORD="auth_pass",
             FHIR_DB_PASSWORD="fhir_pass",
             EHRBASE_DB_PASSWORD="ehrbase_pass",
             EHRBASE_API_PASSWORD="api_pass",
@@ -30,7 +30,7 @@ class TestSettingsComputedFields:
         """Test EHRbase database URL construction."""
         settings = Settings(
             JWT_SECRET="test_secret_long_enough_32_chars_min",
-            AUTH_DB_PASSWORD="auth_pass",
+            CORE_DB_PASSWORD="auth_pass",
             FHIR_DB_PASSWORD="fhir_pass",
             EHRBASE_DB_PASSWORD="ehrbase_pass",
             EHRBASE_API_PASSWORD="api_pass",

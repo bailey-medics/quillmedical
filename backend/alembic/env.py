@@ -21,7 +21,7 @@ sys.path.append(
 # Alembic Config object (reads alembic.ini)
 config = context.config
 
-db_url = getattr(settings, "AUTH_DATABASE_URL", None)
+db_url = getattr(settings, "CORE_DATABASE_URL", None)
 if db_url is not None:
     config.set_main_option("sqlalchemy.url", db_url)
 

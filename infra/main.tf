@@ -54,16 +54,21 @@ module "networking" {
   environment = var.environment
 }
 
-# ---------- Cloud SQL: auth database (all environments) ----------
-module "cloud_sql_auth" {
+# Rename: cloud_sql_auth → cloud_sql_core (no resource recreation)
+moved {
+  from = module.cloud_sql_auth
+  to   = module.cloud_sql_core
+}
+
+# ---------- Cloud SQL: core database (all environments) ----------
+module "cloud_sql_core" {
   source     = "./modules/cloud-sql"
   project_id = var.project_id
   region     = var.region
   environment = var.environment
 
   instance_name         = "auth"
-  db_name               = "quill_auth"
-  app_db_name           = "quill_core"
+  db_name               = "quill_core"
   db_user               = "quill"
   db_password_secret_id = "auth-db-password"
   tier                  = var.db_tier
@@ -200,10 +205,10 @@ module "cloud_run_backend" {
       SECURE_COOKIES   = "true"
       COOKIE_DOMAIN    = ".${var.domain}"
       FRONTEND_URL     = "https://${var.lb_domains[0]}"
-      AUTH_DB_HOST     = module.cloud_sql_auth.private_ip
-      AUTH_DB_NAME     = module.cloud_sql_auth.database_name
-      AUTH_DB_USER     = module.cloud_sql_auth.database_user
-      AUTH_DB_SSLMODE  = "require"
+      CORE_DB_HOST     = module.cloud_sql_core.private_ip
+      CORE_DB_NAME     = module.cloud_sql_core.database_name
+      CORE_DB_USER     = module.cloud_sql_core.database_user
+      CORE_DB_SSLMODE  = "require"
     },
     var.enable_fhir ? {
       FHIR_SERVER_URL  = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
@@ -230,7 +235,7 @@ module "cloud_run_backend" {
   secret_env_vars = merge(
     {
       JWT_SECRET       = "jwt-secret"
-      AUTH_DB_PASSWORD  = "auth-db-password"
+      CORE_DB_PASSWORD  = "auth-db-password"
       VAPID_PRIVATE    = "vapid-private"
       RESEND_API_KEY   = "resend-api-key"
     },
@@ -249,7 +254,7 @@ module "cloud_run_backend" {
     google_secret_manager_secret_version.jwt_secret,
     google_secret_manager_secret_version.vapid_private,
     google_project_iam_member.cloudrun_secret_accessor,
-    module.cloud_sql_auth, # writes auth-db-password version
+    module.cloud_sql_core, # writes auth-db-password version
   ]
 }
 
@@ -270,19 +275,19 @@ module "cloud_run_admin_job" {
   vpc_connector_id = module.networking.vpc_connector_id
 
   env_vars = {
-    AUTH_DB_HOST = module.cloud_sql_auth.private_ip
-    AUTH_DB_NAME = module.cloud_sql_auth.database_name
-    AUTH_DB_USER = module.cloud_sql_auth.database_user
+    CORE_DB_HOST = module.cloud_sql_core.private_ip
+    CORE_DB_NAME = module.cloud_sql_core.database_name
+    CORE_DB_USER = module.cloud_sql_core.database_user
   }
 
   secret_env_vars = {
-    AUTH_DB_PASSWORD = "auth-db-password"
+    CORE_DB_PASSWORD = "auth-db-password"
     JWT_SECRET      = "jwt-secret"
   }
 
   depends_on = [
     google_project_iam_member.cloudrun_secret_accessor,
-    module.cloud_sql_auth,
+    module.cloud_sql_core,
   ]
 }
 

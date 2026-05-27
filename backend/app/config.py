@@ -6,7 +6,7 @@ properties for database connection strings.
 
 The configuration is organized into sections:
 - JWT authentication settings
-- Auth database connection
+- Core database connection
 - FHIR database connection
 - EHRbase connection
 - VAPID keys for push notifications
@@ -14,7 +14,13 @@ The configuration is organized into sections:
 
 from urllib.parse import quote_plus
 
-from pydantic import Field, SecretStr, computed_field, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    computed_field,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,7 +40,7 @@ class Settings(BaseSettings):
         COOKIE_DOMAIN: Domain for auth cookies (None = current domain)
         SECURE_COOKIES: Whether to use Secure flag on cookies (default: False)
 
-        AUTH_DB_*: Authentication database connection parameters
+        CORE_DB_*: Core database connection parameters (accepts AUTH_DB_* alias)
         FHIR_DB_*: FHIR database connection parameters
         EHRBASE_*: EHRbase API connection parameters
         VAPID_PRIVATE: VAPID private key for push notifications
@@ -84,22 +90,39 @@ class Settings(BaseSettings):
         ),
     )
 
-    # --- Auth Database ---
-    AUTH_DB_NAME: str = Field("quill_core", description="Auth database name")
-    AUTH_DB_USER: str = Field("auth_user", description="Auth database user")
-    AUTH_DB_PASSWORD: SecretStr = Field(
-        ..., description="Auth database password"
+    # --- Core Database ---
+    CORE_DB_NAME: str = Field(
+        "quill_core",
+        description="Core database name",
+        validation_alias=AliasChoices("CORE_DB_NAME", "AUTH_DB_NAME"),
     )
-    AUTH_DB_HOST: str = Field(
-        "postgres-auth", description="Auth database host"
+    CORE_DB_USER: str = Field(
+        "auth_user",
+        description="Core database user",
+        validation_alias=AliasChoices("CORE_DB_USER", "AUTH_DB_USER"),
     )
-    AUTH_DB_PORT: int = Field(5432, description="Auth database port")
-    AUTH_DB_SSLMODE: str = Field(
+    CORE_DB_PASSWORD: SecretStr = Field(
+        ...,
+        description="Core database password",
+        validation_alias=AliasChoices("CORE_DB_PASSWORD", "AUTH_DB_PASSWORD"),
+    )
+    CORE_DB_HOST: str = Field(
+        "postgres-auth",
+        description="Core database host",
+        validation_alias=AliasChoices("CORE_DB_HOST", "AUTH_DB_HOST"),
+    )
+    CORE_DB_PORT: int = Field(
+        5432,
+        description="Core database port",
+        validation_alias=AliasChoices("CORE_DB_PORT", "AUTH_DB_PORT"),
+    )
+    CORE_DB_SSLMODE: str = Field(
         "prefer",
         description=(
-            "SSL mode for auth database connection. "
+            "SSL mode for core database connection. "
             "Use 'require' or 'verify-full' in production."
         ),
+        validation_alias=AliasChoices("CORE_DB_SSLMODE", "AUTH_DB_SSLMODE"),
     )
 
     # --- FHIR Database ---
@@ -206,24 +229,23 @@ class Settings(BaseSettings):
     # --- Computed Database URLs ---
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def AUTH_DATABASE_URL(self) -> str:
-        """Auth Database Connection URL.
+    def CORE_DATABASE_URL(self) -> str:
+        """Core Database Connection URL.
 
-        Constructs a PostgreSQL connection URL for the authentication database
+        Constructs a PostgreSQL connection URL for the core database
         using psycopg (pure Python driver). The password is URL-encoded to handle
         special characters safely. This URL is used by SQLAlchemy to establish
-        connections to the auth database container.
+        connections to the core database container.
 
         Returns:
             str: SQLAlchemy-compatible database URL in format:
                 postgresql+psycopg://user:password@host:port/database
         """
-        """Construct auth database URL from components."""
         return (
-            f"postgresql+psycopg://{self.AUTH_DB_USER}:"
-            f"{quote_plus(self.AUTH_DB_PASSWORD.get_secret_value())}@"
-            f"{self.AUTH_DB_HOST}:{self.AUTH_DB_PORT}/{self.AUTH_DB_NAME}"
-            f"?sslmode={self.AUTH_DB_SSLMODE}"
+            f"postgresql+psycopg://{self.CORE_DB_USER}:"
+            f"{quote_plus(self.CORE_DB_PASSWORD.get_secret_value())}@"
+            f"{self.CORE_DB_HOST}:{self.CORE_DB_PORT}/{self.CORE_DB_NAME}"
+            f"?sslmode={self.CORE_DB_SSLMODE}"
         )
 
     @computed_field  # type: ignore[prop-decorator]
