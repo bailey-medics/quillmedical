@@ -69,9 +69,9 @@ resource "google_sql_database" "database" {
   project  = var.project_id
   name     = var.db_name
   instance = google_sql_database_instance.instance.name
-  # Database replacement can fail if active connections still exist during
-  # rollout. Abandon old DB resources so cutovers can complete safely.
-  deletion_policy = "ABANDON"
+  # Keep policy unchanged for the existing tracked database to avoid provider
+  # update failures during app-database cutover.
+  deletion_policy = "DELETE"
 }
 
 resource "google_sql_database" "app_database" {
