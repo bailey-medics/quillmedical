@@ -1,7 +1,7 @@
-"""Authentication database connection and session management.
+"""Core database connection and session management.
 
 This module provides SQLAlchemy engine and session management for the
-authentication database (user accounts, roles, sessions).
+core database (user accounts, roles, sessions).
 """
 
 from collections.abc import Generator
@@ -11,9 +11,9 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
 
-# Create auth database engine
+# Create core database engine
 auth_engine = create_engine(
-    settings.AUTH_DATABASE_URL,
+    settings.CORE_DATABASE_URL,
     future=True,
     pool_pre_ping=True,  # Verify connections before use
     pool_size=5,

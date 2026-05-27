@@ -1,9 +1,5 @@
 # modules/cloud-sql/main.tf — Managed PostgreSQL instance
 
-locals {
-  effective_app_db_name = coalesce(var.app_db_name, var.db_name)
-}
-
 resource "google_sql_database_instance" "instance" {
   project          = var.project_id
   name             = "quill-${var.instance_name}-${var.environment}"
@@ -65,24 +61,16 @@ resource "google_sql_database_instance" "instance" {
   }
 }
 
-resource "google_sql_database" "database" {
-  project  = var.project_id
-  name     = var.db_name
-  instance = google_sql_database_instance.instance.name
-  # Keep legacy DB during cutover and do not attempt in-place policy updates,
-  # which fail intermittently on provider-side DB update operations.
-  deletion_policy = "ABANDON"
-
-  lifecycle {
-    ignore_changes = [deletion_policy]
-  }
+# State migration: app_database[0] → database (no-op where app_database never existed)
+moved {
+  from = google_sql_database.app_database[0]
+  to   = google_sql_database.database
 }
 
-resource "google_sql_database" "app_database" {
-  count    = local.effective_app_db_name != var.db_name ? 1 : 0
-  project  = var.project_id
-  name     = local.effective_app_db_name
-  instance = google_sql_database_instance.instance.name
+resource "google_sql_database" "database" {
+  project         = var.project_id
+  name            = var.db_name
+  instance        = google_sql_database_instance.instance.name
   deletion_policy = "ABANDON"
 }
 

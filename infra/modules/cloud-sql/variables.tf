@@ -25,11 +25,6 @@ variable "db_name" {
   type        = string
 }
 
-variable "app_db_name" {
-  description = "Database name the application should use (optional). When set and different from db_name, an additional database is created without replacing the existing one."
-  type        = string
-  default     = null
-}
 
 variable "db_user" {
   description = "Database user to create"

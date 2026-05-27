@@ -14,10 +14,10 @@ services:
       target: prod
     container_name: ci_backend
     environment:
-      # Auth DB — individual components (Settings computes the URL)
-      AUTH_DB_PASSWORD: ci_password
-      # Defaults match: AUTH_DB_NAME=quill_core, AUTH_DB_USER=auth_user,
-      # AUTH_DB_HOST=postgres-auth, AUTH_DB_PORT=5432
+      # Core DB — individual components (Settings computes the URL)
+      CORE_DB_PASSWORD: ci_password
+      # Defaults match: CORE_DB_NAME=quill_core, CORE_DB_USER=auth_user,
+      # CORE_DB_HOST=postgres-auth, CORE_DB_PORT=5432
       JWT_SECRET: ci-e2e-jwt-secret-key-minimum-32-chars
       BACKEND_ENV: testing
       CLINICAL_SERVICES_ENABLED: "false"
