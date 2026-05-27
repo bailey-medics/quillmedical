@@ -15,7 +15,6 @@ clinical/NHS go-live.
 
 ## Monitoring and operations
 
-- [ ] Add structured error logging — backend logs with request ID, user ID (not PHI), and error context
 - [ ] Create basic runbooks for common incidents (502s, DB connection exhaustion, cold start latency, rollback procedure)
 - [ ] Write a one-page incident response plan (escalation chain, P1/P2/P3 classification, comms template, post-incident review)
 - [ ] Add GCP Cloud Monitoring Slack integration (replace `webhook_token_auth` with native Slack app in `infra/modules/monitoring/main.tf`)
@@ -64,7 +63,6 @@ clinical/NHS go-live.
 - [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to Terraform compute-fhir module
 - [ ] Add backup strategy for FHIR and EHRbase databases (disk snapshots or migrate to Cloud SQL)
 - [ ] Write backup restore SOP (daily restore vs PITR, step-by-step, permissions, comms plan, quarterly drill)
-- [ ] Rename auth database (now used for more than auth) — impacts Cloud SQL, Terraform, backend config, Docker, CI
 
 ## Documentation
 
