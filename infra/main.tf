@@ -62,7 +62,8 @@ module "cloud_sql_auth" {
   environment = var.environment
 
   instance_name         = "auth"
-  db_name               = "quill_core"
+  db_name               = "quill_auth"
+  app_db_name           = "quill_core"
   db_user               = "quill"
   db_password_secret_id = "auth-db-password"
   tier                  = var.db_tier

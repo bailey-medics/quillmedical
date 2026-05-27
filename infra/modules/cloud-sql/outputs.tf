@@ -17,7 +17,7 @@ output "private_ip" {
 
 output "database_name" {
   description = "Database name"
-  value       = google_sql_database.database.name
+  value       = coalesce(var.app_db_name, google_sql_database.database.name)
 }
 
 output "database_user" {

@@ -1,5 +1,9 @@
 # modules/cloud-sql/main.tf — Managed PostgreSQL instance
 
+locals {
+  effective_app_db_name = coalesce(var.app_db_name, var.db_name)
+}
+
 resource "google_sql_database_instance" "instance" {
   project          = var.project_id
   name             = "quill-${var.instance_name}-${var.environment}"
@@ -67,6 +71,14 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.instance.name
   # Database replacement can fail if active connections still exist during
   # rollout. Abandon old DB resources so cutovers can complete safely.
+  deletion_policy = "ABANDON"
+}
+
+resource "google_sql_database" "app_database" {
+  count    = local.effective_app_db_name != var.db_name ? 1 : 0
+  project  = var.project_id
+  name     = local.effective_app_db_name
+  instance = google_sql_database_instance.instance.name
   deletion_policy = "ABANDON"
 }
 
