@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Response } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -6,14 +6,34 @@ async function submitLogin(
   page: Page,
   username: string,
   password: string,
-): Promise<Response | null> {
+): Promise<number | null> {
   const usernameInput = page.getByLabel("Username");
   const passwordInput = page.getByLabel("Password");
 
-  await usernameInput.fill(username);
-  await passwordInput.fill(password);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await usernameInput.fill(username);
+    await passwordInput.fill(password);
 
-  const waitForLoginResponse = async (): Promise<Response | null> =>
+    const valuesReady = await Promise.all([
+      usernameInput.inputValue(),
+      passwordInput.inputValue(),
+    ]).then(
+      ([usernameValue, passwordValue]) =>
+        usernameValue === username && passwordValue === password,
+    );
+
+    if (valuesReady) {
+      break;
+    }
+
+    if (attempt === 3) {
+      throw new Error("Login fields did not retain values before submit");
+    }
+
+    await page.waitForTimeout(250 * attempt);
+  }
+
+  const waitForLoginResponse = async (): Promise<number | null> =>
     page
       .waitForResponse(
         (response) =>
@@ -21,14 +41,15 @@ async function submitLogin(
           response.request().method() === "POST",
         { timeout: 10_000 },
       )
+      .then((response) => response.status())
       .catch(() => null);
 
   let responsePromise = waitForLoginResponse();
   await passwordInput.press("Enter");
-  let response = await responsePromise;
+  let status = await responsePromise;
 
-  if (response) {
-    return response;
+  if (status !== null) {
+    return status;
   }
 
   responsePromise = waitForLoginResponse();
@@ -39,27 +60,32 @@ async function submitLogin(
       (el as HTMLFormElement).requestSubmit();
     });
 
-  response = await responsePromise;
-  return response;
+  status = await responsePromise;
+  return status;
 }
 
 async function loginWithRateLimitRetry(page: Page): Promise<void> {
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const response = await submitLogin(page, "educator", "educator123");
+    const status = await submitLogin(page, "educator", "educator123");
 
-    if (!response) {
-      throw new Error(`No login response received on attempt ${attempt}`);
-    }
-
-    if (response.status() === 429 && attempt < maxAttempts) {
+    if (status === null && attempt < maxAttempts) {
       await page.waitForTimeout(1_000 * attempt);
       continue;
     }
 
-    if (response.status() !== 200) {
+    if (status === null) {
+      throw new Error(`No login response received on attempt ${attempt}`);
+    }
+
+    if (status === 429 && attempt < maxAttempts) {
+      await page.waitForTimeout(1_000 * attempt);
+      continue;
+    }
+
+    if (status !== 200) {
       throw new Error(
-        `Valid login returned status ${response.status()} on attempt ${attempt}`,
+        `Valid login returned status ${status} on attempt ${attempt}`,
       );
     }
 
@@ -137,10 +163,10 @@ test.describe("Login page", () => {
   test("shows error with invalid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    const response = await submitLogin(page, "educator", "wrong-password");
+    const status = await submitLogin(page, "educator", "wrong-password");
 
-    expect(response).not.toBeNull();
-    expect([400, 401, 429]).toContain(response!.status());
+    expect(status).not.toBeNull();
+    expect([400, 401, 429]).toContain(status!);
 
     await expect(page).toHaveURL(/\/login/);
   });

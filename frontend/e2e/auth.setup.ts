@@ -13,8 +13,30 @@ async function loginWithRateLimitRetry(
     await expect(usernameInput).toBeVisible();
     await expect(passwordInput).toBeVisible();
 
-    await usernameInput.fill("educator");
-    await passwordInput.fill("educator123");
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      await usernameInput.fill("educator");
+      await passwordInput.fill("educator123");
+
+      const valuesReady = await Promise.all([
+        usernameInput.inputValue(),
+        passwordInput.inputValue(),
+      ]).then(
+        ([usernameValue, passwordValue]) =>
+          usernameValue === "educator" && passwordValue === "educator123",
+      );
+
+      if (valuesReady) {
+        break;
+      }
+
+      if (attempt === 3) {
+        throw new Error(
+          "Setup login fields did not retain values before submit",
+        );
+      }
+
+      await page.waitForTimeout(250 * attempt);
+    }
 
     const waitForLoginResponse = async (): Promise<number | null> =>
       page
@@ -28,16 +50,8 @@ async function loginWithRateLimitRetry(
         .catch(() => null);
 
     let responsePromise = waitForLoginResponse();
-    await page.getByRole("button", { name: "Sign in" }).click();
-    let status = await responsePromise;
-
-    if (status !== null) {
-      return status;
-    }
-
-    responsePromise = waitForLoginResponse();
     await passwordInput.press("Enter");
-    status = await responsePromise;
+    let status = await responsePromise;
 
     if (status !== null) {
       return status;
@@ -50,8 +64,12 @@ async function loginWithRateLimitRetry(
       .evaluate((el) => {
         (el as HTMLFormElement).requestSubmit();
       });
+    status = await responsePromise;
 
-    return responsePromise;
+    if (status !== null) {
+      return status;
+    }
+    return null;
   };
 
   const maxAttempts = 3;
