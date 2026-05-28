@@ -169,10 +169,12 @@ Rollback trigger examples:
 
 Rollback steps:
 
-- [ ] Revert Terraform `db_name` for auth module to `quill_auth`
-- [ ] Revert backend and compose defaults if changed in same release
-- [ ] Redeploy previous known-good backend revision
-- [ ] Re-run smoke tests and monitor recovery
+- ~~Revert Terraform `db_name` for auth module to `quill_auth`~~
+- ~~Revert backend and compose defaults if changed in same release~~
+- ~~Redeploy previous known-good backend revision~~
+- ~~Re-run smoke tests and monitor recovery~~
+
+> Not needed — teaching cutover succeeded without rollback.
 
 ## Implementation checklist
 
@@ -195,6 +197,6 @@ Rollback steps:
 - [x] Rename `AUTH_DB_*` env vars to `CORE_DB_*` in backend config, compose, Justfile, Terraform
 - [x] Rename Terraform module label `cloud_sql_auth` → `cloud_sql_core` with `moved` block
 - [x] Keep compatibility aliases via pydantic `validation_alias=AliasChoices("CORE_DB_*", "AUTH_DB_*")`
-- [ ] Later revert compatibility aliases via pydantic
-- [ ] Run full test suite (deferred — Docker offline, verify on next `docker compose up`)
-- [ ] cd infra, terraform state push errored.tfstate, terraform apply -var-file=environments/teaching/terraform.tfvars
+- [x] Revert compatibility aliases — removed `AliasChoices`, only `CORE_DB_*` accepted now
+- [x] Run full test suite (backend 580+ passed, frontend 175 files / 1625 tests passed)
+- [x] cd infra, terraform state push errored.tfstate, terraform apply -var-file=environments/teaching/terraform.tfvars

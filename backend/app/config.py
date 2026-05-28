@@ -15,7 +15,6 @@ The configuration is organized into sections:
 from urllib.parse import quote_plus
 
 from pydantic import (
-    AliasChoices,
     Field,
     SecretStr,
     computed_field,
@@ -40,7 +39,7 @@ class Settings(BaseSettings):
         COOKIE_DOMAIN: Domain for auth cookies (None = current domain)
         SECURE_COOKIES: Whether to use Secure flag on cookies (default: False)
 
-        CORE_DB_*: Core database connection parameters (accepts AUTH_DB_* alias)
+        CORE_DB_*: Core database connection parameters
         FHIR_DB_*: FHIR database connection parameters
         EHRBASE_*: EHRbase API connection parameters
         VAPID_PRIVATE: VAPID private key for push notifications
@@ -94,27 +93,22 @@ class Settings(BaseSettings):
     CORE_DB_NAME: str = Field(
         "quill_core",
         description="Core database name",
-        validation_alias=AliasChoices("CORE_DB_NAME", "AUTH_DB_NAME"),
     )
     CORE_DB_USER: str = Field(
         "auth_user",
         description="Core database user",
-        validation_alias=AliasChoices("CORE_DB_USER", "AUTH_DB_USER"),
     )
     CORE_DB_PASSWORD: SecretStr = Field(
         ...,
         description="Core database password",
-        validation_alias=AliasChoices("CORE_DB_PASSWORD", "AUTH_DB_PASSWORD"),
     )
     CORE_DB_HOST: str = Field(
         "postgres-auth",
         description="Core database host",
-        validation_alias=AliasChoices("CORE_DB_HOST", "AUTH_DB_HOST"),
     )
     CORE_DB_PORT: int = Field(
         5432,
         description="Core database port",
-        validation_alias=AliasChoices("CORE_DB_PORT", "AUTH_DB_PORT"),
     )
     CORE_DB_SSLMODE: str = Field(
         "prefer",
@@ -122,7 +116,6 @@ class Settings(BaseSettings):
             "SSL mode for core database connection. "
             "Use 'require' or 'verify-full' in production."
         ),
-        validation_alias=AliasChoices("CORE_DB_SSLMODE", "AUTH_DB_SSLMODE"),
     )
 
     # --- FHIR Database ---
