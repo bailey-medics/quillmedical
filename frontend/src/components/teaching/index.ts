@@ -7,6 +7,9 @@ export { AssessmentTimer } from "./assessment-timer";
 export { QuestionView } from "./question-view";
 export { ScoreBreakdown } from "./score-breakdown";
 
+// Sync
+export { SyncResultsPanel } from "./sync-results-panel";
+
 // Learning
 export { Callout } from "./callout";
 export { Figure } from "./figure";
