@@ -18,10 +18,16 @@ import {
   Heading,
   EmptyState,
 } from "@/components/typography";
-import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
+import {
+  IconPencil,
+  IconTrash,
+  IconUserMinus,
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { FormStatus } from "@/components/form/Form";
+import { PageFlash } from "@/components/page-flash";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
@@ -117,6 +123,12 @@ export default function OrganisationAdminPage() {
   const [removingMember, setRemovingMember] = useState<StaffMember | null>(
     null,
   );
+  const [removingSite, setRemovingSite] = useState<SiteMember | null>(null);
+  const [siteFlash, setSiteFlash] = useState<{
+    variant: "success" | "error";
+    title: string;
+    description: string;
+  } | null>(null);
 
   const fetchOrganizationData = useCallback(async () => {
     if (!id) {
@@ -147,6 +159,26 @@ export default function OrganisationAdminPage() {
     if (!id || !removingMember) return;
     await api.del(`/organizations/${id}/staff/${removingMember.id}`);
     await fetchOrganizationData();
+  }
+
+  async function confirmRemoveSite() {
+    if (!id || !removingSite) return;
+    try {
+      await api.del(`/organizations/${id}/sites/${removingSite.id}`);
+      setSiteFlash({
+        variant: "success",
+        title: "Site removed",
+        description: `${removingSite.name} has been removed from this organisation`,
+      });
+      await fetchOrganizationData();
+    } catch (err) {
+      setSiteFlash({
+        variant: "error",
+        title: "Failed to remove site",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
+    }
   }
 
   const formatType = (type: string): string => {
@@ -260,13 +292,38 @@ export default function OrganisationAdminPage() {
       render: (site) => <ActiveStatusBadge active={site.is_active} />,
       accessor: (site) => (site.is_active ? "active" : "deactivated"),
     },
+    {
+      header: "",
+      width: "50px",
+      render: (site) => (
+        <EllipsisMenu
+          aria-label={`Actions for ${site.name}`}
+          items={[
+            {
+              label: "Remove from organisation",
+              icon: <IconTrash />,
+              color: "var(--alert-color)",
+              onClick: () => setRemovingSite(site),
+            },
+          ]}
+        />
+      ),
+    },
   ];
 
   return (
     <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={org.name} />
-
+        <PageFlash />
+        {siteFlash && (
+          <FormStatus
+            variant={siteFlash.variant}
+            title={siteFlash.title}
+            description={siteFlash.description}
+            onDismiss={() => setSiteFlash(null)}
+          />
+        )}
         {/* Organisation Information */}
         <BaseCard>
           <Stack gap="md">
@@ -299,7 +356,6 @@ export default function OrganisationAdminPage() {
             </Stack>
           </Stack>
         </BaseCard>
-
         {/* Staff Members */}
         <BaseCard>
           <Stack gap="md">
@@ -321,7 +377,6 @@ export default function OrganisationAdminPage() {
             />
           </Stack>
         </BaseCard>
-
         {/* Patient Members */}
         {clinicalServicesEnabled && (
           <BaseCard>
@@ -349,7 +404,6 @@ export default function OrganisationAdminPage() {
             </Stack>
           </BaseCard>
         )}
-
         {/* Enabled Features */}
         <BaseCard>
           <Stack gap="md">
@@ -373,7 +427,6 @@ export default function OrganisationAdminPage() {
             )}
           </Stack>
         </BaseCard>
-
         {/* Sites */}
         <BaseCard>
           <Stack gap="md">
@@ -404,7 +457,6 @@ export default function OrganisationAdminPage() {
             />
           </Stack>
         </BaseCard>
-
         <ConfirmModal
           opened={removingMember !== null}
           onClose={() => setRemovingMember(null)}
@@ -416,6 +468,17 @@ export default function OrganisationAdminPage() {
           Are you sure you want to remove{" "}
           <strong>{removingMember?.username}</strong> from this organisation?
         </ConfirmModal>
+        <ConfirmModal
+          opened={removingSite !== null}
+          onClose={() => setRemovingSite(null)}
+          onAccept={confirmRemoveSite}
+          title="Remove site"
+          acceptLabel="Remove"
+          submittingLabel="Removing\u2026"
+        >
+          Are you sure you want to remove <strong>{removingSite?.name}</strong>{" "}
+          from this organisation?
+        </ConfirmModal>{" "}
       </Stack>
     </Container>
   );

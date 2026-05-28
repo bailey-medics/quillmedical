@@ -9,10 +9,11 @@
 // Auth pages use centred form layout, not Container
 
 import { useState } from "react";
-import { Button, Center, Stack } from "@mantine/core";
+import { Center, Stack } from "@mantine/core";
 import { useLocation } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Heading, BodyText, TextLink } from "@components/typography";
+import IconTextButton from "@components/button/IconTextButton";
 
 export default function VerifyEmailPendingPage() {
   const location = useLocation();
@@ -47,9 +48,13 @@ export default function VerifyEmailPendingPage() {
           don&apos;t see it.
         </BodyText>
         {email && !resent && (
-          <Button variant="subtle" onClick={handleResend} loading={loading}>
-            Resend verification email
-          </Button>
+          <IconTextButton
+            icon="refresh"
+            label="Resend verification email"
+            onClick={handleResend}
+            loading={loading}
+            variant="light"
+          />
         )}
         {resent && <BodyText c="green">Verification email resent.</BodyText>}
         <TextLink to="/login">Back to login</TextLink>
