@@ -42,7 +42,7 @@ clinical/NHS go-live.
 - [ ] Replace inline modal in `DirtyFormNavigation` with `ConfirmModal` (keep only `useBlocker` logic)
 - [ ] Deduplicate push notification subscription logic into a shared `usePushSubscription` hook
 - [ ] Use `api` client in push notification code (currently raw `fetch()`, bypasses CSRF and auth cookies)
-- [ ] Lock **version** value in teaching schema — once locked, same version `config.yaml` cannot be reused; must iterate upwards
+- [x] Lock **version** value in teaching schema — once locked, same version `config.yaml` cannot be reused; must iterate upwards
 
 ## Testing
 
