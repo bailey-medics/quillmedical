@@ -142,16 +142,16 @@ Provider reads `location.state.flash` (same shape as current PageFlash) and auto
 
 ## Implementation steps
 
-- [ ] Create `src/components/page-message/PageMessageContext.tsx` — provider, context, `usePageMessage` hook
-- [ ] Create `src/components/page-message/PageMessageDisplay.tsx` — renders message stack using `FormStatus`
-- [ ] Create `src/components/page-message/index.ts` — barrel exports
-- [ ] Add `PageMessageProvider` + `PageMessageDisplay` to `MainLayout.tsx` (above `{children}`)
-- [ ] Add flash-state ingestion to provider (read `location.state.flash`, promote to message, clear history state)
-- [ ] Create `PageMessage.test.tsx` — unit tests for provider, hook, display, flash ingestion, nav clear
-- [ ] Create `PageMessage.stories.tsx` — Storybook stories showing variants
-- [ ] Migrate `AdminOrganisationsPage.tsx` — replace `PageFlash` + manual `FormStatus` + local state with `usePageMessage`
-- [ ] Migrate `OrganisationAdminPage.tsx` — replace `PageFlash` + manual `FormStatus` + local state with `usePageMessage`
-- [ ] Migrate `SiteAdminPage.tsx` — remove `<PageFlash />` (provider handles it)
-- [ ] Update `Form.mdx` pattern table — reference `PageMessage` for patterns 3/4
-- [ ] Delete `src/components/page-flash/` (once no consumers remain)
-- [ ] Run tests and Storybook build
+- [x] Create `src/components/page-message/PageMessageContext.tsx` — provider, context, `usePageMessage` hook
+- [x] Create `src/components/page-message/PageMessageDisplay.tsx` — renders message stack using `FormStatus`
+- [x] Create `src/components/page-message/index.ts` — barrel exports
+- [x] Add `PageMessageProvider` + `PageMessageDisplay` to `MainLayout.tsx` (above `{children}`)
+- [x] Add flash-state ingestion to provider (read `location.state.flash`, promote to message, clear history state)
+- [x] Create `PageMessage.test.tsx` — unit tests for provider, hook, display, flash ingestion, nav clear
+- [x] Create `PageMessage.stories.tsx` — Storybook stories showing variants
+- [x] Migrate `AdminOrganisationsPage.tsx` — replace `PageFlash` + manual `FormStatus` + local state with `usePageMessage`
+- [x] Migrate `OrganisationAdminPage.tsx` — replace `PageFlash` + manual `FormStatus` + local state with `usePageMessage`
+- [x] Migrate `SiteAdminPage.tsx` — remove `<PageFlash />` (provider handles it)
+- [x] Update `Form.mdx` pattern table — reference `PageMessage` for patterns 3/4
+- [x] Delete `src/components/page-flash/` (once no consumers remain)
+- [x] Run tests and Storybook build
