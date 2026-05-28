@@ -188,7 +188,15 @@ export default function AddSiteToOrgPage() {
         });
       }
 
-      navigate(`/admin/organisations/${id}`);
+      navigate(`/admin/organisations/${id}`, {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Site created",
+            description: `${data.name} has been created and linked`,
+          },
+        },
+      });
       return {
         state: "success",
         message: { title: "Site created and linked" },

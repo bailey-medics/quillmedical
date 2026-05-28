@@ -3361,7 +3361,7 @@ def get_organization(
 
     # Get linked sites
     site_query = (
-        select(Site.id, Site.name, Site.type, Site.location)
+        select(Site.id, Site.name, Site.type, Site.location, Site.is_active)
         .join(organisation_site, organisation_site.c.site_id == Site.id)
         .where(organisation_site.c.organisation_id == org_id)
         .order_by(Site.name)
