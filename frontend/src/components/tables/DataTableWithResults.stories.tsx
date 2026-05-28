@@ -159,6 +159,18 @@ export const Empty: Story = {
     />
   ),
 };
+
+export const Loading: Story = {
+  render: () => (
+    <DataTableWithResults
+      data={[] as DemoRow[]}
+      columns={columns}
+      getRowKey={(r) => r.id}
+      loading
+    />
+  ),
+};
+
 export const DarkMode: Story = {
   render: () => (
     <DataTableWithResults

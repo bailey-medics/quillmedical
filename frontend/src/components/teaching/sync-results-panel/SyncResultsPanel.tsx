@@ -52,6 +52,8 @@ export interface SyncResultsPanelProps {
   hasSynced?: boolean;
   /** Whether a sync is currently in progress */
   syncing?: boolean;
+  /** Whether data is loading */
+  loading?: boolean;
   /** Callback when "Sync all" is clicked */
   onSync?: () => void;
 }
@@ -135,6 +137,7 @@ export default function SyncResultsPanel({
   modules,
   hasSynced = false,
   syncing = false,
+  loading = false,
   onSync,
 }: SyncResultsPanelProps) {
   const summary = getSummaryProps(modules);
@@ -167,6 +170,7 @@ export default function SyncResultsPanel({
         getRowKey={(row) => row.bank_id}
         getSubRow={getSubRow}
         emptyMessage="No teaching modules found"
+        loading={loading}
       />
     </Stack>
   );

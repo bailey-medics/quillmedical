@@ -3,132 +3,130 @@
  *
  * Displays all teaching modules (question banks) with their sync status.
  * Provides a "Sync all" button to trigger a full sync from GCS/filesystem.
+ * Uses SyncResultsPanel to show before/after sync state.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Container, Group, Stack } from "@mantine/core";
-import PageHeader from "@/components/page-header";
-import DataTable, { type Column } from "@/components/tables/DataTable";
-import FormattedDate from "@/components/data/Date";
-import IconTextButton from "@/components/button/IconTextButton";
-import { BodyText } from "@/components/typography";
+import { Container } from "@mantine/core";
+import { SyncResultsPanel } from "@/components/teaching";
+import type { SyncModuleRow } from "@/components/teaching/sync-results-panel";
 import { api } from "@/lib/api";
 import type { AdminBank, SyncAllResult } from "@/features/teaching/types";
 
+function banksToModules(banks: AdminBank[]): SyncModuleRow[] {
+  return banks.map((bank) => ({
+    bank_id: bank.bank_id,
+    title: bank.title ?? bank.bank_id,
+    type: bank.type ?? "—",
+    outcome: "imported" as const,
+    version: bank.version ?? 0,
+    item_count: bank.item_count,
+    reason: "",
+    last_synced: bank.synced_at ?? undefined,
+  }));
+}
+
+function syncResultToModules(
+  banks: AdminBank[],
+  result: SyncAllResult,
+): SyncModuleRow[] {
+  return banks.map((bank) => {
+    const synced = result.synced.find(
+      (s) => s.question_bank_id === bank.bank_id,
+    );
+    const err = result.errors.find((e) => e.bank_id === bank.bank_id);
+
+    if (err) {
+      return {
+        bank_id: bank.bank_id,
+        title: bank.title ?? bank.bank_id,
+        type: bank.type ?? "—",
+        outcome: "error" as const,
+        version: bank.version ?? 0,
+        item_count: bank.item_count,
+        reason: String(err.error),
+      };
+    }
+
+    if (synced) {
+      return {
+        bank_id: bank.bank_id,
+        title: bank.title ?? bank.bank_id,
+        type: bank.type ?? "—",
+        outcome: "imported" as const,
+        version: synced.version,
+        item_count: synced.items_created + synced.items_updated,
+        reason: "",
+      };
+    }
+
+    // Module wasn't in the sync result — already up to date
+    return {
+      bank_id: bank.bank_id,
+      title: bank.title ?? bank.bank_id,
+      type: bank.type ?? "—",
+      outcome: "imported" as const,
+      version: bank.version ?? 0,
+      item_count: bank.item_count,
+      reason: "",
+    };
+  });
+}
+
 export default function AdminTeachingPage() {
-  const navigate = useNavigate();
-  const [banks, setBanks] = useState<AdminBank[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [hasSynced, setHasSynced] = useState(false);
+  const [modules, setModules] = useState<SyncModuleRow[]>([]);
 
   const fetchBanks = useCallback(async () => {
-    try {
-      setError(null);
-      const data = await api.get<AdminBank[]>("/teaching/admin/banks");
-      setBanks(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load modules");
-    } finally {
-      setLoading(false);
-    }
+    const data = await api.get<AdminBank[]>("/teaching/admin/banks");
+    return data;
   }, []);
 
   useEffect(() => {
-    fetchBanks();
+    fetchBanks()
+      .then((data) => {
+        setModules(banksToModules(data));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [fetchBanks]);
 
   const handleSyncAll = async () => {
     setSyncing(true);
-    setSyncMessage(null);
-    setError(null);
     try {
       const result = await api.post<SyncAllResult>(
         "/teaching/admin/sync-all",
         {},
       );
-      const syncedCount = result.synced.length;
-      const errorCount = result.errors.length;
-
-      if (errorCount > 0) {
-        setSyncMessage(
-          `Synced ${syncedCount} bank(s) with ${errorCount} error(s)`,
-        );
-      } else {
-        setSyncMessage(`Successfully synced ${syncedCount} bank(s)`);
-      }
-
-      // Refresh the list
-      await fetchBanks();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sync failed");
+      const refreshedBanks = await fetchBanks();
+      setModules(syncResultToModules(refreshedBanks, result));
+      setHasSynced(true);
+    } catch {
+      setModules((prev) =>
+        prev.map((m) => ({
+          ...m,
+          outcome: "error" as const,
+          reason: "Sync request failed",
+        })),
+      );
+      setHasSynced(true);
     } finally {
       setSyncing(false);
     }
   };
 
-  const columns: Column<AdminBank>[] = [
-    {
-      header: "Module",
-      width: "40%",
-      render: (bank) => bank.title ?? bank.bank_id,
-    },
-    {
-      header: "Type",
-      width: "15%",
-      render: (bank) => bank.type ?? "—",
-    },
-    {
-      header: "Version",
-      width: "10%",
-      render: (bank) => bank.version ?? "—",
-    },
-    {
-      header: "Items",
-      width: "10%",
-      render: (bank) => bank.item_count,
-    },
-    {
-      header: "Last synced",
-      width: "15%",
-      render: (bank) =>
-        bank.synced_at ? (
-          <FormattedDate date={bank.synced_at} locale="en-GB" />
-        ) : (
-          "Never"
-        ),
-    },
-  ];
-
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
-          <PageHeader title="Teaching modules" />
-          <IconTextButton
-            icon="refresh"
-            label="Sync all"
-            onClick={handleSyncAll}
-            disabled={syncing}
-          />
-        </Group>
-
-        {syncMessage && <BodyText>{syncMessage}</BodyText>}
-
-        <DataTable
-          data={banks}
-          columns={columns}
-          getRowKey={(bank) => bank.bank_id}
-          onRowClick={(bank) =>
-            navigate(`/admin/teaching/modules/${bank.bank_id}`)
-          }
-          loading={loading}
-          error={error}
-          emptyMessage="No teaching modules found"
-        />
-      </Stack>
+    <Container size="lg" py="xl">
+      <SyncResultsPanel
+        modules={modules}
+        hasSynced={hasSynced}
+        syncing={syncing}
+        loading={loading}
+        onSync={handleSyncAll}
+      />
     </Container>
   );
 }

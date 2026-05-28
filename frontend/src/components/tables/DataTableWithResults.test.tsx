@@ -126,4 +126,19 @@ describe("DataTableWithResults", () => {
     expect(subRowCell).toBeDefined();
     expect(subRowCell?.getAttribute("colspan")).toBe(String(columns.length));
   });
+
+  it("shows loading skeletons when loading", () => {
+    const { container } = renderWithMantine(
+      <DataTableWithResults
+        data={[]}
+        columns={columns}
+        getRowKey={(r: TestRow) => r.id}
+        loading
+      />,
+    );
+    expect(
+      container.querySelectorAll(".mantine-Skeleton-root").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+  });
 });

@@ -23,7 +23,7 @@
  */
 
 import { Fragment, type ReactNode } from "react";
-import { Center, Table, useComputedColorScheme } from "@mantine/core";
+import { Center, Skeleton, Table, useComputedColorScheme } from "@mantine/core";
 import {
   BodyText,
   BodyTextBold,
@@ -57,6 +57,8 @@ export interface DataTableWithResultsProps<T> {
   getSubRow?: (row: T) => ReactNode | null;
   /** Empty state message (default: "No data found") */
   emptyMessage?: string;
+  /** Whether data is loading */
+  loading?: boolean;
 }
 
 // ------------------------------------------------------------------
@@ -69,6 +71,7 @@ export default function DataTableWithResults<T>({
   getRowKey,
   getSubRow,
   emptyMessage = "No data found",
+  loading = false,
 }: DataTableWithResultsProps<T>) {
   const colorScheme = useComputedColorScheme("light");
   const isDark = colorScheme === "dark";
@@ -76,6 +79,33 @@ export default function DataTableWithResults<T>({
   const stripeBg = isDark
     ? "var(--mantine-color-dark-6)"
     : "var(--mantine-color-gray-0)";
+
+  if (loading) {
+    return (
+      <Table>
+        <Table.Thead>
+          <Table.Tr>
+            {columns.map((column, index) => (
+              <Table.Th key={index} style={{ width: column.width }}>
+                <BodyTextBold>{column.header}</BodyTextBold>
+              </Table.Th>
+            ))}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {Array.from({ length: 4 }, (_, rowIndex) => (
+            <Table.Tr key={rowIndex}>
+              {columns.map((_, colIndex) => (
+                <Table.Td key={colIndex}>
+                  <Skeleton height={25} mt={4} mb={4} />
+                </Table.Td>
+              ))}
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+    );
+  }
 
   if (data.length === 0) {
     return (
