@@ -136,28 +136,29 @@ explanatory text) is exempt because:
 ## Verification
 
 - [x] 1. `check_version_lock.py` unit tests pass (10 tests — draft, live, retired, new module)
-- [ ] 2. `python teaching-tooling/scripts/validate.py teaching-repos/eoeeta-teaching/modules/` — passes
-- [ ] 3. Backend tests pass: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"`
-- [ ] 4. Backend sync version guard tests (new tests for draft/live/retired rejection)
-- [ ] 5. Teaching-tooling full test suite: `cd teaching-tooling && pytest`
+- [x] 2. `python teaching-tooling/scripts/validate.py teaching-repos/eoeeta-teaching/modules/` — passes
+- [x] 3. Backend tests pass: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"` (580 passed)
+- [x] 4. Backend sync version guard tests (new tests for draft/live/retired rejection)
+- [x] 5. Teaching-tooling full test suite: `cd teaching-tooling && pytest` (23 passed)
 - [ ] 6. Frontend sync UI tests (Phase 4)
 
-## Outstanding test work (requires Docker)
+## Outstanding test work
 
-- [ ] Backend: test `_load_module_status` reads from parent dir correctly
-- [ ] Backend: test draft module rejected when version != 1
-- [ ] Backend: test live module rejected when version <= stored
-- [ ] Backend: test live module accepted when version > stored
-- [ ] Backend: test retired module imports normally (no version guard)
-- [ ] Backend: test `get_module_status_from_gcs` (mock GCS client)
-- [ ] Teaching-tooling: integration test with real git repo fixture
+- [x] Backend: test `_load_module_status` reads from parent dir correctly
+- [x] Backend: test draft module rejected when version != 1
+- [x] Backend: test live module rejected when version <= stored
+- [x] Backend: test live module accepted when version > stored
+- [x] Backend: test retired module imports normally (no version guard)
+- [x] Backend: test `get_module_status_from_gcs` (mock GCS client)
+- [x] Teaching-tooling: integration test with real git repo fixture
 
 ## Rollout order
 
-1. `teaching-tooling` — lock script + branch protection Terraform (merged first)
-2. `quillmedical` backend — add monotonicity guard
-3. Run `terraform apply` in teaching-tooling/infra to activate:
-   - Content repos: require "Validate teaching content" status check
-   - `teaching-tooling` itself: require "python-tests" + "node-tests" status checks
-   - All teaching repos: branch naming restricted to `main` or `feature/*` only
-4. All repos use PRs to main — no direct pushes
+- [ ] 1. `teaching-tooling` — merge `feature/version-lock` PR to main
+- [ ] 2. `quillmedical` — merge `feature/version-lock-teaching-assessments` PR to main
+- [x] 3. Run `terraform apply` in teaching-tooling/infra to activate:
+  - Content repos: require "Validate teaching content" status check
+  - `teaching-tooling` itself: require "python-tests" + "node-tests" status checks
+  - All teaching repos: branch naming restricted to `main` or `feature/*` only
+- [x] 4. All repos use PRs to main — no direct pushes
+- [ ] 5. Merge content repo `feature/auto-pr-workflow` PRs (eoeeta + respiratory)

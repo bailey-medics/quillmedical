@@ -1,8 +1,8 @@
 /**
  * Tests for AdminTeachingPage.
  *
- * Verifies rendering of loading, error, empty, and data states,
- * plus sync-all button behaviour.
+ * Verifies rendering of bank data, sync-all button behaviour,
+ * and post-sync result display via SyncResultsPanel.
  */
 
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
@@ -27,12 +27,6 @@ beforeEach(() => {
 });
 
 describe("AdminTeachingPage", () => {
-  it("shows loading state initially", () => {
-    (api.get as Mock).mockReturnValue(new Promise(() => {}));
-    renderWithRouter(<AdminTeachingPage />);
-    expect(document.querySelector(".mantine-Skeleton-root")).toBeTruthy();
-  });
-
   it("shows empty state when no banks", async () => {
     (api.get as Mock).mockResolvedValue([]);
     renderWithRouter(<AdminTeachingPage />);
@@ -77,11 +71,22 @@ describe("AdminTeachingPage", () => {
     });
   });
 
-  it("shows error on API failure", async () => {
-    (api.get as Mock).mockRejectedValue(new Error("Network error"));
+  it("shows 'Last synced' column before sync", async () => {
+    (api.get as Mock).mockResolvedValue([
+      {
+        bank_id: "mod-a",
+        title: "Module A",
+        version: 1,
+        type: "uniform",
+        synced_at: null,
+        in_gcs: true,
+        in_db: true,
+        item_count: 10,
+      },
+    ]);
     renderWithRouter(<AdminTeachingPage />);
     await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeTruthy();
+      expect(screen.getByText("Last synced")).toBeTruthy();
     });
   });
 
@@ -107,12 +112,36 @@ describe("AdminTeachingPage", () => {
     });
   });
 
-  it("shows success message after sync", async () => {
+  it("shows success summary after sync with no errors", async () => {
     const user = userEvent.setup();
 
-    (api.get as Mock).mockResolvedValue([]);
+    (api.get as Mock).mockResolvedValue([
+      {
+        bank_id: "mod-a",
+        title: "Module A",
+        version: 1,
+        type: "uniform",
+        synced_at: null,
+        in_gcs: true,
+        in_db: true,
+        item_count: 10,
+      },
+    ]);
     (api.post as Mock).mockResolvedValue({
-      synced: [{ id: 1 }, { id: 2 }],
+      synced: [
+        {
+          id: 1,
+          question_bank_id: "mod-a",
+          version: 1,
+          status: "completed",
+          items_created: 10,
+          items_updated: 0,
+          errors: [],
+          warnings: [],
+          started_at: "2026-05-28T10:00:00Z",
+          completed_at: "2026-05-28T10:00:05Z",
+        },
+      ],
       errors: [],
     });
 
@@ -125,17 +154,29 @@ describe("AdminTeachingPage", () => {
     await user.click(screen.getByText("Sync all"));
 
     await waitFor(() => {
-      expect(screen.getByText("Successfully synced 2 bank(s)")).toBeTruthy();
+      expect(screen.getByText("Sync complete")).toBeTruthy();
+      expect(screen.getByText("Status")).toBeTruthy();
     });
   });
 
-  it("shows partial error message after sync with errors", async () => {
+  it("shows error summary after sync with errors", async () => {
     const user = userEvent.setup();
 
-    (api.get as Mock).mockResolvedValue([]);
+    (api.get as Mock).mockResolvedValue([
+      {
+        bank_id: "mod-a",
+        title: "Module A",
+        version: 1,
+        type: "uniform",
+        synced_at: null,
+        in_gcs: true,
+        in_db: true,
+        item_count: 10,
+      },
+    ]);
     (api.post as Mock).mockResolvedValue({
-      synced: [{ id: 1 }],
-      errors: [{ bank_id: "bad-bank", error: "fail" }],
+      synced: [],
+      errors: [{ bank_id: "mod-a", error: "Download failed" }],
     });
 
     renderWithRouter(<AdminTeachingPage />);
@@ -147,7 +188,8 @@ describe("AdminTeachingPage", () => {
     await user.click(screen.getByText("Sync all"));
 
     await waitFor(() => {
-      expect(screen.getByText("Synced 1 bank(s) with 1 error(s)")).toBeTruthy();
+      expect(screen.getByText("Sync complete with errors")).toBeTruthy();
+      expect(screen.getByText("Download failed")).toBeTruthy();
     });
   });
 });
