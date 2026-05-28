@@ -10,10 +10,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
+import { PageFlash } from "@/components/page-flash";
+import { FormStatus } from "@/components/form/Form";
 import AddButton from "@/components/button/AddButton";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { IconTrash } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
-import FormattedDate from "@/components/data/Date";
 import { api } from "@/lib/api";
 
 interface Organization {
@@ -97,6 +101,35 @@ export default function AdminOrganisationsPage() {
     };
   }, []);
 
+  const [removingOrg, setRemovingOrg] = useState<Organization | null>(null);
+  const [flash, setFlash] = useState<{
+    variant: "success" | "error";
+    title: string;
+    description: string;
+  } | null>(null);
+
+  async function confirmRemoveOrg() {
+    if (!removingOrg) return;
+    try {
+      await api.del(`/organizations/${removingOrg.id}`);
+      setOrganizations((prev) => prev.filter((o) => o.id !== removingOrg.id));
+      setFlash({
+        variant: "success",
+        title: "Organisation removed",
+        description: `${removingOrg.name} has been removed`,
+      });
+    } catch (err) {
+      setFlash({
+        variant: "error",
+        title: "Failed to remove organisation",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
+    } finally {
+      setRemovingOrg(null);
+    }
+  }
+
   const columns: Column<Organization>[] = [
     {
       header: "Name",
@@ -114,9 +147,21 @@ export default function AdminOrganisationsPage() {
       accessor: (org) => org.location ?? "",
     },
     {
-      header: "Created",
-      render: (org) => <FormattedDate date={org.created_at} locale="en-GB" />,
-      accessor: (org) => org.created_at,
+      header: "",
+      width: "50px",
+      render: (org) => (
+        <EllipsisMenu
+          aria-label={`Actions for ${org.name}`}
+          items={[
+            {
+              label: "Remove organisation",
+              icon: <IconTrash />,
+              color: "var(--alert-color)",
+              onClick: () => setRemovingOrg(org),
+            },
+          ]}
+        />
+      ),
     },
   ];
 
@@ -130,6 +175,16 @@ export default function AdminOrganisationsPage() {
             onClick={() => navigate("/admin/organisations/new")}
           />
         </Group>
+
+        <PageFlash />
+        {flash && (
+          <FormStatus
+            variant={flash.variant}
+            title={flash.title}
+            description={flash.description}
+            onDismiss={() => setFlash(null)}
+          />
+        )}
 
         <DataTableControlled
           data={organizations}
@@ -145,6 +200,18 @@ export default function AdminOrganisationsPage() {
           filterAriaLabel="Filter organisations"
           filterPredicate={filterPredicate}
         />
+
+        <ConfirmModal
+          opened={removingOrg !== null}
+          onClose={() => setRemovingOrg(null)}
+          onAccept={confirmRemoveOrg}
+          title="Remove organisation"
+          acceptLabel="Remove"
+          submittingLabel="Removing…"
+        >
+          Are you sure you want to remove <strong>{removingOrg?.name}</strong>?
+          This will also remove all staff and patient memberships.
+        </ConfirmModal>
       </Stack>
     </Container>
   );

@@ -88,6 +88,8 @@ function CreateFields() {
 }
 
 export default function CreateOrganisationPage() {
+  const navigate = useNavigate();
+
   async function handleSubmit(
     data: CreateFormValues,
   ): Promise<FormSubmitResult> {
@@ -96,6 +98,15 @@ export default function CreateOrganisationPage() {
         name: data.name.trim(),
         type: data.type,
         location: data.location.trim() || null,
+      });
+      navigate("/admin/organisations", {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Organisation created",
+            description: `${data.name.trim()} has been created successfully`,
+          },
+        },
       });
       return {
         state: "success",

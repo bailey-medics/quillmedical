@@ -653,6 +653,19 @@ def login(
         raise HTTPException(400, "Invalid credentials")
 
     if not user.email_verified:
+        token = create_email_verify_token(user.email)
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+        send_email(
+            to=user.email,
+            subject="Verify your Quill email address",
+            html_body=(
+                "<p>Please verify your email address to activate "
+                "your Quill account.</p>"
+                f'<p><a href="{verify_url}">Verify your email</a></p>'
+                f"<p>This link expires in "
+                f"{settings.EMAIL_VERIFY_TTL_MIN} minutes.</p>"
+            ),
+        )
         raise HTTPException(
             status_code=403,
             detail={
@@ -3578,6 +3591,45 @@ class AddStaffIn(BaseModel):
     user_id: int
 
     model_config = {"extra": "forbid"}
+
+
+@router.delete("/organizations/{org_id}")
+def delete_organization(
+    org_id: int,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Delete Organisation.
+
+    Permanently removes an organisation and all associated memberships.
+
+    Requires admin or superadmin system permissions.
+
+    Args:
+        org_id: ID of the organisation to delete.
+        u: Currently authenticated user (admin/superadmin only).
+        db: Database session.
+
+    Returns:
+        dict: Success confirmation.
+
+    Raises:
+        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 404 if organisation not found.
+    """
+    if u.system_permissions not in ["admin", "superadmin"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Requires admin or superadmin permissions",
+        )
+
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organisation not found")
+
+    db.delete(org)
+    db.commit()
+    return {"detail": "Organisation deleted"}
 
 
 @router.post("/organizations/{org_id}/staff")

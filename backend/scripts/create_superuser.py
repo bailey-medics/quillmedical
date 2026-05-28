@@ -87,6 +87,7 @@ def main() -> int:
                 email=email,
                 password_hash=hash_password(password),
                 system_permissions="superadmin",
+                email_verified=True,
             )
             db.add(u)
             action = "created"
@@ -96,6 +97,7 @@ def main() -> int:
             u.system_permissions = "superadmin"
             u.is_active = True
             u.is_totp_enabled = False
+            u.email_verified = True
             action = "updated"
         db.commit()
         print(f"Successfully {action} superadmin user: {username}")
