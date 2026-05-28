@@ -308,7 +308,7 @@ jobs:
     steps:
       - name: Notify teaching deploy success
         if: ${{ needs.deploy-teaching.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
+        uses: slackapi/slack-github-action@v3.0.2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -328,7 +328,7 @@ jobs:
 
       - name: Notify teaching deploy failure
         if: ${{ needs.deploy-teaching.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
+        uses: slackapi/slack-github-action@v3.0.2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -348,7 +348,7 @@ jobs:
 
       - name: Notify production promotion success
         if: ${{ needs.promote-to-production.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
+        uses: slackapi/slack-github-action@v3.0.2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -368,7 +368,7 @@ jobs:
 
       - name: Notify production promotion failure
         if: ${{ needs.promote-to-production.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
+        uses: slackapi/slack-github-action@v3.0.2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
