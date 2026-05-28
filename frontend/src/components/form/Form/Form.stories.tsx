@@ -20,7 +20,14 @@ import RadioField from "../RadioField";
 
 import { IconAlertTriangle } from "@/components/icons/appIcons";
 import { useState } from "react";
-import type { FlashState } from "@/components/page-flash";
+import type { ReactNode } from "react";
+
+/** Flash payload shape (matches location.state.flash consumed by PageMessageProvider) */
+interface FlashPayload {
+  variant?: "success" | "partial_success" | "error";
+  title: string;
+  description?: ReactNode;
+}
 
 const meta: Meta<typeof Form> = {
   title: "Form/Form",
@@ -70,7 +77,7 @@ function delay(ms: number): Promise<void> {
 }
 
 /** Renders a flash message directly via FormStatus */
-function InjectFlash({ flash }: { flash: FlashState["flash"] | null }) {
+function InjectFlash({ flash }: { flash: FlashPayload | null }) {
   if (!flash) {
     return null;
   }
@@ -429,7 +436,7 @@ export const ConfirmAndStay: Story = {
 export const ConfirmThenNavigate: Story = {
   render: function ConfirmThenNavigateStory() {
     const [page, setPage] = useState<"form" | "destination">("form");
-    const [flash, setFlash] = useState<FlashState["flash"] | null>(null);
+    const [flash, setFlash] = useState<FlashPayload | null>(null);
 
     if (page === "destination") {
       return (
@@ -438,7 +445,7 @@ export const ConfirmThenNavigate: Story = {
           <StoryNote>Staff members list (destination page)</StoryNote>
           <StoryNote>
             The flash message above was passed via React Router navigation state
-            and rendered by PageFlash.
+            and rendered by the centralised PageMessage system.
           </StoryNote>
         </Stack>
       );
@@ -492,7 +499,7 @@ export const ConfirmThenNavigate: Story = {
 export const SubmitAndNavigate: Story = {
   render: function SubmitAndNavigateStory() {
     const [page, setPage] = useState<"form" | "destination">("form");
-    const [flash, setFlash] = useState<FlashState["flash"] | null>(null);
+    const [flash, setFlash] = useState<FlashPayload | null>(null);
 
     if (page === "destination") {
       return (
@@ -501,7 +508,7 @@ export const SubmitAndNavigate: Story = {
           <StoryNote>Patient letters list (destination page)</StoryNote>
           <StoryNote>
             The flash message above was passed via React Router navigation state
-            and rendered by PageFlash.
+            and rendered by the centralised PageMessage system.
           </StoryNote>
         </Stack>
       );

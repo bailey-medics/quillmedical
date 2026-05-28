@@ -10,8 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import { PageFlash } from "@/components/page-flash";
-import { FormStatus } from "@/components/form/Form";
+import { usePageMessage } from "@/components/page-message";
 import AddButton from "@/components/button/AddButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -102,24 +101,20 @@ export default function AdminOrganisationsPage() {
   }, []);
 
   const [removingOrg, setRemovingOrg] = useState<Organization | null>(null);
-  const [flash, setFlash] = useState<{
-    variant: "success" | "error";
-    title: string;
-    description: string;
-  } | null>(null);
+  const { showMessage } = usePageMessage();
 
   async function confirmRemoveOrg() {
     if (!removingOrg) return;
     try {
       await api.del(`/organizations/${removingOrg.id}`);
       setOrganizations((prev) => prev.filter((o) => o.id !== removingOrg.id));
-      setFlash({
+      showMessage({
         variant: "success",
         title: "Organisation removed",
         description: `${removingOrg.name} has been removed`,
       });
     } catch (err) {
-      setFlash({
+      showMessage({
         variant: "error",
         title: "Failed to remove organisation",
         description:
@@ -175,16 +170,6 @@ export default function AdminOrganisationsPage() {
             onClick={() => navigate("/admin/organisations/new")}
           />
         </Group>
-
-        <PageFlash />
-        {flash && (
-          <FormStatus
-            variant={flash.variant}
-            title={flash.title}
-            description={flash.description}
-            onDismiss={() => setFlash(null)}
-          />
-        )}
 
         <DataTableControlled
           data={organizations}

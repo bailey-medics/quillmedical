@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import { PageFlash } from "@/components/page-flash";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
   IconAlertCircle,
@@ -208,7 +207,6 @@ export default function SiteAdminPage() {
     <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={site.name} />
-        <PageFlash />
 
         {/* Site Information */}
         <BaseCard>

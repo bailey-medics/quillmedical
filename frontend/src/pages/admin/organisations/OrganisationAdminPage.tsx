@@ -24,11 +24,10 @@ import {
   IconUserMinus,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
+import { usePageMessage } from "@/components/page-message";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
-import { FormStatus } from "@/components/form/Form";
-import { PageFlash } from "@/components/page-flash";
-import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import AddButton from "@/components/button/AddButton";
@@ -124,11 +123,7 @@ export default function OrganisationAdminPage() {
     null,
   );
   const [removingSite, setRemovingSite] = useState<SiteMember | null>(null);
-  const [siteFlash, setSiteFlash] = useState<{
-    variant: "success" | "error";
-    title: string;
-    description: string;
-  } | null>(null);
+  const { showMessage } = usePageMessage();
 
   const fetchOrganizationData = useCallback(async () => {
     if (!id) {
@@ -165,14 +160,14 @@ export default function OrganisationAdminPage() {
     if (!id || !removingSite) return;
     try {
       await api.del(`/organizations/${id}/sites/${removingSite.id}`);
-      setSiteFlash({
+      showMessage({
         variant: "success",
         title: "Site removed",
         description: `${removingSite.name} has been removed from this organisation`,
       });
       await fetchOrganizationData();
     } catch (err) {
-      setSiteFlash({
+      showMessage({
         variant: "error",
         title: "Failed to remove site",
         description:
@@ -315,15 +310,6 @@ export default function OrganisationAdminPage() {
     <Container size="lg">
       <Stack gap="lg">
         <PageHeader title={org.name} />
-        <PageFlash />
-        {siteFlash && (
-          <FormStatus
-            variant={siteFlash.variant}
-            title={siteFlash.title}
-            description={siteFlash.description}
-            onDismiss={() => setSiteFlash(null)}
-          />
-        )}
         {/* Organisation Information */}
         <BaseCard>
           <Stack gap="md">

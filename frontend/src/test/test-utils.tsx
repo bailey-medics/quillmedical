@@ -17,6 +17,7 @@ import {
 } from "react-router-dom";
 import type { ReactElement, ReactNode } from "react";
 import { theme, cssVariablesResolver } from "@/theme";
+import { PageMessageProvider } from "@/components/page-message";
 
 /**
  * Render options with all providers
@@ -54,7 +55,7 @@ function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
         cssVariablesResolver={cssVariablesResolver}
         env="test"
       >
-        {children}
+        <PageMessageProvider>{children}</PageMessageProvider>
       </MantineProvider>
     </BrowserRouter>
   );
@@ -102,9 +103,17 @@ export function renderWithRouter(
 
   // If a routePath is provided, use a data router to support useBlocker/useParams
   if (routePath) {
-    const router = createMemoryRouter([{ path: routePath, element: ui }], {
-      initialEntries: [initialRoute || "/"],
-    });
+    const router = createMemoryRouter(
+      [
+        {
+          path: routePath,
+          element: <PageMessageProvider>{ui}</PageMessageProvider>,
+        },
+      ],
+      {
+        initialEntries: [initialRoute || "/"],
+      },
+    );
     const Wrapper = ({ children }: { children: ReactNode }) => (
       <MantineProvider
         theme={theme}
