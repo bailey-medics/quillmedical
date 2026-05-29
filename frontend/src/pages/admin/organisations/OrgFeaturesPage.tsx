@@ -229,9 +229,12 @@ export default function OrgFeaturesPage() {
       );
       setSavedKeys(newSaved);
       await reload();
+      const summary = changes
+        .map((c) => `${c.label} ${data[c.key] ? "enabled" : "disabled"}`)
+        .join(", ");
       return {
         state: "success",
-        message: { title: "Features updated" },
+        message: { title: "Features updated", description: summary },
       };
     } catch (err) {
       return {

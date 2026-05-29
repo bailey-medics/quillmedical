@@ -89,9 +89,14 @@ export default function SideNavContent({
 
   // Extract org ID from URL if on organisation admin page
   const orgIdMatch = location.pathname.match(
-    /^\/admin\/organisations\/([^/]+)$/,
+    /^\/admin\/organisations\/([^/]+)/,
   );
   const orgId = orgIdMatch ? orgIdMatch[1] : null;
+
+  // Detect org sub-page (e.g. "features")
+  const orgSubPage =
+    location.pathname.match(/^\/admin\/organisations\/[^/]+\/([^/]+)/)?.[1] ??
+    null;
 
   // Extract site ID from URL if on site admin page
   const siteIdMatch = location.pathname.match(/^\/admin\/sites\/([^/]+)/);
@@ -179,12 +184,20 @@ export default function SideNavContent({
             `/organizations/${orgId}`,
           );
           if (cancelled) return;
-          setOrgNavChildren([
-            {
-              label: org.name || "Unknown Organisation",
-              href: `/admin/organisations/${orgId}`,
-            },
-          ]);
+          const orgItem: NavItem = {
+            label: org.name || "Unknown Organisation",
+            href: `/admin/organisations/${orgId}`,
+            children:
+              orgSubPage === "features"
+                ? [
+                    {
+                      label: "Features",
+                      href: `/admin/organisations/${orgId}/features`,
+                    },
+                  ]
+                : undefined,
+          };
+          setOrgNavChildren([orgItem]);
         } catch (error) {
           console.error("Failed to fetch organisation name:", error);
           if (!cancelled) setOrgNavChildren(undefined);
@@ -222,7 +235,7 @@ export default function SideNavContent({
     return () => {
       cancelled = true;
     };
-  }, [orgId, siteId]);
+  }, [orgId, orgSubPage, siteId]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
