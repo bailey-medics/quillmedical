@@ -32,16 +32,20 @@ import {
 import {
   useForm,
   FormProvider,
+  useFormState,
   type DefaultValues,
   type FieldValues,
   type FieldErrors,
+  type Control,
 } from "react-hook-form";
+import { useBlocker, useInRouterContext } from "react-router-dom";
 import FormContext, {
   type FormState,
   type FormStatusMessage,
   type FormContextValue,
 } from "./FormContext";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
+import DirtyFormNavigation from "@/components/warnings";
 
 export interface FormSubmitResult {
   /** Resulting state after submission */
@@ -80,8 +84,44 @@ export interface FormProps<T extends FieldValues> {
   disableWhenClean?: boolean;
   /** When provided, a confirmation modal gates submission after validation passes */
   confirm?: FormConfirmConfig;
+  /** Block navigation when form is dirty (defaults to true) */
+  blockNavigation?: boolean;
   /** Form content (FormStatus, fields, SubmitButton) */
   children: ReactNode;
+}
+
+/**
+ * Internal component that blocks navigation when the form is dirty.
+ * Must be rendered inside FormProvider to access form state.
+ * Only activates when rendered inside a React Router context.
+ */
+function FormNavigationBlocker({
+  control,
+  onProceed,
+}: {
+  control: Control<FieldValues>;
+  onProceed: () => void;
+}) {
+  const { isDirty } = useFormState({ control });
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  return <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />;
+}
+
+/**
+ * Conditionally renders FormNavigationBlocker only when inside a router.
+ */
+function MaybeFormNavigationBlocker(props: {
+  control: Control<FieldValues>;
+  onProceed: () => void;
+}) {
+  const hasRouter = useInRouterContext();
+  if (!hasRouter) return null;
+  return <FormNavigationBlocker {...props} />;
 }
 
 /**
@@ -95,6 +135,7 @@ export default function Form<T extends FieldValues>({
   timeoutMs = 30_000,
   disableWhenClean = false,
   confirm,
+  blockNavigation = true,
   children,
 }: FormProps<T>) {
   const methods = useForm<T>({ defaultValues, mode: "onChange" });
@@ -226,6 +267,12 @@ export default function Form<T extends FieldValues>({
         >
           {children}
         </form>
+        {blockNavigation && (
+          <MaybeFormNavigationBlocker
+            control={methods.control as unknown as Control<FieldValues>}
+            onProceed={() => methods.reset()}
+          />
+        )}
         {confirm && (
           <ConfirmModal
             opened={confirmOpen}
