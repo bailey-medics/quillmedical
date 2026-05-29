@@ -31,7 +31,7 @@ interface SubmitButtonProps {
 
 export default function SubmitButton({
   onCancel,
-  cancelLabel = "Cancel",
+  cancelLabel,
   disabled = false,
 }: SubmitButtonProps) {
   const { formState, submitLabel, submittingLabel, disableWhenClean, methods } =
@@ -46,13 +46,19 @@ export default function SubmitButton({
     (disableWhenClean && !isDirty);
   const isLoading = formState === "submitting";
 
+  const effectiveCancelLabel =
+    cancelLabel ??
+    (formState === "success" || formState === "partial_success"
+      ? "Back"
+      : "Cancel");
+
   return (
     <ButtonPair
       acceptType="submit"
       acceptDisabled={isDisabled}
       acceptTestId="submit-button"
       onCancel={onCancel}
-      cancelLabel={cancelLabel}
+      cancelLabel={effectiveCancelLabel}
       acceptChildren={
         <span style={{ display: "grid", placeItems: "center" }}>
           <span
