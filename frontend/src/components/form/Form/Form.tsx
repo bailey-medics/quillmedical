@@ -94,19 +94,29 @@ export interface FormProps<T extends FieldValues> {
  * Internal component that blocks navigation when the form is dirty.
  * Must be rendered inside FormProvider to access form state.
  * Only activates when rendered inside a React Router context.
+ * Does NOT block during submission or after success (the onSubmit
+ * handler may navigate before Form calls reset).
  */
 function FormNavigationBlocker({
   control,
   onProceed,
+  formState,
 }: {
   control: Control<FieldValues>;
   onProceed: () => void;
+  formState: FormState;
 }) {
   const { isDirty } = useFormState({ control });
 
+  const shouldBlock =
+    isDirty &&
+    formState !== "submitting" &&
+    formState !== "success" &&
+    formState !== "partial_success";
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
+      shouldBlock && currentLocation.pathname !== nextLocation.pathname,
   );
 
   return <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />;
@@ -118,6 +128,7 @@ function FormNavigationBlocker({
 function MaybeFormNavigationBlocker(props: {
   control: Control<FieldValues>;
   onProceed: () => void;
+  formState: FormState;
 }) {
   const hasRouter = useInRouterContext();
   if (!hasRouter) return null;
@@ -271,6 +282,7 @@ export default function Form<T extends FieldValues>({
           <MaybeFormNavigationBlocker
             control={methods.control as unknown as Control<FieldValues>}
             onProceed={() => methods.reset()}
+            formState={formState}
           />
         )}
         {confirm && (
