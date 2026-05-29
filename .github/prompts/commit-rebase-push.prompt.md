@@ -16,6 +16,7 @@ The user may specify a repo name after the command (e.g. `/crp eoeeta-teaching`)
 | `tooling` | `/Users/markbailey/github/quillmedical/teaching-tooling` |
 | `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching` |
 | `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
+| `all` | *all of the above repos* |
 
 If no argument is given, default to **quillmedical**.
 
