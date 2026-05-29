@@ -154,12 +154,13 @@ resource "github_repository_ruleset" "tooling_protected_branches" {
 
 ### 2. Create teaching-tooling Terraform
 
-- Create `teaching-tooling/infra/` with:
+- [x] Create `teaching-tooling/infra/` with:
   - `main.tf` — provider config, org-level rulesets for `*-teaching`, repo-level ruleset for teaching-tooling itself
   - `variables.tf` — `github_owner`
   - `terraform.tfvars` — `github_owner = "bailey-medics"`
-- Add `.terraform/` and `*.tfstate*` to `.gitignore`
-- Run `terraform apply` to create the rulesets
+- [x] `.terraform/` and `*.tfstate*` already in `.gitignore`
+- [ ] Run `terraform apply` to create the rulesets (requires GITHUB_TOKEN)
+  - Note: old resources in state must be removed first (`terraform state rm`)
 
 ### 3. Verify
 
