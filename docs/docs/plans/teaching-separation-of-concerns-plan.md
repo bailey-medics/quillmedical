@@ -169,6 +169,32 @@ resource "github_repository_ruleset" "tooling_protected_branches" {
 - [x] quillmedical: invalid branch name rejected (repo-level ruleset still works)
 - [ ] Confirm content repo PRs enforce status checks before merge (check on next PR)
 
+### 4. Consolidate to single pipeline workflow
+
+Content repos currently have 3 workflow files (validate, deploy, auto-pr) that each call a separate teaching-tooling workflow. This tightly couples content repos to teaching-tooling's internal structure. Instead, each content repo should have ONE workflow file, and teaching-tooling should orchestrate everything internally.
+
+**Architecture:**
+
+- Content repo has a single `.github/workflows/teaching.yml` that calls `pipeline.yml@main`
+- teaching-tooling's `pipeline.yml` uses `if:` conditions on `github.event_name` to dispatch:
+  - `push` to `feature/**` → auto-create PR
+  - `pull_request` → validate content + check branch protection
+  - `push` to `main` → deploy to GCS
+
+**Benefits:**
+
+- Adding new CI concerns (e.g. check-protection) = adding a job to `pipeline.yml`. Zero content repo changes.
+- Content repos are agnostic to what CI/CD is done upon them
+- Onboarding = copy one file, change one line (`org_id`)
+
+**Implementation:**
+
+- [ ] Create `pipeline.yml` reusable workflow in teaching-tooling (consolidates validate, deploy, auto-pr, check-protection)
+- [ ] Replace 3 workflow files in eoeeta-teaching with single `teaching.yml`
+- [ ] Replace 3 workflow files in respiratory-teaching with single `teaching.yml`
+- [ ] Update Terraform required status checks to match new context names (`Teaching CI / pipeline / validate`, `Teaching CI / pipeline / check-protection`)
+- [ ] Keep old `validate.yml` and `deploy.yml` temporarily for backwards compatibility (remove after all repos migrated)
+
 ## Onboarding a new content repo
 
 After this plan is implemented, onboarding a new organisation is:
@@ -178,6 +204,6 @@ After this plan is implemented, onboarding a new organisation is:
 3. Add content under `modules/`
 4. Add the repo name to `teaching_repos` in `teaching-tooling/infra/main.tf`
 5. Run `terraform apply`
-6. Push — branch protection is active
+6. Push — branch protection is active, and the self-check confirms it
 
 No changes to quillmedical required.
