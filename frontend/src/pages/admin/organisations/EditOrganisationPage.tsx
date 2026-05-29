@@ -130,9 +130,24 @@ export default function EditOrganisationPage() {
         type: data.type,
         location: data.location.trim() || null,
       });
+      const changes: string[] = [];
+      if (orgData && data.name.trim() !== orgData.name) {
+        changes.push("name");
+      }
+      if (orgData && data.type !== orgData.type) {
+        changes.push("type");
+      }
+      if (
+        orgData &&
+        (data.location.trim() || null) !== (orgData.location || null)
+      ) {
+        changes.push("location");
+      }
+      const description =
+        changes.length > 0 ? `Updated ${changes.join(", ")}` : undefined;
       return {
         state: "success",
-        message: { title: "Organisation updated" },
+        message: { title: "Organisation updated", description },
       };
     } catch (err) {
       return {
