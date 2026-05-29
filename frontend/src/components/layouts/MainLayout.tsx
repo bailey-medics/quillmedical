@@ -14,6 +14,10 @@ import TopRibbon from "@components/ribbon/TopRibbon";
 import Footer from "@components/footer/Footer";
 import OfflineStrip from "@components/offline-strip/OfflineStrip";
 import OfflineModal from "@components/offline-modal/OfflineModal";
+import {
+  PageMessageDisplay,
+  PageMessageProvider,
+} from "@components/page-message";
 import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
@@ -221,7 +225,10 @@ export default function MainLayout({
                   <Skeleton height={100} radius="md" />
                 </Stack>
               ) : (
-                children
+                <PageMessageProvider>
+                  <PageMessageDisplay />
+                  {children}
+                </PageMessageProvider>
               )}
             </Box>
             <Footer text={footerText} loading={footerLoading} />
