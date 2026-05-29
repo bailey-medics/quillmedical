@@ -133,31 +133,39 @@ export const AllVariants: Story = {
   render: () => {
     function AllVariantsPage() {
       return (
-        <VariantStack>
-          <VariantRow label="success">
-            {renderStory([
-              { variant: "success", title: "Action completed successfully" },
-            ])}
-          </VariantRow>
-          <VariantRow label="partial_success">
-            {renderStory([
-              {
-                variant: "partial_success",
-                title: "Partially completed",
-                description: "Some items were not processed.",
-              },
-            ])}
-          </VariantRow>
-          <VariantRow label="error">
-            {renderStory([
-              {
-                variant: "error",
-                title: "Operation failed",
-                description: "Please try again or contact support.",
-              },
-            ])}
-          </VariantRow>
-        </VariantStack>
+        <MantineProvider
+          theme={theme}
+          cssVariablesResolver={cssVariablesResolver}
+        >
+          <VariantStack>
+            <VariantRow label="success">
+              {renderStory([
+                {
+                  variant: "success",
+                  title: "Action completed successfully",
+                },
+              ])}
+            </VariantRow>
+            <VariantRow label="partial_success">
+              {renderStory([
+                {
+                  variant: "partial_success",
+                  title: "Partially completed",
+                  description: "Some items were not processed.",
+                },
+              ])}
+            </VariantRow>
+            <VariantRow label="error">
+              {renderStory([
+                {
+                  variant: "error",
+                  title: "Operation failed",
+                  description: "Please try again or contact support.",
+                },
+              ])}
+            </VariantRow>
+          </VariantStack>
+        </MantineProvider>
       );
     }
     return <AllVariantsPage />;
