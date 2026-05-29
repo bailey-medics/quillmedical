@@ -150,23 +150,24 @@ resource "github_repository_ruleset" "tooling_protected_branches" {
 - [x] Remove rulesets 3–10 (question-bank and teaching repos) from `infra/github/branch_rules.tf`
 - [x] Remove associated variables (`question_bank_repository`, `teaching_tooling_repository`, etc.)
 - [x] Remove question-bank security config from `infra/github/security.tf`
-- [ ] Run `terraform apply` to destroy the orphaned rulesets (requires GITHUB_TOKEN)
+- [x] Run `terraform apply` — orphaned state cleaned, secret scanning enabled
 
 ### 2. Create teaching-tooling Terraform
 
 - [x] Create `teaching-tooling/infra/` with:
-  - `main.tf` — provider config, org-level rulesets for `*-teaching`, repo-level ruleset for teaching-tooling itself
+  - `main.tf` — provider config, org-level rulesets for content repos, repo-level ruleset for teaching-tooling
   - `variables.tf` — `github_owner`
   - `terraform.tfvars` — `github_owner = "bailey-medics"`
 - [x] `.terraform/` and `*.tfstate*` already in `.gitignore`
-- [ ] Run `terraform apply` to create the rulesets (requires GITHUB_TOKEN)
-  - Note: old resources in state must be removed first (`terraform state rm`)
+- [x] Run `terraform apply` — all 4 rulesets created and active
+- [x] Note: `~*-teaching` wildcard patterns don't work in org rulesets; using explicit repo names in a `locals` list instead
 
 ### 3. Verify
 
-- Confirm teaching-tooling PR no longer shows "bypass rules" option
-- Confirm content repo PRs enforce status checks before merge
-- Create a test branch with invalid name to confirm naming rules apply
+- [x] teaching-tooling: invalid branch name rejected (`test-bad-name`)
+- [x] eoeeta-teaching: invalid branch name rejected (`test-bad-name-2`)
+- [x] quillmedical: invalid branch name rejected (repo-level ruleset still works)
+- [ ] Confirm content repo PRs enforce status checks before merge (check on next PR)
 
 ## Onboarding a new content repo
 
@@ -175,6 +176,8 @@ After this plan is implemented, onboarding a new organisation is:
 1. Create `{org}-teaching` repo
 2. Add thin workflow callers (copy from an existing content repo)
 3. Add content under `modules/`
-4. Push — branch protection is already active (GitHub matches the pattern)
+4. Add the repo name to `teaching_repos` in `teaching-tooling/infra/main.tf`
+5. Run `terraform apply`
+6. Push — branch protection is active
 
-No changes to teaching-tooling or quillmedical required.
+No changes to quillmedical required.
