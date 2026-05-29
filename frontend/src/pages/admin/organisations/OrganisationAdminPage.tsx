@@ -152,8 +152,22 @@ export default function OrganisationAdminPage() {
 
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
-    await api.del(`/organizations/${id}/staff/${removingMember.id}`);
-    await fetchOrganizationData();
+    try {
+      await api.del(`/organizations/${id}/staff/${removingMember.id}`);
+      showMessage({
+        variant: "success",
+        title: "Staff member removed",
+        description: `${removingMember.username} has been removed from this organisation`,
+      });
+      await fetchOrganizationData();
+    } catch (err) {
+      showMessage({
+        variant: "error",
+        title: "Failed to remove staff member",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
+    }
   }
 
   async function confirmRemoveSite() {

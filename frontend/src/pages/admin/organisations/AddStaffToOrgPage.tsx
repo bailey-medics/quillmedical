@@ -29,6 +29,7 @@ interface ApiUser {
   id: number;
   username: string;
   email: string;
+  full_name: string;
 }
 
 interface AddStaffFormValues {
@@ -119,7 +120,16 @@ export default function AddStaffToOrgPage() {
         user_id: Number(data.userId),
       });
       await reload();
-      navigate(`/admin/organisations/${id}`);
+      const selectedUser = users.find((u) => String(u.id) === data.userId);
+      navigate(`/admin/organisations/${id}`, {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Staff member added",
+            description: `${selectedUser?.username ?? "The staff member"} has been added to this organisation`,
+          },
+        },
+      });
       return {
         state: "success",
         message: { title: "Staff member added" },
