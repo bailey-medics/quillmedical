@@ -43,7 +43,7 @@ describe("AddStaffToOrgPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("loads and displays users in select", async () => {
+  it("loads users excluding current org members", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
       users: [
         { id: 1, username: "drsmith", email: "dr.smith@test.com" },
@@ -58,7 +58,7 @@ describe("AddStaffToOrgPage", () => {
 
     await waitFor(() => {
       expect(apiLib.api.get).toHaveBeenCalledWith(
-        "/users?permission_level=staff",
+        "/users?permission_level=staff&exclude_org=1",
       );
     });
   });

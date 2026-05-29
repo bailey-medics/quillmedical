@@ -1039,6 +1039,85 @@ class TestOrganizationEndpoints:
         )
         assert response.status_code == 400
 
+    def test_list_users_exclude_org(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Test exclude_org filters out existing org members."""
+        org = Organization(name="Exclude Org")
+        db_session.add(org)
+        db_session.flush()
+
+        # Add admin to org so they can see users
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+
+        # Create two staff users in the same org
+        member_user = User(
+            username="staff-member-a",
+            email="staff-member-a@example.com",
+            password_hash=hash_password("Password123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="staff",
+        )
+        non_member_user = User(
+            username="staff-available",
+            email="staff-available@example.com",
+            password_hash=hash_password("Password123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="staff",
+        )
+        db_session.add_all([member_user, non_member_user])
+        db_session.flush()
+
+        # Add both to admin's org so admin can see them
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                [
+                    {
+                        "organisation_id": org.id,
+                        "user_id": member_user.id,
+                        "is_primary": False,
+                    },
+                    {
+                        "organisation_id": org.id,
+                        "user_id": non_member_user.id,
+                        "is_primary": False,
+                    },
+                ]
+            )
+        )
+        db_session.commit()
+
+        # Without exclude_org: both visible
+        response = authenticated_admin_client.get(
+            "/api/users?permission_level=staff"
+        )
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.json()["users"]]
+        assert "staff-member-a" in usernames
+        assert "staff-available" in usernames
+
+        # With exclude_org: members of that org are excluded
+        response = authenticated_admin_client.get(
+            f"/api/users?permission_level=staff&exclude_org={org.id}"
+        )
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.json()["users"]]
+        assert "staff-member-a" not in usernames
+        assert "staff-available" not in usernames
+        # Admin is also a member but should be excluded too
+        assert "testadmin" not in usernames
+
     def test_deactivate_user_success(
         self,
         authenticated_admin_client: TestClient,
