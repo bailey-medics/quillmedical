@@ -23,13 +23,12 @@ Branch protection for teaching repos is currently configured ad-hoc or managed i
 
 ## Architecture
 
-| Concern           | Mechanism                                                  | Teaching-tooling aware of content repos? |
-| ----------------- | ---------------------------------------------------------- | ---------------------------------------- |
-| CI validation     | Content repo calls reusable workflow (`validate.yml@main`) | No                                       |
-| Deployment        | Content repo calls reusable workflow (`deploy.yml@main`)   | No                                       |
-| Branch protection | GitHub org-level ruleset matching `*-teaching` pattern     | No                                       |
-| Branch naming     | GitHub org-level ruleset matching `*-teaching` pattern     | No                                       |
-| Auto PR creation  | Content repo calls reusable workflow (`auto-pr.yml@main`)  | No                                       |
+| Concern           | Mechanism                                                             | Teaching-tooling aware of content repos? |
+| ----------------- | --------------------------------------------------------------------- | ---------------------------------------- |
+| CI/CD pipeline    | Content repo calls single `pipeline.yml@main` (dispatches internally) | No                                       |
+| Branch protection | GitHub org-level ruleset (explicit repo names in Terraform)           | Yes (repo names in `locals`)             |
+| Branch naming     | GitHub org-level ruleset (explicit repo names in Terraform)           | Yes (repo names in `locals`)             |
+| Self-check        | `check-protection` job in pipeline fails if no rulesets found         | No                                       |
 
 ## Org-level rulesets (Terraform in teaching-tooling)
 
@@ -167,7 +166,7 @@ resource "github_repository_ruleset" "tooling_protected_branches" {
 - [x] teaching-tooling: invalid branch name rejected (`test-bad-name`)
 - [x] eoeeta-teaching: invalid branch name rejected (`test-bad-name-2`)
 - [x] quillmedical: invalid branch name rejected (repo-level ruleset still works)
-- [ ] Confirm content repo PRs enforce status checks before merge (check on next PR)
+- [x] Confirm content repo PRs enforce status checks before merge (verified on eoeeta-teaching PR #2 and respiratory-teaching PR #2)
 
 ### 4. Consolidate to single pipeline workflow
 
@@ -189,21 +188,28 @@ Content repos currently have 3 workflow files (validate, deploy, auto-pr) that e
 
 **Implementation:**
 
-- [ ] Create `pipeline.yml` reusable workflow in teaching-tooling (consolidates validate, deploy, auto-pr, check-protection)
-- [ ] Replace 3 workflow files in eoeeta-teaching with single `teaching.yml`
-- [ ] Replace 3 workflow files in respiratory-teaching with single `teaching.yml`
-- [ ] Update Terraform required status checks to match new context names (`Teaching CI / pipeline / validate`, `Teaching CI / pipeline / check-protection`)
-- [ ] Keep old `validate.yml` and `deploy.yml` temporarily for backwards compatibility (remove after all repos migrated)
+- [x] Create `pipeline.yml` reusable workflow in teaching-tooling (consolidates validate, deploy, auto-pr, check-protection)
+- [x] Replace 3 workflow files in eoeeta-teaching with single `teaching.yml`
+- [x] Replace 3 workflow files in respiratory-teaching with single `teaching.yml`
+- [x] Update Terraform required status checks to match new context names (`pipeline / validate`, `pipeline / check-protection`)
+- [x] Fix GITHUB_TOKEN limitation: run validate/check-protection on push to feature branches (same pattern as quillmedical branch-ci)
+- [x] Fix teaching-tooling self-test trigger (push to feature branches, not just pull_request)
+
+**Lessons learned:**
+
+- Status check context for reusable workflows is `<caller_job> / <called_job>`, not `<workflow_name> / <caller_job> / <called_job>`
+- `GITHUB_TOKEN`-created PR events don't trigger other workflows — run checks on push event instead
+- GitHub's `~*-teaching` fnmatch pattern doesn't work in org rulesets; explicit repo names required
 
 ## Onboarding a new content repo
 
 After this plan is implemented, onboarding a new organisation is:
 
 1. Create `{org}-teaching` repo
-2. Add thin workflow callers (copy from an existing content repo)
+2. Copy `.github/workflows/teaching.yml` from an existing content repo, change `org_id`
 3. Add content under `modules/`
 4. Add the repo name to `teaching_repos` in `teaching-tooling/infra/main.tf`
 5. Run `terraform apply`
-6. Push — branch protection is active, and the self-check confirms it
+6. Push — branch protection is active, pipeline runs, and the self-check confirms it
 
 No changes to quillmedical required.
