@@ -31,7 +31,7 @@ function syncResultToModules(
   banks: AdminBank[],
   result: SyncAllResult,
 ): SyncModuleRow[] {
-  return banks.map((bank) => {
+  const rows: SyncModuleRow[] = banks.map((bank) => {
     const synced = result.synced.find(
       (s) => s.question_bank_id === bank.bank_id,
     );
@@ -72,6 +72,24 @@ function syncResultToModules(
       reason: "",
     };
   });
+
+  // Include errors for banks not already in the DB
+  const knownBankIds = new Set(banks.map((b) => b.bank_id));
+  for (const err of result.errors) {
+    if (!knownBankIds.has(err.bank_id)) {
+      rows.push({
+        bank_id: err.bank_id,
+        title: err.bank_id,
+        type: "—",
+        outcome: "error" as const,
+        version: 0,
+        item_count: 0,
+        reason: String(err.error),
+      });
+    }
+  }
+
+  return rows;
 }
 
 export default function AdminTeachingPage() {

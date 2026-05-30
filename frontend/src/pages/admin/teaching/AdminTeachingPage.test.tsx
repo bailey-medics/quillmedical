@@ -192,4 +192,28 @@ describe("AdminTeachingPage", () => {
       expect(screen.getByText("Download failed")).toBeTruthy();
     });
   });
+
+  it("shows errors for banks not yet in the database", async () => {
+    const user = userEvent.setup();
+
+    // No banks in DB initially
+    (api.get as Mock).mockResolvedValue([]);
+    (api.post as Mock).mockResolvedValue({
+      synced: [],
+      errors: [{ bank_id: "new-module", error: "module directory not found" }],
+    });
+
+    renderWithRouter(<AdminTeachingPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sync all")).toBeTruthy();
+    });
+
+    await user.click(screen.getByText("Sync all"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Sync failed")).toBeTruthy();
+      expect(screen.getByText("module directory not found")).toBeTruthy();
+    });
+  });
 });
