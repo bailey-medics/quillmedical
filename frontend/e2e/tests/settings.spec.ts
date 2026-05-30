@@ -10,9 +10,9 @@ test.describe("Settings page", () => {
   });
 
   test("password change section is accessible", async ({ page }) => {
-    await page.goto("/settings/password");
+    await page.goto("/settings/account");
 
-    await expect(page).toHaveURL(/\/settings\/password/);
+    await expect(page).toHaveURL(/\/settings\/account/);
     await expect(
       page.getByLabel(/current password|old password/i),
     ).toBeVisible();
