@@ -184,20 +184,17 @@ export default function AccountPage() {
       };
     }
 
-    if (!profileUpdated && !passwordChanged) {
-      return {
-        state: "error",
-        message: { title: "No changes to save" },
-      };
-    }
-
     const parts: string[] = [];
-    if (profileUpdated) parts.push("Profile updated");
-    if (passwordChanged) parts.push("Password changed");
+    if (nameChanged && profileUpdated) parts.push("Full name changed.");
+    if (emailChanged && profileUpdated) parts.push("Email changed.");
+    if (passwordChanged) parts.push("Password changed.");
 
     return {
       state: "success",
-      message: { title: parts.join(". ") },
+      message: {
+        title: "Profile updated",
+        description: parts.join(" "),
+      },
     };
   }
 
@@ -208,6 +205,7 @@ export default function AccountPage() {
         onSubmit={handleSubmit}
         submitLabel="Save"
         submittingLabel="Saving…"
+        disableWhenClean
       >
         <AccountFields />
       </Form>
