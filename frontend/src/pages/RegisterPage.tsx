@@ -22,13 +22,9 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
-import {
-  RegistrationForm,
-  type RegistrationFormData,
-} from "@components/registration";
 import { useEffect, useState } from "react";
 import { Controller } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 
 interface TeachingRegisterFormValues {
   module: string;
@@ -164,72 +160,10 @@ function TeachingRegisterPage() {
   );
 }
 
-interface Organisation {
-  id: number;
-  name: string;
-}
-
-function ClinicalRegisterPage() {
-  const navigate = useNavigate();
-  const [organisations, setOrganisations] = useState<
-    { value: string; label: string }[]
-  >([]);
-
-  useEffect(() => {
-    fetch("/api/auth/organizations")
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data: { organizations: Organisation[] }) => {
-        setOrganisations(
-          data.organizations.map((o) => ({
-            value: String(o.id),
-            label: o.name,
-          })),
-        );
-      })
-      .catch(() => {
-        /* organisations will remain empty if the endpoint is unavailable */
-      });
-  }, []);
-
-  async function handleSubmit(
-    data: RegistrationFormData,
-  ): Promise<FormSubmitResult> {
-    try {
-      await api.post("/auth/register", {
-        username: data.username,
-        full_name: data.fullName || undefined,
-        email: data.email,
-        password: data.password,
-        organisation_id: Number(data.organisation),
-      });
-
-      navigate("/verify-email-pending", { state: { email: data.email } });
-      return { state: "success", message: { title: "Account created" } };
-    } catch (err: unknown) {
-      let msg = "Registration failed";
-      if (err instanceof Error && err.message) msg = err.message;
-      else if (typeof err === "object" && err !== null) {
-        try {
-          msg = JSON.stringify(err);
-        } catch {
-          msg = String(err);
-        }
-      }
-      return {
-        state: "error",
-        message: { title: msg },
-      };
-    }
-  }
-
-  return (
-    <RegistrationForm organisations={organisations} onSubmit={handleSubmit} />
-  );
-}
-
 export default function RegisterPage() {
   if (import.meta.env.VITE_CLINICAL_SERVICES_ENABLED === "false") {
     return <TeachingRegisterPage />;
   }
-  return <ClinicalRegisterPage />;
+  // Clinical environments do not allow self-registration
+  return <Navigate to="/login" replace />;
 }

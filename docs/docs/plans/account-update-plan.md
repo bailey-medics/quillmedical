@@ -54,7 +54,7 @@ Add editable profile fields (full name, email) to a new `/settings/account` page
 
 Currently `POST /auth/register` and the `/register` frontend route are available in all environments with no distinction. In clinical, user onboarding needs to be controlled — exact mechanism TBD (auto-generated username, admin approval queue, invite-only, etc.).
 
-- [ ] Guard `POST /auth/register` endpoint — return 403 when `CLINICAL_SERVICES_ENABLED` is `True` (placeholder until clinical registration flow is designed)
-- [ ] Frontend: redirect `/register` to `/login` when clinical services are enabled; hide "Register" link on login page
-- [ ] Tests: verify 403 when clinical enabled, verify 201 when clinical disabled (teaching)
+- [x] Guard `POST /auth/register` endpoint — return 403 when `CLINICAL_SERVICES_ENABLED` is `True` (placeholder until clinical registration flow is designed)
+- [x] Frontend: redirect `/register` to `/login` when clinical services are enabled; hide "Register" link on login page
+- [x] Tests: verify 403 when clinical enabled, verify 201 when clinical disabled (teaching)
 - [ ] Future: design clinical registration flow (admin approval, auto-generated usernames, or invite-only)

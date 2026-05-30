@@ -904,6 +904,9 @@ def register(
     created without any roles by default and must be assigned roles by an
     administrator.
 
+    Only available when clinical services are disabled (teaching environments).
+    Clinical environments require admin-managed onboarding.
+
     Validation Rules:
     - Username and email must not be empty after stripping whitespace
     - Password must be at least 6 characters long
@@ -918,12 +921,18 @@ def register(
         dict: Success response with {"detail": "created"}.
 
     Raises:
+        HTTPException: 403 if clinical services are enabled.
         HTTPException: 400 if validation fails or constraints violated:
             - "Missing fields" if username, email, or password empty
             - "Password too short" if password < 6 characters
             - "Username already exists" if username taken
             - "Email already exists" if email taken
     """
+    if settings.CLINICAL_SERVICES_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="Self-registration is not available in this environment",
+        )
     username = payload.username.strip()
     email = payload.email.strip()
     if not username or not email or not payload.password:
