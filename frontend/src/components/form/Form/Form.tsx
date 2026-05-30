@@ -26,6 +26,7 @@ import {
   type ReactElement,
   type ReactNode,
   useCallback,
+  useContext,
   useRef,
   useState,
 } from "react";
@@ -38,7 +39,11 @@ import {
   type FieldErrors,
   type Control,
 } from "react-hook-form";
-import { useBlocker, useInRouterContext } from "react-router-dom";
+import {
+  useBlocker,
+  useInRouterContext,
+  UNSAFE_DataRouterContext,
+} from "react-router-dom";
 import FormContext, {
   type FormState,
   type FormStatusMessage,
@@ -123,7 +128,9 @@ function FormNavigationBlocker({
 }
 
 /**
- * Conditionally renders FormNavigationBlocker only when inside a router.
+ * Conditionally renders FormNavigationBlocker only when inside a data router.
+ * useBlocker requires a data router (createBrowserRouter/createMemoryRouter),
+ * not just any router context (e.g. MemoryRouter).
  */
 function MaybeFormNavigationBlocker(props: {
   control: Control<FieldValues>;
@@ -131,7 +138,8 @@ function MaybeFormNavigationBlocker(props: {
   formState: FormState;
 }) {
   const hasRouter = useInRouterContext();
-  if (!hasRouter) return null;
+  const dataRouterContext = useContext(UNSAFE_DataRouterContext);
+  if (!hasRouter || !dataRouterContext) return null;
   return <FormNavigationBlocker {...props} />;
 }
 
