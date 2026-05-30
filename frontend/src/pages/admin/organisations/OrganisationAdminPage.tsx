@@ -14,7 +14,6 @@ import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyTextInline,
   BodyTextBold,
-  BodyTextClamp,
   Heading,
   EmptyState,
 } from "@/components/typography";
@@ -281,23 +280,25 @@ export default function OrganisationAdminPage() {
   const siteColumns: Column<SiteMember>[] = [
     {
       header: "Name",
-      render: (site) => (
-        <BodyTextClamp lineClamp={1}>{site.name}</BodyTextClamp>
-      ),
+      width: "25%",
+      render: (site) => site.name,
       accessor: (site) => site.name,
     },
     {
       header: "Type",
+      width: "120px",
       render: (site) => formatType(site.type),
       accessor: (site) => site.type,
     },
     {
       header: "Clinical lead",
+      width: "160px",
       render: (site) => site.clinical_lead || "\u2014",
       accessor: (site) => site.clinical_lead || "",
     },
     {
       header: "Status",
+      width: "110px",
       render: (site) => <ActiveStatusBadge active={site.is_active} />,
       accessor: (site) => (site.is_active ? "active" : "deactivated"),
     },

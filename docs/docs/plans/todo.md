@@ -19,6 +19,7 @@ clinical/NHS go-live.
 - [ ] Write a one-page incident response plan (escalation chain, P1/P2/P3 classification, comms template, post-incident review)
 - [ ] Add GCP Cloud Monitoring Slack integration (replace `webhook_token_auth` with native Slack app in `infra/modules/monitoring/main.tf`)
 - [ ] Set `min_instances = 1` for the frontend Cloud Run service once there are real users
+- [ ] catch and manage resend send failure
 
 ## CI/CD pipeline
 
