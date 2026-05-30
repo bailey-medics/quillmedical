@@ -320,7 +320,7 @@ export default function PatientAdminPage() {
                 color={isActive ? "var(--success-color)" : "var(--alert-color)"}
                 variant="light"
               >
-                {isActive ? "Active" : "Deactivated"}
+                {isActive ? "Active" : "Inactive"}
               </Badge>
               <IconButton
                 icon={<IconPencil />}

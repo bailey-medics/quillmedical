@@ -19,16 +19,16 @@ describe("ActiveStatusBadge", () => {
       expect(screen.getByText("Active")).toBeInTheDocument();
     });
 
-    it("does not render 'Deactivated' when active is true", () => {
+    it("does not render 'Inactive' when active is true", () => {
       renderWithMantine(<ActiveStatusBadge active={true} />);
-      expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
+      expect(screen.queryByText("Inactive")).not.toBeInTheDocument();
     });
   });
 
-  describe("Deactivated state", () => {
-    it("renders 'Deactivated' text when active is false", () => {
+  describe("Inactive state", () => {
+    it("renders 'Inactive' text when active is false", () => {
       renderWithMantine(<ActiveStatusBadge active={false} />);
-      expect(screen.getByText("Deactivated")).toBeInTheDocument();
+      expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
 
     it("does not render 'Active' when active is false", () => {
@@ -45,7 +45,7 @@ describe("ActiveStatusBadge", () => {
 
     it("handles explicit false value", () => {
       renderWithMantine(<ActiveStatusBadge active={false} />);
-      expect(screen.getByText("Deactivated")).toBeInTheDocument();
+      expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
   });
 

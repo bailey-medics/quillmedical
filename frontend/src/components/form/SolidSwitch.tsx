@@ -7,8 +7,8 @@
  */
 
 import {
+  Input,
   Switch,
-  Text,
   useComputedColorScheme,
   type SwitchProps,
 } from "@mantine/core";
@@ -24,6 +24,10 @@ interface SolidSwitchProps extends Omit<SwitchProps, "label" | "description"> {
   description?: string;
   /** Error message displayed below the switch */
   error?: string;
+  /** Text shown when switch is on (default: "Yes") */
+  onLabel?: string;
+  /** Text shown when switch is off (default: "No") */
+  offLabel?: string;
 }
 
 export default function SolidSwitch({
@@ -34,6 +38,8 @@ export default function SolidSwitch({
   onChange,
   classNames,
   size = "md",
+  onLabel = "Yes",
+  offLabel = "No",
   ...rest
 }: SolidSwitchProps) {
   const isControlled = controlledChecked !== undefined;
@@ -46,12 +52,12 @@ export default function SolidSwitch({
       <span
         style={{ gridArea: "1/1", visibility: checked ? "visible" : "hidden" }}
       >
-        Yes
+        {onLabel}
       </span>
       <span
         style={{ gridArea: "1/1", visibility: checked ? "hidden" : "visible" }}
       >
-        No
+        {offLabel}
       </span>
     </span>
   );
@@ -65,7 +71,7 @@ export default function SolidSwitch({
 
   return (
     <div>
-      {label && <Text className={classes.topLabel}>{label}</Text>}
+      {label && <Input.Label className={classes.topLabel}>{label}</Input.Label>}
       {description && <FieldDescription>{description}</FieldDescription>}
       <Switch
         {...rest}

@@ -25,6 +25,7 @@ import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { usePageMessage } from "@/components/page-message";
 import { api } from "@/lib/api";
 
 interface SiteStaff {
@@ -56,6 +57,7 @@ interface SiteDetails {
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showMessage } = usePageMessage();
   const [site, setSite] = useState<SiteDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,8 +86,22 @@ export default function SiteAdminPage() {
 
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
-    await api.del(`/sites/${id}/staff/${removingStaff.id}`);
-    await fetchSite();
+    try {
+      await api.del(`/sites/${id}/staff/${removingStaff.id}`);
+      showMessage({
+        variant: "success",
+        title: "Staff member removed",
+        description: `${removingStaff.username} has been removed from this site`,
+      });
+      await fetchSite();
+    } catch (err) {
+      showMessage({
+        variant: "error",
+        title: "Failed to remove staff member",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
+    }
   }
 
   const formatRole = (role: string): string => {

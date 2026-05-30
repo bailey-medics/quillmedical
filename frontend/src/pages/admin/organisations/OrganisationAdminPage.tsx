@@ -300,7 +300,7 @@ export default function OrganisationAdminPage() {
       header: "Status",
       width: "110px",
       render: (site) => <ActiveStatusBadge active={site.is_active} />,
-      accessor: (site) => (site.is_active ? "active" : "deactivated"),
+      accessor: (site) => (site.is_active ? "active" : "inactive"),
     },
     {
       header: "",
