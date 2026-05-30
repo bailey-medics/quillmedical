@@ -152,6 +152,7 @@ class TestListBanksInGcs:
 
         def blob_exists_side_effect(name: str) -> MagicMock:
             blob = MagicMock()
+            # has-config has assessment.yaml; no-config has neither
             blob.exists.return_value = "has-config" in name
             return blob
 
@@ -161,6 +162,32 @@ class TestListBanksInGcs:
         with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["has-config"]
+
+    def test_finds_banks_with_assessment_yaml(self) -> None:
+        """Banks with assessment.yaml (modules layout) are discovered."""
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+
+        mock_blobs = MagicMock()
+        mock_blobs.__iter__ = MagicMock(return_value=iter([]))
+        mock_blobs.prefixes = [
+            "questions/colonoscopy-test/",
+        ]
+        mock_bucket.list_blobs.return_value = mock_blobs
+
+        def blob_side_effect(name: str) -> MagicMock:
+            blob = MagicMock()
+            # Has assessment.yaml but NOT config.yaml
+            blob.exists.return_value = name.endswith("assessment.yaml")
+            return blob
+
+        mock_bucket.blob.side_effect = blob_side_effect
+
+        ms = _mock_gcs_client(mock_client)
+        with patch.object(_gc, "storage", ms, create=True):
+            result = list_banks_in_gcs("test-bucket")
+        assert result == ["colonoscopy-test"]
 
 
 class TestDownloadBankFromGcs:
