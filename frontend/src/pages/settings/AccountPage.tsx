@@ -54,7 +54,7 @@ function AccountFields() {
   return (
     <Stack gap="md">
       <PageHeader title="Account" />
-      <BaseCard maw={480} mx="auto">
+      <BaseCard>
         <Stack>
           <FormStatus />
           <TextField
