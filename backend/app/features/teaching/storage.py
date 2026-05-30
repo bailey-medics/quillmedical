@@ -511,3 +511,83 @@ def list_bank_images_in_gcs(
         sum(len(v) for v in inventory.values()),
     )
     return inventory
+
+
+def download_module_from_gcs(
+    bucket_name: str,
+    bank_id: str,
+) -> Path | None:
+    """Download a full module directory from GCS for tooling validation.
+
+    Reconstructs the module directory layout that the teaching-tooling
+    validator expects::
+
+        <tmp>/<bank_id>/
+            module.yaml
+            assessment/
+                assessment.yaml
+                question_001/question.yaml
+                ...
+            learning/
+                content.mdx (if present)
+
+    Returns the path to the reconstructed module directory, or None
+    if module.yaml doesn't exist in GCS.  Caller must clean up with
+    ``shutil.rmtree(path.parent)``.
+    """
+    from google.cloud import storage  # type: ignore[import-untyped]
+
+    if not bank_id or not _SAFE_BANK_ID.match(bank_id):
+        return None
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+
+    # Check module.yaml exists
+    module_blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+    if not module_blob.exists():
+        return None
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix=f"module_{bank_id}_"))
+    module_dir = tmp_dir / bank_id
+    module_dir.mkdir()
+
+    # Download module.yaml
+    module_yaml_path = module_dir / "module.yaml"
+    module_blob.download_to_filename(str(module_yaml_path))
+
+    # Download assessment content (YAML + image filenames as empty files)
+    assessment_dir = module_dir / "assessment"
+    assessment_dir.mkdir()
+
+    assessment_prefix = f"questions/{bank_id}/"
+    for blob in bucket.list_blobs(prefix=assessment_prefix):
+        rel_path = blob.name.removeprefix(assessment_prefix)
+        if not rel_path:
+            continue
+        local_path = assessment_dir / rel_path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if rel_path.endswith((".yaml", ".yml")):
+            # Download YAML content
+            blob.download_to_filename(str(local_path))
+        else:
+            # Create empty placeholder for image files so existence
+            # checks pass (actual images served via signed URLs)
+            local_path.write_bytes(b"")
+
+    # Download learning content if present
+    learning_prefix = f"learning/{bank_id}/"
+    learning_blobs = list(bucket.list_blobs(prefix=learning_prefix))
+    if learning_blobs:
+        learning_dir = module_dir / "learning"
+        learning_dir.mkdir()
+        for blob in learning_blobs:
+            rel_path = blob.name.removeprefix(learning_prefix)
+            if not rel_path:
+                continue
+            local_path = learning_dir / rel_path
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            blob.download_to_filename(str(local_path))
+
+    return module_dir
