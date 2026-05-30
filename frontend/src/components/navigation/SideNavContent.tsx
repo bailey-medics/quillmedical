@@ -210,18 +210,21 @@ export default function SideNavContent({
           }>(`/sites/${siteId}`);
           if (cancelled) return;
           const firstOrg = site.organisations?.[0];
-          const children: NavItem[] = [];
-          if (firstOrg) {
-            children.push({
-              label: firstOrg.name,
-              href: `/admin/organisations/${firstOrg.id}`,
-            });
-          }
-          children.push({
+          const siteChild: NavItem = {
             label: site.name || "Unknown Site",
             href: `/admin/sites/${siteId}`,
-          });
-          setOrgNavChildren(children);
+          };
+          if (firstOrg) {
+            setOrgNavChildren([
+              {
+                label: firstOrg.name,
+                href: `/admin/organisations/${firstOrg.id}`,
+                children: [siteChild],
+              },
+            ]);
+          } else {
+            setOrgNavChildren([siteChild]);
+          }
         } catch (error) {
           console.error("Failed to fetch site name:", error);
           if (!cancelled) setOrgNavChildren(undefined);
