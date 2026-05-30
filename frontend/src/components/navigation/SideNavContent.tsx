@@ -102,6 +102,10 @@ export default function SideNavContent({
   const siteIdMatch = location.pathname.match(/^\/admin\/sites\/([^/]+)/);
   const siteId = siteIdMatch ? siteIdMatch[1] : null;
 
+  // Detect site sub-page (e.g. "edit")
+  const siteSubPage =
+    location.pathname.match(/^\/admin\/sites\/[^/]+\/([^/]+)/)?.[1] ?? null;
+
   // Extract teaching sub-section from URL (centres, modules, or all-delegates)
   const teachingSectionMatch = location.pathname.match(
     /^\/admin\/teaching\/(centres|modules|all-delegates)/,
@@ -213,6 +217,16 @@ export default function SideNavContent({
           const siteChild: NavItem = {
             label: site.name || "Unknown Site",
             href: `/admin/sites/${siteId}`,
+            children: siteSubPage
+              ? [
+                  {
+                    label:
+                      siteSubPage.charAt(0).toUpperCase() +
+                      siteSubPage.slice(1),
+                    href: `/admin/sites/${siteId}/${siteSubPage}`,
+                  },
+                ]
+              : undefined,
           };
           if (firstOrg) {
             setOrgNavChildren([
@@ -238,7 +252,7 @@ export default function SideNavContent({
     return () => {
       cancelled = true;
     };
-  }, [orgId, orgSubPage, siteId]);
+  }, [orgId, orgSubPage, siteId, siteSubPage]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
@@ -298,8 +312,13 @@ export default function SideNavContent({
   const orgNavEffective: NavItem[] | undefined = (() => {
     if (siteId) {
       const siteHref = `/admin/sites/${siteId}`;
+      const containsSiteHref = (items: NavItem[]): boolean =>
+        items.some(
+          (c) =>
+            c.href === siteHref || (c.children && containsSiteHref(c.children)),
+        );
       // If fetched children already contain the site link, use them
-      if (orgNavChildren?.some((c) => c.href === siteHref)) {
+      if (orgNavChildren && containsSiteHref(orgNavChildren)) {
         return orgNavChildren;
       }
       // Otherwise show a loading placeholder so the nav stays expanded
