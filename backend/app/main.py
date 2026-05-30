@@ -5363,7 +5363,47 @@ def ci_teaching_sync(
     for bank_id in bank_ids:
         bank_path: Path | None = None
         is_temp = False
+        tooling_module_dir: Path | None = None
+        tooling_is_temp = False
         try:
+            # Run teaching-tooling CI validation (second layer of
+            # defence — clinical safety requirement)
+            from app.features.teaching.tooling_validate import (
+                run_tooling_validation,
+            )
+
+            if base_path and not bucket:
+                from app.features.teaching.storage import (
+                    resolve_module_dir,
+                )
+
+                tooling_module_dir = resolve_module_dir(base_path, bank_id)
+            elif bucket:
+                from app.features.teaching.storage import (
+                    download_module_from_gcs,
+                )
+
+                tooling_module_dir = download_module_from_gcs(bucket, bank_id)
+                tooling_is_temp = tooling_module_dir is not None
+
+            if tooling_module_dir:
+                tooling_errors = run_tooling_validation(tooling_module_dir)
+                if tooling_errors:
+                    msg = "; ".join(e["message"] for e in tooling_errors[:5])
+                    errors.append({"bank_id": bank_id, "error": msg})
+                    continue
+            else:
+                errors.append(
+                    {
+                        "bank_id": bank_id,
+                        "error": (
+                            "module directory not found — "
+                            "cannot run tooling validation"
+                        ),
+                    }
+                )
+                continue
+
             bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
             inventory = _build_image_inventory(bank_id, is_temp)
 
@@ -5390,6 +5430,8 @@ def ci_teaching_sync(
         finally:
             if is_temp and bank_path:
                 shutil.rmtree(bank_path.parent, ignore_errors=True)
+            if tooling_is_temp and tooling_module_dir:
+                shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
 
     return {"synced": synced, "errors": errors}
 

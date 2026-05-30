@@ -10,6 +10,7 @@ services:
       BACKEND_ENV: development
       TEACHING_STORAGE_BACKEND: local
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
+      TEACHING_TOOLING_SCRIPTS_PATH: /teaching-tooling-scripts
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
       EMAIL_DRY_RUN: "false"
@@ -25,6 +26,7 @@ services:
       - ./backend:/app
       - ./shared:/shared
       - ./teaching-repos:/teaching-repos
+      - ./teaching-tooling/scripts:/teaching-tooling-scripts
 
   frontend:
     build:

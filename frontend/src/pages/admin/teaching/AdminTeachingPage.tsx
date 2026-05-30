@@ -8,8 +8,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Container } from "@mantine/core";
-import { SyncResultsPanel } from "@/components/teaching";
+import { SyncResultsPanel, getSyncSummary } from "@/components/teaching";
 import type { SyncModuleRow } from "@/components/teaching/sync-results-panel";
+import { usePageMessage } from "@/components/page-message";
 import { api } from "@/lib/api";
 import type { AdminBank, SyncAllResult } from "@/features/teaching/types";
 
@@ -78,6 +79,7 @@ export default function AdminTeachingPage() {
   const [syncing, setSyncing] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
   const [modules, setModules] = useState<SyncModuleRow[]>([]);
+  const { showMessage } = usePageMessage();
 
   const fetchBanks = useCallback(async () => {
     const data = await api.get<AdminBank[]>("/teaching/admin/banks");
@@ -102,8 +104,11 @@ export default function AdminTeachingPage() {
         {},
       );
       const refreshedBanks = await fetchBanks();
-      setModules(syncResultToModules(refreshedBanks, result));
+      const updatedModules = syncResultToModules(refreshedBanks, result);
+      setModules(updatedModules);
       setHasSynced(true);
+      const summary = getSyncSummary(updatedModules);
+      showMessage(summary);
     } catch {
       setModules((prev) =>
         prev.map((m) => ({
@@ -113,6 +118,11 @@ export default function AdminTeachingPage() {
         })),
       );
       setHasSynced(true);
+      showMessage({
+        variant: "error",
+        title: "Sync failed",
+        description: "The sync request failed unexpectedly",
+      });
     } finally {
       setSyncing(false);
     }

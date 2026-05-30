@@ -10,14 +10,12 @@
  */
 
 import { Group, Stack } from "@mantine/core";
-import StateMessage from "@/components/message-cards/StateMessage";
 import DataTableWithResults, {
   type ResultColumn,
 } from "@/components/tables/DataTableWithResults";
 import PageHeader from "@/components/page-header";
 import IconTextButton from "@/components/button/IconTextButton";
 import { BodyTextInline } from "@/components/typography";
-import { IconCircleCheck, IconAlertCircle } from "@/components/icons/appIcons";
 import { statusColours } from "@/styles/semanticColours";
 
 // ------------------------------------------------------------------
@@ -56,37 +54,6 @@ export interface SyncResultsPanelProps {
   loading?: boolean;
   /** Callback when "Sync all" is clicked */
   onSync?: () => void;
-}
-
-// ------------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------------
-
-function pluralise(count: number, singular: string, plural: string) {
-  return count === 1 ? singular : plural;
-}
-
-function getSummaryProps(modules: SyncModuleRow[]) {
-  const imported = modules.filter((m) => m.outcome === "imported").length;
-  const errors = modules.filter(
-    (m) => m.outcome === "error" || m.outcome === "skipped",
-  ).length;
-
-  if (errors > 0) {
-    return {
-      icon: <IconAlertCircle />,
-      title: "Sync complete with errors",
-      description: `${imported} imported, ${errors} ${pluralise(errors, "error", "errors")}`,
-      colour: "alert" as const,
-    };
-  }
-
-  return {
-    icon: <IconCircleCheck />,
-    title: "Sync complete",
-    description: `${imported} ${pluralise(imported, "module", "modules")} imported successfully`,
-    colour: "success" as const,
-  };
 }
 
 // ------------------------------------------------------------------
@@ -140,7 +107,6 @@ export default function SyncResultsPanel({
   loading = false,
   onSync,
 }: SyncResultsPanelProps) {
-  const summary = getSummaryProps(modules);
   const columns = getColumns(hasSynced);
 
   return (
@@ -154,15 +120,6 @@ export default function SyncResultsPanel({
           disabled={syncing}
         />
       </Group>
-
-      {hasSynced && (
-        <StateMessage
-          icon={summary.icon}
-          title={summary.title}
-          description={summary.description}
-          colour={summary.colour}
-        />
-      )}
 
       <DataTableWithResults
         data={modules}

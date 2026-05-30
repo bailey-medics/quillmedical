@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 QUESTION_DIR_PATTERN = re.compile(r"^question_(\d+)$")
-IMAGE_FILENAME_PATTERN = re.compile(r"^image_(\d+)$")
+IMAGE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 ALLOWED_QUESTION_TYPES = {"single", "multiple"}
 
 
@@ -327,14 +327,14 @@ def _check_image_naming(
     result: ValidationResult,
     image_inventory: dict[str, set[str]] | None = None,
 ) -> None:
-    """Check all image files follow the image_N naming convention."""
+    """Check all image files use valid naming (alphanumeric, hyphens, underscores)."""
     for name in _get_image_files(item_dir, image_inventory):
         stem = Path(name).stem
         if not IMAGE_FILENAME_PATTERN.match(stem):
             result.add_error(
                 str(item_dir),
-                f"image '{name}' must follow naming "
-                f"convention image_N (e.g. image_1.png)",
+                f"image '{name}' has invalid name — use only "
+                f"letters, digits, hyphens, and underscores",
             )
 
 
@@ -494,8 +494,8 @@ def _validate_variable_item(
         if not IMAGE_FILENAME_PATTERN.match(key_stem):
             result.add_error(
                 f"{rel_path}/question.yaml",
-                f"image key '{img['key']}' must follow naming "
-                f"convention image_N (e.g. image_1.png)",
+                f"image key '{img['key']}' has invalid name — use "
+                f"only letters, digits, hyphens, and underscores",
             )
         if image_inventory is not None:
             bucket_files = image_inventory.get(item_dir.name, set())

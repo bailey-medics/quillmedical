@@ -5,6 +5,7 @@ import { screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
 import SyncResultsPanel from "./SyncResultsPanel";
+import { getSyncSummary } from "./getSyncSummary";
 import type { SyncModuleRow } from "./SyncResultsPanel";
 
 const imported: SyncModuleRow = {
@@ -38,20 +39,25 @@ const errored: SyncModuleRow = {
 };
 
 describe("SyncResultsPanel", () => {
-  it("shows success summary when all modules imported", () => {
-    renderWithMantine(<SyncResultsPanel modules={[imported]} hasSynced />);
-    expect(screen.getByText("Sync complete")).toBeInTheDocument();
-    expect(
-      screen.getByText("1 module imported successfully"),
-    ).toBeInTheDocument();
+  it("getSyncSummary returns success when all modules imported", () => {
+    const summary = getSyncSummary([imported]);
+    expect(summary.variant).toBe("success");
+    expect(summary.title).toBe("Sync complete");
+    expect(summary.description).toBe("1 module imported successfully");
   });
 
-  it("shows error summary when modules have errors or are skipped", () => {
-    renderWithMantine(
-      <SyncResultsPanel modules={[imported, skipped, errored]} hasSynced />,
-    );
-    expect(screen.getByText("Sync complete with errors")).toBeInTheDocument();
-    expect(screen.getByText("1 imported, 2 errors")).toBeInTheDocument();
+  it("getSyncSummary returns partial_success when mixed outcomes", () => {
+    const summary = getSyncSummary([imported, skipped, errored]);
+    expect(summary.variant).toBe("partial_success");
+    expect(summary.title).toBe("Sync complete with errors");
+    expect(summary.description).toBe("1 imported, 2 errors");
+  });
+
+  it("getSyncSummary returns error when all fail", () => {
+    const summary = getSyncSummary([skipped, errored]);
+    expect(summary.variant).toBe("error");
+    expect(summary.title).toBe("Sync failed");
+    expect(summary.description).toBe("2 errors");
   });
 
   it("hides summary before sync", () => {
