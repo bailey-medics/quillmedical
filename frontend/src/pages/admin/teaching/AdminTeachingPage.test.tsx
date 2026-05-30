@@ -188,7 +188,7 @@ describe("AdminTeachingPage", () => {
     await user.click(screen.getByText("Sync all"));
 
     await waitFor(() => {
-      expect(screen.getByText("Sync complete with errors")).toBeTruthy();
+      expect(screen.getByText("Sync failed")).toBeTruthy();
       expect(screen.getByText("Download failed")).toBeTruthy();
     });
   });

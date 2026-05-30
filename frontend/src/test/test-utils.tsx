@@ -18,6 +18,7 @@ import {
 import type { ReactElement, ReactNode } from "react";
 import { theme, cssVariablesResolver } from "@/theme";
 import { PageMessageProvider } from "@/components/page-message";
+import PageMessageDisplay from "@/components/page-message/PageMessageDisplay";
 
 /**
  * Render options with all providers
@@ -55,7 +56,10 @@ function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
         cssVariablesResolver={cssVariablesResolver}
         env="test"
       >
-        <PageMessageProvider>{children}</PageMessageProvider>
+        <PageMessageProvider>
+          <PageMessageDisplay />
+          {children}
+        </PageMessageProvider>
       </MantineProvider>
     </BrowserRouter>
   );
@@ -107,7 +111,12 @@ export function renderWithRouter(
       [
         {
           path: routePath,
-          element: <PageMessageProvider>{ui}</PageMessageProvider>,
+          element: (
+            <PageMessageProvider>
+              <PageMessageDisplay />
+              {ui}
+            </PageMessageProvider>
+          ),
         },
       ],
       {

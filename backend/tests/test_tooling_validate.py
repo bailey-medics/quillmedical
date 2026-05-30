@@ -7,16 +7,44 @@ from unittest.mock import patch
 
 import pytest
 
+from app.config import settings
 from app.features.teaching.tooling_validate import run_tooling_validation
 
 
+def _find_scripts_path() -> str | None:
+    """Locate teaching-tooling scripts in Docker or CI environments."""
+    candidates = [
+        settings.TEACHING_TOOLING_SCRIPTS_PATH,  # Docker (env var)
+        # CI: repo root relative to this test file
+        str(
+            Path(__file__).resolve().parent.parent.parent
+            / "teaching-tooling"
+            / "scripts"
+        ),
+    ]
+    return next(
+        (p for p in candidates if p and (Path(p) / "validate.py").is_file()),
+        None,
+    )
+
+
 @pytest.fixture(autouse=True)
-def _reset_tooling_cache() -> None:
-    """Reset the module-level cache between tests."""
+def _reset_tooling_cache() -> None:  # type: ignore[misc]
+    """Reset the module-level cache and ensure scripts path is configured."""
     import app.features.teaching.tooling_validate as tv
 
     tv._import_attempted = False
     tv._tooling_module = None
+
+    scripts_path = _find_scripts_path()
+    if scripts_path is None:
+        pytest.skip("teaching-tooling scripts not available")
+
+    with patch(
+        "app.features.teaching.tooling_validate.settings"
+    ) as mock_settings:
+        mock_settings.TEACHING_TOOLING_SCRIPTS_PATH = scripts_path
+        yield
 
 
 class TestRunToolingValidation:

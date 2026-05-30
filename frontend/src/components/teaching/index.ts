@@ -8,7 +8,7 @@ export { QuestionView } from "./question-view";
 export { ScoreBreakdown } from "./score-breakdown";
 
 // Sync
-export { SyncResultsPanel } from "./sync-results-panel";
+export { SyncResultsPanel, getSyncSummary } from "./sync-results-panel";
 
 // Learning
 export { Callout } from "./callout";

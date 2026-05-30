@@ -126,10 +126,18 @@ jobs:
         run: |
           poetry install --with dev --no-interaction --no-ansi
 
+      - name: Checkout teaching-tooling (unit)
+        if: matrix.task == 'unit'
+        uses: actions/checkout@v6
+        with:
+          repository: bailey-medics/teaching-tooling
+          path: teaching-tooling
 
       - name: Pytest (unit)
         if: matrix.task == 'unit'
         working-directory: backend
+        env:
+          TEACHING_TOOLING_SCRIPTS_PATH: ${{ github.workspace }}/teaching-tooling/scripts
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
