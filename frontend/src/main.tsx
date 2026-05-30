@@ -90,7 +90,7 @@ import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TeachingRegisterPage from "./pages/TeachingRegisterPage";
 import TotpSetup from "./pages/TotpSetup";
-import ChangePassword from "./pages/ChangePassword";
+import AccountPage from "./pages/settings/AccountPage";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
@@ -325,7 +325,7 @@ const router = createBrowserRouter([
         element: import("./pages/Settings").then((m) => <m.default />),
       },
       { path: "/settings/totp", element: <TotpSetup /> },
-      { path: "/settings/password", element: <ChangePassword /> },
+      { path: "/settings/account", element: <AccountPage /> },
     ],
   },
 

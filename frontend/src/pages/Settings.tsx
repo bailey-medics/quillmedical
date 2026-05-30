@@ -113,9 +113,9 @@ export default function Settings() {
           <ActionCard
             icon={<IconUser />}
             title="Account"
-            subtitle="Email: you@example.com"
-            buttonLabel="Change password"
-            buttonUrl="/settings/password"
+            subtitle="Update your profile and password"
+            buttonLabel="Manage account"
+            buttonUrl="/settings/account"
           />
 
           {state.status === "authenticated" &&

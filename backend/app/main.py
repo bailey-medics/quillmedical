@@ -107,6 +107,7 @@ from app.schemas.auth import (
     ResendVerificationIn,
     ResetPasswordIn,
     TotpDisableIn,
+    UpdateProfileIn,
     VerifyEmailIn,
 )
 from app.schemas.cbac import (
@@ -903,6 +904,9 @@ def register(
     created without any roles by default and must be assigned roles by an
     administrator.
 
+    Only available when clinical services are disabled (teaching environments).
+    Clinical environments require admin-managed onboarding.
+
     Validation Rules:
     - Username and email must not be empty after stripping whitespace
     - Password must be at least 6 characters long
@@ -917,12 +921,18 @@ def register(
         dict: Success response with {"detail": "created"}.
 
     Raises:
+        HTTPException: 403 if clinical services are enabled.
         HTTPException: 400 if validation fails or constraints violated:
             - "Missing fields" if username, email, or password empty
             - "Password too short" if password < 6 characters
             - "Username already exists" if username taken
             - "Email already exists" if email taken
     """
+    if settings.CLINICAL_SERVICES_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="Self-registration is not available in this environment",
+        )
     username = payload.username.strip()
     email = payload.email.strip()
     if not username or not email or not payload.password:
@@ -1923,6 +1933,7 @@ def totp_disable(
 @router.post("/auth/change-password")
 def change_password(
     data: ChangePasswordIn,
+    response: Response,
     u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
@@ -1930,9 +1941,11 @@ def change_password(
 
     Verifies the current password, validates the new password meets
     minimum requirements, then updates the hash. Requires CSRF token.
+    Re-issues auth cookies so the current session remains valid.
 
     Args:
         data: Current and new password payload.
+        response: FastAPI response for setting new auth cookies.
         u: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
@@ -1947,6 +1960,11 @@ def change_password(
         raise HTTPException(
             status_code=400, detail="Current password is incorrect"
         )
+    if verify_password(data.new_password, u.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different from current password",
+        )
     if len(data.new_password) < 8:
         raise HTTPException(
             status_code=400,
@@ -1956,6 +1974,17 @@ def change_password(
     u.token_version += 1  # Invalidate all existing sessions
     db.add(u)
     db.commit()
+
+    # Re-issue cookies so the current session stays authenticated
+    roles = [r.name for r in u.roles]
+    competencies = u.get_final_competencies()
+    access = create_jwt_with_competencies(
+        u.username, roles, competencies, u.token_version
+    )
+    refresh = create_refresh_token(u.username, u.token_version)
+    xsrf = make_csrf(u.username)
+    set_auth_cookies(response, access, refresh, xsrf)
+
     return {"detail": "Password changed"}
 
 
@@ -2040,6 +2069,53 @@ def me(
         "enabled_features": enabled_features,
         "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
     }
+
+
+@router.patch("/auth/profile")
+def update_profile(
+    data: UpdateProfileIn,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Update the current user's profile.
+
+    Allows updating full_name and email. If email is changed,
+    email_verified is reset to False. Username cannot be changed.
+
+    Args:
+        data: Profile update payload (full_name, email — both optional).
+        u: Currently authenticated user (with CSRF validation).
+        db: Database session for updating user.
+
+    Returns:
+        dict: Success response with {"detail": "Profile updated"}.
+
+    Raises:
+        HTTPException: 400 if no fields provided or email already taken.
+    """
+    if data.full_name is None and data.email is None:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    if data.full_name is not None:
+        u.full_name = data.full_name.strip()
+
+    if data.email is not None:
+        new_email = data.email.strip().lower()
+        if new_email != (u.email or "").strip().lower():
+            existing = db.execute(
+                select(User.id).where(User.email == new_email, User.id != u.id)
+            ).scalar_one_or_none()
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email address is already in use",
+                )
+            u.email = new_email
+            u.email_verified = False
+
+    db.add(u)
+    db.commit()
+    return {"detail": "Profile updated"}
 
 
 @router.get("/users")

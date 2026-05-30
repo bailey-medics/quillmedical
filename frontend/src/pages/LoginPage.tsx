@@ -127,15 +127,17 @@ export default function LoginPage() {
     }
   }
 
-  const title =
-    import.meta.env.VITE_CLINICAL_SERVICES_ENABLED === "false"
-      ? "Sign in to Quill Teaching"
-      : "Sign in to Quill Medical";
+  const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
+
+  const title = isClinical
+    ? "Sign in to Quill Medical"
+    : "Sign in to Quill Teaching";
 
   return (
     <LoginForm
       onSubmit={handleSubmit}
       requireTotp={requireTotp}
+      registerPath={isClinical ? null : "/register"}
       title={title}
     />
   );

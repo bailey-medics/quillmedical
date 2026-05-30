@@ -121,3 +121,19 @@ class ResendVerificationIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
+
+
+class UpdateProfileIn(BaseModel):
+    """Profile update request payload.
+
+    All fields are optional — only provided fields are updated.
+
+    Attributes:
+        full_name: Updated display name.
+        email: Updated email address (resets email_verified).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = None
+    email: EmailStr | None = None
