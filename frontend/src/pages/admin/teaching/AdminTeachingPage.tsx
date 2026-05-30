@@ -127,7 +127,9 @@ export default function AdminTeachingPage() {
       setHasSynced(true);
       const summary = getSyncSummary(updatedModules);
       showMessage(summary);
-    } catch {
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Sync request failed unexpectedly";
       setModules((prev) =>
         prev.map((m) => ({
           ...m,
@@ -139,7 +141,7 @@ export default function AdminTeachingPage() {
       showMessage({
         variant: "error",
         title: "Sync failed",
-        description: "The sync request failed unexpectedly",
+        description: message,
       });
     } finally {
       setSyncing(false);
