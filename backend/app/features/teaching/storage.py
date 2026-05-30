@@ -333,14 +333,14 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 
     Looks for top-level directories under ``questions/`` that contain
-    a ``config.yaml`` file.
+    an ``assessment.yaml`` or ``config.yaml`` file.
     """
     from google.cloud import storage  # type: ignore[import-untyped]
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    # List blobs matching questions/*/config.yaml
+    # List top-level directories under questions/
     prefix = "questions/"
     blobs = bucket.list_blobs(prefix=prefix, delimiter="/")
 
@@ -352,9 +352,10 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
         # p looks like "questions/chest-xray-interpretation/"
         bank_id = p.removeprefix(prefix).rstrip("/")
         if bank_id and _SAFE_BANK_ID.match(bank_id):
-            # Verify it has a config.yaml
+            # Verify it has assessment.yaml or config.yaml
+            assessment_blob = bucket.blob(f"{prefix}{bank_id}/assessment.yaml")
             config_blob = bucket.blob(f"{prefix}{bank_id}/config.yaml")
-            if config_blob.exists():
+            if assessment_blob.exists() or config_blob.exists():
                 bank_ids.append(bank_id)
 
     return sorted(bank_ids)
