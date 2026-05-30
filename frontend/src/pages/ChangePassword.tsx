@@ -8,7 +8,7 @@
 import { Container, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PasswordField from "@/components/form/PasswordField";
-import { Heading } from "@/components/typography";
+import PageHeader from "@/components/page-header";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import {
@@ -42,43 +42,45 @@ function ChangePasswordFields() {
   }, [formState, methods]);
 
   return (
-    <BaseCard maw={480} mx="auto">
-      <Stack>
-        <Heading>Change password</Heading>
-        <FormStatus />
-        <PasswordField
-          label="Current password"
-          {...methods.register("currentPassword", {
-            required: "Current password is required",
-          })}
-          error={methods.formState.errors.currentPassword?.message as string}
-          withAsterisk
-        />
-        <PasswordField
-          label="New password"
-          {...methods.register("newPassword", {
-            required: "New password is required",
-            minLength: {
-              value: 8,
-              message: "New password must be at least 8 characters",
-            },
-          })}
-          error={methods.formState.errors.newPassword?.message as string}
-          withAsterisk
-        />
-        <PasswordField
-          label="Confirm new password"
-          {...methods.register("confirmPassword", {
-            required: "Please confirm your new password",
-            validate: (v: string) =>
-              v === newPasswordValue || "New passwords do not match",
-          })}
-          error={methods.formState.errors.confirmPassword?.message as string}
-          withAsterisk
-        />
-        <SubmitButton onCancel={() => navigate("/settings")} />
-      </Stack>
-    </BaseCard>
+    <Stack gap="md">
+      <PageHeader title="Change password" />
+      <BaseCard maw={480} mx="auto">
+        <Stack>
+          <FormStatus />
+          <PasswordField
+            label="Current password"
+            {...methods.register("currentPassword", {
+              required: "Current password is required",
+            })}
+            error={methods.formState.errors.currentPassword?.message as string}
+            withAsterisk
+          />
+          <PasswordField
+            label="New password"
+            {...methods.register("newPassword", {
+              required: "New password is required",
+              minLength: {
+                value: 8,
+                message: "New password must be at least 8 characters",
+              },
+            })}
+            error={methods.formState.errors.newPassword?.message as string}
+            withAsterisk
+          />
+          <PasswordField
+            label="Confirm new password"
+            {...methods.register("confirmPassword", {
+              required: "Please confirm your new password",
+              validate: (v: string) =>
+                v === newPasswordValue || "New passwords do not match",
+            })}
+            error={methods.formState.errors.confirmPassword?.message as string}
+            withAsterisk
+          />
+          <SubmitButton onCancel={() => navigate("/settings")} />
+        </Stack>
+      </BaseCard>
+    </Stack>
   );
 }
 

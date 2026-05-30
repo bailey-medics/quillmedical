@@ -97,6 +97,24 @@ class TestChangePassword:
         assert resp.status_code == 400
         assert "8 characters" in resp.json()["detail"]
 
+    def test_new_password_same_as_current(
+        self, test_client: TestClient, test_user: User
+    ) -> None:
+        """Reusing the same password is rejected."""
+        csrf = self._login_and_get_csrf(
+            test_client, "testuser", "TestPassword123!"
+        )
+        resp = test_client.post(
+            "/api/auth/change-password",
+            json={
+                "current_password": "TestPassword123!",
+                "new_password": "TestPassword123!",
+            },
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert resp.status_code == 400
+        assert "different" in resp.json()["detail"].lower()
+
     def test_unauthenticated_request(self, test_client: TestClient) -> None:
         """Unauthenticated requests are rejected with 401."""
         resp = test_client.post(

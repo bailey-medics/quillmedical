@@ -1947,6 +1947,11 @@ def change_password(
         raise HTTPException(
             status_code=400, detail="Current password is incorrect"
         )
+    if verify_password(data.new_password, u.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different from current password",
+        )
     if len(data.new_password) < 8:
         raise HTTPException(
             status_code=400,

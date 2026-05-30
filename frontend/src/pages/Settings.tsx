@@ -113,7 +113,7 @@ export default function Settings() {
           <ActionCard
             icon={<IconUser />}
             title="Account"
-            subtitle="Email: you@example.com"
+            subtitle="You can change your password here"
             buttonLabel="Change password"
             buttonUrl="/settings/password"
           />
