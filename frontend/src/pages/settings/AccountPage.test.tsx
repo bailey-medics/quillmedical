@@ -155,15 +155,13 @@ describe("AccountPage", () => {
     });
   });
 
-  it("shows error when no changes are made", async () => {
-    const user = userEvent.setup();
+  it("disables save button when no changes are made", () => {
     renderWithRouter(<AccountPage />);
 
-    await user.click(screen.getByTestId("submit-button"));
-
-    await waitFor(() => {
-      expect(screen.getByText(/no changes to save/i)).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("submit-button")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("navigates to settings when cancel is clicked", async () => {
