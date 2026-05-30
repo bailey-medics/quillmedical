@@ -107,6 +107,7 @@ from app.schemas.auth import (
     ResendVerificationIn,
     ResetPasswordIn,
     TotpDisableIn,
+    UpdateProfileIn,
     VerifyEmailIn,
 )
 from app.schemas.cbac import (
@@ -2059,6 +2060,53 @@ def me(
         "enabled_features": enabled_features,
         "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
     }
+
+
+@router.patch("/auth/profile")
+def update_profile(
+    data: UpdateProfileIn,
+    u: User = DEP_REQUIRE_CSRF,
+    db: Session = DEP_GET_SESSION,
+) -> dict[str, str]:
+    """Update the current user's profile.
+
+    Allows updating full_name and email. If email is changed,
+    email_verified is reset to False. Username cannot be changed.
+
+    Args:
+        data: Profile update payload (full_name, email — both optional).
+        u: Currently authenticated user (with CSRF validation).
+        db: Database session for updating user.
+
+    Returns:
+        dict: Success response with {"detail": "Profile updated"}.
+
+    Raises:
+        HTTPException: 400 if no fields provided or email already taken.
+    """
+    if data.full_name is None and data.email is None:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    if data.full_name is not None:
+        u.full_name = data.full_name.strip()
+
+    if data.email is not None:
+        new_email = data.email.strip().lower()
+        if new_email != (u.email or "").strip().lower():
+            existing = db.execute(
+                select(User.id).where(User.email == new_email, User.id != u.id)
+            ).scalar_one_or_none()
+            if existing:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email address is already in use",
+                )
+            u.email = new_email
+            u.email_verified = False
+
+    db.add(u)
+    db.commit()
+    return {"detail": "Profile updated"}
 
 
 @router.get("/users")
