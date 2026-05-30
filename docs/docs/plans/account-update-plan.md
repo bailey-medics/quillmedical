@@ -17,18 +17,18 @@ Add editable profile fields (full name, email) to a new `/settings/account` page
 
 ## Phase 2: Frontend — Rename and restructure page
 
-- [ ] Create `AccountPage.tsx` at `frontend/src/pages/settings/AccountPage.tsx`
-- [ ] Structure as one BaseCard with one form:
+- [x] Create `AccountPage.tsx` at `frontend/src/pages/settings/AccountPage.tsx`
+- [x] Structure as one BaseCard with one form:
   - Full name (editable), username (disabled TextField, read-only), email (editable), divider, password fields — single `<Form>` wrapper with "Save" submit
-- [ ] Update route in `frontend/src/main.tsx`: change `/settings/password` → `/settings/account`
-- [ ] Update `Settings.tsx` ActionCard: rename subtitle and button label, update `buttonUrl` to `/settings/account`
+- [x] Update route in `frontend/src/main.tsx`: change `/settings/password` → `/settings/account`
+- [x] Update `Settings.tsx` ActionCard: rename subtitle and button label, update `buttonUrl` to `/settings/account`
 
 ## Phase 3: Tests and cleanup
 
-- [ ] Add frontend tests for AccountPage
-- [ ] Run backend tests (`just ub`)
-- [ ] Run frontend tests (`just uf`)
-- [ ] Remove old `ChangePassword.tsx`
+- [x] Add frontend tests for AccountPage
+- [x] Run backend tests (`just ub`)
+- [x] Run frontend tests (`just uf`)
+- [x] Remove old `ChangePassword.tsx`
 
 ## Decisions
 
