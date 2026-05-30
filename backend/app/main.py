@@ -1923,6 +1923,7 @@ def totp_disable(
 @router.post("/auth/change-password")
 def change_password(
     data: ChangePasswordIn,
+    response: Response,
     u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
@@ -1930,9 +1931,11 @@ def change_password(
 
     Verifies the current password, validates the new password meets
     minimum requirements, then updates the hash. Requires CSRF token.
+    Re-issues auth cookies so the current session remains valid.
 
     Args:
         data: Current and new password payload.
+        response: FastAPI response for setting new auth cookies.
         u: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
@@ -1961,6 +1964,17 @@ def change_password(
     u.token_version += 1  # Invalidate all existing sessions
     db.add(u)
     db.commit()
+
+    # Re-issue cookies so the current session stays authenticated
+    roles = [r.name for r in u.roles]
+    competencies = u.get_final_competencies()
+    access = create_jwt_with_competencies(
+        u.username, roles, competencies, u.token_version
+    )
+    refresh = create_refresh_token(u.username, u.token_version)
+    xsrf = make_csrf(u.username)
+    set_auth_cookies(response, access, refresh, xsrf)
+
     return {"detail": "Password changed"}
 
 
