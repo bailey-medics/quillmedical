@@ -43,7 +43,7 @@ describe("AddStaffToOrgPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("loads and displays users in select", async () => {
+  it("loads users excluding current org members", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
       users: [
         { id: 1, username: "drsmith", email: "dr.smith@test.com" },
@@ -58,7 +58,7 @@ describe("AddStaffToOrgPage", () => {
 
     await waitFor(() => {
       expect(apiLib.api.get).toHaveBeenCalledWith(
-        "/users?permission_level=staff",
+        "/users?permission_level=staff&exclude_org=1",
       );
     });
   });
@@ -138,7 +138,14 @@ describe("AddStaffToOrgPage", () => {
 
   it("navigates to organisation on successful submission", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
-      users: [{ id: 1, username: "drsmith", email: "dr@test.com" }],
+      users: [
+        {
+          id: 1,
+          username: "drsmith",
+          email: "dr@test.com",
+          full_name: "Dr Smith",
+        },
+      ],
     });
     vi.spyOn(apiLib.api, "post").mockResolvedValue({
       organisation_id: 1,
@@ -170,7 +177,15 @@ describe("AddStaffToOrgPage", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1");
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/1", {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Staff member added",
+            description: "drsmith has been added to this organisation",
+          },
+        },
+      });
     });
 
     expect(mockReload).toHaveBeenCalledOnce();

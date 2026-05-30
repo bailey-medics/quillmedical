@@ -26,22 +26,31 @@ import {
   type ReactElement,
   type ReactNode,
   useCallback,
+  useContext,
   useRef,
   useState,
 } from "react";
 import {
   useForm,
   FormProvider,
+  useFormState,
   type DefaultValues,
   type FieldValues,
   type FieldErrors,
+  type Control,
 } from "react-hook-form";
+import {
+  useBlocker,
+  useInRouterContext,
+  UNSAFE_DataRouterContext,
+} from "react-router-dom";
 import FormContext, {
   type FormState,
   type FormStatusMessage,
   type FormContextValue,
 } from "./FormContext";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
+import DirtyFormNavigation from "@/components/warnings";
 
 export interface FormSubmitResult {
   /** Resulting state after submission */
@@ -80,8 +89,58 @@ export interface FormProps<T extends FieldValues> {
   disableWhenClean?: boolean;
   /** When provided, a confirmation modal gates submission after validation passes */
   confirm?: FormConfirmConfig;
+  /** Block navigation when form is dirty (defaults to true) */
+  blockNavigation?: boolean;
   /** Form content (FormStatus, fields, SubmitButton) */
   children: ReactNode;
+}
+
+/**
+ * Internal component that blocks navigation when the form is dirty.
+ * Must be rendered inside FormProvider to access form state.
+ * Only activates when rendered inside a React Router context.
+ * Does NOT block during submission or after success (the onSubmit
+ * handler may navigate before Form calls reset).
+ */
+function FormNavigationBlocker({
+  control,
+  onProceed,
+  formState,
+}: {
+  control: Control<FieldValues>;
+  onProceed: () => void;
+  formState: FormState;
+}) {
+  const { isDirty } = useFormState({ control });
+
+  const shouldBlock =
+    isDirty &&
+    formState !== "submitting" &&
+    formState !== "success" &&
+    formState !== "partial_success";
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      shouldBlock && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  return <DirtyFormNavigation blocker={blocker} onProceed={onProceed} />;
+}
+
+/**
+ * Conditionally renders FormNavigationBlocker only when inside a data router.
+ * useBlocker requires a data router (createBrowserRouter/createMemoryRouter),
+ * not just any router context (e.g. MemoryRouter).
+ */
+function MaybeFormNavigationBlocker(props: {
+  control: Control<FieldValues>;
+  onProceed: () => void;
+  formState: FormState;
+}) {
+  const hasRouter = useInRouterContext();
+  const dataRouterContext = useContext(UNSAFE_DataRouterContext);
+  if (!hasRouter || !dataRouterContext) return null;
+  return <FormNavigationBlocker {...props} />;
 }
 
 /**
@@ -95,6 +154,7 @@ export default function Form<T extends FieldValues>({
   timeoutMs = 30_000,
   disableWhenClean = false,
   confirm,
+  blockNavigation = true,
   children,
 }: FormProps<T>) {
   const methods = useForm<T>({ defaultValues, mode: "onChange" });
@@ -226,6 +286,13 @@ export default function Form<T extends FieldValues>({
         >
           {children}
         </form>
+        {blockNavigation && (
+          <MaybeFormNavigationBlocker
+            control={methods.control as unknown as Control<FieldValues>}
+            onProceed={() => methods.reset()}
+            formState={formState}
+          />
+        )}
         {confirm && (
           <ConfirmModal
             opened={confirmOpen}

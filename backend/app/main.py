@@ -2046,6 +2046,7 @@ def me(
 def list_users(
     patient_id: str | None = None,
     permission_level: str | None = None,
+    exclude_org: int | None = None,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -2058,10 +2059,13 @@ def list_users(
     Without ``patient_id``, returns all users (admin/superadmin only).
     Use ``permission_level`` to filter by minimum permission level
     (e.g. ``staff`` returns staff, admin, and superadmin users).
+    Use ``exclude_org`` to exclude users who are already staff members
+    of the given organisation.
 
     Args:
         patient_id: Optional FHIR patient ID to filter by shared org.
         permission_level: Optional minimum permission level to filter by.
+        exclude_org: Optional organisation ID to exclude existing members.
         u: Currently authenticated user.
         db: Database session.
 
@@ -2129,6 +2133,13 @@ def list_users(
         stmt = select(User).where(User.system_permissions.in_(allowed))
     else:
         stmt = select(User)
+
+    # Exclude users who are already staff of the given organisation
+    if exclude_org is not None:
+        existing_staff_ids = select(organisation_staff_member.c.user_id).where(
+            organisation_staff_member.c.organisation_id == exclude_org
+        )
+        stmt = stmt.where(User.id.notin_(existing_staff_ids))
 
     # Admins only see users in their own organisations;
     # superadmins see all users.

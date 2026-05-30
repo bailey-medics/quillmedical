@@ -80,7 +80,7 @@ describe("AdminBankOrgSettingsPage", () => {
       expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
     });
     expect(screen.getByText("Exam status")).toBeTruthy();
-    expect(screen.getByText("Deactivated")).toBeTruthy();
+    expect(screen.getByText("Inactive")).toBeTruthy();
   });
 
   it("save button is disabled when form is not dirty", async () => {

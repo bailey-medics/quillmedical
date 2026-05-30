@@ -89,13 +89,22 @@ export default function SideNavContent({
 
   // Extract org ID from URL if on organisation admin page
   const orgIdMatch = location.pathname.match(
-    /^\/admin\/organisations\/([^/]+)$/,
+    /^\/admin\/organisations\/([^/]+)/,
   );
   const orgId = orgIdMatch ? orgIdMatch[1] : null;
+
+  // Detect org sub-page (e.g. "features")
+  const orgSubPage =
+    location.pathname.match(/^\/admin\/organisations\/[^/]+\/([^/]+)/)?.[1] ??
+    null;
 
   // Extract site ID from URL if on site admin page
   const siteIdMatch = location.pathname.match(/^\/admin\/sites\/([^/]+)/);
   const siteId = siteIdMatch ? siteIdMatch[1] : null;
+
+  // Detect site sub-page (e.g. "edit")
+  const siteSubPage =
+    location.pathname.match(/^\/admin\/sites\/[^/]+\/([^/]+)/)?.[1] ?? null;
 
   // Extract teaching sub-section from URL (centres, modules, or all-delegates)
   const teachingSectionMatch = location.pathname.match(
@@ -179,12 +188,20 @@ export default function SideNavContent({
             `/organizations/${orgId}`,
           );
           if (cancelled) return;
-          setOrgNavChildren([
-            {
-              label: org.name || "Unknown Organisation",
-              href: `/admin/organisations/${orgId}`,
-            },
-          ]);
+          const orgItem: NavItem = {
+            label: org.name || "Unknown Organisation",
+            href: `/admin/organisations/${orgId}`,
+            children:
+              orgSubPage === "features"
+                ? [
+                    {
+                      label: "Features",
+                      href: `/admin/organisations/${orgId}/features`,
+                    },
+                  ]
+                : undefined,
+          };
+          setOrgNavChildren([orgItem]);
         } catch (error) {
           console.error("Failed to fetch organisation name:", error);
           if (!cancelled) setOrgNavChildren(undefined);
@@ -197,18 +214,31 @@ export default function SideNavContent({
           }>(`/sites/${siteId}`);
           if (cancelled) return;
           const firstOrg = site.organisations?.[0];
-          const children: NavItem[] = [];
-          if (firstOrg) {
-            children.push({
-              label: firstOrg.name,
-              href: `/admin/organisations/${firstOrg.id}`,
-            });
-          }
-          children.push({
+          const siteChild: NavItem = {
             label: site.name || "Unknown Site",
             href: `/admin/sites/${siteId}`,
-          });
-          setOrgNavChildren(children);
+            children: siteSubPage
+              ? [
+                  {
+                    label:
+                      siteSubPage.charAt(0).toUpperCase() +
+                      siteSubPage.slice(1),
+                    href: `/admin/sites/${siteId}/${siteSubPage}`,
+                  },
+                ]
+              : undefined,
+          };
+          if (firstOrg) {
+            setOrgNavChildren([
+              {
+                label: firstOrg.name,
+                href: `/admin/organisations/${firstOrg.id}`,
+                children: [siteChild],
+              },
+            ]);
+          } else {
+            setOrgNavChildren([siteChild]);
+          }
         } catch (error) {
           console.error("Failed to fetch site name:", error);
           if (!cancelled) setOrgNavChildren(undefined);
@@ -222,7 +252,7 @@ export default function SideNavContent({
     return () => {
       cancelled = true;
     };
-  }, [orgId, siteId]);
+  }, [orgId, orgSubPage, siteId, siteSubPage]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
@@ -282,8 +312,13 @@ export default function SideNavContent({
   const orgNavEffective: NavItem[] | undefined = (() => {
     if (siteId) {
       const siteHref = `/admin/sites/${siteId}`;
+      const containsSiteHref = (items: NavItem[]): boolean =>
+        items.some(
+          (c) =>
+            c.href === siteHref || (c.children && containsSiteHref(c.children)),
+        );
       // If fetched children already contain the site link, use them
-      if (orgNavChildren?.some((c) => c.href === siteHref)) {
+      if (orgNavChildren && containsSiteHref(orgNavChildren)) {
         return orgNavChildren;
       }
       // Otherwise show a loading placeholder so the nav stays expanded

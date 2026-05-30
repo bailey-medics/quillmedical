@@ -99,7 +99,7 @@ describe("AdminBankDetailPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Active")).toBeTruthy();
     });
-    expect(screen.getByText("Deactivated")).toBeTruthy();
+    expect(screen.getByText("Inactive")).toBeTruthy();
   });
 
   it("shows email template previews when email flags enabled", async () => {

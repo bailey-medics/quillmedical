@@ -15,7 +15,6 @@ import {
   IconAlertCircle,
   IconPencil,
   IconUserMinus,
-  IconUserOff,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
@@ -26,6 +25,7 @@ import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { usePageMessage } from "@/components/page-message";
 import { api } from "@/lib/api";
 
 interface SiteStaff {
@@ -57,6 +57,7 @@ interface SiteDetails {
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showMessage } = usePageMessage();
   const [site, setSite] = useState<SiteDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,16 +86,22 @@ export default function SiteAdminPage() {
 
   async function confirmRemoveStaff() {
     if (!id || !removingStaff) return;
-    await api.del(`/sites/${id}/staff/${removingStaff.id}`);
-    await fetchSite();
-  }
-
-  async function toggleActive() {
-    if (!id || !site) return;
-    await api.patch(`/sites/${id}/active`, {
-      is_active: !site.is_active,
-    });
-    await fetchSite();
+    try {
+      await api.del(`/sites/${id}/staff/${removingStaff.id}`);
+      showMessage({
+        variant: "success",
+        title: "Staff member removed",
+        description: `${removingStaff.username} has been removed from this site`,
+      });
+      await fetchSite();
+    } catch (err) {
+      showMessage({
+        variant: "error",
+        title: "Failed to remove staff member",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred",
+      });
+    }
   }
 
   const formatRole = (role: string): string => {
@@ -213,26 +220,11 @@ export default function SiteAdminPage() {
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Heading>Site information</Heading>
-              <Group gap="xs">
-                <IconButton
-                  icon={<IconPencil />}
-                  onClick={() => navigate(`/admin/sites/${id}/edit`)}
-                  aria-label="Edit site"
-                />
-                <EllipsisMenu
-                  aria-label="Site actions"
-                  items={[
-                    {
-                      label: site.is_active
-                        ? "Deactivate site"
-                        : "Reactivate site",
-                      icon: <IconUserOff />,
-                      color: site.is_active ? "var(--alert-color)" : undefined,
-                      onClick: toggleActive,
-                    },
-                  ]}
-                />
-              </Group>
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/sites/${id}/edit`)}
+                aria-label="Edit site"
+              />
             </Group>
 
             <Group gap="xs">

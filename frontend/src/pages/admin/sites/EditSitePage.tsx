@@ -13,6 +13,7 @@ import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
+import SolidSwitch from "@/components/form/SolidSwitch";
 import TextField from "@/components/form/TextField";
 import SelectField from "@/components/form/SelectField";
 import PageHeader from "@/components/page-header";
@@ -55,6 +56,7 @@ interface SiteData {
   type: string;
   parent_id: number | null;
   location: string;
+  is_active: boolean;
   staff: SiteStaff[];
 }
 
@@ -69,10 +71,14 @@ function EditSiteFields({
   siteId,
   users,
   usersLoading,
+  siteActive,
+  onToggleActive,
 }: {
   siteId: string;
   users: ApiUser[];
   usersLoading: boolean;
+  siteActive: boolean;
+  onToggleActive: (active: boolean) => void;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
@@ -82,6 +88,13 @@ function EditSiteFields({
       <FormStatus />
       <BaseCard>
         <Stack gap="md">
+          <SolidSwitch
+            label="Site status"
+            checked={siteActive}
+            onChange={(e) => onToggleActive(e.currentTarget.checked)}
+            onLabel="Active"
+            offLabel="Inactive"
+          />
           <Controller
             name="name"
             control={methods.control}
@@ -166,6 +179,7 @@ export default function EditSitePage() {
   const [siteData, setSiteData] = useState<SiteData | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
@@ -175,6 +189,7 @@ export default function EditSitePage() {
           api.get<{ users: ApiUser[] }>("/users?permission_level=staff"),
         ]);
         setSiteData(site);
+        setIsActive(site.is_active);
         setUsers(usersResponse.users);
       } catch (err) {
         setLoadError(
@@ -189,10 +204,19 @@ export default function EditSitePage() {
     fetchData();
   }, [id]);
 
+  async function handleToggleActive(active: boolean) {
+    setIsActive(active);
+  }
+
   async function handleSubmit(
     data: EditSiteFormValues,
   ): Promise<FormSubmitResult> {
     try {
+      // Update site status if changed
+      if (siteData && isActive !== siteData.is_active) {
+        await api.patch(`/sites/${id}/active`, { is_active: isActive });
+      }
+
       await api.put(`/sites/${id}`, {
         name: data.name.trim(),
         type: data.type,
@@ -220,7 +244,37 @@ export default function EditSitePage() {
         });
       }
 
-      navigate(`/admin/sites/${id}`);
+      // Build description of what changed
+      const changes: string[] = [];
+      if (siteData && isActive !== siteData.is_active) {
+        changes.push(isActive ? "Site activated" : "Site deactivated");
+      }
+      if (data.name.trim() !== siteData!.name) {
+        changes.push("Name updated");
+      }
+      if (data.type !== siteData!.type) {
+        changes.push("Type updated");
+      }
+      if ((data.location.trim() || "") !== (siteData!.location || "")) {
+        changes.push("Location updated");
+      }
+      const currentLeadId = currentLead ? currentLead.id : null;
+      if (newLeadId !== currentLeadId) {
+        changes.push("Clinical lead updated");
+      }
+
+      const description =
+        changes.length > 0 ? changes.join(". ") : "No changes made";
+
+      navigate(`/admin/sites/${id}`, {
+        state: {
+          flash: {
+            variant: "success",
+            title: "Site updated",
+            description,
+          },
+        },
+      });
       return {
         state: "success",
         message: { title: "Site updated" },
@@ -264,6 +318,8 @@ export default function EditSitePage() {
 
   const currentLead = siteData.staff.find((s) => s.role === "clinical_lead");
 
+  const statusChanged = siteData ? isActive !== siteData.is_active : false;
+
   return (
     <Container size="lg">
       <Stack gap="lg">
@@ -279,11 +335,24 @@ export default function EditSitePage() {
           onSubmit={handleSubmit}
           submitLabel="Save changes"
           submittingLabel="Saving…"
+          confirm={
+            statusChanged
+              ? {
+                  title: isActive ? "Activate site" : "Deactivate site",
+                  children: isActive
+                    ? "Are you sure you want to activate this site?"
+                    : "Are you sure you want to deactivate this site?",
+                  acceptLabel: isActive ? "Activate" : "Deactivate",
+                }
+              : undefined
+          }
         >
           <EditSiteFields
             siteId={id!}
             users={users}
             usersLoading={usersLoading}
+            siteActive={isActive}
+            onToggleActive={handleToggleActive}
           />
         </Form>
       </Stack>

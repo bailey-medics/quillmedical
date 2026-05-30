@@ -166,8 +166,16 @@ export default function AddStaffToSitePage() {
         user_id: Number(data.userId),
         role: data.role,
       });
+      const addedUser = users.find((u) => String(u.id) === data.userId);
       navigate(`/admin/sites/${id}`, {
-        state: { flash: { title: "Staff member added" } },
+        state: {
+          flash: {
+            title: "Staff member added",
+            description: addedUser
+              ? `${addedUser.username} has been added to this site`
+              : undefined,
+          },
+        },
       });
       return { state: "success", message: { title: "Staff member added" } };
     } catch (err) {

@@ -7,9 +7,9 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useBlocker, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Container, Group, Stack, Skeleton, Alert } from "@mantine/core";
-import { Controller, useFormState } from "react-hook-form";
+import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import Icon from "@/components/icons";
@@ -22,7 +22,6 @@ import {
   Heading,
 } from "@/components/typography";
 import SolidSwitch from "@/components/form/SolidSwitch";
-import DirtyFormNavigation from "@/components/warnings";
 import {
   Form,
   FormStatus,
@@ -108,62 +107,49 @@ function ConfirmContent({
 function FeatureFields({ orgId }: { orgId: string }) {
   const navigate = useNavigate();
   const { methods, formState } = useFormContext();
-  const { isDirty } = useFormState({ control: methods.control });
-
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
-  );
 
   return (
-    <>
-      <Stack gap="md">
-        <FormStatus />
-        <BaseCard>
-          <Stack gap="lg">
-            <Heading>Available features</Heading>
+    <Stack gap="md">
+      <FormStatus />
+      <BaseCard>
+        <Stack gap="lg">
+          <Heading>Available features</Heading>
 
-            <BodyTextInline>
-              You are about to make organisation-wide changes. Please do so with
-              care. You will need to press &ldquo;Save changes&rdquo; below for
-              these changes to take effect.
-            </BodyTextInline>
+          <BodyTextInline>
+            You are about to make organisation-wide changes. Please do so with
+            care. You will need to press &ldquo;Save changes&rdquo; below for
+            these changes to take effect.
+          </BodyTextInline>
 
-            {AVAILABLE_FEATURES.map((feature) => (
-              <Controller
-                key={feature.key}
-                name={feature.key}
-                control={methods.control}
-                render={({ field }) => (
-                  <Group justify="space-between" wrap="nowrap">
-                    <Stack gap={2}>
-                      <BodyTextBold>{feature.label}</BodyTextBold>
-                      <BodyText>{feature.description}</BodyText>
-                    </Stack>
+          {AVAILABLE_FEATURES.map((feature) => (
+            <Controller
+              key={feature.key}
+              name={feature.key}
+              control={methods.control}
+              render={({ field }) => (
+                <Group justify="space-between" wrap="nowrap">
+                  <Stack gap={2}>
+                    <BodyTextBold>{feature.label}</BodyTextBold>
+                    <BodyText>{feature.description}</BodyText>
+                  </Stack>
 
-                    <SolidSwitch
-                      checked={field.value as boolean}
-                      onChange={field.onChange}
-                      disabled={formState === "submitting"}
-                      aria-label={`Toggle ${feature.label}`}
-                    />
-                  </Group>
-                )}
-              />
-            ))}
-          </Stack>
-        </BaseCard>
+                  <SolidSwitch
+                    checked={field.value as boolean}
+                    onChange={field.onChange}
+                    disabled={formState === "submitting"}
+                    aria-label={`Toggle ${feature.label}`}
+                  />
+                </Group>
+              )}
+            />
+          ))}
+        </Stack>
+      </BaseCard>
 
-        <SubmitButton
-          onCancel={() => navigate(`/admin/organisations/${orgId}`)}
-        />
-      </Stack>
-
-      <DirtyFormNavigation
-        blocker={blocker}
-        onProceed={() => methods.reset()}
+      <SubmitButton
+        onCancel={() => navigate(`/admin/organisations/${orgId}`)}
       />
-    </>
+    </Stack>
   );
 }
 
@@ -229,9 +215,12 @@ export default function OrgFeaturesPage() {
       );
       setSavedKeys(newSaved);
       await reload();
+      const summary = changes
+        .map((c) => `${c.label} ${data[c.key] ? "enabled" : "disabled"}`)
+        .join(", ");
       return {
         state: "success",
-        message: { title: "Features updated" },
+        message: { title: "Features updated", description: summary },
       };
     } catch (err) {
       return {

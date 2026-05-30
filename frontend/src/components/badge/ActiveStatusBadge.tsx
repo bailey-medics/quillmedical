@@ -21,11 +21,11 @@ type Props = {
 };
 
 const STATUS_CONFIG: Record<
-  "active" | "deactivated",
+  "active" | "inactive",
   { label: string; colour: BadgeColourConfig }
 > = {
   active: { label: "Active", colour: badgeColours.success },
-  deactivated: { label: "Deactivated", colour: badgeColours.outstanding },
+  inactive: { label: "Inactive", colour: badgeColours.outstanding },
 };
 
 export default function ActiveStatusBadge({
@@ -36,7 +36,7 @@ export default function ActiveStatusBadge({
     return <BadgeSkeleton />;
   }
 
-  const { label, colour } = STATUS_CONFIG[active ? "active" : "deactivated"];
+  const { label, colour } = STATUS_CONFIG[active ? "active" : "inactive"];
 
   return (
     <Badge color={colour.bg} c={colour.text} variant={BADGE_VARIANT}>
