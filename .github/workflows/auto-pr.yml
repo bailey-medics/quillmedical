@@ -1,0 +1,39 @@
+# Automatically create a pull request when a hotfix/* or feature/* branch is pushed.
+name: Auto PR
+
+on:
+  push:
+    branches:
+      - "hotfix/**"
+      - "feature/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Skip if a PR already exists for this branch
+          EXISTING=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
+          if [ "$EXISTING" != "0" ]; then
+            echo "PR already exists for ${{ github.ref_name }}, skipping"
+            exit 0
+          fi
+
+          # Use the head commit message as title and body
+          TITLE=$(git log -1 --format='%s')
+          BODY=$(git log -1 --format='%b')
+
+          gh pr create \
+            --title "$TITLE" \
+            --body "${BODY:-Auto-created from branch push}" \
+            --base main \
+            --head "${{ github.ref_name }}"
