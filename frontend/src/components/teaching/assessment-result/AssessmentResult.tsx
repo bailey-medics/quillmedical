@@ -5,10 +5,11 @@
  * optional certificate download, and navigation buttons.
  */
 
-import { Button, Group, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { PageHeader } from "@/components/typography";
 import { ResultMessage } from "@/components/message-cards";
 import ActionCard from "@/components/action-card/ActionCard";
+import { ButtonPair } from "@/components/button";
 import { ScoreBreakdown } from "../score-breakdown/ScoreBreakdown";
 import type { CriterionResult } from "@/features/teaching/types";
 
@@ -88,18 +89,12 @@ export function AssessmentResult({
       )}
 
       {(showTryAgain || showBackToDashboard) && (
-        <Group justify="flex-end">
-          {showTryAgain && (
-            <Button variant="light" size="lg" onClick={onTryAgain}>
-              Try again
-            </Button>
-          )}
-          {showBackToDashboard && (
-            <Button size="lg" onClick={onBackToDashboard}>
-              Back to dashboard
-            </Button>
-          )}
-        </Group>
+        <ButtonPair
+          acceptLabel="Back to dashboard"
+          onAccept={showBackToDashboard ? onBackToDashboard : undefined}
+          cancelLabel="Try again"
+          onCancel={showTryAgain ? onTryAgain : undefined}
+        />
       )}
     </Stack>
   );
