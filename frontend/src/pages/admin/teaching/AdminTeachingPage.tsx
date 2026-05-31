@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Container } from "@mantine/core";
 import { SyncResultsPanel, getSyncSummary } from "@/components/teaching";
 import type { SyncModuleRow } from "@/components/teaching/sync-results-panel";
@@ -93,6 +94,7 @@ function syncResultToModules(
 }
 
 export default function AdminTeachingPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [hasSynced, setHasSynced] = useState(false);
@@ -156,6 +158,7 @@ export default function AdminTeachingPage() {
         syncing={syncing}
         loading={loading}
         onSync={handleSyncAll}
+        onRowClick={(row) => navigate(`/admin/teaching/modules/${row.bank_id}`)}
       />
     </Container>
   );

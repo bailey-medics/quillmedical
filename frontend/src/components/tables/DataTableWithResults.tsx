@@ -55,6 +55,8 @@ export interface DataTableWithResultsProps<T> {
    * or null/undefined to show no sub-row.
    */
   getSubRow?: (row: T) => ReactNode | null;
+  /** Callback when a row is clicked */
+  onRowClick?: (row: T) => void;
   /** Empty state message (default: "No data found") */
   emptyMessage?: string;
   /** Whether data is loading */
@@ -70,6 +72,7 @@ export default function DataTableWithResults<T>({
   columns,
   getRowKey,
   getSubRow,
+  onRowClick,
   emptyMessage = "No data found",
   loading = false,
 }: DataTableWithResultsProps<T>) {
@@ -135,7 +138,11 @@ export default function DataTableWithResults<T>({
             <Fragment key={getRowKey(row)}>
               <Table.Tr
                 bg={rowBg}
-                style={subRowContent ? { borderBottom: "none" } : undefined}
+                style={{
+                  ...(subRowContent ? { borderBottom: "none" } : {}),
+                  ...(onRowClick ? { cursor: "pointer" } : {}),
+                }}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map((column, index) => (
                   <Table.Td

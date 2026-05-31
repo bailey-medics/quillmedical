@@ -54,6 +54,8 @@ export interface SyncResultsPanelProps {
   loading?: boolean;
   /** Callback when "Sync all" is clicked */
   onSync?: () => void;
+  /** Callback when a module row is clicked */
+  onRowClick?: (row: SyncModuleRow) => void;
 }
 
 // ------------------------------------------------------------------
@@ -106,6 +108,7 @@ export default function SyncResultsPanel({
   syncing = false,
   loading = false,
   onSync,
+  onRowClick,
 }: SyncResultsPanelProps) {
   const columns = getColumns(hasSynced);
 
@@ -126,6 +129,7 @@ export default function SyncResultsPanel({
         columns={columns}
         getRowKey={(row) => row.bank_id}
         getSubRow={getSubRow}
+        onRowClick={onRowClick}
         emptyMessage="No teaching modules found"
         loading={loading}
       />
