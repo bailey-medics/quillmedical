@@ -51,20 +51,19 @@ def _parse_uniform_item(
 ) -> dict[str, Any]:
     """Parse a uniform-type item directory into DB field values."""
     images_per_item = config.get("images_per_item", 0)
+    config_images: list[dict[str, Any]] = config.get("images", [])
     images: list[dict[str, str]] = []
-    for i in range(1, images_per_item + 1):
-        # Find the image file (any allowed extension)
-        for ext in (".png", ".jpg", ".jpeg", ".webp"):
-            filename = f"image_{i}{ext}"
+
+    for i in range(images_per_item):
+        if i < len(config_images) and "key" in config_images[i]:
+            filename = config_images[i]["key"]
             if gcs_images is not None:
                 if filename in gcs_images:
                     images.append({"key": filename})
-                    break
             else:
                 candidate = item_dir / filename
                 if candidate.is_file():
                     images.append({"key": filename})
-                    break
 
     return {
         "images": images,

@@ -420,7 +420,7 @@ def download_bank_from_gcs(
 
 #: Type alias for the image inventory passed to validation.
 #: Maps item directory names (e.g. ``question_001``) to the set of
-#: image filenames present (e.g. ``{"image_1.png", "image_2.jpg"}``).
+#: image filenames present (e.g. ``{"wli.png", "nbi.png"}``).
 ImageInventory = dict[str, set[str]]
 
 
