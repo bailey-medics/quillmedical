@@ -1,3 +1,10 @@
+/**
+ * PublicFeatureCard Component
+ *
+ * Feature showcase card for public-facing pages. Displays an icon, title,
+ * and body text. Optionally wraps in a link with hover animation.
+ */
+
 import type { ComponentType } from "react";
 import Icon from "@/components/icons/Icon";
 import classes from "./PublicFeatureCard.module.css";

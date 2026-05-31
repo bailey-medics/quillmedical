@@ -74,21 +74,40 @@ nav:
       - Managing Renovate PRs: dependencies/managing-renovate-prs.md
   - Plans:
       - Overview: plans/index.md
-      - GCP Launch-Ready: plans/gcp-launch-ready.md
-      - Organisations, Messaging & External Access: plans/orgs-and-messaging-and-external-access.md
-      - Teaching Module: plans/teaching-project.md
-      - Design System: plans/design-system.md
+      - Account Update: plans/account-update-plan.md
+      - Assessment Image Clean-Up: plans/assessment-cleanup-plan.md
       - Branch Protection Rules: plans/branching-rules.md
-      - Public Pages Separation: plans/public-pages.md
+      - CBAC Frontend Implementation: plans/cbac-implementation-plan.md
+      - CI/CD Branching Overhaul: plans/github-branching-plan.md
+      - Code Scrutiny Prep: plans/code-scrutiny-and-human-review-prep.md
+      - Colour-to-Design-System Update: plans/colour-to-design-system-update.md
+      - Dark/Light Mode: plans/dark-light-mode-plan.md
+      - Database Rename: plans/db-rename-plan.md
+      - Design System: plans/design-system.md
+      - Design System Update: plans/design-system-update-plan.md
+      - E2E CI/CD Optimisation: plans/E2E-cicd-optimisation.md
       - Email Subscriptions: plans/subscriptions.md
+      - Email Verification: plans/email-verification-plan.md
       - Emailing Certificates: plans/emailing-certificates.md
       - End-to-End Testing: plans/e2e.md
+      - Form Submission Patterns: plans/form-submission-patterns.md
+      - GCP Launch-Ready: plans/gcp-launch-ready.md
+      - Hardening Plan v2: plans/hardening-plan-v2.md
       - Hardening Teaching: plans/hardening-teaching.md
       - Human Code Review: plans/human-code-review.md
-      - Code Scrutiny Prep: plans/code-scrutiny-and-human-review-prep.md
+      - Learning Section: plans/learning-section-plan.md
+      - Offline Detection: plans/offline-plan.md
+      - Organisation and Site: plans/organisation-site-plan.md
+      - Organisations, Messaging & External Access: plans/orgs-and-messaging-and-external-access.md
+      - Page Messages Centralisation: plans/page-messages-centralisation-plan.md
+      - Penetration Testing: plans/pentesting-plan.md
+      - Public Pages Separation: plans/public-pages.md
       - Renovate: plans/renovate.md
       - Security Review: plans/security-review.md
+      - Teaching Module: plans/teaching-project.md
+      - Teaching Separation of Concerns: plans/teaching-separation-of-concerns-plan.md
       - To-Do List: plans/todo.md
+      - Version Locking Teaching: plans/version-lock-teaching-plan.md
   - Teaching:
       - Overview: teaching/index.md
   - Learnings:
@@ -169,6 +188,24 @@ nav:
           - Hazard-0045: safety/hazards/Hazard-0045.md
           - Hazard-0046: safety/hazards/Hazard-0046.md
           - Hazard-0047: safety/hazards/Hazard-0047.md
+          - Hazard-0048: safety/hazards/Hazard-0048.md
+  - LLM:
+      - Prompts:
+          - In-Code Documentation: llm/prompts/code-documentation.prompt.md
+          - Commit and Push: llm/prompts/commit-push.prompt.md
+          - Create Architecture: llm/prompts/create-architecture.prompt.md
+          - Create Roadmap: llm/prompts/create-roadmap.prompt.md
+          - Create Spec: llm/prompts/create-spec.prompt.md
+          - FastAPI Docs: llm/prompts/fast-api-docs.prompt.md
+          - Fix VS Code Problems: llm/prompts/fix-vs-code-problems.prompt.md
+          - Follow the Plan: llm/prompts/follow-the-plan.document.prompt.md
+          - Play Finished Sound: llm/prompts/play-finished-sound.prompt.md
+          - Read Copilot Instructions: llm/prompts/read-copilot-instructions.prompt.md
+          - Run All Tests: llm/prompts/run-all-tests.prompt.md
+          - Strong Static Typing: llm/prompts/strong-static-typing-defensive-programming.prompt.md
+          - Update Docs: llm/prompts/update-docs-docs.prompt.md
+          - Update Nav: llm/prompts/update-nav.prompt.md
+          - Write a Plan: llm/prompts/write-a-plan.prompt.md
 
 
 plugins:

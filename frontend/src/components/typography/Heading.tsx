@@ -1,3 +1,10 @@
+/**
+ * Heading Component
+ *
+ * Secondary heading (h2) component for section titles within a page.
+ * Renders at the theme's large title size with optional colour and alignment.
+ */
+
 import { Title } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";

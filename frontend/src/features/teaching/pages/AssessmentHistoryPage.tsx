@@ -1,3 +1,10 @@
+/**
+ * AssessmentHistoryPage
+ *
+ * Displays a table of all past assessment attempts for the current user.
+ * Allows navigating to individual result pages.
+ */
+
 import { Skeleton, Stack } from "@mantine/core";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";

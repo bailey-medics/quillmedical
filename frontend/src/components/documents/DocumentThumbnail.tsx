@@ -1,3 +1,10 @@
+/**
+ * DocumentThumbnail Component
+ *
+ * Displays a small preview thumbnail for a document. Responsively
+ * scales between 50px (mobile) and 100px (desktop) width.
+ */
+
 import { Image, Skeleton, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 

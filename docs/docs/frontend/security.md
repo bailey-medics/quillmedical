@@ -88,19 +88,24 @@ The system uses a hierarchical permission model:
    - Message assigned clinicians
    - Update own contact details
 
-2. **Staff**
+2. **Teaching delegate** (same level as patient)
+   - Access to teaching features only
+   - No clinical data access
+   - Used for external educators and assessors
+
+3. **Staff**
    - All patient privileges
    - Access to assigned patient records
    - Create clinical letters
    - Messaging capabilities
 
-3. **Admin**
+4. **Admin**
    - All staff privileges
    - User management
    - Patient administration
    - System configuration
 
-4. **Superadmin** (highest privileges)
+5. **Superadmin** (highest privileges)
    - All admin privileges
    - Full system access
    - Security settings

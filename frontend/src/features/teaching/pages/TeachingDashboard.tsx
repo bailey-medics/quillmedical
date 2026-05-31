@@ -1,3 +1,11 @@
+/**
+ * TeachingDashboard Page
+ *
+ * Landing page for the teaching feature. Lists available question banks
+ * as picture cards, allows starting new assessments, and shows recent
+ * assessment history.
+ */
+
 import { Box, Center, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";

@@ -1,3 +1,11 @@
+/**
+ * PasswordField Component
+ *
+ * Standardised password input wrapper around Mantine's PasswordInput.
+ * Includes a visibility toggle button and enforces consistent font sizing,
+ * label styling, and error display across the application.
+ */
+
 import { PasswordInput, type PasswordInputProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";

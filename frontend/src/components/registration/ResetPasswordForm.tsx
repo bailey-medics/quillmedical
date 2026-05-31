@@ -1,3 +1,10 @@
+/**
+ * ResetPasswordForm Component
+ *
+ * Password reset form reached via the email reset link. Accepts a new
+ * password and submits it with the reset token from the URL.
+ */
+
 import { Group, Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField } from "@components/form";

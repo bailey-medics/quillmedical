@@ -1,3 +1,10 @@
+/**
+ * PublicTopRibbon Component
+ *
+ * Top navigation bar for public-facing pages. Displays logo and
+ * navigation links on desktop, or a hamburger menu on mobile.
+ */
+
 import BurgerButton from "@/components/button/BurgerButton";
 import { Anchor, Group } from "@mantine/core";
 import classes from "./PublicTopRibbon.module.scss";

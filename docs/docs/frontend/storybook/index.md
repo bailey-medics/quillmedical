@@ -1,6 +1,6 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 98 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 145 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
@@ -16,7 +16,7 @@ Quill Medical uses [Storybook 10.3.3](https://storybook.js.org/) as an interacti
 Storybook is configured with:
 
 - **Framework**: React + Vite integration (`@storybook/react-vite`)
-- **Version**: 10.3.3
+- **Version**: 10.3.6
 - **Dev Server**: Port 6006
 - **Build Output**: `docs/docs/code/storybook/` (deployed with MkDocs documentation)
 
@@ -53,7 +53,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **98 component story files** across various UI categories:
+The project includes **145 component story files** across various UI categories:
 
 ### Core Components
 
@@ -106,6 +106,7 @@ The project includes **98 component story files** across various UI categories:
 - **AddButton** - Add/create action button
 - **BurgerButton** - Hamburger menu toggle
 - **ButtonPair** - Paired button layout
+- **ButtonPairRed** - Paired button layout with destructive action styling
 - **IconButton** - Icon-only button
 - **IconTextButton** - Icon with text button
 - **PreviousNextButton** - Previous/next navigation button pair
@@ -118,6 +119,9 @@ The project includes **98 component story files** across various UI categories:
 - **ActiveStatus** - Active/inactive status badge
 - **AppointmentStatus** - Appointment status badge
 - **AssessmentResultBadge** - Assessment result badge
+- **LetterStatusBadge** - Letter status badge
+- **NoteCategoryBadge** - Note category badge
+- **OnQuillBadge** - On Quill status badge
 - **PassFailIcon** - Atomic pass/fail indicator icons (PassIcon + FailIcon)
 - **PermissionBadge** - User permission level badge
 - **UnreadBadge** - Unread message count badge
@@ -148,9 +152,12 @@ The project includes **98 component story files** across various UI categories:
 
 ### Forms & Data Entry
 
+- **MultiSelectField** - Multi-select dropdown field
 - **MultiStepForm** - Multi-step form wizard
 - **DirtyFormNavigation** - Unsaved changes navigation guard
+- **PasswordField** - Password input with visibility toggle
 - **SearchFields** - Collapsible search input component
+- **SelectField** - Dropdown select field
 - **SolidSwitch** - Toggle switch component
 - **TextField** - Text input field
 - **TextAreaField** - Multi-line text input field
@@ -190,10 +197,17 @@ The project includes **98 component story files** across various UI categories:
 - **AssessmentResult** - Assessment result display
 - **AssessmentTimer** - Assessment countdown timer
 - **CertificateDownload** - Certificate download component
+- **ExamCloseButton** - Button to close/abandon an exam early
 - **ItemManagementTable** - Teaching item management table
 - **QuestionBankCard** - Question bank card component
 - **QuestionView** - Question display component
 - **ScoreBreakdown** - Score breakdown display
+- **SyncResultsPanel** - Sync results table with status display
+- **TeachingProgressBar** - Teaching progress bar
+- **VideoPlayer** - Video player component
+- **Callout** - Callout/highlight component
+- **Figure** - Figure/image component with caption
+- **SlideViewer** - Slide deck viewer
 
 ## Notable Stories
 

@@ -1,3 +1,10 @@
+/**
+ * DocumentsList Component
+ *
+ * Displays a list of document cards with thumbnails and titles.
+ * Supports loading skeletons and empty state messaging.
+ */
+
 import React from "react";
 import { Skeleton, Stack, Group } from "@mantine/core";
 import BodyText from "@/components/typography/BodyText";

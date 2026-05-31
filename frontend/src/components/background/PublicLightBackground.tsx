@@ -1,3 +1,10 @@
+/**
+ * PublicLightBackground Component
+ *
+ * Light background section for public-facing pages.
+ * Wraps content in a full-width light container with centred content area.
+ */
+
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PublicLightBackground.module.css";

@@ -1,3 +1,12 @@
+/**
+ * MultiSelectField Component
+ *
+ * Standardised multi-select dropdown wrapper around Mantine's MultiSelect.
+ * Displays selected values as pills and uses a chevron indicator.
+ * Enforces consistent font sizing, label styling, and error display
+ * across the application.
+ */
+
 import { MultiSelect, type MultiSelectProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";

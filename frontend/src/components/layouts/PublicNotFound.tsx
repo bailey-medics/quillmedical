@@ -1,3 +1,10 @@
+/**
+ * PublicNotFound Component
+ *
+ * 404 page for the public site. Displays an error message with a
+ * "Go home" button on a dark background.
+ */
+
 import PublicDarkBackground from "@/components/background/PublicDarkBackground";
 import PublicButton from "@/components/button/PublicButton";
 import PublicBodyText from "@/components/typography/PublicBodyText";

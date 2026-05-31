@@ -1,3 +1,11 @@
+/**
+ * PublicHeroBackground Component
+ *
+ * Full-width hero background for the public landing page.
+ * Layers a radial glow effect, grid lines, and content slot
+ * for a modern dark aesthetic.
+ */
+
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PublicHeroBackground.module.css";

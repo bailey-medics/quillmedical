@@ -1,3 +1,11 @@
+/**
+ * Settings Page
+ *
+ * User settings hub with profile management, appearance preferences,
+ * and notification configuration. Uses action cards for navigation
+ * to sub-settings.
+ */
+
 import {
   Container,
   Group,

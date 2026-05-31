@@ -1,3 +1,11 @@
+/**
+ * TextAreaField Component
+ *
+ * Standardised multi-line text input wrapper around Mantine's Textarea.
+ * Enforces consistent font sizing, label styling, and error display
+ * across the application.
+ */
+
 import { Textarea, type TextareaProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";

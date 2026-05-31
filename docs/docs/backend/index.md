@@ -114,11 +114,16 @@ All functions are organised under the `/api` prefix:
 - Refresh your session (`POST /api/auth/refresh`)
 - Log out securely (`POST /api/auth/logout`)
 - View your profile (`GET /api/auth/me`)
+- Update profile (`PATCH /api/auth/profile`)
 - Change password (`POST /api/auth/change-password`)
 - Request password reset (`POST /api/auth/forgot-password`)
 - Reset password with token (`POST /api/auth/reset-password`)
+- Verify email (`POST /api/auth/verify-email`)
+- Resend verification (`POST /api/auth/resend-verification`)
 - Set up TOTP two-factor authentication (`POST /api/auth/totp/setup`, `/verify`, `/disable`)
 - List organisations for registration (`GET /api/auth/organizations`)
+- List public teaching modules (`GET /api/teaching/public/modules`)
+- Validate clinical lead (`POST /api/teaching/public/validate-clinical-lead`)
 
 ### Patient Management
 
@@ -167,6 +172,9 @@ All functions are organised under the `/api` prefix:
 - **Get user** (`GET /api/users/{id}`): Get user details including CBAC fields
 - **Create user** (`POST /api/users`): Create user with CBAC configuration
 - **Update user** (`PATCH /api/users/{id}`): Update user details
+- **Deactivate user** (`POST /api/users/{id}/deactivate`): Deactivate a user account
+- **Reactivate user** (`POST /api/users/{id}/reactivate`): Reactivate a deactivated user
+- **Send invite** (`POST /api/users/{id}/send-invite`): Send an invitation email to a user
 - **Link patient** (`PATCH /api/users/{id}/link-patient`): Link user to FHIR patient
 
 ### Organisations (Admin)
@@ -175,7 +183,9 @@ All functions are organised under the `/api` prefix:
 - **Create organisation** (`POST /api/organizations`): Create new organisation
 - **View organisation** (`GET /api/organizations/{id}`): Get organisation with staff/patient lists
 - **Update organisation** (`PUT /api/organizations/{id}`): Update organisation details
+- **Delete organisation** (`DELETE /api/organizations/{id}`): Delete organisation
 - **Manage membership**: Add/remove staff and patients
+- **Link/unlink sites**: `POST/DELETE /api/organizations/{org_id}/sites/{site_id}`
 - **List features** (`GET /api/organizations/{id}/features`): List organisation feature flags
 - **Toggle feature** (`PUT /api/organizations/{id}/features/{key}`): Enable or disable a feature
 
@@ -196,21 +206,54 @@ All functions are organised under the `/api` prefix:
 - **Subscribe** (`POST /api/push/subscribe`): Register a push subscription for the current browser
 - **Send test** (`POST /api/push/send-test`): Send a test notification to all subscribers (development only)
 
+### Sites (Admin)
+
+- **List sites** (`GET /api/sites`): List all sites
+- **Create site** (`POST /api/sites`): Create a new site
+- **Get site** (`GET /api/sites/{id}`): Get site details
+- **Update site** (`PUT /api/sites/{id}`): Update site details
+- **Toggle active** (`PATCH /api/sites/{id}/active`): Activate/deactivate a site
+- **Delete site** (`DELETE /api/sites/{id}`): Delete a site
+- **Link site to org** (`POST /api/organizations/{org_id}/sites/{site_id}`): Link site to organisation
+- **Unlink site from org** (`DELETE /api/organizations/{org_id}/sites/{site_id}`): Unlink site from organisation
+- **Add site staff** (`POST /api/sites/{site_id}/staff`): Add staff member to site
+- **Remove site staff** (`DELETE /api/sites/{site_id}/staff/{user_id}`): Remove staff from site
+
 ### Teaching (feature-gated)
 
 All teaching routes are under `/api/teaching` and require the `teaching` feature to be enabled on the user's organisation.
 
+#### Candidate endpoints
+
 - **List question banks** (`GET /api/teaching/question-banks`)
 - **Get question bank** (`GET /api/teaching/question-banks/{bank_id}`)
+- **List learning modules** (`GET /api/teaching/modules`)
+- **Get learning content** (`GET /api/teaching/modules/{module_id}/learning`)
 - **Start assessment** (`POST /api/teaching/assessments`)
 - **Assessment history** (`GET /api/teaching/assessments/history`)
 - **Get assessment** (`GET /api/teaching/assessments/{id}`)
 - **Current item** (`GET /api/teaching/assessments/{id}/current`)
+- **Get item by order** (`GET /api/teaching/assessments/{id}/item/{display_order}`)
 - **Submit answer** (`POST /api/teaching/assessments/{id}/answer`)
 - **Update answer** (`PUT /api/teaching/assessments/{id}/answer/{answer_id}`)
 - **Complete assessment** (`POST /api/teaching/assessments/{id}/complete`)
 - **Download certificate** (`GET /api/teaching/assessments/{id}/certificate`)
-- **Educator routes** (require `manage_teaching_content` competency): item management, validation, sync, results, settings
+
+#### Educator endpoints (require `manage_teaching_content` competency)
+
+- **List items** (`GET /api/teaching/items`)
+- **Validate items** (`POST /api/teaching/items/validate`)
+- **Sync items** (`POST /api/teaching/items/sync`)
+- **List results** (`GET /api/teaching/results`)
+- **List syncs** (`GET /api/teaching/syncs`)
+- **List delegates** (`GET /api/teaching/admin/delegates`)
+- **List admin banks** (`GET /api/teaching/admin/banks`)
+- **Sync all banks** (`POST /api/teaching/admin/sync-all`)
+- **Get bank detail** (`GET /api/teaching/admin/banks/{bank_id}`)
+- **List bank organisations** (`GET /api/teaching/admin/banks/{bank_id}/organisations`)
+- **Update bank org settings** (`PUT /api/teaching/admin/banks/{bank_id}/organisations/{org_id}/settings`)
+- **Get settings** (`GET /api/teaching/settings`)
+- **Update settings** (`PUT /api/teaching/settings`)
 
 ## What Data is Stored Where
 

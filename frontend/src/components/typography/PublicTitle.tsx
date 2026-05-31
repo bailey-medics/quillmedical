@@ -1,3 +1,10 @@
+/**
+ * PublicTitle Component
+ *
+ * Hero title for public-facing pages. Supports an accent colour applied to
+ * words wrapped in *asterisks* and an optional subtitle below.
+ */
+
 import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Box, Title } from "@mantine/core";
 import type { ReactNode } from "react";

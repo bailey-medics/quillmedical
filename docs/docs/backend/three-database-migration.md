@@ -45,12 +45,12 @@ Quill Medical has updated its database structure from a single shared database t
 The following new environment variables are required in `backend/.env`:
 
 ```bash
-# Auth Database
-AUTH_DB_NAME=quill_core
-AUTH_DB_USER=auth_user
-AUTH_DB_PASSWORD=[secure password]
-AUTH_DB_HOST=postgres-auth
-AUTH_DB_PORT=5432
+# Core (Auth) Database
+CORE_DB_NAME=quill_core
+CORE_DB_USER=auth_user
+CORE_DB_PASSWORD=[secure password]
+CORE_DB_HOST=postgres-auth
+CORE_DB_PORT=5432
 
 # FHIR Database
 FHIR_DB_NAME=hapi
@@ -80,7 +80,7 @@ These variables are no longer used:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
-- `DATABASE_URL` (now auto-computed as `AUTH_DATABASE_URL`)
+- `DATABASE_URL` (now auto-computed as `CORE_DATABASE_URL`)
 - `EHRBASE_USER` (replaced with `EHRBASE_API_USER`)
 - `EHRBASE_PASSWORD` (replaced with `EHRBASE_API_PASSWORD`)
 
@@ -94,7 +94,7 @@ These variables are no longer used:
 from app.config import settings
 
 # Computed database URLs
-settings.AUTH_DATABASE_URL      # Auth database connection
+settings.CORE_DATABASE_URL      # Auth database connection
 settings.FHIR_DATABASE_URL      # FHIR database connection (future use)
 settings.EHRBASE_DATABASE_URL   # EHRbase database connection (future use)
 
@@ -191,7 +191,7 @@ If you see "could not connect to database" errors:
 
 If existing code references old variables:
 
-- Replace `settings.DATABASE_URL` with `settings.AUTH_DATABASE_URL`
+- Replace `settings.DATABASE_URL` with `settings.CORE_DATABASE_URL`
 - Replace `EHRBASE_USER` with `EHRBASE_API_USER`
 - Import from `app.db` instead of `app.db.py`
 

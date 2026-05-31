@@ -1,3 +1,11 @@
+/**
+ * EnableNotificationsButton Component
+ *
+ * Requests browser notification permission, registers the service worker
+ * push subscription, and sends it to the backend. Handles permission
+ * denial and error states with user-friendly status messages.
+ */
+
 import { useState } from "react";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()

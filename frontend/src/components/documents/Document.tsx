@@ -1,3 +1,10 @@
+/**
+ * Document Component
+ *
+ * Displays a single document (PDF, Word, image) with an inline viewer.
+ * Adjusts PDF display based on screen size for a cleaner mobile experience.
+ */
+
 import React from "react";
 import { Box, Image, Stack, Paper, useMantineTheme } from "@mantine/core";
 import Heading from "@/components/typography/Heading";

@@ -43,13 +43,15 @@ The backend is organised in `backend/app/`:
 app/
 ├── main.py              # Application entry point, route definitions
 ├── config.py            # Configuration and environment variables
-├── models.py            # SQLAlchemy ORM models (User, Organization, etc.)
+├── models.py            # SQLAlchemy ORM models (User, Organization, Site, etc.)
+├── deps.py              # Shared dependency definitions
 ├── security.py          # Authentication, JWT, password hashing, CSRF, TOTP
 ├── fhir_client.py       # FHIR integration
 ├── ehrbase_client.py    # OpenEHR integration
 ├── messaging.py         # Messaging CQRS coordination layer
 ├── organisations.py     # Organisation access control helpers
-├── patient_records.py   # File-based patient record management
+├── email_send.py        # Email sending via Resend
+├── log_context.py       # Request logging context
 ├── logging_config.py    # Structured JSON logging configuration
 ├── push.py              # Web push notification endpoints
 ├── push_send.py         # Push notification sending logic
@@ -137,8 +139,8 @@ def create_letter(patient_id: str, letter: LetterIn):
 
 All API endpoints are prefixed with `/api`:
 
-- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout, password reset)
-- `/api/users/*` - User management (admin CRUD, profile)
+- `/api/auth/*` - Authentication endpoints (login, register, TOTP, refresh, logout, password reset, email verification)
+- `/api/users/*` - User management (admin CRUD, profile, deactivation, invitations)
 - `/api/patients/*` - Patient management (backed by FHIR)
 - `/api/patients/{id}/letters/*` - Clinical letters (backed by OpenEHR)
 - `/api/patients/{id}/conversations/*` - Patient-scoped conversations
@@ -146,9 +148,12 @@ All API endpoints are prefixed with `/api`:
 - `/api/patients/{id}/external-access/*` - External access management
 - `/api/conversations/*` - Messaging (conversations and messages)
 - `/api/organizations/*` - Organisation management (admin)
+- `/api/sites/*` - Site management (admin)
 - `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications
-- `/api/teaching/*` - Teaching assessments (feature-gated)
+- `/api/teaching/*` - Teaching assessments and learning modules (feature-gated)
+- `/api/teaching/public/*` - Public teaching endpoints (no auth required)
+- `/api/ci/teaching/*` - CI sync endpoint (token-authenticated)
 - `/api/health` - Service health check
 
 ### Authentication & Security

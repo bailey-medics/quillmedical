@@ -1,3 +1,10 @@
+/**
+ * PublicLayout Component
+ *
+ * Layout wrapper for public-facing pages (marketing site). Provides
+ * the public top ribbon, responsive navigation drawer, and footer.
+ */
+
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import PublicFooter from "@/components/footer/PublicFooter";
 import PublicNavIcon from "@/components/icons/PublicNavIcon";
