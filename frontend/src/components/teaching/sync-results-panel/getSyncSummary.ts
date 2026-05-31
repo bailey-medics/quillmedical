@@ -6,15 +6,17 @@ function pluralise(count: number, singular: string, plural: string) {
 
 export function getSyncSummary(modules: SyncModuleRow[]) {
   const imported = modules.filter((m) => m.outcome === "imported").length;
+  const upToDate = modules.filter((m) => m.outcome === "up_to_date").length;
   const errors = modules.filter(
     (m) => m.outcome === "error" || m.outcome === "skipped",
   ).length;
+  const ok = imported + upToDate;
 
-  if (errors > 0 && imported > 0) {
+  if (errors > 0 && ok > 0) {
     return {
       variant: "partial_success" as const,
       title: "Sync complete with errors",
-      description: `${imported} imported, ${errors} ${pluralise(errors, "error", "errors")}`,
+      description: `${ok} imported, ${errors} ${pluralise(errors, "error", "errors")}`,
     };
   }
 
@@ -26,9 +28,27 @@ export function getSyncSummary(modules: SyncModuleRow[]) {
     };
   }
 
+  if (imported === 0 && upToDate > 0) {
+    return {
+      variant: "success" as const,
+      title: "Sync complete",
+      description: `All ${pluralise(upToDate, "module is", "modules are")} up to date`,
+    };
+  }
+
+  const parts: string[] = [];
+  if (imported > 0) {
+    parts.push(
+      `${imported} ${pluralise(imported, "module", "modules")} imported`,
+    );
+  }
+  if (upToDate > 0) {
+    parts.push(`${upToDate} up to date`);
+  }
+
   return {
     variant: "success" as const,
     title: "Sync complete",
-    description: `${imported} ${pluralise(imported, "module", "modules")} imported successfully`,
+    description: parts.join(", ") || "No modules found",
   };
 }

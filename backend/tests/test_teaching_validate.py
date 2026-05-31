@@ -30,7 +30,10 @@ class TestValidateQuestionBank:
             "description": "A test question bank",
             "type": "uniform",
             "images_per_item": 2,
-            "image_labels": ["Image 1", "Image 2"],
+            "images": [
+                {"key": "wli.png", "label": "White light"},
+                {"key": "nbi.png", "label": "Narrow band"},
+            ],
             "options": [
                 {"id": "opt_a", "label": "A", "tags": ["tag_a"]},
                 {"id": "opt_b", "label": "B", "tags": ["tag_b"]},
@@ -51,8 +54,8 @@ class TestValidateQuestionBank:
             (q_dir / "question.yaml").write_text(
                 yaml.dump({"diagnosis": "adenoma"})
             )
-            (q_dir / "image_1.png").write_bytes(b"fake")
-            (q_dir / "image_2.png").write_bytes(b"fake")
+            (q_dir / "wli.png").write_bytes(b"fake")
+            (q_dir / "nbi.png").write_bytes(b"fake")
 
         return bank
 
@@ -157,7 +160,7 @@ class TestValidateQuestionBank:
     def test_uniform_wrong_image_count(self, tmp_path: Path) -> None:
         bank = self._make_uniform_bank(tmp_path)
         # Delete one image
-        (bank / "question_001" / "image_2.png").unlink()
+        (bank / "question_001" / "nbi.png").unlink()
         result = validate_question_bank(bank)
         assert not result.is_valid
         assert any("expected 2 images" in e.message for e in result.errors)
@@ -252,6 +255,7 @@ class TestValidateQuestionBank:
             "description": "Skewed distribution",
             "type": "uniform",
             "images_per_item": 1,
+            "images": [{"key": "wli.png", "label": "White light"}],
             "options": [{"id": "a", "label": "A", "tags": []}],
             "correct_answer_field": "diagnosis",
             "correct_answer_values": ["adenoma", "serrated"],
@@ -269,7 +273,7 @@ class TestValidateQuestionBank:
             (q_dir / "question.yaml").write_text(
                 yaml.dump({"diagnosis": "adenoma"})
             )
-            (q_dir / "image_1.png").write_bytes(b"fake")
+            (q_dir / "wli.png").write_bytes(b"fake")
 
         result = validate_question_bank(bank)
         assert result.is_valid  # Warnings don't block
@@ -301,8 +305,8 @@ class TestValidateQuestionBank:
                     img.unlink()
 
         inventory = {
-            "question_001": {"image_1.png", "image_2.png"},
-            "question_002": {"image_1.png", "image_2.png"},
+            "question_001": {"wli.png", "nbi.png"},
+            "question_002": {"wli.png", "nbi.png"},
         }
         result = validate_question_bank(bank, image_inventory=inventory)
         assert result.is_valid
@@ -318,8 +322,8 @@ class TestValidateQuestionBank:
 
         # Only 1 image per item, but config expects 2
         inventory = {
-            "question_001": {"image_1.png"},
-            "question_002": {"image_1.png"},
+            "question_001": {"wli.png"},
+            "question_002": {"wli.png"},
         }
         result = validate_question_bank(bank, image_inventory=inventory)
         assert not result.is_valid
@@ -331,10 +335,10 @@ class TestValidateQuestionBank:
         # Add image reference to the question
         q_yaml = bank / "question_001" / "question.yaml"
         question = yaml.safe_load(q_yaml.read_text())
-        question["images"] = [{"key": "image_1.png", "label": "Img"}]
+        question["images"] = [{"key": "scan.png", "label": "Scan"}]
         q_yaml.write_text(yaml.dump(question, default_flow_style=False))
 
-        inventory = {"question_001": {"image_1.png"}}
+        inventory = {"question_001": {"scan.png"}}
         result = validate_question_bank(bank, image_inventory=inventory)
         assert result.is_valid
 
@@ -343,7 +347,7 @@ class TestValidateQuestionBank:
         bank = self._make_variable_bank(tmp_path)
         q_yaml = bank / "question_001" / "question.yaml"
         question = yaml.safe_load(q_yaml.read_text())
-        question["images"] = [{"key": "image_1.png", "label": "Img"}]
+        question["images"] = [{"key": "scan.png", "label": "Scan"}]
         q_yaml.write_text(yaml.dump(question, default_flow_style=False))
 
         inventory: dict[str, set[str]] = {
@@ -357,7 +361,7 @@ class TestValidateQuestionBank:
         """Variable bank flags undeclared images found in GCS."""
         bank = self._make_variable_bank(tmp_path)
         # question has images: [] but GCS has an image file
-        inventory = {"question_001": {"image_1.png"}}
+        inventory = {"question_001": {"scan.png"}}
         result = validate_question_bank(bank, image_inventory=inventory)
         assert not result.is_valid
         assert any("undeclared image file" in e.message for e in result.errors)

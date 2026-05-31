@@ -22,7 +22,7 @@ import { statusColours } from "@/styles/semanticColours";
 // Types
 // ------------------------------------------------------------------
 
-export type SyncModuleOutcome = "imported" | "skipped" | "error";
+export type SyncModuleOutcome = "imported" | "up_to_date" | "skipped" | "error";
 
 export interface SyncModuleRow {
   /** Module/bank identifier */
@@ -54,6 +54,8 @@ export interface SyncResultsPanelProps {
   loading?: boolean;
   /** Callback when "Sync all" is clicked */
   onSync?: () => void;
+  /** Callback when a module row is clicked */
+  onRowClick?: (row: SyncModuleRow) => void;
 }
 
 // ------------------------------------------------------------------
@@ -77,6 +79,13 @@ function getColumns(hasSynced: boolean): ResultColumn<SyncModuleRow>[] {
           const yy = String(d.getFullYear());
           return `${dd}/${mm}/${yy}`;
         }
+        if (row.outcome === "up_to_date") {
+          return (
+            <BodyTextInline c={statusColours.success.bg}>
+              Up to date
+            </BodyTextInline>
+          );
+        }
         return row.outcome === "imported" ? (
           <BodyTextInline c={statusColours.success.bg}>
             Sync pass
@@ -90,7 +99,8 @@ function getColumns(hasSynced: boolean): ResultColumn<SyncModuleRow>[] {
 }
 
 function getSubRow(row: SyncModuleRow) {
-  if (row.outcome === "imported" || !row.reason) return null;
+  if (row.outcome === "imported" || row.outcome === "up_to_date" || !row.reason)
+    return null;
   return (
     <BodyTextInline c={statusColours.alert.bg}>{row.reason}</BodyTextInline>
   );
@@ -106,6 +116,7 @@ export default function SyncResultsPanel({
   syncing = false,
   loading = false,
   onSync,
+  onRowClick,
 }: SyncResultsPanelProps) {
   const columns = getColumns(hasSynced);
 
@@ -126,6 +137,7 @@ export default function SyncResultsPanel({
         columns={columns}
         getRowKey={(row) => row.bank_id}
         getSubRow={getSubRow}
+        onRowClick={onRowClick}
         emptyMessage="No teaching modules found"
         loading={loading}
       />

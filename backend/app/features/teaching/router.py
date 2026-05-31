@@ -78,7 +78,9 @@ from app.models import (
     OrganisationFeature,
     Organization,
     User,
+    organisation_site,
     organisation_staff_member,
+    site_staff_member,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,8 +105,12 @@ _DEP_USER = Depends(_get_current_user)
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return all organisation IDs the user belongs to, or raise 403."""
-    rows = (
+    """Return all organisation IDs the user belongs to, or raise 403.
+
+    Resolves membership via direct org staff OR site staff linked to an org.
+    """
+    # Direct org membership
+    direct = set(
         db.execute(
             select(organisation_staff_member.c.organisation_id).where(
                 organisation_staff_member.c.user_id == user.id
@@ -113,9 +119,23 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
         .scalars()
         .all()
     )
-    if not rows:
+    # Indirect via site → org linkage
+    via_site = set(
+        db.execute(
+            select(organisation_site.c.organisation_id)
+            .join(
+                site_staff_member,
+                site_staff_member.c.site_id == organisation_site.c.site_id,
+            )
+            .where(site_staff_member.c.user_id == user.id)
+        )
+        .scalars()
+        .all()
+    )
+    org_ids = direct | via_site
+    if not org_ids:
         raise HTTPException(403, "User has no organisation")
-    return [int(r) for r in rows]
+    return [int(r) for r in org_ids]
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -1114,6 +1134,7 @@ def _maybe_enqueue_certificate_emails(
                         site_staff_member.c.role == "clinical_lead",
                     )
                 )
+                .unique()
                 .scalars()
                 .all()
             )

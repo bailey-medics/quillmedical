@@ -54,7 +54,7 @@ def _make_bank(tmp_path: Path, *, item_count: int = 2) -> Path:
         "description": "A test question bank",
         "type": "uniform",
         "images_per_item": 1,
-        "image_labels": ["Image 1"],
+        "images": [{"key": "wli.png", "label": "White light"}],
         "options": [
             {"id": "opt_a", "label": "A", "tags": ["tag_a"]},
             {"id": "opt_b", "label": "B", "tags": ["tag_b"]},
@@ -76,7 +76,7 @@ def _make_bank(tmp_path: Path, *, item_count: int = 2) -> Path:
         (q_dir / "question.yaml").write_text(
             yaml.dump({"diagnosis": "adenoma"})
         )
-        (q_dir / "image_1.png").write_bytes(b"fake")
+        (q_dir / "wli.png").write_bytes(b"fake")
     return bank
 
 
@@ -228,8 +228,8 @@ class TestSyncQuestionBank:
 
         # Provide image inventory as if from GCS
         inventory = {
-            "question_001": {"image_1.png"},
-            "question_002": {"image_1.png"},
+            "question_001": {"wli.png"},
+            "question_002": {"wli.png"},
         }
         validation, sync_record = sync_question_bank(
             bank,
@@ -254,7 +254,73 @@ class TestSyncQuestionBank:
             .all()
         )
         for item in items:
-            assert item.images == [{"key": "image_1.png"}]
+            assert item.images == [{"key": "wli.png"}]
+
+    def test_sync_with_multiple_config_images(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """Sync stores multiple config-defined image keys."""
+        bank = tmp_path / "multi-images-bank"
+        bank.mkdir()
+        config = {
+            "id": "multi-images-bank",
+            "version": 1,
+            "title": "Multi Images Bank",
+            "description": "Bank with multiple named image keys",
+            "type": "uniform",
+            "images_per_item": 2,
+            "images": [
+                {"key": "wli.png", "label": "White light"},
+                {"key": "nbi.png", "label": "Narrow band"},
+            ],
+            "options": [
+                {"id": "opt_a", "label": "A"},
+                {"id": "opt_b", "label": "B"},
+            ],
+            "correct_answer_field": "diagnosis",
+            "correct_answer_values": ["adenoma"],
+            "assessment": {
+                "items_per_attempt": 1,
+                "time_limit_minutes": 5,
+                "min_pool_size": 0,
+            },
+        }
+        (bank / "assessment.yaml").write_text(
+            yaml.dump(config, default_flow_style=False)
+        )
+        q_dir = bank / "question_001"
+        q_dir.mkdir()
+        (q_dir / "question.yaml").write_text(
+            yaml.dump({"diagnosis": "adenoma"})
+        )
+        (q_dir / "wli.png").write_bytes(b"fake-wli")
+        (q_dir / "nbi.png").write_bytes(b"fake-nbi")
+
+        validation, sync_record = sync_question_bank(
+            bank,
+            organisation_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+        assert validation.is_valid
+        assert sync_record is not None
+        assert sync_record.status == "success"
+        assert sync_record.items_created == 1
+
+        items = (
+            db_session.execute(
+                select(QuestionBankItem).where(
+                    QuestionBankItem.question_bank_id == "multi-images-bank"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(items) == 1
+        assert items[0].images == [
+            {"key": "wli.png"},
+            {"key": "nbi.png"},
+        ]
 
 
 class TestLoadModuleStatus:
@@ -441,7 +507,7 @@ class TestVersionGuard:
             "description": "Test",
             "type": "uniform",
             "images_per_item": 1,
-            "image_labels": ["Image 1"],
+            "images": [{"key": "wli.png", "label": "White light"}],
             "options": [
                 {"id": "opt_a", "label": "A", "tags": ["a"]},
                 {"id": "opt_b", "label": "B", "tags": ["b"]},
@@ -460,7 +526,7 @@ class TestVersionGuard:
         (q_dir / "question.yaml").write_text(
             yaml.dump({"diagnosis": "adenoma"})
         )
-        (q_dir / "image_1.png").write_bytes(b"fake")
+        (q_dir / "wli.png").write_bytes(b"fake")
 
         # No module_status passed — should read "draft" from module.yaml
         # and reject because version is 2

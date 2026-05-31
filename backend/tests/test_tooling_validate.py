@@ -71,8 +71,8 @@ class TestRunToolingValidation:
             "  - id: a\n"
             "    label: A\n"
             "images:\n"
-            "  - key: image_1.png\n"
-            "    label: Image\n"
+            "  - key: wli.png\n"
+            "    label: White light\n"
             "assessment:\n"
             "  items_per_attempt: 1\n"
             "  time_limit_minutes: 5\n"
@@ -81,7 +81,7 @@ class TestRunToolingValidation:
         q_dir = assessment_dir / "question_001"
         q_dir.mkdir()
         (q_dir / "question.yaml").write_text("diagnosis: adenoma\n")
-        (q_dir / "image_1.png").write_bytes(b"fake")
+        (q_dir / "wli.png").write_bytes(b"fake")
 
         errors = run_tooling_validation(module_dir)
         assert errors == []
