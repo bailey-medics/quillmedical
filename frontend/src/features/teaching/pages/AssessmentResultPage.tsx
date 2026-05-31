@@ -1,3 +1,11 @@
+/**
+ * AssessmentResultPage
+ *
+ * Displays pass/fail result after completing an assessment. Shows score
+ * breakdown, pass criteria results, and provides certificate download
+ * for passed assessments.
+ */
+
 import { Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { ResultMessage, StateMessage } from "@/components/message-cards";

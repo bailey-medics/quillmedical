@@ -1,3 +1,10 @@
+/**
+ * BurgerButton Component
+ *
+ * Hamburger menu toggle for opening/closing the mobile navigation drawer.
+ * Renders an accessible ActionIcon with aria-controls and aria-expanded.
+ */
+
 import { ActionIcon } from "@mantine/core";
 import { IconMenu2 } from "@/components/icons/appIcons";
 import { secondaryScale } from "@/theme";

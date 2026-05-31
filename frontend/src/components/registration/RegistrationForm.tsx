@@ -1,3 +1,10 @@
+/**
+ * RegistrationForm Component
+ *
+ * New user registration form with username, email, password, and optional
+ * organisation/site selection. Handles validation and API submission.
+ */
+
 import { Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import {

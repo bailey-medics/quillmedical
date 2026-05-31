@@ -1,3 +1,11 @@
+/**
+ * TextField Component
+ *
+ * Standardised text input wrapper around Mantine's TextInput.
+ * Enforces consistent font sizing, label styling, and error display
+ * across the application.
+ */
+
 import { TextInput, type TextInputProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";

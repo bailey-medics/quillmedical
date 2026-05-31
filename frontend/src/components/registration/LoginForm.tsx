@@ -1,3 +1,10 @@
+/**
+ * LoginForm Component
+ *
+ * User login form with username, password, and optional TOTP fields.
+ * Displays connectivity warnings and handles authentication via the API.
+ */
+
 import { Group, Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import { PasswordField, TextField } from "@components/form";

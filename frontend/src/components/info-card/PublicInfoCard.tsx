@@ -1,3 +1,11 @@
+/**
+ * PublicInfoCard Component
+ *
+ * Informational card for public-facing pages. Shows a label, large
+ * heading (Cormorant Garamond serif), and description text on a
+ * dark background with amber accent.
+ */
+
 import PublicBodyText from "@/components/typography/PublicBodyText";
 import { Box, Text, Title } from "@mantine/core";
 import type { ReactNode } from "react";

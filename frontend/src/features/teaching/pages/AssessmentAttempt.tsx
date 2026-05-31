@@ -1,3 +1,11 @@
+/**
+ * AssessmentAttempt Page
+ *
+ * Active assessment exam page. Displays questions with images, options,
+ * a countdown timer, and navigation. Handles answer submission, exam
+ * completion, and early abandonment with navigation blocking.
+ */
+
 import { Loader, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";

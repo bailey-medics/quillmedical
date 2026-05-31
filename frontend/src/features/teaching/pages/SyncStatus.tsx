@@ -1,3 +1,10 @@
+/**
+ * SyncStatus Page
+ *
+ * Educator page showing the history of question bank sync operations.
+ * Displays sync timestamps, item counts, and error/success status.
+ */
+
 import { Badge, Skeleton, Stack, Table } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { StateMessage } from "@/components/message-cards";

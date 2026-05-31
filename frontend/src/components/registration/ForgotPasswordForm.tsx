@@ -1,3 +1,10 @@
+/**
+ * ForgotPasswordForm Component
+ *
+ * Password reset request form. Accepts an email address and sends
+ * a password reset link via the backend API.
+ */
+
 import { Group, Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import { EmailField, EMAIL_PATTERN } from "@components/form";

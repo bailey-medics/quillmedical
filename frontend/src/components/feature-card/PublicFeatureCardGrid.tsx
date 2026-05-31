@@ -1,3 +1,10 @@
+/**
+ * PublicFeatureCardGrid Component
+ *
+ * Responsive grid layout for PublicFeatureCard components.
+ * Renders 1 column on mobile, 2 on tablet, and 3 on desktop.
+ */
+
 import { SimpleGrid } from "@mantine/core";
 import type { ReactNode } from "react";
 

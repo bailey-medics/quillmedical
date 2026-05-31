@@ -1,3 +1,10 @@
+/**
+ * PublicDarkBackground Component
+ *
+ * Dark navy background section for public-facing pages.
+ * Wraps content in a full-width dark container with centred content area.
+ */
+
 import { Box } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PublicDarkBackground.module.css";

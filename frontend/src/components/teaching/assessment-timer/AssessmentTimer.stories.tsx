@@ -5,6 +5,12 @@ const meta: Meta<typeof AssessmentTimer> = {
   title: "Teaching/Assessment timer",
   component: AssessmentTimer,
   parameters: {
+    docs: {
+      description: {
+        component:
+          "Countdown timer for timed assessments. Shows remaining time and triggers an expiry callback when time runs out. Turns red in the final 5 minutes.",
+      },
+    },
     layout: "padded",
   },
 };

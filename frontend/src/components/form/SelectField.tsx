@@ -1,3 +1,11 @@
+/**
+ * SelectField Component
+ *
+ * Standardised dropdown select wrapper around Mantine's Select.
+ * Enforces consistent font sizing, label styling, and error display
+ * across the application.
+ */
+
 import { Select, type SelectProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";

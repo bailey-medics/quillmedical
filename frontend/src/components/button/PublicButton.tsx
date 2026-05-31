@@ -1,3 +1,10 @@
+/**
+ * PublicButton Component
+ *
+ * Call-to-action button for public-facing pages. Supports filled and outline
+ * variants with size options. Renders as an anchor when href is provided.
+ */
+
 import { Button } from "@mantine/core";
 import type { ReactNode } from "react";
 import classes from "./PublicButton.module.css";

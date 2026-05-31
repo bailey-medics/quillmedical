@@ -5,6 +5,12 @@ const meta: Meta<typeof ScoreBreakdown> = {
   title: "Teaching/Score breakdown",
   component: ScoreBreakdown,
   parameters: {
+    docs: {
+      description: {
+        component:
+          "Detailed breakdown of pass criteria results showing each criterion's value, threshold, and pass/fail status.",
+      },
+    },
     layout: "padded",
   },
 };

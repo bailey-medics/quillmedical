@@ -1,3 +1,10 @@
+/**
+ * Divider Component
+ *
+ * Thin horizontal or vertical separator line. Wraps Mantine's Divider
+ * with simplified props for consistent usage across the application.
+ */
+
 import { Divider as MantineDivider } from "@mantine/core";
 import type { MantineSpacing } from "@mantine/core";
 

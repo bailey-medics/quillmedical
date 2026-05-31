@@ -58,6 +58,12 @@ const meta: Meta<typeof QuestionView> = {
   title: "Teaching/Question view",
   component: QuestionView,
   parameters: {
+    docs: {
+      description: {
+        component:
+          "Displays a teaching assessment question with images, options, timer, and progress bar. Supports uniform (shared options) and variable (per-item options) question types.",
+      },
+    },
     layout: "fullscreen",
   },
   decorators: [

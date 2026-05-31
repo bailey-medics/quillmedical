@@ -36,6 +36,12 @@ const meta: Meta<typeof AssessmentResult> = {
   title: "Teaching/Assessment result",
   component: AssessmentResult,
   parameters: {
+    docs: {
+      description: {
+        component:
+          "Displays pass/fail result with score breakdown, certificate download button, and retry option.",
+      },
+    },
     layout: "padded",
   },
 };

@@ -1,3 +1,10 @@
+/**
+ * PublicFooter Component
+ *
+ * Footer for public-facing pages with grouped navigation links
+ * and copyright information.
+ */
+
 import { Container, Group } from "@mantine/core";
 import PublicBodyText from "@/components/typography/PublicBodyText";
 import classes from "./PublicFooter.module.css";
