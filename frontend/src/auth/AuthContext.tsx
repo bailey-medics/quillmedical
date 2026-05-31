@@ -33,6 +33,8 @@ export type User = {
   enabled_features?: string[];
   /** Whether FHIR and EHRbase clinical services are available */
   clinical_services_enabled?: boolean;
+  /** Resolved CBAC competency IDs for this user */
+  competencies?: string[];
 };
 
 /**
