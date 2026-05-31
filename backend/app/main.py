@@ -2032,6 +2032,7 @@ def me(
             - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
             - enabled_features: Features enabled on user's primary org
+            - competencies: Resolved CBAC competency IDs
     """
     # Resolve features from all user's organisations (union)
     user_org_ids = (
@@ -2068,6 +2069,7 @@ def me(
         "totp_enabled": u.is_totp_enabled,
         "enabled_features": enabled_features,
         "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
+        "competencies": u.get_final_competencies(),
     }
 
 

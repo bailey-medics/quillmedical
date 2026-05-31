@@ -12,13 +12,13 @@ Wire competency-based access control into the frontend so UI elements (action ca
 
 ## Implementation steps
 
-### - [ ] Step 1: Backend — include competencies in `/auth/me`
+### - [x] Step 1: Backend — include competencies in `/auth/me`
 
 **File**: `backend/app/main.py` (the `me()` endpoint)
 
 Add `"competencies": u.get_final_competencies()` to the response dict. No new endpoint needed.
 
-### - [ ] Step 2: Frontend — add `competencies` to User type
+### - [x] Step 2: Frontend — add `competencies` to User type
 
 **File**: `frontend/src/auth/AuthContext.tsx`
 
@@ -32,7 +32,7 @@ export type User = {
 
 No changes to `AuthContext` logic — `competencies` will be populated automatically from the `/auth/me` response since `reload()` spreads the response into state.
 
-### - [ ] Step 3: Frontend — implement CBAC hooks
+### - [x] Step 3: Frontend — implement CBAC hooks
 
 **File**: `frontend/src/lib/cbac/hooks.ts`
 
@@ -52,7 +52,9 @@ export function useHasAnyCompetency(...competencies: CompetencyId[]): boolean {
   return competencies.some((c) => userComps.includes(c));
 }
 
-export function useHasAllCompetencies(...competencies: CompetencyId[]): boolean {
+export function useHasAllCompetencies(
+  ...competencies: CompetencyId[]
+): boolean {
   const { state } = useAuth();
   if (state.status !== "authenticated") return false;
   const userComps = state.user.competencies ?? [];
@@ -60,7 +62,7 @@ export function useHasAllCompetencies(...competencies: CompetencyId[]): boolean 
 }
 ```
 
-### - [ ] Step 4: Frontend — gate teaching modules UI on CBAC
+### - [x] Step 4: Frontend — gate teaching modules UI on CBAC
 
 **File**: `frontend/src/pages/admin/teaching/AdminTeachingDashboard.tsx`
 
@@ -78,9 +80,9 @@ Optionally add a `<RequireCompetency>` guard around the teaching modules routes 
 
 ## Testing
 
-- [ ] **Backend**: Add test in `tests/test_auth.py` verifying `/auth/me` returns `competencies` list
-- [ ] **Frontend**: Update CBAC hook tests to verify they return correct values based on mocked user state
-- [ ] **AdminTeachingDashboard**: Test that Modules card is hidden when user lacks `manage_teaching_content`
+- [x] **Backend**: Add test in `tests/test_auth.py` verifying `/auth/me` returns `competencies` list
+- [x] **Frontend**: Update CBAC hook tests to verify they return correct values based on mocked user state
+- [x] **AdminTeachingDashboard**: Test that Modules card is hidden when user lacks `manage_teaching_content`
 
 ## Notes
 

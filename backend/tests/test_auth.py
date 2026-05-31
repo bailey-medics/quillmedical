@@ -1,6 +1,7 @@
 """Tests for authentication endpoints."""
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models import User
 from app.security import generate_totp_secret
@@ -201,6 +202,31 @@ class TestAuthMe:
         assert data["email"] == test_user.email
         assert "roles" in data
         assert "id" in data
+
+    def test_auth_me_includes_competencies(
+        self, authenticated_client: TestClient, test_user: User
+    ):
+        """Test /auth/me returns competencies list."""
+        response = authenticated_client.get("/api/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert "competencies" in data
+        assert isinstance(data["competencies"], list)
+
+    def test_auth_me_competencies_populated(
+        self,
+        authenticated_client: TestClient,
+        test_user: User,
+        db_session: Session,
+    ):
+        """Test /auth/me returns additional competencies when set."""
+        test_user.additional_competencies = ["manage_teaching_content"]
+        db_session.commit()
+
+        response = authenticated_client.get("/api/auth/me")
+        assert response.status_code == 200
+        data = response.json()
+        assert "manage_teaching_content" in data["competencies"]
 
     def test_auth_me_unauthenticated(self, test_client: TestClient):
         """Test /auth/me without authentication."""
