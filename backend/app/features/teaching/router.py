@@ -1114,6 +1114,7 @@ def _maybe_enqueue_certificate_emails(
                         site_staff_member.c.role == "clinical_lead",
                     )
                 )
+                .unique()
                 .scalars()
                 .all()
             )
