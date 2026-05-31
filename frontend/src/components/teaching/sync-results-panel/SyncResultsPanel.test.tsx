@@ -38,12 +38,34 @@ const errored: SyncModuleRow = {
   reason: "Failed to download from GCS: timeout after 30s",
 };
 
+const upToDate: SyncModuleRow = {
+  bank_id: "chest-xray-test",
+  title: "Chest X-ray interpretation",
+  type: "uniform",
+  outcome: "up_to_date",
+  version: 1,
+  item_count: 5,
+  reason: "",
+};
+
 describe("SyncResultsPanel", () => {
   it("getSyncSummary returns success when all modules imported", () => {
     const summary = getSyncSummary([imported]);
     expect(summary.variant).toBe("success");
     expect(summary.title).toBe("Sync complete");
-    expect(summary.description).toBe("1 module imported successfully");
+    expect(summary.description).toBe("1 module imported");
+  });
+
+  it("getSyncSummary treats up_to_date as success", () => {
+    const summary = getSyncSummary([imported, upToDate]);
+    expect(summary.variant).toBe("success");
+    expect(summary.description).toBe("1 module imported, 1 up to date");
+  });
+
+  it("getSyncSummary shows all up to date when nothing imported", () => {
+    const summary = getSyncSummary([upToDate]);
+    expect(summary.variant).toBe("success");
+    expect(summary.description).toBe("All module is up to date");
   });
 
   it("getSyncSummary returns partial_success when mixed outcomes", () => {
@@ -92,6 +114,11 @@ describe("SyncResultsPanel", () => {
     expect(
       screen.getByText("Version 2 is not greater than stored version 2"),
     ).toBeInTheDocument();
+  });
+
+  it("shows 'Up to date' for modules unchanged after sync", () => {
+    renderWithMantine(<SyncResultsPanel modules={[upToDate]} hasSynced />);
+    expect(screen.getByText("Up to date")).toBeInTheDocument();
   });
 
   it("renders PageHeader with correct title", () => {

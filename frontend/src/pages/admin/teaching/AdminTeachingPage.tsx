@@ -67,7 +67,7 @@ function syncResultToModules(
       bank_id: bank.bank_id,
       title: bank.title ?? bank.bank_id,
       type: bank.type ?? "—",
-      outcome: "imported" as const,
+      outcome: "up_to_date" as const,
       version: bank.version ?? 0,
       item_count: bank.item_count,
       reason: "",
