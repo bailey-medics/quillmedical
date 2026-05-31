@@ -9,20 +9,17 @@ import { SimpleGrid, Stack } from "@mantine/core";
 import PageHeader from "@/components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
 import { IconStack2, IconUserCheck } from "@/components/icons/appIcons";
-import { useAuth } from "@/auth/AuthContext";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 
 export default function AdminTeachingDashboard() {
-  const { state } = useAuth();
-  const isSuperadmin =
-    state.status === "authenticated" &&
-    state.user.system_permissions === "superadmin";
+  const canManageTeaching = useHasCompetency("manage_teaching_content");
 
   return (
     <Stack gap="md">
       <PageHeader title="Teaching" />
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        {isSuperadmin && (
+        {canManageTeaching && (
           <ActionCard
             icon={<IconStack2 />}
             title="Modules"

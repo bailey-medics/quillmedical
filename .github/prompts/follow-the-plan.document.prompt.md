@@ -19,6 +19,8 @@ A plan document has been attached to this prompt. Follow it to complete the task
 
 - After each discrete, self-contained change (e.g. a feature implemented, a refactor complete, a test passing), commit with a short descriptive message before proceeding.
 - Do not batch unrelated changes into a single commit.
+- Stay on the current branch. Do not start a new one.
+- However, if you are on main branch, then you are free to start an appropriate feature branch for the work you are doing.
 
 ## Staying on track
 

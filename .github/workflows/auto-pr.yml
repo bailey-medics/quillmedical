@@ -32,8 +32,18 @@ jobs:
           TITLE=$(git log -1 --format='%s')
           BODY=$(git log -1 --format='%b')
 
-          gh pr create \
+          # Create the PR; exit gracefully if one was created by a concurrent run
+          if ! gh pr create \
             --title "$TITLE" \
             --body "${BODY:-Auto-created from branch push}" \
             --base main \
-            --head "${{ github.ref_name }}"
+            --head "${{ github.ref_name }}" 2>&1; then
+            # Check again — if a PR now exists, a parallel run created it
+            RECHECK=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
+            if [ "$RECHECK" != "0" ]; then
+              echo "PR was created by a concurrent run, skipping"
+              exit 0
+            fi
+            echo "Failed to create PR and no existing PR found"
+            exit 1
+          fi
