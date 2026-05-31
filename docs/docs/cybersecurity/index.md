@@ -106,7 +106,7 @@ patient < staff < admin < superadmin
 ```
 
 - Permission checks use `check_permission_level(user_permission, required_permission)` which compares hierarchy positions.
-- External user types (`external_hcp`, `patient_advocate`) are treated as `patient` level for hierarchy checks.
+- External user types (`external_hcp`, `patient_advocate`, `teaching_delegate`) are treated as `patient` level for hierarchy checks.
 - Admin endpoints explicitly check `system_permissions in ["admin", "superadmin"]`.
 
 ### Competency-based access control (CBAC)
@@ -124,7 +124,7 @@ These components wrap pages to control who can see them:
 
 - **`<RequireAuth>`**: Redirects unauthenticated users to `/login`.
 - **`<GuestOnly>`**: Redirects authenticated users away from login/register pages.
-- **`<RequirePermission level="admin">`**: Enforces permission hierarchy client-side. Patients and staff see a "not found" page for admin routes (feature hiding). The backend always re-validates.
+- **`<RequirePermission level="admin">`**: Enforces permission hierarchy client-side. Patients, teaching delegates, and staff see a "not found" page for admin routes (feature hiding). The backend always re-validates.
 - **`<RequireClinical>`**: Gates Fast Healthcare Interoperability Resources (FHIR) / EHRbase-dependent routes (patients, messaging). Redirects to `/teaching` when `CLINICAL_SERVICES_ENABLED` is false.
 - **`<RequireFeature feature="teaching">`**: Gates feature-flagged routes. Shows a "not found" page when the user's organisation does not have the feature enabled.
 

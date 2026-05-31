@@ -21,9 +21,13 @@ The Enterprise plan is required for **metadata restrictions** (branch naming enf
 
 The main application repository containing backend, frontend, infrastructure, and documentation.
 
-### quill-question-bank
+### Teaching content repos
 
-Stores teaching question bank content (YAML config files and images). Synced to the app via GCS bucket. Has its own branch protection and naming rulesets mirroring the main repo.
+Teaching question bank and learning content lives in per-organisation repos (e.g. `eoeeta-teaching`, `respiratory-teaching`). These are cloned into `teaching-repos/` by `just initial-install`.
+
+### teaching-tooling
+
+Shared validation scripts, MDX compiler, and reusable GitHub Actions workflows for teaching content repos. Cloned alongside teaching repos by `just initial-install`.
 
 ## Branch strategy
 

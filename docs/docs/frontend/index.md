@@ -113,10 +113,10 @@ Built using current web standards for
 #### Technology Stack
 
 - **React 19** with TypeScript for type-safe, maintainable code
-- **Mantine UI** for accessible, customizable components
+- **Mantine UI 8** for accessible, customisable components
 - **Tabler Icons** for consistent iconography throughout the application
-- **React Router** for seamless client-side navigation
-- **Vite** for rapid development and optimized production builds
+- **React Router 7** for seamless client-side navigation
+- **Vite 8** for rapid development and optimised production builds
 
 ### Healthcare Standards Integration
 
