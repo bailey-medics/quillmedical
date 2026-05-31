@@ -12,7 +12,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.models import OrganisationFeature, User, organisation_staff_member
+from app.models import (
+    OrganisationFeature,
+    User,
+    organisation_site,
+    organisation_staff_member,
+    site_staff_member,
+)
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:
@@ -38,14 +44,29 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         user = current_user(request, db)
 
-        user_org_ids = (
-            db.execute(
-                select(organisation_staff_member.c.organisation_id).where(
-                    organisation_staff_member.c.user_id == user.id,
+        user_org_ids = list(
+            set(
+                db.execute(
+                    select(organisation_staff_member.c.organisation_id).where(
+                        organisation_staff_member.c.user_id == user.id,
+                    )
                 )
+                .scalars()
+                .all()
             )
-            .scalars()
-            .all()
+            | set(
+                db.execute(
+                    select(organisation_site.c.organisation_id)
+                    .join(
+                        site_staff_member,
+                        site_staff_member.c.site_id
+                        == organisation_site.c.site_id,
+                    )
+                    .where(site_staff_member.c.user_id == user.id)
+                )
+                .scalars()
+                .all()
+            )
         )
 
         if not user_org_ids:

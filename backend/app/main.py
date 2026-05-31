@@ -2035,7 +2035,8 @@ def me(
             - competencies: Resolved CBAC competency IDs
     """
     # Resolve features from all user's organisations (union)
-    user_org_ids = (
+    # Direct org membership
+    direct_org_ids = set(
         db.execute(
             select(organisation_staff_member.c.organisation_id).where(
                 organisation_staff_member.c.user_id == u.id,
@@ -2044,6 +2045,20 @@ def me(
         .scalars()
         .all()
     )
+    # Indirect via site → org linkage
+    site_org_ids = set(
+        db.execute(
+            select(organisation_site.c.organisation_id)
+            .join(
+                site_staff_member,
+                site_staff_member.c.site_id == organisation_site.c.site_id,
+            )
+            .where(site_staff_member.c.user_id == u.id)
+        )
+        .scalars()
+        .all()
+    )
+    user_org_ids = list(direct_org_ids | site_org_ids)
     enabled_features: list[str] = []
     if user_org_ids:
         features = (
