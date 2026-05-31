@@ -52,7 +52,9 @@ export function useHasAnyCompetency(...competencies: CompetencyId[]): boolean {
   return competencies.some((c) => userComps.includes(c));
 }
 
-export function useHasAllCompetencies(...competencies: CompetencyId[]): boolean {
+export function useHasAllCompetencies(
+  ...competencies: CompetencyId[]
+): boolean {
   const { state } = useAuth();
   if (state.status !== "authenticated") return false;
   const userComps = state.user.competencies ?? [];
