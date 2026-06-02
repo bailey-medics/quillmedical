@@ -40,11 +40,11 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ### Phase 4 — No backend enforcement
 
-- [ ] No validation logic needed (soft default). The provisioning endpoint (user creation) will read `default_system_permission` from the matched base profession and use it as the default value for the `system_permissions` field — but this is a future enhancement when user provisioning is fully built out.
+- [x] No validation logic needed (soft default). The provisioning endpoint (user creation) will read `default_system_permission` from the matched base profession and use it as the default value for the `system_permissions` field — but this is a future enhancement when user provisioning is fully built out.
 
 ### Phase 5 — Update Copilot instructions
 
-- [ ] Update `.github/copilot-instructions.md` to document the `default_system_permission` field:
+- [x] Update `.github/copilot-instructions.md` to document the `default_system_permission` field:
   - In the **base_profession** section, note that each profession declares a `default_system_permission` (soft provisioning default)
   - Clarify that admins can override system permissions to any valid level after user creation
   - Add to the "Quick Patterns" section: when creating a new base profession, always include `default_system_permission`
@@ -56,4 +56,4 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 - [ ] `just uf` — frontend tests still pass
 - [ ] `just ub` — backend tests still pass
 - [x] Generated JSON (`src/generated/base-professions.json`) includes `default_system_permission` for each entry
-- [ ] Copilot instructions accurately reflect the new field and its soft-default semantics
+- [x] Copilot instructions accurately reflect the new field and its soft-default semantics

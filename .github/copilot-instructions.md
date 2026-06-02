@@ -257,6 +257,8 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 **New component**: Create in `frontend/src/components/<name>/`, add `Component.stories.tsx` and `Component.test.tsx`, update catalogue above
 
+**New base profession**: Add entry to `shared/base-professions.yaml` with `id`, `display_name`, `description`, `default_system_permission`, `base_competencies`, and `notes`. Then run `yarn generate:types` in `frontend/`.
+
 ## Key Files
 
 - `backend/app/main.py`: FastAPI routes and dependency constants
