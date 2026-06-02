@@ -14,14 +14,14 @@ import sys
 
 sys.path.insert(0, "/app")
 
-from app.db import SessionLocal  # noqa: E402
+from app.db import CoreSessionLocal  # noqa: E402
 from app.models import OrganisationFeature, Organization, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
 def seed() -> None:
     """Create test users and organisation for E2E."""
-    db = SessionLocal()
+    db = CoreSessionLocal()
     try:
         # 1. Create superadmin
         admin = db.query(User).filter(User.username == "admin").first()

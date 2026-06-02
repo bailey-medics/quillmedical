@@ -108,11 +108,11 @@ settings.EHRBASE_URL            # EHRbase API
 New structure at `backend/app/db/`:
 
 ```python
-from app.db import get_auth_db, auth_engine, AuthBase
+from app.db import get_core_db, core_engine, CoreBase
 
 # Use in FastAPI routes
 @router.get("/users")
-def list_users(db: Session = Depends(get_auth_db)):
+def list_users(db: Session = Depends(get_core_db)):
     users = db.query(User).all()
     return users
 ```

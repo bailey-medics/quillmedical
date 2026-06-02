@@ -298,9 +298,9 @@ docker exec quill_backend python -c "
 import os, sys
 sys.path.insert(0, '/app')
 os.environ['BACKEND_ENV'] = os.environ.get('BACKEND_ENV', 'development')
-from app.db import SessionLocal
+from app.db import CoreSessionLocal
 from app.features.teaching.models import QuestionBankItem
-db = SessionLocal()
+db = CoreSessionLocal()
 try:
     items = db.query(QuestionBankItem).filter(
         QuestionBankItem.question_bank_id == '$BANK_ID',

@@ -6,7 +6,7 @@ competency sets, which can be customised per-user.
 """
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 
@@ -29,11 +29,11 @@ PROFESSION_IDS = tuple(
 BaseProfessionId = Literal[PROFESSION_IDS]  # type: ignore[valid-type]
 
 
-def get_profession_details(profession_id: str) -> dict | None:
+def get_profession_details(profession_id: str) -> dict[str, Any] | None:
     """Get full details of a base profession by ID."""
     for profession in BASE_PROFESSIONS_DATA["base_professions"]:
         if profession["id"] == profession_id:
-            return profession
+            return profession  # type: ignore[no-any-return]
     return None
 
 

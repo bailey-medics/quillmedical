@@ -23,7 +23,7 @@ os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 # Force dry-run to prevent tests from sending real emails via Resend
 os.environ["EMAIL_DRY_RUN"] = "true"
 
-from app.db import get_session
+from app.db import get_core_db
 from app.main import app, limiter, require_clinical_services
 from app.models import Base, Role, User
 from app.security import hash_password
@@ -64,13 +64,13 @@ def db_session() -> Generator[Session]:
 def test_client(db_session: Session) -> TestClient:
     """Create a test client with database session override."""
 
-    def override_get_session():
+    def override_get_core_db():
         try:
             yield db_session
         finally:
             pass
 
-    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_core_db] = override_get_core_db
     # Allow clinical endpoints in tests (CLINICAL_SERVICES_ENABLED=false
     # in test env). Tests for the guard itself override this back.
     app.dependency_overrides[require_clinical_services] = lambda: None

@@ -78,14 +78,14 @@ def main() -> int:
     try:
         from sqlalchemy import inspect
 
-        from app.db import SessionLocal
+        from app.db import CoreSessionLocal
         from app.models import Role, User
         from app.security import hash_password
     except Exception as exc:  # pragma: no cover - environment errors
         print(f"Failed to import app modules: {exc}", file=sys.stderr)
         return 1
 
-    db = SessionLocal()
+    db = CoreSessionLocal()
     try:
         # Check if database has been migrated
         if db.bind is None:

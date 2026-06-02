@@ -53,9 +53,9 @@ class GCSStorageBackend(StorageBackend):
     """
 
     def __init__(self, bucket_name: str) -> None:
-        from google.auth import default  # type: ignore[import-untyped]
+        from google.auth import default
         from google.auth.transport import (
-            requests as auth_requests,  # type: ignore[import-untyped]
+            requests as auth_requests,
         )
         from google.cloud import storage  # type: ignore[import-untyped]
 
@@ -67,8 +67,8 @@ class GCSStorageBackend(StorageBackend):
         # Compute-engine credentials expose service_account_email
         # but return "default" until refreshed.
         auth_req = auth_requests.Request()
-        self._credentials.refresh(auth_req)
-        self._sa_email: str = self._credentials.service_account_email
+        self._credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
+        self._sa_email: str = self._credentials.service_account_email  # type: ignore[attr-defined]
 
     def get_image_url(
         self, bank_id: str, item_folder: str, filename: str
@@ -76,7 +76,7 @@ class GCSStorageBackend(StorageBackend):
         import datetime as dt
 
         from google.auth.transport import (
-            requests as auth_requests,  # type: ignore[import-untyped]
+            requests as auth_requests,
         )
 
         blob = self._bucket.blob(
@@ -85,14 +85,16 @@ class GCSStorageBackend(StorageBackend):
 
         # Ensure the access token is fresh
         if not self._credentials.token:
-            self._credentials.refresh(auth_requests.Request())
+            self._credentials.refresh(auth_requests.Request())  # type: ignore[no-untyped-call]
 
-        return blob.generate_signed_url(
-            version="v4",
-            expiration=dt.timedelta(minutes=15),
-            method="GET",
-            service_account_email=self._sa_email,
-            access_token=self._credentials.token,
+        return str(
+            blob.generate_signed_url(
+                version="v4",
+                expiration=dt.timedelta(minutes=15),
+                method="GET",
+                service_account_email=self._sa_email,
+                access_token=self._credentials.token,
+            )
         )
 
 
@@ -245,7 +247,7 @@ def has_learning_content(base_path: str, module_id: str) -> bool:
 
 def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
     """Check if a module has learning content in GCS."""
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return False
@@ -253,14 +255,14 @@ def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(f"learning/{module_id}/content.mdx")
-    return blob.exists()
+    return bool(blob.exists())
 
 
 def download_learning_mdx_from_gcs(
     bucket_name: str, module_id: str
 ) -> str | None:
     """Download learning/content.mdx from GCS and return as string."""
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return None
@@ -270,15 +272,15 @@ def download_learning_mdx_from_gcs(
     blob = bucket.blob(f"learning/{module_id}/content.mdx")
     if not blob.exists():
         return None
-    return blob.download_as_text(encoding="utf-8")
+    return str(blob.download_as_text(encoding="utf-8"))
 
 
 def download_module_yaml_from_gcs(
     bucket_name: str, module_id: str
 ) -> dict[str, Any] | None:
     """Download modules/<module_id>/module.yaml from GCS."""
-    import yaml  # type: ignore[import-untyped]
-    from google.cloud import storage  # type: ignore[import-untyped]
+    import yaml
+    from google.cloud import storage
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return None
@@ -289,7 +291,8 @@ def download_module_yaml_from_gcs(
     if not blob.exists():
         return None
     content = blob.download_as_text(encoding="utf-8")
-    return yaml.safe_load(content) or {}  # type: ignore[no-any-return]
+    result: dict[str, Any] | None = yaml.safe_load(content) or {}
+    return result
 
 
 def get_learning_image_url_gcs(
@@ -298,11 +301,11 @@ def get_learning_image_url_gcs(
     """Generate a signed URL for a learning image in GCS."""
     import datetime as dt
 
-    from google.auth import default  # type: ignore[import-untyped]
+    from google.auth import default
     from google.auth.transport import (
-        requests as auth_requests,  # type: ignore[import-untyped]
+        requests as auth_requests,
     )
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         msg = f"Invalid module_id: {module_id!r}"
@@ -317,15 +320,17 @@ def get_learning_image_url_gcs(
     blob = bucket.blob(f"learning/{module_id}/images/{filename}")
 
     auth_req = auth_requests.Request()
-    credentials.refresh(auth_req)
-    sa_email: str = credentials.service_account_email
+    credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
+    sa_email: str = credentials.service_account_email  # type: ignore[attr-defined]
 
-    return blob.generate_signed_url(
-        version="v4",
-        expiration=dt.timedelta(minutes=15),
-        method="GET",
-        service_account_email=sa_email,
-        access_token=credentials.token,
+    return str(
+        blob.generate_signed_url(
+            version="v4",
+            expiration=dt.timedelta(minutes=15),
+            method="GET",
+            service_account_email=sa_email,
+            access_token=credentials.token,
+        )
     )
 
 
@@ -335,7 +340,7 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
     Looks for top-level directories under ``questions/`` that contain
     an ``assessment.yaml`` or ``config.yaml`` file.
     """
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -375,7 +380,7 @@ def download_bank_from_gcs(
     responsible for cleaning it up (use ``shutil.rmtree`` or a
     context manager).
     """
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         msg = f"Invalid bank_id: {bank_id!r}"
@@ -434,7 +439,7 @@ def get_module_status_from_gcs(
     if not found.
     """
     import yaml
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -465,7 +470,7 @@ def list_bank_images_in_gcs(
     mapping of item directory names to the set of image filenames
     found.  Only files with allowed image extensions are included.
     """
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         msg = f"Invalid bank_id: {bank_id!r}"
@@ -536,7 +541,7 @@ def download_module_from_gcs(
     if module.yaml doesn't exist in GCS.  Caller must clean up with
     ``shutil.rmtree(path.parent)``.
     """
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         return None

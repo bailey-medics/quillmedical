@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for authentication database.
+"""SQLAlchemy ORM models for core database.
 
 This module defines the database schema for user authentication, role-based
 access control (RBAC), and messaging. All models use SQLAlchemy 2.0
@@ -17,6 +17,7 @@ The schema includes:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -134,7 +135,7 @@ class User(Base):
     removed_competencies: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=lambda: []
     )
-    professional_registrations: Mapped[dict | None] = mapped_column(
+    professional_registrations: Mapped[dict[str, Any] | None] = mapped_column(
         JSON, nullable=True
     )
 

@@ -82,6 +82,13 @@ export default function ActivatePatientPage() {
           }
 
           const patientData = await response.json();
+          if (
+            !patientData ||
+            typeof patientData !== "object" ||
+            !patientData.id
+          ) {
+            throw new Error("Invalid patient data received");
+          }
           setSpecificPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch deactivated patients for selection

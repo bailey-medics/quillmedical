@@ -7,7 +7,7 @@ file, providing type-safe access to competency IDs and metadata.
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 
@@ -32,11 +32,11 @@ ClinicalCompetency = Enum(  # type: ignore[misc]
 )
 
 
-def get_competency_details(competency_id: str) -> dict | None:
+def get_competency_details(competency_id: str) -> dict[str, Any] | None:
     """Get full details of a competency by ID."""
     for competency in COMPETENCIES_DATA["competencies"]:
         if competency["id"] == competency_id:
-            return competency
+            return competency  # type: ignore[no-any-return]
     return None
 
 

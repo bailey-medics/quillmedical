@@ -9,7 +9,7 @@ sys.path.insert(0, '/app')
 os.environ.setdefault('BACKEND_ENV', 'development')
 from pathlib import Path
 from app.config import settings
-from app.db import SessionLocal
+from app.db import CoreSessionLocal
 from app.features.teaching.sync import sync_question_bank
 from app.features.teaching.models import QuestionBankItem
 from app.models import OrganisationFeature, User
@@ -20,7 +20,7 @@ if not base or not Path(base).is_dir():
     print('No question banks found (TEACHING_QUESTION_BANK_PATH not set or missing)')
     sys.exit(1)
 
-db = SessionLocal()
+db = CoreSessionLocal()
 try:
     # Find a teaching-enabled org
     feat = db.execute(

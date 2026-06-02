@@ -20,7 +20,7 @@ from pywebpush import WebPushException, webpush  # type: ignore[import-untyped]
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db import get_session
+from app.db import get_core_db
 from app.deps import DEP_REQUIRE_ADMIN
 from app.models import PushSubscription, User
 
@@ -33,7 +33,7 @@ VAPID_CLAIM = os.environ.get("COMPANY_EMAIL") or "mailto:admin@example.com"
 @router.post("/send-test")
 def send_test(
     _u: User = DEP_REQUIRE_ADMIN,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_core_db),
 ) -> dict[str, bool | list[str]]:
     """Send test push notification to all subscribed clients.
 

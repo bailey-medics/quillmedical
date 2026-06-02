@@ -75,6 +75,13 @@ export default function EditPatientPage() {
           }
 
           const patientData = await response.json();
+          if (
+            !patientData ||
+            typeof patientData !== "object" ||
+            !patientData.id
+          ) {
+            throw new Error("Invalid patient data received");
+          }
           setSelectedPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch all patients for selection

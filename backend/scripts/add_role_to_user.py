@@ -9,7 +9,7 @@ app_dir = Path(__file__).parent.parent / "app"
 sys.path.insert(0, str(app_dir.parent))
 
 # Imports must come after path manipulation
-from app.db.auth_db import AuthSessionLocal  # noqa: E402
+from app.db.core_db import CoreSessionLocal  # noqa: E402
 from app.models import Role, User  # noqa: E402
 
 
@@ -23,7 +23,7 @@ def add_role_to_user(username: str, role_name: str) -> int:
         3 if user already has role
         4 on database error
     """
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         # Find user
         user = db.query(User).filter(User.username == username).first()

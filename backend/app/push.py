@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db import get_session
+from app.db import get_core_db
 from app.deps import DEP_CURRENT_USER
 from app.models import PushSubscription as PushSubscriptionModel
 from app.models import User
@@ -53,7 +53,7 @@ class PushSubscriptionIn(BaseModel):
 def subscribe(
     sub: PushSubscriptionIn,
     u: User = DEP_CURRENT_USER,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_core_db),
 ) -> dict[str, bool | int]:
     """Register a new push notification subscription.
 

@@ -2,29 +2,21 @@
 
 This module provides database connections and API clients for the three-database
 architecture:
-- auth_db: Authentication and application state (PostgreSQL)
+- core_db: Core application state (PostgreSQL)
 - fhir_client: FHIR server API client (HAPI FHIR)
 - ehrbase_client: EHRbase server API client (OpenEHR)
 """
 
-from app.db.auth_db import (
-    AuthBase,
-    AuthSessionLocal,
-    auth_engine,
-    get_auth_db,
+from app.db.core_db import (
+    CoreBase,
+    CoreSessionLocal,
+    core_engine,
+    get_core_db,
 )
 
-# Legacy aliases for existing code
-engine = auth_engine
-SessionLocal = AuthSessionLocal
-get_session = get_auth_db
-
 __all__ = [
-    "auth_engine",
-    "AuthSessionLocal",
-    "AuthBase",
-    "get_auth_db",
-    "engine",
-    "SessionLocal",
-    "get_session",
+    "core_engine",
+    "CoreSessionLocal",
+    "CoreBase",
+    "get_core_db",
 ]

@@ -12,6 +12,7 @@ Tables:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -62,7 +63,7 @@ class QuestionBankConfig(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
-    config_yaml: Mapped[dict] = mapped_column(JSON, nullable=False)
+    config_yaml: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -96,15 +97,17 @@ class QuestionBankItem(Base):
         String(255), nullable=False, index=True
     )
     bank_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    images: Mapped[list[dict]] = mapped_column(
+    images: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list
     )
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    options: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    options: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON, nullable=True
+    )
     correct_option_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
-    metadata_json: Mapped[dict] = mapped_column(
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=dict
     )
     status: Mapped[str] = mapped_column(
@@ -159,7 +162,9 @@ class Assessment(Base):
     )
     time_limit_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     total_items: Mapped[int] = mapped_column(Integer, nullable=False)
-    score_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    score_breakdown: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
     is_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     exam_ref: Mapped[str | None] = mapped_column(
         String(100), nullable=True, unique=True, index=True
@@ -308,10 +313,10 @@ class QuestionBankSync(Base):
     items_updated: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
-    errors: Mapped[list[dict]] = mapped_column(
+    errors: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list
     )
-    warnings: Mapped[list[dict]] = mapped_column(
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list
     )
     started_at: Mapped[datetime] = mapped_column(

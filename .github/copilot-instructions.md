@@ -2,7 +2,7 @@
 
 ## Stack Overview
 
-- **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL auth DB
+- **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL core DB
 - **Frontend**: React 19 + TypeScript + Vite + Mantine UI (Yarn 4, **never use npm**)
 - **Healthcare**: HAPI FHIR (demographics), EHRbase (clinical letters)
 - **Infrastructure**: Docker Compose, Caddy reverse proxy, GCS (public site)
@@ -46,7 +46,7 @@ see the `Justfile` if you want to know more.
 - **Settings**: `pydantic-settings` with `SecretStr`, env vars via Docker Compose
 - **Linting**: Ruff (E, F, W, I, UP, B) + Black (line-length 79)
 - **API**: All routes under `/api`. Standard FastAPI dependency constants:
-  - `DEP_GET_SESSION` — DB session (via `get_auth_db`)
+  - `DEP_GET_SESSION` — DB session (via `get_core_db`)
   - `DEP_CURRENT_USER` — Authenticated user from JWT cookie
   - `DEP_REQUIRE_ROLES_CLINICIAN` — Clinician role gate
   - `DEP_REQUIRE_CSRF` — CSRF token validation (mutating endpoints)
@@ -59,7 +59,7 @@ see the `Justfile` if you want to know more.
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
-- **Button alignment**: ALWAYS right-justify buttons — wrap in `<Group justify="flex-end">`
+- **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile — use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
 - **Page Layout**: ALWAYS wrap page content in `<Container size="lg">` for consistent max-width (1140px)
@@ -70,7 +70,7 @@ see the `Justfile` if you want to know more.
 - **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
   - Import: `const theme = useMantineTheme();` from `@mantine/core`
   - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`
-  - Standard breakpoint: `sm = "48em"` (768px) - matches navigation drawer toggle
+  - Standard breakpoint: `sm = "40em"` (640px) - matches navigation drawer toggle
   - Use in all components that need responsive layout/sizing decisions
 
 ### Component reuse hierarchy (Storybook-first)
@@ -160,7 +160,7 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 - **FHIR**: `fhirclient` library (`backend/app/fhir_client.py`) for patient demographics
 - **OpenEHR**: HTTP requests to EHRbase (`backend/app/ehrbase_client.py`) for clinical letters
 - Each FHIR patient gets corresponding EHR in EHRbase via `subject_id` (idempotent `get_or_create_ehr` pattern)
-- **Three-database architecture**: auth DB (users/roles/permissions), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
+- **Three-database architecture**: core DB (users/roles/permissions), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
 
 ### Authorisation
 
@@ -269,7 +269,7 @@ Healthcare-specific authorisation layer for clinical operations.
 - `backend/app/models.py`: SQLAlchemy models (User, Role, Organization, PatientMetadata)
 - `backend/app/security.py`: JWT, CSRF, TOTP, Argon2 password utilities
 - `backend/app/config.py`: Pydantic Settings (DB URLs, JWT config, FHIR/EHRbase URLs)
-- `backend/app/db/`: Database session management (`get_auth_db` / legacy `get_session`)
+- `backend/app/db/`: Database session management (`get_core_db`)
 - `backend/app/cbac/`: Competency-based access control module
 - `backend/app/system_permissions/`: 4-level permission hierarchy
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`, `letters.py`)

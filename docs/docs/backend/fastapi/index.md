@@ -57,7 +57,7 @@ app/
 ├── push_send.py         # Push notification sending logic
 ├── db/
 │   ├── __init__.py      # Database module exports
-│   └── auth_db.py       # Auth database engine and session management
+│   └── core_db.py       # Core database engine and session management
 ├── cbac/
 │   ├── __init__.py      # CBAC module exports
 │   ├── competencies.py  # Competency definitions from YAML
@@ -283,7 +283,7 @@ FastAPI's dependency injection provides clean, testable code. The backend uses p
 
 ```python
 # Standard dependency constants (defined in main.py)
-DEP_GET_SESSION    # Database session via get_auth_db
+DEP_GET_SESSION    # Database session via get_core_db
 DEP_CURRENT_USER   # Authenticated user from JWT cookie
 DEP_REQUIRE_ROLES_CLINICIAN  # Clinician role gate
 DEP_REQUIRE_CSRF   # CSRF token validation (mutating endpoints)
