@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Group } from "@mantine/core";
+import { Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import type { Column } from "@/components/tables/DataTable";
@@ -166,32 +166,30 @@ export default function AdminUsersPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
-          <PageHeader title="Users" />
-          <AddButton
-            label="Add user"
-            onClick={() => navigate("/admin/users/new")}
-          />
-        </Group>
-
-        <DataTableControlled
-          data={users}
-          columns={columns}
-          onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
-          getRowKey={(user) => user.id}
-          pageSize={10}
-          loading={loading}
-          error={error}
-          emptyMessage="No users found"
-          searchFields={searchFields}
-          filterData={filterOptions}
-          filterLabel="Filter users"
-          filterAriaLabel="Filter users"
-          filterPredicate={filterPredicate}
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
+        <PageHeader title="Users" />
+        <AddButton
+          label="Add user"
+          onClick={() => navigate("/admin/users/new")}
         />
-      </Stack>
-    </Container>
+      </Group>
+
+      <DataTableControlled
+        data={users}
+        columns={columns}
+        onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
+        getRowKey={(user) => user.id}
+        pageSize={10}
+        loading={loading}
+        error={error}
+        emptyMessage="No users found"
+        searchFields={searchFields}
+        filterData={filterOptions}
+        filterLabel="Filter users"
+        filterAriaLabel="Filter users"
+        filterPredicate={filterPredicate}
+      />
+    </Stack>
   );
 }

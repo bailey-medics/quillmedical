@@ -9,14 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import {
-  Container,
-  Stack,
-  Table,
-  Skeleton,
-  Center,
-  Alert,
-} from "@mantine/core";
+import { Stack, Table, Skeleton, Center, Alert } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
@@ -28,6 +21,7 @@ import {
   EmptyState,
 } from "@/components/typography";
 import PageHeader from "@/components/page-header";
+import { api } from "@/lib/api";
 
 interface Patient {
   id: string;
@@ -66,15 +60,9 @@ export default function EditPatientPage() {
       try {
         // If we have a patient ID but no patient data, fetch it
         if (patientId && !selectedPatient) {
-          const response = await fetch(`/api/patients/${patientId}`, {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patient");
-          }
-
-          const patientData = await response.json();
+          const patientData = await api.get<Patient & { id?: string }>(
+            `/patients/${patientId}`,
+          );
           if (
             !patientData ||
             typeof patientData !== "object" ||
@@ -85,15 +73,7 @@ export default function EditPatientPage() {
           setSelectedPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch all patients for selection
-          const response = await fetch("/api/patients", {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patients");
-          }
-
-          const data = await response.json();
+          const data = await api.get<{ patients?: Patient[] }>("/patients");
           setPatients(data.patients || []);
         }
       } catch (err) {
@@ -123,96 +103,92 @@ export default function EditPatientPage() {
   // If we have a selected patient (from route params or state), show the edit form
   if (selectedPatient) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title={`Edit ${formatName(selectedPatient.name)}`} />
+      <Stack gap="lg">
+        <PageHeader title={`Edit ${formatName(selectedPatient.name)}`} />
 
-          {loading ? (
-            <Skeleton height={400} />
-          ) : error ? (
-            <Alert
-              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-              title="Error loading patient"
-              color="var(--alert-color)"
-            >
-              {error}
-            </Alert>
-          ) : (
-            <BaseCard>
-              <Heading>TODO: Patient edit form</Heading>
-              <BodyText>
-                Patient edit functionality is not yet implemented. This page
-                will contain a form to edit patient demographics including name,
-                birth date, gender, and identifiers.
-              </BodyText>
-            </BaseCard>
-          )}
-        </Stack>
-      </Container>
+        {loading ? (
+          <Skeleton height={400} />
+        ) : error ? (
+          <Alert
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+            title="Error loading patient"
+            color="var(--alert-color)"
+          >
+            {error}
+          </Alert>
+        ) : (
+          <BaseCard>
+            <Heading>TODO: Patient edit form</Heading>
+            <BodyText>
+              Patient edit functionality is not yet implemented. This page will
+              contain a form to edit patient demographics including name, birth
+              date, gender, and identifiers.
+            </BodyText>
+          </BaseCard>
+        )}
+      </Stack>
     );
   }
 
   // Otherwise, show the patient selection list
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Edit patient" />
+    <Stack gap="lg">
+      <PageHeader title="Edit patient" />
 
-        {loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patients"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        ) : patients.length === 0 ? (
-          <Center p="xl">
-            <EmptyState>No patients found</EmptyState>
-          </Center>
-        ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Birth Date</Table.Th>
-                <Table.Th>Gender</Table.Th>
-                <Table.Th style={{ width: "100px", textAlign: "right" }}>
-                  Action
-                </Table.Th>
+      {loading ? (
+        <Stack gap="xs">
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
+      ) : error ? (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          title="Error loading patients"
+          color="var(--alert-color)"
+        >
+          {error}
+        </Alert>
+      ) : patients.length === 0 ? (
+        <Center p="xl">
+          <EmptyState>No patients found</EmptyState>
+        </Center>
+      ) : (
+        <Table striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Name</Table.Th>
+              <Table.Th>Birth Date</Table.Th>
+              <Table.Th>Gender</Table.Th>
+              <Table.Th style={{ width: "100px", textAlign: "right" }}>
+                Action
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {patients.map((patient) => (
+              <Table.Tr key={patient.id}>
+                <Table.Td>
+                  <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
+                </Table.Td>
+                <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
+                <Table.Td>{patient.gender || "N/A"}</Table.Td>
+                <Table.Td style={{ textAlign: "right" }}>
+                  <IconButton
+                    icon={<IconEdit />}
+                    variant="light"
+                    color="primary"
+                    onClick={() => handleEditPatient(patient.id)}
+                    aria-label="Edit patient"
+                  />
+                </Table.Td>
               </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {patients.map((patient) => (
-                <Table.Tr key={patient.id}>
-                  <Table.Td>
-                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
-                  </Table.Td>
-                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
-                  <Table.Td style={{ textAlign: "right" }}>
-                    <IconButton
-                      icon={<IconEdit />}
-                      variant="light"
-                      color="primary"
-                      onClick={() => handleEditPatient(patient.id)}
-                      aria-label="Edit patient"
-                    />
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Stack>
-    </Container>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+    </Stack>
   );
 }

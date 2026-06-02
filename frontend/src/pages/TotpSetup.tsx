@@ -6,7 +6,7 @@
  * scanning with authenticator apps (Google Authenticator, Authy, etc.).
  */
 
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import { BodyText, Heading } from "@/components/typography";
@@ -104,37 +104,35 @@ export default function TotpSetup() {
   }
 
   return (
-    <Container size="lg">
-      <BaseCard maw={480} mx="auto">
-        <Stack>
-          <Heading>Set up two-factor authentication</Heading>
-          <div>
-            <BodyText>
-              Scan the QR code below with your authenticator app (or copy the
-              provided URL into your app).
-            </BodyText>
-            <canvas
-              ref={canvasRef}
-              style={{ display: "block", margin: "0 auto" }}
-            />
-            {provisionUri && (
-              <div style={{ wordBreak: "break-all" }}>
-                <BodyText>{provisionUri}</BodyText>
-              </div>
-            )}
-            {setupError && <BodyText c="red">{setupError}</BodyText>}
-          </div>
+    <BaseCard maw={480} mx="auto">
+      <Stack>
+        <Heading>Set up two-factor authentication</Heading>
+        <div>
+          <BodyText>
+            Scan the QR code below with your authenticator app (or copy the
+            provided URL into your app).
+          </BodyText>
+          <canvas
+            ref={canvasRef}
+            style={{ display: "block", margin: "0 auto" }}
+          />
+          {provisionUri && (
+            <div style={{ wordBreak: "break-all" }}>
+              <BodyText>{provisionUri}</BodyText>
+            </div>
+          )}
+          {setupError && <BodyText c="red">{setupError}</BodyText>}
+        </div>
 
-          <Form<TotpVerifyFormValues>
-            defaultValues={{ code: "" }}
-            onSubmit={handleSubmit}
-            submitLabel="Verify and enable"
-            submittingLabel="Verifying…"
-          >
-            <TotpVerifyFields />
-          </Form>
-        </Stack>
-      </BaseCard>
-    </Container>
+        <Form<TotpVerifyFormValues>
+          defaultValues={{ code: "" }}
+          onSubmit={handleSubmit}
+          submitLabel="Verify and enable"
+          submittingLabel="Verifying…"
+        >
+          <TotpVerifyFields />
+        </Form>
+      </Stack>
+    </BaseCard>
   );
 }

@@ -9,7 +9,7 @@ import DocumentsList from "@/components/documents/DocumentsList";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Heading } from "@/components/typography";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -28,20 +28,18 @@ export default function PatientDocuments() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Heading>Documents</Heading>
+    <Stack gap="lg">
+      <Heading>Documents</Heading>
 
-        <DocumentsList
-          documents={fakeDocuments}
-          onSelect={(doc) => {
-            const fakeDoc = fakeDocuments.find((d) => d.url === doc.url);
-            if (fakeDoc) {
-              navigate(`/patients/${id}/documents/${fakeDoc.id}`);
-            }
-          }}
-        />
-      </Stack>
-    </Container>
+      <DocumentsList
+        documents={fakeDocuments}
+        onSelect={(doc) => {
+          const fakeDoc = fakeDocuments.find((d) => d.url === doc.url);
+          if (fakeDoc) {
+            navigate(`/patients/${id}/documents/${fakeDoc.id}`);
+          }
+        }}
+      />
+    </Stack>
   );
 }

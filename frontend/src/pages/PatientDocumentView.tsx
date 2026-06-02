@@ -9,7 +9,6 @@ import { Document } from "@/components/documents/Document";
 import { fakeDocuments } from "@/data/fakeDocuments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { ErrorMessage } from "@/components/typography";
-import { Container } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
@@ -36,16 +35,8 @@ export default function PatientDocumentView() {
   }, [patient, id, documentId, doc, setPatientNav]);
 
   if (!doc) {
-    return (
-      <Container size="lg">
-        <ErrorMessage>Document not found.</ErrorMessage>
-      </Container>
-    );
+    return <ErrorMessage>Document not found.</ErrorMessage>;
   }
 
-  return (
-    <Container size="lg">
-      <Document {...doc} />
-    </Container>
-  );
+  return <Document {...doc} />;
 }

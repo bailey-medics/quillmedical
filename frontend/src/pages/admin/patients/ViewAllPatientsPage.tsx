@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Skeleton, Center, Alert } from "@mantine/core";
+import { Stack, Skeleton, Center, Alert } from "@mantine/core";
 import {
   IconAlertCircle,
   IconClock,
@@ -107,53 +107,51 @@ export default function ViewAllPatientsPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="All patients" />
+    <Stack gap="lg">
+      <PageHeader title="All patients" />
 
-        {error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patients"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        ) : loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : fhirReady === false ? (
-          <Center p="xl">
-            <StateMessage
-              icon={<IconClock />}
-              title="Database is initialising"
-              description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
-              colour="info"
-            />
-          </Center>
-        ) : patients.length === 0 ? (
-          <Center p="xl">
-            <StateMessage
-              icon={<IconUserOff />}
-              title="No patients to show"
-              description="There are currently no patients in the system."
-              colour="warning"
-            />
-          </Center>
-        ) : (
-          <DataTable<Patient>
-            data={patients}
-            columns={patientColumns}
-            onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
-            getRowKey={(patient) => patient.id}
-            emptyMessage="No patients found"
+      {error ? (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          title="Error loading patients"
+          color="var(--alert-color)"
+        >
+          {error}
+        </Alert>
+      ) : loading ? (
+        <Stack gap="xs">
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
+      ) : fhirReady === false ? (
+        <Center p="xl">
+          <StateMessage
+            icon={<IconClock />}
+            title="Database is initialising"
+            description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+            colour="info"
           />
-        )}
-      </Stack>
-    </Container>
+        </Center>
+      ) : patients.length === 0 ? (
+        <Center p="xl">
+          <StateMessage
+            icon={<IconUserOff />}
+            title="No patients to show"
+            description="There are currently no patients in the system."
+            colour="warning"
+          />
+        </Center>
+      ) : (
+        <DataTable<Patient>
+          data={patients}
+          columns={patientColumns}
+          onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
+          getRowKey={(patient) => patient.id}
+          emptyMessage="No patients found"
+        />
+      )}
+    </Stack>
   );
 }

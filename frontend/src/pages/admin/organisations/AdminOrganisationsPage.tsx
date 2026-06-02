@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Group } from "@mantine/core";
+import { Stack, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
 import AddButton from "@/components/button/AddButton";
@@ -161,43 +161,41 @@ export default function AdminOrganisationsPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
-          <PageHeader title="Organisations" />
-          <AddButton
-            label="Add organisation"
-            onClick={() => navigate("/admin/organisations/new")}
-          />
-        </Group>
-
-        <DataTableControlled
-          data={organizations}
-          columns={columns}
-          onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}
-          getRowKey={(org) => org.id}
-          loading={loading}
-          error={error}
-          emptyMessage="No organisations found"
-          searchFields={searchFields}
-          filterData={filterOptions}
-          filterLabel="Filter organisations"
-          filterAriaLabel="Filter organisations"
-          filterPredicate={filterPredicate}
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
+        <PageHeader title="Organisations" />
+        <AddButton
+          label="Add organisation"
+          onClick={() => navigate("/admin/organisations/new")}
         />
+      </Group>
 
-        <ConfirmModal
-          opened={removingOrg !== null}
-          onClose={() => setRemovingOrg(null)}
-          onAccept={confirmRemoveOrg}
-          title="Remove organisation"
-          acceptLabel="Remove"
-          submittingLabel="Removing…"
-        >
-          Are you sure you want to remove <strong>{removingOrg?.name}</strong>?
-          This will also remove all staff and patient memberships.
-        </ConfirmModal>
-      </Stack>
-    </Container>
+      <DataTableControlled
+        data={organizations}
+        columns={columns}
+        onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}
+        getRowKey={(org) => org.id}
+        loading={loading}
+        error={error}
+        emptyMessage="No organisations found"
+        searchFields={searchFields}
+        filterData={filterOptions}
+        filterLabel="Filter organisations"
+        filterAriaLabel="Filter organisations"
+        filterPredicate={filterPredicate}
+      />
+
+      <ConfirmModal
+        opened={removingOrg !== null}
+        onClose={() => setRemovingOrg(null)}
+        onAccept={confirmRemoveOrg}
+        title="Remove organisation"
+        acceptLabel="Remove"
+        submittingLabel="Removing…"
+      >
+        Are you sure you want to remove <strong>{removingOrg?.name}</strong>?
+        This will also remove all staff and patient memberships.
+      </ConfirmModal>
+    </Stack>
   );
 }

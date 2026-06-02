@@ -9,7 +9,7 @@ import { NotesList } from "@/components/notes";
 import { fakeNotes } from "@/data/fakeNotes";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Heading } from "@/components/typography";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
@@ -27,11 +27,9 @@ export default function PatientNotes() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Heading>Clinical notes</Heading>
-        <NotesList notes={fakeNotes} />
-      </Stack>
-    </Container>
+    <Stack gap="lg">
+      <Heading>Clinical notes</Heading>
+      <NotesList notes={fakeNotes} />
+    </Stack>
   );
 }

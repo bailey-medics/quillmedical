@@ -9,7 +9,7 @@ import { AppointmentsList } from "@/components/appointments";
 import { fakeAppointments } from "@/data/fakeAppointments";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Heading } from "@/components/typography";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
@@ -27,11 +27,9 @@ export default function PatientAppointments() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Heading>Appointments</Heading>
-        <AppointmentsList appointments={fakeAppointments} />
-      </Stack>
-    </Container>
+    <Stack gap="lg">
+      <Heading>Appointments</Heading>
+      <AppointmentsList appointments={fakeAppointments} />
+    </Stack>
   );
 }

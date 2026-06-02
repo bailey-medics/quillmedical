@@ -108,29 +108,6 @@ export default tseslint.config(
         "no-console": "off",
       },
     },
-    // Custom rule: Page layout consistency
-    {
-      files: ["**/pages/**/*.tsx"],
-      ignores: [
-        "**/*.test.tsx",
-        "**/*.stories.tsx",
-        "**/features/teaching/pages/**",
-        "**/pages/admin/teaching/**",
-      ],
-      rules: {
-        // Warn if page file doesn't import Container from @mantine/core
-        // This helps catch pages missing the standard <Container size="lg"> wrapper
-        "no-restricted-syntax": [
-          "warn",
-          {
-            selector:
-              "Program:not(:has(ImportDeclaration[source.value='@mantine/core'] ImportSpecifier[imported.name='Container']))",
-            message:
-              "Page components should import Container from @mantine/core for consistent 1140px max-width. Use: <Container size='lg' py='xl'><Stack gap='lg'>...</Stack></Container>",
-          },
-        ],
-      },
-    },
   ],
   // Storybook’s flat config can stay as a sibling layer
   storybook.configs["flat/recommended"],

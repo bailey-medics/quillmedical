@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { api } from "@/lib/api";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -45,12 +46,7 @@ export default function EnableNotificationsButton() {
       });
 
       // 4) Send subscription to your backend for storage
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub),
-      });
-      if (!res.ok) throw new Error("Subscribe API failed");
+      await api.post("/push/subscribe", sub);
 
       setState("ok");
     } catch (e) {

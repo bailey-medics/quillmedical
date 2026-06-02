@@ -11,7 +11,7 @@ import type { Patient } from "@/domains/patient";
 import { api } from "@/lib/api";
 import { FHIR_POLLING_TIME, FHIR_REFRESH_TIME } from "@/lib/constants";
 import { extractAvatarGradientIndex } from "@/lib/fhir-patient";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -316,18 +316,16 @@ export default function Home() {
   }, [isFhirReady]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PatientsList
-          patients={patients ?? []}
-          isLoading={isLoading}
-          fhirAvailable={fhirAvailable}
-          onSelect={(patient) => navigate(`/patients/${patient.id}`)}
-        />
-        {error ? (
-          <div style={{ color: "var(--mantine-color-red-6)" }}>{error}</div>
-        ) : null}
-      </Stack>
-    </Container>
+    <Stack gap="lg">
+      <PatientsList
+        patients={patients ?? []}
+        isLoading={isLoading}
+        fhirAvailable={fhirAvailable}
+        onSelect={(patient) => navigate(`/patients/${patient.id}`)}
+      />
+      {error ? (
+        <div style={{ color: "var(--mantine-color-red-6)" }}>{error}</div>
+      ) : null}
+    </Stack>
   );
 }

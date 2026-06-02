@@ -9,7 +9,7 @@ import { LetterList, type LetterSummary } from "@/components/letters";
 import { fakeLetters } from "@/data/fakeLetters";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { Heading } from "@/components/typography";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -28,17 +28,15 @@ export default function PatientLetters() {
   }, [patient, id, setPatientNav]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Heading>Clinical letters</Heading>
+    <Stack gap="lg">
+      <Heading>Clinical letters</Heading>
 
-        <LetterList
-          letters={fakeLetters}
-          onLetterClick={(letter: LetterSummary) =>
-            navigate(`/patients/${id}/letters/${letter.id}`)
-          }
-        />
-      </Stack>
-    </Container>
+      <LetterList
+        letters={fakeLetters}
+        onLetterClick={(letter: LetterSummary) =>
+          navigate(`/patients/${id}/letters/${letter.id}`)
+        }
+      />
+    </Stack>
   );
 }

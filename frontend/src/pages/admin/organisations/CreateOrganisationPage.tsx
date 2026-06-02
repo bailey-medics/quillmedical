@@ -6,7 +6,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
@@ -125,19 +125,17 @@ export default function CreateOrganisationPage() {
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Create organisation" />
+    <Stack gap="lg">
+      <PageHeader title="Create organisation" />
 
-        <Form<CreateFormValues>
-          defaultValues={{ name: "", type: null, location: "" }}
-          onSubmit={handleSubmit}
-          submitLabel="Create organisation"
-          submittingLabel="Creating…"
-        >
-          <CreateFields />
-        </Form>
-      </Stack>
-    </Container>
+      <Form<CreateFormValues>
+        defaultValues={{ name: "", type: null, location: "" }}
+        onSubmit={handleSubmit}
+        submitLabel="Create organisation"
+        submittingLabel="Creating…"
+      >
+        <CreateFields />
+      </Form>
+    </Stack>
   );
 }

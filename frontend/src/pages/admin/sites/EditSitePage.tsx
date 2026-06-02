@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert, Skeleton } from "@mantine/core";
+import { Stack, Alert, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -298,26 +298,22 @@ export default function EditSitePage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+      </Stack>
     );
   }
 
   if (loadError || !siteData) {
     return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading site"
-          color="var(--alert-color)"
-        >
-          {loadError || "Site not found"}
-        </Alert>
-      </Container>
+      <Alert
+        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+        title="Error loading site"
+        color="var(--alert-color)"
+      >
+        {loadError || "Site not found"}
+      </Alert>
     );
   }
 
@@ -326,41 +322,39 @@ export default function EditSitePage() {
   const statusChanged = siteData ? isActive !== siteData.is_active : false;
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Edit site" />
+    <Stack gap="lg">
+      <PageHeader title="Edit site" />
 
-        <Form<EditSiteFormValues>
-          defaultValues={{
-            name: siteData.name,
-            type: siteData.type,
-            location: siteData.location || "",
-            clinicalLeadId: currentLead ? String(currentLead.id) : null,
-          }}
-          onSubmit={handleSubmit}
-          submitLabel="Save changes"
-          submittingLabel="Saving…"
-          confirm={
-            statusChanged
-              ? {
-                  title: isActive ? "Activate site" : "Deactivate site",
-                  children: isActive
-                    ? "Are you sure you want to activate this site?"
-                    : "Are you sure you want to deactivate this site?",
-                  acceptLabel: isActive ? "Activate" : "Deactivate",
-                }
-              : undefined
-          }
-        >
-          <EditSiteFields
-            siteId={id!}
-            users={users}
-            usersLoading={usersLoading}
-            siteActive={isActive}
-            onToggleActive={handleToggleActive}
-          />
-        </Form>
-      </Stack>
-    </Container>
+      <Form<EditSiteFormValues>
+        defaultValues={{
+          name: siteData.name,
+          type: siteData.type,
+          location: siteData.location || "",
+          clinicalLeadId: currentLead ? String(currentLead.id) : null,
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        confirm={
+          statusChanged
+            ? {
+                title: isActive ? "Activate site" : "Deactivate site",
+                children: isActive
+                  ? "Are you sure you want to activate this site?"
+                  : "Are you sure you want to deactivate this site?",
+                acceptLabel: isActive ? "Activate" : "Deactivate",
+              }
+            : undefined
+        }
+      >
+        <EditSiteFields
+          siteId={id!}
+          users={users}
+          usersLoading={usersLoading}
+          siteActive={isActive}
+          onToggleActive={handleToggleActive}
+        />
+      </Form>
+    </Stack>
   );
 }

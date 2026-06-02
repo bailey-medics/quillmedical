@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Paper, Skeleton, Stack } from "@mantine/core";
+import { Group, Paper, Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
@@ -66,140 +66,132 @@ export default function AdminBankDetailPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={36} width={300} />
-          <Skeleton height={100} />
-          <Skeleton height={200} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={36} width={300} />
+        <Skeleton height={100} />
+        <Skeleton height={200} />
+      </Stack>
     );
   }
 
   if (error || !bank) {
     return (
-      <Container size="lg">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error ?? "Bank not found"}
-          colour="alert"
-        />
-      </Container>
+      <StateMessage
+        icon={<IconAlertCircle />}
+        title="Error loading data"
+        description={error ?? "Bank not found"}
+        colour="alert"
+      />
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title={bank.title} />
+    <Stack gap="lg">
+      <PageHeader title={bank.title} />
 
-        {/* Bank info */}
-        <BaseCard>
-          <Stack gap="xs">
-            <Group>
-              <BodyTextBold>Type:</BodyTextBold>
-              <BodyTextInline>{bank.type}</BodyTextInline>
-            </Group>
-            <Group>
-              <BodyTextBold>Version:</BodyTextBold>
-              <BodyTextInline>{bank.version}</BodyTextInline>
-            </Group>
-            <Group>
-              <BodyTextBold>Items:</BodyTextBold>
-              <BodyTextInline>{bank.item_count}</BodyTextInline>
-            </Group>
-          </Stack>
-        </BaseCard>
+      {/* Bank info */}
+      <BaseCard>
+        <Stack gap="xs">
+          <Group>
+            <BodyTextBold>Type:</BodyTextBold>
+            <BodyTextInline>{bank.type}</BodyTextInline>
+          </Group>
+          <Group>
+            <BodyTextBold>Version:</BodyTextBold>
+            <BodyTextInline>{bank.version}</BodyTextInline>
+          </Group>
+          <Group>
+            <BodyTextBold>Items:</BodyTextBold>
+            <BodyTextInline>{bank.item_count}</BodyTextInline>
+          </Group>
+        </Stack>
+      </BaseCard>
 
-        {/* Organisations */}
+      {/* Organisations */}
+      <BaseCard>
+        <Stack gap="sm">
+          <Heading>Organisations</Heading>
+          {orgs.length === 0 ? (
+            <BodyText>
+              No organisations have the teaching feature enabled.
+            </BodyText>
+          ) : (
+            <DataTable<BankOrganisation>
+              data={orgs}
+              columns={[
+                {
+                  header: "Organisation",
+                  render: (org) => org.organisation_name,
+                },
+                {
+                  header: "Status",
+                  render: (org) => <ActiveStatusBadge active={org.is_live} />,
+                },
+              ]}
+              onRowClick={(org) =>
+                navigate(
+                  `/admin/teaching/modules/${bankId}/org/${org.organisation_id}`,
+                )
+              }
+              getRowKey={(org) => org.organisation_id}
+              emptyMessage="No organisations have the teaching feature enabled"
+            />
+          )}
+        </Stack>
+      </BaseCard>
+
+      {/* Email templates preview */}
+      {(bank.email_student_on_pass || bank.email_coordinator_on_pass) && (
         <BaseCard>
           <Stack gap="sm">
-            <Heading>Organisations</Heading>
-            {orgs.length === 0 ? (
-              <BodyText>
-                No organisations have the teaching feature enabled.
-              </BodyText>
-            ) : (
-              <DataTable<BankOrganisation>
-                data={orgs}
-                columns={[
-                  {
-                    header: "Organisation",
-                    render: (org) => org.organisation_name,
-                  },
-                  {
-                    header: "Status",
-                    render: (org) => <ActiveStatusBadge active={org.is_live} />,
-                  },
-                ]}
-                onRowClick={(org) =>
-                  navigate(
-                    `/admin/teaching/modules/${bankId}/org/${org.organisation_id}`,
-                  )
-                }
-                getRowKey={(org) => org.organisation_id}
-                emptyMessage="No organisations have the teaching feature enabled"
-              />
-            )}
+            <Heading>Email templates</Heading>
+
+            {bank.email_student_on_pass &&
+              (bank.student_email_template ? (
+                <Paper
+                  p="sm"
+                  bg="var(--card-bg, var(--mantine-color-gray-0))"
+                  withBorder
+                >
+                  <Stack gap="xs">
+                    <BodyTextBold>Student email</BodyTextBold>
+                    <Group>
+                      <BodyTextBold>Subject:</BodyTextBold>
+                      <BodyText>{bank.student_email_template.subject}</BodyText>
+                    </Group>
+                    <MarkdownView source={bank.student_email_template.body} />
+                  </Stack>
+                </Paper>
+              ) : (
+                <BodyText>No student email template configured.</BodyText>
+              ))}
+
+            {bank.email_coordinator_on_pass &&
+              (bank.coordinator_email_template ? (
+                <Paper
+                  p="sm"
+                  bg="var(--card-bg, var(--mantine-color-gray-0))"
+                  withBorder
+                >
+                  <Stack gap="xs">
+                    <BodyTextBold>Coordinator email</BodyTextBold>
+                    <Group>
+                      <BodyTextBold>Subject:</BodyTextBold>
+                      <BodyText>
+                        {bank.coordinator_email_template.subject}
+                      </BodyText>
+                    </Group>
+                    <MarkdownView
+                      source={bank.coordinator_email_template.body}
+                    />
+                  </Stack>
+                </Paper>
+              ) : (
+                <BodyText>No coordinator email template configured.</BodyText>
+              ))}
           </Stack>
         </BaseCard>
-
-        {/* Email templates preview */}
-        {(bank.email_student_on_pass || bank.email_coordinator_on_pass) && (
-          <BaseCard>
-            <Stack gap="sm">
-              <Heading>Email templates</Heading>
-
-              {bank.email_student_on_pass &&
-                (bank.student_email_template ? (
-                  <Paper
-                    p="sm"
-                    bg="var(--card-bg, var(--mantine-color-gray-0))"
-                    withBorder
-                  >
-                    <Stack gap="xs">
-                      <BodyTextBold>Student email</BodyTextBold>
-                      <Group>
-                        <BodyTextBold>Subject:</BodyTextBold>
-                        <BodyText>
-                          {bank.student_email_template.subject}
-                        </BodyText>
-                      </Group>
-                      <MarkdownView source={bank.student_email_template.body} />
-                    </Stack>
-                  </Paper>
-                ) : (
-                  <BodyText>No student email template configured.</BodyText>
-                ))}
-
-              {bank.email_coordinator_on_pass &&
-                (bank.coordinator_email_template ? (
-                  <Paper
-                    p="sm"
-                    bg="var(--card-bg, var(--mantine-color-gray-0))"
-                    withBorder
-                  >
-                    <Stack gap="xs">
-                      <BodyTextBold>Coordinator email</BodyTextBold>
-                      <Group>
-                        <BodyTextBold>Subject:</BodyTextBold>
-                        <BodyText>
-                          {bank.coordinator_email_template.subject}
-                        </BodyText>
-                      </Group>
-                      <MarkdownView
-                        source={bank.coordinator_email_template.body}
-                      />
-                    </Stack>
-                  </Paper>
-                ) : (
-                  <BodyText>No coordinator email template configured.</BodyText>
-                ))}
-            </Stack>
-          </BaseCard>
-        )}
-      </Stack>
-    </Container>
+      )}
+    </Stack>
   );
 }

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert } from "@mantine/core";
+import { Stack, Alert } from "@mantine/core";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
@@ -99,61 +99,57 @@ export default function AddPatientToOrgPage() {
 
   if (success) {
     return (
-      <Container size="lg">
-        <ResultMessage
-          variant="success"
-          title="Patient added"
-          subtitle="Redirecting to organisation..."
-        />
-      </Container>
+      <ResultMessage
+        variant="success"
+        title="Patient added"
+        subtitle="Redirecting to organisation..."
+      />
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Add patient" />
+    <Stack gap="lg">
+      <PageHeader title="Add patient" />
 
-        {error && (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        )}
+      {error && (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+          title="Error"
+          color="var(--alert-color)"
+        >
+          {error}
+        </Alert>
+      )}
 
-        <BaseCard>
-          <form onSubmit={handleSubmit}>
-            <Stack gap="md">
-              <SelectField
-                label="Patient"
-                placeholder="Search for a patient"
-                data={patients.map((p) => ({
-                  value: p.id,
-                  label: getPatientDisplayName(p),
-                }))}
-                value={selectedPatientId}
-                onChange={setSelectedPatientId}
-                error={selectError}
-                searchable
-                disabled={patientsLoading}
-                withAsterisk
-              />
+      <BaseCard>
+        <form onSubmit={handleSubmit}>
+          <Stack gap="md">
+            <SelectField
+              label="Patient"
+              placeholder="Search for a patient"
+              data={patients.map((p) => ({
+                value: p.id,
+                label: getPatientDisplayName(p),
+              }))}
+              value={selectedPatientId}
+              onChange={setSelectedPatientId}
+              error={selectError}
+              searchable
+              disabled={patientsLoading}
+              withAsterisk
+            />
 
-              <ButtonPair
-                acceptLabel="Add patient"
-                acceptType="submit"
-                acceptLoading={submitting}
-                acceptDisabled={patientsLoading}
-                onAccept={() => {}}
-                onCancel={() => navigate(`/admin/organisations/${id}`)}
-              />
-            </Stack>
-          </form>
-        </BaseCard>
-      </Stack>
-    </Container>
+            <ButtonPair
+              acceptLabel="Add patient"
+              acceptType="submit"
+              acceptLoading={submitting}
+              acceptDisabled={patientsLoading}
+              onAccept={() => {}}
+              onCancel={() => navigate(`/admin/organisations/${id}`)}
+            />
+          </Stack>
+        </form>
+      </BaseCard>
+    </Stack>
   );
 }

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert } from "@mantine/core";
+import { Stack, Alert } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -147,33 +147,27 @@ export default function AddStaffToOrgPage() {
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Add staff member" />
+    <Stack gap="lg">
+      <PageHeader title="Add staff member" />
 
-        {loadError && (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error loading users"
-            color="var(--alert-color)"
-          >
-            {loadError}
-          </Alert>
-        )}
-
-        <Form<AddStaffFormValues>
-          defaultValues={{ userId: null }}
-          onSubmit={handleSubmit}
-          submitLabel="Add staff member"
-          submittingLabel="Adding…"
+      {loadError && (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+          title="Error loading users"
+          color="var(--alert-color)"
         >
-          <AddStaffFields
-            orgId={id!}
-            users={users}
-            usersLoading={usersLoading}
-          />
-        </Form>
-      </Stack>
-    </Container>
+          {loadError}
+        </Alert>
+      )}
+
+      <Form<AddStaffFormValues>
+        defaultValues={{ userId: null }}
+        onSubmit={handleSubmit}
+        submitLabel="Add staff member"
+        submittingLabel="Adding…"
+      >
+        <AddStaffFields orgId={id!} users={users} usersLoading={usersLoading} />
+      </Form>
+    </Stack>
   );
 }

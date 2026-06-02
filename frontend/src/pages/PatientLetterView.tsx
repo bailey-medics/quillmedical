@@ -8,7 +8,7 @@
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import { fakeLetters } from "@/data/fakeLetters";
 import LetterView from "@/components/letters/LetterView";
-import { Container } from "@mantine/core";
+
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -36,21 +36,19 @@ export default function PatientLetterView() {
   }, [patient, id, letterId, letter, setPatientNav]);
 
   return (
-    <Container size="lg">
-      <LetterView
-        letter={
-          letter
-            ? {
-                id: letter.id,
-                subject: letter.title,
-                date: letter.date,
-                from: `${letter.author} — ${letter.authorRole}`,
-                body: letter.body,
-              }
-            : null
-        }
-        onBack={() => navigate(`/patients/${id}/letters`)}
-      />
-    </Container>
+    <LetterView
+      letter={
+        letter
+          ? {
+              id: letter.id,
+              subject: letter.title,
+              date: letter.date,
+              from: `${letter.author} — ${letter.authorRole}`,
+              body: letter.body,
+            }
+          : null
+      }
+      onBack={() => navigate(`/patients/${id}/letters`)}
+    />
   );
 }

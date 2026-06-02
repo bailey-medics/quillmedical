@@ -3,6 +3,14 @@ import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import EnableNotificationsButton from "./EnableNotificationsButton";
+import * as apiLib from "@/lib/api";
+
+// Mock the API module
+vi.mock("@/lib/api", () => ({
+  api: {
+    post: vi.fn(),
+  },
+}));
 
 // Mock the global Notification API
 const mockRequestPermission = vi.fn();
@@ -33,12 +41,11 @@ describe("EnableNotificationsButton Component", () => {
       writable: true,
       configurable: true,
     });
-    global.fetch = vi.fn();
 
     // Reset mocks
     mockRequestPermission.mockReset();
     mockPushManager.subscribe.mockReset();
-    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockReset();
+    (apiLib.api.post as unknown as ReturnType<typeof vi.fn>).mockReset();
   });
 
   afterEach(() => {
@@ -73,9 +80,9 @@ describe("EnableNotificationsButton Component", () => {
         }),
       };
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -96,9 +103,9 @@ describe("EnableNotificationsButton Component", () => {
         }),
       };
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -121,9 +128,9 @@ describe("EnableNotificationsButton Component", () => {
         }),
       };
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -148,9 +155,9 @@ describe("EnableNotificationsButton Component", () => {
       };
       mockRequestPermission.mockResolvedValue("granted");
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -158,13 +165,9 @@ describe("EnableNotificationsButton Component", () => {
       await user.click(button);
 
       await vi.waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          "/api/push/subscribe",
-          expect.objectContaining({
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(mockSubscription),
-          }),
+        expect(apiLib.api.post).toHaveBeenCalledWith(
+          "/push/subscribe",
+          mockSub,
         );
       });
     });
@@ -180,9 +183,9 @@ describe("EnableNotificationsButton Component", () => {
         }),
       };
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");
@@ -256,9 +259,9 @@ describe("EnableNotificationsButton Component", () => {
         }),
       };
       mockPushManager.subscribe.mockResolvedValue(mockSub);
-      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: false,
-      });
+      (
+        apiLib.api.post as unknown as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error("Subscribe API failed"));
 
       renderWithMantine(<EnableNotificationsButton />);
       const button = screen.getByRole("button");

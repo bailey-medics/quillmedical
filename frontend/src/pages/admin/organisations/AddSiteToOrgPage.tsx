@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert } from "@mantine/core";
+import { Stack, Alert } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -214,38 +214,32 @@ export default function AddSiteToOrgPage() {
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Add site" />
+    <Stack gap="lg">
+      <PageHeader title="Add site" />
 
-        {loadError && (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error loading users"
-            color="var(--alert-color)"
-          >
-            {loadError}
-          </Alert>
-        )}
-
-        <Form<AddSiteFormValues>
-          defaultValues={{
-            name: "",
-            type: null,
-            location: "",
-            clinicalLeadId: null,
-          }}
-          onSubmit={handleSubmit}
-          submitLabel="Create site"
-          submittingLabel="Creating…"
+      {loadError && (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+          title="Error loading users"
+          color="var(--alert-color)"
         >
-          <AddSiteFields
-            orgId={id!}
-            users={users}
-            usersLoading={usersLoading}
-          />
-        </Form>
-      </Stack>
-    </Container>
+          {loadError}
+        </Alert>
+      )}
+
+      <Form<AddSiteFormValues>
+        defaultValues={{
+          name: "",
+          type: null,
+          location: "",
+          clinicalLeadId: null,
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="Create site"
+        submittingLabel="Creating…"
+      >
+        <AddSiteFields orgId={id!} users={users} usersLoading={usersLoading} />
+      </Form>
+    </Stack>
   );
 }

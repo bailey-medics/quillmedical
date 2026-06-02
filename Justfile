@@ -519,18 +519,18 @@ stop:
 
 alias ub := unit-tests-backend
 # Run the backend unit tests
-unit-tests-backend:
+unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
-    docker exec quill_backend sh -lc "pytest -q -m 'not integration'"
+    docker exec quill_backend sh -lc "pytest -q -m 'not integration' {{ARGS}}"
 
 
 alias uf := unit-tests-frontend
 # Run the frontend unit tests
-unit-tests-frontend:
+unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
-    docker exec quill_frontend sh -lc "yarn unit-test:run"
+    docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
 alias ee := e2e

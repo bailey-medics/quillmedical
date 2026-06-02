@@ -18,7 +18,14 @@ import {
   PageMessageDisplay,
   PageMessageProvider,
 } from "@components/page-message";
-import { Box, Flex, Skeleton, Stack, useMantineTheme } from "@mantine/core";
+import {
+  Box,
+  Container,
+  Flex,
+  Skeleton,
+  Stack,
+  useMantineTheme,
+} from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
@@ -48,6 +55,8 @@ type Props = {
   children?: ReactNode;
   /** When true, hides burger, sidebar, drawer, search, and patient info */
   examMode?: boolean;
+  /** When true, removes Container max-width constraint (full-width content) */
+  fluid?: boolean;
 };
 
 /**
@@ -68,6 +77,7 @@ export default function MainLayout({
   patientNav,
   children,
   examMode = false,
+  fluid = false,
 }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
@@ -217,19 +227,21 @@ export default function MainLayout({
               pt={LAYOUT_PADDING_TOP}
               pb={LAYOUT_PADDING_BOTTOM}
             >
-              {isLoading ? (
-                <Stack gap="md">
-                  <Skeleton height={50} radius="md" />
-                  <Skeleton height={200} radius="md" />
-                  <Skeleton height={150} radius="md" />
-                  <Skeleton height={100} radius="md" />
-                </Stack>
-              ) : (
-                <PageMessageProvider>
-                  <PageMessageDisplay />
-                  {children}
-                </PageMessageProvider>
-              )}
+              <Container size="lg" fluid={fluid}>
+                {isLoading ? (
+                  <Stack gap="md">
+                    <Skeleton height={50} radius="md" />
+                    <Skeleton height={200} radius="md" />
+                    <Skeleton height={150} radius="md" />
+                    <Skeleton height={100} radius="md" />
+                  </Stack>
+                ) : (
+                  <PageMessageProvider>
+                    <PageMessageDisplay />
+                    {children}
+                  </PageMessageProvider>
+                )}
+              </Container>
             </Box>
             <Footer text={footerText} loading={footerLoading} />
           </Flex>

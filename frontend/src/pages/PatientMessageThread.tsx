@@ -14,8 +14,7 @@ import {
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
-import { Container, Loader, Stack, useMantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { Loader, Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import classes from "./PatientMessageThread.module.css";
@@ -42,9 +41,6 @@ export default function PatientMessageThread() {
 
   const currentUserId =
     state.status === "authenticated" ? String(state.user.id) : "unknown";
-
-  const theme = useMantineTheme();
-  const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
   const [conversation, setConversation] =
     useState<ConversationDetailResponse | null>(null);
@@ -121,21 +117,11 @@ export default function PatientMessageThread() {
   );
 
   if (isLoading) {
-    return (
-      <Container size="lg">
-        <Loader />
-      </Container>
-    );
+    return <Loader />;
   }
 
   return (
-    <Container
-      size="lg"
-      pt={isSmall ? 0 : "xs"}
-      pb={0}
-      px={isSmall ? 0 : undefined}
-      className={classes.threadContainer}
-    >
+    <div className={classes.threadContainer}>
       <Stack gap="sm" className={classes.threadStack}>
         <div className={classes.messagingWrapper}>
           <Messaging
@@ -145,6 +131,6 @@ export default function PatientMessageThread() {
           />
         </div>
       </Stack>
-    </Container>
+    </div>
   );
 }

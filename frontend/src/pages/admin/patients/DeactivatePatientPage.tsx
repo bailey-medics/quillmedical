@@ -10,7 +10,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
-  Container,
   Stack,
   Button,
   Table,
@@ -73,15 +72,9 @@ export default function DeactivatePatientPage() {
       try {
         // If we have a patient ID but no patient data, fetch it
         if (patientId && !specificPatient) {
-          const response = await fetch(`/api/patients/${patientId}`, {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patient");
-          }
-
-          const patientData = await response.json();
+          const patientData = await api.get<Patient & { id?: string }>(
+            `/patients/${patientId}`,
+          );
           if (
             !patientData ||
             typeof patientData !== "object" ||
@@ -92,15 +85,7 @@ export default function DeactivatePatientPage() {
           setSpecificPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch all patients for selection
-          const response = await fetch("/api/patients", {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patients");
-          }
-
-          const data = await response.json();
+          const data = await api.get<{ patients?: Patient[] }>("/patients");
           setPatients(data.patients || []);
         }
       } catch (err) {
@@ -155,156 +140,148 @@ export default function DeactivatePatientPage() {
   // If we have a specific patient (from route params or state), show the deactivation confirmation
   if (specificPatient) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader
-            title={`Deactivate ${formatName(specificPatient.name)}`}
-          />
+      <Stack gap="lg">
+        <PageHeader title={`Deactivate ${formatName(specificPatient.name)}`} />
 
-          {loading ? (
-            <Skeleton height={300} />
-          ) : error ? (
-            <Alert
-              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-              title="Error loading patient"
-              color="var(--alert-color)"
-            >
-              {error}
-            </Alert>
-          ) : (
-            <BaseCard>
-              <Stack gap="md">
-                <Alert
-                  icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-                  title="Warning"
-                  color="var(--warning-color)"
-                >
-                  You are about to deactivate this patient record. This will
-                  restrict access to their records.
-                </Alert>
+        {loading ? (
+          <Skeleton height={300} />
+        ) : error ? (
+          <Alert
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+            title="Error loading patient"
+            color="var(--alert-color)"
+          >
+            {error}
+          </Alert>
+        ) : (
+          <BaseCard>
+            <Stack gap="md">
+              <Alert
+                icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+                title="Warning"
+                color="var(--warning-color)"
+              >
+                You are about to deactivate this patient record. This will
+                restrict access to their records.
+              </Alert>
 
-                <Stack gap="xs">
+              <Stack gap="xs">
+                <Group>
+                  <BodyTextBold>Name:</BodyTextBold>
+                  <BodyTextInline>
+                    {formatName(specificPatient.name)}
+                  </BodyTextInline>
+                </Group>
+                {specificPatient.birthDate && (
                   <Group>
-                    <BodyTextBold>Name:</BodyTextBold>
-                    <BodyTextInline>
-                      {formatName(specificPatient.name)}
-                    </BodyTextInline>
+                    <BodyTextBold>Birth date:</BodyTextBold>
+                    <BodyTextInline>{specificPatient.birthDate}</BodyTextInline>
                   </Group>
-                  {specificPatient.birthDate && (
-                    <Group>
-                      <BodyTextBold>Birth date:</BodyTextBold>
-                      <BodyTextInline>
-                        {specificPatient.birthDate}
-                      </BodyTextInline>
-                    </Group>
-                  )}
-                  {specificPatient.gender && (
-                    <Group>
-                      <BodyTextBold>Gender:</BodyTextBold>
-                      <BodyTextInline>{specificPatient.gender}</BodyTextInline>
-                    </Group>
-                  )}
+                )}
+                {specificPatient.gender && (
                   <Group>
-                    <BodyTextBold>Patient ID:</BodyTextBold>
-                    <BodyText>{specificPatient.id}</BodyText>
-                    <BodyText>{specificPatient.id}</BodyText>
+                    <BodyTextBold>Gender:</BodyTextBold>
+                    <BodyTextInline>{specificPatient.gender}</BodyTextInline>
                   </Group>
-                </Stack>
-
-                <ButtonPairRed
-                  acceptLabel="Confirm deactivation"
-                  submittingLabel="Deactivating…"
-                  acceptLoading={deactivating}
-                  onAccept={handleDeactivateConfirm}
-                  onCancel={() => window.history.back()}
-                />
+                )}
+                <Group>
+                  <BodyTextBold>Patient ID:</BodyTextBold>
+                  <BodyText>{specificPatient.id}</BodyText>
+                  <BodyText>{specificPatient.id}</BodyText>
+                </Group>
               </Stack>
-            </BaseCard>
-          )}
-        </Stack>
-      </Container>
+
+              <ButtonPairRed
+                acceptLabel="Confirm deactivation"
+                submittingLabel="Deactivating…"
+                acceptLoading={deactivating}
+                onAccept={handleDeactivateConfirm}
+                onCancel={() => window.history.back()}
+              />
+            </Stack>
+          </BaseCard>
+        )}
+      </Stack>
     );
   }
 
   // Otherwise, show the patient selection list
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Deactivate patient" />
+    <Stack gap="lg">
+      <PageHeader title="Deactivate patient" />
 
-        {loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patients"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        ) : patients.length === 0 ? (
-          <Center p="xl">
-            <EmptyState>No patients found</EmptyState>
-          </Center>
-        ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Birth Date</Table.Th>
-                <Table.Th>Gender</Table.Th>
-                <Table.Th style={{ width: "150px", textAlign: "right" }}>
-                  Action
-                </Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {patients.map((patient) => (
-                <Table.Tr key={patient.id}>
-                  <Table.Td>
-                    <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
-                  </Table.Td>
-                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                  <Table.Td>{patient.gender || "N/A"}</Table.Td>
-                  <Table.Td style={{ textAlign: "right" }}>
-                    <Button
-                      variant="light"
-                      color="var(--alert-color)"
-                      size="xs"
-                      leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
-                      onClick={() => handleDeactivateClick(patient)}
-                    >
-                      Deactivate
-                    </Button>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-
-        <ConfirmModal
-          opened={selectedPatient !== null}
-          onClose={() => setSelectedPatient(null)}
-          onAccept={handleDeactivateConfirm}
-          title="Confirm deactivation"
-          acceptLabel="Deactivate patient"
-          submittingLabel="Deactivating…"
+      {loading ? (
+        <Stack gap="xs">
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
+      ) : error ? (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          title="Error loading patients"
+          color="var(--alert-color)"
         >
-          Are you sure you want to deactivate patient{" "}
-          <strong>
-            {selectedPatient ? formatName(selectedPatient.name) : ""}
-          </strong>
-          ? This will restrict access to their records. This action can be
-          reversed later.
-        </ConfirmModal>
-      </Stack>
-    </Container>
+          {error}
+        </Alert>
+      ) : patients.length === 0 ? (
+        <Center p="xl">
+          <EmptyState>No patients found</EmptyState>
+        </Center>
+      ) : (
+        <Table striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Name</Table.Th>
+              <Table.Th>Birth Date</Table.Th>
+              <Table.Th>Gender</Table.Th>
+              <Table.Th style={{ width: "150px", textAlign: "right" }}>
+                Action
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {patients.map((patient) => (
+              <Table.Tr key={patient.id}>
+                <Table.Td>
+                  <BodyTextBold>{formatName(patient.name)}</BodyTextBold>
+                </Table.Td>
+                <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
+                <Table.Td>{patient.gender || "N/A"}</Table.Td>
+                <Table.Td style={{ textAlign: "right" }}>
+                  <Button
+                    variant="light"
+                    color="var(--alert-color)"
+                    size="xs"
+                    leftSection={<Icon icon={<IconUserMinus />} size="sm" />}
+                    onClick={() => handleDeactivateClick(patient)}
+                  >
+                    Deactivate
+                  </Button>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+
+      <ConfirmModal
+        opened={selectedPatient !== null}
+        onClose={() => setSelectedPatient(null)}
+        onAccept={handleDeactivateConfirm}
+        title="Confirm deactivation"
+        acceptLabel="Deactivate patient"
+        submittingLabel="Deactivating…"
+      >
+        Are you sure you want to deactivate patient{" "}
+        <strong>
+          {selectedPatient ? formatName(selectedPatient.name) : ""}
+        </strong>
+        ? This will restrict access to their records. This action can be
+        reversed later.
+      </ConfirmModal>
+    </Stack>
   );
 }
