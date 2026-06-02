@@ -22,7 +22,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ### Phase 2 — YAML (`shared/base-professions.yaml`)
 
-3. Add `default_system_permission` field to each profession entry (placed between `description` and `base_competencies`):
+- [x] Add `default_system_permission` field to each profession entry (placed between `description` and `base_competencies`):
 
    | Professions                                                                | Value         |
    | -------------------------------------------------------------------------- | ------------- |
@@ -32,7 +32,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
    | `educator`                                                                 | `staff`       |
    | `system_administrator`                                                     | `admin`       |
 
-4. Add header comment explaining it's a soft default, not a hard constraint
+- [x] Add header comment explaining it's a soft default, not a hard constraint
 
 ### Phase 3 — Regenerate frontend types
 
@@ -51,7 +51,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ## Verification
 
-- [ ] Valid YAML after edit (`yamllint shared/base-professions.yaml` or equivalent)
+- [x] Valid YAML after edit (`yamllint shared/base-professions.yaml` or equivalent)
 - [ ] `yarn generate:types` completes without error
 - [ ] `just uf` — frontend tests still pass
 - [ ] `just ub` — backend tests still pass
