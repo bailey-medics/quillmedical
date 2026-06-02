@@ -8,12 +8,12 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db import get_session
+from app.db import get_core_db
 from app.log_context import user_id_var
 from app.models import User
 from app.security import decode_token
 
-DEP_GET_SESSION = Depends(get_session)
+DEP_GET_SESSION = Depends(get_core_db)
 
 
 def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:

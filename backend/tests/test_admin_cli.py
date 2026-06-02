@@ -24,14 +24,14 @@ def sysadmin_role(db_session: Session) -> Role:
 
 @pytest.fixture
 def _patch_session(db_session: Session):
-    """Patch AuthSessionLocal to use the test database session.
+    """Patch CoreSessionLocal to use the test database session.
 
     Prevents the admin_cli functions from closing the shared test session
     so assertions can still query the database afterwards.
     """
     original_close = db_session.close
     db_session.close = lambda: None  # type: ignore[assignment]
-    with patch("app.db.auth_db.AuthSessionLocal", return_value=db_session):
+    with patch("app.db.core_db.CoreSessionLocal", return_value=db_session):
         yield
     db_session.close = original_close  # type: ignore[assignment]
 

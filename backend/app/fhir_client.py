@@ -429,7 +429,7 @@ def create_fhir_communication(
         conversation_id: UUID grouping messages into a thread.
         patient_id: FHIR Patient resource ID the conversation is about.
         sender_display: Human-readable sender name.
-        sender_user_id: Auth DB user ID of the sender.
+        sender_user_id: Core DB user ID of the sender.
         body: Message text content.
         first_message_fhir_id: FHIR ID of the first message in the
             thread (for partOf linking). None for the first message.

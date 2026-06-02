@@ -12,7 +12,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from app.config import settings
 
 # Create core database engine
-auth_engine = create_engine(
+core_engine = create_engine(
     settings.CORE_DATABASE_URL,
     future=True,
     pool_pre_ping=True,  # Verify connections before use
@@ -21,35 +21,35 @@ auth_engine = create_engine(
 )
 
 # Create session factory
-AuthSessionLocal = sessionmaker(
-    bind=auth_engine,
+CoreSessionLocal = sessionmaker(
+    bind=core_engine,
     autoflush=False,
     autocommit=False,
     future=True,
 )
 
 
-class AuthBase(DeclarativeBase):
-    """Base class for auth database models."""
+class CoreBase(DeclarativeBase):
+    """Base class for core database models."""
 
     pass
 
 
-def get_auth_db() -> Generator[Session]:
-    """FastAPI dependency to provide auth database sessions.
+def get_core_db() -> Generator[Session]:
+    """FastAPI dependency to provide core database sessions.
 
     Yields:
-        Session: SQLAlchemy database session for auth database.
+        Session: SQLAlchemy database session for core database.
 
     Example:
         ```python
         @router.get("/users")
-        def list_users(db: Session = Depends(get_auth_db)):
+        def list_users(db: Session = Depends(get_core_db)):
             users = db.query(User).all()
             return users
         ```
     """
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         yield db
     finally:

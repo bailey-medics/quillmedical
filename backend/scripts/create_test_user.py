@@ -8,7 +8,7 @@ proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if proj_root not in sys.path:
     sys.path.insert(0, proj_root)
 
-from app.db import SessionLocal  # noqa: E402
+from app.db import CoreSessionLocal  # noqa: E402
 from app.models import User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
@@ -19,7 +19,7 @@ def main():
     email = "test@example.com"
     password = "testpass123"
 
-    db = SessionLocal()
+    db = CoreSessionLocal()
     try:
         u = db.query(User).filter(User.username == username).first()
         if not u:

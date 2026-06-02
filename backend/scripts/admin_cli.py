@@ -72,11 +72,11 @@ def create_superadmin() -> int:
     email = env["ADMIN_EMAIL"]
     password = env["ADMIN_PASSWORD"]
 
-    from app.db.auth_db import AuthSessionLocal
+    from app.db.core_db import CoreSessionLocal
     from app.models import Role, User
     from app.security import hash_password
 
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if user:
@@ -130,7 +130,7 @@ def update_permissions() -> int:
     username = env["ADMIN_USERNAME"]
     permission = env["ADMIN_PERMISSION"]
 
-    from app.db.auth_db import AuthSessionLocal
+    from app.db.core_db import CoreSessionLocal
     from app.models import User
     from app.system_permissions import PERMISSION_LEVELS
 
@@ -142,7 +142,7 @@ def update_permissions() -> int:
         )
         return 1
 
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
@@ -169,10 +169,10 @@ def add_role() -> int:
     username = env["ADMIN_USERNAME"]
     role_name = env["ADMIN_ROLE"]
 
-    from app.db.auth_db import AuthSessionLocal
+    from app.db.core_db import CoreSessionLocal
     from app.models import Role, User
 
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
@@ -211,10 +211,10 @@ def verify_email() -> int:
     env = _require_env("ADMIN_USERNAME")
     username = env["ADMIN_USERNAME"]
 
-    from app.db.auth_db import AuthSessionLocal
+    from app.db.core_db import CoreSessionLocal
     from app.models import User
 
-    db = AuthSessionLocal()
+    db = CoreSessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:

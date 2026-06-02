@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.decorators import has_competency
-from app.db import get_session
+from app.db import get_core_db
 from app.features import requires_feature
 from app.features.teaching.models import (
     Assessment,
@@ -92,7 +92,7 @@ teaching_router = APIRouter(
     dependencies=[Depends(requires_feature("teaching"))],
 )
 
-_DEP_SESSION = Depends(get_session)
+_DEP_SESSION = Depends(get_core_db)
 
 
 def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:

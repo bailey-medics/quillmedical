@@ -11,7 +11,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db import get_session
+from app.db import get_core_db
 from app.models import (
     OrganisationFeature,
     User,
@@ -37,7 +37,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
     def _check(
         request: Request,
-        db: Session = Depends(get_session),
+        db: Session = Depends(get_core_db),
     ) -> User:
         # Lazy import to avoid circular dependency with app.main
         from app.main import current_user

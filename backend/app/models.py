@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for authentication database.
+"""SQLAlchemy ORM models for core database.
 
 This module defines the database schema for user authentication, role-based
 access control (RBAC), and messaging. All models use SQLAlchemy 2.0

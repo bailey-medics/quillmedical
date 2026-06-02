@@ -15,7 +15,7 @@ All API endpoints are exposed under the `/api` prefix. Development mode enables
 Swagger UI at `/api/docs` and ReDoc at `/api/redoc` for interactive API exploration.
 
 Architecture:
-- Auth database: User accounts and roles (PostgreSQL via SQLAlchemy)
+- Core database: User accounts and roles (PostgreSQL via SQLAlchemy)
 - FHIR server: Patient demographics (HAPI FHIR)
 - EHRbase: Clinical documents and letters (OpenEHR)
 - Push notifications: Persistent subscriptions (PostgreSQL)
@@ -49,7 +49,7 @@ from sqlalchemy.orm import Session
 
 from app.cbac.decorators import has_competency
 from app.config import settings
-from app.db import get_session
+from app.db import get_core_db
 from app.ehrbase_client import (
     EhrbaseClientError,
     create_letter_composition,
@@ -280,7 +280,7 @@ async def log_requests(
 
 app.include_router(push_send_router)
 
-DEP_GET_SESSION = Depends(get_session)
+DEP_GET_SESSION = Depends(get_core_db)
 
 
 # Type the cookie kwargs properly to avoid mypy complaints
@@ -468,9 +468,9 @@ def health_check() -> dict[str, Any]:
         dict: Health status with service availability details
     """
     services: dict[str, dict[str, bool | int | str]] = {
-        "auth_db": {
+        "core_db": {
             "available": True
-        },  # If we can respond, auth DB is working
+        },  # If we can respond, core DB is working
     }
 
     # Only check FHIR/EHRbase when clinical services are enabled
@@ -5316,7 +5316,7 @@ router.include_router(teaching_router)
 @router.post("/ci/teaching/sync")
 def ci_teaching_sync(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_core_db),
 ) -> dict[str, Any]:
     """Trigger teaching content sync from CI/CD pipeline.
 
