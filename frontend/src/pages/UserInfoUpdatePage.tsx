@@ -50,7 +50,6 @@ import type {
   CompetencyId,
   SystemPermission,
   Competency,
-  BaseProfession,
 } from "@/types/cbac";
 import { getBaseProfessionDetails } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
@@ -96,12 +95,10 @@ function Step1BasicDetails({
   errors: Record<string, string>;
   isEditMode?: boolean;
 }) {
-  const professionOptions = baseProfessionsData.base_professions.map(
-    (p: BaseProfession) => ({
-      value: p.id,
-      label: p.display_name,
-    }),
-  );
+  const professionOptions = baseProfessionsData.base_professions.map((p) => ({
+    value: p.id,
+    label: p.display_name,
+  }));
 
   return (
     <Stack gap="md">
