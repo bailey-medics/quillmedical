@@ -141,6 +141,8 @@ Two orthogonal layers control access:
 
 System permissions have **nothing to do with clinical data access** — that is solely CBAC's responsibility. A patient, teaching delegate, and external HCP, are all `single-user`; their clinical access differs only via CBAC competencies and base profession.
 
+**Practical coupling**: Clinical practitioners require `staff` or above to access clinical workflows (patient lists, dashboards). CBAC then scopes which actions they can perform within those workflows. Each base profession in `shared/base-professions.yaml` declares a `default_system_permission` — a soft default applied at user provisioning that admins can freely override. Both system permissions and CBAC competencies are independently adjustable per user after creation.
+
 - Backend: `backend/app/system_permissions/` — `check_permission_level(user_permission, required)` for hierarchy checks
 - Frontend: `<RequirePermission level="admin">` guard in `src/auth/RequirePermission.tsx`
 - Admin gate pattern in routes: `if u.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)`
@@ -155,9 +157,9 @@ Controls **all data access and actions** — clinical, feature admin, and patien
 | **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `manage_letter_templates` | low–medium |
 | **Patient access** | `view_own_records`, `manage_own_demographics` | low |
 
-Resolution formula per user: `(base_profession_competencies ∪ additional) − removed`
+Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
-- **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies)
+- **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
 - **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
 - **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — currently placeholders returning `false`)
 - **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)
@@ -254,6 +256,8 @@ Resolution formula per user: `(base_profession_competencies ∪ additional) − 
 **Database models**: Define in `backend/app/models.py`, then `just migrate "description"`
 
 **New component**: Create in `frontend/src/components/<name>/`, add `Component.stories.tsx` and `Component.test.tsx`, update catalogue above
+
+**New base profession**: Add entry to `shared/base-professions.yaml` with `id`, `display_name`, `description`, `default_system_permission`, `base_competencies`, and `notes`. Then run `yarn generate:types` in `frontend/`.
 
 ## Key Files
 

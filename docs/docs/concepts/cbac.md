@@ -96,7 +96,7 @@ class User(Base):
 **Resolution Formula**:
 
 ```
-final_competencies = (base_profession_competencies ∪ additional_competencies) - removed_competencies
+final_competencies = (base_profession_competencies + additional_competencies) - removed_competencies
 ```
 
 ### Example User Configuration
