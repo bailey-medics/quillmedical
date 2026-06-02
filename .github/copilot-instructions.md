@@ -291,9 +291,9 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 ### Git
 
 - NEVER auto-commit/push - always ask permission first
-- NEVER merge pull requests — merging is solely a human responsibility
+- **NEVER merge pull requests — merging is solely a human responsibility**
 - Stop after fixing issues, report, and wait for instruction
-- **Branch naming**: `feature/*`, `hotfix/*`, or `copilot/*` (regex: `^(feature|hotfix|copilot)/.+`)
+- **Branch naming**: `feature/*`
 - `main` requires a pull request — never push directly
 
 ### Markdown
@@ -301,5 +301,3 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 - Use proper heading syntax (`#`, `##`, `###`), not bold
 - No trailing punctuation on headings
 - Wrap emails in `<email@example.com>`
-
-````
