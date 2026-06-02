@@ -365,15 +365,12 @@ export default function NewPatientPage() {
     async function fetchPatient() {
       try {
         setLoading(true);
-        const response = await fetch(`/api/patients/${patientId}`, {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch patient data");
-        }
-
-        const patient = await response.json();
+        const patient = await api.get<{
+          name?: Array<{ given?: string[]; family?: string }>;
+          birthDate?: string;
+          gender?: string;
+          identifier?: Array<{ system?: string; value?: string }>;
+        }>(`/patients/${patientId}`);
 
         // Pre-fill form with patient data (FHIR format)
         const firstName = patient.name?.[0]?.given?.[0] || "";

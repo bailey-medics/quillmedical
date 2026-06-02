@@ -208,6 +208,66 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
  *   headers: { 'X-CSRF-Token': token }
  * });
  */
+/**
+ * Blob Request Handler
+ *
+ * Makes an authenticated request expecting a binary response (e.g. PDF download).
+ * Handles credentials, CSRF, and 401 retry like the JSON request handler, but
+ * returns the response as a Blob instead of parsing JSON.
+ */
+async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
+  if (!path) throw new Error("API path cannot be empty");
+  if (!path.startsWith("/"))
+    throw new Error(`API path must start with '/', got: ${path}`);
+
+  if (!navigator.onLine) {
+    window.dispatchEvent(new CustomEvent("app:network-error"));
+    throw new Error("No network connection");
+  }
+
+  const method = opts.method ?? "GET";
+  const headers: Record<string, string> = {
+    ...((opts.headers as Record<string, string>) ?? {}),
+  };
+  if (method !== "GET" && !headers["X-CSRF-Token"]) {
+    const match = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("XSRF-TOKEN="));
+    if (match) {
+      headers["X-CSRF-Token"] = decodeURIComponent(match.split("=")[1]);
+    }
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      headers,
+      credentials: "include",
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch (err) {
+    if (err instanceof TypeError) {
+      window.dispatchEvent(new CustomEvent("app:network-error"));
+    }
+    throw err;
+  }
+
+  if (res.status === 401 && !opts.retry) {
+    const refreshed = await fetch(`/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (refreshed.ok) return requestBlob(path, { ...opts, retry: true });
+  }
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  return res.blob();
+}
+
 export const api = {
   /** Core request handler */
   request,
@@ -235,4 +295,7 @@ export const api = {
   /** DELETE request */
   del: <T>(path: string, opts?: Omit<Options, "method" | "body">) =>
     request<T>(path, { ...opts, method: "DELETE" }),
+  /** Binary/blob download (e.g. PDF certificates) */
+  blob: (path: string, opts?: Omit<Options, "method" | "body">) =>
+    requestBlob(path, { ...opts, method: "GET" }),
 };

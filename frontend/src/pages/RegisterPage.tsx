@@ -87,9 +87,11 @@ function TeachingRegisterPage() {
   );
 
   useEffect(() => {
-    fetch("/api/teaching/public/modules")
-      .then((res) => res.json())
-      .then((data: { modules: { value: string; label: string }[] }) => {
+    api
+      .get<{ modules: { value: string; label: string }[] }>(
+        "/teaching/public/modules",
+      )
+      .then((data) => {
         setModules(data.modules);
       })
       .catch(() => {

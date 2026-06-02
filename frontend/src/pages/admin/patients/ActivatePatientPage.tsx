@@ -73,15 +73,9 @@ export default function ActivatePatientPage() {
       try {
         // If we have a patient ID but no patient data, fetch it
         if (patientId && !specificPatient) {
-          const response = await fetch(`/api/patients/${patientId}`, {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patient");
-          }
-
-          const patientData = await response.json();
+          const patientData = await api.get<Patient & { id?: string }>(
+            `/patients/${patientId}`,
+          );
           if (
             !patientData ||
             typeof patientData !== "object" ||
@@ -92,21 +86,12 @@ export default function ActivatePatientPage() {
           setSpecificPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch deactivated patients for selection
-          const response = await fetch(
-            "/api/patients?include_inactive=true&scope=admin",
-            {
-              credentials: "include",
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patients");
-          }
-
-          const data = await response.json();
+          const data = await api.get<{
+            patients?: (Patient & { is_active?: boolean })[];
+          }>("/patients?include_inactive=true&scope=admin");
           // Filter for only deactivated patients
           const deactivatedPatients = (data.patients || []).filter(
-            (p: Patient & { is_active?: boolean }) => p.is_active === false,
+            (p) => p.is_active === false,
           );
           setPatients(deactivatedPatients);
         }

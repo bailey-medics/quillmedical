@@ -598,15 +598,17 @@ export default function UserInfoUpdatePage() {
       try {
         setLoading(true);
         // TODO: Backend needs to implement GET /api/users/:id endpoint
-        const response = await fetch(`/api/users/${userId}`, {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        const data = await response.json();
+        const data = await api.get<{
+          name?: string;
+          email?: string;
+          username?: string;
+          base_profession?: string;
+          additional_competencies?: string[];
+          removed_competencies?: string[];
+          system_permissions?: string;
+          organisation_ids?: number[];
+          site_ids?: number[];
+        }>(`/users/${userId}`);
 
         // Pre-fill form with user data
         setFormData({

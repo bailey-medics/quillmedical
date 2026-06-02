@@ -73,15 +73,9 @@ export default function DeactivatePatientPage() {
       try {
         // If we have a patient ID but no patient data, fetch it
         if (patientId && !specificPatient) {
-          const response = await fetch(`/api/patients/${patientId}`, {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patient");
-          }
-
-          const patientData = await response.json();
+          const patientData = await api.get<Patient & { id?: string }>(
+            `/patients/${patientId}`,
+          );
           if (
             !patientData ||
             typeof patientData !== "object" ||
@@ -92,15 +86,7 @@ export default function DeactivatePatientPage() {
           setSpecificPatient(patientData);
         } else if (!patientId) {
           // No patient ID, fetch all patients for selection
-          const response = await fetch("/api/patients", {
-            credentials: "include",
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch patients");
-          }
-
-          const data = await response.json();
+          const data = await api.get<{ patients?: Patient[] }>("/patients");
           setPatients(data.patients || []);
         }
       } catch (err) {

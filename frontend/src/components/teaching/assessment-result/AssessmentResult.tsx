@@ -11,6 +11,7 @@ import { ResultMessage } from "@/components/message-cards";
 import ActionCard from "@/components/action-card/ActionCard";
 import { ButtonPair } from "@/components/button";
 import { ScoreBreakdown } from "../score-breakdown/ScoreBreakdown";
+import { api } from "@/lib/api";
 import type { CriterionResult } from "@/features/teaching/types";
 
 interface AssessmentResultProps {
@@ -48,12 +49,9 @@ export function AssessmentResult({
   async function handleDownload() {
     if (!assessmentId) return;
     try {
-      const res = await fetch(
-        `/api/teaching/assessments/${assessmentId}/certificate`,
-        { credentials: "include" },
+      const blob = await api.blob(
+        `/teaching/assessments/${assessmentId}/certificate`,
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

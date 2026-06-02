@@ -44,7 +44,6 @@ vi.mock("react-router-dom", async () => {
 describe("ActivatePatientPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
   });
 
   describe("With patient ID in route", () => {
@@ -56,10 +55,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatient,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -82,10 +78,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatient,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -109,10 +102,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatient,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
 
       vi.spyOn(apiLib.api, "post").mockResolvedValueOnce({});
 
@@ -149,10 +139,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatient,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -198,10 +185,7 @@ describe("ActivatePatientPage", () => {
         ],
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatientsResponse,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/activate",
@@ -223,10 +207,7 @@ describe("ActivatePatientPage", () => {
         patients: [],
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatientsResponse,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/activate",
@@ -253,10 +234,7 @@ describe("ActivatePatientPage", () => {
         ],
       };
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPatientsResponse,
-      });
+      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
 
       vi.spyOn(apiLib.api, "post").mockResolvedValueOnce({});
 
@@ -294,9 +272,9 @@ describe("ActivatePatientPage", () => {
 
   describe("Error handling", () => {
     it("displays error when patient fetch fails", async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-      });
+      (apiLib.api.get as any).mockRejectedValueOnce(
+        new Error("Failed to fetch patient"),
+      );
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -310,9 +288,9 @@ describe("ActivatePatientPage", () => {
     });
 
     it("displays error when patients list fetch fails", async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-      });
+      (apiLib.api.get as any).mockRejectedValueOnce(
+        new Error("Failed to fetch patients"),
+      );
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/activate",
@@ -330,7 +308,7 @@ describe("ActivatePatientPage", () => {
 
   describe("Loading state", () => {
     it("shows skeleton loaders while loading patient", async () => {
-      (global.fetch as any).mockImplementationOnce(
+      (apiLib.api.get as any).mockImplementationOnce(
         () =>
           new Promise(() => {
             /* never resolves */
@@ -349,7 +327,7 @@ describe("ActivatePatientPage", () => {
     });
 
     it("shows skeleton loaders while loading patients list", async () => {
-      (global.fetch as any).mockImplementationOnce(
+      (apiLib.api.get as any).mockImplementationOnce(
         () =>
           new Promise(() => {
             /* never resolves */

@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
 import {
   Container,
   Stack,
@@ -44,15 +45,7 @@ export default function EditUserPage() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const response = await fetch("/api/users", {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
-        const data = await response.json();
+        const data = await api.get<{ users?: User[] }>("/users");
         setUsers(data.users || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
