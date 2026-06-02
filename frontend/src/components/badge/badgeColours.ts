@@ -1,6 +1,9 @@
 /**
  * Badge colour palette
  *
+ * This file exists as our badge colours must have a bg colour and associated
+ * text colour.
+ *
  * Centralised semantic colour tokens for all badge components.
  * Every badge must pick from this constrained set to ensure
  * consistent visual language across the application.

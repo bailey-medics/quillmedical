@@ -20,9 +20,12 @@ applyTo: "frontend/src/components/**"
 ## Styling
 
 - **No inline styles** — use Mantine component props or CSS modules only.
-- **Use `rem` instead of `px`** in CSS modules where possible for better scalability.
-- **Responsive**: always use `theme.breakpoints.sm` (`48em` / 768px) for mobile/desktop splits via `useMediaQuery`.
-- **Right-justify all buttons** — wrap buttons in `<Group justify="flex-end">` so they align to the right of their container.
+- **Use `rem` instead of `px`** in CSS modules for component dimensions (padding, margins, widths, font-sizes). Breakpoints use `em` via the theme — don't hardcode those.
+- **Responsive**: always use `theme.breakpoints.sm` (`40em` / 640px) for mobile/desktop splits via `useMediaQuery`. Exception: two-column ActionCard grids use `actionCardTwoColumnMinWidth` (`60rem`) from the theme's `layoutTokens`.
+- **Button layout**:
+  - Use `ButtonPair` / `ButtonPairRed` for action pairs (submit/cancel, confirm/dismiss) — they handle right-alignment on desktop and full-width stacking on mobile automatically.
+  - For standalone buttons, wrap in `<Group justify="flex-end">` to right-align.
+  - Page-header actions (`AddButton`) sit in a `<Group justify="space-between">` alongside a `PageHeader` and stay fixed-width at all viewports.
 
 ## Colours
 
@@ -35,7 +38,7 @@ applyTo: "frontend/src/components/**"
 - **Badge colours**: import from `components/badge/badgeColours.ts`.
 - **In CSS modules**: use Mantine CSS variables (e.g. `var(--mantine-color-text)`, `var(--mantine-color-primary-6)`, `var(--mantine-color-gray-0)`) — never raw colour literals.
 - **In TSX**: use Mantine colour tokens (e.g. `c="primary.7"`, `c="gray.4"`) or imports from the above modules.
-- **Dark mode borders**: all form field inputs must use `var(--mantine-color-primary-9)` for border colour in dark mode via `[data-mantine-color-scheme="dark"]` selectors in CSS modules.
+- **Dark mode borders**: all form field inputs must use `var(--mantine-color-primary-9)` for border colour in dark mode via `[data-mantine-color-scheme="dark"]` selectors in CSS modules. Exception: error state uses `var(--error-color)` (with `var(--error-focus-color)` on focus) via `[data-error]` selectors.
 
 ## Testing and stories
 
@@ -43,7 +46,7 @@ applyTo: "frontend/src/components/**"
 - Use `VariantStack` and `VariantRow` from `src/stories/variants.tsx` for "all sizes" or "all variants" stories.
 - Use `StoryNote` from `src/stories/variants.tsx` for **all** descriptive text in stories (e.g. "Constrained to 18rem width for display"). Never use raw `<Text>`, `<div>`, or other elements for story descriptions.
 - **Labels go below components** — when labelling variants (sizes, states, etc.), place the `<StoryNote>` underneath the component, not above it.
-- Loading/skeleton stories should be placed **last** in the stories file.
+- Loading/skeleton stories should be placed **last** in the stories file, follow by dark mode.
 - Use `layout: "padded"` (not `"centered"`) so stories render top-left. Exception: layout components (e.g. `MainLayout`, `NotFoundLayout`).
 - **Do NOT wrap stories in `MemoryRouter`** — Storybook's `preview.tsx` already provides a `RouterProvider` context. Adding a `MemoryRouter` decorator causes a "cannot render a Router inside another Router" error.
 - **Exception — custom router with initial state**: If a component reads `location.state` (e.g. `PageFlash`), set `parameters: { disableDefaultRouter: true }` and provide your own `createMemoryRouter` with `initialEntries` containing state. You **must** wrap the `<RouterProvider>` in `<MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>` (imported from `@/theme`) since `disableDefaultRouter` bypasses the decorator that normally provides it.

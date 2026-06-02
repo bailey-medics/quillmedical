@@ -59,7 +59,7 @@ see the `Justfile` if you want to know more.
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
 - **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
-- **Button alignment**: ALWAYS right-justify buttons — wrap in `<Group justify="flex-end">`
+- **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile — use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
 - **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
 - **Page Layout**: ALWAYS wrap page content in `<Container size="lg">` for consistent max-width (1140px)
@@ -70,7 +70,7 @@ see the `Justfile` if you want to know more.
 - **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
   - Import: `const theme = useMantineTheme();` from `@mantine/core`
   - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`
-  - Standard breakpoint: `sm = "48em"` (768px) - matches navigation drawer toggle
+  - Standard breakpoint: `sm = "40em"` (640px) - matches navigation drawer toggle
   - Use in all components that need responsive layout/sizing decisions
 
 ### Component reuse hierarchy (Storybook-first)
