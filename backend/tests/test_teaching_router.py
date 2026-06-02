@@ -18,8 +18,8 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
 )
 from app.models import (
+    Organisation,
     OrganisationFeature,
-    Organization,
     User,
     organisation_staff_member,
 )
@@ -30,9 +30,9 @@ from app.security import hash_password
 # ------------------------------------------------------------------
 
 
-def _make_teaching_org(db: Session) -> Organization:
+def _make_teaching_org(db: Session) -> Organisation:
     """Create an org with the teaching feature enabled."""
-    org = Organization(name="Teaching Org")
+    org = Organisation(name="Teaching Org")
     db.add(org)
     db.flush()
 
@@ -46,7 +46,7 @@ def _make_teaching_org(db: Session) -> Organization:
     return org
 
 
-def _make_educator(db: Session, org: Organization) -> User:
+def _make_educator(db: Session, org: Organisation) -> User:
     """Create an educator user linked as primary staff."""
     user = User(
         username="testeducator",
@@ -68,7 +68,7 @@ def _make_educator(db: Session, org: Organization) -> User:
     return user
 
 
-def _make_learner(db: Session, org: Organization) -> User:
+def _make_learner(db: Session, org: Organisation) -> User:
     """Create a learner user linked as primary staff."""
     user = User(
         username="testlearner",
@@ -223,7 +223,7 @@ class TestFeatureGating:
 
     def test_no_feature_returns_403(self, test_client, db_session):
         """User whose org lacks teaching feature gets 403."""
-        org = Organization(name="No Feature Org")
+        org = Organisation(name="No Feature Org")
         db_session.add(org)
         db_session.flush()
 

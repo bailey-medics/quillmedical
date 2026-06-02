@@ -11,7 +11,7 @@ Traditional RBAC assigns users to rigid job roles (e.g., "doctor", "nurse") with
 - **Healthcare professionals have varying training**: Two doctors may have different prescribing authorities, procedural skills, or certification capabilities based on their specific training and qualifications
 - **Competencies are granular**: A nurse prescriber may have prescribing privileges without other doctor-only abilities
 - **Regulation requires specificity**: Professional registration bodies (GMC, NMC) regulate specific clinical activities, not broad "doctor" roles
-- **Organizations customize capabilities**: Hospitals may grant or restrict specific competencies based on local credentialing
+- **Organisations customise capabilities**: Hospitals may grant or restrict specific competencies based on local credentialing
 
 **Example**: An FY1 doctor can prescribe non-controlled medications but not controlled drugs. An experienced nurse prescriber can prescribe specific drug classes. A GP can certify death; a newly qualified doctor cannot. RBAC would require creating separate roles for each combination; CBAC grants specific competencies to each individual.
 

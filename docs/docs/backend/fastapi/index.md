@@ -43,7 +43,7 @@ The backend is organised in `backend/app/`:
 app/
 ├── main.py              # Application entry point, route definitions
 ├── config.py            # Configuration and environment variables
-├── models.py            # SQLAlchemy ORM models (User, Organization, Site, etc.)
+├── models.py            # SQLAlchemy ORM models (User, Organisation, Site, etc.)
 ├── deps.py              # Shared dependency definitions
 ├── security.py          # Authentication, JWT, password hashing, CSRF, TOTP
 ├── fhir_client.py       # FHIR integration
@@ -147,7 +147,7 @@ All API endpoints are prefixed with `/api`:
 - `/api/patients/{id}/invite-external` - External access invitations
 - `/api/patients/{id}/external-access/*` - External access management
 - `/api/conversations/*` - Messaging (conversations and messages)
-- `/api/organizations/*` - Organisation management (admin)
+- `/api/organisations/*` - Organisation management (admin)
 - `/api/sites/*` - Site management (admin)
 - `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import (
-    Organization,
+    Organisation,
     Site,
     User,
     organisation_site,
@@ -19,9 +19,9 @@ from app.security import hash_password
 
 def _setup_org_with_site_and_lead(
     db: Session,
-) -> tuple[Organization, Site, User]:
+) -> tuple[Organisation, Site, User]:
     """Create an org, site, and clinical lead linked together."""
-    org = Organization(name="Teaching Org")
+    org = Organisation(name="Teaching Org")
     db.add(org)
     db.flush()
 
@@ -170,7 +170,7 @@ class TestValidateClinicalLead:
         _setup_org_with_site_and_lead(db_session)
 
         # Create a separate org+site not linked to this bank
-        other_org = Organization(name="Other Org")
+        other_org = Organisation(name="Other Org")
         db_session.add(other_org)
         db_session.flush()
 

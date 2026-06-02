@@ -149,7 +149,7 @@ describe("EditOrganisationPage", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(apiLib.api.put).toHaveBeenCalledWith("/organizations/1", {
+      expect(apiLib.api.put).toHaveBeenCalledWith("/organisations/1", {
         name: "Updated Hospital",
         type: "hospital_team",
         location: "London",

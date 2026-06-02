@@ -52,7 +52,7 @@ class QuestionBankConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -89,7 +89,7 @@ class QuestionBankItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -144,7 +144,7 @@ class Assessment(Base):
     )
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -236,7 +236,7 @@ class TeachingOrgSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -269,7 +269,7 @@ class QuestionBankOrgStatus(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -298,7 +298,7 @@ class QuestionBankSync(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

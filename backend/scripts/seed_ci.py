@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, "/app")
 
 from app.db import CoreSessionLocal  # noqa: E402
-from app.models import OrganisationFeature, Organization, User  # noqa: E402
+from app.models import Organisation, OrganisationFeature, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
@@ -60,12 +60,12 @@ def seed() -> None:
 
         # 3. Create teaching organisation
         org = (
-            db.query(Organization)
-            .filter(Organization.name == "CI Teaching Hospital")
+            db.query(Organisation)
+            .filter(Organisation.name == "CI Teaching Hospital")
             .first()
         )
         if not org:
-            org = Organization(
+            org = Organisation(
                 name="CI Teaching Hospital",
                 type="teaching_establishment",
                 location="CI",

@@ -116,7 +116,7 @@ export default function AddStaffToOrgPage() {
     data: AddStaffFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post(`/organizations/${id}/staff`, {
+      await api.post(`/organisations/${id}/staff`, {
         user_id: Number(data.userId),
       });
       await reload();

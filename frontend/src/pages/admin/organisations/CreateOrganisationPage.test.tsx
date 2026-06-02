@@ -117,7 +117,7 @@ describe("CreateOrganisationPage", () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(postSpy).toHaveBeenCalledWith("/organizations", {
+        expect(postSpy).toHaveBeenCalledWith("/organisations", {
           name: "Test Hospital",
           type: "hospital_team",
           location: "London",

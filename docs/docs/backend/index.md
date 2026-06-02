@@ -121,7 +121,7 @@ All functions are organised under the `/api` prefix:
 - Verify email (`POST /api/auth/verify-email`)
 - Resend verification (`POST /api/auth/resend-verification`)
 - Set up TOTP two-factor authentication (`POST /api/auth/totp/setup`, `/verify`, `/disable`)
-- List organisations for registration (`GET /api/auth/organizations`)
+- List organisations for registration (`GET /api/auth/organisations`)
 - List public teaching modules (`GET /api/teaching/public/modules`)
 - Validate clinical lead (`POST /api/teaching/public/validate-clinical-lead`)
 
@@ -179,15 +179,15 @@ All functions are organised under the `/api` prefix:
 
 ### Organisations (Admin)
 
-- **List organisations** (`GET /api/organizations`): List all organisations
-- **Create organisation** (`POST /api/organizations`): Create new organisation
-- **View organisation** (`GET /api/organizations/{id}`): Get organisation with staff/patient lists
-- **Update organisation** (`PUT /api/organizations/{id}`): Update organisation details
-- **Delete organisation** (`DELETE /api/organizations/{id}`): Delete organisation
+- **List organisations** (`GET /api/organisations`): List all organisations
+- **Create organisation** (`POST /api/organisations`): Create new organisation
+- **View organisation** (`GET /api/organisations/{id}`): Get organisation with staff/patient lists
+- **Update organisation** (`PUT /api/organisations/{id}`): Update organisation details
+- **Delete organisation** (`DELETE /api/organisations/{id}`): Delete organisation
 - **Manage membership**: Add/remove staff and patients
-- **Link/unlink sites**: `POST/DELETE /api/organizations/{org_id}/sites/{site_id}`
-- **List features** (`GET /api/organizations/{id}/features`): List organisation feature flags
-- **Toggle feature** (`PUT /api/organizations/{id}/features/{key}`): Enable or disable a feature
+- **Link/unlink sites**: `POST/DELETE /api/organisations/{org_id}/sites/{site_id}`
+- **List features** (`GET /api/organisations/{id}/features`): List organisation feature flags
+- **Toggle feature** (`PUT /api/organisations/{id}/features/{key}`): Enable or disable a feature
 
 ### CBAC (Competency-Based Access Control)
 
@@ -214,8 +214,8 @@ All functions are organised under the `/api` prefix:
 - **Update site** (`PUT /api/sites/{id}`): Update site details
 - **Toggle active** (`PATCH /api/sites/{id}/active`): Activate/deactivate a site
 - **Delete site** (`DELETE /api/sites/{id}`): Delete a site
-- **Link site to org** (`POST /api/organizations/{org_id}/sites/{site_id}`): Link site to organisation
-- **Unlink site from org** (`DELETE /api/organizations/{org_id}/sites/{site_id}`): Unlink site from organisation
+- **Link site to org** (`POST /api/organisations/{org_id}/sites/{site_id}`): Link site to organisation
+- **Unlink site from org** (`DELETE /api/organisations/{org_id}/sites/{site_id}`): Unlink site from organisation
 - **Add site staff** (`POST /api/sites/{site_id}/staff`): Add staff member to site
 - **Remove site staff** (`DELETE /api/sites/{site_id}/staff/{user_id}`): Remove staff from site
 

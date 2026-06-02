@@ -85,7 +85,7 @@ export default function AddPatientToOrgPage() {
     setError(null);
 
     try {
-      await api.post(`/organizations/${id}/patients`, {
+      await api.post(`/organisations/${id}/patients`, {
         patient_id: selectedPatientId,
       });
       setSuccess(true);

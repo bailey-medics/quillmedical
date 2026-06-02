@@ -737,7 +737,7 @@ describe("OrganisationAdminPage", () => {
       await user.click(screen.getByRole("button", { name: "Remove" }));
 
       await waitFor(() => {
-        expect(delSpy).toHaveBeenCalledWith("/organizations/3/staff/20");
+        expect(delSpy).toHaveBeenCalledWith("/organisations/3/staff/20");
       });
     });
 
