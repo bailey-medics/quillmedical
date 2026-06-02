@@ -4,25 +4,24 @@
 
 - **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL core DB
 - **Frontend**: React 19 + TypeScript + Vite + Mantine UI (Yarn 4, **never use npm**)
-- **Healthcare**: HAPI FHIR (demographics), EHRbase (clinical letters)
-- **Infrastructure**: Docker Compose, Caddy reverse proxy, GCS (public site)
+- **Healthcare**: HAPI FHIR (demographics) and EHRbase (all other clinical data)
+- **Infrastructure**: Docker Compose, GCP Cloud Run + Global HTTPS Load Balancer (prod), Caddy (dev proxy + prod static serving), GCS (public site)
 
 ## Key Commands
 
-see the `Justfile` if you want to know more.
+See the `Justfile` if you want to know more.
 
 ## Testing Requirements
 
 - **ALWAYS create/update tests** when changing code
-- **ALWAYS run tests inside Docker containers** — never run tests directly on the host
-  - Backend: `docker exec quill_backend sh -lc "pytest -q -m 'not integration'"` (or `just ub`)
-  - Frontend: `docker exec quill_frontend sh -lc "yarn unit-test:run"` (or `just uf`)
-  - Storybook build: `docker exec quill_frontend sh -lc "yarn storybook:build"`
-  - This ensures tests run in the same Linux environment as CI
+- **ALWAYS run backend and frontend unit tests inside Docker containers** — never run them directly on the host
+  - Backend: `just ub` (all unit tests) or `just ub -k "test_name"` (targeted)
+  - Frontend: `just uf` (all unit tests) or `just uf src/path/to/file.test.tsx` (targeted)
+  - Prefer targeted tests during development; run the full suite only if CI is failing
+- Storybook: runs on the host — `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
 - Backend: pytest with fixtures from `conftest.py`
 - Frontend: vitest + @testing-library/react with `renderWithMantine`/`renderWithRouter`
 - Cover: props variations, edge cases, null/undefined, interactions, loading/error states
-- Run tests before completing work
 
 ## Conventions
 
@@ -53,7 +52,7 @@ see the `Justfile` if you want to know more.
 
 ### Frontend (React + TypeScript)
 
-- **API**: Use `frontend/src/lib/api.ts` client (auto-retry on 401, never raw `fetch`)
+- **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) — never raw `fetch` except connectivity checks
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
