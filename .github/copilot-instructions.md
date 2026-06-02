@@ -145,7 +145,7 @@ System permissions have **nothing to do with clinical data access** — that is 
 
 - Backend: `backend/app/system_permissions/` — `check_permission_level(user_permission, required)` for hierarchy checks
 - Frontend: `<RequirePermission level="admin">` guard in `src/auth/RequirePermission.tsx`
-- Admin gate pattern in routes: `if u.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)`
+- Admin gate pattern in routes: `if current_user.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)`
 
 #### CBAC (competency-based access control)
 
@@ -186,6 +186,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 - Backend: `push.py` (subscription management), `push_send.py` (notification sending) — VAPID keys via `just vapid-key`
 - Frontend: `EnableNotificationsButton` component in `components/notifications/`
+- Note, this has not yet been built out fully and tested.
 
 ## Programming Principles
 
@@ -234,7 +235,8 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 #### Security-First
 
 - Whitelist over blacklist, least privilege, audit logging (no PHI in logs)
-- Authentication on all endpoints, authorisation checks, rate limiting
+- Explicit auth decision on all endpoints — no endpoint unprotected by accident (health, login, register are intentionally public)
+- Authorisation checks (system permissions + CBAC), rate limiting
 
 #### Healthcare-Specific
 
@@ -249,26 +251,24 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 **CBAC-protected endpoint**: Add `Depends(has_competency("competency_id"))` to route params — raises 403 if user lacks competency
 
-**Admin-only endpoint**: Check `if u.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)` in route body
+**Admin-only endpoint**: Check `if current_user.system_permissions not in ["admin", "superadmin"]: raise HTTPException(403)` in route body
 
 **Frontend API**: Use `api` from `@/lib/api.ts` (never raw `fetch`)
 
 **Database models**: Define in `backend/app/models.py`, then `just migrate "description"`
-
-**New component**: Create in `frontend/src/components/<name>/`, add `Component.stories.tsx` and `Component.test.tsx`, update catalogue above
 
 **New base profession**: Add entry to `shared/base-professions.yaml` with `id`, `display_name`, `description`, `default_system_permission`, `base_competencies`, and `notes`. Then run `yarn generate:types` in `frontend/`.
 
 ## Key Files
 
 - `backend/app/main.py`: FastAPI routes and dependency constants
-- `backend/app/models.py`: SQLAlchemy models (User, Role, Organisation, PatientMetadata)
+- `backend/app/models.py`: SQLAlchemy models (User, Role, Organisation, teaching)
 - `backend/app/security.py`: JWT, CSRF, TOTP, Argon2 password utilities
 - `backend/app/config.py`: Pydantic Settings (DB URLs, JWT config, FHIR/EHRbase URLs)
 - `backend/app/db/`: Database session management (`get_core_db`)
 - `backend/app/cbac/`: Competency-based access control module
 - `backend/app/system_permissions/`: 4-level permission hierarchy
-- `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`, `letters.py`)
+- `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`)
 - `frontend/src/main.tsx`: Router config with `createBrowserRouter` and all route definitions
 - `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequirePermission, RequireClinical, RequireFeature
 - `frontend/src/lib/api.ts`: API client (auto-retry 401, CSRF, credential cookies)
@@ -285,7 +285,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 ### Security
 
 - Never log PHI in errors/logs/notifications
-- Enforce RBAC + CBAC at DB and application level
+- Enforce RBAC + CBAC at API, DB and application level
 - Use `SecretStr` for secrets, never commit `.env` files
 
 ### Git

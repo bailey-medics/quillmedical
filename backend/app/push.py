@@ -52,7 +52,7 @@ class PushSubscriptionIn(BaseModel):
 @router.post("/subscribe")
 def subscribe(
     sub: PushSubscriptionIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = Depends(get_core_db),
 ) -> dict[str, bool | int]:
     """Register a new push notification subscription.
@@ -62,7 +62,7 @@ def subscribe(
 
     Args:
         sub: Push subscription from browser's Push API.
-        u: Authenticated user (injected via DEP_CURRENT_USER override).
+        current_user: Authenticated user (injected via DEP_CURRENT_USER override).
         db: Database session.
 
     Returns:
@@ -74,7 +74,7 @@ def subscribe(
     # Check if subscription already exists for this user + endpoint
     existing = db.scalar(
         select(PushSubscriptionModel).where(
-            PushSubscriptionModel.user_id == u.id,
+            PushSubscriptionModel.user_id == current_user.id,
             PushSubscriptionModel.endpoint == sub.endpoint,
         )
     )
@@ -86,7 +86,7 @@ def subscribe(
     else:
         db.add(
             PushSubscriptionModel(
-                user_id=u.id,
+                user_id=current_user.id,
                 endpoint=sub.endpoint,
                 keys_p256dh=sub.keys.p256dh,
                 keys_auth=sub.keys.auth,
@@ -97,7 +97,7 @@ def subscribe(
 
     count = db.scalar(
         select(func.count(PushSubscriptionModel.id)).where(
-            PushSubscriptionModel.user_id == u.id
+            PushSubscriptionModel.user_id == current_user.id
         )
     )
     return {"ok": True, "count": count or 0}

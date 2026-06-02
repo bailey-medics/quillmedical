@@ -494,7 +494,7 @@ def health_check() -> dict[str, Any]:
     }
 
 
-def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
+def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     """Get Currently Authenticated User.
 
     FastAPI dependency that extracts and validates the JWT access token from
@@ -535,7 +535,7 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     return user
 
 
-DEP_CURRENT_USER = Depends(current_user)
+DEP_CURRENT_USER = Depends(get_current_user)
 
 
 def require_roles(*need: str) -> Callable[[Request, User], User]:
@@ -568,7 +568,9 @@ def require_roles(*need: str) -> Callable[[Request, User], User]:
     return dep
 
 
-def require_csrf(request: Request, u: User = DEP_CURRENT_USER) -> User:
+def require_csrf(
+    request: Request, current_user: User = DEP_CURRENT_USER
+) -> User:
     """Validate CSRF Token.
 
     FastAPI dependency that validates CSRF tokens to protect against cross-site
@@ -584,7 +586,7 @@ def require_csrf(request: Request, u: User = DEP_CURRENT_USER) -> User:
 
     Args:
         request: Incoming request with headers and cookies.
-        u: Current authenticated user from JWT.
+        current_user: Current authenticated user from JWT.
 
     Returns:
         User: The validated user (pass-through for chaining).
@@ -598,10 +600,10 @@ def require_csrf(request: Request, u: User = DEP_CURRENT_USER) -> User:
         not header
         or not cookie
         or header != cookie
-        or not verify_csrf(cookie, u.username)
+        or not verify_csrf(cookie, current_user.username)
     ):
         raise HTTPException(403, "CSRF failed")
-    return u
+    return current_user
 
 
 DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
@@ -1772,7 +1774,9 @@ class TotpSetupOut(BaseModel):
 @router.post("/auth/totp/setup", response_model=TotpSetupOut)
 @limiter.limit("5/minute")
 def totp_setup(
-    request: Request, u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+    request: Request,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
 ) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
 
@@ -1792,7 +1796,7 @@ def totp_setup(
     The frontend should render the URI as a QR code for an authenticator app.
 
     Args:
-        u: Currently authenticated user from JWT.
+        current_user: Currently authenticated user from JWT.
         db: Database session for updating user.
 
     Returns:
@@ -1805,15 +1809,15 @@ def totp_setup(
     Returns:
         TotpSetupOut: Provisioning URI encoded with issuer and account name.
     """
-    if not getattr(u, "totp_secret", None):
-        u.totp_secret = generate_totp_secret()
+    if not getattr(current_user, "totp_secret", None):
+        current_user.totp_secret = generate_totp_secret()
 
-    db.add(u)
+    db.add(current_user)
     db.commit()
     issuer = getattr(settings, "PROJECT_NAME", "Quill")
     uri = totp_provisioning_uri(
-        u.totp_secret or "",
-        u.username,
+        current_user.totp_secret or "",
+        current_user.username,
         issuer=issuer,
     )
     return TotpSetupOut(provision_uri=uri)
@@ -1840,7 +1844,7 @@ class TotpVerifyIn(BaseModel):
 def totp_verify(
     request: Request,
     payload: TotpVerifyIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Verify TOTP and Enable Two-Factor.
@@ -1858,7 +1862,7 @@ def totp_verify(
 
     Args:
         payload: Request containing the 6-digit TOTP code.
-        u: Currently authenticated user from JWT.
+        current_user: Currently authenticated user from JWT.
         db: Database session for updating user.
 
     Returns:
@@ -1869,7 +1873,7 @@ def totp_verify(
             - No TOTP secret exists (must call /auth/totp/setup first)
             - TOTP code is invalid or expired
     """
-    if not getattr(u, "totp_secret", None):
+    if not getattr(current_user, "totp_secret", None):
         raise HTTPException(
             status_code=400,
             detail={
@@ -1878,15 +1882,15 @@ def totp_verify(
             },
         )
     if not verify_totp_code(
-        u.totp_secret or "",
+        current_user.totp_secret or "",
         payload.code,
     ):
         raise HTTPException(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
         )
-    u.is_totp_enabled = True
-    db.add(u)
+    current_user.is_totp_enabled = True
+    db.add(current_user)
     db.commit()
     return {"detail": "enabled"}
 
@@ -1896,7 +1900,7 @@ def totp_verify(
 def totp_disable(
     request: Request,
     data: TotpDisableIn,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Disable Two-Factor Authentication.
@@ -1911,7 +1915,7 @@ def totp_disable(
 
     Args:
         data: Payload containing the user's current password.
-        u: Currently authenticated user (with CSRF validation).
+        current_user: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
@@ -1920,11 +1924,11 @@ def totp_disable(
     Raises:
         HTTPException: 400 if password is incorrect.
     """
-    if not verify_password(data.password, u.password_hash):
+    if not verify_password(data.password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect password")
-    u.is_totp_enabled = False
-    u.totp_secret = None
-    db.add(u)
+    current_user.is_totp_enabled = False
+    current_user.totp_secret = None
+    db.add(current_user)
     db.commit()
     return {"detail": "disabled"}
 
@@ -1933,7 +1937,7 @@ def totp_disable(
 def change_password(
     data: ChangePasswordIn,
     response: Response,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Change the current user's password.
@@ -1945,7 +1949,7 @@ def change_password(
     Args:
         data: Current and new password payload.
         response: FastAPI response for setting new auth cookies.
-        u: Currently authenticated user (with CSRF validation).
+        current_user: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
@@ -1955,11 +1959,11 @@ def change_password(
         HTTPException: 400 if current password is wrong or new password
             does not meet requirements.
     """
-    if not verify_password(data.current_password, u.password_hash):
+    if not verify_password(data.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=400, detail="Current password is incorrect"
         )
-    if verify_password(data.new_password, u.password_hash):
+    if verify_password(data.new_password, current_user.password_hash):
         raise HTTPException(
             status_code=400,
             detail="New password must be different from current password",
@@ -1969,19 +1973,21 @@ def change_password(
             status_code=400,
             detail="New password must be at least 8 characters",
         )
-    u.password_hash = hash_password(data.new_password)
-    u.token_version += 1  # Invalidate all existing sessions
-    db.add(u)
+    current_user.password_hash = hash_password(data.new_password)
+    current_user.token_version += 1  # Invalidate all existing sessions
+    db.add(current_user)
     db.commit()
 
     # Re-issue cookies so the current session stays authenticated
-    roles = [r.name for r in u.roles]
-    competencies = u.get_final_competencies()
+    roles = [r.name for r in current_user.roles]
+    competencies = current_user.get_final_competencies()
     access = create_jwt_with_competencies(
-        u.username, roles, competencies, u.token_version
+        current_user.username, roles, competencies, current_user.token_version
     )
-    refresh = create_refresh_token(u.username, u.token_version)
-    xsrf = make_csrf(u.username)
+    refresh = create_refresh_token(
+        current_user.username, current_user.token_version
+    )
+    xsrf = make_csrf(current_user.username)
     set_auth_cookies(response, access, refresh, xsrf)
 
     return {"detail": "Password changed"}
@@ -2009,7 +2015,7 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
 
 @router.get("/auth/me")
 def me(
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Get Current User Profile.
@@ -2019,7 +2025,7 @@ def me(
     features from the user's primary organisation.
 
     Args:
-        u: Currently authenticated user from JWT.
+        current_user: Currently authenticated user from JWT.
         db: Database session.
 
     Returns:
@@ -2038,7 +2044,7 @@ def me(
     direct_org_ids = set(
         db.execute(
             select(organisation_staff_member.c.organisation_id).where(
-                organisation_staff_member.c.user_id == u.id,
+                organisation_staff_member.c.user_id == current_user.id,
             )
         )
         .scalars()
@@ -2052,7 +2058,7 @@ def me(
                 site_staff_member,
                 site_staff_member.c.site_id == organisation_site.c.site_id,
             )
-            .where(site_staff_member.c.user_id == u.id)
+            .where(site_staff_member.c.user_id == current_user.id)
         )
         .scalars()
         .all()
@@ -2074,23 +2080,23 @@ def me(
         enabled_features = list(features)
 
     return {
-        "id": u.id,
-        "username": u.username,
-        "name": u.full_name,
-        "email": u.email,
-        "roles": [r.name for r in u.roles],
-        "system_permissions": u.system_permissions,
-        "totp_enabled": u.is_totp_enabled,
+        "id": current_user.id,
+        "username": current_user.username,
+        "name": current_user.full_name,
+        "email": current_user.email,
+        "roles": [r.name for r in current_user.roles],
+        "system_permissions": current_user.system_permissions,
+        "totp_enabled": current_user.is_totp_enabled,
         "enabled_features": enabled_features,
         "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
-        "competencies": u.get_final_competencies(),
+        "competencies": current_user.get_final_competencies(),
     }
 
 
 @router.patch("/auth/profile")
 def update_profile(
     data: UpdateProfileIn,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Update the current user's profile.
@@ -2100,7 +2106,7 @@ def update_profile(
 
     Args:
         data: Profile update payload (full_name, email — both optional).
-        u: Currently authenticated user (with CSRF validation).
+        current_user: Currently authenticated user (with CSRF validation).
         db: Database session for updating user.
 
     Returns:
@@ -2113,23 +2119,25 @@ def update_profile(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     if data.full_name is not None:
-        u.full_name = data.full_name.strip()
+        current_user.full_name = data.full_name.strip()
 
     if data.email is not None:
         new_email = data.email.strip().lower()
-        if new_email != (u.email or "").strip().lower():
+        if new_email != (current_user.email or "").strip().lower():
             existing = db.execute(
-                select(User.id).where(User.email == new_email, User.id != u.id)
+                select(User.id).where(
+                    User.email == new_email, User.id != current_user.id
+                )
             ).scalar_one_or_none()
             if existing:
                 raise HTTPException(
                     status_code=400,
                     detail="Email address is already in use",
                 )
-            u.email = new_email
-            u.email_verified = False
+            current_user.email = new_email
+            current_user.email_verified = False
 
-    db.add(u)
+    db.add(current_user)
     db.commit()
     return {"detail": "Profile updated"}
 
@@ -2139,7 +2147,7 @@ def list_users(
     patient_id: str | None = None,
     permission_level: str | None = None,
     exclude_org: int | None = None,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """List users, optionally filtered by shared org with a patient.
@@ -2158,7 +2166,7 @@ def list_users(
         patient_id: Optional FHIR patient ID to filter by shared org.
         permission_level: Optional minimum permission level to filter by.
         exclude_org: Optional organisation ID to exclude existing members.
-        u: Currently authenticated user.
+        current_user: Currently authenticated user.
         db: Database session.
 
     Returns:
@@ -2208,7 +2216,7 @@ def list_users(
         }
 
     # Unfiltered mode: admin/superadmin only
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -2235,8 +2243,8 @@ def list_users(
 
     # Admins only see users in their own organisations;
     # superadmins see all users.
-    if u.system_permissions == "admin":
-        admin_orgs = get_user_org_ids(db, u.id)
+    if current_user.system_permissions == "admin":
+        admin_orgs = get_user_org_ids(db, current_user.id)
         org_scoped_ids = get_org_staff_ids(db, admin_orgs)
 
         # Also include site-only members for sites linked to admin's orgs
@@ -2512,7 +2520,7 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
 def list_patients(
     include_inactive: bool = False,
     scope: str | None = None,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """List patients from FHIR, filtered by organisation membership.
@@ -2524,7 +2532,7 @@ def list_patients(
     Args:
         include_inactive: If true, include deactivated patients (admin only).
         scope: Pass "admin" to bypass org filtering (admin/superadmin only).
-        u: Currently authenticated user.
+        current_user: Currently authenticated user.
         db: Database session.
 
     Returns:
@@ -2539,14 +2547,14 @@ def list_patients(
         metadata_map = {m.patient_id: m.is_active for m in metadata_records}
 
         # Determine which patients are accessible
-        is_admin = u.system_permissions in ["admin", "superadmin"]
+        is_admin = current_user.system_permissions in ["admin", "superadmin"]
         admin_scope = scope == "admin" and is_admin
 
         accessible_ids: set[str] | None = None
         if admin_scope:
             accessible_ids = None  # no filtering
         else:
-            accessible_ids = get_accessible_patient_ids(db, u)
+            accessible_ids = get_accessible_patient_ids(db, current_user)
 
         # Enrich patients with activation status and filter
         enriched_patients = []
@@ -2582,7 +2590,9 @@ def list_patients(
     ],
 )
 def upsert_demographics(
-    patient_id: str, demographics: dict[str, Any], u: User = DEP_CURRENT_USER
+    patient_id: str,
+    demographics: dict[str, Any],
+    current_user: User = DEP_CURRENT_USER,
 ) -> dict[str, str | Any]:
     """Update Patient Demographics in FHIR.
 
@@ -2594,7 +2604,7 @@ def upsert_demographics(
     Args:
         patient_id: FHIR Patient resource ID to update.
         demographics: Dictionary of FHIR Patient fields to update.
-        u: Currently authenticated user (unused but validates auth).
+        current_user: Currently authenticated user (unused but validates auth).
 
     Returns:
         dict: Update response with keys:
@@ -2622,7 +2632,7 @@ def upsert_demographics(
     dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def get_demographics(
-    patient_id: str, u: User = DEP_CURRENT_USER
+    patient_id: str, current_user: User = DEP_CURRENT_USER
 ) -> dict[str, str | Any]:
     """Get Patient Demographics from FHIR.
 
@@ -2632,7 +2642,7 @@ def get_demographics(
 
     Args:
         patient_id: FHIR Patient resource ID to retrieve.
-        u: Currently authenticated user (any role can read demographics).
+        current_user: Currently authenticated user (any role can read demographics).
 
     Returns:
         dict: Patient demographics response with keys:
@@ -2710,7 +2720,9 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
     dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def read_letter(
-    patient_id: str, composition_uid: str, u: User = DEP_CURRENT_USER
+    patient_id: str,
+    composition_uid: str,
+    current_user: User = DEP_CURRENT_USER,
 ) -> dict[str, Any]:
     """Read Specific Clinical Letter from OpenEHR.
 
@@ -2721,7 +2733,7 @@ def read_letter(
     Args:
         patient_id: FHIR Patient ID the letter belongs to.
         composition_uid: OpenEHR composition UID from letter creation.
-        u: Currently authenticated user (any role can read letters).
+        current_user: Currently authenticated user (any role can read letters).
 
     Returns:
         dict: Letter retrieval response with keys:
@@ -2753,7 +2765,7 @@ def read_letter(
     dependencies=[DEP_REQUIRE_CLINICAL],
 )
 def list_letters(
-    patient_id: str, u: User = DEP_CURRENT_USER
+    patient_id: str, current_user: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
     """List All Clinical Letters for Patient.
 
@@ -2764,7 +2776,7 @@ def list_letters(
 
     Args:
         patient_id: FHIR Patient ID to retrieve letters for.
-        u: Currently authenticated user (any role can list letters).
+        current_user: Currently authenticated user (any role can list letters).
 
     Returns:
         dict: Letter list response with keys:
@@ -2817,7 +2829,7 @@ class FHIRPatientCreateIn(BaseModel):
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def create_patient_in_fhir(
-    data: FHIRPatientCreateIn, u: User = DEP_CURRENT_USER
+    data: FHIRPatientCreateIn, current_user: User = DEP_CURRENT_USER
 ) -> dict[str, Any]:
     """Create New Patient in FHIR Server.
 
@@ -2827,7 +2839,7 @@ def create_patient_in_fhir(
 
     Args:
         data: Patient name and optional ID.
-        u: Currently authenticated user (any role can create patients).
+        current_user: Currently authenticated user (any role can create patients).
 
     Returns:
         dict: Complete FHIR Patient resource with assigned ID.
@@ -2856,7 +2868,9 @@ def create_patient_in_fhir(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL],
 )
-def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
+def get_patient(
+    patient_id: str, current_user: User = DEP_CURRENT_USER
+) -> dict[str, Any]:
     """Get Single Patient from FHIR.
 
     Retrieves a specific patient's demographics from the FHIR server by ID.
@@ -2866,7 +2880,7 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
 
     Args:
         patient_id: FHIR Patient resource ID to retrieve.
-        u: Currently authenticated user (any role can view patients).
+        current_user: Currently authenticated user (any role can view patients).
 
     Returns:
         dict: Complete FHIR Patient resource.
@@ -2897,7 +2911,7 @@ def get_patient(patient_id: str, u: User = DEP_CURRENT_USER) -> dict[str, Any]:
 def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
 ) -> dict[str, Any]:
     """Update Patient in FHIR.
 
@@ -2908,7 +2922,7 @@ def update_patient(
     Args:
         patient_id: FHIR Patient resource ID to update.
         data: Updated patient demographics.
-        u: Currently authenticated user (any role can update patients).
+        current_user: Currently authenticated user (any role can update patients).
 
     Returns:
         dict: Complete updated FHIR Patient resource.
@@ -2986,7 +3000,7 @@ def update_patient(
 )
 def get_patient_metadata(
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Get Patient Metadata.
@@ -2996,7 +3010,7 @@ def get_patient_metadata(
 
     Args:
         patient_id: FHIR Patient resource ID.
-        u: Currently authenticated user.
+        current_user: Currently authenticated user.
         db: Database session.
 
     Returns:
@@ -3028,7 +3042,7 @@ def get_patient_metadata(
 )
 def deactivate_patient(
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Deactivate Patient Record.
@@ -3039,7 +3053,7 @@ def deactivate_patient(
 
     Args:
         patient_id: FHIR Patient resource ID to deactivate.
-        u: Currently authenticated user.
+        current_user: Currently authenticated user.
         db: Database session.
 
     Returns:
@@ -3053,7 +3067,7 @@ def deactivate_patient(
         HTTPException: 404 if patient not found in FHIR.
     """
     # Check permissions
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Admin or superadmin permission required to deactivate patients",
@@ -3096,7 +3110,7 @@ def deactivate_patient(
 )
 def activate_patient(
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Activate Patient Record.
@@ -3106,7 +3120,7 @@ def activate_patient(
 
     Args:
         patient_id: FHIR Patient resource ID to activate.
-        u: Currently authenticated user.
+        current_user: Currently authenticated user.
         db: Database session.
 
     Returns:
@@ -3120,7 +3134,7 @@ def activate_patient(
         HTTPException: 404 if patient not found in FHIR.
     """
     # Check permissions
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Admin or superadmin permission required to activate patients",
@@ -3163,7 +3177,7 @@ def activate_patient(
 )
 def shared_organisations_endpoint(
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Return organisations shared between the current user and a patient.
@@ -3173,13 +3187,13 @@ def shared_organisations_endpoint(
 
     Args:
         patient_id: FHIR Patient resource ID.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    shared_ids = get_shared_org_ids(db, u.id, patient_id)
+    shared_ids = get_shared_org_ids(db, current_user.id, patient_id)
     if not shared_ids:
         return {"organisations": []}
 
@@ -3327,7 +3341,7 @@ async def update_my_competencies(
 
 @router.get("/organisations")
 def list_organisations(
-    u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
+    current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> dict[str, Any]:
     """List All Organisations.
 
@@ -3338,7 +3352,7 @@ def list_organisations(
     Requires admin or superadmin system permissions.
 
     Args:
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3350,17 +3364,17 @@ def list_organisations(
         HTTPException: 500 if database query fails.
     """
     # Check permissions
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
         )
 
     try:
-        if u.system_permissions == "superadmin":
+        if current_user.system_permissions == "superadmin":
             organisations = db.execute(select(Organisation)).scalars().all()
         else:
-            user_org_ids = get_user_org_ids(db, u.id)
+            user_org_ids = get_user_org_ids(db, current_user.id)
             organisations = (
                 db.execute(
                     select(Organisation).where(
@@ -3390,7 +3404,7 @@ def list_organisations(
 @router.get("/organisations/{org_id}")
 def get_organisation(
     org_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Get Organisation Details.
@@ -3402,7 +3416,7 @@ def get_organisation(
 
     Args:
         org_id: ID of the organisation to retrieve.
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3413,7 +3427,7 @@ def get_organisation(
         HTTPException: 404 if organisation not found.
     """
     # Check permissions
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3425,8 +3439,8 @@ def get_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only view orgs they belong to
-    if u.system_permissions == "admin":
-        user_org_ids = get_user_org_ids(db, u.id)
+    if current_user.system_permissions == "admin":
+        user_org_ids = get_user_org_ids(db, current_user.id)
         if org_id not in user_org_ids:
             raise HTTPException(
                 status_code=404,
@@ -3551,7 +3565,7 @@ class UpdateOrganisationIn(BaseModel):
 def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update Organisation.
@@ -3563,7 +3577,7 @@ def update_organisation(
     Args:
         org_id: ID of the organisation to update.
         body: Fields to update (name, type, location). Only provided fields are updated.
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3574,7 +3588,7 @@ def update_organisation(
         HTTPException: 403 if user lacks admin/superadmin permissions.
         HTTPException: 404 if organisation not found.
     """
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3584,8 +3598,8 @@ def update_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -3626,7 +3640,7 @@ def update_organisation(
 @router.post("/organisations")
 def create_organisation(
     body: CreateOrganisationIn,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Create Organisation.
@@ -3637,7 +3651,7 @@ def create_organisation(
 
     Args:
         body: Organisation details (name, type, optional location).
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3647,7 +3661,7 @@ def create_organisation(
         HTTPException: 400 if type is invalid.
         HTTPException: 403 if user lacks admin/superadmin permissions.
     """
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3696,7 +3710,7 @@ class AddStaffIn(BaseModel):
 @router.delete("/organisations/{org_id}")
 def delete_organisation(
     org_id: int,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Delete Organisation.
@@ -3707,7 +3721,7 @@ def delete_organisation(
 
     Args:
         org_id: ID of the organisation to delete.
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3717,7 +3731,7 @@ def delete_organisation(
         HTTPException: 403 if user lacks admin/superadmin permissions.
         HTTPException: 404 if organisation not found.
     """
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3736,7 +3750,7 @@ def delete_organisation(
 def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
-    u: User = DEP_REQUIRE_CSRF,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Add Staff Member to Organisation.
@@ -3748,7 +3762,7 @@ def add_staff_to_organisation(
     Args:
         org_id: ID of the organisation.
         body: Staff member details (user_id).
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3759,7 +3773,7 @@ def add_staff_to_organisation(
         HTTPException: 404 if organisation or user not found.
         HTTPException: 409 if user is already a staff member.
     """
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3770,8 +3784,8 @@ def add_staff_to_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -3838,7 +3852,7 @@ class AddPatientIn(BaseModel):
 def add_patient_to_organisation(
     org_id: int,
     body: AddPatientIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Add Patient to Organisation.
@@ -3850,7 +3864,7 @@ def add_patient_to_organisation(
     Args:
         org_id: ID of the organisation.
         body: Patient details (patient_id).
-        u: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
@@ -3861,7 +3875,7 @@ def add_patient_to_organisation(
         HTTPException: 404 if organisation not found.
         HTTPException: 409 if patient is already a member.
     """
-    if u.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions not in ["admin", "superadmin"]:
         raise HTTPException(
             status_code=403,
             detail="Requires admin or superadmin permissions",
@@ -3872,8 +3886,8 @@ def add_patient_to_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -3913,7 +3927,7 @@ def add_patient_to_organisation(
 def remove_staff_from_organisation(
     org_id: int,
     user_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Remove a staff member from an organisation.
@@ -3923,18 +3937,18 @@ def remove_staff_from_organisation(
     Args:
         org_id: Organisation ID.
         user_id: User ID to remove.
-        u: Authenticated admin user.
+        current_user: Authenticated admin user.
         db: Database session.
 
     Returns:
         dict: Confirmation.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -3965,7 +3979,7 @@ def remove_staff_from_organisation(
 def remove_patient_from_organisation(
     org_id: int,
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Remove a patient from an organisation.
@@ -3975,18 +3989,18 @@ def remove_patient_from_organisation(
     Args:
         org_id: Organisation ID.
         patient_id: FHIR Patient resource ID.
-        u: Authenticated admin user.
+        current_user: Authenticated admin user.
         db: Database session.
 
     Returns:
         dict: Confirmation.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4018,14 +4032,14 @@ def remove_patient_from_organisation(
 @router.get("/organisations/{org_id}/features")
 def list_org_features(
     org_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, list[dict[str, Any]]]:
     """List enabled features for an organisation.
 
     Admin/superadmin only.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     org = db.get(Organisation, org_id)
@@ -4033,8 +4047,8 @@ def list_org_features(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only view orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4059,7 +4073,7 @@ def toggle_org_feature(
     org_id: int,
     feature_key: str,
     body: FeatureToggleIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Enable or disable a feature on an organisation.
@@ -4067,7 +4081,7 @@ def toggle_org_feature(
     Admin/superadmin only.  When ``enabled=true`` a row is created;
     when ``enabled=false`` the row is deleted.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     org = db.get(Organisation, org_id)
@@ -4075,8 +4089,8 @@ def toggle_org_feature(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
-    if u.system_permissions == "admin":
-        if org_id not in get_user_org_ids(db, u.id):
+    if current_user.system_permissions == "admin":
+        if org_id not in get_user_org_ids(db, current_user.id):
             raise HTTPException(
                 status_code=404, detail="Organisation not found"
             )
@@ -4094,7 +4108,7 @@ def toggle_org_feature(
         feature = OrganisationFeature(
             organisation_id=org_id,
             feature_key=feature_key,
-            enabled_by=u.id,
+            enabled_by=current_user.id,
         )
         db.add(feature)
         db.commit()
@@ -4147,11 +4161,11 @@ VALID_SITE_TYPES = {
 
 @router.get("/sites")
 def list_sites(
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, list[dict[str, Any]]]:
     """List all sites. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     rows = db.execute(select(Site).order_by(Site.name)).scalars().all()
@@ -4176,11 +4190,11 @@ def list_sites(
 @router.post("/sites", dependencies=[DEP_REQUIRE_CSRF])
 def create_site(
     body: CreateSiteIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Create a new site. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     if body.type not in VALID_SITE_TYPES:
@@ -4222,11 +4236,11 @@ def create_site(
 @router.get("/sites/{site_id}")
 def get_site(
     site_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Get site details including staff. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     site = db.get(Site, site_id)
@@ -4285,11 +4299,11 @@ def get_site(
 def update_site(
     site_id: int,
     body: UpdateSiteIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Update a site. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     site = db.get(Site, site_id)
@@ -4341,11 +4355,11 @@ def update_site(
 def toggle_site_active(
     site_id: int,
     body: dict[str, bool],
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Toggle a site's active status. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     site = db.get(Site, site_id)
@@ -4374,11 +4388,11 @@ def toggle_site_active(
 @router.delete("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
 def delete_site(
     site_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Delete a site. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     site = db.get(Site, site_id)
@@ -4397,11 +4411,11 @@ def delete_site(
 def link_site_to_org(
     org_id: int,
     site_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Link a site to an organisation. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     org = db.get(Organisation, org_id)
@@ -4438,11 +4452,11 @@ def link_site_to_org(
 def unlink_site_from_org(
     org_id: int,
     site_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Unlink a site from an organisation. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     result = db.execute(
@@ -4467,7 +4481,7 @@ def unlink_site_from_org(
 def add_site_staff(
     site_id: int,
     body: dict[str, Any],
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Add a staff member to a site. Admin/superadmin only.
@@ -4475,7 +4489,7 @@ def add_site_staff(
     Body: {user_id: int, role: str}
     Role must be one of: clinical_lead, staff, trainee.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     site = db.get(Site, site_id)
@@ -4553,11 +4567,11 @@ def add_site_staff(
 def remove_site_staff(
     site_id: int,
     user_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Remove a staff member from a site. Admin/superadmin only."""
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     result = db.execute(
@@ -4582,7 +4596,7 @@ def remove_site_staff(
 def link_patient_to_user(
     user_id: int,
     body: dict[str, str],
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Link a user account to a FHIR patient record.
@@ -4592,13 +4606,13 @@ def link_patient_to_user(
     Args:
         user_id: User ID.
         body: Must contain ``fhir_patient_id``.
-        u: Authenticated admin user.
+        current_user: Authenticated admin user.
         db: Database session.
 
     Returns:
         dict: Confirmation with user and patient IDs.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     fhir_patient_id = body.get("fhir_patient_id")
@@ -4645,7 +4659,7 @@ def link_patient_to_user(
 def invite_external_user(
     patient_id: str,
     body: InviteExternalIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """Generate an invite link for an external user.
@@ -4656,15 +4670,18 @@ def invite_external_user(
     Args:
         patient_id: FHIR Patient resource ID.
         body: Email and user type.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
         dict: ``invite_url`` containing the signed JWT.
     """
     # Only patient-self or admin can invite
-    is_own = u.fhir_patient_id is not None and u.fhir_patient_id == patient_id
-    is_admin = u.system_permissions in ("admin", "superadmin")
+    is_own = (
+        current_user.fhir_patient_id is not None
+        and current_user.fhir_patient_id == patient_id
+    )
+    is_admin = current_user.system_permissions in ("admin", "superadmin")
     if not (is_own or is_admin):
         raise HTTPException(
             status_code=403,
@@ -4779,7 +4796,7 @@ def accept_invite(
 def revoke_external_access(
     patient_id: str,
     user_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Revoke an external user's access to a patient.
@@ -4789,13 +4806,13 @@ def revoke_external_access(
     Args:
         patient_id: FHIR Patient resource ID.
         user_id: ID of the external user.
-        u: Authenticated admin user.
+        current_user: Authenticated admin user.
         db: Database session.
 
     Returns:
         dict: Confirmation message.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     grant = db.scalar(
@@ -4822,7 +4839,7 @@ def revoke_external_access(
 )
 def list_external_access(
     patient_id: str,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
     """List external users with access to a patient.
@@ -4831,15 +4848,18 @@ def list_external_access(
 
     Args:
         patient_id: FHIR Patient resource ID.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
         dict: ``grants`` list with user info and access details.
     """
     # Only admin or the patient themselves
-    is_own = u.fhir_patient_id is not None and u.fhir_patient_id == patient_id
-    is_admin = u.system_permissions in ("admin", "superadmin")
+    is_own = (
+        current_user.fhir_patient_id is not None
+        and current_user.fhir_patient_id == patient_id
+    )
+    is_admin = current_user.system_permissions in ("admin", "superadmin")
     if not (is_own or is_admin):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -4881,7 +4901,7 @@ def list_external_access(
 )
 def create_conversation_endpoint(
     body: ConversationCreateIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ConversationDetailOut:
     """Create a new messaging conversation.
@@ -4891,7 +4911,7 @@ def create_conversation_endpoint(
 
     Args:
         body: Conversation details including first message.
-        u: Authenticated user (conversation creator).
+        current_user: Authenticated user (conversation creator).
         db: Database session.
 
     Returns:
@@ -4900,7 +4920,7 @@ def create_conversation_endpoint(
     try:
         return create_conversation(
             db=db,
-            creator=u,
+            creator=current_user,
             patient_id=body.patient_id,
             initial_message=body.initial_message,
             subject=body.subject,
@@ -4926,7 +4946,7 @@ def create_conversation_endpoint(
 def list_conversations_endpoint(
     status: str | None = None,
     patient_id: str | None = None,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ConversationListOut:
     """List conversations for the current user.
@@ -4937,7 +4957,7 @@ def list_conversations_endpoint(
     Args:
         status: Optional filter by conversation status.
         patient_id: Optional filter by FHIR patient ID.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -4945,7 +4965,7 @@ def list_conversations_endpoint(
     """
     items = list_conversations(
         db=db,
-        user=u,
+        user=current_user,
         status=status,
         patient_id=patient_id,
     )
@@ -4960,7 +4980,7 @@ def list_conversations_endpoint(
 def list_patient_conversations_endpoint(
     patient_id: str,
     status: str | None = None,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ConversationListOut:
     """List all conversations about a patient.
@@ -4971,7 +4991,7 @@ def list_patient_conversations_endpoint(
     Args:
         patient_id: FHIR patient ID.
         status: Optional filter by conversation status.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -4980,7 +5000,7 @@ def list_patient_conversations_endpoint(
     items = list_patient_conversations(
         db=db,
         patient_id=patient_id,
-        user=u,
+        user=current_user,
         status=status,
     )
     return ConversationListOut(conversations=items)
@@ -4993,7 +5013,7 @@ def list_patient_conversations_endpoint(
 )
 def get_conversation_endpoint(
     conversation_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ConversationDetailOut:
     """Get a single conversation with all messages.
@@ -5002,7 +5022,7 @@ def get_conversation_endpoint(
 
     Args:
         conversation_id: ID of the conversation.
-        u: Authenticated user (must be a participant).
+        current_user: Authenticated user (must be a participant).
         db: Database session.
 
     Returns:
@@ -5012,7 +5032,7 @@ def get_conversation_endpoint(
         HTTPException: 404 if not found or user is not a participant.
     """
     result = get_conversation_detail(
-        db=db, conversation_id=conversation_id, user=u
+        db=db, conversation_id=conversation_id, user=current_user
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -5027,7 +5047,7 @@ def get_conversation_endpoint(
 def update_conversation_status_endpoint(
     conversation_id: int,
     body: ConversationStatusUpdateIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ConversationOut:
     """Update conversation status (e.g. close, archive).
@@ -5037,7 +5057,7 @@ def update_conversation_status_endpoint(
     Args:
         conversation_id: ID of the conversation.
         body: New status value.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -5049,7 +5069,9 @@ def update_conversation_status_endpoint(
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    cp = next((p for p in conv.participants if p.user_id == u.id), None)
+    cp = next(
+        (p for p in conv.participants if p.user_id == current_user.id), None
+    )
     if cp is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -5062,10 +5084,13 @@ def update_conversation_status_endpoint(
         unread = sum(
             1
             for m in conv.messages
-            if m.created_at > cp.last_read_at and m.sender_id != u.id
+            if m.created_at > cp.last_read_at
+            and m.sender_id != current_user.id
         )
     else:
-        unread = sum(1 for m in conv.messages if m.sender_id != u.id)
+        unread = sum(
+            1 for m in conv.messages if m.sender_id != current_user.id
+        )
 
     last_msg = (
         max(conv.messages, key=lambda m: m.created_at)
@@ -5104,7 +5129,7 @@ def update_conversation_status_endpoint(
 def send_message_endpoint(
     conversation_id: int,
     body: MessageCreateIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> MessageOut:
     """Send a message in a conversation.
@@ -5114,7 +5139,7 @@ def send_message_endpoint(
     Args:
         conversation_id: ID of the conversation.
         body: Message body (and optional amendment reference).
-        u: Authenticated user (must be a participant).
+        current_user: Authenticated user (must be a participant).
         db: Database session.
 
     Returns:
@@ -5129,7 +5154,7 @@ def send_message_endpoint(
         return send_message(
             db=db,
             conversation_id=conversation_id,
-            sender=u,
+            sender=current_user,
             body=body.body,
             amends_id=body.amends_id,
         )
@@ -5152,7 +5177,7 @@ def send_message_endpoint(
 def add_participant_endpoint(
     conversation_id: int,
     body: AddParticipantIn,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ParticipantOut:
     """Add a participant to a conversation.
@@ -5162,7 +5187,7 @@ def add_participant_endpoint(
     Args:
         conversation_id: ID of the conversation.
         body: User to add and their role.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -5175,7 +5200,9 @@ def add_participant_endpoint(
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    cp = next((p for p in conv.participants if p.user_id == u.id), None)
+    cp = next(
+        (p for p in conv.participants if p.user_id == current_user.id), None
+    )
     if cp is None:
         raise HTTPException(
             status_code=403,
@@ -5199,14 +5226,14 @@ def add_participant_endpoint(
 )
 def list_participants_endpoint(
     conversation_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> list[ParticipantOut]:
     """List participants in a conversation.
 
     Args:
         conversation_id: ID of the conversation.
-        u: Authenticated user (must be a participant).
+        current_user: Authenticated user (must be a participant).
         db: Database session.
 
     Returns:
@@ -5218,7 +5245,9 @@ def list_participants_endpoint(
     conv = db.get(Conversation, conversation_id)
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    cp = next((p for p in conv.participants if p.user_id == u.id), None)
+    cp = next(
+        (p for p in conv.participants if p.user_id == current_user.id), None
+    )
     if cp is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -5241,7 +5270,7 @@ def list_participants_endpoint(
 )
 def join_conversation_endpoint(
     conversation_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> ParticipantOut:
     """Join a conversation as a staff member.
@@ -5251,7 +5280,7 @@ def join_conversation_endpoint(
 
     Args:
         conversation_id: ID of the conversation.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -5265,7 +5294,7 @@ def join_conversation_endpoint(
         return join_conversation(
             db=db,
             conversation_id=conversation_id,
-            user=u,
+            user=current_user,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -5279,14 +5308,14 @@ def join_conversation_endpoint(
 )
 def mark_read_endpoint(
     conversation_id: int,
-    u: User = DEP_CURRENT_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, bool]:
     """Mark a conversation as read for the current user.
 
     Args:
         conversation_id: ID of the conversation.
-        u: Authenticated user.
+        current_user: Authenticated user.
         db: Database session.
 
     Returns:
@@ -5296,7 +5325,7 @@ def mark_read_endpoint(
         HTTPException: 404 if not found or user is not a participant.
     """
     ok = mark_conversation_read(
-        db=db, conversation_id=conversation_id, user_id=u.id
+        db=db, conversation_id=conversation_id, user_id=current_user.id
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found")

@@ -97,9 +97,9 @@ _DEP_SESSION = Depends(get_core_db)
 
 def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
     """Resolve authenticated user (lazy import to avoid circular dep)."""
-    from app.main import current_user
+    from app.main import get_current_user
 
-    return current_user(request, db)
+    return get_current_user(request, db)
 
 
 _DEP_USER = Depends(_get_current_user)
