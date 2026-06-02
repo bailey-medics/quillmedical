@@ -16,7 +16,7 @@ from app.security import decode_token
 DEP_GET_SESSION = Depends(get_core_db)
 
 
-def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
+def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     """Extract and validate the authenticated user from JWT cookie.
 
     Raises:
@@ -41,18 +41,18 @@ def current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
     return user
 
 
-DEP_CURRENT_USER = Depends(current_user)
+DEP_CURRENT_USER = Depends(get_current_user)
 
 
-def require_admin(u: User = DEP_CURRENT_USER) -> User:
+def require_admin(current_user: User = DEP_CURRENT_USER) -> User:
     """Require admin or superadmin system permissions.
 
     Raises:
         HTTPException: 403 if user lacks admin permissions.
     """
-    if u.system_permissions not in ("admin", "superadmin"):
+    if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(403, "Admin access required")
-    return u
+    return current_user
 
 
 DEP_REQUIRE_ADMIN = Depends(require_admin)
