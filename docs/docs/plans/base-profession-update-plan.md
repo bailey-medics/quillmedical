@@ -6,9 +6,9 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ## Design decisions
 
-- **Naming**: `default_system_permission` (not "minimum") — it's what gets auto-set at provisioning, but admins can freely override it
+- **Naming**: `default_system_permission` (not "minimum") — it's what gets auto-set at provisioning of a new user, but admins can freely override it
 - **Enforcement**: Soft default only — no hard constraint validation in backend
-- **Flexibility principle**: `base_profession` sets defaults for BOTH system permissions and CBAC competencies. Both are independently adjustable per user after provisioning. The CBAC formula `(base ∪ additional) − removed` already handles competency overrides; system permissions are simply an independent field on the user model that admins can change.
+- **Flexibility principle**: `base_profession` sets defaults for BOTH system permissions and CBAC competencies. Both are independently adjustable per user after provisioning. The CBAC formula `(base + additional) − removed` already handles competency overrides; system permissions are simply an independent field on the user model that admins can change.
 
 ## Steps
 
@@ -16,7 +16,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 - [ ] After "…differs only via CBAC competencies and base profession" (line 142), add paragraph:
   - Clinical practitioners require ≥staff to reach clinical workflows; CBAC scopes actions within them
-  - `base_profession` sets defaults for *both* system permissions and CBAC; both are independently adjustable per user
+  - `base_profession` sets defaults for _both_ system permissions and CBAC; both are independently adjustable per user
   - References `default_system_permission` in `base-professions.yaml`
 - [ ] Update the "Shared config" bullet (line 163) to mention that `base-professions.yaml` also declares `default_system_permission`
 

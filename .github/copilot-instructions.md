@@ -155,7 +155,7 @@ Controls **all data access and actions** — clinical, feature admin, and patien
 | **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `manage_letter_templates` | low–medium |
 | **Patient access** | `view_own_records`, `manage_own_demographics` | low |
 
-Resolution formula per user: `(base_profession_competencies ∪ additional) − removed`
+Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
 - **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies)
 - **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
