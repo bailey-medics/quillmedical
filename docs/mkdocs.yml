@@ -121,14 +121,24 @@ nav:
           - Overview: code/fastapi/index.md
           - Main: code/fastapi/main.md
           - Configuration: code/fastapi/config.md
+          - Dependencies: code/fastapi/deps.md
           - Database: code/fastapi/db.md
           - Models: code/fastapi/models.md
+          - Schemas: code/fastapi/schemas.md
           - Security: code/fastapi/security.md
+          - CBAC: code/fastapi/cbac.md
+          - System Permissions: code/fastapi/system_permissions.md
           - FHIR Client: code/fastapi/fhir_client.md
           - EHRbase Client: code/fastapi/ehrbase_client.md
+          - Email Send: code/fastapi/email_send.md
           - Push Notifications: code/fastapi/push.md
           - Push Send: code/fastapi/push_send.md
-          - Schemas: code/fastapi/schemas.md
+          - Messaging: code/fastapi/messaging.md
+          - Organisations: code/fastapi/organisations.md
+          - Teaching: code/fastapi/features_teaching.md
+          - Logging Configuration: code/fastapi/logging_config.md
+          - Log Context: code/fastapi/log_context.md
+          - Utilities: code/fastapi/utils.md
   - Clinical Safety:
       - Overview: safety/overview/index.md
       - Regulatory Framework: safety/overview/regulatory-framework.md
