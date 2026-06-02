@@ -14,11 +14,11 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ### Phase 1 — Documentation (`copilot-instructions.md`)
 
-- [ ] After "…differs only via CBAC competencies and base profession" (line 142), add paragraph:
+- [x] After "…differs only via CBAC competencies and base profession" (line 142), add paragraph:
   - Clinical practitioners require ≥staff to reach clinical workflows; CBAC scopes actions within them
   - `base_profession` sets defaults for _both_ system permissions and CBAC; both are independently adjustable per user
   - References `default_system_permission` in `base-professions.yaml`
-- [ ] Update the "Shared config" bullet (line 163) to mention that `base-professions.yaml` also declares `default_system_permission`
+- [x] Update the "Shared config" bullet (line 163) to mention that `base-professions.yaml` also declares `default_system_permission`
 
 ### Phase 2 — YAML (`shared/base-professions.yaml`)
 
