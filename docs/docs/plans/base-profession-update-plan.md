@@ -24,13 +24,13 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 - [x] Add `default_system_permission` field to each profession entry (placed between `description` and `base_competencies`):
 
-   | Professions                                                                | Value         |
-   | -------------------------------------------------------------------------- | ------------- |
-   | `patient`, `teaching_delegate`, `learner`                                  | `single-user` |
-   | All clinical roles (FY1→consultant, GP, nurses, pharmacy, AHPs, paramedic) | `staff`       |
-   | Admin staff (`medical_secretary`, `receptionist`, `clinic_manager`)        | `staff`       |
-   | `educator`                                                                 | `staff`       |
-   | `system_administrator`                                                     | `admin`       |
+  | Professions                                                                | Value         |
+  | -------------------------------------------------------------------------- | ------------- |
+  | `patient`, `teaching_delegate`, `learner`                                  | `single-user` |
+  | All clinical roles (FY1→consultant, GP, nurses, pharmacy, AHPs, paramedic) | `staff`       |
+  | Admin staff (`medical_secretary`, `receptionist`, `clinic_manager`)        | `staff`       |
+  | `educator`                                                                 | `staff`       |
+  | `system_administrator`                                                     | `admin`       |
 
 - [x] Add header comment explaining it's a soft default, not a hard constraint
 
@@ -53,7 +53,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 - [x] Valid YAML after edit (`yamllint shared/base-professions.yaml` or equivalent)
 - [x] `yarn generate:types` completes without error
-- [ ] `just uf` — frontend tests still pass
-- [ ] `just ub` — backend tests still pass
+- [x] `just uf` — frontend tests still pass
+- [x] `just ub` — backend tests still pass
 - [x] Generated JSON (`src/generated/base-professions.json`) includes `default_system_permission` for each entry
 - [x] Copilot instructions accurately reflect the new field and its soft-default semantics
