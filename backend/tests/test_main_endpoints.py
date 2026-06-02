@@ -901,7 +901,7 @@ class TestOrganizationEndpoints:
             email="patient@example.com",
             password_hash=hash_password("PatientPass123!"),
             is_active=True,
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(patient_user)
         db_session.commit()
@@ -939,7 +939,7 @@ class TestOrganizationEndpoints:
             password_hash=hash_password("PatientPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         staff_user = User(
             username="liststaff",

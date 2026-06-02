@@ -38,7 +38,7 @@ const mockUsers: Record<string, User> = {
     username: "patient.user",
     email: "patient@example.com",
     roles: ["Patient"],
-    system_permissions: "patient",
+    system_permissions: "single-user",
     clinical_services_enabled: true,
   },
   staff_no_clinical: {

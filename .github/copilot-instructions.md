@@ -121,9 +121,25 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 
 ### Authorisation
 
+Two orthogonal layers control access:
+
+| Layer | Controls | Mechanism |
+|-------|----------|-----------|
+| **System permissions** | Platform management (users, orgs, dashboards) | 4-level hierarchy |
+| **CBAC** | All data access — clinical actions, feature admin, patient self-access | Competency set per user |
+
 #### System permissions
 
-4-level hierarchy: `patient < staff < admin < superadmin`
+4-level hierarchy for platform management authority: `single-user < staff < admin < superadmin`
+
+| Level | Meaning |
+|-------|---------|
+| `single-user` | Can manage own profile/settings. No system management. |
+| `staff` | Staff dashboards, team visibility |
+| `admin` | User/org management (scoped to own orgs) |
+| `superadmin` | Global platform management |
+
+System permissions have **nothing to do with clinical data access** — that is solely CBAC's responsibility. A patient, teaching delegate, and external HCP, are all `single-user`; their clinical access differs only via CBAC competencies and base profession.
 
 - Backend: `backend/app/system_permissions/` — `check_permission_level(user_permission, required)` for hierarchy checks
 - Frontend: `<RequirePermission level="admin">` guard in `src/auth/RequirePermission.tsx`
@@ -131,13 +147,32 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 
 #### CBAC (competency-based access control)
 
-Healthcare-specific authorisation layer for clinical operations.
+Controls **all data access and actions** — clinical, feature admin, and patient self-access. Competencies are categorised by purpose:
+
+| Category | Examples | Risk |
+|----------|----------|------|
+| **Clinical** | `prescribe_controlled_schedule_2`, `request_radiology`, `view_patient_records` | medium–high |
+| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `manage_letter_templates` | low–medium |
+| **Patient access** | `view_own_records`, `manage_own_demographics` | low |
+
+Resolution formula per user: `(base_profession_competencies ∪ additional) − removed`
 
 - **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies)
-- **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves `base + additional - removed` competencies per user
+- **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
 - **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — currently placeholders returning `false`)
 - **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)
 - CBAC-protected route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
+
+#### Role composition examples
+
+| Scenario | System permission | CBAC profile |
+|----------|------------------|--------------|
+| Patient | `single-user` | `view_own_records`, `manage_own_demographics` |
+| Teaching delegate | `single-user` | `view_teaching_cases` only |
+| Teaching coordinator | `staff` | `manage_teaching_content` + `view_teaching_analytics` |
+| Junior doctor | `staff` | Standard clinical set |
+| IT admin | `admin` | None (cannot access patient data) |
+| Clinical lead | `admin` | Full clinical set |
 
 #### Organisations
 

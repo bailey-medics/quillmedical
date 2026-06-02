@@ -34,7 +34,7 @@ from app.schemas.messaging import (
     MessageOut,
     ParticipantOut,
 )
-from app.system_permissions.permissions import is_external_user
+from app.system_permissions.permissions import check_permission_level
 
 logger = logging.getLogger(__name__)
 
@@ -88,18 +88,17 @@ def _user_has_conversation_access(
         return True
 
     # External access grant (see ALL messages for granted patients)
-    if is_external_user(user.system_permissions):
-        grant = (
-            db.query(ExternalPatientAccess)
-            .filter(
-                ExternalPatientAccess.user_id == user.id,
-                ExternalPatientAccess.patient_id == conv.patient_id,
-                ExternalPatientAccess.revoked_at.is_(None),
-            )
-            .first()
+    grant = (
+        db.query(ExternalPatientAccess)
+        .filter(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.patient_id == conv.patient_id,
+            ExternalPatientAccess.revoked_at.is_(None),
         )
-        if grant is not None:
-            return True
+        .first()
+    )
+    if grant is not None:
+        return True
 
     return False
 
@@ -294,16 +293,15 @@ def list_conversations(
 
     user_org_ids = set(get_user_org_ids(db, user.id))
 
-    # For external users, get their granted patient IDs
+    # Get per-patient access grants (for users with external patient access)
     external_patient_ids: set[str] = set()
-    if is_external_user(user.system_permissions):
-        rows = db.execute(
-            ExternalPatientAccess.__table__.select().where(
-                ExternalPatientAccess.user_id == user.id,
-                ExternalPatientAccess.revoked_at.is_(None),
-            )
-        ).all()
-        external_patient_ids = {r.patient_id for r in rows}
+    rows = db.execute(
+        ExternalPatientAccess.__table__.select().where(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.revoked_at.is_(None),
+        )
+    ).all()
+    external_patient_ids = {r.patient_id for r in rows}
 
     results: list[ConversationOut] = []
     for conv in conversations:
@@ -541,20 +539,28 @@ def list_patient_conversations(
     conversations = query.all()
 
     user_org_ids = set(get_user_org_ids(db, user.id))
-    is_ext = is_external_user(user.system_permissions)
+
+    # Get per-patient access grants
+    ext_rows = db.execute(
+        ExternalPatientAccess.__table__.select().where(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.revoked_at.is_(None),
+        )
+    ).all()
+    granted_patient_ids = {r.patient_id for r in ext_rows}
 
     results: list[ConversationOut] = []
     for conv in conversations:
         cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
 
-        # For non-external users, check org overlap
-        if not is_participant and not is_ext:
+        # Access check: participant OR org overlap OR per-patient grant
+        if not is_participant:
             conv_org_ids = {o.id for o in conv.organisations}
-            if not (user_org_ids & conv_org_ids):
+            has_org_access = bool(user_org_ids & conv_org_ids)
+            has_grant = conv.patient_id in granted_patient_ids
+            if not has_org_access and not has_grant:
                 continue
-
-        # External users see ALL conversations for granted patients
 
         if cp is not None and cp.last_read_at:
             unread = sum(
@@ -589,12 +595,11 @@ def join_conversation(
 
     Only users with staff-level permissions or above can self-join.
     The user must be in one of the conversation's orgs.
-    External users cannot self-join.
     """
-    if user.system_permissions == "patient":
-        raise PermissionError("Patients cannot self-join conversations")
-    if is_external_user(user.system_permissions):
-        raise PermissionError("External users cannot self-join conversations")
+    if not check_permission_level(user.system_permissions, "staff"):
+        raise PermissionError(
+            "Single-user accounts cannot self-join conversations"
+        )
 
     conv = db.get(Conversation, conversation_id)
     if conv is None:

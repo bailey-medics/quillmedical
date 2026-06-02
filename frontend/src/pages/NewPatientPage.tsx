@@ -9,7 +9,6 @@
  * @module NewPatientPage
  */
 
-/* eslint-disable no-restricted-syntax */
 // Multi-step form uses Box with maw instead of Container for custom max-width
 
 import {
@@ -510,7 +509,7 @@ export default function NewPatientPage() {
             password: formData.userPassword,
           });
 
-          // TODO: Link user to patient and set system_permissions to "patient"
+          // TODO: Link user to patient and set system_permissions to "single-user"
           // Note: Backend /auth/register creates basic user without roles
           // Will need additional endpoint to set base_profession and link to patient
         }

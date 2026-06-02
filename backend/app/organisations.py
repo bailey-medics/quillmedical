@@ -14,7 +14,6 @@ from app.models import (
     organisation_patient_member,
     organisation_staff_member,
 )
-from app.system_permissions.permissions import is_external_user
 
 
 def get_user_org_ids(db: Session, user_id: int) -> list[int]:
@@ -69,17 +68,14 @@ def check_user_patient_access(
         return True
 
     # External access grant check
-    if is_external_user(user.system_permissions):
-        grant = db.scalar(
-            select(ExternalPatientAccess).where(
-                ExternalPatientAccess.user_id == user.id,
-                ExternalPatientAccess.patient_id == patient_id,
-                ExternalPatientAccess.revoked_at.is_(None),
-            )
+    grant = db.scalar(
+        select(ExternalPatientAccess).where(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.patient_id == patient_id,
+            ExternalPatientAccess.revoked_at.is_(None),
         )
-        return grant is not None
-
-    return False
+    )
+    return grant is not None
 
 
 def get_org_patient_ids(db: Session, org_ids: list[int]) -> set[str]:
@@ -120,13 +116,12 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
         result |= get_org_patient_ids(db, user_orgs)
 
     # External access grants
-    if is_external_user(user.system_permissions):
-        rows = db.execute(
-            select(ExternalPatientAccess.patient_id).where(
-                ExternalPatientAccess.user_id == user.id,
-                ExternalPatientAccess.revoked_at.is_(None),
-            )
-        ).all()
-        result |= {r[0] for r in rows}
+    rows = db.execute(
+        select(ExternalPatientAccess.patient_id).where(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.revoked_at.is_(None),
+        )
+    ).all()
+    result |= {r[0] for r in rows}
 
     return result

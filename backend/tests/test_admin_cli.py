@@ -72,7 +72,7 @@ class TestCreateSuperadmin:
             username="existing",
             email="old@example.com",
             password_hash=hash_password("OldPassword"),
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(existing)
         db_session.commit()
@@ -137,7 +137,7 @@ class TestUpdatePermissions:
             username="staffuser",
             email="staff@example.com",
             password_hash=hash_password("Pass123!"),
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(user)
         db_session.commit()

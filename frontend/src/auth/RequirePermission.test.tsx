@@ -17,11 +17,11 @@ import type { User } from "./AuthContext";
 
 // Mock users with different permission levels
 const mockUsers: Record<string, User> = {
-  patient: {
+  singleUser: {
     id: "1",
-    username: "patient.user",
-    email: "patient@example.com",
-    system_permissions: "patient",
+    username: "single.user",
+    email: "user@example.com",
+    system_permissions: "single-user",
   },
   staff: {
     id: "2",
@@ -129,11 +129,11 @@ describe("RequirePermission", () => {
       expect(screen.getByText("Admin Content")).toBeInTheDocument();
     });
 
-    it("shows 404 to patient users trying to access admin routes", () => {
+    it("shows 404 to single-user accounts trying to access admin routes", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.patient,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),
@@ -235,11 +235,11 @@ describe("RequirePermission", () => {
       expect(screen.getByText("Staff Content")).toBeInTheDocument();
     });
 
-    it("shows 404 to patient users trying to access staff routes", () => {
+    it("shows 404 to single-user accounts trying to access staff routes", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.patient,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),
@@ -362,11 +362,11 @@ describe("RequirePermission", () => {
       expect(window.location.pathname).toBe("/");
     });
 
-    it("always shows 404 to patients regardless of fallback setting", () => {
+    it("always shows 404 to single-user accounts regardless of fallback setting", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: mockUsers.patient,
+          user: mockUsers.singleUser,
         },
         login: vi.fn(),
         logout: vi.fn(),

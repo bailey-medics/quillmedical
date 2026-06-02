@@ -3,52 +3,38 @@
 
 Defines the permission levels and helper functions for checking
 permission hierarchies.
+
+System permissions control platform management authority and are
+orthogonal to CBAC (which controls all data access).
 """
 
 from typing import Literal
 
 # System permission levels (ordered from lowest to highest)
-PERMISSION_PATIENT = "patient"
-PERMISSION_EXTERNAL_HCP = "external_hcp"
-PERMISSION_PATIENT_ADVOCATE = "patient_advocate"
-PERMISSION_TEACHING_DELEGATE = "teaching_delegate"
+PERMISSION_SINGLE_USER = "single-user"
 PERMISSION_STAFF = "staff"
 PERMISSION_ADMIN = "admin"
 PERMISSION_SUPERADMIN = "superadmin"
 
-# Hierarchical levels — external_hcp and patient_advocate sit at the
-# same tier as patient (lowest clinical access).
+# Hierarchical levels for permission checks
 PERMISSION_LEVELS = [
-    PERMISSION_PATIENT,
+    PERMISSION_SINGLE_USER,
     PERMISSION_STAFF,
     PERMISSION_ADMIN,
     PERMISSION_SUPERADMIN,
 ]
 
-# All valid permission values (includes non-hierarchical external types)
+# All valid permission values
 ALL_PERMISSIONS = [
-    PERMISSION_PATIENT,
-    PERMISSION_EXTERNAL_HCP,
-    PERMISSION_PATIENT_ADVOCATE,
-    PERMISSION_TEACHING_DELEGATE,
+    PERMISSION_SINGLE_USER,
     PERMISSION_STAFF,
     PERMISSION_ADMIN,
     PERMISSION_SUPERADMIN,
 ]
-
-# External user types that map to patient-level for hierarchy checks
-EXTERNAL_PERMISSIONS = {
-    PERMISSION_EXTERNAL_HCP,
-    PERMISSION_PATIENT_ADVOCATE,
-    PERMISSION_TEACHING_DELEGATE,
-}
 
 # Type alias for type hints
 SystemPermission = Literal[
-    "patient",
-    "external_hcp",
-    "patient_advocate",
-    "teaching_delegate",
+    "single-user",
     "staff",
     "admin",
     "superadmin",
@@ -62,12 +48,9 @@ def check_permission_level(
 
     Permission levels are hierarchical:
     - superadmin can do everything
-    - admin can do everything staff and patient can do
-    - staff can do everything patient can do
-    - patient can only do patient-level operations
-
-    external_hcp and patient_advocate are treated as patient-level
-    for hierarchy checks (lowest clinical access).
+    - admin can do everything staff and single-user can do
+    - staff can do everything single-user can do
+    - single-user can only manage own profile/settings
 
     Args:
         user_permission: The user's current permission level
@@ -83,32 +66,15 @@ def check_permission_level(
         False
         >>> check_permission_level("admin", "staff")
         True
-        >>> check_permission_level("external_hcp", "patient")
-        True
+        >>> check_permission_level("single-user", "staff")
+        False
     """
-    # Map external types to patient level for hierarchy checks
-    mapped_user = (
-        PERMISSION_PATIENT
-        if user_permission in EXTERNAL_PERMISSIONS
-        else user_permission
-    )
-    mapped_required = (
-        PERMISSION_PATIENT
-        if required_permission in EXTERNAL_PERMISSIONS
-        else required_permission
-    )
-
-    if mapped_user not in PERMISSION_LEVELS:
+    if user_permission not in PERMISSION_LEVELS:
         return False
-    if mapped_required not in PERMISSION_LEVELS:
+    if required_permission not in PERMISSION_LEVELS:
         return False
 
-    user_level = PERMISSION_LEVELS.index(mapped_user)
-    required_level = PERMISSION_LEVELS.index(mapped_required)
+    user_level = PERMISSION_LEVELS.index(user_permission)
+    required_level = PERMISSION_LEVELS.index(required_permission)
 
     return user_level >= required_level
-
-
-def is_external_user(permission: str) -> bool:
-    """Check if a permission level represents an external user type."""
-    return permission in EXTERNAL_PERMISSIONS

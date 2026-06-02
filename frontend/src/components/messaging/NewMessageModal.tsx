@@ -202,7 +202,7 @@ export default function NewMessageModal({
   const isPatientUser =
     isPatientView ??
     (state.status === "authenticated" &&
-      state.user.system_permissions === "patient");
+      state.user.system_permissions === "single-user");
 
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);

@@ -21,8 +21,7 @@ import { NotFoundLayout } from "@/components/layouts";
  * Permission hierarchy levels
  */
 const PERMISSION_HIERARCHY: Record<SystemPermission, number> = {
-  patient: 0,
-  teaching_delegate: 0,
+  "single-user": 0,
   staff: 1,
   admin: 2,
   superadmin: 3,
@@ -97,8 +96,8 @@ export default function RequirePermission({
   }
 
   // Unauthorized access handling with tiered approach
-  // Patients and teaching delegates always get 404 to hide admin features
-  if (userPermission === "patient" || userPermission === "teaching_delegate") {
+  // Single-user accounts always get 404 to hide admin features
+  if (userPermission === "single-user") {
     return <NotFoundLayout />;
   }
 
