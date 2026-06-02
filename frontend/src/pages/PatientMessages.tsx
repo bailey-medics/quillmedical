@@ -19,7 +19,7 @@ import {
   fetchPatientConversations,
   type ConversationResponse,
 } from "@lib/messaging";
-import { Container, Group, Loader, Stack } from "@mantine/core";
+import { Group, Loader, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useState } from "react";
@@ -103,54 +103,48 @@ export default function PatientMessages() {
   }, [id]);
 
   if (isLoading) {
-    return (
-      <Container size="lg">
-        <Loader />
-      </Container>
-    );
+    return <Loader />;
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="flex-end">
-          <AddButton label="New message" onClick={() => setModalOpen(true)} />
-        </Group>
+    <Stack gap="lg">
+      <Group justify="flex-end">
+        <AddButton label="New message" onClick={() => setModalOpen(true)} />
+      </Group>
 
-        <NewMessageModal
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={handleNewConversation}
-          patientId={id}
-          patientName={patient?.name}
+      <NewMessageModal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleNewConversation}
+        patientId={id}
+        patientName={patient?.name}
+      />
+
+      {conversations.length === 0 ? (
+        <BaseCard>
+          <EmptyState>No conversations yet</EmptyState>
+        </BaseCard>
+      ) : (
+        <MessagesList
+          threads={conversations.map((conv) => ({
+            id: String(conv.id),
+            displayName:
+              conv.subject ??
+              conv.participants.map((p) => p.display_name).join(", "),
+            profiles: conv.participants.map((p) => ({
+              givenName: p.username,
+              familyName: "",
+              gradientIndex: 0,
+            })),
+            lastMessage: conv.last_message_preview ?? "",
+            lastMessageTime: conv.last_message_time ?? conv.updated_at,
+            unreadCount: conv.unread_count,
+          }))}
+          onThreadClick={(thread: MessageThread) =>
+            navigate(`/patients/${id}/messages/${thread.id}`)
+          }
         />
-
-        {conversations.length === 0 ? (
-          <BaseCard>
-            <EmptyState>No conversations yet</EmptyState>
-          </BaseCard>
-        ) : (
-          <MessagesList
-            threads={conversations.map((conv) => ({
-              id: String(conv.id),
-              displayName:
-                conv.subject ??
-                conv.participants.map((p) => p.display_name).join(", "),
-              profiles: conv.participants.map((p) => ({
-                givenName: p.username,
-                familyName: "",
-                gradientIndex: 0,
-              })),
-              lastMessage: conv.last_message_preview ?? "",
-              lastMessageTime: conv.last_message_time ?? conv.updated_at,
-              unreadCount: conv.unread_count,
-            }))}
-            onThreadClick={(thread: MessageThread) =>
-              navigate(`/patients/${id}/messages/${thread.id}`)
-            }
-          />
-        )}
-      </Stack>
-    </Container>
+      )}
+    </Stack>
   );
 }

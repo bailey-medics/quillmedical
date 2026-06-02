@@ -5,7 +5,6 @@
  * Only accessible to users with admin or superadmin permissions.
  */
 
-import { Container } from "@mantine/core";
 import Admin from "@/components/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { api } from "@/lib/api";
@@ -218,17 +217,15 @@ export default function AdminPage() {
   // Note: User and patient creation now handled by dedicated pages (/admin/users/new, /admin/patients/new)
 
   return (
-    <Container size="lg">
-      <Admin
-        userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
-        clinicalServicesEnabled={clinicalServicesEnabled}
-        existingUsers={users}
-        existingPatients={patients}
-        usersLoading={usersLoading}
-        patientsLoading={patientsLoading}
-        organisationsLoading={organisationsLoading}
-        organisationCount={organisationCount}
-      />
-    </Container>
+    <Admin
+      userPermissions={userPermissions as "admin" | "superadmin" | "staff"}
+      clinicalServicesEnabled={clinicalServicesEnabled}
+      existingUsers={users}
+      existingPatients={patients}
+      usersLoading={usersLoading}
+      patientsLoading={patientsLoading}
+      organisationsLoading={organisationsLoading}
+      organisationCount={organisationCount}
+    />
   );
 }

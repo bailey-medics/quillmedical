@@ -19,7 +19,7 @@ import {
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
-import { Container, Loader, Stack, Text } from "@mantine/core";
+import { Loader, Stack, Text } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
 
@@ -217,49 +217,32 @@ export default function MessageThread() {
   );
 
   if (isLoading) {
-    return (
-      <Container size="lg">
-        <Loader />
-      </Container>
-    );
+    return <Loader />;
   }
 
   if (error || !conversation) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title="Conversation not found" />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <PageHeader title="Conversation not found" />
+      </Stack>
     );
   }
 
   return (
-    <Container
-      size="lg"
-      pt="xs"
-      pb={0}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-      }}
-    >
-      <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
-        {conversation.subject && (
-          <Text fw={600} size="lg">
-            {conversation.subject}
-          </Text>
-        )}
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
+      {conversation.subject && (
+        <Text fw={600} size="lg">
+          {conversation.subject}
+        </Text>
+      )}
 
-        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <Messaging
-            messages={messages}
-            currentUserId={currentUserId}
-            onSend={handleSend}
-          />
-        </div>
-      </Stack>
-    </Container>
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <Messaging
+          messages={messages}
+          currentUserId={currentUserId}
+          onSend={handleSend}
+        />
+      </div>
+    </Stack>
   );
 }

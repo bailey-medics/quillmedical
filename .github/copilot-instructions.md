@@ -52,20 +52,19 @@ See the `Justfile` if you want to know more.
 
 ### Frontend (React + TypeScript)
 
-- **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) — never raw `fetch` except connectivity checks
+- **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) — never raw `fetch` (sole exception: `checkHealth()` in `ConnectivityContext.tsx`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
 - **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequirePermission level="admin">` for admin routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`)
-- **Path aliases**: `@/*` → `src/*`, `@lib/*` → `src/lib/*`, `@components/*` → `src/components/*`, `@test/*` → `src/test/*`, `@domains/*` → `src/domains/*`
+- **Path aliases**: Defined in `frontend/tsconfig.json` under `compilerOptions.paths` — always use `@/`, `@lib/`, `@components/`, `@test/`, `@domains/` prefixes instead of relative paths
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile — use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
-- **Storybook**: Components with `.stories.tsx` MUST have `.test.tsx`
-- **Page Layout**: ALWAYS wrap page content in `<Container size="lg">` for consistent max-width (1140px)
-  - Standard pattern: `<Container size="lg" py="xl"><Stack gap="lg">...</Stack></Container>`
-  - Ensures consistent content width across all pages
-  - Works correctly in Storybook for visual testing
-  - Example: Messages, Settings, all Admin pages
+- **Storybook**: all components must have associated `.stories.tsx` and `.test.tsx` files
+- **Page Layout**: MainLayout provides `<Container size="lg">` around all page content — pages should NOT add their own Container wrapper
+  - Standard page pattern: `<Stack gap="lg">...</Stack>` (no Container needed)
+  - Ensures consistent content width (1140px) across all pages
+  - To go full-width, call `setFluid(true)` from the page via `useOutletContext<LayoutCtx>()`
 - **Responsive**: ALWAYS use `theme.breakpoints.sm` for responsive behaviour
   - Import: `const theme = useMantineTheme();` from `@mantine/core`
   - Mobile/Desktop split: `useMediaQuery(\`(max-width: ${theme.breakpoints.sm})\`)`
@@ -78,50 +77,9 @@ When building UI, follow this priority order:
 
 1. **Reuse existing Storybook components** — always check the catalogue below first
 2. **Compose new components from existing ones** — combine Storybook components together
-3. **Build from scratch** — only when no existing component fits; create a new component with `.stories.tsx` and `.test.tsx`
+3. **Build from scratch** — only when no existing component fits; build a plan to create a new component with `.stories.tsx` and `.test.tsx` and then present it to a human for review before implementation.
 
 All reusable UI must live in `frontend/src/components/` with Storybook stories. Pages consume components; pages do not contain reusable UI inline.
-
-#### Storybook component catalogue
-
-| Category | Component | Path |
-|---|---|---|
-| ActionCard | ActionCard | `components/action-card/` |
-| Admin | Admin | `components/admin/` |
-| Appointments | AppointmentsList | `components/appointments/` |
-| Avatars | ProfilePic, StackedProfilePics | `components/profile-pic/` |
-| Backgrounds | PublicDarkBackground, PublicHeroBackground, PublicLightBackground | `components/background/` |
-| Badge | ActiveStatusBadge, AppointmentStatusBadge, AssessmentResultBadge, LetterStatusBadge, NoteCategoryBadge, OnQuillBadge, PermissionBadge, UnreadBadge | `components/badge/` |
-| Button | ActionCardButton, AddButton, BurgerButton, ButtonPair, ButtonPairRed, IconButton, IconTextButton, PreviousNextButton, PublicBurgerButton, PublicButton, SearchButton | `components/button/` |
-| Cards | BaseCard | `components/base-card/` |
-| Data | Date, NationalNumber | `components/data/` |
-| Demographics | Demographics | `components/demographics/` |
-| Documents | Document, DocumentThumbnail, DocumentsList | `components/documents/` |
-| Drawers | NavigationDrawer | `components/drawers/` |
-| FeatureCard | PublicFeatureCard | `components/feature-card/` |
-| Footer | Footer, PublicFooter | `components/footer/` |
-| Form | MultiSelectField, PasswordField, SelectField, SolidSwitch, TextAreaField, TextField | `components/form/` |
-| Gender | Gender, GenderIcon | `components/gender/` |
-| Icons | Icon, NavIcon, PublicNavIcon, PassIcon, FailIcon | `components/icons/` |
-| Images | QuillLogo, QuillName | `components/images/` |
-| InfoCard | PublicInfoCard | `components/info-card/` |
-| Layouts | MainLayout, NotFoundLayout, PublicLayout, PublicNotFound, TeachingLayout, Complete, Complete.PatientList | `components/layouts/` |
-| Letters | LetterList, LetterView | `components/letters/` |
-| MessageCards | ResultMessage, StateMessage | `components/message-cards/` |
-| Messaging | Messaging, MessagesList, MessagingTriagePayment, NewMessageModal | `components/messaging/` |
-| MultiStepForm | MultiStepForm | `components/multi-step-form/` |
-| Navigation | SideNav | `components/navigation/` |
-| Notes | NotesList | `components/notes/` |
-| Notifications | EnableNotificationsButton | `components/notifications/` |
-| Patients | PatientsList | `components/patients/` |
-| Registration | ForgotPasswordForm, LoginForm, RegistrationForm, ResetPasswordForm | `components/registration/` |
-| Ribbon | TopRibbon, PublicTopRibbon | `components/ribbon/` |
-| Search | SearchField | `components/search/` |
-| StatCards | StatCard | `components/stats-card/` |
-| Tables | DataCard, DataTable | `components/tables/` |
-| Teaching | AssessmentClosing, AssessmentHistoryTable, AssessmentIntro, AssessmentResult, AssessmentTimer, ExamCloseButton, QuestionView, ScoreBreakdown, TeachingProgressBar | `components/teaching/` |
-| Typography | BodyText, BodyTextBold, BodyTextClamp, BodyTextInline, EmptyState, ErrorMessage, Heading, MarkdownView, PageHeader, PublicText, PublicTitle, TextLink | `components/typography/` |
-| Warnings | DirtyFormNavigation | `components/warnings/` |
 
 **Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.
 
@@ -157,9 +115,9 @@ All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` co
 ### Healthcare
 
 - **FHIR**: `fhirclient` library (`backend/app/fhir_client.py`) for patient demographics
-- **OpenEHR**: HTTP requests to EHRbase (`backend/app/ehrbase_client.py`) for clinical letters
+- **OpenEHR**: HTTP requests to EHRbase (`backend/app/ehrbase_client.py`) for all other clinical data.
 - Each FHIR patient gets corresponding EHR in EHRbase via `subject_id` (idempotent `get_or_create_ehr` pattern)
-- **Three-database architecture**: core DB (users/roles/permissions), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
+- **Three-database architecture**: core DB (users/roles/permissions/teaching and other non-patient facing features), FHIR DB (demographics via HAPI), EHRbase DB (clinical documents)
 
 ### Authorisation
 

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Stack, Group, Skeleton, Alert } from "@mantine/core";
+import { Stack, Group, Skeleton, Alert } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
@@ -139,27 +139,23 @@ export default function SiteAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-          <Skeleton height={150} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+        <Skeleton height={150} />
+      </Stack>
     );
   }
 
   if (error || !site) {
     return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading site"
-          color="var(--alert-color)"
-        >
-          {error || "Site not found"}
-        </Alert>
-      </Container>
+      <Alert
+        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+        title="Error loading site"
+        color="var(--alert-color)"
+      >
+        {error || "Site not found"}
+      </Alert>
     );
   }
 
@@ -211,114 +207,112 @@ export default function SiteAdminPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title={site.name} />
+    <Stack gap="lg">
+      <PageHeader title={site.name} />
 
-        {/* Site Information */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Site information</Heading>
-              <IconButton
-                icon={<IconPencil />}
-                onClick={() => navigate(`/admin/sites/${id}/edit`)}
-                aria-label="Edit site"
-              />
+      {/* Site Information */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Site information</Heading>
+            <IconButton
+              icon={<IconPencil />}
+              onClick={() => navigate(`/admin/sites/${id}/edit`)}
+              aria-label="Edit site"
+            />
+          </Group>
+
+          <Group gap="xs">
+            <BodyTextBold>Status:</BodyTextBold>
+            <ActiveStatusBadge active={site.is_active} />
+          </Group>
+
+          <Stack gap="xs">
+            <Group gap="xs">
+              <BodyTextBold>Organisation(s):</BodyTextBold>
+              <BodyTextInline>
+                {site.organisations.length > 0
+                  ? site.organisations.map((o) => o.name).join(", ")
+                  : "None"}
+              </BodyTextInline>
             </Group>
 
             <Group gap="xs">
-              <BodyTextBold>Status:</BodyTextBold>
-              <ActiveStatusBadge active={site.is_active} />
+              <BodyTextBold>Name:</BodyTextBold>
+              <BodyTextInline>{site.name}</BodyTextInline>
             </Group>
 
-            <Stack gap="xs">
-              <Group gap="xs">
-                <BodyTextBold>Organisation(s):</BodyTextBold>
-                <BodyTextInline>
-                  {site.organisations.length > 0
-                    ? site.organisations.map((o) => o.name).join(", ")
-                    : "None"}
-                </BodyTextInline>
-              </Group>
+            <Group gap="xs">
+              <BodyTextBold>Type:</BodyTextBold>
+              <BodyTextInline>{formatType(site.type)}</BodyTextInline>
+            </Group>
 
-              <Group gap="xs">
-                <BodyTextBold>Name:</BodyTextBold>
-                <BodyTextInline>{site.name}</BodyTextInline>
-              </Group>
+            <Group gap="xs">
+              <BodyTextBold>Location:</BodyTextBold>
+              <BodyTextInline>
+                {site.location || "Not specified"}
+              </BodyTextInline>
+            </Group>
 
-              <Group gap="xs">
-                <BodyTextBold>Type:</BodyTextBold>
-                <BodyTextInline>{formatType(site.type)}</BodyTextInline>
-              </Group>
+            <Group gap="xs">
+              <BodyTextBold>Clinical lead:</BodyTextBold>
+              <BodyTextInline>
+                {site.staff.find((s) => s.role === "clinical_lead")
+                  ?.full_name ||
+                  site.staff.find((s) => s.role === "clinical_lead")
+                    ?.username ||
+                  "Not assigned"}
+              </BodyTextInline>
+            </Group>
 
-              <Group gap="xs">
-                <BodyTextBold>Location:</BodyTextBold>
-                <BodyTextInline>
-                  {site.location || "Not specified"}
-                </BodyTextInline>
-              </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Clinical lead:</BodyTextBold>
-                <BodyTextInline>
-                  {site.staff.find((s) => s.role === "clinical_lead")
-                    ?.full_name ||
-                    site.staff.find((s) => s.role === "clinical_lead")
-                      ?.username ||
-                    "Not assigned"}
-                </BodyTextInline>
-              </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Clinical lead email:</BodyTextBold>
-                <BodyTextInline>
-                  {site.staff.find((s) => s.role === "clinical_lead")?.email ||
-                    "N/A"}
-                </BodyTextInline>
-              </Group>
-            </Stack>
+            <Group gap="xs">
+              <BodyTextBold>Clinical lead email:</BodyTextBold>
+              <BodyTextInline>
+                {site.staff.find((s) => s.role === "clinical_lead")?.email ||
+                  "N/A"}
+              </BodyTextInline>
+            </Group>
           </Stack>
-        </BaseCard>
+        </Stack>
+      </BaseCard>
 
-        {/* Staff Members */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Site specific staff members</Heading>
-              <AddButton
-                label="Add staff"
-                onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
-              />
-            </Group>
-
-            <DataTableControlled<SiteStaff>
-              data={site.staff}
-              columns={staffColumns}
-              getRowKey={(member) => member.id}
-              pageSize={10}
-              emptyMessage="No staff assigned"
-              searchFields={(m) => [m.full_name, m.username, m.email, m.role]}
-              filterData={staffFilterOptions}
-              filterLabel="Filter staff"
-              filterAriaLabel="Filter staff"
-              filterPredicate={staffFilterPredicate}
+      {/* Staff Members */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Site specific staff members</Heading>
+            <AddButton
+              label="Add staff"
+              onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
             />
-          </Stack>
-        </BaseCard>
+          </Group>
 
-        <ConfirmModal
-          opened={removingStaff !== null}
-          onClose={() => setRemovingStaff(null)}
-          onAccept={confirmRemoveStaff}
-          title="Remove staff member"
-          acceptLabel="Remove"
-          submittingLabel="Removing…"
-        >
-          Are you sure you want to remove{" "}
-          <strong>{removingStaff?.username}</strong> from this site?
-        </ConfirmModal>
-      </Stack>
-    </Container>
+          <DataTableControlled<SiteStaff>
+            data={site.staff}
+            columns={staffColumns}
+            getRowKey={(member) => member.id}
+            pageSize={10}
+            emptyMessage="No staff assigned"
+            searchFields={(m) => [m.full_name, m.username, m.email, m.role]}
+            filterData={staffFilterOptions}
+            filterLabel="Filter staff"
+            filterAriaLabel="Filter staff"
+            filterPredicate={staffFilterPredicate}
+          />
+        </Stack>
+      </BaseCard>
+
+      <ConfirmModal
+        opened={removingStaff !== null}
+        onClose={() => setRemovingStaff(null)}
+        onAccept={confirmRemoveStaff}
+        title="Remove staff member"
+        acceptLabel="Remove"
+        submittingLabel="Removing…"
+      >
+        Are you sure you want to remove{" "}
+        <strong>{removingStaff?.username}</strong> from this site?
+      </ConfirmModal>
+    </Stack>
   );
 }

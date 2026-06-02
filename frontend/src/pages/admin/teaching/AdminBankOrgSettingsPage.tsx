@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Skeleton, Stack } from "@mantine/core";
+import { Group, Skeleton, Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle, IconArrowLeft } from "@/components/icons/appIcons";
 import PageHeader from "@/components/page-header";
@@ -157,55 +157,49 @@ export default function AdminBankOrgSettingsPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={36} width={300} />
-          <Skeleton height={120} />
-          <Skeleton height={120} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={36} width={300} />
+        <Skeleton height={120} />
+        <Skeleton height={120} />
+      </Stack>
     );
   }
 
   if (error || !bank || !org) {
     return (
-      <Container size="lg">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error ?? "Not found"}
-          colour="alert"
-        />
-      </Container>
+      <StateMessage
+        icon={<IconAlertCircle />}
+        title="Error loading data"
+        description={error ?? "Not found"}
+        colour="alert"
+      />
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group gap="sm">
-          <IconButton
-            icon={<IconArrowLeft />}
-            variant="subtle"
-            onClick={() => navigate(`/admin/teaching/modules/${bankId}`)}
-            aria-label="Back to bank detail"
-          />
-          <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
-        </Group>
+    <Stack gap="lg">
+      <Group gap="sm">
+        <IconButton
+          icon={<IconArrowLeft />}
+          variant="subtle"
+          onClick={() => navigate(`/admin/teaching/modules/${bankId}`)}
+          aria-label="Back to bank detail"
+        />
+        <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
+      </Group>
 
-        <Form<BankOrgSettingsFormValues>
-          defaultValues={{
-            isLive: org.is_live,
-            siteRegistration: org.site_registration,
-          }}
-          onSubmit={handleSubmit}
-          submitLabel="Save"
-          submittingLabel="Saving…"
-          disableWhenClean
-        >
-          <SettingsFields savedIsLive={savedIsLive} />
-        </Form>
-      </Stack>
-    </Container>
+      <Form<BankOrgSettingsFormValues>
+        defaultValues={{
+          isLive: org.is_live,
+          siteRegistration: org.site_registration,
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="Save"
+        submittingLabel="Saving…"
+        disableWhenClean
+      >
+        <SettingsFields savedIsLive={savedIsLive} />
+      </Form>
+    </Stack>
   );
 }

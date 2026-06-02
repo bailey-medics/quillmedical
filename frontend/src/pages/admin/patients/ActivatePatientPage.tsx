@@ -10,7 +10,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
-  Container,
   Stack,
   Button,
   Table,
@@ -154,159 +153,153 @@ export default function ActivatePatientPage() {
   // If we have a specific patient (from route params or state), show the activation confirmation
   if (specificPatient) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <PageHeader title={`Activate ${formatName(specificPatient.name)}`} />
+      <Stack gap="lg">
+        <PageHeader title={`Activate ${formatName(specificPatient.name)}`} />
 
-          {loading ? (
-            <Skeleton height={300} />
-          ) : error ? (
-            <Alert
-              icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-              title="Error loading patient"
-              color="var(--alert-color)"
-            >
-              {error}
-            </Alert>
-          ) : (
-            <BaseCard>
-              <Stack gap="md">
-                <Alert
-                  icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-                  title="Confirmation"
-                  color="primary"
-                >
-                  You are about to activate this patient record. This will
-                  restore access to their records.
-                </Alert>
+        {loading ? (
+          <Skeleton height={300} />
+        ) : error ? (
+          <Alert
+            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+            title="Error loading patient"
+            color="var(--alert-color)"
+          >
+            {error}
+          </Alert>
+        ) : (
+          <BaseCard>
+            <Stack gap="md">
+              <Alert
+                icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+                title="Confirmation"
+                color="primary"
+              >
+                You are about to activate this patient record. This will restore
+                access to their records.
+              </Alert>
 
-                <Stack gap="xs">
+              <Stack gap="xs">
+                <Group>
+                  <BodyTextBold>Name:</BodyTextBold>
+                  <BodyTextInline>
+                    {formatName(specificPatient.name)}
+                  </BodyTextInline>
+                </Group>
+                {specificPatient.birthDate && (
                   <Group>
-                    <BodyTextBold>Name:</BodyTextBold>
-                    <BodyTextInline>
-                      {formatName(specificPatient.name)}
-                    </BodyTextInline>
+                    <BodyTextBold>Birth date:</BodyTextBold>
+                    <BodyTextInline>{specificPatient.birthDate}</BodyTextInline>
                   </Group>
-                  {specificPatient.birthDate && (
-                    <Group>
-                      <BodyTextBold>Birth date:</BodyTextBold>
-                      <BodyTextInline>
-                        {specificPatient.birthDate}
-                      </BodyTextInline>
-                    </Group>
-                  )}
-                  {specificPatient.gender && (
-                    <Group>
-                      <BodyTextBold>Gender:</BodyTextBold>
-                      <BodyTextInline>{specificPatient.gender}</BodyTextInline>
-                    </Group>
-                  )}
+                )}
+                {specificPatient.gender && (
                   <Group>
-                    <BodyTextBold>Patient ID:</BodyTextBold>
-                    <BodyText>{specificPatient.id}</BodyText>
+                    <BodyTextBold>Gender:</BodyTextBold>
+                    <BodyTextInline>{specificPatient.gender}</BodyTextInline>
                   </Group>
-                </Stack>
-
-                <ButtonPair
-                  acceptLabel="Activate patient"
-                  acceptLoading={activating}
-                  onAccept={handleActivateConfirm}
-                  onCancel={() => {
-                    if (patientId) {
-                      navigate(`/admin/patients/${patientId}`);
-                    } else {
-                      navigate("/admin/patients");
-                    }
-                  }}
-                />
+                )}
+                <Group>
+                  <BodyTextBold>Patient ID:</BodyTextBold>
+                  <BodyText>{specificPatient.id}</BodyText>
+                </Group>
               </Stack>
-            </BaseCard>
-          )}
-        </Stack>
-      </Container>
+
+              <ButtonPair
+                acceptLabel="Activate patient"
+                acceptLoading={activating}
+                onAccept={handleActivateConfirm}
+                onCancel={() => {
+                  if (patientId) {
+                    navigate(`/admin/patients/${patientId}`);
+                  } else {
+                    navigate("/admin/patients");
+                  }
+                }}
+              />
+            </Stack>
+          </BaseCard>
+        )}
+      </Stack>
     );
   }
 
   // Otherwise, show patient selection list
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Activate patient" />
+    <Stack gap="lg">
+      <PageHeader title="Activate patient" />
 
-        {loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
+      {loading ? (
+        <Stack gap="xs">
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
+      ) : error ? (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          title="Error loading patients"
+          color="var(--alert-color)"
+        >
+          {error}
+        </Alert>
+      ) : patients.length === 0 ? (
+        <Center h={300}>
+          <Stack align="center" gap="xs">
+            <Icon icon={<IconUserCheck />} size="lg" />
+            <EmptyState>No deactivated patients found</EmptyState>
           </Stack>
-        ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading patients"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        ) : patients.length === 0 ? (
-          <Center h={300}>
-            <Stack align="center" gap="xs">
-              <Icon icon={<IconUserCheck />} size="lg" />
-              <EmptyState>No deactivated patients found</EmptyState>
-            </Stack>
-          </Center>
-        ) : (
-          <>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Birth date</Table.Th>
-                  <Table.Th>Gender</Table.Th>
-                  <Table.Th>Patient ID</Table.Th>
-                  <Table.Th>Actions</Table.Th>
+        </Center>
+      ) : (
+        <>
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Birth date</Table.Th>
+                <Table.Th>Gender</Table.Th>
+                <Table.Th>Patient ID</Table.Th>
+                <Table.Th>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {patients.map((patient) => (
+                <Table.Tr key={patient.id}>
+                  <Table.Td>{formatName(patient.name)}</Table.Td>
+                  <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
+                  <Table.Td style={{ textTransform: "capitalize" }}>
+                    {patient.gender || "N/A"}
+                  </Table.Td>
+                  <Table.Td ff="monospace">{patient.id}</Table.Td>
+                  <Table.Td>
+                    <Button
+                      size="xs"
+                      color="var(--success-color)"
+                      variant="light"
+                      onClick={() => handleActivateClick(patient)}
+                    >
+                      Activate
+                    </Button>
+                  </Table.Td>
                 </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {patients.map((patient) => (
-                  <Table.Tr key={patient.id}>
-                    <Table.Td>{formatName(patient.name)}</Table.Td>
-                    <Table.Td>{patient.birthDate || "N/A"}</Table.Td>
-                    <Table.Td style={{ textTransform: "capitalize" }}>
-                      {patient.gender || "N/A"}
-                    </Table.Td>
-                    <Table.Td ff="monospace">{patient.id}</Table.Td>
-                    <Table.Td>
-                      <Button
-                        size="xs"
-                        color="var(--success-color)"
-                        variant="light"
-                        onClick={() => handleActivateClick(patient)}
-                      >
-                        Activate
-                      </Button>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+              ))}
+            </Table.Tbody>
+          </Table>
 
-            <ConfirmModal
-              opened={!!selectedPatient}
-              onClose={() => setSelectedPatient(null)}
-              onAccept={handleActivateConfirm}
-              title="Confirm activation"
-              acceptLabel="Confirm"
-              destructive={false}
-            >
-              Are you sure you want to activate{" "}
-              <strong>
-                {selectedPatient ? formatName(selectedPatient.name) : ""}
-              </strong>
-              ?
-            </ConfirmModal>
-          </>
-        )}
-      </Stack>
-    </Container>
+          <ConfirmModal
+            opened={!!selectedPatient}
+            onClose={() => setSelectedPatient(null)}
+            onAccept={handleActivateConfirm}
+            title="Confirm activation"
+            acceptLabel="Confirm"
+            destructive={false}
+          >
+            Are you sure you want to activate{" "}
+            <strong>
+              {selectedPatient ? formatName(selectedPatient.name) : ""}
+            </strong>
+            ?
+          </ConfirmModal>
+        </>
+      )}
+    </Stack>
   );
 }

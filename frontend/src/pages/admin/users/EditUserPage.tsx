@@ -8,14 +8,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import {
-  Container,
-  Stack,
-  Table,
-  Skeleton,
-  Center,
-  Alert,
-} from "@mantine/core";
+import { Stack, Table, Skeleton, Center, Alert } from "@mantine/core";
 import { IconAlertCircle, IconEdit } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import IconButton from "@/components/button/IconButton";
@@ -63,63 +56,61 @@ export default function EditUserPage() {
   };
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Edit user" />
+    <Stack gap="lg">
+      <PageHeader title="Edit user" />
 
-        {loading ? (
-          <Stack gap="xs">
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-            <Skeleton height={50} />
-          </Stack>
-        ) : error ? (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="sm" />}
-            title="Error loading users"
-            color="var(--alert-color)"
-          >
-            {error}
-          </Alert>
-        ) : users.length === 0 ? (
-          <Center p="xl">
-            <EmptyState>No users found</EmptyState>
-          </Center>
-        ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Username</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th style={{ width: "100px", textAlign: "right" }}>
-                  Action
-                </Table.Th>
+      {loading ? (
+        <Stack gap="xs">
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+          <Skeleton height={50} />
+        </Stack>
+      ) : error ? (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="sm" />}
+          title="Error loading users"
+          color="var(--alert-color)"
+        >
+          {error}
+        </Alert>
+      ) : users.length === 0 ? (
+        <Center p="xl">
+          <EmptyState>No users found</EmptyState>
+        </Center>
+      ) : (
+        <Table striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Username</Table.Th>
+              <Table.Th>Email</Table.Th>
+              <Table.Th style={{ width: "100px", textAlign: "right" }}>
+                Action
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {users.map((user) => (
+              <Table.Tr key={user.id}>
+                <Table.Td>
+                  <BodyTextBold>{user.username}</BodyTextBold>
+                </Table.Td>
+                <Table.Td>{user.email}</Table.Td>
+                <Table.Td style={{ textAlign: "right" }}>
+                  <IconButton
+                    icon={<IconEdit />}
+                    variant="light"
+                    color="primary"
+                    onClick={() => handleEditUser(user.id)}
+                    aria-label={`Edit ${user.username}`}
+                  />
+                </Table.Td>
               </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {users.map((user) => (
-                <Table.Tr key={user.id}>
-                  <Table.Td>
-                    <BodyTextBold>{user.username}</BodyTextBold>
-                  </Table.Td>
-                  <Table.Td>{user.email}</Table.Td>
-                  <Table.Td style={{ textAlign: "right" }}>
-                    <IconButton
-                      icon={<IconEdit />}
-                      variant="light"
-                      color="primary"
-                      onClick={() => handleEditUser(user.id)}
-                      aria-label={`Edit ${user.username}`}
-                    />
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        )}
-      </Stack>
-    </Container>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+    </Stack>
   );
 }

@@ -6,13 +6,7 @@
  * to sub-settings.
  */
 
-import {
-  Container,
-  Group,
-  SimpleGrid,
-  Stack,
-  useMantineColorScheme,
-} from "@mantine/core";
+import { Group, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconBell, IconMoon, IconUser } from "@/components/icons/appIcons";
 import { useState } from "react";
@@ -100,78 +94,76 @@ export default function Settings() {
   };
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Settings" />
+    <Stack gap="lg">
+      <PageHeader title="Settings" />
 
-        <SimpleGrid cols={useTwoColumnActionCards ? 2 : 1}>
-          {appFeatureFlags.settingsNotificationsCardEnabled && (
+      <SimpleGrid cols={useTwoColumnActionCards ? 2 : 1}>
+        {appFeatureFlags.settingsNotificationsCardEnabled && (
+          <ActionCard
+            icon={<IconBell />}
+            title="Notifications"
+            subtitle="Enable push notifications to stay updated"
+            buttonLabel={getNotificationButtonLabel()}
+            onClick={enableNotifications}
+            disabled={
+              notificationState === "busy" || notificationState === "ok"
+            }
+          />
+        )}
+
+        <ActionCard
+          icon={<IconUser />}
+          title="Account"
+          subtitle="Update your profile and password"
+          buttonLabel="Manage account"
+          buttonUrl="/settings/account"
+        />
+
+        {state.status === "authenticated" &&
+          !state.user.clinical_services_enabled && (
             <ActionCard
-              icon={<IconBell />}
-              title="Notifications"
-              subtitle="Enable push notifications to stay updated"
-              buttonLabel={getNotificationButtonLabel()}
-              onClick={enableNotifications}
-              disabled={
-                notificationState === "busy" || notificationState === "ok"
+              icon={<IconMoon />}
+              title="Dark mode"
+              subtitle="Switch between light and dark colour schemes."
+              action={
+                <SolidSwitch
+                  checked={colorScheme === "dark"}
+                  onChange={() =>
+                    setColorScheme(colorScheme === "dark" ? "light" : "dark")
+                  }
+                />
               }
             />
           )}
 
-          <ActionCard
-            icon={<IconUser />}
-            title="Account"
-            subtitle="Update your profile and password"
-            buttonLabel="Manage account"
-            buttonUrl="/settings/account"
-          />
-
-          {state.status === "authenticated" &&
-            !state.user.clinical_services_enabled && (
-              <ActionCard
-                icon={<IconMoon />}
-                title="Dark mode"
-                subtitle="Switch between light and dark colour schemes."
-                action={
-                  <SolidSwitch
-                    checked={colorScheme === "dark"}
-                    onChange={() =>
-                      setColorScheme(colorScheme === "dark" ? "light" : "dark")
-                    }
-                  />
-                }
-              />
-            )}
-
-          <BaseCard className={classes.totpCard}>
-            <Stack gap="md">
-              <Stack gap="md" className={classes.breakLongWords}>
-                <Stack gap={4}>
-                  <Heading>Two-factor authentication (TOTP)</Heading>
-                  <BodyText>
-                    Use an authenticator app to add a second factor to your
-                    account.
-                  </BodyText>
-                </Stack>
-                <SolidSwitch
-                  checked={useTotp}
-                  onChange={(e) => setUseTotp(e.currentTarget.checked)}
-                />
+        <BaseCard className={classes.totpCard}>
+          <Stack gap="md">
+            <Stack gap="md" className={classes.breakLongWords}>
+              <Stack gap={4}>
+                <Heading>Two-factor authentication (TOTP)</Heading>
+                <BodyText>
+                  Use an authenticator app to add a second factor to your
+                  account.
+                </BodyText>
               </Stack>
-              <Group justify="flex-end">
-                <IconTextButton
-                  icon="settings"
-                  label="Configure TOTP"
-                  variant="filled"
-                  fullWidth
-                  disabled={!useTotp}
-                  onClick={() => navigate("/settings/totp")}
-                />
-              </Group>
+              <SolidSwitch
+                checked={useTotp}
+                onChange={(e) => setUseTotp(e.currentTarget.checked)}
+              />
             </Stack>
-          </BaseCard>
-        </SimpleGrid>
-      </Stack>
-    </Container>
+            <Group justify="flex-end">
+              <IconTextButton
+                icon="settings"
+                label="Configure TOTP"
+                variant="filled"
+                fullWidth
+                disabled={!useTotp}
+                onClick={() => navigate("/settings/totp")}
+              />
+            </Group>
+          </Stack>
+        </BaseCard>
+      </SimpleGrid>
+    </Stack>
   );
 }

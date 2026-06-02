@@ -35,6 +35,10 @@ export type LayoutCtx = {
   examMode: boolean;
   /** Function to toggle exam mode from child pages */
   setExamMode: React.Dispatch<React.SetStateAction<boolean>>;
+  /** When true, removes Container max-width (full-width content) */
+  fluid: boolean;
+  /** Function to toggle fluid mode from child pages */
+  setFluid: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 /**
@@ -59,6 +63,7 @@ export default function RootLayout() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientNav, setPatientNav] = useState<NavItem[]>([]);
   const [examMode, setExamMode] = useState(false);
+  const [fluid, setFluid] = useState(false);
   const location = useLocation();
 
   // Clear patient context when navigating away from patient-specific routes
@@ -73,6 +78,12 @@ export default function RootLayout() {
     }
   }, [location.pathname]);
 
+  // Reset fluid on every navigation — pages must opt in per-render
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation side effect
+    setFluid(false);
+  }, [location.pathname]);
+
   return (
     <SearchProvider>
       <NavigationBlocker />
@@ -81,6 +92,7 @@ export default function RootLayout() {
         isLoading={false}
         patientNav={patientNav}
         examMode={examMode}
+        fluid={fluid}
       >
         <ErrorBoundary>
           <Outlet
@@ -92,6 +104,8 @@ export default function RootLayout() {
                 setPatientNav,
                 examMode,
                 setExamMode,
+                fluid,
+                setFluid,
               } satisfies LayoutCtx
             }
           />

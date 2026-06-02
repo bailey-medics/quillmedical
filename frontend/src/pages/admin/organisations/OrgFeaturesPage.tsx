@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Group, Stack, Skeleton, Alert } from "@mantine/core";
+import { Group, Stack, Skeleton, Alert } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
@@ -236,52 +236,44 @@ export default function OrgFeaturesPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+      </Stack>
     );
   }
 
   if (error) {
     return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading features"
-          color="var(--alert-color)"
-        >
-          {error}
-        </Alert>
-      </Container>
+      <Alert
+        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+        title="Error loading features"
+        color="var(--alert-color)"
+      >
+        {error}
+      </Alert>
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Features" />
+    <Stack gap="lg">
+      <PageHeader title="Features" />
 
-        <Form<FeatureFormValues>
-          defaultValues={defaultValues}
-          onSubmit={handleSubmit}
-          submitLabel="Save changes"
-          submittingLabel="Saving…"
-          disableWhenClean
-          confirm={{
-            title: "Confirm feature changes",
-            acceptLabel: "Confirm",
-            cancelLabel: "Go back",
-            children: (
-              <ConfirmContent orgName={orgName} savedKeys={savedKeys} />
-            ),
-          }}
-        >
-          <FeatureFields orgId={id!} />
-        </Form>
-      </Stack>
-    </Container>
+      <Form<FeatureFormValues>
+        defaultValues={defaultValues}
+        onSubmit={handleSubmit}
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        disableWhenClean
+        confirm={{
+          title: "Confirm feature changes",
+          acceptLabel: "Confirm",
+          cancelLabel: "Go back",
+          children: <ConfirmContent orgName={orgName} savedKeys={savedKeys} />,
+        }}
+      >
+        <FeatureFields orgId={id!} />
+      </Form>
+    </Stack>
   );
 }

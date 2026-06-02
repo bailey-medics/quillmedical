@@ -9,7 +9,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import {
-  Container,
   Stack,
   Group,
   SimpleGrid,
@@ -240,27 +239,23 @@ export default function PatientAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-          <Skeleton height={300} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+        <Skeleton height={300} />
+      </Stack>
     );
   }
 
   if (error || !patient) {
     return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading patient"
-          color="var(--alert-color)"
-        >
-          {error || "Patient not found"}
-        </Alert>
-      </Container>
+      <Alert
+        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+        title="Error loading patient"
+        color="var(--alert-color)"
+      >
+        {error || "Patient not found"}
+      </Alert>
     );
   }
 
@@ -268,149 +263,147 @@ export default function PatientAdminPage() {
   const nationalId = getNationalIdentifier();
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title={patientName} />
+    <Stack gap="lg">
+      <PageHeader title={patientName} />
 
-        {/* Linked User Section */}
-        <BaseCard>
-          <Group justify="space-between" mb="md">
-            <Heading>Linked user account</Heading>
+      {/* Linked User Section */}
+      <BaseCard>
+        <Group justify="space-between" mb="md">
+          <Heading>Linked user account</Heading>
+          <IconButton
+            icon={<IconPencil />}
+            variant="subtle"
+            color="primary"
+            onClick={handleEditLink}
+            aria-label="Edit linked user"
+          />
+        </Group>
+
+        {linkedUser ? (
+          <Stack gap="xs">
+            <Group gap="xs">
+              <Icon icon={<IconUser />} size="lg" />
+              <BodyTextBold>{linkedUser.username}</BodyTextBold>
+            </Group>
+            <BodyText>{linkedUser.email}</BodyText>
+            <Badge
+              color="var(--success-color)"
+              variant="light"
+              size="sm"
+              w="fit-content"
+            >
+              Linked
+            </Badge>
+          </Stack>
+        ) : (
+          <Alert
+            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+            color="gray"
+          >
+            No user account linked to this patient
+          </Alert>
+        )}
+      </BaseCard>
+
+      {/* Patient Details Section */}
+      <BaseCard>
+        <Group justify="space-between" mb="md">
+          <Heading>Patient details</Heading>
+          <Group gap="xs">
+            <Badge
+              color={isActive ? "var(--success-color)" : "var(--alert-color)"}
+              variant="light"
+            >
+              {isActive ? "Active" : "Inactive"}
+            </Badge>
             <IconButton
               icon={<IconPencil />}
               variant="subtle"
-              color="primary"
-              onClick={handleEditLink}
-              aria-label="Edit linked user"
+              aria-label="Edit patient details"
+              onClick={() => {
+                navigate(`/admin/patients/${patientId}/edit`, {
+                  state: { patient },
+                });
+              }}
             />
           </Group>
+        </Group>
 
-          {linkedUser ? (
-            <Stack gap="xs">
-              <Group gap="xs">
-                <Icon icon={<IconUser />} size="lg" />
-                <BodyTextBold>{linkedUser.username}</BodyTextBold>
-              </Group>
-              <BodyText>{linkedUser.email}</BodyText>
-              <Badge
-                color="var(--success-color)"
-                variant="light"
-                size="sm"
-                w="fit-content"
-              >
-                Linked
-              </Badge>
-            </Stack>
-          ) : (
-            <Alert
-              icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-              color="gray"
-            >
-              No user account linked to this patient
-            </Alert>
-          )}
-        </BaseCard>
-
-        {/* Patient Details Section */}
-        <BaseCard>
-          <Group justify="space-between" mb="md">
-            <Heading>Patient details</Heading>
-            <Group gap="xs">
-              <Badge
-                color={isActive ? "var(--success-color)" : "var(--alert-color)"}
-                variant="light"
-              >
-                {isActive ? "Active" : "Inactive"}
-              </Badge>
-              <IconButton
-                icon={<IconPencil />}
-                variant="subtle"
-                aria-label="Edit patient details"
-                onClick={() => {
-                  navigate(`/admin/patients/${patientId}/edit`, {
-                    state: { patient },
-                  });
-                }}
-              />
-            </Group>
+        <Stack gap="md">
+          <Group justify="space-between">
+            <BodyText>Full name</BodyText>
+            <BodyTextBold>{patientName}</BodyTextBold>
           </Group>
 
-          <Stack gap="md">
+          {patient.birthDate && (
             <Group justify="space-between">
-              <BodyText>Full name</BodyText>
-              <BodyTextBold>{patientName}</BodyTextBold>
+              <BodyText>Date of birth</BodyText>
+              <BodyTextBold>{patient.birthDate}</BodyTextBold>
             </Group>
+          )}
 
-            {patient.birthDate && (
-              <Group justify="space-between">
-                <BodyText>Date of birth</BodyText>
-                <BodyTextBold>{patient.birthDate}</BodyTextBold>
-              </Group>
-            )}
-
-            {patient.gender && (
-              <Group justify="space-between">
-                <BodyText>Gender</BodyText>
-                <Text component="span" size="lg" tt="capitalize" fw={500}>
-                  {patient.gender}
-                </Text>
-              </Group>
-            )}
-
-            {nationalId && (
-              <Group justify="space-between">
-                <BodyText>{nationalId.label}</BodyText>
-                <Text fw={700} size="lg" ff="monospace">
-                  {nationalId.value}
-                </Text>
-              </Group>
-            )}
-
+          {patient.gender && (
             <Group justify="space-between">
-              <BodyText>Patient system ID</BodyText>
-              <Text fw={700} size="lg" ff="monospace">
-                {patient.id}
+              <BodyText>Gender</BodyText>
+              <Text component="span" size="lg" tt="capitalize" fw={500}>
+                {patient.gender}
               </Text>
             </Group>
-          </Stack>
-        </BaseCard>
+          )}
 
-        {/* Patient Actions Section */}
-        <Stack gap="md">
-          <Heading>Patient actions</Heading>
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            {isActive ? (
-              <ActionCard
-                icon={<IconUserMinus />}
-                title="Deactivate patient"
-                subtitle="Deactivate this patient record"
-                buttonLabel="Deactivate patient"
-                buttonUrl={`/admin/patients/${patientId}/deactivate`}
-                onClick={() => {
-                  // Navigate to deactivate page for this specific patient
-                  navigate(`/admin/patients/${patientId}/deactivate`, {
-                    state: { patient },
-                  });
-                }}
-              />
-            ) : (
-              <ActionCard
-                icon={<IconUserCheck />}
-                title="Activate patient"
-                subtitle="Reactivate this patient record"
-                buttonLabel="Activate patient"
-                buttonUrl={`/admin/patients/${patientId}/activate`}
-                onClick={() => {
-                  // Navigate to activate page for this specific patient
-                  navigate(`/admin/patients/${patientId}/activate`, {
-                    state: { patient },
-                  });
-                }}
-              />
-            )}
-          </SimpleGrid>
+          {nationalId && (
+            <Group justify="space-between">
+              <BodyText>{nationalId.label}</BodyText>
+              <Text fw={700} size="lg" ff="monospace">
+                {nationalId.value}
+              </Text>
+            </Group>
+          )}
+
+          <Group justify="space-between">
+            <BodyText>Patient system ID</BodyText>
+            <Text fw={700} size="lg" ff="monospace">
+              {patient.id}
+            </Text>
+          </Group>
         </Stack>
+      </BaseCard>
+
+      {/* Patient Actions Section */}
+      <Stack gap="md">
+        <Heading>Patient actions</Heading>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          {isActive ? (
+            <ActionCard
+              icon={<IconUserMinus />}
+              title="Deactivate patient"
+              subtitle="Deactivate this patient record"
+              buttonLabel="Deactivate patient"
+              buttonUrl={`/admin/patients/${patientId}/deactivate`}
+              onClick={() => {
+                // Navigate to deactivate page for this specific patient
+                navigate(`/admin/patients/${patientId}/deactivate`, {
+                  state: { patient },
+                });
+              }}
+            />
+          ) : (
+            <ActionCard
+              icon={<IconUserCheck />}
+              title="Activate patient"
+              subtitle="Reactivate this patient record"
+              buttonLabel="Activate patient"
+              buttonUrl={`/admin/patients/${patientId}/activate`}
+              onClick={() => {
+                // Navigate to activate page for this specific patient
+                navigate(`/admin/patients/${patientId}/activate`, {
+                  state: { patient },
+                });
+              }}
+            />
+          )}
+        </SimpleGrid>
       </Stack>
-    </Container>
+    </Stack>
   );
 }

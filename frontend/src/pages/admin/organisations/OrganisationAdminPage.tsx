@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Stack, Group, Skeleton } from "@mantine/core";
+import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   BodyTextInline,
@@ -224,13 +224,11 @@ export default function OrganisationAdminPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-          <Skeleton height={150} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+        <Skeleton height={150} />
+      </Stack>
     );
   }
 
@@ -322,165 +320,156 @@ export default function OrganisationAdminPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title={org.name} />
-        {/* Organisation Information */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Organisation information</Heading>
-              <IconButton
-                icon={<IconPencil />}
-                onClick={() => navigate(`/admin/organisations/${id}/edit`)}
-                aria-label="Edit organisation"
-              />
-            </Group>
-
-            <Stack gap="xs">
-              <Group gap="xs">
-                <BodyTextBold>Name:</BodyTextBold>
-                <BodyTextInline>{org.name}</BodyTextInline>
-              </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Type:</BodyTextBold>
-                <BodyTextInline>{formatType(org.type)}</BodyTextInline>
-              </Group>
-
-              <Group gap="xs">
-                <BodyTextBold>Location:</BodyTextBold>
-                <BodyTextInline>
-                  {org.location || "Not specified"}
-                </BodyTextInline>
-              </Group>
-            </Stack>
-          </Stack>
-        </BaseCard>
-        {/* Staff Members */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Organisation staff members</Heading>
-              <AddButton
-                label="Add staff"
-                onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
-              />
-            </Group>
-
-            <DataTableControlled<StaffMember>
-              data={org.staff_members}
-              columns={staffColumns}
-              onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
-              getRowKey={(member) => member.id}
-              emptyMessage="No staff members assigned"
-              searchFields={(m) => [m.full_name, m.username, m.email]}
+    <Stack gap="lg">
+      <PageHeader title={org.name} />
+      {/* Organisation Information */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Organisation information</Heading>
+            <IconButton
+              icon={<IconPencil />}
+              onClick={() => navigate(`/admin/organisations/${id}/edit`)}
+              aria-label="Edit organisation"
             />
-          </Stack>
-        </BaseCard>
-        {/* Patient Members */}
-        {clinicalServicesEnabled && (
-          <BaseCard>
-            <Stack gap="md">
-              <Group justify="space-between" align="center">
-                <Heading>Patients</Heading>
-                <AddButton
-                  label="Add patient"
-                  onClick={() =>
-                    navigate(`/admin/organisations/${id}/add-patient`)
-                  }
-                />
-              </Group>
+          </Group>
 
-              <DataTableControlled<PatientMember>
-                data={org.patient_members}
-                columns={patientColumns}
-                onRowClick={(patient) =>
-                  navigate(`/admin/patients/${patient.patient_id}`)
+          <Stack gap="xs">
+            <Group gap="xs">
+              <BodyTextBold>Name:</BodyTextBold>
+              <BodyTextInline>{org.name}</BodyTextInline>
+            </Group>
+
+            <Group gap="xs">
+              <BodyTextBold>Type:</BodyTextBold>
+              <BodyTextInline>{formatType(org.type)}</BodyTextInline>
+            </Group>
+
+            <Group gap="xs">
+              <BodyTextBold>Location:</BodyTextBold>
+              <BodyTextInline>{org.location || "Not specified"}</BodyTextInline>
+            </Group>
+          </Stack>
+        </Stack>
+      </BaseCard>
+      {/* Staff Members */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Organisation staff members</Heading>
+            <AddButton
+              label="Add staff"
+              onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
+            />
+          </Group>
+
+          <DataTableControlled<StaffMember>
+            data={org.staff_members}
+            columns={staffColumns}
+            onRowClick={(member) => navigate(`/admin/users/${member.id}`)}
+            getRowKey={(member) => member.id}
+            emptyMessage="No staff members assigned"
+            searchFields={(m) => [m.full_name, m.username, m.email]}
+          />
+        </Stack>
+      </BaseCard>
+      {/* Patient Members */}
+      {clinicalServicesEnabled && (
+        <BaseCard>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Heading>Patients</Heading>
+              <AddButton
+                label="Add patient"
+                onClick={() =>
+                  navigate(`/admin/organisations/${id}/add-patient`)
                 }
-                getRowKey={(patient) => patient.patient_id}
-                emptyMessage="No patients assigned"
-                searchFields={(p) => [p.patient_id]}
-              />
-            </Stack>
-          </BaseCard>
-        )}
-        {/* Enabled Features */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Enabled features</Heading>
-              <IconButton
-                icon={<IconPencil />}
-                onClick={() => navigate(`/admin/organisations/${id}/features`)}
-                aria-label="Edit features"
               />
             </Group>
 
-            {enabledFeatures.length > 0 ? (
-              <Group gap="sm">
-                {enabledFeatures.map((key) => (
-                  <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
-                ))}
-              </Group>
-            ) : (
-              <EmptyState>No features enabled</EmptyState>
-            )}
-          </Stack>
-        </BaseCard>
-        {/* Sites */}
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Sites</Heading>
-              <AddButton
-                label="Add site"
-                onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
-              />
-            </Group>
-
-            <DataTableControlled<SiteMember>
-              data={org.sites}
-              columns={siteColumns}
-              onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
-              getRowKey={(site) => site.id}
-              emptyMessage="No sites linked"
-              searchFields={(s) => [
-                s.name,
-                s.type,
-                s.location,
-                s.clinical_lead,
-              ]}
-              filterData={siteFilterOptions}
-              filterLabel="Filter sites"
-              filterAriaLabel="Filter sites"
-              filterPredicate={siteFilterPredicate}
+            <DataTableControlled<PatientMember>
+              data={org.patient_members}
+              columns={patientColumns}
+              onRowClick={(patient) =>
+                navigate(`/admin/patients/${patient.patient_id}`)
+              }
+              getRowKey={(patient) => patient.patient_id}
+              emptyMessage="No patients assigned"
+              searchFields={(p) => [p.patient_id]}
             />
           </Stack>
         </BaseCard>
-        <ConfirmModal
-          opened={removingMember !== null}
-          onClose={() => setRemovingMember(null)}
-          onAccept={confirmRemoveStaff}
-          title="Remove staff member"
-          acceptLabel="Remove"
-          submittingLabel="Removing…"
-        >
-          Are you sure you want to remove{" "}
-          <strong>{removingMember?.username}</strong> from this organisation?
-        </ConfirmModal>
-        <ConfirmModal
-          opened={removingSite !== null}
-          onClose={() => setRemovingSite(null)}
-          onAccept={confirmRemoveSite}
-          title="Remove site"
-          acceptLabel="Remove"
-          submittingLabel="Removing\u2026"
-        >
-          Are you sure you want to remove <strong>{removingSite?.name}</strong>{" "}
-          from this organisation?
-        </ConfirmModal>{" "}
-      </Stack>
-    </Container>
+      )}
+      {/* Enabled Features */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Enabled features</Heading>
+            <IconButton
+              icon={<IconPencil />}
+              onClick={() => navigate(`/admin/organisations/${id}/features`)}
+              aria-label="Edit features"
+            />
+          </Group>
+
+          {enabledFeatures.length > 0 ? (
+            <Group gap="sm">
+              {enabledFeatures.map((key) => (
+                <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
+              ))}
+            </Group>
+          ) : (
+            <EmptyState>No features enabled</EmptyState>
+          )}
+        </Stack>
+      </BaseCard>
+      {/* Sites */}
+      <BaseCard>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Heading>Sites</Heading>
+            <AddButton
+              label="Add site"
+              onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
+            />
+          </Group>
+
+          <DataTableControlled<SiteMember>
+            data={org.sites}
+            columns={siteColumns}
+            onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
+            getRowKey={(site) => site.id}
+            emptyMessage="No sites linked"
+            searchFields={(s) => [s.name, s.type, s.location, s.clinical_lead]}
+            filterData={siteFilterOptions}
+            filterLabel="Filter sites"
+            filterAriaLabel="Filter sites"
+            filterPredicate={siteFilterPredicate}
+          />
+        </Stack>
+      </BaseCard>
+      <ConfirmModal
+        opened={removingMember !== null}
+        onClose={() => setRemovingMember(null)}
+        onAccept={confirmRemoveStaff}
+        title="Remove staff member"
+        acceptLabel="Remove"
+        submittingLabel="Removing…"
+      >
+        Are you sure you want to remove{" "}
+        <strong>{removingMember?.username}</strong> from this organisation?
+      </ConfirmModal>
+      <ConfirmModal
+        opened={removingSite !== null}
+        onClose={() => setRemovingSite(null)}
+        onAccept={confirmRemoveSite}
+        title="Remove site"
+        acceptLabel="Remove"
+        submittingLabel="Removing\u2026"
+      >
+        Are you sure you want to remove <strong>{removingSite?.name}</strong>{" "}
+        from this organisation?
+      </ConfirmModal>{" "}
+    </Stack>
   );
 }

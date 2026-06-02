@@ -5,7 +5,7 @@
  * and change their password in a single form. Username is read-only.
  */
 
-import { Container, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import Divider from "@/components/divider/Divider";
 import PasswordField from "@/components/form/PasswordField";
@@ -199,16 +199,14 @@ export default function AccountPage() {
   }
 
   return (
-    <Container size="lg">
-      <Form<AccountFormValues>
-        defaultValues={defaultValues}
-        onSubmit={handleSubmit}
-        submitLabel="Save"
-        submittingLabel="Saving…"
-        disableWhenClean
-      >
-        <AccountFields />
-      </Form>
-    </Container>
+    <Form<AccountFormValues>
+      defaultValues={defaultValues}
+      onSubmit={handleSubmit}
+      submitLabel="Save"
+      submittingLabel="Saving…"
+      disableWhenClean
+    >
+      <AccountFields />
+    </Form>
   );
 }

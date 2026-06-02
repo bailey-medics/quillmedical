@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Stack, Center, Group } from "@mantine/core";
+import { Stack, Center, Group } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { IconClock } from "@/components/icons/appIcons";
@@ -148,37 +148,35 @@ export default function AdminPatientsPage() {
   ];
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
-          <PageHeader title="Patient management" />
-          <AddButton
-            label="Add patient"
-            onClick={() => navigate("/admin/patients/new")}
-          />
-        </Group>
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
+        <PageHeader title="Patient management" />
+        <AddButton
+          label="Add patient"
+          onClick={() => navigate("/admin/patients/new")}
+        />
+      </Group>
 
-        {fhirReady === false ? (
-          <Center p="xl">
-            <StateMessage
-              icon={<IconClock />}
-              title="Database is initialising"
-              description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
-              colour="info"
-            />
-          </Center>
-        ) : (
-          <DataTable
-            data={patients}
-            columns={columns}
-            onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
-            getRowKey={(patient) => patient.id}
-            loading={loading}
-            error={error}
-            emptyMessage="No patients found"
+      {fhirReady === false ? (
+        <Center p="xl">
+          <StateMessage
+            icon={<IconClock />}
+            title="Database is initialising"
+            description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+            colour="info"
           />
-        )}
-      </Stack>
-    </Container>
+        </Center>
+      ) : (
+        <DataTable
+          data={patients}
+          columns={columns}
+          onRowClick={(patient) => navigate(`/admin/patients/${patient.id}`)}
+          getRowKey={(patient) => patient.id}
+          loading={loading}
+          error={error}
+          emptyMessage="No patients found"
+        />
+      )}
+    </Stack>
   );
 }

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert, Skeleton } from "@mantine/core";
+import { Stack, Alert, Skeleton } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -168,48 +168,42 @@ export default function EditOrganisationPage() {
 
   if (loading) {
     return (
-      <Container size="lg">
-        <Stack gap="lg">
-          <Skeleton height={60} />
-          <Skeleton height={200} />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={200} />
+      </Stack>
     );
   }
 
   if (loadError) {
     return (
-      <Container size="lg">
-        <Alert
-          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-          title="Error loading organisation"
-          color="var(--alert-color)"
-        >
-          {loadError}
-        </Alert>
-      </Container>
+      <Alert
+        icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+        title="Error loading organisation"
+        color="var(--alert-color)"
+      >
+        {loadError}
+      </Alert>
     );
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Edit organisation" />
+    <Stack gap="lg">
+      <PageHeader title="Edit organisation" />
 
-        <Form<EditFormValues>
-          defaultValues={{
-            name: orgData?.name ?? "",
-            type: orgData?.type ?? null,
-            location: orgData?.location ?? "",
-          }}
-          onSubmit={handleSubmit}
-          submitLabel="Save changes"
-          submittingLabel="Saving…"
-          disableWhenClean
-        >
-          <EditFields orgId={id!} />
-        </Form>
-      </Stack>
-    </Container>
+      <Form<EditFormValues>
+        defaultValues={{
+          name: orgData?.name ?? "",
+          type: orgData?.type ?? null,
+          location: orgData?.location ?? "",
+        }}
+        onSubmit={handleSubmit}
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        disableWhenClean
+      >
+        <EditFields orgId={id!} />
+      </Form>
+    </Stack>
   );
 }

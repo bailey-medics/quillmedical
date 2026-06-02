@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Container, Stack, Alert } from "@mantine/core";
+import { Stack, Alert } from "@mantine/core";
 import { Controller } from "react-hook-form";
 import { IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
@@ -196,34 +196,32 @@ export default function AddStaffToSitePage() {
   }
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <PageHeader title="Add staff to site" />
+    <Stack gap="lg">
+      <PageHeader title="Add staff to site" />
 
-        {loadError && (
-          <Alert
-            icon={<Icon icon={<IconAlertCircle />} size="lg" />}
-            title="Error loading users"
-            color="var(--alert-color)"
-          >
-            {loadError}
-          </Alert>
-        )}
-
-        <Form<AddStaffFormValues>
-          defaultValues={{ userId: null, role: null }}
-          onSubmit={handleSubmit}
-          submitLabel="Add staff member"
-          submittingLabel="Adding…"
+      {loadError && (
+        <Alert
+          icon={<Icon icon={<IconAlertCircle />} size="lg" />}
+          title="Error loading users"
+          color="var(--alert-color)"
         >
-          <AddStaffFields
-            siteId={id!}
-            users={users}
-            usersLoading={usersLoading}
-            hasClinicalLead={hasClinicalLead}
-          />
-        </Form>
-      </Stack>
-    </Container>
+          {loadError}
+        </Alert>
+      )}
+
+      <Form<AddStaffFormValues>
+        defaultValues={{ userId: null, role: null }}
+        onSubmit={handleSubmit}
+        submitLabel="Add staff member"
+        submittingLabel="Adding…"
+      >
+        <AddStaffFields
+          siteId={id!}
+          users={users}
+          usersLoading={usersLoading}
+          hasClinicalLead={hasClinicalLead}
+        />
+      </Form>
+    </Stack>
   );
 }

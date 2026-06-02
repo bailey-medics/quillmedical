@@ -22,7 +22,7 @@ import {
 import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
-import { Container, Group, Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import { ErrorMessage, EmptyState } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
@@ -265,60 +265,58 @@ export default function Messages() {
   }, [isFhirReady]);
 
   return (
-    <Container size="lg">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-end">
-          <PageHeader title="Messages" />
-          <AddButton label="New message" onClick={() => setModalOpen(true)} />
-        </Group>
+    <Stack gap="lg">
+      <Group justify="space-between" align="flex-end">
+        <PageHeader title="Messages" />
+        <AddButton label="New message" onClick={() => setModalOpen(true)} />
+      </Group>
 
-        <NewMessageModal
-          opened={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={handleNewConversation}
+      <NewMessageModal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleNewConversation}
+      />
+
+      {error && (
+        <BaseCard>
+          <ErrorMessage>{error}</ErrorMessage>
+        </BaseCard>
+      )}
+
+      {isLoading ? (
+        <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
+      ) : !fhirAvailable ? (
+        <StateMessage
+          icon={<IconClock />}
+          title="Database is initialising"
+          description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
+          colour="info"
         />
-
-        {error && (
-          <BaseCard>
-            <ErrorMessage>{error}</ErrorMessage>
-          </BaseCard>
-        )}
-
-        {isLoading ? (
-          <MessagesList threads={[]} isLoading onThreadClick={() => {}} />
-        ) : !fhirAvailable ? (
-          <StateMessage
-            icon={<IconClock />}
-            title="Database is initialising"
-            description="The Quill databases are just warming up. This may take a few moments. The patient list will appear automatically once available."
-            colour="info"
-          />
-        ) : conversations.length === 0 ? (
-          <BaseCard>
-            <EmptyState>No conversations yet</EmptyState>
-          </BaseCard>
-        ) : (
-          <MessagesList
-            threads={conversations.map((conv) => ({
-              id: conv.id,
-              displayName: conv.subject || conv.patientName,
-              profiles: [
-                {
-                  givenName: conv.patientGivenName,
-                  familyName: conv.patientFamilyName,
-                  gradientIndex: conv.patientGradientIndex,
-                },
-              ],
-              lastMessage: conv.lastMessage,
-              lastMessageTime: conv.lastMessageTime,
-              unreadCount: conv.unreadCount,
-            }))}
-            onThreadClick={(thread: MessageThread) =>
-              navigate(`/messages/${thread.id}`)
-            }
-          />
-        )}
-      </Stack>
-    </Container>
+      ) : conversations.length === 0 ? (
+        <BaseCard>
+          <EmptyState>No conversations yet</EmptyState>
+        </BaseCard>
+      ) : (
+        <MessagesList
+          threads={conversations.map((conv) => ({
+            id: conv.id,
+            displayName: conv.subject || conv.patientName,
+            profiles: [
+              {
+                givenName: conv.patientGivenName,
+                familyName: conv.patientFamilyName,
+                gradientIndex: conv.patientGradientIndex,
+              },
+            ],
+            lastMessage: conv.lastMessage,
+            lastMessageTime: conv.lastMessageTime,
+            unreadCount: conv.unreadCount,
+          }))}
+          onThreadClick={(thread: MessageThread) =>
+            navigate(`/messages/${thread.id}`)
+          }
+        />
+      )}
+    </Stack>
   );
 }

@@ -8,7 +8,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container } from "@mantine/core";
 import { SyncResultsPanel, getSyncSummary } from "@/components/teaching";
 import type { SyncModuleRow } from "@/components/teaching/sync-results-panel";
 import { usePageMessage } from "@/components/page-message";
@@ -151,15 +150,13 @@ export default function AdminTeachingPage() {
   };
 
   return (
-    <Container size="lg" py="xl">
-      <SyncResultsPanel
-        modules={modules}
-        hasSynced={hasSynced}
-        syncing={syncing}
-        loading={loading}
-        onSync={handleSyncAll}
-        onRowClick={(row) => navigate(`/admin/teaching/modules/${row.bank_id}`)}
-      />
-    </Container>
+    <SyncResultsPanel
+      modules={modules}
+      hasSynced={hasSynced}
+      syncing={syncing}
+      loading={loading}
+      onSync={handleSyncAll}
+      onRowClick={(row) => navigate(`/admin/teaching/modules/${row.bank_id}`)}
+    />
   );
 }
