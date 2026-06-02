@@ -27,21 +27,15 @@ describe("PermissionBadge", () => {
       expect(badge).toBeInTheDocument();
     });
 
+    it("displays SINGLE-USER with orange color", () => {
+      renderWithMantine(<PermissionBadge permission="single-user" />);
+      const badge = screen.getByText("SINGLE-USER");
+      expect(badge).toBeInTheDocument();
+    });
+
     it("displays STAFF with gray color", () => {
       renderWithMantine(<PermissionBadge permission="staff" />);
       const badge = screen.getByText("STAFF");
-      expect(badge).toBeInTheDocument();
-    });
-
-    it("displays PATIENT with orange color", () => {
-      renderWithMantine(<PermissionBadge permission="patient" />);
-      const badge = screen.getByText("PATIENT");
-      expect(badge).toBeInTheDocument();
-    });
-
-    it("displays TEACHING DELEGATE badge", () => {
-      renderWithMantine(<PermissionBadge permission="teaching_delegate" />);
-      const badge = screen.getByText("TEACHING DELEGATE");
       expect(badge).toBeInTheDocument();
     });
   });

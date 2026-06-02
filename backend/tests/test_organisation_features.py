@@ -317,7 +317,7 @@ class TestFeatureEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(user)
         db_session.commit()
@@ -339,7 +339,7 @@ class TestFeatureEndpoints:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(user)
         db_session.commit()

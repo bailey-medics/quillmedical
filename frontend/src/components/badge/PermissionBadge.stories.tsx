@@ -31,7 +31,7 @@ export const Default: Story = {
       <PermissionBadge permission="superadmin" />
       <PermissionBadge permission="admin" />
       <PermissionBadge permission="staff" />
-      <PermissionBadge permission="teaching_delegate" />
+      <PermissionBadge permission="single-user" />
     </Group>
   ),
 };

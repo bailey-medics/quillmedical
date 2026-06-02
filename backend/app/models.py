@@ -122,7 +122,7 @@ class User(Base):
 
     # System Permissions: Administrative and system-level access control
     system_permissions: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="patient"
+        String(20), nullable=False, default="single-user"
     )
 
     # CBAC: Competency-Based Access Control fields

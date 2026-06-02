@@ -152,7 +152,6 @@ from app.system_permissions.permissions import (
     PERMISSION_LEVELS,
     PERMISSION_STAFF,
     check_permission_level,
-    is_external_user,
 )
 
 setup_logging()
@@ -1226,7 +1225,7 @@ class AdminUserCreateIn(BaseModel):
         base_profession: Base profession template (e.g., "consultant", "patient").
         additional_competencies: Extra competencies beyond base profession.
         removed_competencies: Competencies to remove from base profession.
-        system_permissions: System permission level (patient, staff, admin, superadmin).
+        system_permissions: System permission level (single-user, staff, admin, superadmin).
         organisation_ids: Organisations to assign user to (optional).
         site_ids: Sites to assign user to as trainee (optional).
     """
@@ -1240,7 +1239,7 @@ class AdminUserCreateIn(BaseModel):
     base_profession: str = "patient"
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
-    system_permissions: str = "patient"
+    system_permissions: str = "single-user"
     organisation_ids: list[int] = []
     site_ids: list[int] = []
 
@@ -3180,9 +3179,6 @@ def shared_organisations_endpoint(
     Returns:
         dict: ``organisations`` list with id/name/type for each shared org.
     """
-    if is_external_user(u.system_permissions):
-        return {"organisations": []}
-
     shared_ids = get_shared_org_ids(db, u.id, patient_id)
     if not shared_ids:
         return {"organisations": []}
@@ -4758,8 +4754,8 @@ def accept_invite(
         username=body.username,
         email=email,
         password_hash=hash_password(body.password),
-        system_permissions=user_type,
-        base_profession="patient",
+        system_permissions="single-user",
+        base_profession=user_type,
     )
     db.add(new_user)
     db.flush()

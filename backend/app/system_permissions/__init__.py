@@ -2,14 +2,14 @@
 """System permissions module.
 
 Provides administrative access control orthogonal to clinical competencies.
-System permissions control feature access and administrative capabilities,
-while CBAC (competencies) control clinical operations.
+System permissions control platform management authority,
+while CBAC (competencies) control all data access and clinical operations.
 
 Permission Levels:
-    - patient: Own records only, public users
-    - staff: Clinical application access
-    - admin: User management, patient admin, audit logs
-    - superadmin: System configuration, database access, break-glass
+    - single-user: Own profile/settings only, no system management
+    - staff: Staff dashboards, team visibility
+    - admin: User/org management (scoped to own orgs)
+    - superadmin: Global platform management
 """
 
 from app.system_permissions.decorators import (
@@ -20,21 +20,19 @@ from app.system_permissions.decorators import (
 from app.system_permissions.permissions import (
     PERMISSION_ADMIN,
     PERMISSION_LEVELS,
-    PERMISSION_PATIENT,
+    PERMISSION_SINGLE_USER,
     PERMISSION_STAFF,
     PERMISSION_SUPERADMIN,
-    PERMISSION_TEACHING_DELEGATE,
     SystemPermission,
     check_permission_level,
 )
 
 __all__ = [
     "PERMISSION_LEVELS",
-    "PERMISSION_PATIENT",
+    "PERMISSION_SINGLE_USER",
     "PERMISSION_STAFF",
     "PERMISSION_ADMIN",
     "PERMISSION_SUPERADMIN",
-    "PERMISSION_TEACHING_DELEGATE",
     "SystemPermission",
     "check_permission_level",
     "requires_staff",

@@ -11,7 +11,6 @@
  * @module UserInfoUpdatePage
  */
 
-/* eslint-disable no-restricted-syntax */
 // Multi-step form uses Box with maw instead of Container for custom max-width
 
 import {
@@ -368,11 +367,7 @@ function Step3Permissions({
   setFormData: (data: UserFormData) => void;
 }) {
   const permissionOptions = [
-    { value: "patient", label: "Patient - No staff access" },
-    {
-      value: "teaching_delegate",
-      label: "Teaching delegate - Assessments only",
-    },
+    { value: "single-user", label: "Single-user - No staff access" },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
     { value: "superadmin", label: "Super Admin - Full system access" },

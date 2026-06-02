@@ -94,7 +94,7 @@ def patient_user(db_session: Session) -> User:
         password_hash=hash_password("PatientPassword123!"),
         is_active=True,
         email_verified=True,
-        system_permissions="patient",
+        system_permissions="single-user",
     )
     db_session.add(user)
     db_session.commit()
@@ -1407,7 +1407,7 @@ class TestLinkPatient:
             password_hash=hash_password("OtherPass123!"),
             is_active=True,
             email_verified=True,
-            system_permissions="patient",
+            system_permissions="single-user",
         )
         db_session.add(other)
         db_session.commit()

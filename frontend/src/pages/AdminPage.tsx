@@ -67,7 +67,7 @@ export default function AdminPage() {
   const userPermissions: SystemPermission =
     state.status === "authenticated"
       ? (state.user.system_permissions as SystemPermission)
-      : "patient";
+      : "single-user";
 
   // Fetch users (loads immediately)
   useEffect(() => {
