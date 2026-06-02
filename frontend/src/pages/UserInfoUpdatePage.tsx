@@ -605,7 +605,7 @@ export default function UserInfoUpdatePage() {
           base_profession?: string;
           additional_competencies?: string[];
           removed_competencies?: string[];
-          system_permissions?: string;
+          system_permissions?: SystemPermission;
           organisation_ids?: number[];
           site_ids?: number[];
         }>(`/users/${userId}`);

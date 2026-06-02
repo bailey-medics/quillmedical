@@ -368,7 +368,7 @@ export default function NewPatientPage() {
         const patient = await api.get<{
           name?: Array<{ given?: string[]; family?: string }>;
           birthDate?: string;
-          gender?: string;
+          gender?: "male" | "female" | "other" | "";
           identifier?: Array<{ system?: string; value?: string }>;
         }>(`/patients/${patientId}`);
 
