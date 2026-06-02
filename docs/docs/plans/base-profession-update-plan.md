@@ -36,7 +36,7 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 
 ### Phase 3 — Regenerate frontend types
 
-- [ ] Run `yarn generate:types` → updates `src/generated/base-professions.json` with the new field
+- [x] Run `yarn generate:types` → updates `src/generated/base-professions.json` with the new field
 
 ### Phase 4 — No backend enforcement
 
@@ -52,8 +52,8 @@ Add a `default_system_permission` field to each profession in `shared/base-profe
 ## Verification
 
 - [x] Valid YAML after edit (`yamllint shared/base-professions.yaml` or equivalent)
-- [ ] `yarn generate:types` completes without error
+- [x] `yarn generate:types` completes without error
 - [ ] `just uf` — frontend tests still pass
 - [ ] `just ub` — backend tests still pass
-- [ ] Generated JSON (`src/generated/base-professions.json`) includes `default_system_permission` for each entry
+- [x] Generated JSON (`src/generated/base-professions.json`) includes `default_system_permission` for each entry
 - [ ] Copilot instructions accurately reflect the new field and its soft-default semantics
