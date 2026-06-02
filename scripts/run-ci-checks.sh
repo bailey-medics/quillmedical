@@ -267,6 +267,25 @@ run_docs_build() {
   cd ..
 }
 
+# ---------- E2E Tests ----------
+run_e2e() {
+  print_header "E2E Tests (Playwright)"
+
+  ensure_node_deps
+
+  # Install Playwright if needed
+  if [ ! -d "$HOME/.cache/ms-playwright" ]; then
+    echo "Installing Playwright browsers..."
+    cd frontend
+    npx playwright install --with-deps chromium
+    cd ..
+  fi
+
+  cd frontend
+  run_check "e2e" npx playwright test
+  cd ..
+}
+
 # ---------- Print Summary ----------
 print_summary() {
   echo ""
@@ -315,6 +334,7 @@ show_usage() {
   echo "  storybook-build     Build Storybook"
   echo "  storybook-tests     Run Storybook tests"
   echo "  semgrep             Run Semgrep security scan"
+  echo "  e2e                 Run E2E Playwright tests"
   echo "  docs                Build documentation"
   echo ""
   exit 1
@@ -331,6 +351,7 @@ main() {
       run_typescript_checks
       run_semgrep || true
       run_docs_build || true
+      run_e2e || true
       ;;
     python)
       run_python_checks
@@ -367,6 +388,9 @@ main() {
       ;;
     semgrep)
       run_semgrep
+      ;;
+    e2e)
+      run_e2e
       ;;
     docs)
       run_docs_build
