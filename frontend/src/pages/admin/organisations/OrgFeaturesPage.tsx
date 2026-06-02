@@ -171,8 +171,8 @@ export default function OrgFeaturesPage() {
 
       try {
         const [orgData, featuresData] = await Promise.all([
-          api.get<OrgSummary>(`/organizations/${id}`),
-          api.get<{ features: FeatureOut[] }>(`/organizations/${id}/features`),
+          api.get<OrgSummary>(`/organisations/${id}`),
+          api.get<{ features: FeatureOut[] }>(`/organisations/${id}/features`),
         ]);
         setOrgName(orgData.name);
         const keys = new Set(featuresData.features.map((f) => f.feature_key));
@@ -205,7 +205,7 @@ export default function OrgFeaturesPage() {
     try {
       await Promise.all(
         changes.map((change) =>
-          api.put(`/organizations/${id}/features/${change.key}`, {
+          api.put(`/organisations/${id}/features/${change.key}`, {
             enabled: data[change.key],
           }),
         ),

@@ -58,7 +58,7 @@ export const LongContent: Story = {
     icon: <IconUserPlus />,
     title: "Add User Account with Extended Permissions",
     subtitle:
-      "Create a new user account with customizable competencies, system permissions, and role-based access control settings for your organization",
+      "Create a new user account with customizable competencies, system permissions, and role-based access control settings for your organisation",
     buttonLabel: "Create New User Account",
     buttonUrl: "/admin/users/new",
   },

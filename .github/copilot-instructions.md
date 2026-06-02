@@ -159,9 +159,9 @@ Controls **all data access and actions** — clinical, feature admin, and patien
 
 Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
-- **Shared config**: `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
+- **Shared config** (consumed by both backend via PyYAML and frontend via `yarn generate:types`): `shared/competencies.yaml` (capability definitions with risk levels) and `shared/base-professions.yaml` (profession templates with base competencies and `default_system_permission`)
 - **Backend**: `backend/app/cbac/` — `has_competency("competency_id")` FastAPI dependency, resolves competencies per user
-- **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — currently placeholders returning `false`)
+- **Frontend**: Types at `src/types/cbac.ts`, hooks at `src/lib/cbac/hooks.ts` (`useHasCompetency`, `useHasAnyCompetency`, `useHasAllCompetencies` — check `state.user.competencies` from AuthContext)
 - **Generated JSON**: `src/generated/competencies.json` and `src/generated/base-professions.json` auto-generated from shared YAML (`yarn generate:types`)
 - CBAC-protected route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
 
@@ -173,13 +173,13 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 | Teaching delegate | `single-user` | `view_teaching_cases` only |
 | Teaching coordinator | `staff` | `manage_teaching_content` + `view_teaching_analytics` |
 | Junior doctor | `staff` | Standard clinical set |
-| IT admin | `admin` | None (cannot access patient data) |
+| IT admin | `admin` | No clinical CBACs at least |
 | Clinical lead | `admin` | Full clinical set |
 
 #### Organisations
 
-- Backend model `Organization` in `models.py` with staff/patient membership via association tables
-- API endpoints under `/api/organizations` (admin/superadmin only)
+- Backend model `Organisation` in `models.py` with staff/patient membership via association tables
+- API endpoints under `/api/organisations` (admin/superadmin only)
 - Admin pages at `pages/admin/organisations/`
 
 ### Web Push notifications
@@ -262,7 +262,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 ## Key Files
 
 - `backend/app/main.py`: FastAPI routes and dependency constants
-- `backend/app/models.py`: SQLAlchemy models (User, Role, Organization, PatientMetadata)
+- `backend/app/models.py`: SQLAlchemy models (User, Role, Organisation, PatientMetadata)
 - `backend/app/security.py`: JWT, CSRF, TOTP, Argon2 password utilities
 - `backend/app/config.py`: Pydantic Settings (DB URLs, JWT config, FHIR/EHRbase URLs)
 - `backend/app/db/`: Database session management (`get_core_db`)

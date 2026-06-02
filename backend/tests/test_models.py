@@ -258,14 +258,14 @@ class TestUserRoleRelationship:
         assert user.roles[0].name == "Clinician"
 
 
-class TestOrganizationModel:
-    """Test Organization model."""
+class TestOrganisationModel:
+    """Test Organisation model."""
 
-    def test_create_organization(self, db_session: Session):
-        """Test creating an organization."""
-        from app.models import Organization
+    def test_create_organisation(self, db_session: Session):
+        """Test creating an organisation."""
+        from app.models import Organisation
 
-        org = Organization(
+        org = Organisation(
             name="Test Hospital",
             type="hospital",
             location="London, UK",
@@ -281,11 +281,11 @@ class TestOrganizationModel:
         assert org.created_at is not None
         assert org.updated_at is not None
 
-    def test_organization_staff_relationship(self, db_session: Session):
-        """Test organization staff member relationship."""
-        from app.models import Organization, organisation_staff_member
+    def test_organisation_staff_relationship(self, db_session: Session):
+        """Test organisation staff member relationship."""
+        from app.models import Organisation, organisation_staff_member
 
-        org = Organization(name="Test Clinic", type="clinic")
+        org = Organisation(name="Test Clinic", type="clinic")
         user = User(
             username="doctor1",
             email="doctor1@example.com",
@@ -308,13 +308,13 @@ class TestOrganizationModel:
         assert len(org.staff_members) == 1
         assert org.staff_members[0].username == "doctor1"
 
-    def test_organization_patient_relationship(self, db_session: Session):
-        """Test organization patient member association table."""
+    def test_organisation_patient_relationship(self, db_session: Session):
+        """Test organisation patient member association table."""
         from sqlalchemy import func, insert, select
 
-        from app.models import Organization, organisation_patient_member
+        from app.models import Organisation, organisation_patient_member
 
-        org = Organization(name="Test Practice", type="general_practice")
+        org = Organisation(name="Test Practice", type="general_practice")
         db_session.add(org)
         db_session.commit()
 
@@ -333,7 +333,7 @@ class TestOrganizationModel:
         db_session.execute(stmt2)
         db_session.commit()
 
-        # Count patients in organization
+        # Count patients in organisation
         patient_count = db_session.scalar(
             select(func.count())
             .select_from(organisation_patient_member)
@@ -354,14 +354,14 @@ class TestOrganizationModel:
         assert len(primary_patients) == 1
         assert "patient-123" in primary_patients
 
-    def test_organization_primary_flag(self, db_session: Session):
+    def test_organisation_primary_flag(self, db_session: Session):
         """Test is_primary flag on staff membership."""
         from sqlalchemy import insert, select
 
-        from app.models import Organization, organisation_staff_member
+        from app.models import Organisation, organisation_staff_member
 
-        org1 = Organization(name="Primary Clinic", type="clinic")
-        org2 = Organization(name="Secondary Clinic", type="clinic")
+        org1 = Organisation(name="Primary Clinic", type="clinic")
+        org2 = Organisation(name="Secondary Clinic", type="clinic")
         user = User(
             username="doctor2",
             email="doctor2@example.com",

@@ -221,7 +221,7 @@ describe("OrgFeaturesPage", () => {
     await user.click(screen.getByTestId("submit-button"));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(putSpy).toHaveBeenCalledWith("/organizations/3/features/teaching", {
+    expect(putSpy).toHaveBeenCalledWith("/organisations/3/features/teaching", {
       enabled: true,
     });
   });

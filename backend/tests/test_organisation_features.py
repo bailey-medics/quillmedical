@@ -3,8 +3,8 @@
 from sqlalchemy import select
 
 from app.models import (
+    Organisation,
     OrganisationFeature,
-    Organization,
     User,
     organisation_staff_member,
 )
@@ -20,7 +20,7 @@ class TestOrganisationFeatureModel:
 
     def test_create_feature(self, db_session):
         """Creating a feature row enables it for the org."""
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -45,7 +45,7 @@ class TestOrganisationFeatureModel:
         import pytest
         from sqlalchemy.exc import IntegrityError
 
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -63,7 +63,7 @@ class TestOrganisationFeatureModel:
 
     def test_different_features_same_org(self, db_session):
         """Two different features on the same org is fine."""
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -91,7 +91,7 @@ class TestOrganisationFeatureModel:
 
     def test_delete_disables_feature(self, db_session):
         """Removing the row disables the feature."""
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -113,7 +113,7 @@ class TestOrganisationFeatureModel:
 
     def test_cascade_delete_org(self, db_session):
         """Deleting the org cascades to its features."""
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -134,7 +134,7 @@ class TestOrganisationFeatureModel:
 
     def test_organisation_features_relationship(self, db_session):
         """org.features returns the linked features."""
-        org = Organization(name="Test Org")
+        org = Organisation(name="Test Org")
         db_session.add(org)
         db_session.flush()
 
@@ -153,7 +153,7 @@ class TestOrganisationFeatureModel:
 # ---------------------------------------------------------------------------
 
 
-def _make_admin(db_session, org: Organization | None = None) -> User:
+def _make_admin(db_session, org: Organisation | None = None) -> User:
     """Create an admin user and optionally link to an org."""
     user = User(
         username="featureadmin",
@@ -178,8 +178,8 @@ def _make_admin(db_session, org: Organization | None = None) -> User:
     return user
 
 
-def _make_org(db_session, name: str = "Feature Org") -> Organization:
-    org = Organization(name=name)
+def _make_org(db_session, name: str = "Feature Org") -> Organisation:
+    org = Organisation(name=name)
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
@@ -187,7 +187,7 @@ def _make_org(db_session, name: str = "Feature Org") -> Organization:
 
 
 class TestFeatureEndpoints:
-    """API tests for /organizations/{id}/features endpoints."""
+    """API tests for /organisations/{id}/features endpoints."""
 
     def test_list_features_empty(self, test_client, db_session):
         """New org has no features."""
@@ -201,7 +201,7 @@ class TestFeatureEndpoints:
             },
         )
 
-        resp = test_client.get(f"/api/organizations/{org.id}/features")
+        resp = test_client.get(f"/api/organisations/{org.id}/features")
         assert resp.status_code == 200
         assert resp.json()["features"] == []
 
@@ -221,7 +221,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -229,7 +229,7 @@ class TestFeatureEndpoints:
         assert resp.json()["status"] == "enabled"
 
         # Verify via list
-        resp = test_client.get(f"/api/organizations/{org.id}/features")
+        resp = test_client.get(f"/api/organisations/{org.id}/features")
         features = resp.json()["features"]
         assert len(features) == 1
         assert features[0]["feature_key"] == "teaching"
@@ -248,12 +248,12 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
         resp = test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -274,19 +274,19 @@ class TestFeatureEndpoints:
 
         # Enable then disable
         test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
         resp = test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": False},
             headers={"X-CSRF-Token": csrf},
         )
         assert resp.json()["status"] == "disabled"
 
         # Verify removed
-        resp = test_client.get(f"/api/organizations/{org.id}/features")
+        resp = test_client.get(f"/api/organisations/{org.id}/features")
         assert resp.json()["features"] == []
 
     def test_disable_nonexistent_feature(self, test_client, db_session):
@@ -303,7 +303,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": False},
             headers={"X-CSRF-Token": csrf},
         )
@@ -328,7 +328,7 @@ class TestFeatureEndpoints:
             json={"username": "regularuser", "password": "Password123!"},
         )
 
-        resp = test_client.get(f"/api/organizations/{org.id}/features")
+        resp = test_client.get(f"/api/organisations/{org.id}/features")
         assert resp.status_code == 403
 
     def test_non_admin_cannot_toggle_feature(self, test_client, db_session):
@@ -352,7 +352,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            f"/api/organizations/{org.id}/features/teaching",
+            f"/api/organisations/{org.id}/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )
@@ -371,7 +371,7 @@ class TestFeatureEndpoints:
         csrf = test_client.cookies.get("XSRF-TOKEN", "")
 
         resp = test_client.put(
-            "/api/organizations/99999/features/teaching",
+            "/api/organisations/99999/features/teaching",
             json={"enabled": True},
             headers={"X-CSRF-Token": csrf},
         )

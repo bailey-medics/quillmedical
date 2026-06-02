@@ -68,7 +68,7 @@ interface SiteMember {
 /**
  * Organisation details from API
  */
-interface OrganizationDetails {
+interface OrganisationDetails {
   id: number;
   name: string;
   type: string;
@@ -114,7 +114,7 @@ export default function OrganisationAdminPage() {
     state.status === "authenticated"
       ? state.user.clinical_services_enabled !== false
       : true;
-  const [org, setOrg] = useState<OrganizationDetails | null>(null);
+  const [org, setOrg] = useState<OrganisationDetails | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +124,7 @@ export default function OrganisationAdminPage() {
   const [removingSite, setRemovingSite] = useState<SiteMember | null>(null);
   const { showMessage } = usePageMessage();
 
-  const fetchOrganizationData = useCallback(async () => {
+  const fetchOrganisationData = useCallback(async () => {
     if (!id) {
       setError("No organisation ID provided");
       setLoading(false);
@@ -133,8 +133,8 @@ export default function OrganisationAdminPage() {
 
     try {
       const [orgData, featuresData] = await Promise.all([
-        api.get<OrganizationDetails>(`/organizations/${id}`),
-        api.get<{ features: FeatureOut[] }>(`/organizations/${id}/features`),
+        api.get<OrganisationDetails>(`/organisations/${id}`),
+        api.get<{ features: FeatureOut[] }>(`/organisations/${id}/features`),
       ]);
       setOrg(orgData);
       setEnabledFeatures(featuresData.features.map((f) => f.feature_key));
@@ -146,19 +146,19 @@ export default function OrganisationAdminPage() {
   }, [id]);
 
   useEffect(() => {
-    fetchOrganizationData();
-  }, [fetchOrganizationData]);
+    fetchOrganisationData();
+  }, [fetchOrganisationData]);
 
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
     try {
-      await api.del(`/organizations/${id}/staff/${removingMember.id}`);
+      await api.del(`/organisations/${id}/staff/${removingMember.id}`);
       showMessage({
         variant: "success",
         title: "Staff member removed",
         description: `${removingMember.username} has been removed from this organisation`,
       });
-      await fetchOrganizationData();
+      await fetchOrganisationData();
     } catch (err) {
       showMessage({
         variant: "error",
@@ -172,13 +172,13 @@ export default function OrganisationAdminPage() {
   async function confirmRemoveSite() {
     if (!id || !removingSite) return;
     try {
-      await api.del(`/organizations/${id}/sites/${removingSite.id}`);
+      await api.del(`/organisations/${id}/sites/${removingSite.id}`);
       showMessage({
         variant: "success",
         title: "Site removed",
         description: `${removingSite.name} has been removed from this organisation`,
       });
-      await fetchOrganizationData();
+      await fetchOrganisationData();
     } catch (err) {
       showMessage({
         variant: "error",

@@ -80,8 +80,8 @@ from app.messaging import (
 from app.models import (
     Conversation,
     ExternalPatientAccess,
+    Organisation,
     OrganisationFeature,
-    Organization,
     PatientMetadata,
     Site,
     User,
@@ -706,8 +706,8 @@ def login(
     }
 
 
-@router.get("/auth/organizations")
-def list_organizations_public(
+@router.get("/auth/organisations")
+def list_organisations_public(
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, list[dict[str, Any]]]:
     """List organisations for registration.
@@ -717,13 +717,13 @@ def list_organizations_public(
     the minimum fields needed (id and name).
 
     Returns:
-        dict with key ``organizations`` containing a list of
+        dict with key ``organisations`` containing a list of
         ``{id, name}`` objects.
     """
-    organizations = db.execute(select(Organization)).scalars().all()
+    organisations = db.execute(select(Organisation)).scalars().all()
     return {
-        "organizations": [
-            {"id": org.id, "name": org.name} for org in organizations
+        "organisations": [
+            {"id": org.id, "name": org.name} for org in organisations
         ]
     }
 
@@ -981,8 +981,8 @@ def register(
     # Add the user to the selected organisation
     if payload.organisation_id is not None:
         org = db.scalar(
-            select(Organization).where(
-                Organization.id == payload.organisation_id
+            select(Organisation).where(
+                Organisation.id == payload.organisation_id
             )
         )
         if org is None:
@@ -1339,7 +1339,7 @@ def create_user_with_cbac(
 
     # Validate organisation access for non-superadmins
     for org_id in payload.organisation_ids:
-        org = db.scalar(select(Organization).where(Organization.id == org_id))
+        org = db.scalar(select(Organisation).where(Organisation.id == org_id))
         if not org:
             raise HTTPException(
                 status_code=404,
@@ -1529,7 +1529,7 @@ def update_user(
         # Add new org memberships
         for i, org_id in enumerate(payload.organisation_ids):
             org = db.scalar(
-                select(Organization).where(Organization.id == org_id)
+                select(Organisation).where(Organisation.id == org_id)
             )
             if not org:
                 raise HTTPException(
@@ -2272,11 +2272,11 @@ def list_users(
         org_rows = db.execute(
             select(
                 organisation_staff_member.c.user_id,
-                Organization.name,
+                Organisation.name,
             )
             .join(
-                Organization,
-                Organization.id == organisation_staff_member.c.organisation_id,
+                Organisation,
+                Organisation.id == organisation_staff_member.c.organisation_id,
             )
             .where(organisation_staff_member.c.user_id.in_(user_ids))
         ).all()
@@ -3184,7 +3184,7 @@ def shared_organisations_endpoint(
         return {"organisations": []}
 
     orgs = (
-        db.execute(select(Organization).where(Organization.id.in_(shared_ids)))
+        db.execute(select(Organisation).where(Organisation.id.in_(shared_ids)))
         .scalars()
         .all()
     )
@@ -3325,14 +3325,14 @@ async def update_my_competencies(
 # ==========================================================================
 
 
-@router.get("/organizations")
-def list_organizations(
+@router.get("/organisations")
+def list_organisations(
     u: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> dict[str, Any]:
-    """List All Organizations.
+    """List All Organisations.
 
-    Retrieves all organizations from the database. Returns basic information
-    for each organization. Used by admin interface to display organization
+    Retrieves all organisations from the database. Returns basic information
+    for each organisation. Used by admin interface to display organisation
     list and management options.
 
     Requires admin or superadmin system permissions.
@@ -3343,7 +3343,7 @@ def list_organizations(
 
     Returns:
         dict: Response with key:
-            - organizations: Array of organization objects
+            - organisations: Array of organisation objects
 
     Raises:
         HTTPException: 403 if user lacks admin/superadmin permissions.
@@ -3358,20 +3358,20 @@ def list_organizations(
 
     try:
         if u.system_permissions == "superadmin":
-            organizations = db.execute(select(Organization)).scalars().all()
+            organisations = db.execute(select(Organisation)).scalars().all()
         else:
             user_org_ids = get_user_org_ids(db, u.id)
-            organizations = (
+            organisations = (
                 db.execute(
-                    select(Organization).where(
-                        Organization.id.in_(user_org_ids)
+                    select(Organisation).where(
+                        Organisation.id.in_(user_org_ids)
                     )
                 )
                 .scalars()
                 .all()
             )
         return {
-            "organizations": [
+            "organisations": [
                 {
                     "id": org.id,
                     "name": org.name,
@@ -3380,37 +3380,37 @@ def list_organizations(
                     "created_at": org.created_at.isoformat(),
                     "updated_at": org.updated_at.isoformat(),
                 }
-                for org in organizations
+                for org in organisations
             ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/organizations/{org_id}")
-def get_organization(
+@router.get("/organisations/{org_id}")
+def get_organisation(
     org_id: int,
     u: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
-    """Get Organization Details.
+    """Get Organisation Details.
 
-    Retrieves detailed information about a specific organization including
+    Retrieves detailed information about a specific organisation including
     staff members and patient count.
 
     Requires admin or superadmin system permissions.
 
     Args:
-        org_id: ID of the organization to retrieve.
+        org_id: ID of the organisation to retrieve.
         u: Currently authenticated user (admin/superadmin only).
         db: Database session.
 
     Returns:
-        dict: Organization details with staff and patient information.
+        dict: Organisation details with staff and patient information.
 
     Raises:
         HTTPException: 403 if user lacks admin/superadmin permissions.
-        HTTPException: 404 if organization not found.
+        HTTPException: 404 if organisation not found.
     """
     # Check permissions
     if u.system_permissions not in ["admin", "superadmin"]:
@@ -3419,10 +3419,10 @@ def get_organization(
             detail="Requires admin or superadmin permissions",
         )
 
-    # Fetch organization
-    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    # Fetch organisation
+    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only view orgs they belong to
     if u.system_permissions == "admin":
@@ -3430,7 +3430,7 @@ def get_organization(
         if org_id not in user_org_ids:
             raise HTTPException(
                 status_code=404,
-                detail="Organization not found",
+                detail="Organisation not found",
             )
 
     # Get staff members with primary status
@@ -3527,7 +3527,7 @@ def get_organization(
     }
 
 
-class CreateOrganizationIn(BaseModel):
+class CreateOrganisationIn(BaseModel):
     """Request body for creating a new organisation."""
 
     name: str
@@ -3537,7 +3537,7 @@ class CreateOrganizationIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-class UpdateOrganizationIn(BaseModel):
+class UpdateOrganisationIn(BaseModel):
     """Request body for updating an organisation."""
 
     name: str | None = None
@@ -3547,10 +3547,10 @@ class UpdateOrganizationIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.put("/organizations/{org_id}")
-def update_organization(
+@router.put("/organisations/{org_id}")
+def update_organisation(
     org_id: int,
-    body: UpdateOrganizationIn,
+    body: UpdateOrganisationIn,
     u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -3579,7 +3579,7 @@ def update_organization(
             status_code=403,
             detail="Requires admin or superadmin permissions",
         )
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
@@ -3623,9 +3623,9 @@ def update_organization(
     }
 
 
-@router.post("/organizations")
-def create_organization(
-    body: CreateOrganizationIn,
+@router.post("/organisations")
+def create_organisation(
+    body: CreateOrganisationIn,
     u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, Any]:
@@ -3666,7 +3666,7 @@ def create_organization(
             detail=f"Invalid organisation type. Must be one of: {', '.join(valid_types)}",
         )
 
-    org = Organization(
+    org = Organisation(
         name=body.name.strip(),
         type=body.type,
         location=body.location.strip() if body.location else None,
@@ -3693,8 +3693,8 @@ class AddStaffIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.delete("/organizations/{org_id}")
-def delete_organization(
+@router.delete("/organisations/{org_id}")
+def delete_organisation(
     org_id: int,
     u: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
@@ -3723,7 +3723,7 @@ def delete_organization(
             detail="Requires admin or superadmin permissions",
         )
 
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
@@ -3732,8 +3732,8 @@ def delete_organization(
     return {"detail": "Organisation deleted"}
 
 
-@router.post("/organizations/{org_id}/staff")
-def add_staff_to_organization(
+@router.post("/organisations/{org_id}/staff")
+def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
     u: User = DEP_REQUIRE_CSRF,
@@ -3765,15 +3765,15 @@ def add_staff_to_organization(
             detail="Requires admin or superadmin permissions",
         )
 
-    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
     if u.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, u.id):
             raise HTTPException(
-                status_code=404, detail="Organization not found"
+                status_code=404, detail="Organisation not found"
             )
 
     user = db.scalar(select(User).where(User.id == body.user_id))
@@ -3832,10 +3832,10 @@ class AddPatientIn(BaseModel):
 
 
 @router.post(
-    "/organizations/{org_id}/patients",
+    "/organisations/{org_id}/patients",
     dependencies=[DEP_REQUIRE_CLINICAL],
 )
-def add_patient_to_organization(
+def add_patient_to_organisation(
     org_id: int,
     body: AddPatientIn,
     u: User = DEP_CURRENT_USER,
@@ -3867,15 +3867,15 @@ def add_patient_to_organization(
             detail="Requires admin or superadmin permissions",
         )
 
-    org = db.scalar(select(Organization).where(Organization.id == org_id))
+    org = db.scalar(select(Organisation).where(Organisation.id == org_id))
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        raise HTTPException(status_code=404, detail="Organisation not found")
 
     # Admin users can only modify orgs they belong to
     if u.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, u.id):
             raise HTTPException(
-                status_code=404, detail="Organization not found"
+                status_code=404, detail="Organisation not found"
             )
 
     # Check if already a member
@@ -3907,10 +3907,10 @@ def add_patient_to_organization(
 
 
 @router.delete(
-    "/organizations/{org_id}/staff/{user_id}",
+    "/organisations/{org_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
 )
-def remove_staff_from_organization(
+def remove_staff_from_organisation(
     org_id: int,
     user_id: int,
     u: User = DEP_CURRENT_USER,
@@ -3936,7 +3936,7 @@ def remove_staff_from_organization(
     if u.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, u.id):
             raise HTTPException(
-                status_code=404, detail="Organization not found"
+                status_code=404, detail="Organisation not found"
             )
 
     existing = db.scalar(
@@ -3959,10 +3959,10 @@ def remove_staff_from_organization(
 
 
 @router.delete(
-    "/organizations/{org_id}/patients/{patient_id}",
+    "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CSRF],
 )
-def remove_patient_from_organization(
+def remove_patient_from_organisation(
     org_id: int,
     patient_id: str,
     u: User = DEP_CURRENT_USER,
@@ -3988,7 +3988,7 @@ def remove_patient_from_organization(
     if u.system_permissions == "admin":
         if org_id not in get_user_org_ids(db, u.id):
             raise HTTPException(
-                status_code=404, detail="Organization not found"
+                status_code=404, detail="Organisation not found"
             )
 
     existing = db.scalar(
@@ -4015,7 +4015,7 @@ def remove_patient_from_organization(
 # ==========================================================================
 
 
-@router.get("/organizations/{org_id}/features")
+@router.get("/organisations/{org_id}/features")
 def list_org_features(
     org_id: int,
     u: User = DEP_CURRENT_USER,
@@ -4028,7 +4028,7 @@ def list_org_features(
     if u.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
@@ -4052,7 +4052,7 @@ def list_org_features(
 
 
 @router.put(
-    "/organizations/{org_id}/features/{feature_key}",
+    "/organisations/{org_id}/features/{feature_key}",
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def toggle_org_feature(
@@ -4070,7 +4070,7 @@ def toggle_org_feature(
     if u.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
@@ -4249,10 +4249,10 @@ def get_site(
 
     # Get linked organisations
     org_query = (
-        select(Organization.id, Organization.name)
+        select(Organisation.id, Organisation.name)
         .join(
             organisation_site,
-            organisation_site.c.organisation_id == Organization.id,
+            organisation_site.c.organisation_id == Organisation.id,
         )
         .where(organisation_site.c.site_id == site_id)
     )
@@ -4391,7 +4391,7 @@ def delete_site(
 
 
 @router.post(
-    "/organizations/{org_id}/sites/{site_id}",
+    "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def link_site_to_org(
@@ -4404,7 +4404,7 @@ def link_site_to_org(
     if u.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organisation not found")
 
@@ -4432,7 +4432,7 @@ def link_site_to_org(
 
 
 @router.delete(
-    "/organizations/{org_id}/sites/{site_id}",
+    "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def unlink_site_from_org(

@@ -57,7 +57,7 @@ describe("AdminOrganisationsPage", () => {
 
   describe("Page layout", () => {
     it("displays page title", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -69,7 +69,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("displays add organisation button", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -83,7 +83,7 @@ describe("AdminOrganisationsPage", () => {
 
   describe("Organisation list display", () => {
     it("displays organisations in a table", async () => {
-      const mockOrganizations = [
+      const mockOrganisations = [
         {
           id: 1,
           name: "Test Hospital",
@@ -103,7 +103,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organizations: mockOrganizations,
+        organisations: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -121,7 +121,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("formats organisation type correctly", async () => {
-      const mockOrganizations = [
+      const mockOrganisations = [
         {
           id: 1,
           name: "Test Practice",
@@ -133,7 +133,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organizations: mockOrganizations,
+        organisations: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -146,7 +146,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("displays N/A for missing location", async () => {
-      const mockOrganizations = [
+      const mockOrganisations = [
         {
           id: 1,
           name: "Test Org",
@@ -158,7 +158,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organizations: mockOrganizations,
+        organisations: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -171,7 +171,7 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("shows empty state when no organisations", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -186,7 +186,7 @@ describe("AdminOrganisationsPage", () => {
   describe("Navigation", () => {
     it("navigates to organisation detail on row click", async () => {
       const user = userEvent.setup();
-      const mockOrganizations = [
+      const mockOrganisations = [
         {
           id: 1,
           name: "Test Hospital",
@@ -198,7 +198,7 @@ describe("AdminOrganisationsPage", () => {
       ];
 
       vi.spyOn(apiLib.api, "get").mockResolvedValue({
-        organizations: mockOrganizations,
+        organisations: mockOrganisations,
       });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -220,7 +220,7 @@ describe("AdminOrganisationsPage", () => {
 
     it("navigates to new organisation page on add button click", async () => {
       const user = userEvent.setup();
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organizations: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",

@@ -15,13 +15,13 @@ from app.features.teaching.models import (
     QuestionBankSync,
 )
 from app.features.teaching.sync import _load_module_status, sync_question_bank
-from app.models import Organization, User
+from app.models import Organisation, User
 from app.security import hash_password
 
 
 @pytest.fixture()
-def organisation(db_session: Session) -> Organization:
-    org = Organization(name="Teaching Org")
+def organisation(db_session: Session) -> Organisation:
+    org = Organisation(name="Teaching Org")
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)

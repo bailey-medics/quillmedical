@@ -94,7 +94,7 @@ export default function CreateOrganisationPage() {
     data: CreateFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post("/organizations", {
+      await api.post("/organisations", {
         name: data.name.trim(),
         type: data.type,
         location: data.location.trim() || null,

@@ -114,7 +114,7 @@ export default function EditOrganisationPage() {
         return;
       }
       try {
-        const data = await api.get<OrganisationData>(`/organizations/${id}`);
+        const data = await api.get<OrganisationData>(`/organisations/${id}`);
         setOrgData(data);
       } catch (err) {
         setLoadError(
@@ -130,7 +130,7 @@ export default function EditOrganisationPage() {
 
   async function handleSubmit(data: EditFormValues): Promise<FormSubmitResult> {
     try {
-      await api.put(`/organizations/${id}`, {
+      await api.put(`/organisations/${id}`, {
         name: data.name.trim(),
         type: data.type,
         location: data.location.trim() || null,

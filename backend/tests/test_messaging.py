@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Message,
-    Organization,
+    Organisation,
     User,
     organisation_patient_member,
     organisation_staff_member,
@@ -21,9 +21,9 @@ from app.security import hash_password
 
 
 @pytest.fixture
-def test_org(db_session: Session) -> Organization:
+def test_org(db_session: Session) -> Organisation:
     """Create a test organisation."""
-    org = Organization(name="Test Hospital", type="hospital_team")
+    org = Organisation(name="Test Hospital", type="hospital_team")
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
@@ -32,7 +32,7 @@ def test_org(db_session: Session) -> Organization:
 
 @pytest.fixture(autouse=True)
 def _setup_org_context(
-    db_session: Session, test_user: User, test_org: Organization
+    db_session: Session, test_user: User, test_org: Organisation
 ) -> None:
     """Set up organisation membership for messaging tests.
 
@@ -60,7 +60,7 @@ def _setup_org_context(
 
 
 @pytest.fixture
-def second_user(db_session: Session, test_org: Organization) -> User:
+def second_user(db_session: Session, test_org: Organisation) -> User:
     """Create a second test user with staff permissions in the same org."""
     user = User(
         username="seconduser",
@@ -1063,7 +1063,7 @@ class TestOrgScopedAccess:
             system_permissions="staff",
         )
         db_session.add(outsider)
-        other_org = Organization(name="Other Hospital", type="hospital_team")
+        other_org = Organisation(name="Other Hospital", type="hospital_team")
         db_session.add(other_org)
         db_session.flush()
         db_session.execute(
@@ -1096,7 +1096,7 @@ class TestSharedOrganisations:
     def test_shared_orgs_returned(
         self,
         authenticated_client: TestClient,
-        test_org: Organization,
+        test_org: Organisation,
     ):
         """Returns orgs shared between user and patient."""
         resp = authenticated_client.get(
@@ -1279,13 +1279,13 @@ class TestRevokeExternalAccess:
 
 
 class TestRemoveStaffFromOrg:
-    """Test DELETE /api/organizations/{org_id}/staff/{user_id}."""
+    """Test DELETE /api/organisations/{org_id}/staff/{user_id}."""
 
     def test_admin_can_remove_staff(
         self,
         authenticated_client: TestClient,
         test_admin: User,
-        test_org: Organization,
+        test_org: Organisation,
         second_user: User,
         db_session: Session,
     ):
@@ -1308,7 +1308,7 @@ class TestRemoveStaffFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organizations/{test_org.id}/staff/{second_user.id}",
+            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200
@@ -1317,25 +1317,25 @@ class TestRemoveStaffFromOrg:
         self,
         authenticated_client: TestClient,
         csrf_token: str,
-        test_org: Organization,
+        test_org: Organisation,
         second_user: User,
     ):
         """Non-admin cannot remove staff."""
         resp = authenticated_client.delete(
-            f"/api/organizations/{test_org.id}/staff/{second_user.id}",
+            f"/api/organisations/{test_org.id}/staff/{second_user.id}",
             headers={"X-CSRF-Token": csrf_token},
         )
         assert resp.status_code == 403
 
 
 class TestRemovePatientFromOrg:
-    """Test DELETE /api/organizations/{org_id}/patients/{patient_id}."""
+    """Test DELETE /api/organisations/{org_id}/patients/{patient_id}."""
 
     def test_admin_can_remove_patient(
         self,
         authenticated_client: TestClient,
         test_admin: User,
-        test_org: Organization,
+        test_org: Organisation,
         db_session: Session,
     ):
         """Admin can remove a patient from an org."""
@@ -1357,7 +1357,7 @@ class TestRemovePatientFromOrg:
         token = authenticated_client.cookies.get("XSRF-TOKEN")
 
         resp = authenticated_client.delete(
-            f"/api/organizations/{test_org.id}/patients/{PATIENT_ID}",
+            f"/api/organisations/{test_org.id}/patients/{PATIENT_ID}",
             headers={"X-CSRF-Token": token},
         )
         assert resp.status_code == 200

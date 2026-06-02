@@ -178,7 +178,7 @@ export default function AddSiteToOrgPage() {
       });
 
       // Link it to this organisation
-      await api.post(`/organizations/${id}/sites/${site.id}`, {});
+      await api.post(`/organisations/${id}/sites/${site.id}`, {});
 
       // Assign clinical lead if selected
       if (data.clinicalLeadId) {

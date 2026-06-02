@@ -188,7 +188,7 @@ organisation_staff_member = Table(
     "organisation_staff_member",
     Base.metadata,
     Column(
-        "organisation_id", ForeignKey("organizations.id"), primary_key=True
+        "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("user_id", ForeignKey("users.id"), primary_key=True),
     Column("is_primary", Boolean, default=False, nullable=False),
@@ -200,7 +200,7 @@ organisation_patient_member = Table(
     "organisation_patient_member",
     Base.metadata,
     Column(
-        "organisation_id", ForeignKey("organizations.id"), primary_key=True
+        "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("patient_id", String(255), primary_key=True),
     Column("is_primary", Boolean, default=False, nullable=False),
@@ -208,12 +208,11 @@ organisation_patient_member = Table(
 """Association table for many-to-many relationship between organisations and patients."""
 
 
-class Organization(Base):
+class Organisation(Base):
     """Healthcare organisation (hospital, GP practice, clinic, department).
 
     Represents a named group of healthcare staff who share responsibility for a
-    defined group of patients. Uses American spelling in code/API (FHIR-aligned)
-    but British spelling "Organisation" in UI.
+    defined group of patients.
 
     Attributes:
         id: Primary key.
@@ -226,7 +225,7 @@ class Organization(Base):
         staff_members: List of users (staff) who belong to this organisation.
     """
 
-    __tablename__ = "organizations"
+    __tablename__ = "organisations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -286,7 +285,7 @@ class OrganisationFeature(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organisation_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -304,7 +303,7 @@ class OrganisationFeature(Base):
         nullable=True,
     )
 
-    organisation: Mapped[Organization] = relationship(
+    organisation: Mapped[Organisation] = relationship(
         back_populates="features",
     )
     enabled_by_user: Mapped[User | None] = relationship(
@@ -323,7 +322,7 @@ message_organisation = Table(
     ),
     Column(
         "organisation_id",
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         primary_key=True,
     ),
 )
@@ -445,7 +444,7 @@ class Conversation(Base):
         back_populates="conversation",
         cascade="all, delete-orphan",
     )
-    organisations: Mapped[list[Organization]] = relationship(
+    organisations: Mapped[list[Organisation]] = relationship(
         secondary=message_organisation,
     )
 
@@ -615,7 +614,7 @@ organisation_site = Table(
     Base.metadata,
     Column(
         "organisation_id",
-        ForeignKey("organizations.id", ondelete="CASCADE"),
+        ForeignKey("organisations.id", ondelete="CASCADE"),
         primary_key=True,
     ),
     Column(
@@ -691,7 +690,7 @@ class Site(Base):
         remote_side="Site.id",
         foreign_keys=[parent_id],
     )
-    organisations: Mapped[list[Organization]] = relationship(
+    organisations: Mapped[list[Organisation]] = relationship(
         secondary=organisation_site,
         backref="sites",
     )

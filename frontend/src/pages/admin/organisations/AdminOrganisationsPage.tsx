@@ -19,7 +19,7 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { api } from "@/lib/api";
 
-interface Organization {
+interface Organisation {
   id: number;
   name: string;
   type: string;
@@ -28,8 +28,8 @@ interface Organization {
   updated_at: string;
 }
 
-interface OrganizationsApiResponse {
-  organizations: Organization[];
+interface OrganisationsApiResponse {
+  organisations: Organisation[];
 }
 
 /**
@@ -42,15 +42,15 @@ interface OrganizationsApiResponse {
  */
 export default function AdminOrganisationsPage() {
   const navigate = useNavigate();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchOrganizations() {
+    async function fetchOrganisations() {
       try {
-        const data = await api.get<OrganizationsApiResponse>("/organizations");
-        setOrganizations(data.organizations || []);
+        const data = await api.get<OrganisationsApiResponse>("/organisations");
+        setOrganisations(data.organisations || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -58,7 +58,7 @@ export default function AdminOrganisationsPage() {
       }
     }
 
-    fetchOrganizations();
+    fetchOrganisations();
   }, []);
 
   const formatType = (type: string): string => {
@@ -70,12 +70,12 @@ export default function AdminOrganisationsPage() {
   };
 
   const searchFields = useCallback(
-    (org: Organization) => [org.name, org.type, org.location],
+    (org: Organisation) => [org.name, org.type, org.location],
     [],
   );
 
   const filterOptions = useMemo(() => {
-    const types = [...new Set(organizations.map((o) => o.type))].sort();
+    const types = [...new Set(organisations.map((o) => o.type))].sort();
     return [
       {
         group: "Type",
@@ -85,14 +85,14 @@ export default function AdminOrganisationsPage() {
         })),
       },
     ];
-  }, [organizations]);
+  }, [organisations]);
 
   const filterPredicate = useCallback((filters: string[]) => {
     const typeFilters = filters
       .filter((f) => f.startsWith("type:"))
       .map((f) => f.slice(5));
 
-    return (org: Organization) => {
+    return (org: Organisation) => {
       if (typeFilters.length > 0 && !typeFilters.includes(org.type)) {
         return false;
       }
@@ -100,14 +100,14 @@ export default function AdminOrganisationsPage() {
     };
   }, []);
 
-  const [removingOrg, setRemovingOrg] = useState<Organization | null>(null);
+  const [removingOrg, setRemovingOrg] = useState<Organisation | null>(null);
   const { showMessage } = usePageMessage();
 
   async function confirmRemoveOrg() {
     if (!removingOrg) return;
     try {
-      await api.del(`/organizations/${removingOrg.id}`);
-      setOrganizations((prev) => prev.filter((o) => o.id !== removingOrg.id));
+      await api.del(`/organisations/${removingOrg.id}`);
+      setOrganisations((prev) => prev.filter((o) => o.id !== removingOrg.id));
       showMessage({
         variant: "success",
         title: "Organisation removed",
@@ -125,7 +125,7 @@ export default function AdminOrganisationsPage() {
     }
   }
 
-  const columns: Column<Organization>[] = [
+  const columns: Column<Organisation>[] = [
     {
       header: "Name",
       render: (org) => org.name,
@@ -171,7 +171,7 @@ export default function AdminOrganisationsPage() {
       </Group>
 
       <DataTableControlled
-        data={organizations}
+        data={organisations}
         columns={columns}
         onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}
         getRowKey={(org) => org.id}

@@ -189,11 +189,11 @@ export default function AdminPage() {
       try {
         setOrganisationsLoading(true);
         const response = await api.get<{
-          organizations: Array<{ id: number }>;
-        }>("/organizations");
+          organisations: Array<{ id: number }>;
+        }>("/organisations");
 
         if (!cancelled) {
-          setOrganisationCount(response.organizations.length);
+          setOrganisationCount(response.organisations.length);
         }
       } catch (error) {
         console.error("Failed to fetch organisations:", error);

@@ -76,8 +76,8 @@ from app.features.teaching.storage import (
     resolve_module_dir,
 )
 from app.models import (
+    Organisation,
     OrganisationFeature,
-    Organization,
     User,
     organisation_site,
     organisation_staff_member,
@@ -2221,13 +2221,13 @@ def list_bank_organisations(
     # All orgs that have the "teaching" feature enabled
     orgs = (
         db.execute(
-            select(Organization)
+            select(Organisation)
             .join(
                 OrganisationFeature,
-                OrganisationFeature.organisation_id == Organization.id,
+                OrganisationFeature.organisation_id == Organisation.id,
             )
             .where(OrganisationFeature.feature_key == "teaching")
-            .order_by(Organization.name)
+            .order_by(Organisation.name)
         )
         .scalars()
         .all()
@@ -2280,7 +2280,7 @@ def update_bank_org_settings(
     """Update settings (status) for a bank-org pair."""
     _get_user_org_id(user, db)
 
-    org = db.get(Organization, org_id)
+    org = db.get(Organisation, org_id)
     if not org:
         raise HTTPException(404, "Organisation not found")
 

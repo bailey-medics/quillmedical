@@ -635,16 +635,16 @@ export default function UserInfoUpdatePage() {
     async function fetchOrgs() {
       try {
         const orgsResp = await api.get<{
-          organizations: { id: number; name: string }[];
-        }>("/organizations");
+          organisations: { id: number; name: string }[];
+        }>("/organisations");
 
         // Fetch sites for each org
         const orgsWithSites: OrgOption[] = await Promise.all(
-          orgsResp.organizations.map(async (org) => {
+          orgsResp.organisations.map(async (org) => {
             try {
               const detail = await api.get<{
                 sites: { id: number; name: string }[];
-              }>(`/organizations/${org.id}`);
+              }>(`/organisations/${org.id}`);
               return {
                 id: org.id,
                 name: org.name,

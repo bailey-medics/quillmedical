@@ -185,7 +185,7 @@ export default function SideNavContent({
       if (orgId) {
         try {
           const org = await api.get<{ name: string }>(
-            `/organizations/${orgId}`,
+            `/organisations/${orgId}`,
           );
           if (cancelled) return;
           const orgItem: NavItem = {

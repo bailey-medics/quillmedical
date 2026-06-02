@@ -35,9 +35,9 @@ This is important for **feature gating** — the `requires_feature` dependency r
 
 ## 4. FHIR Mapping
 
-- `Organization` resource
+- `Organisation` resource
 - `PractitionerRole` for staff membership
-- `Patient.managingOrganization` and `CareTeam` for patient membership
+- `Patient.managingOrganisation` and `CareTeam` for patient membership
 
 ## 5. Business Rules
 
@@ -52,19 +52,19 @@ All endpoints are admin-only (admin or superadmin system permissions required). 
 
 ### Organisation endpoints
 
-- `GET /api/organizations` — list all organisations
-- `POST /api/organizations` — create organisation
-- `GET /api/organizations/{id}` — retrieve organisation with staff/patient lists and counts
-- `PUT /api/organizations/{id}` — update organisation
-- `DELETE /api/organizations/{id}` — delete organisation
-- `POST /api/organizations/{id}/staff` — add staff member
-- `POST /api/organizations/{id}/patients` — add patient
-- `DELETE /api/organizations/{id}/staff/{userId}` — remove staff member (requires CSRF)
-- `DELETE /api/organizations/{id}/patients/{patientId}` — remove patient (requires CSRF)
-- `GET /api/organizations/{id}/features` — list organisation feature flags
-- `PUT /api/organizations/{id}/features/{featureKey}` — enable or disable a feature (requires CSRF)
-- `POST /api/organizations/{org_id}/sites/{site_id}` — link site to organisation
-- `DELETE /api/organizations/{org_id}/sites/{site_id}` — unlink site from organisation
+- `GET /api/organisations` — list all organisations
+- `POST /api/organisations` — create organisation
+- `GET /api/organisations/{id}` — retrieve organisation with staff/patient lists and counts
+- `PUT /api/organisations/{id}` — update organisation
+- `DELETE /api/organisations/{id}` — delete organisation
+- `POST /api/organisations/{id}/staff` — add staff member
+- `POST /api/organisations/{id}/patients` — add patient
+- `DELETE /api/organisations/{id}/staff/{userId}` — remove staff member (requires CSRF)
+- `DELETE /api/organisations/{id}/patients/{patientId}` — remove patient (requires CSRF)
+- `GET /api/organisations/{id}/features` — list organisation feature flags
+- `PUT /api/organisations/{id}/features/{featureKey}` — enable or disable a feature (requires CSRF)
+- `POST /api/organisations/{org_id}/sites/{site_id}` — link site to organisation
+- `DELETE /api/organisations/{org_id}/sites/{site_id}` — unlink site from organisation
 
 ### Site endpoints
 
@@ -85,7 +85,7 @@ All endpoints are admin-only (admin or superadmin system permissions required). 
 
 ## 8. Naming Convention
 
-- `Organization` in code/API (FHIR-aligned)
+- `Organisation` in code/API (FHIR-aligned)
 - `Organisation` in UI (British spelling)
 
 ## 9. Out of Scope (Future)

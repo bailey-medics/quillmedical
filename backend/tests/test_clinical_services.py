@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app, require_clinical_services
-from app.models import Organization, User, organisation_staff_member
+from app.models import Organisation, User, organisation_staff_member
 from app.security import hash_password
 
 
@@ -112,7 +112,7 @@ class TestRequireFeatureDependency:
 
     def test_feature_disabled_returns_403(self, test_client, db_session):
         """User whose org does NOT have the feature gets 403."""
-        org = Organization(name="No Feature Org")
+        org = Organisation(name="No Feature Org")
         db_session.add(org)
         db_session.flush()
 

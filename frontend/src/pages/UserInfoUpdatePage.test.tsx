@@ -19,12 +19,12 @@ vi.mock("@/lib/api", () => ({
   api: {
     post: vi.fn(),
     get: vi.fn().mockImplementation((url: string) => {
-      if (url === "/organizations") {
+      if (url === "/organisations") {
         return Promise.resolve({
-          organizations: [{ id: 1, name: "Test Org" }],
+          organisations: [{ id: 1, name: "Test Org" }],
         });
       }
-      if (url.startsWith("/organizations/")) {
+      if (url.startsWith("/organisations/")) {
         return Promise.resolve({
           sites: [{ id: 10, name: "Test Site" }],
         });
