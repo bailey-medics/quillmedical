@@ -36,6 +36,11 @@ export default function AdminBankDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!bankId) {
+      setError("No module ID provided");
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const [bankData, orgsData] = await Promise.all([

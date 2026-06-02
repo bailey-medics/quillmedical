@@ -194,7 +194,7 @@ async def limit_request_body_size(
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
         return Response(status_code=413, content="Request body too large")
-    return await call_next(request)
+    return await call_next(request)  # type: ignore[no-any-return]
 
 
 # --- Rate limiting (slowapi) ---
@@ -203,7 +203,7 @@ limiter = Limiter(
     enabled=settings.BACKEND_ENV != "development",
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 # --- FHIR client error handler ---
@@ -4705,7 +4705,7 @@ def accept_invite(
     Returns:
         dict: Status and redirect information.
     """
-    from jose import JWTError
+    from jose import JWTError  # type: ignore[import-untyped]
 
     try:
         payload = decode_invite_token(body.token)
@@ -5328,11 +5328,11 @@ def ci_teaching_sync(
     from app.features.teaching.router import (
         _build_image_inventory,
         _resolve_bank_path_or_gcs,
-        list_banks_in_gcs,
     )
     from app.features.teaching.storage import (
         discover_local_banks,
         get_module_status_from_gcs,
+        list_banks_in_gcs,
     )
     from app.features.teaching.sync import sync_question_bank
 
@@ -5474,10 +5474,17 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         """Serve question bank images from local teaching-repos."""
         from app.features.teaching.storage import resolve_local_bank
 
+        _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+
         # Validate path components
         for part in (bank_id, item_folder, filename):
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
+
+        # Restrict to allowed image extensions
+        ext = Path(filename).suffix.lower()
+        if ext not in _ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(400, "Invalid file type")
 
         bank_dir = resolve_local_bank(_qb_base, bank_id)
         if not bank_dir:
@@ -5500,10 +5507,17 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         """Serve learning content images from local teaching-repos."""
         from app.features.teaching.storage import resolve_module_dir
 
+        _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+
         # Validate path components
         for part in (module_id, filename):
             if ".." in part or "/" in part:
                 raise HTTPException(400, "Invalid path")
+
+        # Restrict to allowed image extensions
+        ext = Path(filename).suffix.lower()
+        if ext not in _ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(400, "Invalid file type")
 
         module_dir = resolve_module_dir(_qb_base, module_id)
         if not module_dir:

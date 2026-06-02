@@ -252,6 +252,13 @@ def create_composition(
     Raises:
         EhrbaseClientError: If the request fails.
     """
+    if not ehr_id or not ehr_id.strip():
+        raise ValueError("ehr_id must be a non-empty string")
+    if not template_id or not template_id.strip():
+        raise ValueError("template_id must be a non-empty string")
+    if not composition_data:
+        raise ValueError("composition_data must be a non-empty dictionary")
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr/{ehr_id}/composition"
     headers = {
         **get_auth_header(),
@@ -284,6 +291,11 @@ def get_composition(ehr_id: str, composition_uid: str) -> dict[str, Any]:
     Raises:
         EhrbaseClientError: If the request fails.
     """
+    if not ehr_id or not ehr_id.strip():
+        raise ValueError("ehr_id must be a non-empty string")
+    if not composition_uid or not composition_uid.strip():
+        raise ValueError("composition_uid must be a non-empty string")
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr/{ehr_id}/composition/{composition_uid}"
     headers = get_auth_header()
 
@@ -311,6 +323,9 @@ def query_aql(aql_query: str) -> dict[str, Any]:
     Raises:
         EhrbaseClientError: If the request fails.
     """
+    if not aql_query or not aql_query.strip():
+        raise ValueError("aql_query must be a non-empty string")
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/query/aql"
     headers = {
         **get_auth_header(),
@@ -338,6 +353,9 @@ def list_compositions_for_ehr(ehr_id: str) -> list[dict[str, Any]]:
     Returns:
         List of compositions
     """
+    if not ehr_id or not ehr_id.strip():
+        raise ValueError("ehr_id must be a non-empty string")
+
     aql = f"""
     SELECT c
     FROM EHR e[ehr_id/value='{ehr_id}']

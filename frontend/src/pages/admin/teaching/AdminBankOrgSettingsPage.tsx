@@ -94,6 +94,11 @@ export default function AdminBankOrgSettingsPage() {
   const [savedIsLive, setSavedIsLive] = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (!bankId || !orgId) {
+      setError("Missing required parameters");
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
       const [bankData, orgsData] = await Promise.all([

@@ -108,6 +108,11 @@ export default function EditOrganisationPage() {
 
   useEffect(() => {
     async function fetchOrganisation() {
+      if (!id) {
+        setLoadError("No organisation ID provided");
+        setLoading(false);
+        return;
+      }
       try {
         const data = await api.get<OrganisationData>(`/organizations/${id}`);
         setOrgData(data);

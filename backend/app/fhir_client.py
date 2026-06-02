@@ -229,6 +229,9 @@ def read_fhir_patient(patient_id: str) -> dict[str, Any] | None:
         FhirClientError: If the FHIR server is unreachable or returns
             an unexpected error.
     """
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id must be a non-empty string")
+
     fhir = get_fhir_client()
 
     try:
@@ -256,6 +259,9 @@ def delete_fhir_patient(patient_id: str) -> bool:
     Returns:
         bool: True if deletion successful, False otherwise.
     """
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id must be a non-empty string")
+
     fhir = get_fhir_client()
 
     try:
@@ -309,6 +315,11 @@ def update_fhir_patient(
     Raises:
         Exception: If update fails.
     """
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id must be a non-empty string")
+    if not demographics:
+        raise ValueError("demographics must be a non-empty dictionary")
+
     fhir = get_fhir_client()
 
     try:
@@ -430,6 +441,15 @@ def create_fhir_communication(
     Raises:
         FhirCommunicationError: If creation fails.
     """
+    if not conversation_id or not conversation_id.strip():
+        raise ValueError("conversation_id must be a non-empty string")
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id must be a non-empty string")
+    if not body or not body.strip():
+        raise ValueError("body must be a non-empty string")
+    if sender_user_id <= 0:
+        raise ValueError("sender_user_id must be a positive integer")
+
     fhir = get_fhir_client()
     comm_uuid = str(uuid.uuid4())
 

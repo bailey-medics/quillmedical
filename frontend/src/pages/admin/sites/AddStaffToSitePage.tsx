@@ -133,6 +133,11 @@ export default function AddStaffToSitePage() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!id) {
+        setLoadError("No site ID provided");
+        setUsersLoading(false);
+        return;
+      }
       try {
         const [usersResponse, siteResponse] = await Promise.all([
           api.get<{ users: ApiUser[] }>("/users"),

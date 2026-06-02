@@ -389,6 +389,17 @@ def create_invite_token(
     Returns:
         str: Signed JWT invite token.
     """
+    if not patient_id or not patient_id.strip():
+        raise ValueError("patient_id must be a non-empty string")
+    if not email or not email.strip():
+        raise ValueError("email must be a non-empty string")
+    if user_type not in ("external_hcp", "patient_advocate"):
+        raise ValueError(
+            "user_type must be 'external_hcp' or 'patient_advocate'"
+        )
+    if ttl_days < 1 or ttl_days > 365:
+        raise ValueError("ttl_days must be between 1 and 365")
+
     payload: dict[str, Any] = {
         "type": "invite",
         "patient_id": patient_id,

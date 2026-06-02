@@ -183,6 +183,11 @@ export default function EditSitePage() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!id) {
+        setLoadError("No site ID provided");
+        setLoading(false);
+        return;
+      }
       try {
         const [site, usersResponse] = await Promise.all([
           api.get<SiteData>(`/sites/${id}`),

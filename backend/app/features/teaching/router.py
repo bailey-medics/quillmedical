@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -275,6 +276,10 @@ def get_question_bank(
 ) -> dict[str, Any]:
     """Get full detail for a question bank config."""
     from app.config import settings
+
+    _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+    if not bank_id or not _SAFE_BANK_ID.match(bank_id):
+        raise HTTPException(400, "Invalid bank_id")
 
     org_ids = _get_user_org_ids(user, db)
     config = (

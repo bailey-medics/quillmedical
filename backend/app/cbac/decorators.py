@@ -84,7 +84,7 @@ def has_competency(competency: str) -> Callable[[Request, User], User]:
     return check_competency
 
 
-def requires_competency_decorator(competency: str) -> Callable:
+def requires_competency_decorator(competency: str) -> Callable[..., Any]:
     """Legacy decorator style (prefer FastAPI Depends above).
 
     Decorator that wraps a route handler to check if the authenticated
@@ -111,7 +111,7 @@ def requires_competency_decorator(competency: str) -> Callable:
         Callable: Decorator function
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Extract user from kwargs (assuming user: User = DEP_CURRENT_USER in signature)
