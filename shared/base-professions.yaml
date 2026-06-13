@@ -21,6 +21,7 @@ base_professions:
     display_name: "Patient"
     description: "Member of the public with patient account (no clinical access)"
     default_system_permission: single-user
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records  # Own records only (filtered by system)
     notes: "Patients can only access their own records. System enforces patient-record ownership."
@@ -33,6 +34,7 @@ base_professions:
     display_name: "Foundation Year 1 Doctor (FY1)"
     description: "Newly qualified doctor in first year of foundation training"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -49,6 +51,7 @@ base_professions:
     display_name: "Foundation Year 2 Doctor (FY2)"
     description: "Doctor in second year of foundation training"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -70,6 +73,7 @@ base_professions:
     display_name: "Specialty Trainee Year 1-2 (ST1-2)"
     description: "Doctor in early specialty training"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -94,6 +98,7 @@ base_professions:
     display_name: "Specialty Trainee Year 3+ (ST3+)"
     description: "Doctor in higher specialty training"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -124,6 +129,7 @@ base_professions:
     display_name: "Consultant"
     description: "Fully qualified specialist consultant"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -158,6 +164,7 @@ base_professions:
     display_name: "General Practitioner (GP)"
     description: "GP partner or salaried GP"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -187,6 +194,7 @@ base_professions:
     display_name: "Registered Nurse (RN)"
     description: "NMC-registered nurse (adult, paediatric, mental health, learning disability)"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -201,6 +209,7 @@ base_professions:
     display_name: "Advanced Nurse Practitioner (ANP)"
     description: "Advanced clinical practitioner with extended responsibilities"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -220,6 +229,7 @@ base_professions:
     display_name: "Healthcare Assistant (HCA)"
     description: "Unregistered nursing assistant"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - perform_venepuncture  # After competency training
@@ -233,6 +243,7 @@ base_professions:
     display_name: "Pharmacist"
     description: "GPhC-registered pharmacist"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -245,6 +256,7 @@ base_professions:
     display_name: "Pharmacy Technician"
     description: "GPhC-registered pharmacy technician"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
     notes: "Pharmacy technicians support pharmacists with dispensing and medicines management."
@@ -257,6 +269,7 @@ base_professions:
     display_name: "Physiotherapist"
     description: "HCPC-registered physiotherapist"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -270,6 +283,7 @@ base_professions:
     display_name: "Occupational Therapist"
     description: "HCPC-registered occupational therapist"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -281,6 +295,7 @@ base_professions:
     display_name: "Paramedic"
     description: "HCPC-registered paramedic"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -300,6 +315,7 @@ base_professions:
     display_name: "Medical Secretary"
     description: "Medical secretarial staff"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records  # For correspondence and administration
       - access_clinic_admin
@@ -309,6 +325,7 @@ base_professions:
     display_name: "Receptionist"
     description: "Front desk and reception staff"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_clinic_admin
     notes: "Receptionists manage appointments and administrative functions. Limited patient record access (demographics only)."
@@ -317,6 +334,7 @@ base_professions:
     display_name: "Clinic Manager"
     description: "Clinic management and operations staff"
     default_system_permission: staff
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records  # For service delivery oversight
       - access_clinic_admin
@@ -327,6 +345,7 @@ base_professions:
     display_name: "System Administrator"
     description: "IT system administrator with technical access"
     default_system_permission: admin
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records  # Technical support only
       - access_clinic_admin
@@ -341,24 +360,27 @@ base_professions:
     display_name: "Teaching delegate"
     description: "External delegate with teaching assessment access only (no clinical access)"
     default_system_permission: single-user
+    requires_clinical_services: false
     base_competencies:
       - view_teaching_cases
     notes: "Teaching delegates can only take teaching assessments. They have no clinical competencies and cannot access any clinical data, including their own medical records on Quill."
 
-  - id: learner
-    display_name: "Learner"
-    description: "Teaching assessment candidate"
+  - id: teaching_clinical_lead
+    display_name: "Teaching clinical lead"
+    description: "Clinical lead participating in teaching assessments (no additional platform permissions)"
     default_system_permission: single-user
+    requires_clinical_services: false
     base_competencies:
       - view_teaching_cases
-    notes: "Learners can take teaching assessments. Results are auditable and may be used for accreditation."
+    notes: "Teaching clinical leads currently have the same competencies as delegates. This may expand in the future to include additional oversight capabilities."
 
-  - id: educator
-    display_name: "Educator"
+  - id: teaching_admin
+    display_name: "Teaching admin"
     description: "Teaching content manager and assessment coordinator"
-    default_system_permission: staff
+    default_system_permission: admin
+    requires_clinical_services: false
     base_competencies:
       - view_teaching_cases
       - manage_teaching_content
       - view_teaching_analytics
-    notes: "Educators manage question bank content, trigger syncs, view all candidate results, and coordinate assessments."
+    notes: "Teaching admins manage question bank content, trigger syncs, view all candidate results, and coordinate assessments."

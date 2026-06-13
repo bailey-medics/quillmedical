@@ -169,7 +169,7 @@ EDUCATOR_JSON=$(jq -n \
     --arg username "$EDUCATOR_USERNAME" \
     --arg email "$EDUCATOR_EMAIL" \
     --arg password "$EDUCATOR_PASSWORD" \
-    '{name: $name, username: $username, email: $email, password: $password, base_profession: "educator", system_permissions: "staff"}')
+    '{name: $name, username: $username, email: $email, password: $password, base_profession: "teaching_admin", system_permissions: "admin"}')
 parse_response "$(api_call POST /users "$EDUCATOR_JSON")"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
@@ -201,7 +201,7 @@ LEARNER_JSON=$(jq -n \
     --arg username "$LEARNER_USERNAME" \
     --arg email "$LEARNER_EMAIL" \
     --arg password "$LEARNER_PASSWORD" \
-    '{name: $name, username: $username, email: $email, password: $password, base_profession: "learner", system_permissions: "staff"}')
+    '{name: $name, username: $username, email: $email, password: $password, base_profession: "teaching_delegate", system_permissions: "staff"}')
 parse_response "$(api_call POST /users "$LEARNER_JSON")"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then

@@ -97,10 +97,14 @@ function Step1BasicDetails({
   errors: Record<string, string>;
   isEditMode?: boolean;
 }) {
-  const professionOptions = baseProfessionsData.base_professions.map((p) => ({
-    value: p.id,
-    label: p.display_name,
-  }));
+  const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
+
+  const professionOptions = baseProfessionsData.base_professions
+    .filter((p) => isClinical || !p.requires_clinical_services)
+    .map((p) => ({
+      value: p.id,
+      label: p.display_name,
+    }));
 
   return (
     <Stack gap="md">
@@ -172,12 +176,22 @@ function Step1BasicDetails({
         data={professionOptions}
         required
         value={formData.baseProfession}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
+        onChange={(value) => {
+          const updates: Partial<UserFormData> = {
             baseProfession: value as BaseProfessionId,
-          })
-        }
+          };
+          // In create mode, auto-set the default system permission
+          if (!isEditMode && value) {
+            const profession = baseProfessionsData.base_professions.find(
+              (p) => p.id === value,
+            );
+            if (profession?.default_system_permission) {
+              updates.systemPermissions =
+                profession.default_system_permission as SystemPermission;
+            }
+          }
+          setFormData({ ...formData, ...updates });
+        }}
         error={errors.baseProfession}
         searchable
       />
