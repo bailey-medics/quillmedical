@@ -56,6 +56,7 @@ import { getBaseProfessionDetails } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 
 /**
  * Organisation option from the API
@@ -363,11 +364,16 @@ function Step3Permissions({
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
 }) {
+  const { state } = useAuth();
+  const isSuperadmin = state.user?.system_permissions === "superadmin";
+
   const permissionOptions = [
     { value: "single-user", label: "Single-user - No staff access" },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
-    { value: "superadmin", label: "Super Admin - Full system access" },
+    ...(isSuperadmin
+      ? [{ value: "superadmin", label: "Super Admin - Full system access" }]
+      : []),
   ];
 
   return (
