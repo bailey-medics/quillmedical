@@ -253,10 +253,20 @@ def list_question_banks(
 
         cover_image_url: str | None = None
         if c.cover_image_filename:
-            cover_image_url = (
-                f"/api/teaching/images/cover/"
-                f"{c.question_bank_id}/{c.cover_image_filename}"
-            )
+            bucket = settings.TEACHING_GCS_BUCKET
+            if bucket:
+                from app.features.teaching.storage import (
+                    get_cover_image_url_gcs,
+                )
+
+                cover_image_url = get_cover_image_url_gcs(
+                    bucket, c.question_bank_id, c.cover_image_filename
+                )
+            else:
+                cover_image_url = (
+                    f"/api/teaching/images/cover/"
+                    f"{c.question_bank_id}/{c.cover_image_filename}"
+                )
 
         results.append(
             {

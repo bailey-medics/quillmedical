@@ -334,6 +334,45 @@ def get_learning_image_url_gcs(
     )
 
 
+def get_cover_image_url_gcs(
+    bucket_name: str, module_id: str, filename: str
+) -> str:
+    """Generate a signed URL for a module cover image in GCS."""
+    import datetime as dt
+
+    from google.auth import default
+    from google.auth.transport import (
+        requests as auth_requests,
+    )
+    from google.cloud import storage
+
+    if not module_id or not _SAFE_BANK_ID.match(module_id):
+        msg = f"Invalid module_id: {module_id!r}"
+        raise ValueError(msg)
+    if not filename or not _SAFE_BANK_ID.match(filename.rsplit(".", 1)[0]):
+        msg = f"Invalid filename: {filename!r}"
+        raise ValueError(msg)
+
+    credentials, _project = default()
+    client = storage.Client(credentials=credentials)
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(f"modules/{module_id}/{filename}")
+
+    auth_req = auth_requests.Request()
+    credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
+    sa_email: str = credentials.service_account_email  # type: ignore[attr-defined]
+
+    return str(
+        blob.generate_signed_url(
+            version="v4",
+            expiration=dt.timedelta(minutes=15),
+            method="GET",
+            service_account_email=sa_email,
+            access_token=credentials.token,
+        )
+    )
+
+
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 
