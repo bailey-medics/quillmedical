@@ -1207,6 +1207,163 @@ class TestOrganisationEndpoints:
         response = authenticated_client.post("/api/users/1/deactivate")
         assert response.status_code == 403
 
+    def test_admin_cannot_see_superadmin_in_list(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Admin should not see superadmin users in the user list."""
+        # Put admin in an org
+        org = Organisation(name="Admin Org")
+        db_session.add(org)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+        # Create a superadmin in the same org
+        superadmin = User(
+            username="hidden_superadmin",
+            email="hidden@example.com",
+            password_hash=hash_password("SuperPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="superadmin",
+        )
+        db_session.add(superadmin)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=superadmin.id,
+                is_primary=True,
+            )
+        )
+        db_session.commit()
+
+        response = authenticated_admin_client.get("/api/users")
+        assert response.status_code == 200
+        usernames = [u["username"] for u in response.json()["users"]]
+        assert "hidden_superadmin" not in usernames
+
+    def test_admin_cannot_view_superadmin(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Admin should get 404 when trying to view a superadmin user."""
+        superadmin = User(
+            username="secret_superadmin",
+            email="secret@example.com",
+            password_hash=hash_password("SuperPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="superadmin",
+        )
+        db_session.add(superadmin)
+        db_session.commit()
+
+        response = authenticated_admin_client.get(
+            f"/api/users/{superadmin.id}"
+        )
+        assert response.status_code == 404
+
+    def test_admin_cannot_edit_superadmin(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Admin should get 403 when trying to edit a superadmin user."""
+        superadmin = User(
+            username="edit_superadmin",
+            email="edit_sa@example.com",
+            password_hash=hash_password("SuperPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="superadmin",
+        )
+        db_session.add(superadmin)
+        db_session.commit()
+
+        response = authenticated_admin_client.patch(
+            f"/api/users/{superadmin.id}",
+            json={"email": "hacked@example.com"},
+        )
+        assert response.status_code == 403
+        assert "Cannot modify superadmin" in response.json()["detail"]
+
+    def test_admin_cannot_deactivate_superadmin(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+    ):
+        """Admin should get 403 when trying to deactivate a superadmin."""
+        superadmin = User(
+            username="deactivate_superadmin",
+            email="deactivate_sa@example.com",
+            password_hash=hash_password("SuperPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="superadmin",
+        )
+        db_session.add(superadmin)
+        db_session.commit()
+
+        response = authenticated_admin_client.post(
+            f"/api/users/{superadmin.id}/deactivate"
+        )
+        assert response.status_code == 403
+        assert "Cannot modify superadmin" in response.json()["detail"]
+
+    def test_admin_cannot_grant_superadmin(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session,
+        test_admin: User,
+    ):
+        """Admin should get 403 when trying to escalate a user to superadmin."""
+        # Put admin in an org
+        org = Organisation(name="Escalation Org")
+        db_session.add(org)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=test_admin.id,
+                is_primary=True,
+            )
+        )
+        # Staff user in same org
+        staff_user = User(
+            username="escalation_target",
+            email="escalate@example.com",
+            password_hash=hash_password("StaffPass123!"),
+            is_active=True,
+            email_verified=True,
+            system_permissions="staff",
+        )
+        db_session.add(staff_user)
+        db_session.flush()
+        db_session.execute(
+            organisation_staff_member.insert().values(
+                organisation_id=org.id,
+                user_id=staff_user.id,
+                is_primary=True,
+            )
+        )
+        db_session.commit()
+
+        response = authenticated_admin_client.patch(
+            f"/api/users/{staff_user.id}",
+            json={"system_permissions": "superadmin"},
+        )
+        assert response.status_code == 403
+        assert "Cannot grant superadmin" in response.json()["detail"]
+
     def test_add_patient_unauthenticated(self, test_client: TestClient):
         """Test adding patient without authentication."""
         response = test_client.post(

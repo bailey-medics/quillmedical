@@ -1456,6 +1456,15 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Admins cannot modify superadmin users
+    if (
+        current_user.system_permissions == "admin"
+        and user.system_permissions == "superadmin"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot modify superadmin users"
+        )
+
     # Validate and update username
     if payload.username is not None:
         username = payload.username.strip()
@@ -1506,6 +1515,15 @@ def update_user(
         user.removed_competencies = payload.removed_competencies
 
     if payload.system_permissions is not None:
+        # Admins cannot grant superadmin permissions
+        if (
+            current_user.system_permissions == "admin"
+            and payload.system_permissions == "superadmin"
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot grant superadmin permissions",
+            )
         user.system_permissions = payload.system_permissions
 
     # Update organisation memberships if provided
@@ -1637,6 +1655,15 @@ def deactivate_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Admins cannot deactivate superadmin users
+    if (
+        current_user.system_permissions == "admin"
+        and user.system_permissions == "superadmin"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot modify superadmin users"
+        )
+
     if user.id == current_user.id:
         raise HTTPException(
             status_code=400, detail="Cannot deactivate your own account"
@@ -1690,6 +1717,15 @@ def reactivate_user(
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Admins cannot reactivate superadmin users
+    if (
+        current_user.system_permissions == "admin"
+        and user.system_permissions == "superadmin"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot modify superadmin users"
+        )
 
     if user.is_active:
         raise HTTPException(status_code=400, detail="User is already active")
@@ -2272,6 +2308,9 @@ def list_users(
             return {"users": []}
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
+        # Admins must not see superadmin users
+        stmt = stmt.where(User.system_permissions != "superadmin")
+
     try:
         users = db.execute(stmt).scalars().unique().all()
 
@@ -2370,6 +2409,13 @@ def get_user(
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
     if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Admins cannot view superadmin users
+    if (
+        current_user.system_permissions == "admin"
+        and user.system_permissions == "superadmin"
+    ):
         raise HTTPException(status_code=404, detail="User not found")
 
     # Get user's org and site memberships
@@ -3463,6 +3509,12 @@ def get_organisation(
         .where(organisation_staff_member.c.organisation_id == org_id)
     )
 
+    # Admins must not see superadmin staff members
+    if current_user.system_permissions == "admin":
+        staff_query = staff_query.where(
+            User.system_permissions != "superadmin"
+        )
+
     staff_members = db.execute(staff_query).all()
 
     # Get patient members
@@ -4259,6 +4311,13 @@ def get_site(
         .join(site_staff_member, site_staff_member.c.user_id == User.id)
         .where(site_staff_member.c.site_id == site_id)
     )
+
+    # Admins must not see superadmin staff members
+    if current_user.system_permissions == "admin":
+        staff_query = staff_query.where(
+            User.system_permissions != "superadmin"
+        )
+
     staff = db.execute(staff_query).all()
 
     # Get linked organisations
