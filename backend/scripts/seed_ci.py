@@ -47,8 +47,8 @@ def seed() -> None:
                 username="educator",
                 email="educator@ci.local",
                 password_hash=hash_password("educator123"),
-                system_permissions="staff",
-                base_profession="educator",
+                system_permissions="admin",
+                base_profession="teaching_admin",
                 is_active=True,
                 email_verified=True,
             )

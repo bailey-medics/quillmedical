@@ -54,8 +54,8 @@ def _make_educator(db: Session, org: Organisation) -> User:
         password_hash=hash_password("Educator123!"),
         is_active=True,
         email_verified=True,
-        base_profession="educator",
-        system_permissions="staff",
+        base_profession="teaching_admin",
+        system_permissions="admin",
     )
     db.add(user)
     db.flush()
@@ -76,7 +76,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
         password_hash=hash_password("Learner123!"),
         is_active=True,
         email_verified=True,
-        base_profession="learner",
+        base_profession="teaching_delegate",
         system_permissions="staff",
     )
     db.add(user)
@@ -233,7 +233,7 @@ class TestFeatureGating:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            base_profession="learner",
+            base_profession="teaching_delegate",
         )
         db_session.add(user)
         db_session.flush()
@@ -261,7 +261,7 @@ class TestFeatureGating:
             password_hash=hash_password("Password123!"),
             is_active=True,
             email_verified=True,
-            base_profession="learner",
+            base_profession="teaching_delegate",
         )
         db_session.add(user)
         db_session.commit()

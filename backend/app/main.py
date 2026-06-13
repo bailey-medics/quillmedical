@@ -972,10 +972,10 @@ def register(
     )
 
     # When clinical services are disabled (teaching-only deployment),
-    # auto-assign the "learner" base profession so the user can
+    # auto-assign the "teaching_delegate" base profession so the user can
     # immediately take teaching assessments.
     if not settings.CLINICAL_SERVICES_ENABLED:
-        user.base_profession = "learner"
+        user.base_profession = "teaching_delegate"
 
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships

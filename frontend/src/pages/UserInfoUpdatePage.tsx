@@ -56,6 +56,7 @@ import { getBaseProfessionDetails } from "@/types/cbac";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 
 /**
  * Organisation option from the API
@@ -96,10 +97,14 @@ function Step1BasicDetails({
   errors: Record<string, string>;
   isEditMode?: boolean;
 }) {
-  const professionOptions = baseProfessionsData.base_professions.map((p) => ({
-    value: p.id,
-    label: p.display_name,
-  }));
+  const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
+
+  const professionOptions = baseProfessionsData.base_professions
+    .filter((p) => isClinical || !p.requires_clinical_services)
+    .map((p) => ({
+      value: p.id,
+      label: p.display_name,
+    }));
 
   return (
     <Stack gap="md">
@@ -171,12 +176,22 @@ function Step1BasicDetails({
         data={professionOptions}
         required
         value={formData.baseProfession}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
+        onChange={(value) => {
+          const updates: Partial<UserFormData> = {
             baseProfession: value as BaseProfessionId,
-          })
-        }
+          };
+          // In create mode, auto-set the default system permission
+          if (!isEditMode && value) {
+            const profession = baseProfessionsData.base_professions.find(
+              (p) => p.id === value,
+            );
+            if (profession?.default_system_permission) {
+              updates.systemPermissions =
+                profession.default_system_permission as SystemPermission;
+            }
+          }
+          setFormData({ ...formData, ...updates });
+        }}
         error={errors.baseProfession}
         searchable
       />
@@ -363,11 +378,16 @@ function Step3Permissions({
   formData: UserFormData;
   setFormData: (data: UserFormData) => void;
 }) {
+  const { state } = useAuth();
+  const isSuperadmin = state.user?.system_permissions === "superadmin";
+
   const permissionOptions = [
     { value: "single-user", label: "Single-user - No staff access" },
     { value: "staff", label: "Staff - Basic access" },
     { value: "admin", label: "Admin - User & patient management" },
-    { value: "superadmin", label: "Super Admin - Full system access" },
+    ...(isSuperadmin
+      ? [{ value: "superadmin", label: "Super Admin - Full system access" }]
+      : []),
   ];
 
   return (

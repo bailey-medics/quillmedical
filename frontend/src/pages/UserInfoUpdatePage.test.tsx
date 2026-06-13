@@ -48,6 +48,14 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      user: { system_permissions: "admin" },
+    },
+  }),
+}));
+
 describe("UserInfoUpdatePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
