@@ -18,6 +18,7 @@ import { IconTrash } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 
 interface Organisation {
   id: number;
@@ -42,6 +43,8 @@ interface OrganisationsApiResponse {
  */
 export default function AdminOrganisationsPage() {
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const isSuperadmin = state.user?.system_permissions === "superadmin";
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,33 +144,39 @@ export default function AdminOrganisationsPage() {
       render: (org) => org.location || "N/A",
       accessor: (org) => org.location ?? "",
     },
-    {
-      header: "",
-      width: "50px",
-      render: (org) => (
-        <EllipsisMenu
-          aria-label={`Actions for ${org.name}`}
-          items={[
-            {
-              label: "Remove organisation",
-              icon: <IconTrash />,
-              color: "var(--alert-color)",
-              onClick: () => setRemovingOrg(org),
-            },
-          ]}
-        />
-      ),
-    },
+    ...(isSuperadmin
+      ? [
+          {
+            header: "",
+            width: "50px",
+            render: (org: Organisation) => (
+              <EllipsisMenu
+                aria-label={`Actions for ${org.name}`}
+                items={[
+                  {
+                    label: "Remove organisation",
+                    icon: <IconTrash />,
+                    color: "var(--alert-color)",
+                    onClick: () => setRemovingOrg(org),
+                  },
+                ]}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="flex-end">
         <PageHeader title="Organisations" />
-        <AddButton
-          label="Add organisation"
-          onClick={() => navigate("/admin/organisations/new")}
-        />
+        {isSuperadmin && (
+          <AddButton
+            label="Add organisation"
+            onClick={() => navigate("/admin/organisations/new")}
+          />
+        )}
       </Group>
 
       <DataTableControlled

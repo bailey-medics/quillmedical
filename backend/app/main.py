@@ -3647,11 +3647,11 @@ def create_organisation(
 
     Creates a new organisation in the database.
 
-    Requires admin or superadmin system permissions.
+    Requires superadmin system permissions.
 
     Args:
         body: Organisation details (name, type, optional location).
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (superadmin only).
         db: Database session.
 
     Returns:
@@ -3659,12 +3659,12 @@ def create_organisation(
 
     Raises:
         HTTPException: 400 if type is invalid.
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if user lacks superadmin permissions.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions != "superadmin":
         raise HTTPException(
             status_code=403,
-            detail="Requires admin or superadmin permissions",
+            detail="Requires superadmin permissions",
         )
 
     valid_types = [
@@ -3717,24 +3717,24 @@ def delete_organisation(
 
     Permanently removes an organisation and all associated memberships.
 
-    Requires admin or superadmin system permissions.
+    Requires superadmin system permissions.
 
     Args:
         org_id: ID of the organisation to delete.
-        current_user: Currently authenticated user (admin/superadmin only).
+        current_user: Currently authenticated user (superadmin only).
         db: Database session.
 
     Returns:
         dict: Success confirmation.
 
     Raises:
-        HTTPException: 403 if user lacks admin/superadmin permissions.
+        HTTPException: 403 if user lacks superadmin permissions.
         HTTPException: 404 if organisation not found.
     """
-    if current_user.system_permissions not in ["admin", "superadmin"]:
+    if current_user.system_permissions != "superadmin":
         raise HTTPException(
             status_code=403,
-            detail="Requires admin or superadmin permissions",
+            detail="Requires superadmin permissions",
         )
 
     org = db.get(Organisation, org_id)

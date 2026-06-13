@@ -484,6 +484,7 @@
     "testlearner",
     "testpass",
     "testpaths",
+    "testsuperadmin",
     "testuser",
     "tflock",
     "tfstate",
