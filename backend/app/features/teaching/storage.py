@@ -459,6 +459,14 @@ def download_bank_from_gcs(
         bank_id,
         bank_dir,
     )
+
+    # Place module.yaml in the parent directory so that
+    # _load_module_metadata(bank_dir) can find it at bank_dir.parent
+    module_blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+    if module_blob.exists():
+        module_yaml_path = tmp_dir / "module.yaml"
+        module_blob.download_to_filename(str(module_yaml_path))
+
     return bank_dir
 
 
