@@ -6,7 +6,8 @@
  * image slot between the title and description.
  */
 
-import { Image, Stack } from "@mantine/core";
+import { Image, Stack, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import ActionCardButton from "@/components/button/ActionCardButton";
 import BodyText from "@/components/typography/BodyText";
 import Heading from "@/components/typography/Heading";
@@ -15,10 +16,12 @@ import BaseCard from "@/components/base-card/BaseCard";
 export interface PictureActionCardProps {
   /** Card title */
   title: string;
-  /** Cover image URL */
-  imageSrc: string;
+  /** Cover image URL (null hides the image) */
+  imageSrc?: string | null;
   /** Image alt text */
-  imageAlt: string;
+  imageAlt?: string;
+  /** Focal point for vertical image cropping (0 = top, 50 = centre, 100 = bottom) */
+  imageFocus?: number | null;
   /** Card description */
   description: string;
   /** Button label text */
@@ -34,16 +37,30 @@ export default function PictureActionCard({
   description,
   imageSrc,
   imageAlt,
+  imageFocus,
   buttonLabel,
   buttonUrl,
   onClick,
 }: PictureActionCardProps) {
+  const theme = useMantineTheme();
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
   return (
-    <BaseCard maw="37.05rem" h="100%">
+    <BaseCard maw="50rem" h="100%">
       <Stack gap="md" h="100%">
         <Heading>{title}</Heading>
 
-        <Image src={imageSrc} alt={imageAlt} radius="md" h={160} fit="cover" />
+        {imageSrc && (
+          <Image
+            src={imageSrc}
+            alt={imageAlt || title}
+            radius="md"
+            w="100%"
+            h={isMobile ? 180 : 200}
+            fit="cover"
+            style={{ objectPosition: `50% ${imageFocus ?? 50}%` }}
+          />
+        )}
 
         <BodyText>{description}</BodyText>
 

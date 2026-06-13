@@ -19,6 +19,8 @@ export interface QuestionBank {
   synced_at: string;
   is_live: boolean;
   has_learning: boolean;
+  cover_image_url: string | null;
+  cover_image_focus: number | null;
 }
 
 export interface AssessmentPageConfig {

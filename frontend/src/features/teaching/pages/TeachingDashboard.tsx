@@ -23,24 +23,6 @@ import type {
   QuestionBank,
 } from "@/features/teaching/types";
 
-/** Static cover images for each question bank module. */
-const MODULE_IMAGES: Record<string, { src: string; alt: string }> = {
-  "colonoscopy-optical-diagnosis-test": {
-    src: "/teaching/colonoscopy-optical-diagnosis-test.png",
-    alt: "Colonoscopy image showing a colorectal polyp",
-  },
-  "chest-xray-interpretation-test": {
-    src: "/teaching/chest-xray-interpretation-test.png",
-    alt: "Chest X-ray showing a left-sided pneumothorax",
-  },
-};
-
-/** Display order for modules on the teaching dashboard. */
-const MODULE_ORDER: string[] = [
-  "colonoscopy-optical-diagnosis-test",
-  "chest-xray-interpretation-test",
-];
-
 export default function TeachingDashboard() {
   const navigate = useNavigate();
   const [banks, setBanks] = useState<QuestionBank[]>([]);
@@ -99,13 +81,7 @@ export default function TeachingDashboard() {
     );
   }
 
-  const liveBanks = banks
-    .filter((bank) => bank.is_live)
-    .sort(
-      (a, b) =>
-        (MODULE_ORDER.indexOf(a.question_bank_id) >>> 0) -
-        (MODULE_ORDER.indexOf(b.question_bank_id) >>> 0),
-    );
+  const liveBanks = banks.filter((bank) => bank.is_live);
 
   const sidebarNav = <TeachingMainNav />;
 
@@ -119,21 +95,22 @@ export default function TeachingDashboard() {
             <BodyText>No assessments are currently open</BodyText>
           </Center>
         ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {liveBanks.map((bank) => {
-              const image = MODULE_IMAGES[bank.question_bank_id];
-              return (
-                <PictureActionCard
-                  key={bank.id}
-                  title={bank.title}
-                  description={bank.description}
-                  imageSrc={image?.src}
-                  imageAlt={image?.alt}
-                  buttonLabel="View module"
-                  buttonUrl={`/teaching/${bank.question_bank_id}`}
-                />
-              );
-            })}
+          <SimpleGrid
+            cols={{ base: 1, sm: liveBanks.length === 1 ? 1 : 2 }}
+            spacing="md"
+          >
+            {liveBanks.map((bank) => (
+              <PictureActionCard
+                key={bank.id}
+                title={bank.title}
+                description={bank.description}
+                imageSrc={bank.cover_image_url}
+                imageAlt={bank.title}
+                imageFocus={bank.cover_image_focus}
+                buttonLabel="View module"
+                buttonUrl={`/teaching/${bank.question_bank_id}`}
+              />
+            ))}
           </SimpleGrid>
         )}
 

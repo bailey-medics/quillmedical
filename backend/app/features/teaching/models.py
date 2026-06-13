@@ -63,6 +63,12 @@ class QuestionBankConfig(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
+    cover_image_filename: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    cover_image_focus: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )
     config_yaml: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
