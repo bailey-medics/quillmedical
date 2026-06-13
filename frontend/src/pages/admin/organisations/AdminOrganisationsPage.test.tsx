@@ -38,6 +38,14 @@ const mockAdminUser: User = {
   system_permissions: "admin",
 };
 
+// Mock superadmin user
+const mockSuperadminUser: User = {
+  id: "4",
+  username: "superadmin.user",
+  email: "superadmin@example.com",
+  system_permissions: "superadmin",
+};
+
 describe("AdminOrganisationsPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -68,7 +76,31 @@ describe("AdminOrganisationsPage", () => {
       });
     });
 
-    it("displays add organisation button", async () => {
+    it("does not display add organisation button for admin", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
+
+      renderWithRouter(<AdminOrganisationsPage />, {
+        initialRoute: "/admin/organisations",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Organisations")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Add organisation")).not.toBeInTheDocument();
+    });
+
+    it("displays add organisation button for superadmin", async () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: mockSuperadminUser,
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+
       vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -178,7 +210,7 @@ describe("AdminOrganisationsPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("Add organisation")).toBeInTheDocument();
+        expect(screen.getByText("No organisations found")).toBeInTheDocument();
       });
     });
   });
@@ -219,6 +251,16 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("navigates to new organisation page on add button click", async () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: mockSuperadminUser,
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+
       const user = userEvent.setup();
       vi.spyOn(apiLib.api, "get").mockResolvedValue({ organisations: [] });
 

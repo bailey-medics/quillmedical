@@ -436,11 +436,21 @@ class TestOrganisationEndpoints:
         )
         assert response.status_code == 403
 
+    def test_create_organisation_forbidden_admin(
+        self, authenticated_admin_client: TestClient
+    ):
+        """Test creating organisation as admin (requires superadmin)."""
+        response = authenticated_admin_client.post(
+            "/api/organisations",
+            json={"name": "Test Org", "type": "hospital_team"},
+        )
+        assert response.status_code == 403
+
     def test_create_organisation_success(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_superadmin_client: TestClient, db_session
     ):
         """Test creating a new organisation."""
-        response = authenticated_admin_client.post(
+        response = authenticated_superadmin_client.post(
             "/api/organisations",
             json={
                 "name": "New Hospital",
@@ -457,10 +467,10 @@ class TestOrganisationEndpoints:
         assert "created_at" in data
 
     def test_create_organisation_without_location(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_superadmin_client: TestClient, db_session
     ):
         """Test creating organisation without optional location."""
-        response = authenticated_admin_client.post(
+        response = authenticated_superadmin_client.post(
             "/api/organisations",
             json={"name": "Remote Clinic", "type": "private_clinic"},
         )
@@ -470,10 +480,10 @@ class TestOrganisationEndpoints:
         assert data["location"] is None
 
     def test_create_organisation_invalid_type(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_superadmin_client: TestClient, db_session
     ):
         """Test creating organisation with invalid type."""
-        response = authenticated_admin_client.post(
+        response = authenticated_superadmin_client.post(
             "/api/organisations",
             json={"name": "Bad Org", "type": "invalid_type"},
         )
@@ -481,20 +491,20 @@ class TestOrganisationEndpoints:
         assert "Invalid organisation type" in response.json()["detail"]
 
     def test_create_organisation_missing_name(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_superadmin_client: TestClient, db_session
     ):
         """Test creating organisation without required name field."""
-        response = authenticated_admin_client.post(
+        response = authenticated_superadmin_client.post(
             "/api/organisations",
             json={"type": "hospital_team"},
         )
         assert response.status_code == 422
 
     def test_create_organisation_strips_whitespace(
-        self, authenticated_admin_client: TestClient, db_session
+        self, authenticated_superadmin_client: TestClient, db_session
     ):
         """Test that name and location are trimmed of whitespace."""
-        response = authenticated_admin_client.post(
+        response = authenticated_superadmin_client.post(
             "/api/organisations",
             json={
                 "name": "  Spaced Hospital  ",

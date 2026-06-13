@@ -185,3 +185,42 @@ def authenticated_admin_client(
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
     return test_client
+
+
+@pytest.fixture
+def test_superadmin(db_session: Session) -> User:
+    """Create a test user with superadmin permissions."""
+    user = User(
+        username="testsuperadmin",
+        email="superadmin@example.com",
+        password_hash=hash_password("SuperAdminPassword123!"),
+        is_active=True,
+        email_verified=True,
+        system_permissions="superadmin",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def authenticated_superadmin_client(
+    test_client: TestClient, test_superadmin: User
+) -> TestClient:
+    """Create an authenticated test client with superadmin permissions.
+
+    Automatically sets the X-CSRF-Token header for state-changing requests.
+    """
+    response = test_client.post(
+        "/api/auth/login",
+        json={
+            "username": "testsuperadmin",
+            "password": "SuperAdminPassword123!",
+        },
+    )
+    assert response.status_code == 200
+    csrf = test_client.cookies.get("XSRF-TOKEN")
+    if csrf:
+        test_client.headers["X-CSRF-Token"] = csrf
+    return test_client

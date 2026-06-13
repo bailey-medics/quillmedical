@@ -265,7 +265,14 @@ const router = createBrowserRouter([
           { path: "patients/deactivate", element: <DeactivatePatientPage /> },
           { path: "patients/:id/edit", element: <NewPatientPage /> },
           { path: "organisations", element: <AdminOrganisationsPage /> },
-          { path: "organisations/new", element: <CreateOrganisationPage /> },
+          {
+            path: "organisations/new",
+            element: (
+              <RequirePermission level="superadmin">
+                <CreateOrganisationPage />
+              </RequirePermission>
+            ),
+          },
           { path: "organisations/:id", element: <OrganisationAdminPage /> },
           {
             path: "organisations/:id/edit",
