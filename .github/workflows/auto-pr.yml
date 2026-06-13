@@ -1,4 +1,5 @@
 # Automatically create a pull request when a hotfix/* or feature/* branch is pushed.
+# Also labels PRs based on branch prefix.
 name: Auto PR
 
 on:
@@ -25,25 +26,51 @@ jobs:
           EXISTING=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
           if [ "$EXISTING" != "0" ]; then
             echo "PR already exists for ${{ github.ref_name }}, skipping"
+          else
+            # Use the head commit message as title and body
+            TITLE=$(git log -1 --format='%s')
+            BODY=$(git log -1 --format='%b')
+
+            # Create the PR; exit gracefully if one was created by a concurrent run
+            if ! gh pr create \
+              --title "$TITLE" \
+              --body "${BODY:-Auto-created from branch push}" \
+              --base main \
+              --head "${{ github.ref_name }}" 2>&1; then
+              # Check again — if a PR now exists, a parallel run created it
+              RECHECK=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
+              if [ "$RECHECK" != "0" ]; then
+                echo "PR was created by a concurrent run, skipping"
+              else
+                echo "Failed to create PR and no existing PR found"
+                exit 1
+              fi
+            fi
+          fi
+
+      - name: Label PR by branch prefix
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          if [[ "$BRANCH" == feature/* ]]; then
+            LABEL="Feature"
+          elif [[ "$BRANCH" == hotfix/* ]]; then
+            LABEL="Hotfix"
+          else
+            echo "No label for branch prefix"
             exit 0
           fi
 
-          # Use the head commit message as title and body
-          TITLE=$(git log -1 --format='%s')
-          BODY=$(git log -1 --format='%b')
-
-          # Create the PR; exit gracefully if one was created by a concurrent run
-          if ! gh pr create \
-            --title "$TITLE" \
-            --body "${BODY:-Auto-created from branch push}" \
-            --base main \
-            --head "${{ github.ref_name }}" 2>&1; then
-            # Check again — if a PR now exists, a parallel run created it
-            RECHECK=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
-            if [ "$RECHECK" != "0" ]; then
-              echo "PR was created by a concurrent run, skipping"
-              exit 0
-            fi
-            echo "Failed to create PR and no existing PR found"
-            exit 1
+          # Find open PR for this branch
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR found for $BRANCH"
+            exit 0
           fi
+
+          # Create label if it doesn't exist (ignore errors if it already exists)
+          gh label create "$LABEL" --color "0e8a16" --description "Auto-labelled from branch prefix" 2>/dev/null || true
+
+          gh pr edit "$PR_NUMBER" --add-label "$LABEL"
+          echo "Added label '$LABEL' to PR #$PR_NUMBER"
