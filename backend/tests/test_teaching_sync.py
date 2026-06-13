@@ -404,10 +404,10 @@ class TestVersionGuard:
         assert sync_record is not None
         assert sync_record.status == "success"
 
-    def test_live_rejected_when_version_le_stored(
+    def test_live_same_version_updates_metadata_only(
         self, db_session, organisation, admin_user, tmp_path: Path
     ) -> None:
-        """Live modules must have version > stored version."""
+        """Live modules with same version do metadata-only update."""
         bank = _make_bank(tmp_path)
         # First sync — establishes version 1
         sync_question_bank(
@@ -417,7 +417,7 @@ class TestVersionGuard:
             db=db_session,
             module_status="live",
         )
-        # Second sync with same version — should be rejected
+        # Second sync with same version — metadata-only update
         validation, sync_record = sync_question_bank(
             bank,
             organisation_id=organisation.id,
@@ -425,9 +425,8 @@ class TestVersionGuard:
             db=db_session,
             module_status="live",
         )
-        assert not validation.is_valid
+        assert validation.is_valid
         assert sync_record is None
-        assert any("not greater than" in e.message for e in validation.errors)
 
     def test_live_accepted_when_version_gt_stored(
         self, db_session, organisation, admin_user, tmp_path: Path
