@@ -158,9 +158,13 @@ resource "google_project_iam_member" "cloudrun_secret_accessor" {
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
-# Cloud Run needs roles/iam.serviceAccountTokenCreator on its own SA to
-# generate GCS signed URLs. Applied manually via gcloud (the Terraform SA
-# lacks iam.serviceAccounts.setIamPolicy to manage this).
+# Cloud Run needs to sign its own tokens to generate GCS signed URLs
+resource "google_service_account_iam_member" "cloudrun_token_creator" {
+  count              = var.environment == "teaching" ? 1 : 0
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
 
 # ---------- Initial secret values (jwt-secret, vapid-private) ----------
 # These are generated once by Terraform. Replace vapid-private with a real
