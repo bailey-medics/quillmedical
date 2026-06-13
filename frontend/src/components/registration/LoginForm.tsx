@@ -140,6 +140,7 @@ export default function LoginForm({
           onSubmit={handleSubmit}
           submitLabel="Sign in"
           submittingLabel="Signing in…"
+          blockNavigation={false}
         >
           <LoginFields
             requireTotp={requireTotp}
