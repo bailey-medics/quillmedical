@@ -14,7 +14,11 @@ from app.features.teaching.models import (
     QuestionBankItem,
     QuestionBankSync,
 )
-from app.features.teaching.sync import _load_module_status, sync_question_bank
+from app.features.teaching.sync import (
+    _load_module_metadata,
+    _load_module_status,
+    sync_question_bank,
+)
 from app.models import Organisation, User
 from app.security import hash_password
 
@@ -539,3 +543,120 @@ class TestVersionGuard:
         assert not validation.is_valid
         assert sync_record is None
         assert any("Draft" in e.message for e in validation.errors)
+
+
+class TestLoadModuleMetadata:
+    """Test _load_module_metadata reads from parent directory."""
+
+    def test_reads_all_fields(self, tmp_path: Path) -> None:
+        module_dir = tmp_path / "my-module"
+        module_dir.mkdir()
+        (module_dir / "module.yaml").write_text(
+            yaml.dump(
+                {
+                    "moduleId": "my-module",
+                    "title": "My Title",
+                    "description": "My description",
+                    "status": "live",
+                    "coverImage": "cover.png",
+                }
+            )
+        )
+        assessment_dir = module_dir / "assessment"
+        assessment_dir.mkdir()
+        meta = _load_module_metadata(assessment_dir)
+        assert meta["title"] == "My Title"
+        assert meta["description"] == "My description"
+        assert meta["cover_image"] == "cover.png"
+
+    def test_returns_defaults_when_no_module_yaml(
+        self, tmp_path: Path
+    ) -> None:
+        bank_dir = tmp_path / "some-bank"
+        bank_dir.mkdir()
+        meta = _load_module_metadata(bank_dir)
+        assert meta["title"] == ""
+        assert meta["description"] == ""
+        assert meta["cover_image"] is None
+
+    def test_returns_defaults_for_invalid_yaml(self, tmp_path: Path) -> None:
+        module_dir = tmp_path / "bad-module"
+        module_dir.mkdir()
+        (module_dir / "module.yaml").write_text(": invalid: yaml: [")
+        assessment_dir = module_dir / "assessment"
+        assessment_dir.mkdir()
+        meta = _load_module_metadata(assessment_dir)
+        assert meta["title"] == ""
+        assert meta["description"] == ""
+        assert meta["cover_image"] is None
+
+
+class TestSyncStoresCoverImage:
+    """Test that sync stores cover_image_filename from module.yaml."""
+
+    def test_cover_image_stored_on_config(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """Sync reads coverImage from module.yaml and stores it."""
+        module_dir = tmp_path / "cover-module"
+        module_dir.mkdir()
+        (module_dir / "module.yaml").write_text(
+            yaml.dump(
+                {
+                    "moduleId": "cover-module",
+                    "title": "Module With Cover",
+                    "description": "Has a cover image",
+                    "order": 1,
+                    "status": "live",
+                    "coverImage": "cover.png",
+                }
+            )
+        )
+        assessment_dir = module_dir / "assessment"
+        assessment_dir.mkdir()
+        config = {
+            "id": "cover-module",
+            "version": 1,
+            "title": "Assessment Title",
+            "description": "Assessment description",
+            "type": "uniform",
+            "images_per_item": 1,
+            "images": [{"key": "wli.png", "label": "WLI"}],
+            "options": [
+                {"id": "opt_a", "label": "A", "tags": ["a"]},
+                {"id": "opt_b", "label": "B", "tags": ["b"]},
+            ],
+            "correct_answer_field": "diagnosis",
+            "correct_answer_values": ["adenoma"],
+            "assessment": {
+                "items_per_attempt": 1,
+                "time_limit_minutes": 5,
+                "min_pool_size": 0,
+            },
+        }
+        (assessment_dir / "assessment.yaml").write_text(yaml.dump(config))
+        q_dir = assessment_dir / "question_001"
+        q_dir.mkdir()
+        (q_dir / "question.yaml").write_text(
+            yaml.dump({"diagnosis": "adenoma"})
+        )
+        (q_dir / "wli.png").write_bytes(b"fake")
+
+        validation, sync_record = sync_question_bank(
+            assessment_dir,
+            organisation_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+        assert validation.is_valid
+        assert sync_record is not None
+
+        # Verify module.yaml title/description override assessment.yaml
+        db_config = db_session.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.question_bank_id == "cover-module"
+            )
+        ).scalar_one()
+        assert db_config.title == "Module With Cover"
+        assert db_config.description == "Has a cover image"
+        assert db_config.cover_image_filename == "cover.png"

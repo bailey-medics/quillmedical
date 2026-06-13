@@ -214,7 +214,10 @@ def list_question_banks(
         db.execute(
             select(QuestionBankConfig)
             .where(QuestionBankConfig.organisation_id.in_(org_ids))
-            .order_by(QuestionBankConfig.question_bank_id)
+            .order_by(
+                QuestionBankConfig.question_bank_id,
+                QuestionBankConfig.version.desc(),
+            )
         )
         .scalars()
         .all()
@@ -247,6 +250,14 @@ def list_question_banks(
         if c.question_bank_id in seen:
             continue
         seen.add(c.question_bank_id)
+
+        cover_image_url: str | None = None
+        if c.cover_image_filename:
+            cover_image_url = (
+                f"/api/teaching/images/cover/"
+                f"{c.question_bank_id}/{c.cover_image_filename}"
+            )
+
         results.append(
             {
                 "id": c.id,
@@ -260,6 +271,8 @@ def list_question_banks(
                 "has_learning": has_learning_content(
                     base_path, c.question_bank_id
                 ),
+                "cover_image_url": cover_image_url,
+                "cover_image_focus": c.cover_image_focus,
             }
         )
     return results

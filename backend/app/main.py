@@ -5524,6 +5524,39 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
+    @app.get("/api/teaching/images/cover/{module_id}/{filename}")
+    async def _serve_cover_image(
+        module_id: str,
+        filename: str,
+    ) -> FileResponse:
+        """Serve module cover images from local teaching-repos."""
+        from app.features.teaching.storage import resolve_module_dir
+
+        _ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+
+        # Validate path components
+        for part in (module_id, filename):
+            if ".." in part or "/" in part:
+                raise HTTPException(400, "Invalid path")
+
+        # Restrict to allowed image extensions
+        ext = Path(filename).suffix.lower()
+        if ext not in _ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(400, "Invalid file type")
+
+        module_dir = resolve_module_dir(_qb_base, module_id)
+        if not module_dir:
+            raise HTTPException(404, "Module not found")
+
+        file_path = module_dir / filename
+        if not file_path.is_file():
+            raise HTTPException(404, "Image not found")
+
+        content_type = (
+            mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        )
+        return FileResponse(file_path, media_type=content_type)
+
     @app.get("/api/teaching/images/learning/{module_id}/{filename}")
     async def _serve_learning_image(
         module_id: str,

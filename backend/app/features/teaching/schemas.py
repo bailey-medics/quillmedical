@@ -26,6 +26,8 @@ class QuestionBankOut(BaseModel):
     synced_at: datetime
     is_live: bool = False
     has_learning: bool = False
+    cover_image_url: str | None = None
+    cover_image_focus: str | None = None
 
 
 class QuestionBankDetailOut(QuestionBankOut):

@@ -113,6 +113,43 @@ def _load_module_status(bank_dir: Path) -> str | None:
     return None
 
 
+def _load_module_metadata(
+    bank_dir: Path,
+) -> dict[str, str | None]:
+    """Read module card metadata from module.yaml in the parent directory.
+
+    Returns a dict with 'title', 'description', 'cover_image', and
+    'cover_image_focus' keys.
+    Falls back to empty strings / None if module.yaml is missing.
+    """
+    module_yaml = bank_dir.parent / "module.yaml"
+    if not module_yaml.is_file():
+        return {
+            "title": "",
+            "description": "",
+            "cover_image": None,
+            "cover_image_focus": None,
+        }
+    try:
+        with open(module_yaml) as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict):
+            return {
+                "title": data.get("title", ""),
+                "description": data.get("description", ""),
+                "cover_image": data.get("coverImage"),
+                "cover_image_focus": data.get("coverImageFocus"),
+            }
+    except (yaml.YAMLError, OSError):
+        pass
+    return {
+        "title": "",
+        "description": "",
+        "cover_image": None,
+        "cover_image_focus": None,
+    }
+
+
 def sync_question_bank(
     bank_dir: Path,
     organisation_id: int,
@@ -196,18 +233,36 @@ def sync_question_bank(
         ).scalar_one_or_none()
 
         if stored is not None and version <= stored:
-            logger.warning(
-                "Rejecting sync for live bank '%s': version %d "
-                "<= stored version %d",
-                bank_id,
-                version,
-                stored,
-            )
-            validation.add_error(
-                str(bank_dir),
-                f"Version {version} is not greater than stored "
-                f"version {stored}",
-            )
+            # Version hasn't bumped — only update module metadata on
+            # the existing config row, then return early.
+            module_meta = _load_module_metadata(bank_dir)
+            existing_config = db.execute(
+                select(QuestionBankConfig).where(
+                    QuestionBankConfig.organisation_id == organisation_id,
+                    QuestionBankConfig.question_bank_id == bank_id,
+                    QuestionBankConfig.version == stored,
+                )
+            ).scalar_one_or_none()
+            if existing_config and module_meta["title"]:
+                existing_config.title = module_meta["title"]
+                existing_config.description = (
+                    module_meta["description"] or existing_config.description
+                )
+                existing_config.cover_image_filename = module_meta[
+                    "cover_image"
+                ]
+                existing_config.cover_image_focus = module_meta[
+                    "cover_image_focus"
+                ]
+                existing_config.synced_at = datetime.now(UTC)
+                existing_config.synced_by = user_id
+                db.commit()
+                logger.info(
+                    "Updated metadata only for live bank '%s' v%d "
+                    "(no version bump)",
+                    bank_id,
+                    stored,
+                )
             return validation, None
 
     # Create sync record
@@ -230,6 +285,15 @@ def sync_question_bank(
         return validation, sync_record
 
     # Step 2: Upsert QuestionBankConfig
+    # Prefer module.yaml for card metadata (title, description, cover)
+    module_meta = _load_module_metadata(bank_dir)
+    card_title = module_meta["title"] or config.get("title", "")
+    card_description = module_meta["description"] or config.get(
+        "description", ""
+    )
+    cover_image = module_meta["cover_image"]
+    cover_image_focus = module_meta["cover_image_focus"]
+
     existing_config = db.execute(
         select(QuestionBankConfig).where(
             QuestionBankConfig.organisation_id == organisation_id,
@@ -239,8 +303,10 @@ def sync_question_bank(
     ).scalar_one_or_none()
 
     if existing_config:
-        existing_config.title = config.get("title", "")
-        existing_config.description = config.get("description", "")
+        existing_config.title = card_title
+        existing_config.description = card_description
+        existing_config.cover_image_filename = cover_image
+        existing_config.cover_image_focus = cover_image_focus
         existing_config.type = bank_type
         existing_config.config_yaml = config
         existing_config.synced_at = datetime.now(UTC)
@@ -251,8 +317,10 @@ def sync_question_bank(
                 organisation_id=organisation_id,
                 question_bank_id=bank_id,
                 version=version,
-                title=config.get("title", ""),
-                description=config.get("description", ""),
+                title=card_title,
+                description=card_description,
+                cover_image_filename=cover_image,
+                cover_image_focus=cover_image_focus,
                 type=bank_type,
                 config_yaml=config,
                 synced_by=user_id,
