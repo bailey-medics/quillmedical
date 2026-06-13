@@ -28,6 +28,7 @@ import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
 import Icon from "@/components/icons";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
+import PasswordField from "@/components/form/PasswordField";
 import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import {
@@ -143,7 +144,7 @@ function Step1BasicDetails({
         error={errors.username}
       />
 
-      <TextField
+      <PasswordField
         label={isEditMode ? "New password (optional)" : "Initial password"}
         placeholder={
           isEditMode
@@ -151,7 +152,6 @@ function Step1BasicDetails({
             : "Must be at least 8 characters"
         }
         required={!isEditMode}
-        type="password"
         autoComplete="new-password"
         value={formData.password}
         onChange={(e) =>
