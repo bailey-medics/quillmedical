@@ -601,6 +601,16 @@ def download_module_from_gcs(
     module_yaml_path = module_dir / "module.yaml"
     module_blob.download_to_filename(str(module_yaml_path))
 
+    # Download other module-level files (e.g. cover images) as
+    # empty placeholders so tooling validation passes
+    modules_prefix = f"modules/{bank_id}/"
+    for blob in bucket.list_blobs(prefix=modules_prefix):
+        rel_path = blob.name.removeprefix(modules_prefix)
+        if not rel_path or rel_path == "module.yaml":
+            continue
+        local_path = module_dir / rel_path
+        local_path.write_bytes(b"")
+
     # Download assessment content (YAML + image filenames as empty files)
     assessment_dir = module_dir / "assessment"
     assessment_dir.mkdir()
