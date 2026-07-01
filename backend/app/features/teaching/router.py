@@ -206,24 +206,18 @@ def list_question_banks(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
-    """List question bank configs for all the user's organisations."""
+    """List question bank configs visible to the user.
+
+    A bank is visible if ANY of the user's organisations has a
+    QuestionBankOrgStatus row for it. The actual QuestionBankConfig
+    may be owned by a different (educator) organisation — we fetch
+    configs by bank ID regardless of owning org.
+    """
     from app.config import settings
 
     org_ids = _get_user_org_ids(user, db)
-    configs = (
-        db.execute(
-            select(QuestionBankConfig)
-            .where(QuestionBankConfig.organisation_id.in_(org_ids))
-            .order_by(
-                QuestionBankConfig.question_bank_id,
-                QuestionBankConfig.version.desc(),
-            )
-        )
-        .scalars()
-        .all()
-    )
 
-    # Look up is_live status for each bank across all orgs
+    # Look up status for each bank across the user's orgs
     statuses = (
         db.execute(
             select(QuestionBankOrgStatus).where(
@@ -235,9 +229,28 @@ def list_question_banks(
     )
     # A bank is live if ANY of the user's orgs has it live
     live_map: dict[str, bool] = {}
+    visible_bank_ids: set[str] = set()
     for s in statuses:
+        visible_bank_ids.add(s.question_bank_id)
         if s.is_live:
             live_map[s.question_bank_id] = True
+
+    if not visible_bank_ids:
+        return []
+
+    # Fetch configs for visible banks (may be owned by a different org)
+    configs = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(QuestionBankConfig.question_bank_id.in_(visible_bank_ids))
+            .order_by(
+                QuestionBankConfig.question_bank_id,
+                QuestionBankConfig.version.desc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     # Check which banks have learning content in the local repos
     base_path = settings.TEACHING_QUESTION_BANK_PATH or ""
@@ -305,11 +318,26 @@ def get_question_bank(
         raise HTTPException(400, "Invalid bank_id")
 
     org_ids = _get_user_org_ids(user, db)
+
+    # Check the bank is visible to the user's orgs via status
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not status_row:
+        raise HTTPException(404, "Question bank not found")
+
+    # Fetch config from whichever org owns it
     config = (
         db.execute(
             select(QuestionBankConfig)
             .where(
-                QuestionBankConfig.organisation_id.in_(org_ids),
                 QuestionBankConfig.question_bank_id == bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -320,18 +348,6 @@ def get_question_bank(
     if not config:
         raise HTTPException(404, "Question bank not found")
 
-    status_row = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id.in_(org_ids),
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-                QuestionBankOrgStatus.is_live.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
     return {
         "id": config.id,
         "question_bank_id": config.question_bank_id,
@@ -341,7 +357,7 @@ def get_question_bank(
         "type": config.type,
         "synced_at": config.synced_at,
         "config_yaml": config.config_yaml,
-        "is_live": status_row.is_live if status_row else False,
+        "is_live": status_row.is_live,
         "has_learning": has_learning_content(
             settings.TEACHING_QUESTION_BANK_PATH or "",
             config.question_bank_id,
@@ -527,14 +543,29 @@ def start_assessment(
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Start a new assessment for the current user."""
-    org_id = _get_user_org_id(user, db)
+    org_ids = _get_user_org_ids(user, db)
 
-    # Load latest config
+    # Block assessment start when bank is not live for user's org
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id.in_(org_ids),
+                QuestionBankOrgStatus.question_bank_id
+                == body.question_bank_id,
+                QuestionBankOrgStatus.is_live.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if not status_row:
+        raise HTTPException(403, "This assessment is not currently open")
+
+    # Load latest config (may be owned by a different org)
     config_row = (
         db.execute(
             select(QuestionBankConfig)
             .where(
-                QuestionBankConfig.organisation_id == org_id,
                 QuestionBankConfig.question_bank_id == body.question_bank_id,
             )
             .order_by(QuestionBankConfig.version.desc())
@@ -545,32 +576,17 @@ def start_assessment(
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
-    # Block assessment start when bank is not live
-    status_row = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.organisation_id == org_id,
-                QuestionBankOrgStatus.question_bank_id
-                == body.question_bank_id,
-            )
-        )
-        .scalars()
-        .first()
-    )
-    if not status_row or not status_row.is_live:
-        raise HTTPException(403, "This assessment is not currently open")
-
     config = config_row.config_yaml
     assessment_cfg = config.get("assessment", {})
     items_per_attempt = assessment_cfg.get("items_per_attempt", 0)
     time_limit = assessment_cfg.get("time_limit_minutes", 0)
     min_pool = assessment_cfg.get("min_pool_size", 0)
 
-    # Load published items for this bank + version
+    # Load published items for this bank + version (from config owner org)
     published_items = (
         db.execute(
             select(QuestionBankItem).where(
-                QuestionBankItem.organisation_id == org_id,
+                QuestionBankItem.organisation_id == config_row.organisation_id,
                 QuestionBankItem.question_bank_id == body.question_bank_id,
                 QuestionBankItem.bank_version == config_row.version,
                 QuestionBankItem.status == "published",
@@ -598,7 +614,7 @@ def start_assessment(
     # Create assessment
     assessment = Assessment(
         user_id=user.id,
-        organisation_id=org_id,
+        organisation_id=status_row.organisation_id,
         question_bank_id=body.question_bank_id,
         bank_version=config_row.version,
         time_limit_minutes=time_limit,
