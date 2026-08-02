@@ -1,6 +1,6 @@
 # Branch CI — runs on all development branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
-# - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep)
+# - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
 # - Opens a draft pull request to main for feature/* and copilot/* branches
 #
 # Covers: feature/*, copilot/*, renovate/*, dependabot/*, and any
