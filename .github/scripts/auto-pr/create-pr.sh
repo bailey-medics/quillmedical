@@ -38,12 +38,14 @@ TITLE="${TYPE}: ${REMAINDER^}"
 # Use pull request template as the initial body
 BODY=$(cat .github/pull_request_template.md 2>/dev/null || echo "Auto-created from branch push")
 
-# Create the pull request; exit gracefully if one was created by a concurrent run
+# Create the pull request as a draft; exit gracefully if one was created by a
+# concurrent run. Draft holds back the heavy CI tier until marked ready.
 if ! gh pr create \
   --title "$TITLE" \
   --body "$BODY" \
   --base main \
-  --head "$BRANCH" 2>&1; then
+  --head "$BRANCH" \
+  --draft 2>&1; then
   # Check again — if a pull request now exists, a parallel run created it
   RECHECK=$(gh pr list --head "$BRANCH" --state open --json number --jq length)
   if [ "$RECHECK" != "0" ]; then
