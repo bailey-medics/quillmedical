@@ -7,7 +7,7 @@
 # Handles the race condition where two workflow runs trigger simultaneously.
 set -euo pipefail
 
-# shellcheck source=../shared/logging.sh
+# shellcheck source=.github/scripts/shared/logging.sh
 source "$(dirname "$0")/../shared/logging.sh" "create-pr"
 
 # Check that required single argument is provided
