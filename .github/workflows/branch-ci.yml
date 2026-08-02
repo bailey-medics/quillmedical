@@ -1,7 +1,8 @@
 # Branch CI — runs on all development branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
 # - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
-# - Opens a draft pull request to main for feature/* and copilot/* branches
+#
+# Pull request creation is handled separately by auto-pr.yml.
 #
 # Covers: feature/*, copilot/*, renovate/*, dependabot/*, and any
 # other non-protected branch.
@@ -231,51 +232,6 @@ jobs:
   # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
   # Kept here commented for reference; the heavy_semgrep job below runs this.
   # frontend_security:
-
-  # ---------- Open PR to main ----------
-  # Only for feature/* and copilot/* branches — Renovate/Dependabot create their own PRs.
-  open-pr:
-    if: github.event_name == 'push' && (startsWith(github.ref_name, 'feature/') || startsWith(github.ref_name, 'copilot/'))
-    runs-on: ubuntu-latest
-    name: Open pull request
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create PR if none exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Check if a PR already exists for this branch targeting main
-          EXISTING=$(gh pr list \
-            --head "$GITHUB_REF_NAME" \
-            --base main \
-            --json number \
-            --jq '.[0].number' 2>/dev/null || true)
-
-          if [ -n "$EXISTING" ]; then
-            echo "PR #$EXISTING already exists for $GITHUB_REF_NAME"
-            exit 0
-          fi
-
-          # Use the latest commit message as the PR title
-          TITLE=$(git log -1 --pretty=%s)
-
-          # Derive label from branch prefix (feature/* → feature, copilot/* → copilot)
-          LABEL="${GITHUB_REF_NAME%%/*}"
-
-          # Ensure label exists on the repo (no-op if already present)
-          gh label create "$LABEL" --color "0e8a16" 2>/dev/null || true
-
-          gh pr create \
-            --base main \
-            --head "$GITHUB_REF_NAME" \
-            --title "$TITLE" \
-            --body "Auto-created PR for \`$GITHUB_REF_NAME\`." \
-            --label "$LABEL" \
-            --draft
-
 
 
   # ==========================================================================
