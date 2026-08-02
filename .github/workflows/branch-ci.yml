@@ -218,6 +218,17 @@ jobs:
 
 
 
+  # ---------- Shell scripts ----------
+  shell_checks:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: Shell script lint
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Lint shell scripts
+        run: find .github/scripts -name '*.sh' | xargs shellcheck
+
+
   # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
   # Kept here commented for reference; the heavy_semgrep job below runs this.
   # frontend_security:
