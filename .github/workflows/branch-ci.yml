@@ -98,7 +98,6 @@ jobs:
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
-
       - name: Cache Poetry venv & pip (unit)
         if: matrix.task == 'unit'
         uses: actions/cache@v5
