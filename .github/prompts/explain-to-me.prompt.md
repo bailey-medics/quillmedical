@@ -1,6 +1,6 @@
 ---
 agent: "agent"
-name: explain-to-me
+name: e
 description: Explain in simple terms the highlighted lines
 ---
 
