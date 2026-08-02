@@ -22,66 +22,9 @@ jobs:
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Derive title from branch name (e.g. feature/add-login → "Feature: Add login")
-          PREFIX=$(echo "${{ github.ref_name }}" | cut -d'/' -f1)
-          REMAINDER=$(echo "${{ github.ref_name }}" | cut -d'/' -f2- | tr '-' ' ')
-          case "$PREFIX" in
-            feature) TYPE="Feature" ;;
-            hotfix)  TYPE="Hotfix" ;;
-            *)       TYPE="$PREFIX" ;;
-          esac
-          TITLE="${TYPE}: ${REMAINDER^}"
-
-          # Use commit message body as PR description
-          BODY=$(git log -1 --format='%b')
-          BODY="${BODY:-Auto-created from branch push}"
-
-          # Skip if a PR already exists for this branch
-          EXISTING=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
-          if [ "$EXISTING" != "0" ]; then
-            echo "PR already exists for ${{ github.ref_name }}, skipping"
-          else
-            # Create the PR; exit gracefully if one was created by a concurrent run
-            if ! gh pr create \
-              --title "$TITLE" \
-              --body "$BODY" \
-              --base main \
-              --head "${{ github.ref_name }}" 2>&1; then
-              # Check again — if a PR now exists, a parallel run created it
-              RECHECK=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
-              if [ "$RECHECK" != "0" ]; then
-                echo "PR was created by a concurrent run, skipping"
-              else
-                echo "Failed to create PR and no existing PR found"
-                exit 1
-              fi
-            fi
-          fi
+        run: bash .github/scripts/auto-pr/create-pr.sh "${{ github.ref_name }}"
 
       - name: Label PR by branch prefix
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          if [[ "$BRANCH" == feature/* ]]; then
-            LABEL="Feature"
-          elif [[ "$BRANCH" == hotfix/* ]]; then
-            LABEL="Hotfix"
-          else
-            echo "No label for branch prefix"
-            exit 0
-          fi
-
-          # Find open PR for this branch
-          PR_NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No open PR found for $BRANCH"
-            exit 0
-          fi
-
-          # Create label if it doesn't exist (ignore errors if it already exists)
-          gh label create "$LABEL" --color "0e8a16" --description "Auto-labelled from branch prefix" 2>/dev/null || true
-
-          gh pr edit "$PR_NUMBER" --add-label "$LABEL"
-          echo "Added label '$LABEL' to PR #$PR_NUMBER"
+        run: bash .github/scripts/auto-pr/label-pr.sh "${{ github.ref_name }}"
