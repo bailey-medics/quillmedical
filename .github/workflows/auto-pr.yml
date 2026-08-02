@@ -1,6 +1,7 @@
 # Automatically create a pull request when a hotfix/* or feature/* branch is pushed.
 # Also labels PRs based on branch prefix.
-name: Auto PR
+
+name: Create pull request
 
 on:
   push:
@@ -14,27 +15,37 @@ permissions:
 
 jobs:
   create-pr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
 
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Derive title from branch name (e.g. feature/add-login → "Feature: Add login")
+          PREFIX=$(echo "${{ github.ref_name }}" | cut -d'/' -f1)
+          REMAINDER=$(echo "${{ github.ref_name }}" | cut -d'/' -f2- | tr '-' ' ')
+          case "$PREFIX" in
+            feature) TYPE="Feature" ;;
+            hotfix)  TYPE="Hotfix" ;;
+            *)       TYPE="$PREFIX" ;;
+          esac
+          TITLE="${TYPE}: ${REMAINDER^}"
+
+          # Use commit message body as PR description
+          BODY=$(git log -1 --format='%b')
+          BODY="${BODY:-Auto-created from branch push}"
+
           # Skip if a PR already exists for this branch
           EXISTING=$(gh pr list --head "${{ github.ref_name }}" --state open --json number --jq length)
           if [ "$EXISTING" != "0" ]; then
             echo "PR already exists for ${{ github.ref_name }}, skipping"
           else
-            # Use the head commit message as title and body
-            TITLE=$(git log -1 --format='%s')
-            BODY=$(git log -1 --format='%b')
-
             # Create the PR; exit gracefully if one was created by a concurrent run
             if ! gh pr create \
               --title "$TITLE" \
-              --body "${BODY:-Auto-created from branch push}" \
+              --body "$BODY" \
               --base main \
               --head "${{ github.ref_name }}" 2>&1; then
               # Check again — if a PR now exists, a parallel run created it
