@@ -7,7 +7,7 @@
 # Skips if no open pull request is found for the branch.
 set -euo pipefail
 
-# shellcheck source=.github/scripts/shared/logging.sh
+# shellcheck source=../shared/logging.sh
 source "$(dirname "$0")/../shared/logging.sh" "label-pr"
 
 if [ -z "${1:-}" ]; then

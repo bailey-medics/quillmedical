@@ -1,17 +1,8 @@
-# Branch CI — runs on all development branches.
+# CI — runs on all non-main branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
 # - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
-#
-# Pull request creation is handled separately by auto-pr.yml.
-#
-# Covers: feature/*, copilot/*, renovate/*, dependabot/*, and any
-# other non-protected branch.
-#
-# When the PR is merged by a human, the push to main triggers
-# deploy.yml. This workflow is intentionally self-contained
-# and does NOT share code with other pipelines — a change here
-# cannot affect production workflows.
-name: Branch CI
+
+name: CI
 
 on:
   push:
@@ -38,7 +29,7 @@ jobs:
   # ---------- Python ----------
   python_checks:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
     strategy:
@@ -51,10 +42,10 @@ jobs:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
       PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: ${{ matrix.python }}
 
@@ -128,7 +119,7 @@ jobs:
 
       - name: Checkout teaching-tooling (unit)
         if: matrix.task == 'unit'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
@@ -146,17 +137,17 @@ jobs:
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: true
       matrix:
         task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
@@ -226,7 +217,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' | xargs shellcheck
+        run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 
 
   # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
@@ -242,14 +233,14 @@ jobs:
   # Name matches the required check in branch_rules.tf (backward compat)
   heavy_storybook_tests:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: typescript_checks (storybook:test:ci)
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
@@ -305,11 +296,11 @@ jobs:
   # ---------- Semgrep (frontend SAST) ----------
   heavy_semgrep:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Install Semgrep
@@ -326,18 +317,18 @@ jobs:
   # ---------- Prebuild CI app images for E2E ----------
   heavy_e2e_images:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: E2E image build (GHCR)
     timeout-minutes: 20
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Checkout teaching-tooling
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
@@ -379,7 +370,7 @@ jobs:
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: E2E (Playwright)
     timeout-minutes: 20
     needs: [heavy_e2e_images]
@@ -387,7 +378,7 @@ jobs:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Log in to GHCR
@@ -411,7 +402,7 @@ jobs:
       - name: Seed test data
         run: docker exec ci_backend python scripts/seed_ci.py
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
