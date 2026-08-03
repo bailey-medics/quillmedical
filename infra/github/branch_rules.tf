@@ -121,7 +121,7 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "typescript_checks (storybook:build)"
       }
       required_check {
-        context = "typescript_checks (storybook:test:ci)"
+        context = "Storybook interaction tests"
       }
 
       # Security

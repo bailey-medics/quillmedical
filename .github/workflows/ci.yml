@@ -156,11 +156,11 @@ jobs:
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
-      - name: Install deps
+      - name: Install dependencies
         if: steps.cache_yarn.outputs.cache-hit != 'true'
         working-directory: frontend
         run: yarn install --immutable
@@ -171,8 +171,7 @@ jobs:
         with:
           path: |
             frontend/node_modules/.vite
-            frontend/.storybook-cache
-          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx,css}', 'frontend/.storybook/**/*') }}
           restore-keys: |
             ${{ runner.os }}-storybook-
 
@@ -181,7 +180,7 @@ jobs:
         uses: actions/cache@v6.1.0
         with:
           path: frontend/.eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
+          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}', 'frontend/eslint.config.js') }}
           restore-keys: |
             ${{ runner.os }}-eslint-
 
@@ -211,21 +210,15 @@ jobs:
         run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 
 
-  # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
-  # Kept here commented for reference; the heavy_semgrep job below runs this.
-  # frontend_security:
-
-
-  # ==========================================================================
-  # HEAVY TIER — runs on non-draft PRs only (github.event_name == 'pull_request')
-  # ==========================================================================
+  # ==============================================================================
+  # HEAVY TIER — runs on non-draft PRs targeting main only
+  # ==============================================================================
 
   # ---------- Storybook interaction tests ----------
-  # Name matches the required check in branch_rules.tf (backward compat)
   heavy_storybook_tests:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
-    name: typescript_checks (storybook:test:ci)
+    name: Storybook interaction tests
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
@@ -248,9 +241,9 @@ jobs:
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
       - name: Install deps
         working-directory: frontend
@@ -269,8 +262,7 @@ jobs:
         with:
           path: |
             frontend/node_modules/.vite
-            frontend/.storybook-cache
-          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx,css}', 'frontend/.storybook/**/*') }}
           restore-keys: |
             ${{ runner.os }}-storybook-
 
@@ -292,10 +284,19 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
+
+      - name: Cache Semgrep
+        id: cache_semgrep
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.local/share/pipx/venvs/semgrep
+            ~/.local/bin/semgrep
+          key: ${{ runner.os }}-semgrep-1.172.0
 
       - name: Install Semgrep
-        run: pipx install semgrep
+        if: steps.cache_semgrep.outputs.cache-hit != 'true'
+        run: pipx install semgrep==1.172.0
 
       - name: Run Semgrep
         working-directory: frontend
@@ -316,7 +317,6 @@ jobs:
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - name: Checkout teaching-tooling
         uses: actions/checkout@v7.0.1
@@ -370,7 +370,6 @@ jobs:
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -409,9 +408,9 @@ jobs:
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
       - name: Install deps
         working-directory: frontend
