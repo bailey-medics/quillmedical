@@ -6,7 +6,7 @@ applyTo: ".github/workflows/**, .github/scripts/**"
 
 ## Workflows calling shell scripts
 
-- Inline shell in workflow YAML files should be kept to a minimum — extract anything beyond a single command into a `.sh` file under `.github/scripts/<workflow-name>/`
+- Inline shell in workflow YAML files should be kept to a minimum — extract into a `.sh` file under `.github/scripts/<workflow-name>/` once the code has any branching (`if/else`), loops, or meaningful logic. A few sequential commands with no branching are fine inline.
 - Script names must be descriptive and reflect what the script does (e.g. `create-pr.sh`, `label-pr.sh`)
 - Call scripts with an explicit interpreter: `run: bash .github/scripts/<workflow-name>/<descriptive-name>.sh`
 - Pass GitHub context values as positional arguments (e.g. `"${{ github.ref_name }}"`) — do not rely on environment variables being implicitly available inside scripts

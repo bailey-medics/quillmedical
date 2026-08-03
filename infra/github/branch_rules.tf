@@ -93,9 +93,9 @@ resource "github_repository_ruleset" "protected_branches" {
     required_status_checks {
       strict_required_status_checks_policy = true
 
-      # Python (matrix: styling, unit)
+      # Python (matrix: pre-commit, unit)
       required_check {
-        context = "Python styling"
+        context = "Python pre-commit"
       }
       required_check {
         context = "Python unit"

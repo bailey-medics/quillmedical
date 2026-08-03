@@ -1,17 +1,8 @@
-# Branch CI — runs on all development branches.
+# CI — runs on all non-main branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
 # - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
-#
-# Pull request creation is handled separately by auto-pr.yml.
-#
-# Covers: feature/*, copilot/*, renovate/*, dependabot/*, and any
-# other non-protected branch.
-#
-# When the PR is merged by a human, the push to main triggers
-# deploy.yml. This workflow is intentionally self-contained
-# and does NOT share code with other pipelines — a change here
-# cannot affect production workflows.
-name: Branch CI
+
+name: CI
 
 on:
   push:
@@ -38,70 +29,61 @@ jobs:
   # ---------- Python ----------
   python_checks:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        task: [styling, unit]
+        task: [pre-commit, unit]
         python: ['3.13']
 
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
       PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: ${{ matrix.python }}
 
-      # ---- caches (pick per task) ----
-      - name: Cache pre-commit & venv (styling)
-        if: matrix.task == 'styling'
-        uses: actions/cache@v5
+      # ---- Cache for pre-commit ----
+      - name: Cache pre-commit & venv (pre-commit)
+        if: matrix.task == 'pre-commit'
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-styling-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            pc-styling-${{ runner.os }}-py${{ matrix.python }}-
-            pc-styling-${{ runner.os }}-
+            pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-pre-commit-${{ runner.os }}-
 
-      # ---- styling steps ----
-      - name: Ensure venv + pre-commit (styling)
-        if: matrix.task == 'styling'
-        run: |
-          if [ ! -x .venv/bin/python ]; then
-            echo "Creating new virtual environment..."
-            rm -rf .venv  # Remove corrupted cache
-            python -m venv .venv
-          else
-            echo "Using cached .venv"
-          fi
-          # Always ensure pre-commit is installed (quick if already present)
-          .venv/bin/python -m pip install -U pip
-          .venv/bin/python -m pip install "pre-commit>=3,<5"
+      # ---- pre-commit steps ----
+      - name: Ensure venv + pre-commit (pre-commit)
+        if: matrix.task == 'pre-commit'
+        run: bash .github/scripts/ci/ensure-pre-commit-venv.sh
 
-      - name: Warm pre-commit hooks (styling)
-        if: matrix.task == 'styling'
+      - name: Warm pre-commit hooks (pre-commit)
+        if: matrix.task == 'pre-commit'
         run: |
           . .venv/bin/activate
           pre-commit install-hooks
 
-      - name: Run pre-commit (styling)
-        if: matrix.task == 'styling'
+      - name: Run pre-commit (pre-commit)
+        if: matrix.task == 'pre-commit'
         run: |
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+      # ---- Cache for unit tests ----
       - name: Cache Poetry venv & pip (unit)
         if: matrix.task == 'unit'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             backend/.venv
@@ -111,7 +93,7 @@ jobs:
             pc-unit-${{ runner.os }}-py${{ matrix.python }}-
             pc-unit-${{ runner.os }}-
 
-
+      # ---- Unit test steps ----
       - name: Install Poetry (unit)
         if: matrix.task == 'unit'
         run: |
@@ -128,7 +110,7 @@ jobs:
 
       - name: Checkout teaching-tooling (unit)
         if: matrix.task == 'unit'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
@@ -146,17 +128,17 @@ jobs:
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: true
       matrix:
         task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
@@ -168,7 +150,7 @@ jobs:
 
       - name: Cache Yarn
         id: cache_yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -185,7 +167,7 @@ jobs:
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/node_modules/.vite
@@ -196,7 +178,7 @@ jobs:
 
       - name: Cache ESLint
         if: matrix.task == 'eslint'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: frontend/.eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
@@ -226,7 +208,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' | xargs shellcheck
+        run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 
 
   # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
@@ -242,14 +224,14 @@ jobs:
   # Name matches the required check in branch_rules.tf (backward compat)
   heavy_storybook_tests:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: typescript_checks (storybook:test:ci)
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
@@ -260,7 +242,7 @@ jobs:
           yarn --version
 
       - name: Cache Yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -275,7 +257,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
@@ -283,7 +265,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Cache Storybook build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/node_modules/.vite
@@ -305,11 +287,11 @@ jobs:
   # ---------- Semgrep (frontend SAST) ----------
   heavy_semgrep:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Install Semgrep
@@ -326,18 +308,18 @@ jobs:
   # ---------- Prebuild CI app images for E2E ----------
   heavy_e2e_images:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: E2E image build (GHCR)
     timeout-minutes: 20
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Checkout teaching-tooling
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
@@ -379,7 +361,7 @@ jobs:
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: E2E (Playwright)
     timeout-minutes: 20
     needs: [heavy_e2e_images]
@@ -387,7 +369,7 @@ jobs:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
       - name: Log in to GHCR
@@ -411,7 +393,7 @@ jobs:
       - name: Seed test data
         run: docker exec ci_backend python scripts/seed_ci.py
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
@@ -421,7 +403,7 @@ jobs:
           corepack prepare yarn@4.10.3 --activate
 
       - name: Cache Yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -437,7 +419,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: cache_playwright
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
