@@ -28,6 +28,7 @@ clinical/NHS go-live.
 - [ ] Validate full deploy pipeline: merge to `main` → teaching auto-deploys → approve → production deploys same image _(deferred)_ — production promotion currently disabled with `if: false` in deploy workflow line ~203; pipeline design documented in `docs/docs/cicd/index.md`
 - [ ] Define feature flag strategy (Terraform vs runtime config vs in-code flags), with governance and rollout policy for teaching and clinical production — implementation exists (`RequireFeature`, `featureFlags.ts`) but strategy/governance doc is missing
 - [ ] Add `mkdocs build --strict` to the heavy CI tier to catch broken links and missing nav entries — currently runs without `--strict` in `.github/workflows/docs.yml` line 150
+- [ ] Investigate cross-browser Playwright testing — CI currently runs Chromium only (`heavy_e2e` and `heavy_storybook_tests`); consider adding Firefox/WebKit to a separate scheduled workflow (nightly or weekly against `main`) if Safari/iOS usage is significant for patients or clinicians
 - [ ] Create `backend/scripts/check_migrations.py` — expand-contract migration lint rejecting destructive Alembic operations; intent documented in `docs/docs/plans/github-branching-plan.md` line ~640
 - [ ] Add `pip-audit --strict` and `yarn audit --level moderate` to CI pipeline (nice-to-have gate for dependency vulnerabilities)
 - [ ] Enable GitHub merge queue when 3+ developers are merging PRs in parallel (add `merge_group` trigger to `branch-ci.yml`, update job `if:` conditions, re-add `merge_queue` block in Terraform)
