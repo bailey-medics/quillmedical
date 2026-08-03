@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [styling, unit]
+        task: [pre-commit, unit]
         python: ['3.13']
 
     env:
@@ -49,50 +49,41 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      # ---- caches (pick per task) ----
-      - name: Cache pre-commit & venv (styling)
-        if: matrix.task == 'styling'
-        uses: actions/cache@v5
+      # ---- Cache for pre-commit ----
+      - name: Cache pre-commit & venv (pre-commit)
+        if: matrix.task == 'pre-commit'
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-styling-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            pc-styling-${{ runner.os }}-py${{ matrix.python }}-
-            pc-styling-${{ runner.os }}-
+            pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-pre-commit-${{ runner.os }}-
 
-      # ---- styling steps ----
-      - name: Ensure venv + pre-commit (styling)
-        if: matrix.task == 'styling'
-        run: |
-          if [ ! -x .venv/bin/python ]; then
-            echo "Creating new virtual environment..."
-            rm -rf .venv  # Remove corrupted cache
-            python -m venv .venv
-          else
-            echo "Using cached .venv"
-          fi
-          # Always ensure pre-commit is installed (quick if already present)
-          .venv/bin/python -m pip install -U pip
-          .venv/bin/python -m pip install "pre-commit>=3,<5"
+      # ---- pre-commit steps ----
+      - name: Ensure venv + pre-commit (pre-commit)
+        if: matrix.task == 'pre-commit'
+        run: bash .github/scripts/ci/ensure-pre-commit-venv.sh
 
-      - name: Warm pre-commit hooks (styling)
-        if: matrix.task == 'styling'
+      - name: Warm pre-commit hooks (pre-commit)
+        if: matrix.task == 'pre-commit'
         run: |
           . .venv/bin/activate
           pre-commit install-hooks
 
-      - name: Run pre-commit (styling)
-        if: matrix.task == 'styling'
+      - name: Run pre-commit (pre-commit)
+        if: matrix.task == 'pre-commit'
         run: |
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+      # ---- Cache for unit tests ----
       - name: Cache Poetry venv & pip (unit)
         if: matrix.task == 'unit'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             backend/.venv
@@ -102,7 +93,7 @@ jobs:
             pc-unit-${{ runner.os }}-py${{ matrix.python }}-
             pc-unit-${{ runner.os }}-
 
-
+      # ---- Unit test steps ----
       - name: Install Poetry (unit)
         if: matrix.task == 'unit'
         run: |
@@ -159,7 +150,7 @@ jobs:
 
       - name: Cache Yarn
         id: cache_yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -176,7 +167,7 @@ jobs:
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/node_modules/.vite
@@ -187,7 +178,7 @@ jobs:
 
       - name: Cache ESLint
         if: matrix.task == 'eslint'
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: frontend/.eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
@@ -251,7 +242,7 @@ jobs:
           yarn --version
 
       - name: Cache Yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -266,7 +257,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
@@ -274,7 +265,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Cache Storybook build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/node_modules/.vite
@@ -412,7 +403,7 @@ jobs:
           corepack prepare yarn@4.10.3 --activate
 
       - name: Cache Yarn
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
@@ -428,7 +419,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: cache_playwright
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package.json') }}
