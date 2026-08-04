@@ -49,12 +49,13 @@ jobs:
           python-version-file: .python-version
 
       # ---- Cache for pre-commit ----
-      - name: Cache pre-commit & venv (pre-commit)
+      # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
+      # toolcache, and a restored copy segfaults when that interpreter is rebuilt.
+      - name: Cache pre-commit & pip (pre-commit)
         if: matrix.task == 'pre-commit'
         uses: actions/cache@v6.1.0
         with:
           path: |
-            .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
           key: pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('.pre-commit-config.yaml') }}
