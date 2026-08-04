@@ -33,6 +33,7 @@ nav:
       - Overview: concepts/index.md
       - Organisation: concepts/organisation.md
       - CBAC (Competency-Based Access Control): concepts/cbac.md
+  - Engineering conventions: conventions/index.md
   - Backend:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
