@@ -368,7 +368,7 @@ jobs:
           target: prod
           push: true
           tags: ${{ env.CI_IMAGE_FRONTEND }}
-          # TODO(clinical): flip to true and add FHIR/EHRbase to compose.ci.yml when we deliver the patient-facing side. See docs/docs/plans/2026-03-20-todo.md.
+          # TODO(clinical): flip to true and add FHIR/EHRbase to compose.ci.yml when we deliver the patient-facing side. See docs/docs/plans/todo.md.
           build-args: VITE_CLINICAL_SERVICES_ENABLED=false
           cache-from: type=gha,scope=ci-frontend
           cache-to: type=gha,mode=max,scope=ci-frontend
@@ -397,7 +397,7 @@ jobs:
         run: |
           docker pull "$CI_IMAGE_BACKEND"
           docker pull "$CI_IMAGE_FRONTEND"
-          # Compose uses local tags from compose.ci.yml, so apply local tags to pulled images.
+          # compose.ci.yml Docker compose uses local tags, so apply local tags to pulled images.
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
 
