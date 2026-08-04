@@ -21,7 +21,7 @@
     "docs:build": "typedoc",
     "husky:prepare": "husky",
     "lint-staged": "lint-staged",
-    "eslint": "eslint  \"*/*.{ts,tsx,js,jsx}\" --max-warnings=0",
+    "eslint": "eslint  \"*/*.{ts,tsx,js,jsx}\" --max-warnings=0 --cache --cache-location .eslintcache",
     "prettier": "prettier --check \"*/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
     "prettier:fix": "prettier --write \"*/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" --ignore-unknown",
     "stylelint": "stylelint \"*/*.{scss,css}\" --allow-empty-input",

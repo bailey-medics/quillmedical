@@ -5,7 +5,7 @@
 - [Teaching Module](2026-03-18-teaching-project.md)
 - [Public Pages Separation](2026-03-19-public-pages.md)
 - [Branch Protection Rules](2026-03-20-branching-rules.md)
-- [To-Do List](2026-03-20-todo.md)
+- [To-Do List](todo.md)
 - [Email Subscriptions](2026-03-21-subscriptions.md)
 - [Human Code Review](2026-03-23-human-code-review.md)
 - [Renovate](2026-03-24-renovate.md)

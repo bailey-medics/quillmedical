@@ -36,7 +36,6 @@ jobs:
       fail-fast: false
       matrix:
         task: [pre-commit, unit]
-        python: ['3.13']
 
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
@@ -47,20 +46,21 @@ jobs:
 
       - uses: actions/setup-python@v7.0.0
         with:
-          python-version: ${{ matrix.python }}
+          python-version-file: .python-version
 
       # ---- Cache for pre-commit ----
-      - name: Cache pre-commit & venv (pre-commit)
+      # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
+      # toolcache, and a restored copy segfaults when that interpreter is rebuilt.
+      - name: Cache pre-commit & pip (pre-commit)
         if: matrix.task == 'pre-commit'
         uses: actions/cache@v6.1.0
         with:
           path: |
-            .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
             pc-pre-commit-${{ runner.os }}-
 
       # ---- pre-commit steps ----
@@ -81,16 +81,19 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure --color=always
 
       # ---- Cache for unit tests ----
-      - name: Cache Poetry venv & pip (unit)
+      # backend/.venv is intentionally NOT cached: it symlinks into the ephemeral
+      # Python toolcache, and a restored copy segfaults when that interpreter is
+      # rebuilt. Cache Poetry's download cache so `poetry install` stays fast.
+      - name: Cache Poetry & pip (unit)
         if: matrix.task == 'unit'
         uses: actions/cache@v6.1.0
         with:
           path: |
-            backend/.venv
+            ~/.cache/pypoetry
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
+          key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
-            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
             pc-unit-${{ runner.os }}-
 
       # ---- Unit test steps ----
@@ -136,17 +139,17 @@ jobs:
         task: [eslint, prettier, stylelint, "typecheck:all", "unit-test:run", "storybook:build"]
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
-          yarn --version
+          corepack install
 
       - name: Cache Yarn
         id: cache_yarn
@@ -156,11 +159,11 @@ jobs:
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
-      - name: Install deps
+      - name: Install dependencies
         if: steps.cache_yarn.outputs.cache-hit != 'true'
         working-directory: frontend
         run: yarn install --immutable
@@ -171,8 +174,7 @@ jobs:
         with:
           path: |
             frontend/node_modules/.vite
-            frontend/.storybook-cache
-          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx,css}', 'frontend/.storybook/**/*') }}
           restore-keys: |
             ${{ runner.os }}-storybook-
 
@@ -181,7 +183,7 @@ jobs:
         uses: actions/cache@v6.1.0
         with:
           path: frontend/.eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}') }}
+          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}', 'frontend/eslint.config.js') }}
           restore-keys: |
             ${{ runner.os }}-eslint-
 
@@ -192,7 +194,6 @@ jobs:
             eslint)   yarn eslint ;;
             prettier) yarn prettier ;;
             stylelint) yarn stylelint ;;
-            typecheck) yarn typecheck ;;
             "typecheck:all") yarn typecheck:all ;;
             "unit-test:run") yarn unit-test:run ;;
             "storybook:build") yarn storybook:build ;;
@@ -205,58 +206,68 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     name: Shell script lint
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
         run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 
 
-  # ---------- Frontend security (Semgrep) — MOVED TO HEAVY TIER ----------
-  # Kept here commented for reference; the heavy_semgrep job below runs this.
-  # frontend_security:
+  # ---------- Version consistency ----------
+  version_consistency:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: Version consistency
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check pinned versions are consistent
+        run: bash .github/scripts/ci/check-version-consistency.sh
 
 
-  # ==========================================================================
-  # HEAVY TIER — runs on non-draft PRs only (github.event_name == 'pull_request')
-  # ==========================================================================
+  # ==============================================================================
+  # HEAVY TIER — runs on non-draft PRs targeting main only
+  # ==============================================================================
 
   # ---------- Storybook interaction tests ----------
-  # Name matches the required check in branch_rules.tf (backward compat)
   heavy_storybook_tests:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
-    name: typescript_checks (storybook:test:ci)
+    name: Storybook interaction tests
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
-          yarn --version
+          corepack install
 
       - name: Cache Yarn
+        id: cache_yarn
         uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
-      - name: Install deps
+      - name: Install dependencies
+        if: steps.cache_yarn.outputs.cache-hit != 'true'
         working-directory: frontend
         run: yarn install --immutable
 
       - name: Cache Playwright browsers
+        id: cache_playwright
         uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
@@ -269,19 +280,23 @@ jobs:
         with:
           path: |
             frontend/node_modules/.vite
-            frontend/.storybook-cache
-          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/.storybook/**/*') }}
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx,css}', 'frontend/.storybook/**/*') }}
           restore-keys: |
             ${{ runner.os }}-storybook-
 
       - name: Install Playwright browsers
+        if: steps.cache_playwright.outputs.cache-hit != 'true'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.cache_playwright.outputs.cache-hit == 'true'
+        working-directory: frontend
+        run: npx playwright install-deps chromium
 
       - name: Run Storybook interaction tests
         working-directory: frontend
         run: yarn storybook:test:ci
-
 
 
   # ---------- Semgrep (frontend SAST) ----------
@@ -292,10 +307,28 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v7.0.0
+        id: setup_python
+        with:
+          python-version-file: .python-version
+
+      - name: Cache Semgrep
+        id: cache_semgrep
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.local/share/pipx/venvs/semgrep
+            ~/.local/bin/semgrep
+          key: ${{ runner.os }}-semgrep-1.172.0-py${{ steps.setup_python.outputs.python-version }}
 
       - name: Install Semgrep
-        run: pipx install semgrep
+        if: steps.cache_semgrep.outputs.cache-hit != 'true'
+        run: pipx install semgrep==1.172.0 --python '${{ steps.setup_python.outputs.python-path }}'
+
+      # The folder holding the semgrep command isn't searched by default, so we add it here.
+      - name: Ensure pipx bin on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run Semgrep
         working-directory: frontend
@@ -309,14 +342,13 @@ jobs:
   heavy_e2e_images:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
-    name: E2E image build (GHCR)
+    name: E2E image build
     timeout-minutes: 20
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - name: Checkout teaching-tooling
         uses: actions/checkout@v7.0.1
@@ -325,17 +357,17 @@ jobs:
           path: teaching-tooling
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v4.2.0
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           file: ./backend/Dockerfile
@@ -346,15 +378,15 @@ jobs:
           cache-to: type=gha,mode=max,scope=ci-backend
 
       - name: Build and push frontend image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.3.0
         with:
           context: .
           file: ./frontend/Dockerfile
           target: prod
           push: true
           tags: ${{ env.CI_IMAGE_FRONTEND }}
-          build-args: |
-            VITE_CLINICAL_SERVICES_ENABLED=false
+          # TODO(clinical): flip to true and add FHIR/EHRbase to compose.ci.yml when we deliver the patient-facing side. See docs/docs/plans/todo.md.
+          build-args: VITE_CLINICAL_SERVICES_ENABLED=false
           cache-from: type=gha,scope=ci-frontend
           cache-to: type=gha,mode=max,scope=ci-frontend
 
@@ -370,10 +402,9 @@ jobs:
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
-        with: { fetch-depth: 0 }
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -383,7 +414,7 @@ jobs:
         run: |
           docker pull "$CI_IMAGE_BACKEND"
           docker pull "$CI_IMAGE_FRONTEND"
-          # Compose uses local tags from compose.ci.yml, so apply local tags to pulled images.
+          # compose.ci.yml Docker compose uses local tags, so apply local tags to pulled images.
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
 
@@ -391,29 +422,34 @@ jobs:
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
       - name: Seed test data
+        # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker exec ci_backend python scripts/seed_ci.py
 
       - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
+          corepack install
 
       - name: Cache Yarn
+        id: cache_yarn
         uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-nm-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-nm-
+            ${{ runner.os }}-yarn-
 
-      - name: Install deps
+      - name: Install dependencies
+        if: steps.cache_yarn.outputs.cache-hit != 'true'
         working-directory: frontend
         run: yarn install --immutable
 
@@ -430,6 +466,11 @@ jobs:
         if: steps.cache_playwright.outputs.cache-hit != 'true'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.cache_playwright.outputs.cache-hit == 'true'
+        working-directory: frontend
+        run: npx playwright install-deps chromium
 
       - name: Run E2E tests
         working-directory: frontend

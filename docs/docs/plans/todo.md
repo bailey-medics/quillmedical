@@ -23,11 +23,13 @@ clinical/NHS go-live.
 
 ## CI/CD pipeline
 
+- [ ] Extend the E2E stack to cover the clinical/patient-facing side once we start delivering it _(clinical)_ — currently `compose.ci.yml` excludes FHIR/EHRbase and both CI images are built with `CLINICAL_SERVICES_ENABLED=false` (`.github/workflows/ci.yml` backend/frontend build steps, `VITE_CLINICAL_SERVICES_ENABLED=false`). Will need HAPI FHIR + EHRbase services added to the CI compose stack and the flag flipped to `true` to E2E-test clinical workflows
 - [ ] Implement post-deploy GCS image verification for teaching content — plan at `docs/plans/2026-06-14-image-on-gcp-check-plan.md`; phase 1 adds `verify_gcs_images.py` to `teaching-tooling` pipeline, phase 2 adds backend sync-time validation
 - [ ] Configure GitHub Environment `production` with required reviewers _(deferred — production GCP is spun down)_ — deploy workflow references production env at `.github/workflows/deploy.yml` line 208
 - [ ] Validate full deploy pipeline: merge to `main` → teaching auto-deploys → approve → production deploys same image _(deferred)_ — production promotion currently disabled with `if: false` in deploy workflow line ~203; pipeline design documented in `docs/docs/cicd/index.md`
 - [ ] Define feature flag strategy (Terraform vs runtime config vs in-code flags), with governance and rollout policy for teaching and clinical production — implementation exists (`RequireFeature`, `featureFlags.ts`) but strategy/governance doc is missing
 - [ ] Add `mkdocs build --strict` to the heavy CI tier to catch broken links and missing nav entries — currently runs without `--strict` in `.github/workflows/docs.yml` line 150
+- [ ] Investigate cross-browser Playwright testing — CI currently runs Chromium only (`heavy_e2e` and `heavy_storybook_tests`); consider adding Firefox/WebKit to a separate scheduled workflow (nightly or weekly against `main`) if Safari/iOS usage is significant for patients or clinicians
 - [ ] Create `backend/scripts/check_migrations.py` — expand-contract migration lint rejecting destructive Alembic operations; intent documented in `docs/docs/plans/github-branching-plan.md` line ~640
 - [ ] Add `pip-audit --strict` and `yarn audit --level moderate` to CI pipeline (nice-to-have gate for dependency vulnerabilities)
 - [ ] Enable GitHub merge queue when 3+ developers are merging PRs in parallel (add `merge_group` trigger to `branch-ci.yml`, update job `if:` conditions, re-add `merge_queue` block in Terraform)
@@ -47,6 +49,7 @@ clinical/NHS go-live.
 ## Testing
 
 - [ ] Increase `required_approving_review_count` from 0 to 1 in branch rules when a second developer joins — currently 0 in `infra/github/branch_rules.tf` line 85
+- [ ] Adopt a layered test-data seeding strategy so seed data scales from 1 to tens of developers without `backend/scripts/seed_ci.py` growing unboundedly. Three layers: (1) **baseline seed** — keep `seed_ci.py` tiny, only the 2–3 records every environment needs (now guarded by `BACKEND_ENV=testing`); split into a `backend/scripts/seeds/` package (by domain: `users.py`, `organisations.py`, `teaching.py`) only if it genuinely grows. (2) **factories** — introduce `factory_boy` (`SQLAlchemyModelFactory`) for scenario data so tests provision their own specifics via `UserFactory`/`OrganisationFactory` with `Sequence`/`SubFactory`/`Trait`; optionally `polyfactory` for generating valid Pydantic API payloads. (3) **fixtures + per-test transaction rollback** for backend integration-test delivery and isolation; clean-baseline + factories for E2E. Clinical-safety principle: create data a test asserts on through the same path a real clinician would (API/factory-through-endpoint) so tests prove the real system can reach that state. First concrete step: add `factory_boy` with a session-bound `UserFactory` + `OrganisationFactory`
 
 ## Web push notifications (production-readiness)
 

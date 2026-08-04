@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# Ensures the pre-commit virtual environment exists and has pre-commit installed.
+# Creates a fresh pre-commit virtual environment with pre-commit installed.
 #
-# Usage: ensure-styling-venv.sh
+# Usage: ensure-pre-commit-venv.sh
 #
-# Recreates the venv if the cached copy is missing or corrupted.
-# Always upgrades pip and ensures pre-commit>=3,<5 is present (idempotent).
+# Recreates .venv from scratch every run and installs pre-commit>=3,<5.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
 source "$(dirname "$0")/../shared/logging.sh" "ensure-pre-commit-venv"
 
-if [ ! -x .venv/bin/python ]; then
-  log "Creating new virtual environment..."
-  rm -rf .venv
-  python -m venv .venv
-else
-  log "Using cached .venv"
-fi
+# The venv is recreated every run rather than cached: a venv symlinks into the
+# ephemeral Python toolcache, and a restored copy segfaults when that
+# interpreter is rebuilt (even at the same version). Packages install quickly
+# from the cached pip download directory.
+log "Creating virtual environment..."
+rm -rf .venv
+python -m venv .venv
 
-# Always ensure pre-commit is installed (quick if already present).
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install "pre-commit>=3,<5"

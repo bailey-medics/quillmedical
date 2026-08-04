@@ -10,6 +10,7 @@ Usage (inside the backend container after migrations):
 
 from __future__ import annotations
 
+import os
 import sys
 
 sys.path.insert(0, "/app")
@@ -111,4 +112,12 @@ def seed() -> None:
 
 
 if __name__ == "__main__":
+    # Fail-safe: refuse to run outside a testing environment so hardcoded
+    # credentials can never be seeded into a real database.
+    if os.environ.get("BACKEND_ENV") != "testing":
+        print(
+            "Refusing to seed: BACKEND_ENV is not 'testing'",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     seed()
