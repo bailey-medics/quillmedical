@@ -36,7 +36,6 @@ jobs:
       fail-fast: false
       matrix:
         task: [pre-commit, unit]
-        python: ['3.13']
 
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
@@ -47,7 +46,7 @@ jobs:
 
       - uses: actions/setup-python@v7.0.0
         with:
-          python-version: ${{ matrix.python }}
+          python-version-file: .python-version
 
       # ---- Cache for pre-commit ----
       - name: Cache pre-commit & venv (pre-commit)
@@ -58,9 +57,9 @@ jobs:
             .venv
             ${{ env.PRE_COMMIT_HOME }}
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
-            pc-pre-commit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
             pc-pre-commit-${{ runner.os }}-
 
       # ---- pre-commit steps ----
@@ -88,9 +87,9 @@ jobs:
           path: |
             backend/.venv
             ${{ env.PIP_CACHE_DIR }}
-          key: pc-unit-${{ runner.os }}-py${{ matrix.python }}-${{ hashFiles('backend/poetry.lock') }}
+          key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
-            pc-unit-${{ runner.os }}-py${{ matrix.python }}-
+            pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
             pc-unit-${{ runner.os }}-
 
       # ---- Unit test steps ----
@@ -141,11 +140,12 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
-          yarn --version
+          corepack install
 
       - name: Cache Yarn
         id: cache_yarn
@@ -209,6 +209,18 @@ jobs:
         run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 
 
+  # ---------- Version consistency ----------
+  version_consistency:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: Version consistency
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check pinned versions are consistent
+        run: bash .github/scripts/ci/check-version-consistency.sh
+
+
   # ==============================================================================
   # HEAVY TIER — runs on non-draft PRs targeting main only
   # ==============================================================================
@@ -226,11 +238,12 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
-          yarn --version
+          corepack install
 
       - name: Cache Yarn
         id: cache_yarn
@@ -294,7 +307,7 @@ jobs:
       - uses: actions/setup-python@v7.0.0
         id: setup_python
         with:
-          python-version: '3.13'
+          python-version-file: .python-version
 
       - name: Cache Semgrep
         id: cache_semgrep
@@ -405,16 +418,19 @@ jobs:
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
       - name: Seed test data
+        # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker exec ci_backend python scripts/seed_ci.py
 
       - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.13.0 --activate
+          corepack install
 
       - name: Cache Yarn
         id: cache_yarn
