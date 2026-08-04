@@ -376,6 +376,7 @@
     "pypa",
     "pypackages",
     "pypirc",
+    "pypoetry",
     "pyproject",
     "pysqlite",
     "pytest",

@@ -81,12 +81,15 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure --color=always
 
       # ---- Cache for unit tests ----
-      - name: Cache Poetry venv & pip (unit)
+      # backend/.venv is intentionally NOT cached: it symlinks into the ephemeral
+      # Python toolcache, and a restored copy segfaults when that interpreter is
+      # rebuilt. Cache Poetry's download cache so `poetry install` stays fast.
+      - name: Cache Poetry & pip (unit)
         if: matrix.task == 'unit'
         uses: actions/cache@v6.1.0
         with:
           path: |
-            backend/.venv
+            ~/.cache/pypoetry
             ${{ env.PIP_CACHE_DIR }}
           key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
