@@ -43,7 +43,7 @@ jobs:
       backend_changed: ${{ steps.changes.outputs.backend }}
       frontend_changed: ${{ steps.changes.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
 
       - name: Work out which commit to build
         id: resolve
@@ -51,11 +51,11 @@ jobs:
           MANUAL_COMMIT: ${{ inputs.manual_commit }}
         run: bash .github/scripts/deploy/resolve-commit.sh
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ steps.resolve.outputs.sha }}
 
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@v4.0.2
         id: filter
         with:
           filters: |
@@ -78,12 +78,15 @@ jobs:
             echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
           fi
 
-  # ---------- Build and push Docker images (to teaching AR) ----------
+  # ---------- Build and push Docker images ----------
   build:
     name: Build ${{ matrix.service }}
     runs-on: ubuntu-24.04
     needs: prepare
     if: ${{ needs.prepare.outputs.backend_changed == 'true' || needs.prepare.outputs.frontend_changed == 'true' }}
+    # Scoped to the teaching environment so it reads the teaching GCP secrets
+    # (env-scoped, not repo-level) and is bound by the main-only branch policy.
+    environment: teaching
     strategy:
       matrix:
         include:
@@ -98,21 +101,21 @@ jobs:
             changed: ${{ needs.prepare.outputs.frontend_changed }}
             target: prod
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         if: ${{ matrix.changed == 'true' }}
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
       - name: Checkout teaching-tooling
         if: ${{ matrix.changed == 'true' && matrix.service == 'backend' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
 
       - name: Authenticate to GCP (teaching)
         if: ${{ matrix.changed == 'true' }}
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
@@ -123,11 +126,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: ${{ matrix.changed == 'true' }}
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v4.2.0
 
       - name: Build and push
         if: ${{ matrix.changed == 'true' }}
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.3.0
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -151,7 +154,7 @@ jobs:
     environment: teaching
     steps:
       - name: Authenticate to GCP (teaching)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
@@ -201,11 +204,11 @@ jobs:
     # Only runs after teaching succeeds; requires manual approval via environment
     environment: production
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
 
       - name: Authenticate to GCP (teaching — source registry)
         id: auth-teaching
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
@@ -213,7 +216,7 @@ jobs:
 
       - name: Authenticate to GCP (production — target registry)
         id: auth-prod
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}

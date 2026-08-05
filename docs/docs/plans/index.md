@@ -35,3 +35,4 @@
 - [Account Update](2026-05-30-account-update-plan.md)
 - [CBAC Frontend Implementation](2026-05-31-cbac-implementation-plan.md)
 - [Base Profession Update](2026-06-02-base-profession-update-plan.md)
+- [Teaching Environment Scoping](2026-08-05-teaching-env-scoping-plan.md)
