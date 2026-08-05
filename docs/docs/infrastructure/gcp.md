@@ -155,7 +155,7 @@ The service accounts have the following IAM roles:
 
 #### quillmedical repository
 
-Nine repository secrets set via `gh secret set`:
+GCP credentials are set via `gh secret set`, one trio per environment:
 
 | Secret                      | Value pattern                                                                                    |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -164,6 +164,18 @@ Nine repository secrets set via `gh secret set`:
 | `GCP_{ENV}_PROJECT_ID`      | `quill-medical-{env}`                                                                            |
 
 Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
+
+Scoping:
+
+- `GCP_PROD_*` and `GCP_STAGING_*` are **repository-level** secrets.
+- `GCP_TEACHING_*` are **environment-scoped** to the `teaching` environment
+  (set with `gh secret set --env teaching`), so only the jobs that declare
+  `environment: teaching` (`build`, `deploy-teaching`) can read them. This
+  keeps the teaching deploy credentials off every other workflow. The
+  `promote-to-production` job reads the teaching source registry via a
+  cross-project Artifact Registry IAM grant on the production service account,
+  not via teaching secrets — so no teaching secrets live in the `production`
+  environment.
 
 Additional secret:
 
