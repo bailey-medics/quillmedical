@@ -1,7 +1,5 @@
 # Caddy web server
 
-**Last updated:** 25 May 2026
-
 Caddy is our reverse proxy, handling path-based routing in development and serving the production SPA with security headers. Three Caddyfiles exist for different environments.
 
 ## Configuration files

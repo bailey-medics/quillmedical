@@ -205,12 +205,25 @@ jobs:
   shell_checks:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
-    name: Shell script lint
+    name: Shell script lint and test
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
         run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
+      - name: Set up bats
+        uses: bats-core/bats-action@4.0.0
+        with:
+          # Only bats core is needed; the tests use no helper libraries.
+          support-install: false
+          assert-install: false
+          detik-install: false
+          file-install: false
+          # 4.0.0 no longer authenticates the download automatically; pass the
+          # token to avoid GitHub API rate limits.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run shell script tests
+        run: bats --recursive .github/scripts
 
 
   # ---------- Version consistency ----------
