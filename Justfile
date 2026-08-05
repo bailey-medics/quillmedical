@@ -533,6 +533,14 @@ unit-tests-frontend *ARGS:
     docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
+alias ts := test-scripts
+# Run the shell script tests (bats)
+test-scripts *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "test-scripts"
+    bats --recursive .github/scripts {{ARGS}}
+
+
 alias ee := e2e
 # Run the end-to-end tests
 e2e:
