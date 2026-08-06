@@ -138,13 +138,17 @@ terraform apply -var-file=terraform.tfvars
 3. Apply the Phase 2 Terraform (teaching environment + main-only policy).
 4. Verify a teaching deploy succeeds (both `build` and `deploy-teaching`
    authenticate to GCP).
-5. **Only then** delete the repository-level teaching secrets:
+5. **Do not delete the repository-level teaching secrets.** Investigation after
+   the merge showed the `plan` job in `.github/workflows/terraform.yml` still
+   needs them: it runs on **pull requests** and has **no `environment:`**, so it
+   reads repo-level secrets. It cannot be moved into the `teaching` environment
+   because that environment is now **main-only**, and a PR branch would be
+   blocked. Deleting the repo-level secrets would therefore break Terraform
+   planning on PRs. The repo-level teaching secrets must stay in place.
 
-   ```bash
-   gh secret delete GCP_TEACHING_WIF_PROVIDER   --repo bailey-medics/quillmedical
-   gh secret delete GCP_TEACHING_SERVICE_ACCOUNT --repo bailey-medics/quillmedical
-   gh secret delete GCP_TEACHING_PROJECT_ID      --repo bailey-medics/quillmedical
-   ```
+   > Status (2026-08-05): env-scoped secrets set, main-only policy applied and
+   > verified via a post-merge teaching deploy. Repo-level teaching secrets
+   > **retained** for the Terraform PR-plan job.
 
 > Note: the `production` environment keeps only its `GCP_PROD_*` secrets — no
 > teaching secrets are added to it. The promote job's read of the teaching
