@@ -157,6 +157,12 @@ jobs:
   # ---------- Promote to production ----------
   # NOTE: Production (clinical) environment is currently offline to save GCP costs.
   # Remove `if: false` when production is re-enabled.
+  # TODO: Decouple production promotion from the per-push flow before re-enabling.
+  # Chaining it onto `deploy-teaching` treats promotion as an automatic consequence
+  # of every merge to main (= staging). Production should be a deliberate,
+  # CSO-signed event — make it manual (workflow_dispatch choosing a commit/tag) or
+  # tag-triggered, not automatic per push. See todo.md.
+  # TODO: human review of prompt-to-production job
   promote-to-production:
     if: false
     name: Promote to production
@@ -166,7 +172,6 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v7.0.1
-
       - name: Authenticate to GCP (teaching — source registry)
         id: auth-teaching
         uses: google-github-actions/auth@v3.0.0
@@ -253,6 +258,7 @@ jobs:
           git push origin "$NEXT_TAG"
 
   # ---------- Slack notifications ----------
+    # TODO: need to refactor these with the new Slack messaging code
   notify:
     name: Slack notification
     runs-on: ubuntu-24.04
