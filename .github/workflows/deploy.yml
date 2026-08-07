@@ -161,7 +161,7 @@ jobs:
 
   # ---------- Promote to production ----------
   # NOTE: Production (clinical) environment is currently offline to save GCP costs.
-  # Remove `if: false` when production is re-enabled.
+  # Set the repository variable ENABLE_PRODUCTION_DEPLOY to 'true' to re-enable.
   # TODO: Decouple production promotion from the per-push flow before re-enabling.
   # Chaining it onto `deploy-teaching` treats promotion as an automatic consequence
   # of every merge to main (= staging). Production should be a deliberate,
@@ -169,7 +169,7 @@ jobs:
   # tag-triggered, not automatic per push. See todo.md.
   # TODO: human review of prompt-to-production job
   promote-to-production:
-    if: false
+    if: ${{ vars.ENABLE_PRODUCTION_DEPLOY == 'true' }}
     name: Promote to production
     runs-on: ubuntu-24.04
     needs: [prepare, deploy-teaching]
