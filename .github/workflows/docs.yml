@@ -138,50 +138,18 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5.0.0
 
-  # ---------- Notify ----------
-  # TODO: update to new slack notification code
-  notify:
-    name: Slack notification
-    runs-on: ubuntu-24.04
-    needs: deploy
-    if: always()
-    steps:
-      - name: Notify Slack on success
-        if: ${{ needs.deploy.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "✅ Documentation deployed to GitHub Pages",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Documentation deployed to GitHub Pages*\n\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+  # ---------- Slack notification (failure only) ----------
+  notify-failure:
+    name: Notify docs deploy failure
+    needs: [build, deploy]
+    if: ${{ always() && (needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Documentation deploy failed*
 
-      - name: Notify Slack on failure
-        if: ${{ needs.deploy.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Documentation deploy failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Documentation deploy failed*\n\n*Commit:* ${{ github.event.head_commit.message }}\n*Author:* ${{ github.actor }}\n*SHA:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

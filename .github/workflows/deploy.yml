@@ -151,6 +151,11 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
+      # Checkout only needed here so the smoke-test script is on the runner.
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
       - name: Smoke test
         run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
 
@@ -257,9 +262,7 @@ jobs:
           Safety-review: routine"
           git push origin "$NEXT_TAG"
 
-  # ---------- Slack notifications (failure only) ----------
-  # Covers the whole teaching path: a build/prepare failure skips deploy-teaching
-  # (result 'skipped', not 'failure'), so notify on any upstream failure too.
+  # ---------- Slack notifications ----------
   notify-teaching-failure:
     name: Notify teaching deploy failure
     needs: [prepare, build, deploy-teaching]
