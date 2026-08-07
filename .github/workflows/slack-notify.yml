@@ -38,6 +38,11 @@ jobs:
           "teaching": "${{ secrets.SLACK_WEBHOOK_URL }}"
         }
     steps:
+      - name: Check out repository
+        # Reusable workflows start on a clean runner; check out so the validation
+        # script under .github/scripts is present.
+        uses: actions/checkout@v7.0.1
+
       - name: Validate channel and webhook
         env:
           CHANNEL: ${{ inputs.channel }}
