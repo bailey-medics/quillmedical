@@ -138,33 +138,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build'
@@ -203,12 +178,17 @@ jobs:
   shell_checks:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
-    name: Shell script lint and test
+    name: Shell and workflow lint
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
+        run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
+      # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
       - name: Set up bats
         uses: bats-core/bats-action@4.0.0
         with:
@@ -249,33 +229,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Playwright browsers
         id: cache_playwright
@@ -437,33 +392,8 @@ jobs:
         # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker exec ci_backend python scripts/seed_ci.py
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Playwright browsers
         id: cache_playwright

@@ -31,17 +31,17 @@ for entry in "backend/Dockerfile=$py_docker" "backend/pyproject.toml (mypy)=$py_
 done
 
 # ---- Node: major version must agree between CI and the Docker image ----
-node_ci="$(grep -oE "node-version: '[0-9]+'" .github/workflows/ci.yml | grep -oE '[0-9]+' | sort -u)"
+node_ci="$(grep -oE "node-version: '[0-9]+'" .github/actions/setup-frontend/action.yml | grep -oE '[0-9]+' | sort -u)"
 node_docker="$(grep -oE 'node:[0-9]+' frontend/Dockerfile | head -1 | cut -d: -f2)"
 
 if [ "$(printf '%s\n' "$node_ci" | grep -c .)" -ne 1 ]; then
-  error "ci.yml has more than one distinct node-version major: $(echo "$node_ci" | tr '\n' ' ')"
+  error "setup-frontend action has more than one distinct node-version major: $(echo "$node_ci" | tr '\n' ' ')"
   fail=1
 fi
 
-log "Node major — .github/workflows/ci.yml: ${node_ci:-<none>}, frontend/Dockerfile: ${node_docker:-<none>}"
+log "Node major — .github/actions/setup-frontend/action.yml: ${node_ci:-<none>}, frontend/Dockerfile: ${node_docker:-<none>}"
 if [ "$node_ci" != "$node_docker" ]; then
-  error "Node major mismatch: ci.yml is '$node_ci' but frontend/Dockerfile is '$node_docker'"
+  error "Node major mismatch: setup-frontend action is '$node_ci' but frontend/Dockerfile is '$node_docker'"
   fail=1
 fi
 
