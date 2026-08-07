@@ -499,15 +499,3 @@ jobs:
       - name: Dump container logs on failure
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
-
-  # ---------- Slack test notification ----------
-  # Temporary: exercises the reusable slack-notify.yml workflow.
-  notify_test:
-    name: Slack test notification
-    needs: [python_checks, typescript_checks, shell_checks, version_consistency]
-    if: always()
-    uses: ./.github/workflows/slack-notify.yml
-    with:
-      channel: teaching
-      text: "CI run"
-    secrets: inherit
