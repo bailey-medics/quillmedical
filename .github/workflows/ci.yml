@@ -39,7 +39,6 @@ jobs:
 
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
-      PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
       - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
@@ -57,7 +56,7 @@ jobs:
         with:
           path: |
             ${{ env.PRE_COMMIT_HOME }}
-            ${{ env.PIP_CACHE_DIR }}
+            ~/.cache/pip
           key: pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
             pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
@@ -90,7 +89,7 @@ jobs:
         with:
           path: |
             ~/.cache/pypoetry
-            ${{ env.PIP_CACHE_DIR }}
+            ~/.cache/pip
           key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
             pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
@@ -325,17 +324,18 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Cache Semgrep
-        id: cache_semgrep
+      # The pipx venv is intentionally NOT cached: it symlinks into the ephemeral
+      # Python toolcache, and a restored copy segfaults when that interpreter is
+      # rebuilt. Cache pip's download cache so the reinstall stays fast.
+      - name: Cache pip (Semgrep)
         uses: actions/cache@v6.1.0
         with:
-          path: |
-            ~/.local/share/pipx/venvs/semgrep
-            ~/.local/bin/semgrep
-          key: ${{ runner.os }}-semgrep-1.172.0-py${{ steps.setup_python.outputs.python-version }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-semgrep-pip-1.172.0-py${{ steps.setup_python.outputs.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-semgrep-pip-
 
       - name: Install Semgrep
-        if: steps.cache_semgrep.outputs.cache-hit != 'true'
         run: pipx install semgrep==1.172.0 --python '${{ steps.setup_python.outputs.python-path }}'
 
       # The folder holding the semgrep command isn't searched by default, so we add it here.
