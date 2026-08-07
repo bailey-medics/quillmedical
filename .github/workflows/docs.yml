@@ -88,16 +88,20 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Cache Poetry dependencies
+      # backend/.venv is intentionally NOT cached: it symlinks into the ephemeral
+      # Python toolcache, and a restored copy segfaults when that interpreter is
+      # rebuilt. Cache Poetry's download cache so `poetry install` stays fast.
+      # Namespace bumped to -v2 to discard old caches that contained backend/.venv.
+      - name: Cache Poetry & pip
         uses: actions/cache@v6.1.0
         with:
           path: |
-            backend/.venv
+            ~/.cache/pypoetry
             ~/.cache/pip
-          key: ${{ runner.os }}-poetry-docs-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
+          key: ${{ runner.os }}-docs-poetry-v2-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-poetry-docs-py${{ hashFiles('.python-version') }}-
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-docs-poetry-v2-py${{ hashFiles('.python-version') }}-
+            ${{ runner.os }}-docs-poetry-v2-
 
       - name: Install project docs dependencies
         run: |
