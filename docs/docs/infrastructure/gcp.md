@@ -168,14 +168,21 @@ Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
 Scoping:
 
 - `GCP_PROD_*` and `GCP_STAGING_*` are **repository-level** secrets.
-- `GCP_TEACHING_*` are **environment-scoped** to the `teaching` environment
-  (set with `gh secret set --env teaching`), so only the jobs that declare
-  `environment: teaching` (`build`, `deploy-teaching`) can read them. This
-  keeps the teaching deploy credentials off every other workflow. The
-  `promote-to-production` job reads the teaching source registry via a
-  cross-project Artifact Registry IAM grant on the production service account,
-  not via teaching secrets — so no teaching secrets live in the `production`
-  environment.
+- `GCP_TEACHING_*` exist at **both** scopes:
+  - **Environment-scoped** to the `teaching` environment (set with
+    `gh secret set --env teaching`). Jobs that declare `environment: teaching`
+    (`deploy.yml` build + deploy-teaching, `public-site.yml` deploy-teaching,
+    `terraform.yml` apply) read these env-scoped values, which take precedence.
+  - **Repository-level** copies are **retained** because the `plan` job in
+    `terraform.yml` runs on pull requests with no `environment:` and therefore
+    cannot use the (now main-only) `teaching` environment. Removing the
+    repo-level copies would break Terraform planning on PRs.
+- The teaching environment enforces a **main-only** deployment branch policy
+  (see `infra/github/environments.tf`).
+- The `promote-to-production` job (currently disabled, `if: false`) will read
+  the teaching source registry via a cross-project Artifact Registry IAM grant
+  on the production service account, not via teaching secrets — so no teaching
+  secrets live in the `production` environment.
 
 Additional secret:
 

@@ -101,7 +101,6 @@ jobs:
         if: matrix.task == 'unit'
         run: |
           python -m pip install -U pip poetry
-          # Tells Poetry to use .venv/ inside the project root; working-directory: backend below makes that backend/.venv
           poetry config virtualenvs.in-project true
 
 

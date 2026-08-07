@@ -30,6 +30,29 @@ version change an explicit, reviewable Renovate PR rather than a silent floating
 update. See [Automatic dependency updates](../dependencies/automatic-updates.md) for how
 those PRs are scheduled, tiered, and reviewed.
 
+## Single source of truth for versioning
+
+Version pinning answers _"which exact version?"_; this section answers _"where does that
+value live?"_. Toolchain versions and shared configuration each have one canonical file,
+and every consumer reads from it rather than repeating the value. Changing a version is
+then a one-line edit in one place.
+
+| Concern                 | Canonical file                                                                             | How consumers read it                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Python version          | `.python-version` (repository root)                                                        | GitHub Actions use `python-version-file: .python-version`; Poetry cache keys use `hashFiles('.python-version')`, so a version bump invalidates the cache automatically                               |
+| Yarn version            | `frontend/package.json` → `packageManager` (e.g. `yarn@4.13.0`)                            | CI runs `corepack install` from `frontend/`, which activates exactly that Yarn version — the workflows never name a Yarn version themselves                                                          |
+| Shared config and types | `shared/*.yaml` (`competencies.yaml`, `base-professions.yaml`, `jurisdiction-config.yaml`) | The backend reads the YAML directly via PyYAML; the frontend runs `yarn generate:types` to produce `src/generated/*.json` for TypeScript. Both sides derive from the same YAML, so they cannot drift |
+
+The rule: never hard-code one of these values in a second place. If a workflow, script, or
+module needs the Python version, the Yarn version, or a competency definition, it reads
+the canonical file above.
+
+!!! note "Known exception — Node"
+The Node version is currently pinned inline as `node-version: '24'` in each workflow
+rather than in a single file. There is no `.nvmrc` or `engines` entry yet, so this is
+the one toolchain version that is _not_ centralised. Prefer adding an `.nvmrc` before
+introducing further Node version references.
+
 ## Type safety
 
 Strong static typing is treated as a clinical-safety requirement, not a stylistic

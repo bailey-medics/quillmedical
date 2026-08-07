@@ -11,6 +11,7 @@ on:
       - "docs/**"
       - "shared/**"
       - ".github/prompts/**"
+      - ".github/workflows/docs.yml"
 
 permissions:
   contents: read
@@ -25,55 +26,52 @@ jobs:
   # ---------- Build documentation ----------
   build:
     name: Build documentation
-    runs-on: ubuntu-latest
-    env:
-      OPENAPI_SRC: docs/docs/code/swagger/openapi.json
-      OPENAPI_DST: site/code/swagger/openapi.json
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
 
       - name: Configure Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@v6.0.0
 
       # ---------- Frontend docs (Node + Yarn) ----------
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '24'
 
-      - name: Enable Corepack & pin Yarn
+      - name: Enable Corepack
+        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+        working-directory: frontend
         run: |
           corepack enable
-          corepack prepare yarn@4.10.3 --activate
-          yarn --version
+          corepack install
 
-      - name: Cache Yarn dependencies
-        uses: actions/cache@v5
+      - name: Cache Yarn
+        id: cache_yarn
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/.yarn/cache
             frontend/.yarn/install-state.gz
             frontend/node_modules
-          key: ${{ runner.os }}-yarn4-docs-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn4-docs-
-            ${{ runner.os }}-yarn4-
+            ${{ runner.os }}-yarn-
 
-      - name: Install frontend deps
+      - name: Install dependencies
+        if: steps.cache_yarn.outputs.cache-hit != 'true'
         working-directory: frontend
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
-      - name: Cache Storybook & Vite build artifacts
-        uses: actions/cache@v5
+      - name: Cache Storybook build artifacts
+        uses: actions/cache@v6.1.0
         with:
           path: |
             frontend/node_modules/.vite
-            frontend/.storybook-cache
-            frontend/storybook-static
-          key: ${{ runner.os }}-storybook-build-${{ hashFiles('frontend/src/**/*.{ts,tsx,js,jsx,json}', 'frontend/.storybook/**/*') }}
+          key: ${{ runner.os }}-storybook-${{ hashFiles('frontend/src/**/*.{ts,tsx,css}', 'frontend/.storybook/**/*') }}
           restore-keys: |
-            ${{ runner.os }}-storybook-build-
+            ${{ runner.os }}-storybook-
 
-      - name: Generate JSON from YAML for TypeScript types
+      - name: Generate CBAC & config JSON for TypeScript types from YAML
         working-directory: frontend
         run: yarn generate:types
 
@@ -85,52 +83,25 @@ jobs:
         working-directory: frontend
         run: yarn docs:build
 
-      - name: Collect frontend docs into /site
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p site
-
-          CANDIDATES=(
-            "docs/docs/frontend"
-            "docs/docs/storybook"
-          )
-
-          copied="false"
-          for d in "${CANDIDATES[@]}"; do
-            if [ -d "$d" ]; then
-              name=$(basename "$d")
-              echo "Copying $d -> site/$name"
-              mkdir -p "site/$name"
-              cp -r "$d"/. "site/$name/"
-              copied="true"
-            fi
-          done
-
-          if [ "$copied" != "true" ]; then
-            echo "WARNING: No known frontend docs output folder found. Nothing copied."
-          fi
-
       # ---------- Backend docs (MkDocs via Poetry) ----------
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.13'
+          python-version-file: .python-version
 
       - name: Cache Poetry dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6.1.0
         with:
           path: |
             backend/.venv
             ~/.cache/pip
-          key: ${{ runner.os }}-poetry-docs-py3.13-${{ hashFiles('backend/poetry.lock') }}
+          key: ${{ runner.os }}-poetry-docs-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-poetry-docs-py3.13-
+            ${{ runner.os }}-poetry-docs-py${{ hashFiles('.python-version') }}-
             ${{ runner.os }}-poetry-
 
-      - name: Install project docs deps via Poetry
+      - name: Install project docs dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade poetry
+          python -m pip install -U pip poetry
           poetry config virtualenvs.in-project true
           cd backend
           poetry install --no-interaction --no-ansi --with dev
@@ -139,12 +110,12 @@ jobs:
         working-directory: backend
         run: poetry run python scripts/dump_openapi.py --dev
 
-      - name: Copy prompts to docs for MkDocs
+      - name: Copy LLM prompts from .github to docs folder
         run: |
           mkdir -p docs/docs/llm/prompts
           cp -r .github/prompts/* docs/docs/llm/prompts/
 
-      - name: Build MkDocs site into /site
+      - name: Build MkDocs site
         run: |
           cd backend
           poetry run mkdocs build -f ../docs/mkdocs.yml -d ../site
@@ -158,19 +129,20 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v5.0.0
 
   # ---------- Notify ----------
+  # TODO: update to new slack notification code
   notify:
     name: Slack notification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: deploy
     if: always()
     steps:

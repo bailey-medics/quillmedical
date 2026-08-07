@@ -40,8 +40,9 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
-      backend_changed: ${{ steps.changes.outputs.backend }}
-      frontend_changed: ${{ steps.changes.outputs.frontend }}
+      backend_changed: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      frontend_changed: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
+      services: ${{ github.event_name == 'workflow_dispatch' && '["backend","frontend"]' || steps.filter.outputs.changes }}
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -66,75 +67,47 @@ jobs:
               - "frontend/**"
               - "shared/**"
 
-      # workflow_dispatch always builds everything
-      - name: Resolve change outputs
-        id: changes
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            echo "frontend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
-            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
-          fi
-
   # ---------- Build and push Docker images ----------
   build:
     name: Build ${{ matrix.service }}
     runs-on: ubuntu-24.04
     needs: prepare
-    if: ${{ needs.prepare.outputs.backend_changed == 'true' || needs.prepare.outputs.frontend_changed == 'true' }}
-    # Scoped to the teaching environment so it reads the teaching GCP secrets
-    # (env-scoped, not repo-level) and is bound by the main-only branch policy.
+    if: ${{ needs.prepare.outputs.services != '[]' }}
     environment: teaching
     strategy:
       matrix:
-        include:
-          - service: backend
-            context: .
-            dockerfile: ./backend/Dockerfile
-            changed: ${{ needs.prepare.outputs.backend_changed }}
-            target: prod
-          - service: frontend
-            context: .
-            dockerfile: ./frontend/Dockerfile
-            changed: ${{ needs.prepare.outputs.frontend_changed }}
-            target: prod
+        # One leg per changed service (JSON array from the prepare job).
+        service: ${{ fromJSON(needs.prepare.outputs.services) }}
     steps:
       - uses: actions/checkout@v7.0.1
-        if: ${{ matrix.changed == 'true' }}
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
       - name: Checkout teaching-tooling
-        if: ${{ matrix.changed == 'true' && matrix.service == 'backend' }}
+        if: ${{ matrix.service == 'backend' }}
         uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
 
       - name: Authenticate to GCP (teaching)
-        if: ${{ matrix.changed == 'true' }}
         uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        if: ${{ matrix.changed == 'true' }}
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
       - name: Set up Docker Buildx
-        if: ${{ matrix.changed == 'true' }}
         uses: docker/setup-buildx-action@v4.2.0
 
       - name: Build and push
-        if: ${{ matrix.changed == 'true' }}
         uses: docker/build-push-action@v7.3.0
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          target: prod
           push: true
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
@@ -179,23 +152,17 @@ jobs:
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       - name: Smoke test
-        run: |
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://teaching.quill-medical.com/api/health" || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Teaching health check passed"
-              exit 0
-            fi
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
-            sleep 10
-          done
-          echo "Teaching health check failed after 5 attempts"
-          exit 1
+        run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
 
   # ---------- Promote to production ----------
   # NOTE: Production (clinical) environment is currently offline to save GCP costs.
   # Remove `if: false` when production is re-enabled.
+  # TODO: Decouple production promotion from the per-push flow before re-enabling.
+  # Chaining it onto `deploy-teaching` treats promotion as an automatic consequence
+  # of every merge to main (= staging). Production should be a deliberate,
+  # CSO-signed event — make it manual (workflow_dispatch choosing a commit/tag) or
+  # tag-triggered, not automatic per push. See todo.md.
+  # TODO: human review of prompt-to-production job
   promote-to-production:
     if: false
     name: Promote to production
@@ -205,7 +172,6 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v7.0.1
-
       - name: Authenticate to GCP (teaching — source registry)
         id: auth-teaching
         uses: google-github-actions/auth@v3.0.0
@@ -271,19 +237,7 @@ jobs:
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       - name: Smoke test production
-        run: |
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://app.quill-medical.com/api/health" || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Production health check passed"
-              exit 0
-            fi
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
-            sleep 10
-          done
-          echo "Production health check failed after 5 attempts"
-          exit 1
+        run: bash .github/scripts/deploy/smoke-test.sh "https://app.quill-medical.com/api/health"
 
       - name: Create CalVer tag
         run: |
@@ -303,89 +257,35 @@ jobs:
           Safety-review: routine"
           git push origin "$NEXT_TAG"
 
-  # ---------- Slack notifications ----------
-  notify:
-    name: Slack notification
-    runs-on: ubuntu-24.04
-    needs: [deploy-teaching, promote-to-production]
-    if: always()
-    steps:
-      - name: Notify teaching deploy success
-        if: ${{ needs.deploy-teaching.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "✅ Deployed to teaching",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Deployed to teaching*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+  # ---------- Slack notifications (failure only) ----------
+  # Covers the whole teaching path: a build/prepare failure skips deploy-teaching
+  # (result 'skipped', not 'failure'), so notify on any upstream failure too.
+  notify-teaching-failure:
+    name: Notify teaching deploy failure
+    needs: [prepare, build, deploy-teaching]
+    if: ${{ always() && (needs.prepare.result == 'failure' || needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Teaching deploy failed*
 
-      - name: Notify teaching deploy failure
-        if: ${{ needs.deploy-teaching.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Teaching deploy failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Teaching deploy failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
 
-      - name: Notify production promotion success
-        if: ${{ needs.promote-to-production.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "🚀 Promoted to production",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*🚀 Promoted to production*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+  notify-production-failure:
+    name: Notify production promotion failure
+    needs: promote-to-production
+    if: ${{ always() && needs.promote-to-production.result == 'failure' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Production promotion failed*
 
-      - name: Notify production promotion failure
-        if: ${{ needs.promote-to-production.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Production promotion failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Production promotion failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

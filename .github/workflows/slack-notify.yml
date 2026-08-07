@@ -1,0 +1,59 @@
+# Reusable Slack channel messenger
+#
+# Usage (job level):
+#   notify:
+#     needs: some-job
+#     if: ${{ needs.some-job.result == 'success' }}
+#     uses: ./.github/workflows/slack-notify.yml
+#     with:
+#       channel: teaching
+#       text: |
+#         *✅ Deployed to teaching*
+#         *Commit:* <...|sha>
+#     secrets: inherit
+#
+# Callers pass a slack channel name and markdown message. Unknown channels cause
+# a workflow failure.
+name: Slack notify
+
+on:
+  workflow_call:
+    inputs:
+      text:
+        description: "Full Slack markdown message"
+        required: true
+        type: string
+      channel:
+        description: "Slack channel to post to (must be a valid channel name)"
+        required: true
+        type: string
+
+jobs:
+  send:
+    name: Send Slack message
+    runs-on: ubuntu-24.04
+    env:
+      CHANNEL_WEBHOOKS: >-
+        {
+          "teaching": "${{ secrets.SLACK_WEBHOOK_URL }}"
+        }
+    steps:
+      - name: Check out repository
+        # Reusable workflows start on a clean runner; check out so the validation
+        # script under .github/scripts is present.
+        uses: actions/checkout@v7.0.1
+
+      - name: Validate channel and webhook
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: bash .github/scripts/slack-notify/validate-channel.sh
+
+      - name: Post to Slack
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          webhook: ${{ fromJSON(env.CHANNEL_WEBHOOKS)[inputs.channel] }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ${{ toJSON(inputs.text) }}
+            }
