@@ -43,9 +43,11 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v7.0.0
+      - name: Set up Python (+ Poetry & backend deps for unit)
+        uses: ./.github/actions/setup-python
         with:
-          python-version-file: .python-version
+          install-poetry: ${{ matrix.task == 'unit' }}
+          cache-key-prefix: pc-unit
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
@@ -79,36 +81,7 @@ jobs:
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
-      # ---- Cache for unit tests ----
-      # backend/.venv is intentionally NOT cached: it symlinks into the ephemeral
-      # Python toolcache, and a restored copy segfaults when that interpreter is
-      # rebuilt. Cache Poetry's download cache so `poetry install` stays fast.
-      - name: Cache Poetry & pip (unit)
-        if: matrix.task == 'unit'
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-          key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
-          restore-keys: |
-            pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
-            pc-unit-${{ runner.os }}-
-
       # ---- Unit test steps ----
-      - name: Install Poetry (unit)
-        if: matrix.task == 'unit'
-        run: |
-          python -m pip install -U pip poetry
-          poetry config virtualenvs.in-project true
-
-
-      - name: Install backend deps (unit)
-        if: matrix.task == 'unit'
-        working-directory: backend
-        run: |
-          poetry install --with dev --no-interaction --no-ansi
-
       - name: Checkout teaching-tooling (unit)
         if: matrix.task == 'unit'
         uses: actions/checkout@v7.0.1
