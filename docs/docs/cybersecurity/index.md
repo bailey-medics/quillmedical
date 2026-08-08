@@ -257,7 +257,7 @@ Penetration testing simulates real-world attacks to verify defences hold. Automa
   - Cookie security and unauthenticated endpoint protection
 - **Schedule**: 1st of each month at 03:00 UTC.
 - **Artefacts**: JUnit XML results uploaded with 90-day retention.
-- **Notifications**: Slack alert on failure.
+- **Notifications**: Slack alert on both success and failure — the success "dead man's switch" ping confirms the infrequent monthly run actually executed, so silence is never mistaken for a pass.
 
 ### Secret scanning
 

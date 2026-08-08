@@ -58,6 +58,19 @@ clinical/NHS go-live.
 
 - [ ] Increase `required_approving_review_count` from 0 to 1 in branch rules when a second developer joins — currently 0 in `infra/github/branch_rules.tf` line 85
 - [ ] Adopt a layered test-data seeding strategy so seed data scales from 1 to tens of developers without `backend/scripts/seed_ci.py` growing unboundedly. Three layers: (1) **baseline seed** — keep `seed_ci.py` tiny, only the 2–3 records every environment needs (now guarded by `BACKEND_ENV=testing`); split into a `backend/scripts/seeds/` package (by domain: `users.py`, `organisations.py`, `teaching.py`) only if it genuinely grows. (2) **factories** — introduce `factory_boy` (`SQLAlchemyModelFactory`) for scenario data so tests provision their own specifics via `UserFactory`/`OrganisationFactory` with `Sequence`/`SubFactory`/`Trait`; optionally `polyfactory` for generating valid Pydantic API payloads. (3) **fixtures + per-test transaction rollback** for backend integration-test delivery and isolation; clean-baseline + factories for E2E. Clinical-safety principle: create data a test asserts on through the same path a real clinician would (API/factory-through-endpoint) so tests prove the real system can reach that state. First concrete step: add `factory_boy` with a session-bound `UserFactory` + `OrganisationFactory`
+- [ ] Expand the security pentest suite (`backend/tests/test_security_pentest.py`) — current coverage is solid on auth/session/token core, injection, CSRF, cookie flags, vertical privilege escalation and unauthenticated access, but has healthcare-specific gaps. Prioritised:
+  - **IDOR / BOLA (horizontal access)** _(clinical — highest priority)_ — OWASP API #1, and the biggest gap. Assert user A cannot read or modify user B's patient, conversation, or record by ID. Only _vertical_ escalation is tested today, not _object-level_ access to another user's PHI
+  - **CBAC clinical gate enforcement** _(clinical)_ — assert a `has_competency("prescribe_controlled_schedule_2")`-gated endpoint returns 403 for a user lacking the competency. Existing tests cover `my-competencies` self-grant and system-permission gates but not the actual clinical CBAC dependency (`backend/app/cbac/`)
+  - **Token-type confusion** — assert a _refresh_ token cannot be used as an _access_ token on `/api/auth/me` (and vice-versa); `test_tampered_payload_rejected` only covers a non-existent user
+  - **PHI leakage in errors** _(clinical)_ — assert error responses (500s, validation errors, DB errors) never echo back patient data, stack traces or SQL, per the "never log/display PHI" rule
+  - **Refresh token rotation / reuse** — if refresh tokens rotate, a replayed old refresh token must be rejected (reuse detection)
+  - **2FA/TOTP** — TOTP code replay (same code rejected twice), brute-force rate limiting, and that 2FA cannot be skipped once enabled
+  - **Password-reset endpoint abuse** — one-time-use (reset token cannot be replayed), expired token rejected at the endpoint, and no enumeration on forgot-password. Currently only the token function is fuzzed, not the HTTP flow
+  - **Mass assignment via self-PATCH** — assert a regular user cannot `PATCH /api/users/{own_id}` to set `system_permissions: superadmin` or bump `token_version`
+  - **Security headers** — assert `X-Content-Type-Options`, `X-Frame-Options`/CSP, and HSTS (prod) on responses
+  - **CORS** — cross-origin requests from an untrusted origin are rejected
+  - **Oversized-payload DoS** — request body over the limit returns 413, not a hang
+  - **Nits on existing tests** — `test_missing_csrf_header_rejected` sends `X-CSRF-Token: ""` rather than omitting the header (also test genuine absence); several assertions use `status_code < 500`, which passes on unexpected 3xx/404 — tighten to explicit expected codes
 
 ## Web push notifications (production-readiness)
 
