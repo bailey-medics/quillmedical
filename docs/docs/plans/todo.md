@@ -12,6 +12,7 @@ clinical/NHS go-live.
 - [ ] Define data retention periods for UK GDPR compliance — user accounts, messages, assessments, audit logs _(pre-NHS)_ — existing compliance framing in `docs/docs/safety/overview/regulatory-framework.md`
 - [ ] Implement centralised audit trail for clinical data access (who accessed which patient, all modifications logged tamper-resistant) _(clinical)_ — partial groundwork exists with TODOs in `backend/app/cbac/decorators.py` (lines 58, 73); teaching audit model in `backend/app/features/teaching/models.py` can serve as pattern
 - [ ] Establish quarterly internal pentest routine (ZAP baseline + manual sessions with sqlmap/ffuf) _(clinical)_ — automated monthly/weekly ZAP scans already active in `.github/workflows/security-pentest.yml` and `zap-scan.yml`; manual routine deferred per `docs/docs/plans/pentesting-plan.md`
+- [ ] Exclude dev dependencies from the production backend image — `backend/Dockerfile` line 31 runs `poetry install` with no group flags, but the `dev` group in `backend/pyproject.toml` (`[tool.poetry.group.dev.dependencies]`) is **not** marked `optional`, so Poetry installs it by default. This ships `mypy`, `pytest`, `pytest-cov`, `mkdocstrings` into the runtime image — larger image and a bigger dependency/attack surface. Change to `poetry install --only main` (equivalently `--without dev`); CI/E2E will validate the image still builds and runs
 
 ## Monitoring and operations
 

@@ -61,8 +61,6 @@ jobs:
       # ---------- Backend docs (MkDocs via Poetry) ----------
       - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
-        with:
-          cache-key-prefix: poetry-docs
 
       - name: Export OpenAPI JSON for docs
         working-directory: backend

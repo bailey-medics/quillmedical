@@ -43,11 +43,8 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - name: Set up Python (+ Poetry & backend deps for unit)
+      - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
-        with:
-          install-poetry: ${{ matrix.task == 'unit' }}
-          cache-key-prefix: pc-unit
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
