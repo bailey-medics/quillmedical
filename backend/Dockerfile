@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" \
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
+# TODO: use `--only main` here — the dev group isn't marked optional, so this
+# currently installs dev deps (mypy, pytest, etc.) into the production image.
 RUN poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi
 

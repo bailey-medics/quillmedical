@@ -38,7 +38,8 @@ jobs:
         working-directory: frontend
         run: yarn workspace public-pages build
 
-      - uses: actions/upload-artifact@v7.0.1
+      - name: Upload public site
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: public-site
           path: frontend/dist/public_pages/
@@ -51,12 +52,13 @@ jobs:
       name: teaching
 
     steps:
-      - uses: actions/download-artifact@v8.0.1
+      - name: Download public site
+        uses: actions/download-artifact@v8.0.1
         with:
           name: public-site
           path: public-site/
 
-      - id: auth
+      - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
@@ -64,29 +66,8 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v3.0.1
 
-      # Sync files to the landing bucket. Set cache headers:
-      # - Hashed assets (js/css): 1 year immutable cache
-      # - Static assets (images, icons, manifest): 30 day cache
-      # - HTML files: no-cache (always revalidate)
       - name: Upload to GCS
-        run: |
-          BUCKET="${{ secrets.GCP_TEACHING_PROJECT_ID }}-landing"
+        run: bash .github/scripts/public-site/deploy-to-gcs.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
 
-          # Upload hashed assets with aggressive caching
-          gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
-            rsync -r -x '.*\.html$' public-site/assets/ "gs://${BUCKET}/assets/"
-
-          # Upload static assets (images, icons, manifest)
-          gsutil -m -h "Cache-Control:public, max-age=2592000" \
-            cp public-site/*.png public-site/*.ico public-site/*.webmanifest "gs://${BUCKET}/"
-
-          # Upload HTML files with no-cache
-          gsutil -m -h "Cache-Control:no-cache" \
-            cp public-site/*.html "gs://${BUCKET}/"
-
-      - name: Verify deployment
-        run: |
-          BUCKET="${{ secrets.GCP_TEACHING_PROJECT_ID }}-landing"
-          echo "Checking bucket contents..."
-          gsutil ls "gs://${BUCKET}/"
-          gsutil ls "gs://${BUCKET}/assets/"
+      - name: List deployed files
+        run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
