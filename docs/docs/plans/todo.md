@@ -73,6 +73,7 @@ clinical/NHS go-live.
   - **Security headers** — assert `X-Content-Type-Options`, `X-Frame-Options`/CSP, and HSTS (prod) on responses
   - **CORS** — cross-origin requests from an untrusted origin are rejected
   - **Oversized-payload DoS** — request body over the limit returns 413, not a hang
+  - **Hypothesis fuzzing of clinical form/API inputs** _(clinical)_ — today Hypothesis only fuzzes crypto round-trips (`hash_password`, CSRF, reset-token, JWT) plus one small input-validation test; it does **not** hammer real endpoint payloads because there are no clinical inputs yet. Once clinical endpoints exist on the GCP clinical env, add property/range-based fuzzing of actual form/API inputs: FHIR/EHRbase payloads, date/DOB boundaries, dose/measurement ranges, unusual Unicode in names, and Pydantic `extra='forbid'` rejection of unexpected fields — added endpoint-by-endpoint as those endpoints land. Deliberately deferred: Quill is currently teaching-only ("paper-based" competency assessment, low clinical risk), so heavy input fuzzing is not warranted until real clinical data flows
   - **Nits on existing tests** — `test_missing_csrf_header_rejected` sends `X-CSRF-Token: ""` rather than omitting the header (also test genuine absence); several assertions use `status_code < 500`, which passes on unexpected 3xx/404 — tighten to explicit expected codes
 
 ## Web push notifications (production-readiness)
