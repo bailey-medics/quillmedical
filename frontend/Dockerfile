@@ -17,7 +17,6 @@ WORKDIR /app
 
 COPY frontend/package.json frontend/yarn.lock frontend/.yarnrc.yml ./
 COPY frontend/public_pages/package.json ./public_pages/package.json
-COPY frontend/.yarn/ .yarn/
 
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --immutable --check-cache
