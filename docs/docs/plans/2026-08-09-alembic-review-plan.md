@@ -1,15 +1,22 @@
 # Alembic review and migration safety plan
 
 **Date:** 2026-08-09
-**Status:** Review complete; plans below awaiting selection for implementation
+**Status:** Review complete; decisions made; awaiting implementation
 **Scope:** `backend/alembic/` — reviewed during the backend human code review
 
-A summary of everything found and proposed while reviewing the Alembic
-migration setup. Findings are green unless stated. Plans are grouped as
-**Agreed**, **Potential**, and **Decisions needed** so each can be picked
-up or dropped independently.
+This document is organised in four parts:
 
-## Context
+- **Part 1 — What we reviewed and why**: the scope, the findings, and the
+  reasoning behind every decision (how migrations run, locking, expand-contract,
+  crash-loop containment, and validation approaches).
+- **Part 2 — What we planned to do**: each item a tickbox, with its decision
+  recorded inline.
+- **Part 3 — What we decided not to do**: options deliberately rejected, and why.
+- **Part 4 — Tests**: what proves the changes work and break nothing.
+
+## Part 1 — What we reviewed and why
+
+### Scope and how migrations run
 
 - Migrations run **automatically on every deploy** via
   `backend/docker/entrypoint.sh` (`alembic upgrade head`, 5 retries, then
@@ -21,7 +28,7 @@ up or dropped independently.
 - 34 migrations, one unbroken linear chain from base `49c5bacfa481`
   (init_auth_tables) to head `org002`.
 
-## Completed during review
+### Already fixed during the review
 
 - **Removed orphan entrypoint** — deleted
   `backend/alembic/docker/entrypoint.sh` (and its now-empty folder). It was
@@ -29,7 +36,7 @@ up or dropped independently.
   The orphan was also the inferior version (swallowed migration failures with
   a warning and served anyway, vs the live one which retries then exits).
 
-## Findings (no action required)
+### What we found (no action required)
 
 - **`env.py` is clean.** `compare_type=True` set in both offline and online
   paths; DB URL sourced from `settings.CORE_DATABASE_URL`; teaching models
@@ -48,102 +55,7 @@ up or dropped independently.
   break an auto-deploy (adding NOT NULL to an existing column with no default
   and un-backfilled NULLs).
 
-## Agreed plans
-
-### 1. `backend/scripts/check_migrations.py` — automated enforcement
-
-Pure-stdlib (`ast`, `pathlib`), **no DB, no `app` import** so it is safe in
-pre-commit. Parses every `backend/alembic/versions/*.py` and fails with a
-clear message on:
-
-1. **Chain integrity** — exactly one base and one head; no reused
-   `down_revision` (branch); no cycles.
-2. **Non-empty description** — module docstring present; reject bare
-   `<rev>_.py` slugs.
-3. **Reversibility** — `downgrade()` must not be empty/`pass`.
-4. **NOT NULL trap** — any `add_column`/`alter_column` with `nullable=False`
-   must also pass `server_default=` in the same call.
-5. **Destructive ops** — `drop_column`/`drop_table`/`drop_constraint` in
-   `upgrade()` require an explicit `# migration-check: allow-destructive`
-   marker (forces expand-contract deliberateness).
-
-Allow-list the existing 34 revisions so current history passes; hold new
-migrations to the full standard. Runnable as
-`python backend/scripts/check_migrations.py --all`.
-
-### 2. `.github/instructions/backend.instructions.md` — documented rules
-
-- **Location: repo-root `.github/instructions/`** (NOT nested under
-  `backend/` — VS Code only auto-discovers root). Scope via frontmatter
-  `applyTo: "backend/**"`, matching `just.instructions.md`.
-- Content: Alembic expand-contract rules mirroring the script, plus: always
-  use `just migrate "description"` (never raw `alembic revision`); the
-  NOT NULL -> add nullable + `server_default` -> backfill -> tighten pattern
-  (cite `197844c56085` as the canonical example); every migration needs a
-  real docstring and meaningful slug; destructive changes are separate,
-  deliberate contract migrations; migrations run on deploy so a failure =
-  failed deploy.
-
-### 3. Backfill the empty migration descriptions (zero-risk)
-
-Seven files have blank docstrings / `_.py` slugs (created by running
-`alembic revision` directly, bypassing `just migrate` which requires a
-message): `f98e1c93dcd7`, `0d836462f7f7`, `4c072d8106a9`, `58e3011782fa`,
-`65817fed5f7a`, `bdb2df886116`, `e51ecb1aaf56`. Add a one-line docstring to
-each describing intent (read the `upgrade()` body). Renaming the file is
-optional and cosmetic — the revision ID is what matters to the chain, so
-editing just the docstring is zero-risk.
-
-### 4. Wiring
-
-Add a **local pre-commit hook** to `.pre-commit-config.yaml`
-(`files: ^backend/alembic/versions/.*\.py$`, `pass_filenames: false`).
-CI's `python_checks` (pre-commit) matrix task already runs
-`pre-commit run --all-files`, so **no `ci.yml` change is needed**.
-
-## Potential plans (optional — pick as desired)
-
-- **Autogenerate-drift CI check** _(high value)_ — a CI step that runs
-  `alembic revision --autogenerate` against a fresh migrated DB and fails if
-  it produces any non-empty diff. Catches "model changed but migration
-  forgotten" — a genuine class of bug the static checker cannot see. Needs a
-  throwaway Postgres in CI (the E2E stack already has one).
-- **Upgrade/downgrade round-trip test** — a test that runs
-  `upgrade head` then `downgrade base` (or step-by-step) to prove every
-  migration is actually reversible, not just syntactically present.
-- **`compare_server_default` decision** — deliberately left **off** in
-  `env.py` (recurring false-positive noise outweighs the benefit at this
-  scale; DB defaults are few). Optional: add a one-line comment beside the
-  `compare_type=True` lines recording this decision so it is not mistaken for
-  an oversight.
-- **Revision-ID naming consistency** — most migrations use autogenerated
-  hashes, but several use custom short IDs (`msg001`, `org001`, `cbac001`,
-  `sp001`, `pm001`, `teach001`). Harmless, but worth deciding on one
-  convention going forward (recommend: let Alembic generate hashes; rely on
-  the slug for readability).
-- **Typing style consistency** — migration headers mix
-  `Union[str, None]` and `str | None`. Cosmetic; Ruff/`UP` could normalise.
-  Note: Black currently _excludes_ `alembic/versions`, so these files are not
-  auto-formatted.
-- **Date-prefixed filenames** — optionally uncomment `file_template` in
-  `alembic.ini` so new migrations sort chronologically. Improves traceability;
-  does not fix docstrings.
-- **`post_write_hooks`** — optionally enable Ruff/Black on newly generated
-  migrations via `alembic.ini` so new files are auto-formatted despite the
-  pre-commit exclusion.
-- **Set `lock_timeout` / `statement_timeout` on migrations** _(agreed — should
-  do)_ — migrations currently set no timeouts, so a migration that cannot
-  acquire its `ACCESS EXCLUSIVE` table lock quickly will **queue behind a
-  long-running query and stall all traffic to that table** (the classic
-  "tiny migration caused an outage" via lock-queue pile-up). Set e.g.
-  `SET lock_timeout = '3s'; SET statement_timeout = '30s';` so a migration that
-  can't get its lock **fails fast** instead of blocking the live app; thanks to
-  transactional DDL it then rolls back cleanly and the old revision keeps
-  serving. Apply centrally in `env.py` (execute the `SET`s at the start of
-  `run_migrations_online`) so every migration inherits them, rather than
-  per-file. Tune values for the environment.
-
-## Concurrency and locking during migrations
+### Concurrency and locking during a migration
 
 How concurrent user / service writes interact with a running migration —
 governed entirely by PostgreSQL locking, not by any app-level coordination
@@ -169,8 +81,8 @@ service).
   fast defaults). The other hazard is the **lock queue**: one slow query already
   holding a lock makes the migration wait, and every new query then queues
   behind the migration's pending exclusive lock — a brief stall even for an
-  instant migration. This is exactly what the `lock_timeout` item above guards
-  against.
+  instant migration. This is exactly what the `lock_timeout` plan (Part 2)
+  guards against.
 
 ### Why the old app keeps working after the migration commits (expand-contract)
 
@@ -194,21 +106,50 @@ boots. Expand-contract is what lets them safely share that single schema.
   the superseded column) ships in a **separate, subsequent migration**, once no
   running revision still uses the old shape.
 
+#### Renames need backfill + dual-write
+
+A "rename" (`body` → `content`) is really a **copy-and-retire** spread across
+several deploys — you cannot just rename the column, because that instantly
+breaks the still-serving old app. You need **both** a backfill (for existing
+rows) **and** dual-writes (for rows that change while you migrate), because the
+old and new versions run concurrently and the table is a moving target:
+
+1. **Expand** — add nullable `content`; deploy an app that **writes both**
+   `body` and `content` but still **reads `body`**. From here every new/updated
+   row keeps the two in sync.
+2. **Backfill** — copy the historical rows the dual-write hasn't touched:
+   `UPDATE … SET content = body WHERE content IS NULL`, **batched** for large
+   tables (e.g. `… LIMIT 10000` in a loop) to avoid a full-table lock or one
+   giant transaction.
+3. **Switch reads** — deploy an app that **reads `content`** (still writing
+   both, for safety).
+4. **Contract** — deploy an app that **stops writing `body`**, then a final
+   migration `DROP COLUMN body`.
+
+The one-off `UPDATE` handles rows that **already exist**; the app-side
+dual-write handles rows that **change during** the migration — you need both.
+
+Simpler cases skip all of this: a brand-new column with no historical meaning
+(default NULL) needs no copy, and a column with a **constant** `server_default`
+is filled for existing rows automatically at migration time. A copy is only
+needed when the new column must **inherit meaning** from an old one.
+
 This is why the "old revision keeps serving" safety net (see crash-loop
 mitigation below) is only real if every migration is backward-compatible —
 `check_migrations.py` + `backend.instructions.md` are what enforce that.
 
-## Migration validation options (dry runs)
+### Migration validation approaches (dry runs)
 
-Three levels, cheapest to strongest — none wired up today except staging-first:
+Three levels, cheapest to strongest:
 
 1. **Offline SQL preview** — `alembic upgrade head --sql` prints the SQL without
    executing it, for review. Cheap, but does not test against real data (won't
-   catch a `NOT NULL` failing on existing NULLs).
-2. **Run against a Cloud SQL clone** _(gold standard)_ — clone the prod instance
-   (or restore from PITR/backup), run `upgrade head` against the clone, verify,
-   then discard. Tests the migration against **real prod-shaped data**, so it
-   _would_ catch the NULL-constraint trap.
+   catch a `NOT NULL` failing on existing NULLs). Not pursued — the static
+   `check_migrations.py` already catches the one trap it might reveal.
+2. **Run against a Cloud SQL clone** _(gold standard)_ — a desired plan (Part 2),
+   tagged to adopt **before real production / patient load**. Clone the prod
+   instance, run `upgrade head` against the clone, verify, then discard — tests
+   against **real prod-shaped data**.
 3. **Staging-first — already in place.** Teaching is the de-facto staging gate:
    migrations run on teaching before production (production is a later,
    deliberate promotion of the same image), so a broken migration fails on
@@ -222,13 +163,13 @@ The standard answer for the live DB is **expand-contract** (backward-compatible
 changes so old and new code share one schema), with clone-and-test used only for
 _validation_ (option 2), not for the rollout.
 
-## Deploy-time crash-loop mitigation
+### How a failed migration is contained today (crash-loop mitigation)
 
 Migrations run automatically from the serving container's entrypoint, so a
-failed migration crash-loops the new revision. This section documents what
-protects us today and the gaps.
+failed migration crash-loops the new revision. This documents what protects us
+today and the gaps.
 
-### What protects us today (automatic, implicit)
+#### What protects us today (automatic, implicit)
 
 - **Cloud Run revision model + health probes** (`infra/modules/cloud-run/main.tf`).
   A deploy (`gcloud run services update --image=…`) creates a **new revision**.
@@ -247,7 +188,7 @@ and, for availability, none is needed because Cloud Run never cuts over. A
 deliberate rollback is manual (`gcloud run services update-traffic
 --to-revisions=<prev>=100` or redeploy the prior image).
 
-### The subtle gap (largely closed by transactional DDL)
+#### The subtle gap (largely closed by transactional DDL)
 
 Important correction: on this setup a **partial** migration is prevented.
 `env.py` wraps the whole run in a single `context.begin_transaction()` and does
@@ -272,37 +213,291 @@ rollback**: as long as every migration is backward-compatible, the "old revision
 keeps serving" safety net holds. The agreed `check_migrations.py` +
 `backend.instructions.md` work is what makes this implicit rollback _safe_.
 
-### Smoke-test caveat
+#### Smoke-test caveat
 
 `smoke-test.sh` polls the **public URL** `…/api/health`, which is served by the
 **old (healthy) revision** if the new one failed — so it returns 200 and
 **passes** regardless. The genuine gate is `gcloud` failing on non-readiness,
 not the smoke test.
 
-### Options (potential — pick as desired)
+#### Where the mitigation options landed
 
-1. **Explicit rollback step** — an `on failure -> update-traffic to previous
-revision` job. Largely redundant for availability (Cloud Run never cut over)
-   but makes intent explicit and can be paired with a down-migration to cover
-   the "DB moved ahead" case.
-2. **Decouple migrations from the serving container** _(highest value)_ — run
-   `alembic upgrade head` as a **separate pre-deploy Cloud Run Job** (the
-   `admin` image target already exists), so schema changes are a deliberate,
-   observable step that succeeds or blocks the deploy **before** a new app
-   revision is created. Removes the "DB advances while old code serves" hazard
-   entirely.
-3. **Revision-specific smoke test** — hit the new revision's own URL (not the
-   public one) so the smoke test actually verifies the _new_ revision rather
-   than whatever is currently serving.
+The three mitigation options are resolved: **decouple migrations into a
+pre-deploy Cloud Run Job** and a **revision-specific smoke test** are in Part 2
+(planned); the **explicit rollback step** is in Part 3 (deliberately not done —
+redundant given Cloud Run's automatic old-revision fallback and our
+roll-forward posture).
 
-## Decisions needed
+## Part 2 — What we planned to do
 
-1. **Empty `downgrade()` for new migrations** — FAIL or WARN?
-   _Recommendation: FAIL._
-2. **check_migrations scope** — allow-list the existing 34 vs a `--changed`
-   (git-diff) mode? _Recommendation: allow-list (deterministic in CI)._
-3. **Docstring backfill** — do the 7 files now, or just allow-list them?
-   _Recommendation: backfill (zero-risk, better traceability)._
+### Agreed plans
+
+#### 1. `backend/scripts/check_migrations.py` — automated enforcement
+
+- [ ] Create `backend/scripts/check_migrations.py` with the five checks below.
+
+Pure-stdlib (`ast`, `pathlib`), **no DB, no `app` import** so it is safe in
+pre-commit. Parses every `backend/alembic/versions/*.py` and fails with a
+clear message on:
+
+1. **Chain integrity** — exactly one base and one head; no reused
+   `down_revision` (branch); no cycles.
+2. **Non-empty description** — module docstring present; reject bare
+   `<rev>_.py` slugs.
+3. **Reversibility** — `downgrade()` must not be empty/`pass`.
+4. **NOT NULL trap** — any `add_column`/`alter_column` with `nullable=False`
+   must also pass `server_default=` in the same call.
+5. **Destructive ops** — `drop_column`/`drop_table`/`drop_constraint` in
+   `upgrade()` require an explicit `# migration-check: allow-destructive`
+   marker (forces expand-contract deliberateness).
+
+Allow-list the existing 34 revisions so current history passes; hold new
+migrations to the full standard. Runnable as
+`python backend/scripts/check_migrations.py --all`.
+
+#### 2. `.github/instructions/backend.instructions.md` — documented rules
+
+- [ ] Create `.github/instructions/backend.instructions.md` scoped to `backend/**`.
+
+- **Location: repo-root `.github/instructions/`** (NOT nested under
+  `backend/` — VS Code only auto-discovers root). Scope via frontmatter
+  `applyTo: "backend/**"`, matching `just.instructions.md`.
+- Content: Alembic expand-contract rules mirroring the script, plus: always
+  use `just migrate "description"` (never raw `alembic revision`); the
+  NOT NULL -> add nullable + `server_default` -> backfill -> tighten pattern
+  (cite `197844c56085` as the canonical example); every migration needs a
+  real docstring and meaningful slug; destructive changes are separate,
+  deliberate contract migrations; migrations run on deploy so a failure =
+  failed deploy.
+
+#### 3. Backfill the empty migration descriptions (zero-risk)
+
+- [ ] Add a one-line docstring to each of the seven empty-description migrations.
+
+Seven files have blank docstrings / `_.py` slugs (created by running
+`alembic revision` directly, bypassing `just migrate` which requires a
+message): `f98e1c93dcd7`, `0d836462f7f7`, `4c072d8106a9`, `58e3011782fa`,
+`65817fed5f7a`, `bdb2df886116`, `e51ecb1aaf56`. Add a one-line docstring to
+each describing intent (read the `upgrade()` body). Renaming the file is
+optional and cosmetic — the revision ID is what matters to the chain, so
+editing just the docstring is zero-risk.
+
+#### 4. Wiring
+
+- [ ] Add the local pre-commit hook for `check_migrations.py` to `.pre-commit-config.yaml`.
+
+Add a **local pre-commit hook** to `.pre-commit-config.yaml`
+(`files: ^backend/alembic/versions/.*\.py$`, `pass_filenames: false`).
+CI's `python_checks` (pre-commit) matrix task already runs
+`pre-commit run --all-files`, so **no `ci.yml` change is needed** — the check
+runs in CI for free via that step.
+
+Two subtleties worth recording:
+
+- **`pass_filenames: false`** means the script never receives the staged
+  filenames; it scans the whole `versions/` directory itself. So chain-integrity
+  checks (one base, one head) always see **all** migrations, even when only one
+  file changed. The `files:` pattern only decides **whether** the hook runs, not
+  **what** it inspects.
+- On `pre-commit run --all-files` the `files:` filter matches every migration,
+  so CI runs the same full-directory scan regardless of what changed in the PR.
+
+### Potential plans (all now decided — desired)
+
+**Every item below is a desired plan; the decision is recorded inline.**
+
+- [ ] **Autogenerate-drift CI check** _(high value)_ — a CI step that runs
+      `alembic revision --autogenerate` against a fresh migrated DB and fails if
+      it produces any non-empty diff. Catches "model changed but migration
+      forgotten" — a genuine class of bug the static checker cannot see. Needs a
+      throwaway Postgres in CI (the E2E stack already has one). **Always run it —
+      never gate it on migration files changing.** The bug it catches is precisely a
+      PR that edits a model but adds **no** migration, so a "migrations changed"
+      filter would skip the one case that matters. **Decided: run on every backend
+      CI run** (not gated on model or migration changes) — the run is cheap and
+      determinism beats the saved seconds.
+- [ ] **`compare_server_default` decision** — deliberately left **off** in
+      `env.py` (recurring false-positive noise outweighs the benefit at this
+      scale; DB defaults are few). Add a one-line comment beside the
+      `compare_type=True` lines recording this decision so it is not mistaken for
+      an oversight.
+- [ ] **Revision-ID naming consistency** — most migrations use autogenerated
+      hashes, but several use custom short IDs (`msg001`, `org001`, `cbac001`,
+      `sp001`, `pm001`, `teach001`). Harmless. **Decided: let Alembic generate
+      hashes going forward and rely on the slug for readability** — do not
+      hand-author custom short IDs. Existing custom IDs stay as-is (renaming a
+      revision ID would break the chain); the convention applies to new
+      migrations only.
+- [ ] **Typing style consistency — remove both excludes now** _(recommended while
+      there is no live data)_ — migration headers mix `Union[str, None]` and
+      `str | None`. The fix is Ruff's `UP` group (pyupgrade), **not** Black: `UP`
+      rewrites `Union[str, None]` → `str | None`; Black only handles
+      whitespace/quotes/line-length. Both tools currently exclude the folder:
+      Ruff `exclude = ["alembic/versions"]` and Black
+      `exclude = "(^|/)backend/alembic/versions(/|$)"` in `backend/pyproject.toml`.
+      A `UP`/Black pass is **purely cosmetic**: it never touches revision IDs,
+      `down_revision` links, or the `upgrade()`/`downgrade()` SQL — only the
+      decorative header type hints Alembic never reads at runtime. And Alembic
+      **never re-runs an already-applied migration** (it checks `alembic_version`
+      and skips), so reformatting a shipped file is invisible even on a populated
+      DB — the "immutable history" rule is about not changing what a migration
+      _does_, not its formatting. The only cost is a one-off 34-file churn commit
+      and a `git blame` redirect. **Recommendation:** delete both `exclude` lines
+      and let `pre-commit run --all-files` reformat the lot in one commit — this
+      fixes the existing files _and_ auto-formats all future migrations via the
+      normal pre-commit pass.
+- [ ] **Date-prefixed filenames** _(recommended)_ — uncomment `file_template` in
+      `alembic.ini` (`%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s`)
+      so new migrations become `2026_08_09_1430-<rev>_<slug>.py` and sort
+      chronologically in the file explorer. **Prefer date over an incremental
+      number:** Alembic has no native monotonic counter, so `0001_`, `0002_` would
+      be hand-maintained bookkeeping that collides the moment two branches are in
+      flight; the date template is built-in, zero-maintenance, and conveys the same
+      ordering. The prefix is **purely a human-sorting affordance** — true ordering
+      is always the `down_revision` chain, never the filename.
+      **Decided: retroactively rename all 34 existing files with date prefixes**
+      (cheap now, no live data): the revision ID lives _inside_ each module
+      (`revision = "…"`), and Alembic scans the directory reading each module's
+      `revision`/`down_revision`, so the filename is never the source of truth —
+      renaming cannot break the chain. Backfill accurate prefixes from each file's
+      existing `Create Date:` header. Caveat: the date reflects _creation_ time,
+      which equals _chain_ order only because this repo keeps a strictly linear
+      single-head history (it does). Improves traceability; does not fix docstrings.
+- [ ] **Set `lock_timeout` / `statement_timeout` on migrations** _(agreed — should
+      do)_ — migrations currently set no timeouts, so a migration that cannot
+      acquire its `ACCESS EXCLUSIVE` table lock quickly will **queue behind a
+      long-running query and stall all traffic to that table** (the classic
+      "tiny migration caused an outage" via lock-queue pile-up). Set e.g.
+      `SET lock_timeout = '3s'; SET statement_timeout = '30s';` so a migration that
+      can't get its lock **fails fast** instead of blocking the live app; thanks to
+      transactional DDL it then rolls back cleanly and the old revision keeps
+      serving. Apply centrally in `env.py` (execute the `SET`s at the start of
+      `run_migrations_online`) so every migration inherits them, rather than
+      per-file. **Decided: `lock_timeout = 3s`, `statement_timeout = 30s`.**
+- [ ] **Decouple migrations from the serving container** _(highest value at scale)_
+      — run `alembic upgrade head` as a **separate pre-deploy step** (a Cloud Run
+      **Job** — the `admin` image target already exists) against the **same** core
+      DB, **before** the new app revision is created. Same database and same
+      migrations; only the runner and timing change (no new DB). Benefits: the
+      migration runs **exactly once** (removing the multi-instance race where
+      several new-revision instances each run the migration on startup), gives a
+      clean pass/fail signal separate from app boot, and lets the app service
+      account drop DDL privileges (least privilege). Priority: adopt **before real
+      production / patient load** and before scaling instances up — the risks it
+      removes only bite with multiple instances against real data, which we don't
+      have yet.
+- [ ] **Revision-specific smoke test** — point the deploy smoke test at the **new
+      revision's own tagged URL** (a Cloud Run traffic **tag** deployed
+      `--no-traffic`), not the public URL, so it verifies the revision just
+      shipped rather than whatever is currently serving. No load-balancer / Caddy
+      change is needed while `ingress = ALL`; it requires switching the deploy to
+      tag + no-traffic, then a promote step. **Complements** (does not replace) the
+      decoupled migration job and the public-edge smoke test — the three cover
+      different failure domains (DB change, new-revision health, public edge).
+- [ ] **Validate migrations against a Cloud SQL clone** _(gold standard; adopt
+      before real production / patient load)_ — before applying a migration to
+      production, clone the prod instance (or restore from PITR/backup), run
+      `alembic upgrade head` against the clone, verify, then discard. Tests the
+      migration against **real prod-shaped data**, so it catches failures that
+      only surface against live rows — the classic being a `NOT NULL` that fails
+      on existing un-backfilled NULLs. Only worth its setup cost (clone/restore
+      automation, a deploy/CI step, teardown) once production holds data that
+      teaching's staging gate no longer represents — so adopt it **before real
+      production / patient load**, alongside the decoupled migration job. Until
+      then, staging-first (below) plus `check_migrations.py` cover the realistic
+      cases. Note: this is clone-and-**test** only, not clone-migrate-**swap** —
+      the clone is discarded, never promoted (see the blue-green caveat in Part 1).
+- [ ] **Fail (not warn) on an empty `downgrade()`** — `check_migrations.py`
+      check #3 treats a missing / empty / `pass`-only `downgrade()` on a **new**
+      migration as a hard **FAIL**, not a warning. Keeps the reversibility gate
+      enforceable: every new migration must ship a real downgrade body.
+
+### Open decision
+
+- **`check_migrations` scope** — allow-list the existing 34 revisions vs a
+  `--changed` (git-diff) mode? Recommendation: **allow-list** (deterministic in
+  CI; matches Agreed plan 1). Left open for final confirmation.
+
+## Part 3 — What we decided not to do
+
+- **Explicit rollback step (deploy)** — an "on failure → update-traffic to the
+  previous revision" job. **Not needed** — Cloud Run already keeps 100% of
+  traffic on the previous healthy revision when a new one fails to become Ready,
+  and we've chosen a **roll-forward** posture (no production downgrades). Its
+  only extra value would be triggering an automatic DB _downgrade_, which we've
+  explicitly decided against.
+- **`post_write_hooks`** — enabling Ruff/Black on newly generated migrations at
+  `just migrate` time via `alembic.ini`. **Not needed** — the "Typing style"
+  plan removes both the Ruff and Black `exclude` lines for `alembic/versions`,
+  so the ordinary `pre-commit` pass now formats every migration (existing and
+  new) on commit. A post-write hook would only format marginally earlier (at
+  generation rather than commit time), duplicating what pre-commit already does.
+- **Upgrade/downgrade round-trip test** — a test that runs `upgrade head` then
+  `downgrade base` (or step-by-step) to prove every migration is reversible, not
+  just syntactically present. **Decided against — roll-forward posture.** This
+  plan already concludes that expand-contract + roll-forward is the real
+  mitigation and that we never `downgrade` production (Cloud Run never cuts
+  over). Testing downgrade reversibility validates a path we won't use, and a
+  downgrade that drops a column is _structurally_ reversible yet still destroys
+  data — so the test proves little of value at real ongoing cost (throwaway
+  Postgres, CI wiring, schema-reset fixtures, isolation flakiness). The cheap
+  80% is already covered: `check_migrations.py` statically asserts `downgrade()`
+  isn't empty, and `upgrade head` on a fresh DB is exercised for free whenever
+  CI/tests spin up the stack — which is the direction that actually runs on
+  deploy.
+
+## Part 4 — Tests: proving it works and nothing broke
+
+Each change ships with tests. **Group A** proves the new tooling works;
+**Group B** proves the existing migration history and the deploy path are
+unbroken; **Group C** covers the scaled-infrastructure items, exercised only
+when those land. Backend tests run in Docker (`just ub`).
+
+### A. New tooling behaves correctly
+
+- [ ] **`check_migrations.py` unit tests** — one passing and one failing fixture
+      per check (chain integrity, non-empty description, reversibility, NOT NULL
+      trap, destructive-op marker); assert exit code and message for each.
+- [ ] **Allow-list honoured** — running the script against the current 34
+      revisions exits 0 (grandfathered); a synthetic new migration violating each
+      rule exits non-zero.
+- [ ] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
+      `pass`-only `downgrade()` fails (not a warning).
+- [ ] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
+      passes on clean history; the `files:` pattern triggers it on a versions
+      file edit.
+- [ ] **Autogenerate-drift check** — against a fresh migrated DB the autogenerate
+      diff is empty (green); a deliberately-added model column with no migration
+      produces a non-empty diff (red), proving the check catches drift.
+- [ ] **Lock / statement timeouts applied** — assert `env.py` issues
+      `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
+      of `run_migrations_online` (capture via a spy engine or an integration run).
+
+### B. Nothing broke (regression / safety)
+
+- [ ] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
+      completes with no error (the exact path that runs on deploy).
+- [ ] **Chain unchanged after renames + docstrings** — `alembic history` and
+      `alembic heads` are identical before and after the date-prefix rename and
+      the docstring backfill (single base, single head `org002`, same order).
+- [ ] **Reformat is behaviour-preserving** — after removing the Ruff/Black
+      excludes and reformatting, `alembic history` is unchanged and
+      `alembic upgrade head` still succeeds (only header type hints changed; no
+      `revision` / `down_revision` / SQL edits).
+- [ ] **Schema parity** — the schema produced by `upgrade head` after the changes
+      matches the pre-change schema (compare `pg_dump --schema-only`), proving the
+      docstring / rename / format work changed nothing structural.
+- [ ] **Full backend suite** — `just ub` passes (models and migrations still
+      consistent with the app).
+
+### C. Deferred (verify only when the scaled items land)
+
+- [ ] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
+      once, exits 0, and the app revision boots against the migrated DB.
+- [ ] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
+      returns 200 on `/api/health` before promotion.
+- [ ] **Cloud SQL clone validation** — `upgrade head` against a prod clone passes,
+      then the clone is discarded.
 
 ## Related existing to-do items
 
