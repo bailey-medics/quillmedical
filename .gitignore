@@ -31,3 +31,6 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.pyc
+
+# Stray Yarn state (no Yarn project at repo root; real project is in frontend/)
+/.yarn/
