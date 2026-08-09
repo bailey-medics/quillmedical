@@ -49,6 +49,7 @@ clinical/NHS go-live.
 - [ ] Eliminate teaching dashboard skeleton flash (~0.3s) — add caching layer or delay skeleton display; loading state in `AdminTeachingPage.tsx` (lines 96–113) passes directly to `DataTableWithResults.tsx` (line 83) which renders Skeleton immediately with no delay threshold
 - [ ] Implement automatic auth state refresh via `visibilitychange` listener in `AuthContext.tsx` — current reload only fires on mount (line ~138); add `document.addEventListener("visibilitychange", ...)` beside that effect
 - [ ] Wire up CBAC frontend hooks — `useHasCompetency` etc. are hardcoded to `false`, hiding entitled features _(clinical)_ — hooks at `frontend/src/lib/cbac/hooks.ts` lines 34–66; needs user competencies exposed in auth state or fetched from backend
+- [ ] Define patient self-access competencies in `shared/competencies.yaml` (e.g. `view_own_records`, `manage_own_demographics`) — the "Patient access" CBAC category is described in `.github/copilot-instructions.md` and assigned to the patient base profession, but no such competencies exist yet; `shared/competencies.yaml` currently only defines clinical/administrative/teaching capabilities. Add a `patient_self_access` category, wire the IDs into the `patient` entry in `shared/base-professions.yaml`, then restore the examples in the copilot instructions
 
 ## Refactoring and code quality
 
