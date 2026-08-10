@@ -335,7 +335,7 @@ the time the last item ships.
 
 ### 1. `backend/scripts/check_migrations.py` — automated enforcement
 
-- [ ] Create `backend/scripts/check_migrations.py` with the five checks below.
+- [x] Create `backend/scripts/check_migrations.py` with the five checks below.
 
 Pure-stdlib (`ast`, `pathlib`), **no DB, no `app` import** so it is safe in
 pre-commit. Parses every `backend/alembic/versions/*.py` and fails with a
@@ -360,7 +360,7 @@ migrations to the full standard. The parser reads both annotated
 
 ### 2. Fail (not warn) on an empty `downgrade()`
 
-- [ ] Make `check_migrations.py` check #3 a hard **FAIL** on new migrations.
+- [x] Make `check_migrations.py` check #3 a hard **FAIL** on new migrations.
 
 `check_migrations.py` check #3 treats a missing / empty / `pass`-only
 `downgrade()` on a **new** migration as a hard **FAIL**, not a warning. Keeps
@@ -369,7 +369,7 @@ downgrade body.
 
 ### 3. `.github/instructions/backend.instructions.md` — documented rules
 
-- [ ] Create `.github/instructions/backend.instructions.md` scoped to `backend/**`.
+- [x] Create `.github/instructions/backend.instructions.md` scoped to `backend/**`.
 
 - **Location: repo-root `.github/instructions/`** (NOT nested under
   `backend/` — VS Code only auto-discovers root). Scope via frontmatter
@@ -492,7 +492,7 @@ single-head history (it does). Improves traceability; does not fix docstrings.
 ### 9. `compare_server_default` — record the decision
 
 - [ ] Add a one-line comment beside the `compare_type=True` lines in `env.py`.
-- [ ] Record the same decision in `backend.instructions.md` (item 3).
+- [x] Record the same decision in `backend.instructions.md` (item 3).
 
 Deliberately left **off** in `env.py` (recurring false-positive noise outweighs
 the benefit at this scale; DB defaults are few). Add a one-line comment beside

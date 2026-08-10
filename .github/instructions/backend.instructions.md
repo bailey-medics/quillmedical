@@ -37,6 +37,26 @@ migration is held to the full standard below.
 - Canonical example: `197844c56085` (add `email_verified` with a
   `server_default` and `nullable=False`, then backfill existing rows).
 
+### Renaming tables and matching indexes
+
+- Postgres does **not** rename a table's auto-named indexes when the table
+  is renamed. `op.rename_table("old", "new")` leaves an index called
+  `ix_old_col` in place, so autogenerate will forever flag it against the
+  model's expected `ix_new_col`. When you rename a table, add a matching
+  `op.execute("ALTER INDEX ix_old_col RENAME TO ix_new_col")` (reversible,
+  lock-light, no rebuild). Canonical example: `b66133f32f7b` (renames
+  `ix_organizations_name` to `ix_organisations_name` after the `org002`
+  table rename).
+
+### Partial and expression indexes in models
+
+- A partial or expression index created in a migration (e.g.
+  `postgresql_where=`) must also be declared in the model metadata as an
+  `Index(...)` with the same `postgresql_where`, otherwise autogenerate
+  cannot see it and repeatedly proposes to drop it. Example:
+  `ix_site_staff_one_clinical_lead` is declared on the `site_staff_member`
+  table in `models.py`.
+
 ### Destructive changes
 
 - `drop_column`, `drop_table`, and `drop_constraint` are separate,
