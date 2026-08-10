@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-09
 **Status:** Review complete; decisions made; awaiting implementation
-**Scope:** `backend/alembic/` — reviewed during the backend human code review
+**Scope:** `backend/alembic/` — to be reviewed during the backend human code review
 
 This document is organised in four parts:
 
@@ -22,11 +22,15 @@ This document is organised in four parts:
   `backend/docker/entrypoint.sh` (`alembic upgrade head`, 5 retries, then
   `exit 1`). A failed migration therefore **crash-loops the container** —
   migration safety is a deploy-availability concern, not just tidiness.
-- `env.py` migrates the **core DB only** (`Base.metadata` + an explicit
+- `env.py` migrates the **core database (DB) only** (`Base.metadata` + an explicit
   import of teaching models). HAPI FHIR and EHRbase manage their own
   schemas and are deliberately out of scope.
-- 34 migrations, one unbroken linear chain from base `49c5bacfa481`
-  (init_auth_tables) to head `org002`.
+- 35 migrations, one unbroken linear chain from base `49c5bacfa481`
+  (init_auth_tables) to head `teach001` (chain tail `50cac628e9c6` →
+  `org002` → `teach001`). Note: `teach001` uses **untyped** module-level
+  assignments (`revision = "…"`, no `: str`), unlike every other revision —
+  so any tooling that parses these files must read both annotated and plain
+  assignments.
 
 ### Already fixed during the review
 
@@ -41,13 +45,19 @@ This document is organised in four parts:
 - **`env.py` is clean.** `compare_type=True` set in both offline and online
   paths; DB URL sourced from `settings.CORE_DATABASE_URL`; teaching models
   imported so autogenerate sees them.
-- **Heads check: PASS.** Single base, single head (`org002`), no branches,
+- **Heads check: PASS.** Single base, single head (`teach001`), no branches,
   no multiple heads, no cycles — `alembic upgrade head` is unambiguous.
+  **Currently unenforced**, though: there is no continuous-integration (CI) job
+  or pre-commit hook that checks for multiple heads today — only human review
+  stands between a bad
+  merge and two heads reaching `main`. Items 1 and 5 close this gap (the
+  chain-integrity check runs in pre-commit and, via the existing
+  `python_checks` matrix, in CI).
 - **Risk-signal scan: all clear.** Every `nullable=False` on an _existing_
   table is paired with a `server_default` (e.g. `197844c56085` even backfills
   existing rows to `true`). Every destructive `drop_*` is confined to a
   `downgrade()`. Data migrations (`50cac628e9c6`, `org002`) are safe with
-  documented lossy downgrades where relevant. FK `CASCADE`->`RESTRICT`
+  documented lossy downgrades where relevant. Foreign-key (FK) `CASCADE`->`RESTRICT`
   (`3f28ddb4031e`) is a clean drop+recreate with a mirrored downgrade.
 - **The four `updates_for_mypy` migrations** tighten booleans to
   `nullable=False`. Safe here because those columns were already populated on
@@ -65,12 +75,13 @@ service).
 - The **old** app keeps serving and writing to the same DB during the
   migration. The **new** app is not serving yet (still booting / not Ready),
   so it is not writing.
-- **MVCC**: the migration's schema changes live in an uncommitted transaction,
+- **MVCC (Multi-Version Concurrency Control)**: the migration's schema changes
+  live in an uncommitted transaction,
   so they are invisible to everyone until commit. Mid-migration the old app
   still sees the old schema; at commit the new schema appears atomically.
 - **Locks**: `ALTER TABLE` takes an `ACCESS EXCLUSIVE` lock on that table. For
   metadata-only changes (add column with a **constant** `server_default`, add
-  table, add index normally, add FK on PG 11+) the lock is held for
+  table, add index normally, add FK on PostgreSQL (PG) 11+) the lock is held for
   milliseconds — a concurrent write to that table queues briefly, then
   proceeds. Writes to other tables are unaffected. **No data is lost — conflicting
   writes are delayed, not dropped.**
@@ -135,8 +146,89 @@ is filled for existing rows automatically at migration time. A copy is only
 needed when the new column must **inherit meaning** from an old one.
 
 This is why the "old revision keeps serving" safety net (see crash-loop
-mitigation below) is only real if every migration is backward-compatible —
-`check_migrations.py` + `backend.instructions.md` are what enforce that.
+mitigation below) is only real if every migration is backward-compatible (only
+the **currently-serving** migration and the **newly-deploying** one need to be
+compatible with each other) — `check_migrations.py` +
+`backend.instructions.md` are what enforce that.
+
+### The same rule on the client — stale browsers and API compatibility
+
+The "old and new coexist" law is not confined to the server. A user's browser
+runs whatever JavaScript bundle it downloaded when the page loaded, and **keeps
+running it until the tab is reloaded** — which can be days. So after a deploy a
+clinician may be running last week's frontend against today's backend, a
+**stronger** version of the rolling-deploy problem (a Cloud Run revision rolls
+over in minutes; a browser tab does not).
+
+Two consequences for an enterprise, healthcare-ready product:
+
+- **The API (application programming interface) is a contract old clients still
+  depend on.** Every response shape and required request field must stay
+  backward-compatible across the window in
+  which stale clients exist. Additive response changes are safe (old client
+  ignores them); renaming/removing/retyping a field, or adding a required
+  request field, breaks stale clients instantly — the exact client-side mirror
+  of the DB expand-contract rule.
+- **Staleness must be bounded.** A client that can run indefinitely against a
+  moving API is a latent safety hazard; the app needs a way to detect a new
+  build and prompt a reload.
+
+These are addressed by two new Part 2 items — **client version detection /
+forced reload** (item 14) and **backwards-compatible API windows** (item 15) —
+the client / API-contract counterpart to the database migration safety above.
+
+### How many versions actually coexist — the one-old-one-new invariant
+
+The expand-contract reasoning above talks about "the old app and the new app"
+as if there are always exactly two. In our setup that is the routine case, but
+it is a **consequence of two specific design choices**, not a law — and it pays
+to know why, because the real safety rule is subtler than "only two".
+
+- **Cloud Run serves only the latest _ready_ revision** (`traffic { type =
+LATEST }`, no traffic splitting). During a rollover the old revision keeps
+  serving while the new one boots; the instant the new one is ready, traffic
+  flips 100% and the old one stops receiving requests (it lingers a few seconds
+  draining in-flight requests, then scales to zero). One deploy = exactly two
+  code versions coexisting, transiently.
+- **Deploys to `main` are serialised.** In `.github/workflows/deploy.yml` the
+  `concurrency` block keys on `github.ref` with `cancel-in-progress: false`, so
+  two quick merges to `main` share one group and the second run **queues behind**
+  the first rather than running alongside it. Deploy B does not start until
+  deploy A has fully finished, so two fresh rollouts never overlap and the two
+  deploys' migrations apply strictly in order.
+
+Together these give the one-old-one-new invariant in practice: no traffic
+splitting + serialised deploys.
+
+**The rule that actually matters does not depend on "only two".** Expand-contract
+safety is not "compatible with _the_ previous version" — it is "**compatible
+with the _oldest still-running_ version**". Because deploys are serialised and
+Cloud Run only serves latest-ready, the oldest still-running version is always
+just the immediate predecessor, so **pairwise** backward-compatibility is
+sufficient _given this architecture_. "Only two" is what lets us reason so
+simply; it is not guaranteed by anything fundamental. If we later adopt
+canary / gradual rollouts, the rule automatically generalises to "compatible
+with every revision still receiving traffic".
+
+**Edge cases where more than two can coexist:**
+
+- **`workflow_dispatch` from a different ref.** The concurrency group is keyed on
+  `github.ref`. A push to `main` uses `deploy-refs/heads/main`; a manually
+  dispatched deploy from a tag or hotfix branch uses a **different** group, so
+  the two are **not** serialised against each other — a dispatched hotfix could
+  roll out a new revision mid-rollover, momentarily three versions racing, and
+  two deploys each running `alembic upgrade head`. Rare (requires a deliberate
+  dispatch during an active deploy) but it is the one real hole in the
+  serialisation.
+- **Traffic pinning / manual rollback.** If an operator pins traffic to an older
+  revision and then a deploy lands, pinned-old + new serve simultaneously — a
+  deliberate, operator-created situation.
+- **Multiple _instances_ of the same new revision** (not a different version).
+  One revision can scale to N instances, and migrations currently run from the
+  container entrypoint, so several instances of the **same** new version may each
+  race to run `alembic upgrade head` on startup. That is not "three versions" —
+  it is the **multi-instance migration race** that item 12 (decouple migrations
+  into a run-once pre-deploy Job) removes.
 
 ### Migration validation approaches (dry runs)
 
@@ -146,10 +238,10 @@ Three levels, cheapest to strongest:
    executing it, for review. Cheap, but does not test against real data (won't
    catch a `NOT NULL` failing on existing NULLs). Not pursued — the static
    `check_migrations.py` already catches the one trap it might reveal.
-2. **Run against a Cloud SQL clone** _(gold standard)_ — a desired plan (Part 2),
-   tagged to adopt **before real production / patient load**. Clone the prod
-   instance, run `upgrade head` against the clone, verify, then discard — tests
-   against **real prod-shaped data**.
+2. **Run against a Cloud SQL clone** _(gold standard)_ — tracked in `todo.md` as
+   a pre-clinical item, to adopt **before real production / patient load**. Clone
+   the prod instance, run `upgrade head` against the clone, verify, then discard
+   — tests against **real prod-shaped data**.
 3. **Staging-first — already in place.** Teaching is the de-facto staging gate:
    migrations run on teaching before production (production is a later,
    deliberate promotion of the same image), so a broken migration fails on
@@ -158,7 +250,8 @@ Three levels, cheapest to strongest:
 Note on why we do **not** clone-migrate-swap the live DB as a routine strategy
 (blue-green for databases): while the clone is migrated, new writes keep hitting
 the original, so the clone goes stale and a swap would lose that data. Keeping
-them in sync needs heavy machinery (logical replication / dual-writes / CDC).
+them in sync needs heavy machinery (logical replication / dual-writes / change
+data capture (CDC)).
 The standard answer for the live DB is **expand-contract** (backward-compatible
 changes so old and new code share one schema), with clone-and-test used only for
 _validation_ (option 2), not for the rollout.
@@ -193,7 +286,7 @@ deliberate rollback is manual (`gcloud run services update-traffic
 Important correction: on this setup a **partial** migration is prevented.
 `env.py` wraps the whole run in a single `context.begin_transaction()` and does
 **not** set `transaction_per_migration=True`, and PostgreSQL has **transactional
-DDL**. So `alembic upgrade head` is **all-or-nothing**: if migration 5 of 7
+DDL** (data definition language). So `alembic upgrade head` is **all-or-nothing**: if migration 5 of 7
 fails, Postgres rolls back the entire batch (1–4 included) and the DB is left
 **exactly at the pre-deploy revision**, untouched. The old revision then keeps
 serving against the unchanged schema — there is nothing to downgrade.
@@ -233,7 +326,12 @@ roll-forward posture).
 Every item is agreed and desired; each carries its decision inline. They are
 ordered as an implementation sequence: build the guardrails first (1–5), then
 clean up the existing history (6–10), then runtime safety (11), then the
-scale-gated items to adopt **before real production / patient load** (12–14).
+scale-gated items to adopt **before real production / patient load** (12–13),
+then the client / API-contract safeguards (14–15) that keep stale browsers safe
+against a moving backend. Documentation (16) is **not** a final batch: every item
+updates both `backend.instructions.md` (the rules) and the docs page (the
+reasoning) as it lands, then hands off for human review — so both are complete by
+the time the last item ships.
 
 ### 1. `backend/scripts/check_migrations.py` — automated enforcement
 
@@ -254,8 +352,10 @@ clear message on:
    `upgrade()` require an explicit `# migration-check: allow-destructive`
    marker (forces expand-contract deliberateness).
 
-Allow-list the existing 34 revisions so current history passes; hold new
-migrations to the full standard. Runnable as
+Allow-list the existing 35 revisions so current history passes; hold new
+migrations to the full standard. The parser reads both annotated
+(`revision: str = "…"`) and plain (`revision = "…"`) assignments so
+`teach001` is included. Runnable as
 `python backend/scripts/check_migrations.py --all`.
 
 ### 2. Fail (not warn) on an empty `downgrade()`
@@ -281,6 +381,9 @@ downgrade body.
   real docstring and meaningful slug; destructive changes are separate,
   deliberate contract migrations; migrations run on deploy so a failure =
   failed deploy.
+- Also record the **`compare_server_default` off** decision (item 9) here, so
+  the rationale lives alongside the other Alembic conventions, not only as an
+  inline `env.py` comment.
 
 ### 4. Autogenerate-drift CI check
 
@@ -290,12 +393,29 @@ downgrade body.
 _(high value)_ — a CI step that runs `alembic revision --autogenerate` against a
 fresh migrated DB and fails if it produces any non-empty diff. Catches "model
 changed but migration forgotten" — a genuine class of bug the static checker
-cannot see. Needs a throwaway Postgres in CI (the E2E stack already has one).
+cannot see. Needs a throwaway Postgres in CI (the end-to-end (E2E) stack already has one).
 **Always run it — never gate it on migration files changing.** The bug it
 catches is precisely a PR that edits a model but adds **no** migration, so a
 "migrations changed" filter would skip the one case that matters. **Decided: run
 on every backend CI run** (not gated on model or migration changes) — the run is
 cheap and determinism beats the saved seconds.
+
+**Tier placement — fast (light) tier, but DB-backed.** `ci.yml` is explicitly
+two-tier: a **fast tier** on every push (`python_checks` with its `pre-commit`
+and `unit` matrix tasks, `typescript_checks`, `shell_checks`,
+`version_consistency`) and a **heavy tier** on non-draft PRs to `main` only
+(`heavy_storybook_tests`, `heavy_semgrep`, E2E). This check belongs in the
+**fast tier**, alongside `python_checks: unit` — the bug it catches is per-change
+and must gate every backend push, not surface only on a heavy PR run or at
+deploy time. It does **not** belong in the heavy tier despite needing a database:
+a Postgres **service container** in Actions is lightweight (seconds to boot),
+nowhere near the minutes that define the heavy tier. The one caveat: the current
+fast-tier `unit` job runs `pytest -m "not integration and not e2e"` and has **no
+Postgres service**, so this item introduces the first DB service to the fast
+tier — either add a `services: postgres:` block to the `unit` job, or give this
+check its own small fast-tier job. It stays fast tier either way. (Contrast item
+1 / item 5: `check_migrations.py` is pure static with no DB, so it rides the
+`python_checks: pre-commit` task for free — the one truly _light_ check.)
 
 ### 5. Wiring — pre-commit hook
 
@@ -325,9 +445,7 @@ Seven files have blank docstrings / `_.py` slugs (created by running
 `alembic revision` directly, bypassing `just migrate` which requires a
 message): `f98e1c93dcd7`, `0d836462f7f7`, `4c072d8106a9`, `58e3011782fa`,
 `65817fed5f7a`, `bdb2df886116`, `e51ecb1aaf56`. Add a one-line docstring to
-each describing intent (read the `upgrade()` body). Renaming the file is
-optional and cosmetic — the revision ID is what matters to the chain, so
-editing just the docstring is zero-risk.
+each describing intent (read the `upgrade()` body).
 
 ### 7. Typing style consistency — remove both excludes now
 
@@ -346,7 +464,7 @@ decorative header type hints Alembic never reads at runtime. And Alembic
 **never re-runs an already-applied migration** (it checks `alembic_version`
 and skips), so reformatting a shipped file is invisible even on a populated
 DB — the "immutable history" rule is about not changing what a migration
-_does_, not its formatting. The only cost is a one-off 34-file churn commit
+_does_, not its formatting. The only cost is a one-off 35-file churn commit
 and a `git blame` redirect. **Recommendation:** delete both `exclude` lines
 and let `pre-commit run --all-files` reformat the lot in one commit — this
 fixes the existing files _and_ auto-formats all future migrations via the
@@ -354,19 +472,15 @@ normal pre-commit pass.
 
 ### 8. Date-prefixed filenames
 
-- [ ] Uncomment `file_template` in `alembic.ini` and retroactively rename all 34
+- [ ] Uncomment `file_template` in `alembic.ini` and retroactively rename all 35
       existing files with date prefixes.
 
 _(recommended)_ — uncomment `file_template` in `alembic.ini`
 (`%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s`)
 so new migrations become `2026_08_09_1430-<rev>_<slug>.py` and sort
-chronologically in the file explorer. **Prefer date over an incremental
-number:** Alembic has no native monotonic counter, so `0001_`, `0002_` would
-be hand-maintained bookkeeping that collides the moment two branches are in
-flight; the date template is built-in, zero-maintenance, and conveys the same
-ordering. The prefix is **purely a human-sorting affordance** — true ordering
+chronologically in the file explorer. The prefix is **purely a human-sorting affordance** — true ordering
 is always the `down_revision` chain, never the filename.
-**Decided: retroactively rename all 34 existing files with date prefixes**
+**Decided: retroactively rename all 35 existing files with date prefixes**
 (cheap now, no live data): the revision ID lives _inside_ each module
 (`revision = "…"`), and Alembic scans the directory reading each module's
 `revision`/`down_revision`, so the filename is never the source of truth —
@@ -378,11 +492,15 @@ single-head history (it does). Improves traceability; does not fix docstrings.
 ### 9. `compare_server_default` — record the decision
 
 - [ ] Add a one-line comment beside the `compare_type=True` lines in `env.py`.
+- [ ] Record the same decision in `backend.instructions.md` (item 3).
 
 Deliberately left **off** in `env.py` (recurring false-positive noise outweighs
 the benefit at this scale; DB defaults are few). Add a one-line comment beside
 the `compare_type=True` lines recording this decision so it is not mistaken for
-an oversight.
+an oversight. Record it in **two** places: the inline `env.py` comment (for
+anyone reading the code) **and** a one-line note in `backend.instructions.md`
+(item 3), so the rationale survives independently of the code and is discoverable
+alongside the other Alembic conventions.
 
 ### 10. Revision-ID naming consistency
 
@@ -441,29 +559,74 @@ switching the deploy to tag + no-traffic, then a promote step. **Complements**
 the three cover different failure domains (DB change, new-revision health, public
 edge).
 
-### 14. Validate migrations against a Cloud SQL clone
+### 14. Client version detection / forced reload
 
-- [ ] Clone prod, run `alembic upgrade head`, verify, then discard.
-      _(adopt before real production / patient load)_
+- [ ] Expose the frontend build hash and have the running app detect a newer
+      build and prompt the user to reload.
 
-_(gold standard; adopt before real production / patient load)_ — before applying
-a migration to production, clone the prod instance (or restore from
-PITR/backup), run `alembic upgrade head` against the clone, verify, then
-discard. Tests the migration against **real prod-shaped data**, so it catches
-failures that only surface against live rows — the classic being a `NOT NULL`
-that fails on existing un-backfilled NULLs. Only worth its setup cost
-(clone/restore automation, a deploy/CI step, teardown) once production holds data
-that teaching's staging gate no longer represents — so adopt it **before real
-production / patient load**, alongside the decoupled migration job. Until then,
-staging-first (Part 1) plus `check_migrations.py` cover the realistic cases.
-Note: this is clone-and-**test** only, not clone-migrate-**swap** — the clone is
-discarded, never promoted (see the blue-green caveat in Part 1).
+_(bounds client staleness)_ — a user's browser keeps running the bundle it
+first downloaded until the tab is reloaded, so a stale client can run for days
+against a moving backend. Expose the Vite build hash/version (e.g. a small
+`/version.json` or a build-time constant served alongside the app) and have the
+running app compare it against its own build hash periodically (on navigation
+and/or a light interval). On mismatch, surface a **non-intrusive** Mantine
+notification — "A new version is available — reload" — with a reload action.
+**Prompt, never auto-reload:** a forced reload mid-form would destroy unsaved
+clinical input; only hard-reload on explicit user action or a safe navigation
+boundary. **The prompt is dismissible and non-blocking:** the user can cancel /
+"not now" and keep working on the current build; dismissing never forces a
+reload, and the check re-surfaces the prompt on the next detected mismatch (a
+later navigation or interval tick), so a dismissed update is a deferral, not a
+permanent opt-out. Bounding how stale a client can get is a safety property, not
+just a user-experience (UX) nicety. **Decided: adopt as standard for the
+production product.**
 
-### Open decision
+### 15. Backwards-compatible API windows
 
-- **`check_migrations` scope** — allow-list the existing 34 revisions vs a
-  `--changed` (git-diff) mode? Recommendation: **allow-list** (deterministic in
-  CI; matches plan 1). Left open for final confirmation.
+- [ ] Document and enforce an additive-only / deprecate-then-remove API
+      compatibility policy so stale clients keep working.
+
+_(client-side expand-contract)_ — treat every API response shape and required
+request field as a contract that stale clients still depend on during (and
+beyond) the rolling-deploy window. **Additive changes only** within a
+compatibility window: adding an optional response field is safe; renaming,
+removing, or retyping a field, or adding a **required** request field, is a
+breaking change that must be staged — add the new shape alongside the old,
+migrate clients, then remove the old shape after **N releases** of deprecation.
+This mirrors the database expand-contract rule on the client boundary. Largely a
+**documented discipline + review gate** (record it in
+`backend.instructions.md`, item 3) reinforced by contract / schema-snapshot
+tests that fail when a field is removed or retyped without a deprecation window.
+**Decided: additive-only within the window; breaking changes staged over N releases.**
+
+### 16. Documentation cadence — update the rules and docs as each item lands
+
+- [ ] For every item above, its discrete unit of work also updates
+      `.github/instructions/backend.instructions.md` (the enforceable rules) and
+      the migration-safety docs page (`docs/docs/`, the reasoning), then hands
+      off for human review per `follow-the-plan.document.prompt.md`.
+
+_(applies to every item — not a final batch)_ — documentation is not deferred to
+the end. Each item ships as a self-contained unit that, alongside its code and
+tests, updates **both** durable artefacts while the detail is fresh: the LLM
+instructions file (`backend.instructions.md`) carries the enforceable _rule_ the
+item establishes, and the docs page (`docs/docs/`) captures the _why_. The item
+is then presented for human review (the review gate in
+`follow-the-plan-document.prompt.md`) before commit. Splitting the artefacts by
+purpose — rules vs reasoning — avoids duplication: the docs page links to
+`backend.instructions.md` rather than restating it. Because each item carries its
+own documentation, the reasoning is captured while it is vivid rather than
+reconstructed at the end, and by the time the last item lands both the rules file
+and the docs page are already complete and reviewed — no final documentation
+batch is needed. This planning document becomes the historical record; the docs
+page is the living reference.
+
+Cover, cumulatively across the items: how migrations run on deploy and how a
+failure is contained (expand-contract + roll-forward, no downgrades); the
+`check_migrations.py` checks and the pre-commit / CI wiring; the
+autogenerate-drift check; the `lock_timeout` / `statement_timeout` settings; the
+`compare_server_default` off decision; and the client-version / API-compatibility
+safeguards.
 
 ## Part 3 — What we decided not to do
 
@@ -505,7 +668,7 @@ when those land. Backend tests run in Docker (`just ub`).
 - [ ] **`check_migrations.py` unit tests** — one passing and one failing fixture
       per check (chain integrity, non-empty description, reversibility, NOT NULL
       trap, destructive-op marker); assert exit code and message for each.
-- [ ] **Allow-list honoured** — running the script against the current 34
+- [ ] **Allow-list honoured** — running the script against the current 35
       revisions exits 0 (grandfathered); a synthetic new migration violating each
       rule exits non-zero.
 - [ ] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
@@ -519,6 +682,13 @@ when those land. Backend tests run in Docker (`just ub`).
 - [ ] **Lock / statement timeouts applied** — assert `env.py` issues
       `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
       of `run_migrations_online` (capture via a spy engine or an integration run).
+- [ ] **Client version detection** — with a build hash that differs from the
+      running app's, the version check surfaces the reload prompt; with a
+      matching hash it stays silent; the prompt never triggers an automatic
+      reload (asserted — a mid-form reload would lose data).
+- [ ] **API compatibility window** — a contract / schema-snapshot test fails when
+      a response field is removed or retyped, or a required request field is
+      added, without a deprecation window; additive-only changes pass.
 
 ### B. Nothing broke (regression / safety)
 
@@ -526,7 +696,7 @@ when those land. Backend tests run in Docker (`just ub`).
       completes with no error (the exact path that runs on deploy).
 - [ ] **Chain unchanged after renames + docstrings** — `alembic history` and
       `alembic heads` are identical before and after the date-prefix rename and
-      the docstring backfill (single base, single head `org002`, same order).
+      the docstring backfill (single base, single head `teach001`, same order).
 - [ ] **Reformat is behaviour-preserving** — after removing the Ruff/Black
       excludes and reformatting, `alembic history` is unchanged and
       `alembic upgrade head` still succeeds (only header type hints changed; no
@@ -543,17 +713,3 @@ when those land. Backend tests run in Docker (`just ub`).
       once, exits 0, and the app revision boots against the migrated DB.
 - [ ] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
       returns 200 on `/api/health` before promotion.
-- [ ] **Cloud SQL clone validation** — `upgrade head` against a prod clone passes,
-      then the clone is discarded.
-
-## Related existing to-do items
-
-Already tracked in `docs/docs/plans/todo.md`:
-
-- Create `.github/instructions/backend.instructions.md` scoped to `backend/**`
-  with Alembic expand-contract rules (Documentation section).
-- Create `backend/scripts/check_migrations.py` — expand-contract migration
-  lint rejecting destructive operations (Testing / CI section).
-
-This document expands both into an actionable spec and adds the optional
-hardening items above.

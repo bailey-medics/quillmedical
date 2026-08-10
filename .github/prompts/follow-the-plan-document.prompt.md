@@ -21,7 +21,7 @@ All code must be reviewed by a human before it enters git history. Work in discr
 
 1. Implement a single discrete change (e.g. a feature implemented, a refactor complete, a test passing). Do not batch unrelated changes together.
 2. Ensure the change ships with matching tests — new or updated tests that actually exercise the new/changed behaviour (per the repo's testing requirements) — then run the relevant suite so the change is presented green (e.g. `just ub` / `just uf` for backend/frontend, targeted where possible).
-3. **Stop and hand over for review.** Present a short review packet: what changed, why, which plan step it maps to, and any risks or assumptions. Do not commit yet.
+3. **Stop and hand over for review.** Present a short review packet: what changed, why, which plan step it maps to, and any risks or assumptions. The packet is a brief written summary posted directly in the chat conversation.
 4. Wait for the human to review the actual diff in the VS Code Source Control / diff view and give explicit approval. If they request changes, apply them and return to step 2.
 5. Only after explicit approval, commit with a short descriptive message, then proceed to the next unit.
 
