@@ -290,12 +290,12 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
-    docker exec quill_backend sh -lc '
+    docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
         set -e
         alembic upgrade head &&
         alembic revision --autogenerate -m "$AL_MSG" &&
         alembic upgrade head
-    ' AL_MSG='{{message}}'
+    '
 
 
 alias pc := pre-commit
