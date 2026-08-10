@@ -52,10 +52,16 @@ migration is held to the full standard below.
 
 - A partial or expression index created in a migration (e.g.
   `postgresql_where=`) must also be declared in the model metadata as an
-  `Index(...)` with the same `postgresql_where`, otherwise autogenerate
-  cannot see it and repeatedly proposes to drop it. Example:
+  `Index(...)` with the same predicate, otherwise autogenerate cannot see
+  it and repeatedly proposes to drop it. Example:
   `ix_site_staff_one_clinical_lead` is declared on the `site_staff_member`
   table in `models.py`.
+- Declare the predicate for **both** dialects — `postgresql_where=` *and*
+  `sqlite_where=`. The unit-test database is SQLite, built from the model
+  metadata via `create_all()`, and `postgresql_where` is silently ignored
+  there — so a partial unique index would collapse into a **full** unique
+  index and reject rows the predicate was meant to exclude. SQLite supports
+  partial indexes, so `sqlite_where` restores the intended behaviour.
 
 ### Destructive changes
 

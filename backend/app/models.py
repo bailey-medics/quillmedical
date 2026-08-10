@@ -647,6 +647,7 @@ site_staff_member = Table(
         "site_id",
         unique=True,
         postgresql_where=text("role = 'clinical_lead'"),
+        sqlite_where=text("role = 'clinical_lead'"),
     ),
 )
 """Association table: staff at a site with a role (clinical_lead, staff, trainee)."""
