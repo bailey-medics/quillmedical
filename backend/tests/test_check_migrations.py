@@ -11,7 +11,6 @@ from pathlib import Path
 from scripts.check_migrations import (
     DEFAULT_VERSIONS_DIR,
     SEVERITY_ERROR,
-    SEVERITY_WARNING,
     Migration,
     check_chain_integrity,
     check_description,
@@ -156,7 +155,7 @@ def test_description_fails_when_blank(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Reversibility (warning)
+# Reversibility
 # ---------------------------------------------------------------------------
 
 
@@ -170,7 +169,7 @@ def test_reversibility_passes_with_real_downgrade(tmp_path: Path) -> None:
     assert check_reversibility(migration) == []
 
 
-def test_reversibility_warns_on_empty_downgrade(tmp_path: Path) -> None:
+def test_reversibility_fails_on_empty_downgrade(tmp_path: Path) -> None:
     migration = _one(
         tmp_path,
         revision="x",
@@ -179,7 +178,7 @@ def test_reversibility_warns_on_empty_downgrade(tmp_path: Path) -> None:
     )
     problems = check_reversibility(migration)
     assert len(problems) == 1
-    assert problems[0].severity == SEVERITY_WARNING
+    assert problems[0].severity == SEVERITY_ERROR
 
 
 # ---------------------------------------------------------------------------

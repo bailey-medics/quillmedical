@@ -9,8 +9,8 @@ Every ``backend/alembic/versions/*.py`` file is parsed and checked for:
    ``down_revision`` (a branch); no cycles.
 2. Non-empty description — the module docstring must carry a summary
    line above the Alembic boilerplate.
-3. Reversibility — ``downgrade()`` must not be empty (WARNING for now;
-   this becomes a hard failure for new migrations in a later change).
+3. Reversibility — a new migration's ``downgrade()`` must not be empty;
+   an empty / ``pass``-only / missing body is a hard failure.
 4. NOT NULL trap — any ``add_column`` / ``alter_column`` that sets
    ``nullable=False`` must also pass ``server_default=`` in the same call.
 5. Destructive ops — ``drop_column`` / ``drop_table`` / ``drop_constraint``
@@ -362,14 +362,14 @@ def _is_effectively_empty(function: ast.FunctionDef | None) -> bool:
 
 
 def check_reversibility(migration: Migration) -> list[Problem]:
-    """Warn when ``downgrade()`` provides no real reversal."""
+    """Fail when ``downgrade()`` provides no real reversal."""
     if not _is_effectively_empty(migration.downgrade):
         return []
     return [
         Problem(
-            SEVERITY_WARNING,
-            "downgrade() is empty; provide a real reversal (this will "
-            "become a hard failure for new migrations)",
+            SEVERITY_ERROR,
+            "downgrade() is empty; provide a real reversal so the "
+            "migration can be rolled back",
             migration.path,
         )
     ]
