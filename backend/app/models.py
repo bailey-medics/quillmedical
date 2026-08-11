@@ -25,10 +25,12 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -640,6 +642,13 @@ site_staff_member = Table(
         primary_key=True,
     ),
     Column("role", String(50), nullable=False),
+    Index(
+        "ix_site_staff_one_clinical_lead",
+        "site_id",
+        unique=True,
+        postgresql_where=text("role = 'clinical_lead'"),
+        sqlite_where=text("role = 'clinical_lead'"),
+    ),
 )
 """Association table: staff at a site with a role (clinical_lead, staff, trainee)."""
 
