@@ -135,17 +135,17 @@ config identifiers still spelled `auth`. Since we are rebuilding every DB from
 empty in this window, complete the rename now so nothing but historical records
 keeps the old name:
 
-- [ ] **Local dev** (`compose.dev.yml`): `postgres-auth` service → `postgres-core`;
+- [x] **Local dev** (`compose.dev.yml`): `postgres-auth` service → `postgres-core`;
       container `quill_postgres_auth` → `quill_postgres_core`; `POSTGRES_USER:
     auth_user` → `core_user`; volume `postgres_auth_data` → `postgres_core_data`;
       the `depends_on` and healthcheck references to match.
-- [ ] **CI** (`compose.ci.yml`): the same set (`ci_postgres_auth` →
+- [x] **CI** (`compose.ci.yml`): the same set (`ci_postgres_auth` →
       `ci_postgres_core`, `auth_user` → `core_user`, `postgres-auth` →
       `postgres-core`), plus the explanatory comment.
-- [ ] **Backend config** (`backend/.env`, `backend/app/config.py` defaults):
+- [x] **Backend config** (`backend/.env`, `backend/app/config.py` defaults):
       `CORE_DB_USER` default `auth_user` → `core_user`; `CORE_DB_HOST` default
       `postgres-auth` → `postgres-core`.
-- [ ] **Docs refresh**: repoint the stale `AUTH_DB_*` / `postgres-auth` references
+- [x] **Docs refresh**: repoint the stale `AUTH_DB_*` / `postgres-auth` references
       in `docs/docs/infrastructure/gcp.md` and
       `docs/docs/backend/three-database-migration.md` to `CORE_DB_*` /
       `postgres-core`.

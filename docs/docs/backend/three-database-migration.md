@@ -45,11 +45,11 @@ Quill Medical has updated its database structure from a single shared database t
 The following new environment variables are required in `backend/.env`:
 
 ```bash
-# Core (Auth) Database
+# Core Database
 CORE_DB_NAME=quill_core
-CORE_DB_USER=auth_user
+CORE_DB_USER=core_user
 CORE_DB_PASSWORD=[secure password]
-CORE_DB_HOST=postgres-auth
+CORE_DB_HOST=postgres-core
 CORE_DB_PORT=5432
 
 # FHIR Database
@@ -133,7 +133,7 @@ Services now depend on specific databases:
 
 Each database has independent resource limits:
 
-- **postgres-auth**: 1 CPU, 1GB RAM
+- **postgres-core**: 1 CPU, 1GB RAM
 - **postgres-fhir**: 2 CPU, 2GB RAM
 - **postgres-ehrbase**: 2 CPU, 3GB RAM
 
@@ -163,7 +163,7 @@ Each database has independent resource limits:
 
 ### Database Migration
 
-Run Alembic migrations for the auth database:
+Run Alembic migrations for the core database:
 
 ```bash
 just migrate "migrate to three database architecture"
@@ -185,7 +185,7 @@ If you see "could not connect to database" errors:
 
 1. Check environment variables are set correctly
 2. Verify database containers are healthy: `docker compose ps`
-3. Check logs: `docker compose logs postgres-auth`
+3. Check logs: `docker compose logs postgres-core`
 
 ### Legacy Code
 

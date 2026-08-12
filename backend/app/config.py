@@ -95,7 +95,7 @@ class Settings(BaseSettings):
         description="Core database name",
     )
     CORE_DB_USER: str = Field(
-        "auth_user",
+        "core_user",
         description="Core database user",
     )
     CORE_DB_PASSWORD: SecretStr = Field(
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
         description="Core database password",
     )
     CORE_DB_HOST: str = Field(
-        "postgres-auth",
+        "postgres-core",
         description="Core database host",
     )
     CORE_DB_PORT: int = Field(
