@@ -9,8 +9,9 @@ applyTo: "backend/**"
 These rules are enforced statically by
 `backend/scripts/check_migrations.py` (run in pre-commit and CI, or
 directly with `python backend/scripts/check_migrations.py --all`). The
-existing 35 revisions are grandfathered via an allow-list; every new
-migration is held to the full standard below.
+pre-launch history was squashed into a single compliant baseline
+(`878bc9300d4f`), so the allow-list is now empty and every migration —
+the baseline included — is held to the full standard below.
 
 ### Creating migrations
 
@@ -34,8 +35,6 @@ migration is held to the full standard below.
   pass `server_default=` in the same call, so existing rows are valid
   immediately. Backfill real values with an explicit `UPDATE`, then tighten
   in a later migration if the server default should be dropped.
-- Canonical example: `197844c56085` (add `email_verified` with a
-  `server_default` and `nullable=False`, then backfill existing rows).
 
 ### Renaming tables and matching indexes
 
@@ -44,9 +43,9 @@ migration is held to the full standard below.
   `ix_old_col` in place, so autogenerate will forever flag it against the
   model's expected `ix_new_col`. When you rename a table, add a matching
   `op.execute("ALTER INDEX ix_old_col RENAME TO ix_new_col")` (reversible,
-  lock-light, no rebuild). Canonical example: `b66133f32f7b` (renames
-  `ix_organizations_name` to `ix_organisations_name` after the `org002`
-  table rename).
+  lock-light, no rebuild). The squashed baseline already creates the index
+  with its correct British-spelling name (`ix_organisations_name`) from the
+  start.
 
 ### Partial and expression indexes in models
 

@@ -17,8 +17,9 @@ Every ``backend/alembic/versions/*.py`` file is parsed and checked for:
    in ``upgrade()`` require an explicit ``# migration-check:
    allow-destructive`` marker to force expand-contract deliberateness.
 
-The existing history is grandfathered via ``ALLOWLISTED_REVISIONS`` so the
-current tree passes; new migrations are held to the full standard.
+The pre-launch history was squashed into a single compliant baseline, so
+``ALLOWLISTED_REVISIONS`` is now empty and every migration — the baseline
+included — is held to the full standard.
 
 Run with::
 
@@ -33,48 +34,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Revisions that predate these checks. They are grandfathered so the
-# current history passes; migrations added later are held to the full
-# standard. Do NOT add new revisions here — fix the migration instead.
-ALLOWLISTED_REVISIONS: frozenset[str] = frozenset(
-    {
-        "055bc31fb937",
-        "0d836462f7f7",
-        "197844c56085",
-        "1e6d47593843",
-        "28fd87ca9463",
-        "2e24f1879e51",
-        "3d3e9ba39b1d",
-        "3f28ddb4031e",
-        "49c5bacfa481",
-        "4c072d8106a9",
-        "50cac628e9c6",
-        "58e3011782fa",
-        "597b0f9d0f9d",
-        "61bc37adb8f7",
-        "65817fed5f7a",
-        "6a4b0e5b7e7f",
-        "6b4cd8726e1f",
-        "7a44a91ac55a",
-        "8a6bfd7b4ce9",
-        "8e5f0b755530",
-        "94bc5e6d4155",
-        "a086be88e60e",
-        "bdb2df886116",
-        "cbac001",
-        "ce0e2ca7d2ca",
-        "d281376e497d",
-        "e51ecb1aaf56",
-        "f98e1c93dcd7",
-        "msg001",
-        "msg002",
-        "org001",
-        "org002",
-        "pm001",
-        "sp001",
-        "teach001",
-    }
-)
+# Revisions that predate these checks are grandfathered here. The pre-launch
+# history was squashed into a single compliant baseline, so this is now empty.
+# Do NOT add new revisions here — fix the migration instead.
+ALLOWLISTED_REVISIONS: frozenset[str] = frozenset()
 
 DESTRUCTIVE_MARKER = "# migration-check: allow-destructive"
 DESTRUCTIVE_OPS: frozenset[str] = frozenset(

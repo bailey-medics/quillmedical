@@ -135,14 +135,6 @@ docker-daemon-start:
     echo "Docker is running."
 
 
-alias du := db-users
-# Show the database users
-db-users:
-    #!/usr/bin/env bash
-    {{initialise}} "db-users"
-    docker compose -f compose.dev.yml exec database psql -U quill -d quill -c "\d users"
-
-
 alias eb := enter-backend
 # Enter the backend container shell
 enter-backend:
