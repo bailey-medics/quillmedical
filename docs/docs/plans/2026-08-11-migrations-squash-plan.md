@@ -120,12 +120,76 @@ the squash, so it must be dropped and rebuilt rather than upgraded.
       `Base.metadata.create_all()`, **not** via Alembic migrations, so squashing
       the migration history should leave them entirely green.
 
+### 8. Rename the Cloud SQL instance and reset the deployed GCP core database(s)
+
+The core DB runs on **Cloud SQL for PostgreSQL**, private-IP only, reached by
+Cloud Run over the Virtual Private Cloud (VPC) connector. Migrations run from the **serving backend
+container's entrypoint** (`alembic upgrade head`, 5 retries) — there is no
+separate migration job. An already-deployed DB is stamped at the old head, which
+the squash deletes, so the next deploy's `upgrade head` would fail (unknown
+revision) **and** the baseline's `create_table`s would clash with the tables
+already present. The deployed DB must be rebuilt empty, not upgraded.
+
+The **top deployed environment is teaching** (the staging-equivalent); there is
+no live clinical production yet (production deploys are gated off via
+`ENABLE_PRODUCTION_DEPLOY`). So teaching leads; production is the identical
+procedure **if and when** it is ever provisioned.
+
+**Fold in the instance rename.** The database was renamed to `quill_core`, but
+the Cloud SQL _instance_ is still built as `quill-auth-{env}` from
+`instance_name = "auth"` in `infra/main.tf`. Since we are rebuilding these
+databases anyway with no data to lose, rename the instance to `quill-core-{env}`
+in the same window:
+
+- [ ] In `infra/main.tf`, change the core module's `instance_name` from `"auth"`
+      to `"core"` (yielding `quill-core-teaching` / `quill-core-prod`). For
+      consistency, also rename the `auth-db-password` secret to
+      `core-db-password` (Secret Manager + the module's `db_password_secret_id`),
+      and update the `quill-auth-{{env}}` reference in the `Justfile`
+      (`build-admin` recipe) to `quill-core-{{env}}`.
+- [ ] Apply the Terraform change. Cloud SQL instances cannot be renamed in
+      place, so this **replaces** the instance (destroy + create) — acceptable
+      now precisely because there is no data. Note `deletion_protection = true`
+      on the module for `prod`; lift it if it blocks a prod replacement.
+
+**Rebuild and verify (teaching first).** The replacement above already yields a
+fresh, empty `quill_core`, so no separate drop is needed — just ship the
+baseline:
+
+- [ ] **Deploy the backend revision carrying the squashed baseline** to
+      **teaching** (`quill-core-teaching`, project `quill-medical-teaching`). The
+      entrypoint's `alembic upgrade head` applies the single baseline to the
+      empty DB, building the whole schema fresh; the revision goes Ready only if
+      that succeeds.
+- [ ] **Verify.** Confirm the revision is serving and `alembic current` reports
+      the baseline revision (e.g. via the `quill-admin-teaching` Cloud Run job).
+- [ ] **Production, if/when provisioned:** repeat identically against
+      `quill-core-prod` (project `quill-medical-production`). Nothing to do today
+      while prod is gated off.
+
+If you ever need to reset a deployed DB **without** replacing the instance, drop
+and recreate the database directly with Cloud SQL control-plane commands (they
+work despite the private-only IP; the instance and `quill` user persist):
+
+```sh
+gcloud sql databases delete quill_core \
+  --instance=quill-core-teaching --project=quill-medical-teaching
+gcloud sql databases create quill_core \
+  --instance=quill-core-teaching --project=quill-medical-teaching
+```
+
+**Post-launch contrast (not now):** once an environment holds real data it is
+**never** dropped. A future squash would instead `alembic stamp <baseline>` the
+live DB so its `alembic_version` points at the new baseline without touching the
+schema. This whole step is only safe inside the current no-data window.
+
 ## Part 2 — Risks and mitigations
 
 - **A stamped DB survives the squash.** Any core DB still stamped at the old
   head would break on the next `alembic upgrade head` (the recorded revision
-  no longer exists). _Mitigation:_ step 6 explicitly drops and recreates every
-  core DB (local + teaching). There are no other environments.
+  no longer exists). _Mitigation:_ steps 6 and 8 rebuild every core DB from
+  empty — local, teaching (the top deployed environment), and production if and
+  when it is ever provisioned.
 - **Baseline drift from the live models.** If the baseline is generated against
   a non-empty or stale DB, autogenerate could miss or duplicate objects.
   _Mitigation:_ step 2 generates against a **freshly created empty** DB; step 3
