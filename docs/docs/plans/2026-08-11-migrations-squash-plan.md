@@ -179,12 +179,13 @@ the Cloud SQL _instance_ is still built as `quill-auth-{env}` from
 databases anyway with no data to lose, rename the instance to `quill-core-{env}`
 in the same window:
 
-- [ ] In `infra/main.tf`, change the core module's `instance_name` from `"auth"`
+- [x] In `infra/main.tf`, change the core module's `instance_name` from `"auth"`
       to `"core"` (yielding `quill-core-teaching` / `quill-core-prod`). For
       consistency, also rename the `auth-db-password` secret to
       `core-db-password` (Secret Manager + the module's `db_password_secret_id`),
       and update the `quill-auth-{{env}}` reference in the `Justfile`
-      (`build-admin` recipe) to `quill-core-{{env}}`.
+      (`build-admin` recipe) to `quill-core-{{env}}`. Implemented in code and
+      formatted (`terraform fmt`).
 - [ ] Apply the Terraform change. Cloud SQL instances cannot be renamed in
       place, so this **replaces** the instance (destroy + create) — acceptable
       now precisely because there is no data. Note `deletion_protection = true`

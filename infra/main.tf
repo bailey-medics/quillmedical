@@ -33,7 +33,7 @@ module "secrets" {
   secrets = concat(
     [
       "jwt-secret",
-      "auth-db-password",
+      "core-db-password",
       "vapid-private",
       "resend-api-key",
     ],
@@ -62,18 +62,18 @@ moved {
 
 # ---------- Cloud SQL: core database (all environments) ----------
 module "cloud_sql_core" {
-  source     = "./modules/cloud-sql"
-  project_id = var.project_id
-  region     = var.region
+  source      = "./modules/cloud-sql"
+  project_id  = var.project_id
+  region      = var.region
   environment = var.environment
 
-  instance_name         = "auth"
-  db_name               = "quill_core"
-  db_user               = "quill"
-  db_password_secret_id = "auth-db-password"
-  tier                  = var.db_tier
-  enable_ha             = var.enable_ha
-  vpc_network_id        = module.networking.vpc_id
+  instance_name          = "core"
+  db_name                = "quill_core"
+  db_user                = "quill"
+  db_password_secret_id  = "core-db-password"
+  tier                   = var.db_tier
+  enable_ha              = var.enable_ha
+  vpc_network_id         = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
@@ -85,19 +85,19 @@ module "cloud_sql_core" {
 
 # ---------- Cloud SQL: FHIR database (prod + staging only) ----------
 module "cloud_sql_fhir" {
-  count      = var.enable_fhir ? 1 : 0
-  source     = "./modules/cloud-sql"
-  project_id = var.project_id
-  region     = var.region
+  count       = var.enable_fhir ? 1 : 0
+  source      = "./modules/cloud-sql"
+  project_id  = var.project_id
+  region      = var.region
   environment = var.environment
 
-  instance_name         = "fhir"
-  db_name               = "fhir"
-  db_user               = "fhir"
-  db_password_secret_id = "fhir-db-password"
-  tier                  = var.db_tier
-  enable_ha             = var.enable_ha
-  vpc_network_id        = module.networking.vpc_id
+  instance_name          = "fhir"
+  db_name                = "fhir"
+  db_user                = "fhir"
+  db_password_secret_id  = "fhir-db-password"
+  tier                   = var.db_tier
+  enable_ha              = var.enable_ha
+  vpc_network_id         = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
@@ -108,19 +108,19 @@ module "cloud_sql_fhir" {
 
 # ---------- Cloud SQL: EHRbase database (prod + staging only) ----------
 module "cloud_sql_ehrbase" {
-  count      = var.enable_fhir ? 1 : 0
-  source     = "./modules/cloud-sql"
-  project_id = var.project_id
-  region     = var.region
+  count       = var.enable_fhir ? 1 : 0
+  source      = "./modules/cloud-sql"
+  project_id  = var.project_id
+  region      = var.region
   environment = var.environment
 
-  instance_name         = "ehrbase"
-  db_name               = "ehrbase"
-  db_user               = "ehrbase"
-  db_password_secret_id = "ehrbase-db-password"
-  tier                  = var.db_tier
-  enable_ha             = var.enable_ha
-  vpc_network_id        = module.networking.vpc_id
+  instance_name          = "ehrbase"
+  db_name                = "ehrbase"
+  db_user                = "ehrbase"
+  db_password_secret_id  = "ehrbase-db-password"
+  tier                   = var.db_tier
+  enable_ha              = var.enable_ha
+  vpc_network_id         = module.networking.vpc_id
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
@@ -131,18 +131,18 @@ module "cloud_sql_ehrbase" {
 
 # ---------- Compute Engine: FHIR + EHRbase VM (prod + staging) ----------
 module "compute_fhir" {
-  count      = var.enable_fhir ? 1 : 0
-  source     = "./modules/compute-fhir"
-  project_id = var.project_id
-  region     = var.region
+  count       = var.enable_fhir ? 1 : 0
+  source      = "./modules/compute-fhir"
+  project_id  = var.project_id
+  region      = var.region
   environment = var.environment
 
-  subnet_id  = module.networking.subnet_id
+  subnet_id = module.networking.subnet_id
 
-  fhir_db_host               = module.cloud_sql_fhir[0].private_ip
-  fhir_db_password_secret    = "fhir-db-password"
-  ehrbase_db_host            = module.cloud_sql_ehrbase[0].private_ip
-  ehrbase_db_password_secret = "ehrbase-db-password"
+  fhir_db_host                  = module.cloud_sql_fhir[0].private_ip
+  fhir_db_password_secret       = "fhir-db-password"
+  ehrbase_db_host               = module.cloud_sql_ehrbase[0].private_ip
+  ehrbase_db_password_secret    = "ehrbase-db-password"
   ehrbase_api_password_secret   = "ehrbase-api-password"
   ehrbase_admin_password_secret = "ehrbase-admin-password"
 }
@@ -198,41 +198,41 @@ module "cloud_run_backend" {
   region      = var.region
   environment = var.environment
 
-  service_name     = "backend"
-  image            = var.backend_image
-  port             = 8000
-  memory           = "512Mi"
-  cpu              = "1"
-  max_instances    = var.cloud_run_max_instances
-  vpc_connector_id = module.networking.vpc_connector_id
+  service_name      = "backend"
+  image             = var.backend_image
+  port              = 8000
+  memory            = "512Mi"
+  cpu               = "1"
+  max_instances     = var.cloud_run_max_instances
+  vpc_connector_id  = module.networking.vpc_connector_id
   health_check_path = "/api/health"
 
   env_vars = merge(
     {
-      BACKEND_ENV      = "production"
-      SECURE_COOKIES   = "true"
-      COOKIE_DOMAIN    = ".${var.domain}"
-      FRONTEND_URL     = "https://${var.lb_domains[0]}"
-      CORE_DB_HOST     = module.cloud_sql_core.private_ip
-      CORE_DB_NAME     = module.cloud_sql_core.database_name
-      CORE_DB_USER     = module.cloud_sql_core.database_user
-      CORE_DB_SSLMODE  = "require"
+      BACKEND_ENV     = "production"
+      SECURE_COOKIES  = "true"
+      COOKIE_DOMAIN   = ".${var.domain}"
+      FRONTEND_URL    = "https://${var.lb_domains[0]}"
+      CORE_DB_HOST    = module.cloud_sql_core.private_ip
+      CORE_DB_NAME    = module.cloud_sql_core.database_name
+      CORE_DB_USER    = module.cloud_sql_core.database_user
+      CORE_DB_SSLMODE = "require"
     },
     var.enable_fhir ? {
-      FHIR_SERVER_URL  = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
-      EHRBASE_URL      = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
-      FHIR_DB_HOST     = module.cloud_sql_fhir[0].private_ip
-      FHIR_DB_NAME     = module.cloud_sql_fhir[0].database_name
-      FHIR_DB_USER     = module.cloud_sql_fhir[0].database_user
-      EHRBASE_DB_HOST  = module.cloud_sql_ehrbase[0].private_ip
-      EHRBASE_DB_NAME  = module.cloud_sql_ehrbase[0].database_name
-      EHRBASE_DB_USER  = module.cloud_sql_ehrbase[0].database_user
+      FHIR_SERVER_URL = "http://${module.compute_fhir[0].internal_ip}:8080/fhir"
+      EHRBASE_URL     = "http://${module.compute_fhir[0].internal_ip}:8081/ehrbase"
+      FHIR_DB_HOST    = module.cloud_sql_fhir[0].private_ip
+      FHIR_DB_NAME    = module.cloud_sql_fhir[0].database_name
+      FHIR_DB_USER    = module.cloud_sql_fhir[0].database_user
+      EHRBASE_DB_HOST = module.cloud_sql_ehrbase[0].private_ip
+      EHRBASE_DB_NAME = module.cloud_sql_ehrbase[0].database_name
+      EHRBASE_DB_USER = module.cloud_sql_ehrbase[0].database_user
     } : {},
     var.environment == "teaching" ? {
-      CLINICAL_SERVICES_ENABLED    = "false"
-      TEACHING_STORAGE_BACKEND     = "gcs"
-      TEACHING_GCS_BUCKET          = module.cloud_storage[0].bucket_name
-      TEACHING_IMAGES_BASE_URL     = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
+      CLINICAL_SERVICES_ENABLED = "false"
+      TEACHING_STORAGE_BACKEND  = "gcs"
+      TEACHING_GCS_BUCKET       = module.cloud_storage[0].bucket_name
+      TEACHING_IMAGES_BASE_URL  = "https://storage.googleapis.com/${module.cloud_storage[0].bucket_name}"
     } : {},
     {
       EMAIL_FROM    = "info@quill-medical.com"
@@ -243,7 +243,7 @@ module "cloud_run_backend" {
   secret_env_vars = merge(
     {
       JWT_SECRET       = "jwt-secret"
-      CORE_DB_PASSWORD  = "auth-db-password"
+      CORE_DB_PASSWORD = "core-db-password"
       VAPID_PRIVATE    = "vapid-private"
       RESEND_API_KEY   = "resend-api-key"
     },
@@ -262,7 +262,7 @@ module "cloud_run_backend" {
     google_secret_manager_secret_version.jwt_secret,
     google_secret_manager_secret_version.vapid_private,
     google_project_iam_member.cloudrun_secret_accessor,
-    module.cloud_sql_core, # writes auth-db-password version
+    module.cloud_sql_core, # writes core-db-password version
   ]
 }
 
@@ -289,8 +289,8 @@ module "cloud_run_admin_job" {
   }
 
   secret_env_vars = {
-    CORE_DB_PASSWORD = "auth-db-password"
-    JWT_SECRET      = "jwt-secret"
+    CORE_DB_PASSWORD = "core-db-password"
+    JWT_SECRET       = "jwt-secret"
   }
 
   depends_on = [

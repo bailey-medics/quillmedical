@@ -615,7 +615,7 @@ build-admin env:
     # Deploy the Cloud Run Job (creates if new, updates if existing)
     # Look up the Cloud SQL core database private IP
     echo "Looking up database connection..."
-    CORE_DB_HOST=$(gcloud sql instances describe "quill-auth-{{env}}" \
+    CORE_DB_HOST=$(gcloud sql instances describe "quill-core-{{env}}" \
         --project="$PROJECT" \
         --format='value(ipAddresses[0].ipAddress)')
 
@@ -629,7 +629,7 @@ build-admin env:
         --max-retries=0 \
         --task-timeout=300s \
         --set-env-vars "CORE_DB_HOST=${CORE_DB_HOST},CORE_DB_NAME=quill_core,CORE_DB_USER=quill" \
-        --set-secrets "CORE_DB_PASSWORD=auth-db-password:latest,JWT_SECRET=jwt-secret:latest" \
+        --set-secrets "CORE_DB_PASSWORD=core-db-password:latest,JWT_SECRET=jwt-secret:latest" \
         --quiet
     echo "✓ Cloud Run Job deployed"
 
