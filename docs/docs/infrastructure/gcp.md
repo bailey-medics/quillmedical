@@ -449,9 +449,9 @@ Key mappings:
 
 | Terraform env var | Config field      | Default (Docker Compose)      |
 | ----------------- | ----------------- | ----------------------------- |
-| `AUTH_DB_HOST`    | `AUTH_DB_HOST`    | `postgres-auth`               |
-| `AUTH_DB_NAME`    | `AUTH_DB_NAME`    | `quill_core`                  |
-| `AUTH_DB_USER`    | `AUTH_DB_USER`    | `auth_user`                   |
+| `CORE_DB_HOST`    | `CORE_DB_HOST`    | `postgres-core`               |
+| `CORE_DB_NAME`    | `CORE_DB_NAME`    | `quill_core`                  |
+| `CORE_DB_USER`    | `CORE_DB_USER`    | `core_user`                   |
 | `FHIR_SERVER_URL` | `FHIR_SERVER_URL` | `http://fhir:8080/fhir`       |
 | `EHRBASE_URL`     | `EHRBASE_URL`     | `http://ehrbase:8080/ehrbase` |
 
