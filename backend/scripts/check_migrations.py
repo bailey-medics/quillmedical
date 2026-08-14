@@ -87,29 +87,14 @@ def _string_value(node: ast.expr | None) -> str | None:
 
 
 def _assigned_value(tree: ast.Module, name: str) -> str | None:
-    """Return the string assigned to a top-level ``name``.
-
-    Handles both annotated assignments (``revision: str = "..."``) and
-    plain assignments (``revision = "..."``) so untyped migrations such as
-    ``teach001`` are read correctly.
-    """
+    """Return the string assigned to a top-level annotated ``name``."""
     for node in tree.body:
-        target: str | None = None
-        value: ast.expr | None = None
-        if isinstance(node, ast.AnnAssign) and isinstance(
-            node.target, ast.Name
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == name
         ):
-            target = node.target.id
-            value = node.value
-        elif (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-        ):
-            target = node.targets[0].id
-            value = node.value
-        if target == name:
-            return _string_value(value)
+            return _string_value(node.value)
     return None
 
 

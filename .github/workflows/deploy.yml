@@ -25,7 +25,9 @@ permissions:
   id-token: write  # Workload Identity Federation for Google Cloud Platform
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  # Fixed group (not keyed on github.ref) so a workflow_dispatch from a tag/hotfix
+  # branch still serialises against a push-triggered deploy from main.
+  group: deploy
   cancel-in-progress: false  # Never cancel a deploy in progress
 
 env:
