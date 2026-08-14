@@ -217,7 +217,7 @@ baseline:
       `/api/health` reports `core_db.available: true`; `alembic current` (run
       via a freshly rebuilt `quill-admin-teaching` job — its image is not part
       of the automatic CI deploy and had to be rebuilt via `just build-admin
-  teaching`) reports `878bc9300d4f (head)`, matching the baseline exactly.
+teaching`) reports `878bc9300d4f (head)`, matching the baseline exactly.
 - [ ] **Production, if/when provisioned:** repeat identically against
       `quill-core-prod` (project `quill-medical-production`). Nothing to do today
       while prod is gated off.
@@ -266,4 +266,8 @@ schema. This whole step is only safe inside the current no-data window.
 - [x] **Unit suite green** — `just ub` passes unchanged (SQLite `create_all`
       path is independent of migration history).
 - [ ] **Drift gate green (parent item 4)** — once the autogenerate-drift CI job
-      lands, it passes immediately against the baseline.
+      lands, it passes immediately against the baseline. Building that CI job is
+      tracked and implemented under item 4 of the
+      [Alembic review and migration safety plan](2026-08-09-alembic-review-plan.md),
+      not here — this item just confirms it passes cleanly against the baseline
+      once it lands.

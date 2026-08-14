@@ -31,7 +31,6 @@ def _migration_source(
     description: str = "do a thing",
     upgrade_body: str = "    pass",
     downgrade_body: str = "    op.drop_table('thing')",
-    annotated: bool = True,
 ) -> str:
     down = "None" if down_revision is None else f'"{down_revision}"'
     docstring = (
@@ -41,12 +40,8 @@ def _migration_source(
         f"Create Date: 2026-01-01 00:00:00\n\n"
         f'"""'
     )
-    if annotated:
-        rev_line = f'revision: str = "{revision}"'
-        down_line = f"down_revision: Union[str, None] = {down}"
-    else:
-        rev_line = f'revision = "{revision}"'
-        down_line = f"down_revision = {down}"
+    rev_line = f'revision: str = "{revision}"'
+    down_line = f"down_revision: Union[str, None] = {down}"
     return (
         f"{docstring}\n\n"
         "from typing import Sequence, Union\n\n"
@@ -81,17 +76,6 @@ def test_parses_annotated_revision(tmp_path: Path) -> None:
     migration = _one(tmp_path, revision="abc123", down_revision=None)
     assert migration.revision == "abc123"
     assert migration.down_revision is None
-
-
-def test_parses_plain_revision(tmp_path: Path) -> None:
-    migration = _one(
-        tmp_path,
-        revision="aa11bb22",
-        down_revision="cc33dd44",
-        annotated=False,
-    )
-    assert migration.revision == "aa11bb22"
-    assert migration.down_revision == "cc33dd44"
 
 
 # ---------------------------------------------------------------------------

@@ -70,11 +70,34 @@ the baseline included — is held to the full standard below.
   marker in any migration whose `upgrade()` performs a destructive
   operation, to force expand-contract deliberateness.
 
+### Renaming or retiring a column
+
+- A rename (e.g. `body` -> `content`) is a copy-and-retire spread across
+  several deploys, not a single migration — the old and new app revisions
+  run concurrently against one schema, so a same-deploy rename breaks the
+  still-serving old revision. Sequence it across separate deploys:
+  1. **Expand** — add the new column, nullable; deploy an app that writes
+     both columns but still reads the old one.
+  2. **Backfill** — batched `UPDATE ... SET new = old WHERE new IS NULL`
+     for existing rows (dual-write from step 1 covers rows that change
+     during the migration).
+  3. **Switch reads** — deploy an app that reads the new column (still
+     writing both).
+  4. **Contract** — deploy an app that stops writing the old column, then
+     drop it in its own migration (`allow-destructive` marker required).
+
 ### Deploy and configuration notes
 
 - Migrations run on deploy (`alembic upgrade head` in the container
   entrypoint), so a failing migration is a failed deploy. Test migrations
   locally before pushing.
+- Manual traffic pinning / rollback is only guaranteed safe to the
+  **immediately preceding** revision — expand-contract compatibility is
+  pairwise-adjacent, not transitive across a gap. Before pinning back further
+  than one revision, check whether any destructive/contract migration (a
+  `drop_column`/`drop_table` completing an earlier rename, etc.) has shipped
+  since the target revision; if so, the older code may reference a column or
+  table that no longer exists.
 - `compare_server_default` is deliberately **off** in `env.py` (only
   `compare_type=True` is enabled). Server-default drift is therefore not
   autodetected — manage column server defaults explicitly in migrations

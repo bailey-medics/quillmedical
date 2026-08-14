@@ -212,17 +212,23 @@ with every revision still receiving traffic".
 
 **Edge cases where more than two can coexist:**
 
-- **`workflow_dispatch` from a different ref.** The concurrency group is keyed on
-  `github.ref`. A push to `main` uses `deploy-refs/heads/main`; a manually
-  dispatched deploy from a tag or hotfix branch uses a **different** group, so
-  the two are **not** serialised against each other — a dispatched hotfix could
-  roll out a new revision mid-rollover, momentarily three versions racing, and
-  two deploys each running `alembic upgrade head`. Rare (requires a deliberate
-  dispatch during an active deploy) but it is the one real hole in the
-  serialisation.
+- ~~**`workflow_dispatch` from a different ref.**~~ **Fixed.** The concurrency
+  group was keyed on `github.ref`, so a push to `main` (`deploy-refs/heads/main`)
+  and a manually dispatched deploy from a tag or hotfix branch used
+  **different** groups and were not serialised against each other. `deploy.yml`
+  now uses a fixed group (`group: deploy`), so every run of the workflow —
+  push-triggered or dispatched, from any ref — queues in the same group.
 - **Traffic pinning / manual rollback.** If an operator pins traffic to an older
   revision and then a deploy lands, pinned-old + new serve simultaneously — a
-  deliberate, operator-created situation.
+  deliberate, operator-created situation. Not something to prevent (it is the
+  manual emergency-rollback tool), but its safety boundary is narrower than it
+  looks: expand-contract only guarantees compatibility between **immediately
+  adjacent** revisions, not across a gap. Pinning back to the **immediately
+  preceding** revision is always safe. Pinning back **further** is only safe if
+  no destructive/contract migration (a completed rename's `DROP COLUMN`, etc.)
+  has shipped since that older revision — otherwise the pinned code may
+  reference a column or table that no longer exists. Recorded as an
+  operational rule in `backend.instructions.md`.
 - **Multiple _instances_ of the same new revision** (not a different version).
   One revision can scale to N instances, and migrations currently run from the
   container entrypoint, so several instances of the **same** new version may each
@@ -352,10 +358,16 @@ clear message on:
    `upgrade()` require an explicit `# migration-check: allow-destructive`
    marker (forces expand-contract deliberateness).
 
-Allow-list the existing 35 revisions so current history passes; hold new
-migrations to the full standard. The parser reads both annotated
-(`revision: str = "…"`) and plain (`revision = "…"`) assignments so
-`teach001` is included. Runnable as
+Originally allow-listed the existing 35 revisions so current history passed
+while holding new migrations to the full standard. **Superseded by item 17**:
+the history was squashed to a single baseline (`878bc9300d4f`), so
+`ALLOWLISTED_REVISIONS` is now empty and every migration — the baseline
+included — is held to the full standard. The parser originally read both
+annotated (`revision: str = "…"`) and plain (`revision = "…"`) assignments
+to accommodate `teach001`'s untyped style; since the squash retired
+`teach001` and the baseline uses the standard annotated form, the
+plain-assignment fallback has been removed — the parser now only reads
+annotated assignments. Runnable as
 `python backend/scripts/check_migrations.py --all`.
 
 ### 2. Fail (not warn) on an empty `downgrade()`
@@ -377,10 +389,11 @@ downgrade body.
 - Content: Alembic expand-contract rules mirroring the script, plus: always
   use `just migrate "description"` (never raw `alembic revision`); the
   NOT NULL -> add nullable + `server_default` -> backfill -> tighten pattern
-  (cite `197844c56085` as the canonical example); every migration needs a
-  real docstring and meaningful slug; destructive changes are separate,
-  deliberate contract migrations; migrations run on deploy so a failure =
-  failed deploy.
+  (originally cited `197844c56085` as the canonical example; that revision
+  no longer exists standalone after the item 17 squash, so the citation was
+  repointed per that plan's step 5); every migration needs a real docstring
+  and meaningful slug; destructive changes are separate, deliberate contract
+  migrations; migrations run on deploy so a failure = failed deploy.
 - Also record the **`compare_server_default` off** decision (item 9) here, so
   the rationale lives alongside the other Alembic conventions, not only as an
   inline `env.py` comment.
@@ -689,9 +702,10 @@ when those land. Backend tests run in Docker (`just ub`).
 - [ ] **`check_migrations.py` unit tests** — one passing and one failing fixture
       per check (chain integrity, non-empty description, reversibility, NOT NULL
       trap, destructive-op marker); assert exit code and message for each.
-- [ ] **Allow-list honoured** — running the script against the current 35
-      revisions exits 0 (grandfathered); a synthetic new migration violating each
-      rule exits non-zero.
+- [x] **Allow-list retired** — superseded by item 17's squash: the checker now
+      runs against the single squashed baseline with `ALLOWLISTED_REVISIONS`
+      empty and exits 0 on its own merits (no grandfathering); a synthetic new
+      migration violating each rule still exits non-zero.
 - [ ] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
       `pass`-only `downgrade()` fails (not a warning).
 - [ ] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
