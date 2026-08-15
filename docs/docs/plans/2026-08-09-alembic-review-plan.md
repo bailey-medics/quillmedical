@@ -171,10 +171,10 @@ Two consequences for an enterprise, healthcare-ready product:
   of the DB expand-contract rule.
 - **Staleness must be bounded.** A client that can run indefinitely against a
   moving API is a latent safety hazard; the app needs a way to detect a new
-  build and prompt a reload.
+  build and reload safely.
 
 These are addressed by two new Part 2 items — **client version detection /
-forced reload** (item 14) and **backwards-compatible API windows** (item 15) —
+silent reload** (item 14) and **backwards-compatible API windows** (item 15) —
 the client / API-contract counterpart to the database migration safety above.
 
 ### How many versions actually coexist — the one-old-one-new invariant
@@ -332,12 +332,12 @@ roll-forward posture).
 Every item is agreed and desired; each carries its decision inline. They are
 ordered as an implementation sequence: build the guardrails first (1–5), then
 clean up the existing history (6–10), then runtime safety (11), then the
-scale-gated items to adopt **before real production / patient load** (12–13),
-then the client / API-contract safeguards (14–15) that keep stale browsers safe
-against a moving backend. Documentation (16) is **not** a final batch: every item
-updates both `backend.instructions.md` (the rules) and the docs page (the
-reasoning) as it lands, then hands off for human review — so both are complete by
-the time the last item ships.
+deploy-infrastructure items (12–13), then the client / API-contract safeguards
+(14–15) that keep stale browsers safe against a moving backend. Documentation
+(16) is **not** a final batch: every item updates both `backend.instructions.md`
+(the enforceable rule) and the docs page (both the rule and the reasoning,
+duplication accepted) as it lands, then hands off for human review — so both
+are complete by the time the last item ships.
 
 ### 1. `backend/scripts/check_migrations.py` — automated enforcement
 
@@ -452,21 +452,34 @@ Two subtleties worth recording:
 
 ### 6. Backfill the empty migration descriptions (zero-risk)
 
-- [ ] Add a one-line docstring to each of the seven empty-description migrations.
+- [x] ~~Add a one-line docstring to each of the seven empty-description
+      migrations.~~ **Moot — superseded by item 17.** The seven files
+      (`f98e1c93dcd7`, `0d836462f7f7`, `4c072d8106a9`, `58e3011782fa`,
+      `65817fed5f7a`, `bdb2df886116`, `e51ecb1aaf56`) no longer exist: the
+      squash collapsed the entire history into the single baseline
+      `878bc9300d4f`, which carries its own real docstring.
 
-Seven files have blank docstrings / `_.py` slugs (created by running
-`alembic revision` directly, bypassing `just migrate` which requires a
-message): `f98e1c93dcd7`, `0d836462f7f7`, `4c072d8106a9`, `58e3011782fa`,
-`65817fed5f7a`, `bdb2df886116`, `e51ecb1aaf56`. Add a one-line docstring to
-each describing intent (read the `upgrade()` body).
+Originally: seven files had blank docstrings / `_.py` slugs (created by
+running `alembic revision` directly, bypassing `just migrate` which requires
+a message). Nothing to do here now — see item 17 for the squash that
+retired them.
 
 ### 7. Typing style consistency — remove both excludes now
 
-- [ ] Delete the Ruff and Black `alembic/versions` excludes and reformat the lot
-      in one pass.
+- [ ] Delete the Ruff and Black `alembic/versions` excludes in
+      `backend/pyproject.toml`.
+- [ ] Reformat the baseline `878bc9300d4f_initial_baseline_schema.py` to the
+      modern `str | None` style.
+- [ ] Update `backend/alembic/script.py.mako` to the modern `str | None` style
+      so every future migration is born correctly formatted.
 
 _(recommended while there is no live data)_ — migration headers mix
-`Union[str, None]` and `str | None`. The fix is Ruff's `UP` group (pyupgrade),
+`Union[str, None]` and `str | None`. **Partially moot after the plan item 17
+squash**: the 35-file churn this item originally described no longer
+applies — only the single baseline `878bc9300d4f` remains, and it still uses
+the old `Union[str, None]` style, so there is exactly one file to reformat,
+not 35. The underlying recommendation stands unchanged, just cheaper: the fix
+is Ruff's `UP` group (pyupgrade),
 **not** Black: `UP` rewrites `Union[str, None]` → `str | None`; Black only
 handles whitespace/quotes/line-length. Both tools currently exclude the folder:
 Ruff `exclude = ["alembic/versions"]` and Black
@@ -477,30 +490,43 @@ decorative header type hints Alembic never reads at runtime. And Alembic
 **never re-runs an already-applied migration** (it checks `alembic_version`
 and skips), so reformatting a shipped file is invisible even on a populated
 DB — the "immutable history" rule is about not changing what a migration
-_does_, not its formatting. The only cost is a one-off 35-file churn commit
-and a `git blame` redirect. **Recommendation:** delete both `exclude` lines
-and let `pre-commit run --all-files` reformat the lot in one commit — this
-fixes the existing files _and_ auto-formats all future migrations via the
-normal pre-commit pass.
+_does_, not its formatting.
+
+**Fix the root cause, not just the symptom:** `backend/alembic/script.py.mako`
+— the Mako template `alembic revision` / `just migrate` uses to scaffold
+every new migration — still hardcodes the old style
+(`from typing import Sequence, Union`, `Union[str, None]`,
+`Union[str, Sequence[str], None]`). Deleting the excludes alone only fixes
+files retroactively; every new migration would still be born in the old
+style and get silently reformatted at the next `pre-commit` run. Update the
+template itself alongside the exclude removal so new migrations are correct
+on creation and never touch the `UP`/Black rule again. **Recommendation:**
+delete both `exclude` lines, update `script.py.mako` to
+`str | None` / `str | Sequence[str] | None`, and let
+`pre-commit run --all-files` reformat the one existing baseline file.
 
 ### 8. Date-prefixed filenames
 
-- [ ] Uncomment `file_template` in `alembic.ini` and retroactively rename all 35
-      existing files with date prefixes.
+- [x] ~~Uncomment `file_template` in `alembic.ini` and retroactively rename all
+      35 existing files with date prefixes.~~ **Done — superseded by item 17.**
+      `file_template` is already active in `backend/alembic.ini`, and the
+      squash's single baseline file is already named
+      `2026_08_12_0000-878bc9300d4f_initial_baseline_schema.py` — there is
+      nothing left to rename.
 
 _(recommended)_ — uncomment `file_template` in `alembic.ini`
 (`%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s`)
 so new migrations become `2026_08_09_1430-<rev>_<slug>.py` and sort
 chronologically in the file explorer. The prefix is **purely a human-sorting affordance** — true ordering
 is always the `down_revision` chain, never the filename.
-**Decided: retroactively rename all 35 existing files with date prefixes**
-(cheap now, no live data): the revision ID lives _inside_ each module
+Originally: retroactively rename all 35 existing files with date prefixes
+(cheap then, no live data): the revision ID lives _inside_ each module
 (`revision = "…"`), and Alembic scans the directory reading each module's
 `revision`/`down_revision`, so the filename is never the source of truth —
-renaming cannot break the chain. Backfill accurate prefixes from each file's
-existing `Create Date:` header. Caveat: the date reflects _creation_ time,
-which equals _chain_ order only because this repo keeps a strictly linear
-single-head history (it does). Improves traceability; does not fix docstrings.
+renaming cannot break the chain. Nothing to do here now — the item 17 squash
+produced the single baseline file already carrying the date-prefixed name the
+`file_template` config generates, so both the config change and the rename
+are already in place.
 
 ### 9. `compare_server_default` — record the decision
 
@@ -517,14 +543,19 @@ alongside the other Alembic conventions.
 
 ### 10. Revision-ID naming consistency
 
-- [ ] Adopt Alembic-generated hashes for new migrations; leave existing IDs as-is.
+- [x] ~~Adopt Alembic-generated hashes for new migrations; leave existing IDs
+      as-is.~~ **Moot — superseded by item 17.** The custom short IDs this
+      item reconciled (`msg001`, `org001`, `cbac001`, `sp001`, `pm001`,
+      `teach001`) no longer exist: the squash collapsed them all into the
+      single baseline `878bc9300d4f`, which already uses an
+      Alembic-generated-style hash. Nothing left to reconcile.
 
-Most migrations use autogenerated hashes, but several use custom short IDs
-(`msg001`, `org001`, `cbac001`, `sp001`, `pm001`, `teach001`). Harmless.
-**Decided: let Alembic generate hashes going forward and rely on the slug for
-readability** — do not hand-author custom short IDs. Existing custom IDs stay
-as-is (renaming a revision ID would break the chain); the convention applies to
-new migrations only.
+Originally: most migrations used autogenerated hashes, but several used
+custom short IDs. Harmless, but inconsistent. **Decided then:** let Alembic
+generate hashes going forward and rely on the slug for readability — do not
+hand-author custom short IDs; the convention applies to new migrations only.
+That convention still stands for every future migration (nothing here
+changes it) — see plan item 17 for the squash that retired the custom IDs.
 
 ### 11. Set `lock_timeout` / `statement_timeout` on migrations
 
@@ -544,7 +575,6 @@ per-file. **Decided: `lock_timeout = 3s`, `statement_timeout = 30s`.**
 ### 12. Decouple migrations from the serving container
 
 - [ ] Run `alembic upgrade head` as a separate pre-deploy Cloud Run Job.
-      _(adopt before real production / patient load)_
 
 _(highest value at scale)_ — run `alembic upgrade head` as a **separate
 pre-deploy step** (a Cloud Run **Job** — the `admin` image target already
@@ -553,15 +583,14 @@ created. Same database and same migrations; only the runner and timing change
 (no new DB). Benefits: the migration runs **exactly once** (removing the
 multi-instance race where several new-revision instances each run the migration
 on startup), gives a clean pass/fail signal separate from app boot, and lets the
-app service account drop DDL privileges (least privilege). Priority: adopt
-**before real production / patient load** and before scaling instances up — the
-risks it removes only bite with multiple instances against real data, which we
-don't have yet.
+app service account drop DDL privileges (least privilege). **Adopting now**,
+not deferred — the `admin` Cloud Run Job scaffold already exists in
+`infra/main.tf`/`infra/modules/cloud-run-job/`, it just isn't wired to run
+migrations yet.
 
 ### 13. Revision-specific smoke test
 
 - [ ] Point the deploy smoke test at the new revision's tagged, `--no-traffic` URL.
-      _(adopt before real production / patient load)_
 
 Point the deploy smoke test at the **new revision's own tagged URL** (a Cloud
 Run traffic **tag** deployed `--no-traffic`), not the public URL, so it verifies
@@ -570,34 +599,149 @@ load-balancer / Caddy change is needed while `ingress = ALL`; it requires
 switching the deploy to tag + no-traffic, then a promote step. **Complements**
 (does not replace) the decoupled migration job and the public-edge smoke test —
 the three cover different failure domains (DB change, new-revision health, public
-edge).
+edge). **Adopting now**, alongside item 12 — not deferred to a later,
+larger-scale phase.
 
-### 14. Client version detection / forced reload
+### 14. Client version detection / silent reload
 
-- [ ] Expose the frontend build hash and have the running app detect a newer
-      build and prompt the user to reload.
+- [ ] On navigation to an explicitly safe-listed route, silently reload if the
+      browser already has a newer build waiting (`registration.waiting`).
+- [ ] Keep the existing hourly `reg.update()` poll running as a second
+      trigger, so a tab that never navigates still gets checked — but gate
+      its reload on the same route-safety whitelist as the navigation trigger.
 
 _(bounds client staleness)_ — a user's browser keeps running the bundle it
 first downloaded until the tab is reloaded, so a stale client can run for days
-against a moving backend. Expose the Vite build hash/version (e.g. a small
-`/version.json` or a build-time constant served alongside the app) and have the
-running app compare it against its own build hash periodically (on navigation
-and/or a light interval). On mismatch, surface a **non-intrusive** Mantine
-notification — "A new version is available — reload" — with a reload action.
-**Prompt, never auto-reload:** a forced reload mid-form would destroy unsaved
-clinical input; only hard-reload on explicit user action or a safe navigation
-boundary. **The prompt is dismissible and non-blocking:** the user can cancel /
-"not now" and keep working on the current build; dismissing never forces a
-reload, and the check re-surfaces the prompt on the next detected mismatch (a
-later navigation or interval tick), so a dismissed update is a deferral, not a
-permanent opt-out. Bounding how stale a client can get is a safety property, not
-just a user-experience (UX) nicety. **Decided: adopt as standard for the
-production product.**
+against a moving backend. No separate version marker (e.g. `/version.json`) is
+needed: `sw.ts` calls `precacheAndRoute(self.__WB_MANIFEST)`
+(`frontend/src/sw.ts`), and workbox's injected `__WB_MANIFEST` lists every
+hashed asset + revision, so the built `sw.js` is already byte-different on
+every deploy — exactly like `index.html`. The browser's own service-worker
+update algorithm already does a byte-for-byte comparison of `sw.js` on every
+`reg.update()` call and surfaces the result natively as
+`registration.waiting`, so the check is simply: call `reg.update()`, then read
+`registration.waiting` — **on navigation to a whitelisted route, and also
+once an hour via the existing timer** — no focus/visibility trigger.
+
+**Fixes an existing live bug — this is not a greenfield addition.** `main.tsx`
+currently calls `reg.update()` immediately on load and again every hour via
+`setInterval(() => reg.update(), 60 * 60 * 1000)`; whenever that poll finds a
+new build, `sw.ts` calls `self.skipWaiting()` unconditionally and `main.tsx`
+hard-reloads on every `controllerchange`, with no regard for in-progress work
+anywhere in the app. **The bug being fixed is the unconditional reload, not
+the hourly cadence** — this item keeps the hourly timer (and adds the
+navigation trigger alongside it) but makes both triggers respect route
+safety before ever calling `skipWaiting()`/reloading.
+
+**A single whitelist, not a whitelist-plus-blacklist.** A route is "safe" if
+it is fully reconstructible from the URL alone — dashboards, list views,
+settings, read-only result pages. Reloading it produces an identical page, so
+nothing is lost. Mark each safe route individually via React Router's
+`handle` property, e.g. `{ path: "...", element: <X />, handle: {
+safeForReload: true } }`. A route with no `handle.safeForReload` is unsafe by
+default (fail-safe) — a newly added route never accidentally becomes
+reloadable, and there is no separate list to keep in sync with the route tree.
+An in-progress exam (`teaching/assessment/:id`) simply has no `handle` set,
+rather than needing separate blacklist/suppression logic.
+
+**No prompt, ever — fully silent, gated on route safety, not user action or
+dirty-state tracking.** On arrival at a whitelisted route, call `reg.update()`
+and check `registration.waiting` **before the destination page renders** (not
+a post-mount effect — avoids a flash of the new page before reload). If a
+worker is waiting: post `SKIP_WAITING` to it and hard-reload immediately and
+silently — no notification, no toast. If the route is not whitelisted,
+nothing happens at all; the check simply runs again the next time the user
+lands on a whitelisted route. **The hourly timer follows the same rule**: it
+always calls `reg.update()`, but only acts on a waiting worker if the
+currently-rendered route is whitelisted at the moment the timer fires — on an
+unsafe route (e.g. mid-exam) it does nothing that tick and simply checks
+again an hour later, or sooner if the user navigates to a safe route first.
+
+**Also skip the reload if a flash message carried from the previous page is
+present.** `PageMessageContext`/`PageMessageProvider`
+(`frontend/src/components/page-message/PageMessageContext.tsx`) ingests
+`location.state.flash` on arrival and renders it as a banner in `MainLayout`
+(not a toast) — manually dismissible via a close button, but never
+auto-dismissed (clinical safety). If `location.state?.flash` is present on the
+incoming navigation, skip the reload check for that one navigation only — it
+simply re-runs on the next one. (Implementation note: a route `loader` doesn't
+receive `navigate()`'s `state` argument, so this check likely needs to live at
+component level — e.g. a `useLayoutEffect`, which runs before the browser
+paints, avoiding a visible flash of the new page.)
+
+**Implementation notes (from a design review pass):**
+
+- **Reload-loop guard.** If the newly-shipped build is itself broken, a naive
+  implementation could reload, immediately re-detect the same waiting worker,
+  and reload again forever. Record a flag in `sessionStorage` before
+  reloading; if it is already set on a later check, do **not** auto-reload
+  again for the rest of this tab session — fail silent rather than loop (a
+  full tab close/reopen clears the flag and gets a fresh chance).
+- **No separate marker or caching rule needed.** Because the signal is the
+  browser's native SW update check rather than a fetched file, there is no
+  new endpoint to worry about `Cache-Control` for. Confirmed via MDN/web.dev:
+  `navigator.serviceWorker.register()`'s `updateViaCache` option defaults to
+  `"imports"`, meaning the **main `sw.js` script always bypasses the HTTP
+  cache on every update check**, regardless of any `Cache-Control` header on
+  it. Caddy currently sets no explicit header on `/sw.js` (it matches neither
+  the `@hashed` nor `@html` matchers in `caddy/prod/Caddyfile`), but no Caddy
+  change is needed: nothing else in the stack (no CDN in front of the
+  frontend service, no other code path fetching `/sw.js` directly) would ever
+  read that header, so adding one would protect against nothing currently
+  possible. Separately confirmed: the oft-cited
+  "24-hour" throttle only limits **implicit** update checks (navigation
+  without an explicit call, `push`/`sync` events) — **explicit `reg.update()`
+  calls are never throttled**, so calling it on every safe-route navigation
+  always gets a fresh check.
+- **Gate on build mode, not environment.** Gate the whole check behind
+  `import.meta.env.PROD` — Vite's dev-mode HMR (hot module replacement)
+  changes module content constantly and would otherwise trigger constant
+  false mismatches locally. This is `true` for **both** teaching and
+  production (`frontend/Dockerfile`'s `build`/`prod` stages run `yarn build`
+  for both — the only difference between the two is env vars baked in at
+  build time, e.g. `VITE_CLINICAL_SERVICES_ENABLED`); it is `false` only for
+  local `yarn dev` (the `dev` stage).
+- **Fail closed on check errors.** A failed `reg.update()` call (network
+  blip, offline) must never be treated as a detected update — only a
+  successful check with `registration.waiting` populated can trigger a
+  possible reload.
+- **Push notifications are unaffected.** `sw.ts`'s `push`/`notificationclick`
+  handlers are a separate concern from the update/reload flow. Push
+  subscription state lives server-side (`backend/app/push.py`), tied to the SW
+  registration, not to page/React state — a reload doesn't touch it. Removing
+  the unconditional `self.skipWaiting()` is safer than the current behaviour:
+  the old SW instance keeps handling `push` events for as long as it remains
+  active, right up until the safe-navigation trigger hands control to the new
+  one.
+- **Accepted, out of scope:** multiple open tabs behave independently (one tab
+  may reload before a sibling does) — not dangerous, just per-tab. A user who
+  stays on the same unsafe route for an entire tab session simply never gets
+  a reload — nothing is forced without either navigating to, or already being
+  on, a whitelisted route.
+- **Explicitly out of scope for this pass:** mandatory-withdrawal escalation
+  (any-navigation trigger + blocking modal for emergency build withdrawal) —
+  a real DCB0129-relevant control, but a separate, rare mechanism, deferred;
+  focus/visibility-change-triggered checks — over-engineering for the
+  practical benefit; Web Push/WebSocket-based instant notification to idle
+  tabs — confirmed no WebSocket infrastructure exists anywhere in
+  `backend/app/**` (only a transitive `websockets` dependency via uvicorn's
+  `[standard]` extras).
+- **No post-reload toast.** Considered a brief "Updated to the latest version"
+  toast purely as reassurance after a silent reload; **declined** — stays
+  fully silent end-to-end.
+
+**Decided: adopt as standard for the production product** — silent,
+whitelist-gated (route `handle`) reload, triggered both on navigation to a
+safe route and by the existing hourly timer; no prompt, in either case.
 
 ### 15. Backwards-compatible API windows
 
 - [ ] Document and enforce an additive-only / deprecate-then-remove API
       compatibility policy so stale clients keep working.
+- [ ] CI schema-diff check (`oasdiff`) fails the build on an undeclared
+      breaking change; the only way to declare one intentional is a required
+      GitHub Actions environment approval (Slack-notified) — not a code
+      comment, commit trailer, or PR label.
 
 _(client-side expand-contract)_ — treat every API response shape and required
 request field as a contract that stale clients still depend on during (and
@@ -606,11 +750,220 @@ compatibility window: adding an optional response field is safe; renaming,
 removing, or retyping a field, or adding a **required** request field, is a
 breaking change that must be staged — add the new shape alongside the old,
 migrate clients, then remove the old shape after **N releases** of deprecation.
-This mirrors the database expand-contract rule on the client boundary. Largely a
-**documented discipline + review gate** (record it in
-`backend.instructions.md`, item 3) reinforced by contract / schema-snapshot
-tests that fail when a field is removed or retyped without a deprecation window.
-**Decided: additive-only within the window; breaking changes staged over N releases.**
+This mirrors the database expand-contract rule on the client boundary.
+
+**Enforcement: automated schema diff + a human gate an agent can't
+self-satisfy.** A `# api-check: breaking-change` code comment, a
+`BREAKING CHANGE:` commit-message trailer, and a PR label were each
+considered and rejected in turn — all three are just text/metadata that an AI
+coding agent produces as routinely as the code itself, so none of them prove
+a human actually decided the change was intentional. A code comment has a
+second flaw even setting that aside: unlike an Alembic migration file (write
+once, reviewed once, never revisited), application source is edited
+repeatedly forever, so a marker added for one breaking change sits there
+permanently and can silently "cover" an unrelated, unreviewed change to the
+same endpoint months later. A second-reviewer requirement (CODEOWNERS +
+required PR review) was also considered and **rejected on principle, not
+just team size**: design for the lowest common denominator — a lazy human —
+and a second reviewer is not inherently more careful than the person who
+wrote the change; a fresh or rushed reviewer can rubber-stamp an approval
+just as easily as the author can, so adding a second person is not a real
+safety gain on its own. The gate below is deliberately built so **the author
+themself** is the accountable approver — the goal is forcing one genuine,
+separate, deliberate action out of whoever is accountable, not diffusing
+accountability across more people who could each be equally lazy.
+
+- **Schema diff**: `oasdiff breaking` compares the OpenAPI spec generated from
+  `main` (`backend/scripts/dump_openapi.py`) against the spec generated from
+  the PR branch, in CI. Chosen over hand-written contract tests because it
+  needs no test authoring per endpoint — it diffs the full spec on every PR
+  automatically. Verified: `oasdiff`'s source-location tracking only maps a
+  change back to a line/column **inside the OpenAPI spec file itself**, not
+  into the Python source that generated it, and only works when the spec is
+  parsed as YAML (ours is generated JSON, so no line/column is available
+  regardless) — so the check can only be "was _any_ breaking change found",
+  never "which exact source line caused it".
+- **Human gate**: a breaking-change finding routes the workflow through a
+  required-reviewer **GitHub Actions environment**
+  (e.g. `api-breaking-change-review`) with the repo owner (the author) as the
+  sole reviewer — **by design, not just because there's no second developer
+  yet**: see the accountability reasoning above. "Prevent self-review" stays
+  **off**. Approving is a distinct action in the GitHub Actions UI/mobile
+  app — less reachable from an agent's terminal/editor session (it would need
+  your logged-in browser or phone) — and it is scoped to the exact commit SHA
+  of that workflow run, so a new push always requires a fresh approval;
+  nothing "left over from 100 commits ago" can satisfy it.
+- **Notification**: post to Slack (via the existing reusable
+  `.github/workflows/slack-notify.yml`, `channel: teaching` — reusing the
+  existing webhook, no new secret needed) when a breaking change is detected,
+  including `oasdiff`'s changelog summary of what changed, so the approval
+  prompt shows _what_ is being confirmed rather than a bare "approve?".
+
+Largely a **documented discipline + review gate** (record it in
+`backend.instructions.md`, item 3) reinforced by the CI schema-diff check
+described above.
+**Decided: additive-only within the window; breaking changes staged over N
+releases; enforced via `oasdiff` in CI plus a required-reviewer GitHub
+environment gate (Slack-notified) — not a code marker, commit trailer, or
+label.**
+
+**To be proven with a real example before this is trusted**: a throwaway
+branch/PR carrying a deliberate breaking change (e.g. dropping a response
+field) exercises the whole chain end-to-end — CI flags it, Slack notifies,
+the environment approval appears in the Actions tab — **and is never merged
+to `main`.**
+
+- [ ] Close the client-side half of the compatibility window: a stale tab
+      must be forced onto a new bundle before an _approved_ breaking change
+      goes live, not just eventually.
+
+**Why a stale tab is a real risk, not a theoretical one**: refresh tokens
+rotate on every use (`main.py`, `/api/auth/refresh`), so a tab kept alive by
+routine use never hits the 7-day refresh TTL and never re-logs-in — and
+because this is a client-routed SPA, re-login is the only thing that would
+otherwise force a fresh page load. A tab can genuinely stay open for 30+
+days on the bundle it started with.
+
+**What's already in place, and what item 14 changes it to**: today `main.tsx`
+polls `reg.update()` hourly and force-reloads unconditionally. **Item 14
+above keeps that hourly timer** but stops it reloading unconditionally —
+both the hourly timer and a new navigation trigger now only act when the
+currently-rendered route is whitelisted — this item builds on **item 14's
+decided design** (hourly timer + navigation trigger, both whitelist-gated).
+
+**No separate fast path — the API-side expand-contract staging is what
+actually closes the window, not a faster client check.** A faster detection
+path was considered (piggybacking version detection onto
+`ConnectivityContext.tsx`'s health poll), but that poll **only runs while
+`isOnline` is false** — a normal, working-but-stale tab is exactly the case
+where it never fires, so there is nothing to extend, and it would still only
+be a race against the clock either way. The real fix is the same
+**expand-contract mirroring** already decided at the top of this item:
+a breaking change is never shipped as a single deploy — it always ships as
+two:
+
+1. **Expand deploy**: the new shape goes live **alongside** the old one; both
+   are served simultaneously, so an old, stale tab keeps working exactly as
+   before — nothing about this deploy is "breaking" for anyone yet.
+2. **Contract deploy**: the old shape is removed, **at least one full
+   release cycle later** (the "N releases of deprecation" already decided
+   above) — never in the same deploy as the expand step, and never sooner
+   than a release cycle.
+
+Because item 14's hourly timer fires **regardless of navigation** (and the
+navigation trigger closes the gap further for tabs that move between
+whitelisted routes), and a release cycle spans many days of ordinary use,
+every tab has had numerous opportunities — timer-driven, not just
+navigation-driven — to pick up the expand deploy well before the contract
+deploy ships. The risk window is closed by the **staging gap**, reinforced
+by (not solely dependent on) the hourly check. This is exactly the same
+reasoning as the database's expand-contract rule (item 1's Part 1 write-up)
+applied to the API boundary instead of the schema. (A tab that stays on an
+unsafe route for an entire release cycle, never once landing on a
+whitelisted route while the hourly timer fires, is already an accepted,
+out-of-scope edge case per item 14's decision.)
+
+- **Routine (additive) deploys, and expand-step deploys**: item 14's
+  behaviour, unchanged — silent `skipWaiting()` + reload on the next
+  whitelisted-route check (hourly timer or navigation, whichever is first),
+  no message.
+- **Contract-step deploys (the one point of actual client risk)**: same
+  hourly-timer-or-navigation, whitelist-gated check, same reload — the only
+  difference is a short, non-dismissible "Updating to the latest version…"
+  banner shown for a few seconds before reloading, since this is the one
+  deploy users should be told about rather than have happen silently. Gate
+  the banner on the same breaking-change signal from the enforcement
+  mechanism above; it is reassurance for a risk the staging has already
+  eliminated, not the thing eliminating it.
+
+- [ ] Build the "Updating to the latest version…" banner as a proper
+      Storybook component — `.stories.tsx` + `.test.tsx` alongside it — not
+      inline JSX bolted onto the reload-trigger code. **Mounted only for the
+      forced/contract-step reload path** — routine and expand-step reloads
+      stay fully silent per item 14 and never render this banner.
+
+**Follow the existing `OfflineStrip` precedent, don't invent a new pattern.**
+`components/offline-strip/OfflineStrip.tsx` is exactly this shape already: a
+pure presentational, full-width strip with `role="status"`/`aria-live="polite"`,
+visibility and content fully controlled by the caller via props (no internal
+timers, no dismiss button) — the same non-dismissible, "just tell the user
+something is happening" contract this banner needs. Per
+`components.instructions.md`'s reuse hierarchy, compose from what exists
+(`Icon`, `BodyTextInline`/typography components) rather than building from
+scratch.
+
+- **Component**: a new `components/updating-banner/UpdatingBanner.tsx` (or
+  similar), pure presentational — a `visible: boolean` prop (or simply
+  mounted/unmounted by the caller), no internal state, no close button, no
+  auto-dismiss timer of its own (the reload-trigger code controls the whole
+  lifecycle: show → wait a few seconds → reload). The reload-trigger code
+  only mounts it when the breaking-change/contract-step signal is set —
+  routine and expand-step reloads never mount it, so there is no prop or
+  mode for a "routine" variant to build or test.
+- **Story**: default state, plus dark mode, following the "loading/skeleton
+  last, dark mode after" story ordering convention; use `StoryNote` for any
+  explanatory text.
+- **Tests**: renders the "Updating to the latest version…" copy (sentence
+  case, British English); exposes `role="status"`/`aria-live="polite"` for
+  screen readers; renders no dismiss/close control (unlike
+  `PageMessageProvider`'s flash banners, this one is never manually
+  dismissible); snapshot/behaviour only — no reload/timer logic lives in the
+  component itself, so nothing to fake-timer test here (that belongs to the
+  reload-trigger unit tests in Group A below).
+
+**Decided: no new polling mechanism, and no bare "single breaking deploy" —
+every breaking change ships as an expand deploy then a contract deploy at
+least one release cycle later (mirroring the DB expand-contract rule), which
+gives item 14's hourly-timer-and-navigation check ample opportunity to have
+already refreshed every stale tab before the contract deploy. Add a short
+notify-then-reload banner on the contract deploy only, as reassurance, not
+as the mitigation — routine and expand-step deploys stay fully silent, per
+item 14.**
+
+- [ ] Document the API expand-contract rule explicitly — for human
+      developers **and** AI coding agents — not left implicit in this plan
+      doc alone.
+
+**Why this needs its own item, not just item 16's general cadence**: item 3
+gave the DB expand-contract rule its own named section in
+`backend.instructions.md` precisely so it reads as a standing convention,
+not a one-off decision buried in a planning doc. The API-side rule decided
+above (additive-only; breaking changes ship as expand-deploy-then-
+contract-deploy, never one deploy; the `oasdiff` + environment-approval
+gate) deserves the same treatment — otherwise a future change (human- or
+agent-authored) can reintroduce a single-deploy breaking change simply
+because nothing in the day-to-day instructions said not to.
+
+- **`backend.instructions.md`**: add a new **"API compatibility
+  (expand-contract)"** section, sibling to the existing "Expand-contract and
+  NOT NULL columns" section, stating: additive-only within the compatibility
+  window; a breaking change is never a single deploy — expand first,
+  contract only after **N releases**; the `oasdiff` CI check and the
+  `api-breaking-change-review` environment gate are how "intentional" gets
+  declared, not a comment/trailer/label. This file's `applyTo: "backend/**"`
+  frontmatter already makes it load automatically for any AI agent touching
+  backend code — the same mechanism that already makes the Alembic rules
+  visible.
+- **`.github/copilot-instructions.md`**: add a short cross-referencing
+  bullet under "Backend (FastAPI)" (this file loads for **every** task,
+  unscoped, unlike `backend.instructions.md`) so the rule surfaces even when
+  the change starts on the frontend side (e.g. a frontend PR consuming a
+  new/changed endpoint) — "API changes: additive-only; breaking changes
+  need the expand-contract two-deploy pattern — see
+  `backend.instructions.md`."
+- **Docs page** (`docs/docs/`): both the rule (additive-only; expand deploy
+  then contract deploy after **N releases**; `oasdiff` + environment-approval
+  gate) **and** the full reasoning — why a single deploy is unsafe, the
+  refresh-token/stale-SPA-tab risk, and why item 14's hourly-timer-and-
+  navigation, whitelist-gated check is sufficient given the release-cycle
+  gap — per item 16's decision to carry both in the docs page rather than
+  splitting them.
+
+**Decided: `backend.instructions.md` gets a new named section (mirroring
+item 3's treatment of the DB rule), `copilot-instructions.md` gets a short
+cross-referencing bullet so it surfaces on frontend-only changes too, and
+the docs page carries both the rule and the full reasoning (duplication with
+`backend.instructions.md` accepted, per item 16).**
 
 ### 16. Documentation cadence — update the rules and docs as each item lands
 
@@ -623,16 +976,21 @@ _(applies to every item — not a final batch)_ — documentation is not deferre
 the end. Each item ships as a self-contained unit that, alongside its code and
 tests, updates **both** durable artefacts while the detail is fresh: the LLM
 instructions file (`backend.instructions.md`) carries the enforceable _rule_ the
-item establishes, and the docs page (`docs/docs/`) captures the _why_. The item
-is then presented for human review (the review gate in
-`follow-the-plan-document.prompt.md`) before commit. Splitting the artefacts by
-purpose — rules vs reasoning — avoids duplication: the docs page links to
-`backend.instructions.md` rather than restating it. Because each item carries its
-own documentation, the reasoning is captured while it is vivid rather than
-reconstructed at the end, and by the time the last item lands both the rules file
-and the docs page are already complete and reviewed — no final documentation
-batch is needed. This planning document becomes the historical record; the docs
-page is the living reference.
+item establishes, and the docs page (`docs/docs/`) carries **both the rule and
+the why** — a human reading the docs page alone should get the full picture,
+not just the reasoning with a link off to `backend.instructions.md` for the
+rule itself. The item is then presented for human review (the review gate in
+`follow-the-plan-document.prompt.md`) before commit. **Deliberately accepting
+duplication** of the rule text between the two artefacts (rather than the docs
+page linking to `backend.instructions.md` to avoid restating it) — a separate,
+existing prompt already checks the docs against the code for consistency, so
+drift between the two is caught rather than silently accumulating, and the
+duplication cost is worth a docs page that stands on its own. Because each item
+carries its own documentation, the reasoning is captured while it is vivid
+rather than reconstructed at the end, and by the time the last item lands both
+the rules file and the docs page are already complete and reviewed — no final
+documentation batch is needed. This planning document becomes the historical
+record; the docs page is the living reference.
 
 Cover, cumulatively across the items: how migrations run on deploy and how a
 failure is contained (expand-contract + roll-forward, no downgrades); the
@@ -694,8 +1052,8 @@ squash plan file linked above.
 
 Each change ships with tests. **Group A** proves the new tooling works;
 **Group B** proves the existing migration history and the deploy path are
-unbroken; **Group C** covers the scaled-infrastructure items, exercised only
-when those land. Backend tests run in Docker (`just ub`).
+unbroken; **Group C** covers the deploy-infrastructure items (12–13). Backend
+tests run in Docker (`just ub`).
 
 ### A. New tooling behaves correctly
 
@@ -717,10 +1075,19 @@ when those land. Backend tests run in Docker (`just ub`).
 - [ ] **Lock / statement timeouts applied** — assert `env.py` issues
       `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
       of `run_migrations_online` (capture via a spy engine or an integration run).
-- [ ] **Client version detection** — with a build hash that differs from the
-      running app's, the version check surfaces the reload prompt; with a
-      matching hash it stays silent; the prompt never triggers an automatic
-      reload (asserted — a mid-form reload would lose data).
+- [ ] **Client version detection** — on navigation to a whitelisted
+      (`handle.safeForReload`) route with a service worker already waiting
+      (`registration.waiting` populated), the app reloads automatically with
+      no visible prompt; a non-whitelisted route (e.g. an in-progress exam
+      attempt) never reloads regardless of a waiting worker; a whitelisted
+      route showing a flash message carried via `location.state` skips the
+      reload once and re-checks on the next navigation; no waiting worker
+      never reloads; the hourly timer defers on an unsafe route and acts
+      immediately on a whitelisted one.
+- [ ] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
+      "Updating to the latest version…" copy renders, `role="status"` /
+      `aria-live="polite"` are present, and no dismiss/close control exists;
+      `.stories.tsx` covers default and dark mode.
 - [ ] **API compatibility window** — a contract / schema-snapshot test fails when
       a response field is removed or retyped, or a required request field is
       added, without a deprecation window; additive-only changes pass.
@@ -729,20 +1096,22 @@ when those land. Backend tests run in Docker (`just ub`).
 
 - [ ] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
       completes with no error (the exact path that runs on deploy).
-- [ ] **Chain unchanged after renames + docstrings** — `alembic history` and
-      `alembic heads` are identical before and after the date-prefix rename and
-      the docstring backfill (single base, single head `teach001`, same order).
+- [ ] **Chain unchanged after reformat** — `alembic history` and `alembic heads`
+      are identical before and after item 7's reformat (single base, single
+      head `878bc9300d4f`, same order). Items 6, 8, and 10's original rename /
+      docstring-backfill checks are moot post-squash — nothing to compare
+      there any more.
 - [ ] **Reformat is behaviour-preserving** — after removing the Ruff/Black
       excludes and reformatting, `alembic history` is unchanged and
       `alembic upgrade head` still succeeds (only header type hints changed; no
       `revision` / `down_revision` / SQL edits).
 - [ ] **Schema parity** — the schema produced by `upgrade head` after the changes
-      matches the pre-change schema (compare `pg_dump --schema-only`), proving the
-      docstring / rename / format work changed nothing structural.
+      matches the pre-change schema (compare `pg_dump --schema-only`), proving
+      item 7's reformat work changed nothing structural.
 - [ ] **Full backend suite** — `just ub` passes (models and migrations still
       consistent with the app).
 
-### C. Deferred (verify only when the scaled items land)
+### C. Deploy-infrastructure items (12–13)
 
 - [ ] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
       once, exits 0, and the app revision boots against the migrated DB.
