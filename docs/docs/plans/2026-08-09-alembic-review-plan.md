@@ -570,8 +570,15 @@ are already in place.
 
 ### 9. `compare_server_default` — record the decision
 
-- [ ] Add a one-line comment beside the `compare_type=True` lines in `env.py`.
+- [x] Add a one-line comment beside the `compare_type=True` lines in `env.py`.
 - [x] Record the same decision in `backend.instructions.md` (item 3).
+
+Added a one-line comment directly beneath both `compare_type=True` lines in
+`env.py` (offline and online paths) recording that `compare_server_default`
+is deliberately left off. Verified with `pre-commit run --files
+backend/alembic/env.py` (ruff/black/mypy/bandit all pass) and `alembic
+check` inside the running container (clean, no drift) — comment-only change,
+no behaviour affected.
 
 Deliberately left **off** in `env.py` (recurring false-positive noise outweighs
 the benefit at this scale; DB defaults are few). Add a one-line comment beside
