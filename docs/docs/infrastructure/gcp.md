@@ -553,13 +553,13 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 3. Deploy to staging and teaching Cloud Run
 4. Smoke test the health endpoint
 
-### ~~Create Alembic migration Cloud Run job~~ (solved)
+### Alembic migrations run as a pre-deploy Cloud Run Job (done)
 
-Database migrations are handled by the backend's `entrypoint.sh`, which runs `alembic upgrade head` before starting the uvicorn server. This runs automatically on every Cloud Run revision deployment — no separate migration job is needed.
+Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** — a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job — before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
 
 ### Admin Cloud Run Job (done)
 
-Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles). See the [admin tasks documentation](admin.md) for usage.
+Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
 
 The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool — it does **not** run an HTTP server.
 

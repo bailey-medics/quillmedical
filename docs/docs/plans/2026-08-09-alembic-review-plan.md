@@ -635,7 +635,38 @@ per-file. **Decided: `lock_timeout = 3s`, `statement_timeout = 30s`.**
 
 ### 12. Decouple migrations from the serving container
 
-- [ ] Run `alembic upgrade head` as a separate pre-deploy Cloud Run Job.
+- [x] Run `alembic upgrade head` as a separate pre-deploy Cloud Run Job.
+
+Added a `run-migrations` action to `backend/scripts/admin_cli.py`
+(`ADMIN_ACTION=run-migrations`, calls `alembic.command.upgrade(cfg, "head")`
+against the `alembic.ini` already shipped in the `admin` image). `deploy.yml`
+now builds and pushes the `admin` image alongside `backend` whenever backend
+source changes, then runs the new `.github/scripts/deploy/run-migrations.sh`
+(updates `quill-admin-{env}` to the new image, executes it with `--wait`)
+**before** the `gcloud run services update` step, for both the teaching and
+production stages — a failed migration now blocks the deploy instead of
+crash-looping the service. Removed the migration retry loop from
+`backend/docker/entrypoint.sh` (file deleted) and the corresponding
+`ENTRYPOINT`/`COPY` lines from `backend/Dockerfile`'s `prod` stage — the
+serving container now starts uvicorn directly. Added `just migrate-remote`
+(alias `mr`) for staging (not wired into the CI deploy pipeline) or manual
+re-runs. Documented in a new "Pre-deploy migration job" section in
+[Alembic migration safety](../backend/alembic-migration-safety.md), updated
+`backend.instructions.md` (Deploy and configuration notes), `admin.md` (new
+"Run database migrations" command + a "Deploy pipeline blocked on migration
+failure" troubleshooting entry), and `gcp.md`. Verified with: the full
+`pytest tests/test_admin_cli.py` suite (new `TestRunMigrations` tests, mocked
+`alembic.command.upgrade`, both success and failure paths) and the full
+backend unit suite via `just ub` (all green); `mypy --strict` on `backend/app`
+
+- `admin_cli.py` (clean); `pre-commit run` on all touched files (clean, after
+  one ruff import-order auto-fix); `actionlint` on `deploy.yml` (clean); the new
+  `run-migrations.bats` (3 tests, `gcloud` stubbed) via `just ts` (all 22 shell
+  script tests green); local Docker builds of both the `prod` and `admin`
+  targets (confirms no `ENTRYPOINT` override remains, and `admin`'s `CMD` is
+  unchanged); and an end-to-end run of `ADMIN_ACTION=run-migrations` in the
+  built `admin` image against the live dev core Postgres container (`✓
+Migrations applied successfully`).
 
 _(highest value at scale)_ — run `alembic upgrade head` as a **separate
 pre-deploy step** (a Cloud Run **Job** — the `admin` image target already

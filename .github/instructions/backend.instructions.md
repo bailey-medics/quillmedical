@@ -104,9 +104,12 @@ the baseline included — is held to the full standard below.
 
 ### Deploy and configuration notes
 
-- Migrations run on deploy (`alembic upgrade head` in the container
-  entrypoint), so a failing migration is a failed deploy. Test migrations
-  locally before pushing.
+- Migrations run as a **separate pre-deploy Cloud Run Job**
+  (`quill-admin-{env}`, `ADMIN_ACTION=run-migrations` in
+  `backend/scripts/admin_cli.py`), executed with `--wait` by `deploy.yml`
+  before the new backend revision is created — not inside the serving
+  container's entrypoint. A failing migration blocks the deploy rather than
+  crash-looping the service. Test migrations locally before pushing.
 - Manual traffic pinning / rollback is only guaranteed safe to the
   **immediately preceding** revision — expand-contract compatibility is
   pairwise-adjacent, not transitive across a gap. Before pinning back further

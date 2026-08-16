@@ -2,24 +2,27 @@
 
 ## Overview
 
-Database migrations run **automatically on every deploy**
-(`backend/docker/entrypoint.sh` runs `alembic upgrade head`, retries five
-times, then exits). A failed migration therefore crash-loops the new
-container — migration safety is a deploy-availability concern, not just
-tidiness. This page explains the mechanics that keep that safe, and the
-tooling that enforces the rules automatically rather than relying on human
-review alone.
+Database migrations run as a **separate pre-deploy step**, not inside the
+serving container. `deploy.yml` executes the `quill-admin-{env}` Cloud Run
+Job (`ADMIN_ACTION=run-migrations`, running `alembic upgrade head` via
+`backend/scripts/admin_cli.py`) with `--wait`, **before** the new backend
+revision is created. A failed migration blocks the deploy — the subsequent
+`gcloud run services update` step never runs — rather than crash-looping the
+serving container. This page explains the mechanics that keep that safe, and
+the tooling that enforces the rules automatically rather than relying on
+human review alone.
 
 Only the **core database** is migrated by Alembic. HAPI FHIR and EHRbase
 manage their own schemas and are out of scope.
 
-## How a deploy stays safe: rolling revisions + expand-contract
+## How a deploy stays safe: a pre-deploy job + expand-contract
 
-During a deploy, Cloud Run keeps the **previous** revision serving 100% of
-traffic while the **new** revision boots — the new revision only receives
-traffic once it reports healthy. Migrations run inside that new revision's
-startup, so for a window both revisions' code exists, but only the old one
-is actually live.
+The migration job runs to completion (or fails) before the new backend
+revision is created. Cloud Run then keeps the **previous** revision serving
+100% of traffic while the new revision boots — the new revision only
+receives traffic once it reports healthy. Running the migration first, once,
+outside any serving instance removes the multi-instance race that would
+otherwise occur if every new-revision instance tried to run it on startup.
 
 - **PostgreSQL's transactional DDL is what actually prevents a stuck
   half-migrated database.** `env.py` runs `alembic upgrade head` as a single
@@ -29,19 +32,21 @@ is actually live.
   There is nothing to downgrade.
 - **The residual risk is a migration that succeeds but isn't
   backward-compatible** — e.g. a `RENAME` or `DROP COLUMN` still read by the
-  old, still-serving revision. This is why every migration must follow
-  **expand-contract**: only ever _add_ things the old app can ignore (new
-  columns nullable or defaulted); never rename or drop something still in
-  use. The destructive half (dropping the superseded column) ships as a
-  **separate, later** migration, once no serving revision needs the old
-  shape.
+  old, still-serving revision (which is still live at the moment the
+  migration job runs, since the new revision hasn't been created yet). This
+  is why every migration must follow **expand-contract**: only ever _add_
+  things the old app can ignore (new columns nullable or defaulted); never
+  rename or drop something still in use. The destructive half (dropping the
+  superseded column) ships as a **separate, later** migration, once no
+  serving revision needs the old shape.
 - We deliberately run a **roll-forward** posture — no automatic `downgrade`
-  on deploy failure. Cloud Run already protects availability (the old
-  revision keeps serving), and a downgrade that drops a column is
-  destructive regardless, so there's nothing a downgrade buys us over
-  fixing forward.
+  on deploy failure. A failed migration job simply blocks the deploy (the
+  old revision keeps serving, untouched), and a downgrade that drops a
+  column is destructive regardless, so there's nothing a downgrade buys us
+  over fixing forward.
 
 ## Layer 1 — static checks on every migration (`check_migrations.py`)
+
 
 `backend/scripts/check_migrations.py` is a pure-stdlib (`ast`, `pathlib`)
 script with no database access and no import of the `app` package, so it's
@@ -152,6 +157,30 @@ and the old app revision keeps serving against the unchanged schema (see
 the crash-loop mitigation section in the [review plan](../plans/2026-08-09-alembic-review-plan.md)).
 `statement_timeout` is a similar backstop against a single migration
 statement running away.
+
+## Pre-deploy migration job (not run in the serving container)
+
+Migrations run once, as a pre-deploy step, instead of inside the serving
+container on every boot:
+
+- `backend/scripts/admin_cli.py` gained a `run-migrations` action
+  (`ADMIN_ACTION=run-migrations`) that calls `alembic.command.upgrade(cfg,
+  "head")` against the `alembic.ini` already shipped in the `admin` Docker
+  image target (`backend/Dockerfile`) — the same image/target used for the
+  other one-off admin tasks (see [admin tasks](../infrastructure/admin.md)).
+- `deploy.yml` builds and pushes that `admin` image alongside `backend`
+  whenever backend source changes, then runs `.github/scripts/deploy/run-migrations.sh`
+  — which updates the `quill-admin-{env}` Cloud Run Job to the new image and
+  executes it with `--wait` — **before** the `gcloud run services update`
+  step that creates the new backend revision, for both the teaching and
+  production stages.
+- `backend/docker/entrypoint.sh` (which previously ran `alembic upgrade
+  head` with retries before starting uvicorn) has been removed — the
+  serving container now starts uvicorn directly. The migration job running
+  to completion first is what removes the old race where every new-revision
+  instance independently ran the migration on startup, and lets the failure
+  mode be a blocked deploy (clear pass/fail) instead of a crash-looping
+  service.
 
 ## Related
 

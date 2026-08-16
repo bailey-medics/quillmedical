@@ -8,12 +8,17 @@ not available.
 
 Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, update-permissions,
-                      add-role.
+                      add-role, verify-email, run-migrations.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
     ADMIN_PERMISSION: Required for update-permissions (patient|staff|admin|superadmin).
     ADMIN_ROLE:       Required for add-role (e.g. "System Administrator").
+
+    run-migrations takes no ADMIN_* variables — it runs `alembic upgrade
+    head` against the standard CORE_DB_* connection settings, as a
+    pre-deploy step run once against the shared database before the new
+    app revision is created (see docs/docs/backend/alembic-migration-safety.md).
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-admin-staging \\
@@ -238,6 +243,28 @@ def verify_email() -> int:
         db.close()
 
 
+def run_migrations() -> int:
+    """Apply all pending Alembic migrations (`alembic upgrade head`).
+
+    Run as the pre-deploy step against the shared core database, before the
+    new app revision is created — see
+    docs/docs/backend/alembic-migration-safety.md.
+    """
+    from alembic.config import Config
+
+    from alembic import command
+
+    config_path = os.path.join(proj_root, "alembic.ini")
+    cfg = Config(config_path)
+    try:
+        command.upgrade(cfg, "head")
+        print("✓ Migrations applied successfully")
+        return 0
+    except Exception as exc:
+        print(f"✗ Migration failed: {exc}", file=sys.stderr)
+        return 1
+
+
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "create-superadmin": (
         create_superadmin,
@@ -254,6 +281,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "verify-email": (
         verify_email,
         "Mark a user's email as verified",
+    ),
+    "run-migrations": (
+        run_migrations,
+        "Apply all pending Alembic migrations (alembic upgrade head)",
     ),
 }
 
