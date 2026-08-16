@@ -400,8 +400,21 @@ downgrade body.
 
 ### 4. Autogenerate-drift CI check
 
-- [ ] Add a CI step that runs `alembic revision --autogenerate` against a fresh
+- [x] Add a CI step that runs `alembic revision --autogenerate` against a fresh
       migrated DB and fails on any non-empty diff.
+
+_Implemented via Alembic's built-in `alembic check` command_ (equivalent
+autogenerate comparison, no throwaway revision file to generate/clean up)
+rather than a hand-rolled `alembic revision --autogenerate` + diff script.
+Landed as its own small fast-tier job — `alembic_drift_check` in
+`.github/workflows/ci.yml` — with a Postgres service container (the
+`unit` job's DB-less pytest run was left untouched). Regression-tested in
+`backend/tests/test_alembic_check.py` (green + red paths). Required as a
+branch-protection status check in `infra/github/branch_rules.tf`
+(`"Alembic autogenerate drift check"` — not yet applied via `terraform
+apply`). Documented in `backend.instructions.md` and the new
+[Alembic migration safety](../backend/alembic-migration-safety.md) docs
+page (also backfills items 1-3's reasoning, per item 16).
 
 _(high value)_ — a CI step that runs `alembic revision --autogenerate` against a
 fresh migrated DB and fails if it produces any non-empty diff. Catches "model
@@ -1069,9 +1082,11 @@ tests run in Docker (`just ub`).
 - [ ] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
       passes on clean history; the `files:` pattern triggers it on a versions
       file edit.
-- [ ] **Autogenerate-drift check** — against a fresh migrated DB the autogenerate
+- [x] **Autogenerate-drift check** — against a fresh migrated DB the autogenerate
       diff is empty (green); a deliberately-added model column with no migration
       produces a non-empty diff (red), proving the check catches drift.
+      `backend/tests/test_alembic_check.py` (`test_no_drift_on_migrated_head`,
+      `test_unmigrated_model_change_is_detected`), run against the dev Postgres.
 - [ ] **Lock / statement timeouts applied** — assert `env.py` issues
       `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
       of `run_migrations_online` (capture via a spy engine or an integration run).

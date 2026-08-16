@@ -100,6 +100,9 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "Python unit"
       }
+      required_check {
+        context = "Alembic autogenerate drift check"
+      }
 
       # TypeScript (matrix: all tasks)
       required_check {

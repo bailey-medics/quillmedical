@@ -70,6 +70,22 @@ the baseline included — is held to the full standard below.
   marker in any migration whose `upgrade()` performs a destructive
   operation, to force expand-contract deliberateness.
 
+### Autogenerate-drift CI check
+
+- The `alembic_drift_check` CI job (`.github/workflows/ci.yml`, fast tier)
+  runs `alembic upgrade head` then `alembic check` against a real,
+  ephemeral Postgres service container, and fails the build if autogenerate
+  would still produce any operations — i.e. a model changed but no
+  migration was written for it.
+- This needs a real Postgres: SQLite unit tests build their schema straight
+  from model metadata (`conftest.py`'s `create_all()`) and never exercise
+  Alembic's autogenerate comparison, so it cannot live in the DB-less `unit`
+  matrix task.
+- Regression-tested in `backend/tests/test_alembic_check.py`
+  (`@pytest.mark.integration` — excluded from the normal `just ub` / `unit`
+  CI task; run explicitly against a migrated Postgres, as the
+  `alembic_drift_check` job does).
+
 ### Renaming or retiring a column
 
 - A rename (e.g. `body` -> `content`) is a copy-and-retire spread across
