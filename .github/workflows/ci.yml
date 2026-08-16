@@ -411,6 +411,12 @@ jobs:
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
+      # The prod image no longer runs migrations on startup (see item 12 of
+      # docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md), so
+      # this ephemeral CI database needs them applied explicitly before seeding.
+      - name: Run database migrations
+        run: docker exec ci_backend alembic upgrade head
+
       - name: Seed test data
         # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker exec ci_backend python scripts/seed_ci.py
