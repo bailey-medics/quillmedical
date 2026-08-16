@@ -1139,6 +1139,43 @@ the squash builds on the merged checker, `just migrate` fix, and
 `backend.instructions.md`. Full steps, risks, and tests live in the separate
 squash plan file linked above.
 
+### 18. Verify the tagged-deploy path against a real backend change
+
+- [ ] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
+      real `backend/**` change end-to-end in teaching (not just skipped-step
+      "success").
+
+Three bugs surfaced only once item 12/13's work actually tried to ship,
+none caught by pre-merge CI:
+
+- **CI seed failure**: `compose.ci.yml`'s ephemeral core Postgres was never
+  migrated once item 12 removed the container entrypoint's
+  `alembic upgrade head` — `seed_ci.py` failed with
+  `UndefinedTable: relation "users" does not exist`. Fixed by adding an
+  explicit `docker exec ci_backend alembic upgrade head` step in `ci.yml`
+  before seeding.
+- **Deploy failure #1**: `deploy-teaching`'s `actions/checkout` ran **after**
+  `google-github-actions/auth`, and checkout's default clean wiped the
+  credential file auth had just written to `$GITHUB_WORKSPACE`, failing with
+  "Failed to load credential file". Fixed by reordering the steps (checkout
+  first, matching every other job in this workflow).
+- **Deploy failure #2**: the tagged-deploy's traffic tag `rev-{sha}` used the
+  full 40-char SHA — Cloud Run rejects `--tag` once tag + service name
+  exceeds 46 characters combined (`rev-<40-char-sha>` +
+  `quill-backend-teaching` = 66). Fixed by shortening the tag to a 12-char
+  SHA prefix.
+
+Merged via PR
+[#367](https://github.com/bailey-medics/quillmedical/pull/367) (CI fix) and
+[#368](https://github.com/bailey-medics/quillmedical/pull/368) (both deploy
+fixes). **Not yet verified end-to-end**: every deploy trigger since has only
+contained workflow/doc changes, so `backend_changed` evaluated `false` and the
+actual migration/backend-deploy steps were skipped each time (the "success"
+conclusion on those runs is a false positive for this item's purposes) — the
+tagged-deploy path itself has not yet been exercised against a real
+`backend/**` change. To be tested on the next backend-touching merge (or a
+manual `workflow_dispatch`, only with explicit go-ahead).
+
 ## Part 3 — What we decided not to do
 
 - **Explicit rollback step (deploy)** — an "on failure → update-traffic to the
