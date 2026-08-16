@@ -118,3 +118,8 @@ the baseline included — is held to the full standard below.
   `compare_type=True` is enabled). Server-default drift is therefore not
   autodetected — manage column server defaults explicitly in migrations
   rather than relying on autogenerate to catch them.
+- `env.py` sets `lock_timeout = 3s` and `statement_timeout = 30s` at the
+  start of `run_migrations_online`, so a migration that cannot acquire its
+  table lock quickly fails fast (and rolls back cleanly, thanks to
+  transactional DDL) instead of queueing behind a long-running query and
+  stalling all traffic to that table.

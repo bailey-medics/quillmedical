@@ -6,7 +6,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 # Import teaching models so Alembic detects them for autogenerate
 import app.features.teaching.models  # noqa: F401
@@ -59,6 +59,9 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Fail fast instead of queueing behind a long-running query/lock
+        connection.execute(text("SET lock_timeout = '3s'"))
+        connection.execute(text("SET statement_timeout = '30s'"))
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

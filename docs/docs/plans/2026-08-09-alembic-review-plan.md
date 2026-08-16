@@ -606,7 +606,21 @@ changes it) — see plan item 17 for the squash that retired the custom IDs.
 
 ### 11. Set `lock_timeout` / `statement_timeout` on migrations
 
-- [ ] Execute the `SET`s at the start of `run_migrations_online` in `env.py`.
+- [x] Execute the `SET`s at the start of `run_migrations_online` in `env.py`.
+
+Added `connection.execute(text("SET lock_timeout = '3s'"))` and
+`connection.execute(text("SET statement_timeout = '30s'"))` at the start of
+`run_migrations_online` in `env.py`, before `context.configure`/
+`begin_transaction`, so every migration inherits them (session-level `SET`,
+not `SET LOCAL`, so it persists for the whole migration transaction on that
+connection). Documented in `backend.instructions.md` (Deploy and
+configuration notes) and a new section in
+[Alembic migration safety](../backend/alembic-migration-safety.md).
+Verified with a full `alembic downgrade base && alembic upgrade head &&
+alembic check` round-trip against live Postgres (clean, no drift,
+`alembic current` confirms head), the full backend unit suite via `just ub`
+(all green), `mypy --strict` on `backend/app` + `env.py` (clean), and
+`pre-commit run` on all touched files (clean).
 
 _(agreed — should do)_ — migrations currently set no timeouts, so a migration
 that cannot acquire its `ACCESS EXCLUSIVE` table lock quickly will **queue

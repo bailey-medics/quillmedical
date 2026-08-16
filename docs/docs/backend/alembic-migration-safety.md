@@ -136,6 +136,23 @@ expression's text) that outweigh the benefit of auto-detecting genuine
 drift, and there are few enough server defaults in play that they're managed
 explicitly in migrations instead.
 
+## `lock_timeout` and `statement_timeout` on migrations
+
+`env.py` executes `SET lock_timeout = '3s'` and `SET statement_timeout =
+'30s'` at the start of `run_migrations_online`, before the migration
+transaction begins, so every migration inherits them.
+
+Without a `lock_timeout`, a migration whose `ALTER TABLE` cannot immediately
+acquire its `ACCESS EXCLUSIVE` lock (because a long-running query is already
+reading/writing that table) queues indefinitely — and every subsequent
+query against that table queues behind the migration in turn, stalling all
+traffic to it. A short `lock_timeout` makes the migration fail fast instead;
+thanks to PostgreSQL's transactional DDL, that failure rolls back cleanly
+and the old app revision keeps serving against the unchanged schema (see
+the crash-loop mitigation section in the [review plan](../plans/2026-08-09-alembic-review-plan.md)).
+`statement_timeout` is a similar backstop against a single migration
+statement running away.
+
 ## Related
 
 - [Alembic review and migration safety plan](../plans/2026-08-09-alembic-review-plan.md) —
