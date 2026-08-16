@@ -173,12 +173,15 @@ jobs:
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
+          SHA="${{ needs.prepare.outputs.sha }}"
+          # Cloud Run caps combined tag + service name at 46 chars, so a
+          # full 40-char SHA won't fit alongside the service name.
           bash .github/scripts/deploy/deploy-tagged.sh \
             quill-backend-teaching \
             ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
-            rev-${{ needs.prepare.outputs.sha }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${SHA} \
+            "rev-${SHA:0:12}" \
             /api/health
 
       - name: Deploy frontend
@@ -280,12 +283,15 @@ jobs:
       - name: Deploy backend to production
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
+          SHA="${{ needs.prepare.outputs.sha }}"
+          # Cloud Run caps combined tag + service name at 46 chars, so a
+          # full 40-char SHA won't fit alongside the service name.
           bash .github/scripts/deploy/deploy-tagged.sh \
             quill-backend-prod \
             ${{ secrets.GCP_PROD_PROJECT_ID }} \
             ${{ env.GCP_REGION }} \
-            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
-            rev-${{ needs.prepare.outputs.sha }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${SHA} \
+            "rev-${SHA:0:12}" \
             /api/health
 
       - name: Deploy frontend to production
