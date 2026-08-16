@@ -685,7 +685,9 @@ migrations yet.
 - [x] Point the deploy smoke test at the new revision's tagged, `--no-traffic` URL.
 
 Added `.github/scripts/deploy/deploy-tagged.sh`: deploys the backend under a
-unique traffic tag (`rev-{sha}`) with `--no-traffic`
+unique traffic tag (`rev-{12-char short sha}` — Cloud Run caps combined tag +
+service name at 46 characters, so a full 40-char SHA doesn't fit) with
+`--no-traffic`
 (`gcloud run services update ... --tag`), resolves that tagged revision's own
 URL via `gcloud run services describe --format=json` + `jq`, smoke-tests it
 (via a `run_smoke_test()` wrapper that shells out to the existing
