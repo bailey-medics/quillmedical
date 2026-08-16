@@ -96,6 +96,57 @@ jobs:
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
+  # ---------- Alembic autogenerate-drift check ----------
+  # Catches "model changed but migration forgotten": runs the migrations
+  # against a fresh Postgres, then fails if autogenerate would still produce
+  # any new operations. Needs a real Postgres (SQLite unit tests can't
+  # exercise Alembic's autogenerate comparison), so it gets its own small
+  # job rather than joining the DB-less `unit` matrix task above.
+  alembic_drift_check:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: Alembic autogenerate drift check
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
+        env:
+          POSTGRES_DB: quill_core
+          POSTGRES_USER: core_user
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U core_user -d quill_core"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      JWT_SECRET: ci_test_jwt_secret_at_least_32_characters_long
+      CORE_DB_HOST: localhost
+      CORE_DB_PORT: 5432
+      CORE_DB_NAME: quill_core
+      CORE_DB_USER: core_user
+      CORE_DB_PASSWORD: ci_test_password
+      CLINICAL_SERVICES_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python + backend deps
+        uses: ./.github/actions/setup-python
+
+      - name: Migrate to head
+        working-directory: backend
+        run: poetry run alembic upgrade head
+
+      - name: Check for autogenerate drift
+        working-directory: backend
+        run: poetry run alembic check
+
+      - name: Run drift-check regression tests
+        working-directory: backend
+        run: poetry run pytest -q -m integration tests/test_alembic_check.py
+
 
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
@@ -359,6 +410,12 @@ jobs:
 
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
+
+      # The prod image no longer runs migrations on startup (see item 12 of
+      # docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md), so
+      # this ephemeral CI database needs them applied explicitly before seeding.
+      - name: Run database migrations
+        run: docker exec ci_backend alembic upgrade head
 
       - name: Seed test data
         # TODO: will need to change this if/when we use factories to seed data instead of a script.

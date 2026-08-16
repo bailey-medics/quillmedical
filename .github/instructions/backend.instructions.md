@@ -70,6 +70,22 @@ the baseline included — is held to the full standard below.
   marker in any migration whose `upgrade()` performs a destructive
   operation, to force expand-contract deliberateness.
 
+### Autogenerate-drift CI check
+
+- The `alembic_drift_check` CI job (`.github/workflows/ci.yml`, fast tier)
+  runs `alembic upgrade head` then `alembic check` against a real,
+  ephemeral Postgres service container, and fails the build if autogenerate
+  would still produce any operations — i.e. a model changed but no
+  migration was written for it.
+- This needs a real Postgres: SQLite unit tests build their schema straight
+  from model metadata (`conftest.py`'s `create_all()`) and never exercise
+  Alembic's autogenerate comparison, so it cannot live in the DB-less `unit`
+  matrix task.
+- Regression-tested in `backend/tests/test_alembic_check.py`
+  (`@pytest.mark.integration` — excluded from the normal `just ub` / `unit`
+  CI task; run explicitly against a migrated Postgres, as the
+  `alembic_drift_check` job does).
+
 ### Renaming or retiring a column
 
 - A rename (e.g. `body` -> `content`) is a copy-and-retire spread across
@@ -88,9 +104,12 @@ the baseline included — is held to the full standard below.
 
 ### Deploy and configuration notes
 
-- Migrations run on deploy (`alembic upgrade head` in the container
-  entrypoint), so a failing migration is a failed deploy. Test migrations
-  locally before pushing.
+- Migrations run as a **separate pre-deploy Cloud Run Job**
+  (`quill-admin-{env}`, `ADMIN_ACTION=run-migrations` in
+  `backend/scripts/admin_cli.py`), executed with `--wait` by `deploy.yml`
+  before the new backend revision is created — not inside the serving
+  container's entrypoint. A failing migration blocks the deploy rather than
+  crash-looping the service. Test migrations locally before pushing.
 - Manual traffic pinning / rollback is only guaranteed safe to the
   **immediately preceding** revision — expand-contract compatibility is
   pairwise-adjacent, not transitive across a gap. Before pinning back further
@@ -102,3 +121,8 @@ the baseline included — is held to the full standard below.
   `compare_type=True` is enabled). Server-default drift is therefore not
   autodetected — manage column server defaults explicitly in migrations
   rather than relying on autogenerate to catch them.
+- `env.py` sets `lock_timeout = 3s` and `statement_timeout = 30s` at the
+  start of `run_migrations_online`, so a migration that cannot acquire its
+  table lock quickly fails fast (and rolls back cleanly, thanks to
+  transactional DDL) instead of queueing behind a long-running query and
+  stalling all traffic to that table.

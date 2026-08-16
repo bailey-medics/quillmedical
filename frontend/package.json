@@ -98,6 +98,7 @@
     "postcss-scss": "^4.0.9",
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.6.2",
+    "remark-gfm": "^4.0.1",
     "sass": "^1.92.1",
     "storybook": "10.3.6",
     "storybook-addon-pseudo-states": "^10.3.3",

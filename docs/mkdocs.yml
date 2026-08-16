@@ -38,6 +38,7 @@ nav:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
       - Avatar Gradient Migration: backend/avatar-gradient-migration.md
+      - Alembic Migration Safety: backend/alembic-migration-safety.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:
@@ -222,7 +223,6 @@ nav:
           - Update Docs: llm/prompts/update-docs-docs.prompt.md
           - Update Nav: llm/prompts/update-nav.prompt.md
           - Write a Plan: llm/prompts/write-a-plan.prompt.md
-
 
 plugins:
   - search

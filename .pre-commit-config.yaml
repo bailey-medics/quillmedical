@@ -10,9 +10,7 @@ repos:
     hooks:
       - id: black
         language_version: python3.13
-        args: ['--config=backend/pyproject.toml']
-        # Don't pass alembic revision files to Black via pre-commit
-        exclude: '(^|/)backend/alembic/versions(/|$)'
+        args: ["--config=backend/pyproject.toml"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -39,7 +37,8 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
-        additional_dependencies: [alembic, types-requests, types-pyyaml, types-Markdown]
+        additional_dependencies:
+          [alembic, types-requests, types-pyyaml, types-Markdown]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.9.4
@@ -51,6 +50,15 @@ repos:
           - backend
           - -x
           - backend/tests
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: check-migrations
+        name: check Alembic migrations
+        entry: python3 backend/scripts/check_migrations.py --all
+        language: system
+        files: ^backend/alembic/versions/.*\.py$
         pass_filenames: false
 
   - repo: https://github.com/gitleaks/gitleaks

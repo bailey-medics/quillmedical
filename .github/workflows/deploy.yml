@@ -120,6 +120,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push admin image
+        if: ${{ matrix.service == 'backend' }}
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          target: admin
+          push: true
+          tags: |
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ---------- Deploy to teaching ----------
   deploy-teaching:
     name: Deploy to teaching
@@ -137,13 +151,34 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      # Runs once against the shared core DB, before the new backend revision
+      # is created — removes the multi-instance migration race and gives a
+      # clean pass/fail signal separate from app boot (see
+      # docs/docs/backend/alembic-migration-safety.md).
+      - name: Run database migrations
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          bash .github/scripts/deploy/run-migrations.sh \
+            quill-admin-teaching \
+            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-teaching \
+            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
+            rev-${{ needs.prepare.outputs.sha }} \
+            /api/health
 
       - name: Deploy frontend
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
@@ -153,11 +188,8 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
-      # Checkout only needed here so the smoke-test script is on the runner.
-      - uses: actions/checkout@v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
-
+      # Public-edge check, complementing (not replacing) the tagged-revision
+      # smoke test above — confirms the live edge is serving correctly too.
       - name: Smoke test
         run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
 
@@ -224,16 +256,36 @@ jobs:
             gcrane copy "${SRC_REGISTRY}/frontend:${SHA}" "${DST_REGISTRY}/frontend:latest"
           fi
 
+          if [ "${{ needs.prepare.outputs.backend_changed }}" = "true" ]; then
+            echo "Copying admin image..."
+            gcrane copy "${SRC_REGISTRY}/admin:${SHA}" "${DST_REGISTRY}/admin:${SHA}"
+            gcrane copy "${SRC_REGISTRY}/admin:${SHA}" "${DST_REGISTRY}/admin:latest"
+          fi
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
+
+      # Runs once against the shared core DB, before the new backend revision
+      # is created (see docs/docs/backend/alembic-migration-safety.md).
+      - name: Run database migrations
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          bash .github/scripts/deploy/run-migrations.sh \
+            quill-admin-prod \
+            ${{ secrets.GCP_PROD_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       - name: Deploy backend to production
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-prod \
-            --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-prod \
+            ${{ secrets.GCP_PROD_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
+            rev-${{ needs.prepare.outputs.sha }} \
+            /api/health
 
       - name: Deploy frontend to production
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}

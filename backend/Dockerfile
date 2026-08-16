@@ -59,15 +59,11 @@ COPY --chown=appuser:appuser backend/scripts ./scripts
 # Caddy will forward X-Forwarded-*; trust them so URLs and client IPs are correct
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--proxy-headers", "--forwarded-allow-ips", "*"]
 
-# ---------- Prod target (no reload, optional migrations) ----------
+# ---------- Prod target (no reload) ----------
 FROM base AS prod
 # Teaching-tooling validator scripts (clinical safety — second layer)
 COPY --chown=appuser:appuser teaching-tooling/scripts /teaching-tooling-scripts
 ENV TEACHING_TOOLING_SCRIPTS_PATH=/teaching-tooling-scripts
-# Optional entrypoint to run Alembic before serving
-COPY --chown=appuser:appuser backend/docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
 

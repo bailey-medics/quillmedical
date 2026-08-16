@@ -89,6 +89,16 @@ You will be prompted for the username and the role name. Available roles:
 - Patient
 - Patient Advocate
 
+### Run database migrations
+
+Apply all pending Alembic migrations (`alembic upgrade head`) against a live environment's core database:
+
+```bash
+just migrate-remote staging
+```
+
+**Teaching and production run this automatically** as a pre-deploy step in `deploy.yml`, before the new backend revision is deployed — see [Alembic migration safety](../backend/alembic-migration-safety.md). Use this command directly only for staging (not wired into the CI deploy pipeline) or to manually re-run migrations.
+
 ## Command aliases
 
 All commands have short aliases for convenience:
@@ -99,6 +109,7 @@ All commands have short aliases for convenience:
 | `just create-superadmin staging`         | `just cs staging` |
 | `just update-permissions-remote staging` | `just up staging` |
 | `just add-role-remote staging`           | `just ar staging` |
+| `just migrate-remote staging`            | `just mr staging` |
 
 ## Environments
 
@@ -199,8 +210,22 @@ gcloud run services logs read quill-backend-{env} \
 Common causes:
 
 - **Wrong image** — admin CLI image instead of prod (see above)
-- **Migration failure** — `entrypoint.sh` runs `alembic upgrade head` before starting uvicorn. If the database is unreachable or migrations fail, the container crashes before the HTTP server starts
 - **Slow cold start** — VPC connector setup and Cloud SQL connections can be slow. The startup probe allows 65 seconds (5s delay + 6 failures x 10s period)
+
+### Deploy pipeline blocked on migration failure
+
+**Symptom:** The `Run database migrations` step in `deploy.yml` fails, and the subsequent `Deploy backend`/`Deploy backend to production` step never runs.
+
+**Cause:** This is the pipeline working as intended — `alembic upgrade head` runs once as a pre-deploy Cloud Run Job (`quill-admin-{env}`), before the new backend revision is created. A failed migration transaction rolls back cleanly (no partial schema change) and blocks the deploy, rather than crash-looping the serving container. See [Alembic migration safety](../backend/alembic-migration-safety.md).
+
+**Diagnosis:** Check the job execution logs:
+
+```bash
+gcloud run jobs executions list --job=quill-admin-{env} --project={project} --region=europe-west2 --limit=5
+gcloud beta run jobs executions logs read {execution-name} --project={project} --region=europe-west2
+```
+
+**Fix:** Fix the migration (or the underlying schema conflict), push a new commit, and let the pipeline re-run. To manually re-run migrations without a full deploy, use `just migrate-remote {env}`.
 
 ### Terraform state lock
 

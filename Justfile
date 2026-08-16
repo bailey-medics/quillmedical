@@ -703,3 +703,23 @@ add-role-remote env:
         --region="$REGION" \
         --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
         --wait
+
+
+alias mr := migrate-remote
+# Run pending Alembic migrations on a remote environment (teaching/prod do this automatically pre-deploy; use for staging or manual re-runs)
+migrate-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate-remote ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Run migrations on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=run-migrations" \
+        --wait
