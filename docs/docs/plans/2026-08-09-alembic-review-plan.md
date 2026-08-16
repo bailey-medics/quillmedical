@@ -488,12 +488,30 @@ retired them.
 
 ### 7. Typing style consistency — remove both excludes now
 
-- [ ] Delete the Ruff and Black `alembic/versions` excludes in
+- [x] Delete the Ruff and Black `alembic/versions` excludes in
       `backend/pyproject.toml`.
-- [ ] Reformat the baseline `878bc9300d4f_initial_baseline_schema.py` to the
+- [x] Reformat the baseline `878bc9300d4f_initial_baseline_schema.py` to the
       modern `str | None` style.
-- [ ] Update `backend/alembic/script.py.mako` to the modern `str | None` style
+- [x] Update `backend/alembic/script.py.mako` to the modern `str | None` style
       so every future migration is born correctly formatted.
+
+Deleted both excludes: Ruff's `exclude = ["alembic/versions"]` and Black's
+`exclude = "(^|/)backend/alembic/versions(/|$)"` in `backend/pyproject.toml`,
+plus the mirrored `exclude:` on the Black hook in `.pre-commit-config.yaml`
+(pre-commit's own per-hook `exclude` filters which files reach the tool at
+all, so it had to go too or the pyproject.toml change would have been a
+no-op under `pre-commit run --all-files`). Updated `script.py.mako` to
+`from collections.abc import Sequence`, `str | None`,
+`str | Sequence[str] | None` so every future migration is born in the
+modern style. Ran `pre-commit run ruff` then `black` against the baseline
+file to let `UP` (pyupgrade) and Black reformat it — a 668-line diff, but
+confirmed purely cosmetic (headers, quote style, one-arg-per-line column
+wrapping, import order) by re-running `alembic downgrade base && alembic
+upgrade head && alembic check` against a live Postgres (clean, no drift),
+the full `check_migrations.py` static checker (still passes), the full
+backend unit suite via `just ub` (all green), and `mypy --strict` on
+`backend/app` plus the reformatted file (clean). `pre-commit run
+--all-files` is clean across the whole repo.
 
 _(recommended while there is no live data)_ — migration headers mix
 `Union[str, None]` and `str | None`. **Partially moot after the plan item 17

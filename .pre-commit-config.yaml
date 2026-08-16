@@ -11,8 +11,6 @@ repos:
       - id: black
         language_version: python3.13
         args: ["--config=backend/pyproject.toml"]
-        # Don't pass alembic revision files to Black via pre-commit
-        exclude: "(^|/)backend/alembic/versions(/|$)"
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
