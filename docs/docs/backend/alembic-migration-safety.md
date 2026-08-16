@@ -47,7 +47,6 @@ otherwise occur if every new-revision instance tried to run it on startup.
 
 ## Layer 1 — static checks on every migration (`check_migrations.py`)
 
-
 `backend/scripts/check_migrations.py` is a pure-stdlib (`ast`, `pathlib`)
 script with no database access and no import of the `app` package, so it's
 safe to run in a pre-commit hook. It parses every
@@ -165,22 +164,38 @@ container on every boot:
 
 - `backend/scripts/admin_cli.py` gained a `run-migrations` action
   (`ADMIN_ACTION=run-migrations`) that calls `alembic.command.upgrade(cfg,
-  "head")` against the `alembic.ini` already shipped in the `admin` Docker
+"head")` against the `alembic.ini` already shipped in the `admin` Docker
   image target (`backend/Dockerfile`) — the same image/target used for the
   other one-off admin tasks (see [admin tasks](../infrastructure/admin.md)).
 - `deploy.yml` builds and pushes that `admin` image alongside `backend`
   whenever backend source changes, then runs `.github/scripts/deploy/run-migrations.sh`
   — which updates the `quill-admin-{env}` Cloud Run Job to the new image and
-  executes it with `--wait` — **before** the `gcloud run services update`
-  step that creates the new backend revision, for both the teaching and
-  production stages.
+  executes it with `--wait` — **before** the tagged, `--no-traffic` backend
+  deploy step (see below) that creates the new backend revision, for both
+  the teaching and production stages.
 - `backend/docker/entrypoint.sh` (which previously ran `alembic upgrade
-  head` with retries before starting uvicorn) has been removed — the
+head` with retries before starting uvicorn) has been removed — the
   serving container now starts uvicorn directly. The migration job running
   to completion first is what removes the old race where every new-revision
   instance independently ran the migration on startup, and lets the failure
   mode be a blocked deploy (clear pass/fail) instead of a crash-looping
   service.
+
+## Revision-specific smoke test
+
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys
+the new revision under a unique traffic tag with `--no-traffic`, smoke-tests
+**that revision's own tagged URL**, and only then promotes it
+(`gcloud run services update-traffic --to-latest`) to receive live traffic.
+Live traffic stays on the previous, still-healthy revision for the whole
+window between the migration job finishing and the new revision proving
+itself — including the migration's own correctness, since a broken migration
+that still lets the app boot would otherwise only surface once real traffic
+hit it. This complements, rather than replaces, the public-edge smoke test
+that runs afterwards (`https://teaching.quill-medical.com/api/health`) —
+that one continues to confirm the live edge (DNS/load balancer/Caddy) is
+routing correctly post-promotion, a different failure domain from the
+revision's own health.
 
 ## Related
 

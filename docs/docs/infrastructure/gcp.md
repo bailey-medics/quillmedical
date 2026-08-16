@@ -370,21 +370,27 @@ Workflow: `.github/workflows/deploy.yml`
 
 1. Detect what changed (backend, frontend, shared)
 2. Build and push container images to Artifact Registry, tagged `{sha}`
-3. Deploy to teaching Cloud Run
-4. Smoke test: `GET /api/health` (5 retries, 10s intervals)
-5. Slack notification
+3. Run database migrations as a pre-deploy Cloud Run Job
+4. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
+   URL, then promoted to receive traffic; deploy frontend directly
+5. Smoke test the public edge: `GET /api/health` (5 retries, 10s intervals)
+6. Slack notification
 
-Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
+See [Alembic migration safety](../backend/alembic-migration-safety.md) for
+why migrations run as a separate pre-deploy job and why the backend deploy
+is tagged/no-traffic rather than direct.
 
 ### Production deployment (promotion)
 
 Workflow: `.github/workflows/deploy.yml` (same workflow, gated by GitHub Environment approval)
 
 1. Copy exact image bytes from teaching AR to production AR via `gcrane`
-2. Deploy to production Cloud Run
-3. Smoke test: `GET /api/health`
-4. Create annotated CalVer git tag
-5. Slack notification
+2. Run database migrations as a pre-deploy Cloud Run Job
+3. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
+   URL, then promoted to receive traffic; deploy frontend directly
+4. Smoke test the public edge: `GET /api/health`
+5. Create annotated CalVer git tag
+6. Slack notification
 
 Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted — no rebuild.
 
@@ -556,6 +562,10 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 ### Alembic migrations run as a pre-deploy Cloud Run Job (done)
 
 Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** — a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job — before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
+
+### Backend deploys via a tagged, smoke-tested revision (done)
+
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one — including its migration — has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
 ### Admin Cloud Run Job (done)
 

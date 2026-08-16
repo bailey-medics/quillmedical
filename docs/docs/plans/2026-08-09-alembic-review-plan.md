@@ -682,7 +682,32 @@ migrations yet.
 
 ### 13. Revision-specific smoke test
 
-- [ ] Point the deploy smoke test at the new revision's tagged, `--no-traffic` URL.
+- [x] Point the deploy smoke test at the new revision's tagged, `--no-traffic` URL.
+
+Added `.github/scripts/deploy/deploy-tagged.sh`: deploys the backend under a
+unique traffic tag (`rev-{sha}`) with `--no-traffic`
+(`gcloud run services update ... --tag`), resolves that tagged revision's own
+URL via `gcloud run services describe --format=json` + `jq`, smoke-tests it
+(via a `run_smoke_test()` wrapper that shells out to the existing
+`smoke-test.sh` — kept as a subprocess call rather than sourcing it directly,
+to avoid both scripts defining a colliding `main()`), and only then promotes
+with `gcloud run services update-traffic --to-latest`. `deploy.yml`'s "Deploy
+backend"/"Deploy backend to production" steps in both `deploy-teaching` and
+`promote-to-production` now call this script instead of a direct
+`gcloud run services update`; frontend deploys are unchanged (out of scope —
+backend only, per the decoupled-migration-job risk this closes). The existing
+public-edge "Smoke test" steps are unchanged and still run afterwards, as a
+complementary check of the live edge post-promotion. Documented in a new
+"Revision-specific smoke test" section in
+[Alembic migration safety](../backend/alembic-migration-safety.md) and updated
+`gcp.md` (deploy-sequence bullets + a new "(done)" note; also fixed a stale
+note there claiming migrations still ran via the removed container
+entrypoint). Verified with: the new `deploy-tagged.bats` (5 tests — full
+tag/describe/smoke-test/promote sequence, smoke-test failure blocks promote,
+unresolvable tagged URL fails, tagged-deploy failure short-circuits before
+describe/smoke-test, missing-argument usage error) via `just ts` (all 27 shell
+script tests green); `shellcheck` on the new script (clean, same info-level
+`SC1091` as sibling scripts); and `actionlint` on `deploy.yml` (clean).
 
 Point the deploy smoke test at the **new revision's own tagged URL** (a Cloud
 Run traffic **tag** deployed `--no-traffic`), not the public URL, so it verifies

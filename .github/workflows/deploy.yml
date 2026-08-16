@@ -172,10 +172,13 @@ jobs:
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-teaching \
+            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
+            rev-${{ needs.prepare.outputs.sha }} \
+            /api/health
 
       - name: Deploy frontend
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
@@ -185,6 +188,8 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
+      # Public-edge check, complementing (not replacing) the tagged-revision
+      # smoke test above — confirms the live edge is serving correctly too.
       - name: Smoke test
         run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
 
@@ -274,10 +279,13 @@ jobs:
       - name: Deploy backend to production
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-prod \
-            --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-prod \
+            ${{ secrets.GCP_PROD_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }} \
+            rev-${{ needs.prepare.outputs.sha }} \
+            /api/health
 
       - name: Deploy frontend to production
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
