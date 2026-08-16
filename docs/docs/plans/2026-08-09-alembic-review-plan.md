@@ -445,7 +445,16 @@ check its own small fast-tier job. It stays fast tier either way. (Contrast item
 
 ### 5. Wiring — pre-commit hook
 
-- [ ] Add the local pre-commit hook for `check_migrations.py` to `.pre-commit-config.yaml`.
+- [x] Add the local pre-commit hook for `check_migrations.py` to `.pre-commit-config.yaml`.
+
+Added as the `check-migrations` local hook in `.pre-commit-config.yaml`
+(`entry: python3 backend/scripts/check_migrations.py --all`, `language:
+system` since the script is pure-stdlib with no dependencies to install).
+Verified both paths: `pre-commit run check-migrations --all-files` passes
+against the current (compliant) history, and a deliberately bad migration
+(empty `downgrade()`) correctly fails the hook. Documented in
+[Alembic migration safety](../backend/alembic-migration-safety.md) (layer 1
+section updated to reflect the hook is now live).
 
 Add a **local pre-commit hook** to `.pre-commit-config.yaml`
 (`files: ^backend/alembic/versions/.*\.py$`, `pass_filenames: false`).

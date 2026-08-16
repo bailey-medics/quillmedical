@@ -71,11 +71,10 @@ standard. Run it directly with:
 python backend/scripts/check_migrations.py --all
 ```
 
-Wiring this into pre-commit (so it also rides the existing
-`pre-commit run --all-files` CI step for free) is tracked separately and not
-yet live — see the
-[Alembic review and migration safety plan](../plans/2026-08-09-alembic-review-plan.md)
-for status.
+It also runs automatically as a local pre-commit hook (`check-migrations` in
+`.pre-commit-config.yaml`, scoped to `backend/alembic/versions/*.py`), so it
+rides the existing `pre-commit run --all-files` CI step for free — no
+separate CI job is needed for this layer.
 
 ## Layer 2 — catching drift between models and migrations (`alembic check`)
 
