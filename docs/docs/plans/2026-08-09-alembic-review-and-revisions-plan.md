@@ -723,11 +723,29 @@ larger-scale phase.
 
 ### 14. Client version detection / silent reload
 
-- [ ] On navigation to an explicitly safe-listed route, silently reload if the
+- [x] On navigation to an explicitly safe-listed route, silently reload if the
       browser already has a newer build waiting (`registration.waiting`).
-- [ ] Keep the existing hourly `reg.update()` poll running as a second
+- [x] Keep the existing hourly `reg.update()` poll running as a second
       trigger, so a tab that never navigates still gets checked — but gate
       its reload on the same route-safety whitelist as the navigation trigger.
+
+Implemented as `frontend/src/lib/swUpdateGate.ts` (pure, tested gate module:
+`isRouteSafeForReload`, `checkForUpdateAndReloadIfSafe`), wired into
+`frontend/src/main.tsx` on both the `router.subscribe` navigation trigger and
+the existing hourly `setInterval`, with `sw.ts`'s unconditional
+`self.skipWaiting()` removed. Routes across the tree (`main.tsx`) are marked
+`handle: { safeForReload: true }` per the whitelist criteria below — every
+read-only list/dashboard/detail view; every form, wizard, message composer,
+and the in-progress exam route (`teaching/assessment/:id`) are deliberately
+left unmarked (unsafe by default).
+
+**Bug found and fixed while wiring real routes**: `isRouteSafeForReload`
+originally read `match.handle` directly, but React Router's `RouteMatch`
+only exposes `params`/`pathname`/`pathnameBase`/`route` — `handle` lives on
+`match.route.handle`, not the match itself (confirmed via `react-router`'s
+shipped `.d.ts`). The function silently always returned `false` until this
+was corrected, since no route had set `handle` yet to expose the mismatch.
+Fixed in `RouteMatchLike`/`isRouteSafeForReload` and the corresponding tests.
 
 _(bounds client staleness)_ — a user's browser keeps running the bundle it
 first downloaded until the tab is reloaded, so a stale client can run for days
@@ -1138,6 +1156,43 @@ sequenced **after** the migration-safety tooling (items 1–5) merges to `main`,
 the squash builds on the merged checker, `just migrate` fix, and
 `backend.instructions.md`. Full steps, risks, and tests live in the separate
 squash plan file linked above.
+
+### 18. Verify the tagged-deploy path against a real backend change
+
+- [ ] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
+      real `backend/**` change end-to-end in teaching (not just skipped-step
+      "success").
+
+Three bugs surfaced only once item 12/13's work actually tried to ship,
+none caught by pre-merge CI:
+
+- **CI seed failure**: `compose.ci.yml`'s ephemeral core Postgres was never
+  migrated once item 12 removed the container entrypoint's
+  `alembic upgrade head` — `seed_ci.py` failed with
+  `UndefinedTable: relation "users" does not exist`. Fixed by adding an
+  explicit `docker exec ci_backend alembic upgrade head` step in `ci.yml`
+  before seeding.
+- **Deploy failure #1**: `deploy-teaching`'s `actions/checkout` ran **after**
+  `google-github-actions/auth`, and checkout's default clean wiped the
+  credential file auth had just written to `$GITHUB_WORKSPACE`, failing with
+  "Failed to load credential file". Fixed by reordering the steps (checkout
+  first, matching every other job in this workflow).
+- **Deploy failure #2**: the tagged-deploy's traffic tag `rev-{sha}` used the
+  full 40-char SHA — Cloud Run rejects `--tag` once tag + service name
+  exceeds 46 characters combined (`rev-<40-char-sha>` +
+  `quill-backend-teaching` = 66). Fixed by shortening the tag to a 12-char
+  SHA prefix.
+
+Merged via PR
+[#367](https://github.com/bailey-medics/quillmedical/pull/367) (CI fix) and
+[#368](https://github.com/bailey-medics/quillmedical/pull/368) (both deploy
+fixes). **Not yet verified end-to-end**: every deploy trigger since has only
+contained workflow/doc changes, so `backend_changed` evaluated `false` and the
+actual migration/backend-deploy steps were skipped each time (the "success"
+conclusion on those runs is a false positive for this item's purposes) — the
+tagged-deploy path itself has not yet been exercised against a real
+`backend/**` change. To be tested on the next backend-touching merge (or a
+manual `workflow_dispatch`, only with explicit go-ahead).
 
 ## Part 3 — What we decided not to do
 
