@@ -50,6 +50,10 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
+import {
+  checkForUpdateAndReloadIfSafe,
+  isRouteSafeForReload,
+} from "@lib/swUpdateGate";
 
 import RootLayout from "./RootLayout";
 import AdminPage from "./pages/AdminPage";
@@ -396,26 +400,39 @@ if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.register(swUrl);
       console.log("SW registered:", reg);
 
-      reg.update();
-      setInterval(() => reg.update(), 60 * 60 * 1000);
-
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         console.log("SW controller changed → reloading");
         window.location.reload();
       });
 
-      reg.addEventListener("updatefound", () => {
-        const installing = reg.installing;
-        if (!installing) return;
-        installing.addEventListener("statechange", () => {
-          if (
-            installing.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            reg.waiting?.postMessage("SKIP_WAITING");
-          }
+      // Route-safety-gated update check (plan item 14): only activates a
+      // waiting worker (via the reload-loop-guarded gate below, which
+      // triggers the controllerchange listener above) when the
+      // currently-rendered route opts in via `handle.safeForReload`.
+      const runUpdateCheck = (hasFlash: boolean) => {
+        void checkForUpdateAndReloadIfSafe({
+          registration: reg,
+          isProd: import.meta.env.PROD,
+          routeIsSafe: isRouteSafeForReload(router.state.matches),
+          hasFlash,
         });
-      });
+      };
+
+      const currentHasFlash = (): boolean =>
+        Boolean(
+          (router.state.location.state as { flash?: unknown } | null)?.flash,
+        );
+
+      // Navigation trigger: re-checks every time the matched route changes.
+      router.subscribe(() => runUpdateCheck(currentHasFlash()));
+
+      // Hourly trigger: catches a tab that stays on one safe route without
+      // navigating away.
+      setInterval(() => runUpdateCheck(false), 60 * 60 * 1000);
+
+      // Also check once on load, in case a build already shipped while
+      // this tab was open before its first navigation.
+      runUpdateCheck(currentHasFlash());
     } catch (err) {
       console.error("Service worker registration failed:", err);
     }

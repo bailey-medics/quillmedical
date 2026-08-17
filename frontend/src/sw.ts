@@ -4,8 +4,10 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 
 declare let self: ServiceWorkerGlobalScope;
 
-// Take control immediately on install/activate
-self.skipWaiting();
+// Take control of clients as soon as this worker activates. Activation
+// itself is NOT automatic (no unconditional skipWaiting() here) - a new
+// worker waits until the app explicitly posts SKIP_WAITING (see the
+// message listener below), gated on route safety.
 clientsClaim();
 
 // Clean old precache entries on version update
