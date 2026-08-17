@@ -33,27 +33,29 @@ describe("isRouteSafeForReload", () => {
   });
 
   it("returns false when the leaf route has no handle", () => {
-    const matches: RouteMatchLike[] = [{ handle: undefined }];
+    const matches: RouteMatchLike[] = [{ route: { handle: undefined } }];
     expect(isRouteSafeForReload(matches)).toBe(false);
   });
 
   it("returns false when the leaf route's handle.safeForReload is not true", () => {
-    const matches: RouteMatchLike[] = [{ handle: { safeForReload: false } }];
+    const matches: RouteMatchLike[] = [
+      { route: { handle: { safeForReload: false } } },
+    ];
     expect(isRouteSafeForReload(matches)).toBe(false);
   });
 
   it("returns true when the leaf route's handle.safeForReload is true", () => {
     const matches: RouteMatchLike[] = [
-      { handle: undefined },
-      { handle: { safeForReload: true } },
+      { route: { handle: undefined } },
+      { route: { handle: { safeForReload: true } } },
     ];
     expect(isRouteSafeForReload(matches)).toBe(true);
   });
 
   it("only checks the deepest match, not ancestors", () => {
     const matches: RouteMatchLike[] = [
-      { handle: { safeForReload: true } },
-      { handle: undefined },
+      { route: { handle: { safeForReload: true } } },
+      { route: { handle: undefined } },
     ];
     expect(isRouteSafeForReload(matches)).toBe(false);
   });

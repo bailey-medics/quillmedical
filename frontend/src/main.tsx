@@ -212,23 +212,51 @@ const router = createBrowserRouter([
           {
             path: "/patients/:id",
             children: [
-              { index: true, element: <Patient /> },
-              { path: "letters", element: <PatientLetters /> },
-              { path: "letters/:letterId", element: <PatientLetterView /> },
+              {
+                index: true,
+                element: <Patient />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "letters",
+                element: <PatientLetters />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "letters/:letterId",
+                element: <PatientLetterView />,
+                handle: { safeForReload: true },
+              },
+              // Message routes have a reply/compose draft in progress -
+              // not safe to silently reload.
               { path: "messages", element: <PatientMessages /> },
               {
                 path: "messages/:conversationId",
                 element: <PatientMessageThread />,
               },
-              { path: "documents", element: <PatientDocuments /> },
+              {
+                path: "documents",
+                element: <PatientDocuments />,
+                handle: { safeForReload: true },
+              },
               {
                 path: "documents/:documentId",
                 element: <PatientDocumentView />,
+                handle: { safeForReload: true },
               },
-              { path: "notes", element: <PatientNotes /> },
-              { path: "appointments", element: <PatientAppointments /> },
+              {
+                path: "notes",
+                element: <PatientNotes />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "appointments",
+                element: <PatientAppointments />,
+                handle: { safeForReload: true },
+              },
             ],
           },
+          // Compose/reply draft in progress - not safe to silently reload.
           { path: "/messages", element: <Messages /> },
           {
             path: "/messages/:conversationId",
@@ -246,16 +274,41 @@ const router = createBrowserRouter([
           </RequirePermission>
         ),
         children: [
-          { index: true, element: <AdminPage /> },
-          { path: "users", element: <AdminUsersPage /> },
+          {
+            index: true,
+            element: <AdminPage />,
+            handle: { safeForReload: true },
+          },
+          {
+            path: "users",
+            element: <AdminUsersPage />,
+            handle: { safeForReload: true },
+          },
+          // Wizard/edit forms - not safe to silently reload mid-entry.
           { path: "users/new", element: <UserInfoUpdatePage /> },
           { path: "users/edit", element: <EditUserPage /> },
-          { path: "users/:id", element: <UserAdminPage /> },
+          {
+            path: "users/:id",
+            element: <UserAdminPage />,
+            handle: { safeForReload: true },
+          },
           { path: "users/:id/edit", element: <UserInfoUpdatePage /> },
-          { path: "patients", element: <AdminPatientsPage /> },
+          {
+            path: "patients",
+            element: <AdminPatientsPage />,
+            handle: { safeForReload: true },
+          },
           { path: "patients/new", element: <NewPatientPage /> },
-          { path: "patients/list", element: <ViewAllPatientsPage /> },
-          { path: "patients/:patientId", element: <PatientAdminPage /> },
+          {
+            path: "patients/list",
+            element: <ViewAllPatientsPage />,
+            handle: { safeForReload: true },
+          },
+          {
+            path: "patients/:patientId",
+            element: <PatientAdminPage />,
+            handle: { safeForReload: true },
+          },
           { path: "patients/:patientId/edit", element: <EditPatientPage /> },
           {
             path: "patients/:patientId/deactivate",
@@ -268,7 +321,11 @@ const router = createBrowserRouter([
           { path: "patients/edit", element: <EditPatientPage /> },
           { path: "patients/deactivate", element: <DeactivatePatientPage /> },
           { path: "patients/:id/edit", element: <NewPatientPage /> },
-          { path: "organisations", element: <AdminOrganisationsPage /> },
+          {
+            path: "organisations",
+            element: <AdminOrganisationsPage />,
+            handle: { safeForReload: true },
+          },
           {
             path: "organisations/new",
             element: (
@@ -277,7 +334,11 @@ const router = createBrowserRouter([
               </RequirePermission>
             ),
           },
-          { path: "organisations/:id", element: <OrganisationAdminPage /> },
+          {
+            path: "organisations/:id",
+            element: <OrganisationAdminPage />,
+            handle: { safeForReload: true },
+          },
           {
             path: "organisations/:id/edit",
             element: <EditOrganisationPage />,
@@ -294,14 +355,22 @@ const router = createBrowserRouter([
             path: "organisations/:id/add-site",
             element: <AddSiteToOrgPage />,
           },
-          { path: "sites/:id", element: <SiteAdminPage /> },
+          {
+            path: "sites/:id",
+            element: <SiteAdminPage />,
+            handle: { safeForReload: true },
+          },
           { path: "sites/:id/edit", element: <EditSitePage /> },
           { path: "sites/:id/add-staff", element: <AddStaffToSitePage /> },
           {
             path: "organisations/:id/features",
             element: <OrgFeaturesPage />,
           },
-          { path: "teaching", element: <AdminTeachingDashboard /> },
+          {
+            path: "teaching",
+            element: <AdminTeachingDashboard />,
+            handle: { safeForReload: true },
+          },
           {
             element: (
               <RequirePermission level="superadmin">
@@ -312,10 +381,12 @@ const router = createBrowserRouter([
               {
                 path: "teaching/modules",
                 element: <AdminTeachingPage />,
+                handle: { safeForReload: true },
               },
               {
                 path: "teaching/modules/:bankId",
                 element: <AdminBankDetailPage />,
+                handle: { safeForReload: true },
               },
               {
                 path: "teaching/modules/:bankId/org/:orgId",
@@ -326,6 +397,7 @@ const router = createBrowserRouter([
           {
             path: "teaching/all-delegates",
             element: <AdminAllDelegatesPage />,
+            handle: { safeForReload: true },
           },
         ],
       },
@@ -334,7 +406,9 @@ const router = createBrowserRouter([
       {
         path: "/settings",
         element: import("./pages/Settings").then((m) => <m.default />),
+        handle: { safeForReload: true },
       },
+      // Multi-step forms - not safe to silently reload mid-entry.
       { path: "/settings/totp", element: <TotpSetup /> },
       { path: "/settings/account", element: <AccountPage /> },
     ],
@@ -362,14 +436,36 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <TeachingDashboard /> },
-      { path: ":bankId", element: <TeachingModuleMain /> },
-      { path: "learn", element: <LearningDashboard /> },
+      {
+        index: true,
+        element: <TeachingDashboard />,
+        handle: { safeForReload: true },
+      },
+      {
+        path: ":bankId",
+        element: <TeachingModuleMain />,
+        handle: { safeForReload: true },
+      },
+      {
+        path: "learn",
+        element: <LearningDashboard />,
+        handle: { safeForReload: true },
+      },
       { path: "learn/:moduleId", element: <Navigate to="slide/0" replace /> },
-      { path: "learn/:moduleId/slide/:slideIndex", element: <SlideReader /> },
+      {
+        path: "learn/:moduleId/slide/:slideIndex",
+        element: <SlideReader />,
+        handle: { safeForReload: true },
+      },
+      // In-progress exam attempt - never safe to silently reload.
       { path: "assessment/:id", element: <AssessmentAttempt /> },
+      // Reads location.state.fromExam - not reconstructible from URL alone.
       { path: "assessment/:id/result", element: <AssessmentResultPage /> },
-      { path: "sync", element: <SyncStatus /> },
+      {
+        path: "sync",
+        element: <SyncStatus />,
+        handle: { safeForReload: true },
+      },
     ],
   },
 

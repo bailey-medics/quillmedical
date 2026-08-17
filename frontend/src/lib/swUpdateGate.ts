@@ -19,13 +19,13 @@ export interface RouteHandle {
 }
 
 export interface RouteMatchLike {
-  handle?: RouteHandle;
+  route?: { handle?: RouteHandle };
 }
 
 /** True only if the deepest (leaf) matched route opts in via `handle.safeForReload`. */
 export function isRouteSafeForReload(matches: RouteMatchLike[]): boolean {
   const leaf = matches[matches.length - 1];
-  return leaf?.handle?.safeForReload === true;
+  return leaf?.route?.handle?.safeForReload === true;
 }
 
 export interface UpdateGateOptions {
