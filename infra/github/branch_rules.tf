@@ -136,6 +136,14 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "E2E (Playwright)"
       }
+
+      # API compatibility (item 15 — see docs/docs/backend/api-compatibility.md)
+      required_check {
+        context = "API breaking-change check (oasdiff)"
+      }
+      required_check {
+        context = "API breaking-change review gate"
+      }
     }
 
     # Block force pushes (rewriting history on protected branches)

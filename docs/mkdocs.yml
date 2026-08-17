@@ -39,6 +39,7 @@ nav:
       - Three-Database Migration: backend/three-database-migration.md
       - Avatar Gradient Migration: backend/avatar-gradient-migration.md
       - Alembic Migration Safety: backend/alembic-migration-safety.md
+      - API Compatibility (Expand-Contract): backend/api-compatibility.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:

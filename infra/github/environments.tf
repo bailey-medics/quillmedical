@@ -43,3 +43,33 @@ resource "github_repository_environment_deployment_policy" "teaching_main" {
   environment    = github_repository_environment.teaching.environment
   branch_pattern = "main"
 }
+
+# ---------------------------------------------------------------------------
+# API breaking-change review environment — required-reviewer approval gate
+# ---------------------------------------------------------------------------
+#
+# API compatibility context (item 15 of the alembic review plan, see
+# docs/docs/backend/api-compatibility.md):
+#   Gates an undeclared breaking API change (detected by `oasdiff` in CI)
+#   behind one deliberate, separate approval action from the change's own
+#   author. `prevent_self_review = false` is intentional, not an oversight —
+#   a second reviewer is not inherently more careful than the person who
+#   wrote the change, so the goal is forcing one genuine action out of
+#   whoever is accountable, not diffusing accountability across more people.
+#
+# No deployment_branch_policy: this environment gates a CI job that runs on
+# pull requests, not a deployment, so it is not restricted to a branch.
+
+data "github_user" "api_breaking_change_reviewer" {
+  username = "Cotswoldsmaker"
+}
+
+resource "github_repository_environment" "api_breaking_change_review" {
+  repository          = var.github_repository
+  environment         = "api-breaking-change-review"
+  prevent_self_review = false
+
+  reviewers {
+    users = [data.github_user.api_breaking_change_reviewer.id]
+  }
+}
