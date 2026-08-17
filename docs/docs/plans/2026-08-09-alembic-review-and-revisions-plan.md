@@ -1037,11 +1037,26 @@ out-of-scope edge case per item 14's decision.)
   mechanism above; it is reassurance for a risk the staging has already
   eliminated, not the thing eliminating it.
 
-- [ ] Build the "Updating to the latest version…" banner as a proper
+- [x] Build the "Updating to the latest version…" banner as a proper
       Storybook component — `.stories.tsx` + `.test.tsx` alongside it — not
       inline JSX bolted onto the reload-trigger code. **Mounted only for the
       forced/contract-step reload path** — routine and expand-step reloads
       stay fully silent per item 14 and never render this banner.
+
+Implemented as `components/updating-banner/UpdatingBanner.tsx` — pure
+presentational, no props, no internal state or timer, following the
+`OfflineStrip` precedent exactly (`role="status"`, `aria-live="polite"`,
+composed from `Icon`/`BodyTextInline`, `var(--info-color)` accent,
+`IconRefresh` from the existing icon registry). `UpdatingBanner.stories.tsx`
+covers the default state and dark mode (rendered inside `MainLayout`, per
+the `OfflineStrip` stories pattern). `UpdatingBanner.test.tsx` asserts the
+copy renders, `role="status"`/`aria-live="polite"` are present, and no
+button/dismiss control exists. Verified with `just uf
+src/components/updating-banner` (4/4 passing) and `yarn eslint` +
+`tsc --noEmit` (both clean) inside the frontend container. **Not yet
+wired up** — nothing mounts this component yet; that is the separate
+"close the client-side half" item below, which still needs a design for
+how the reload-trigger code learns a given reload is a contract-step one.
 
 **Follow the existing `OfflineStrip` precedent, don't invent a new pattern.**
 `components/offline-strip/OfflineStrip.tsx` is exactly this shape already: a
