@@ -126,3 +126,38 @@ the baseline included — is held to the full standard below.
   table lock quickly fails fast (and rolls back cleanly, thanks to
   transactional DDL) instead of queueing behind a long-running query and
   stalling all traffic to that table.
+
+## API compatibility (expand-contract)
+
+Mirrors the database expand-contract rule above, applied to the API
+boundary: a stale client (mid rolling-deploy, or a tab left open for days)
+depends on the current response/request shape for as long as it stays open.
+
+### Additive-only within the compatibility window
+
+- Adding an optional response field is safe. Renaming, removing, or
+  retyping a field, or adding a **required** request field, is a breaking
+  change and must never ship as a single deploy.
+- Stage it as two deploys, at least one release apart:
+  1. **Expand** — the new shape goes live alongside the old one; both are
+     served simultaneously, so a stale client keeps working unchanged.
+  2. **Contract** — the old shape is removed, **at least one full release
+     cycle later** ("N releases" of deprecation) — never in the same deploy
+     as the expand step.
+
+### Enforcement: `oasdiff` + a required-reviewer environment gate
+
+- `backend/scripts/dump_openapi.py` generates the OpenAPI spec used to diff
+  `main` against the PR branch. The `api_breaking_change_check` CI job
+  (`.github/workflows/ci.yml`) runs `oasdiff breaking` on the two specs and
+  fails the build on any undeclared breaking change.
+- The **only** way to declare a breaking change intentional is a required
+  reviewer approval on the GitHub Actions environment
+  `api-breaking-change-review` — never a code comment, commit-message
+  trailer, or PR label. Those are just text/metadata an AI coding agent
+  produces as routinely as the code itself, so none of them prove a human
+  actually decided the change was intentional.
+- A breaking-change finding posts to Slack (`channel: teaching`, via the
+  reusable `.github/workflows/slack-notify.yml`) with `oasdiff`'s changelog
+  summary, so the approval prompt shows *what* is being confirmed rather
+  than a bare "approve?".

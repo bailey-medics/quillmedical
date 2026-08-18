@@ -49,6 +49,8 @@ See the `Justfile` if you want to know more.
   - `DEP_CURRENT_USER` — Authenticated user from JWT cookie
   - `DEP_REQUIRE_ROLES_CLINICIAN` — Clinician role gate
   - `DEP_REQUIRE_CSRF` — CSRF token validation (mutating endpoints)
+- **API changes**: additive-only; breaking changes need the expand-contract
+  two-deploy pattern — see `backend.instructions.md`
 
 ### Frontend (React + TypeScript)
 
