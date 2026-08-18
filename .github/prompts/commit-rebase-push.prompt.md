@@ -2,6 +2,7 @@
 agent: "agent"
 name: crp
 description: Commit, rebase, and push code
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Commit, rebase, and push code

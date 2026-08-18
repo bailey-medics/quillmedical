@@ -873,12 +873,36 @@ safe route and by the existing hourly timer; no prompt, in either case.
 
 ### 15. Backwards-compatible API windows
 
-- [ ] Document and enforce an additive-only / deprecate-then-remove API
+- [x] Document and enforce an additive-only / deprecate-then-remove API
       compatibility policy so stale clients keep working.
-- [ ] CI schema-diff check (`oasdiff`) fails the build on an undeclared
+- [x] CI schema-diff check (`oasdiff`) fails the build on an undeclared
       breaking change; the only way to declare one intentional is a required
       GitHub Actions environment approval (Slack-notified) — not a code
       comment, commit trailer, or PR label.
+
+Implemented in commit `f1ed1ef` ("feat: enforce API expand-contract
+compatibility (item 15)"). Policy documented in three places: a new "API
+compatibility (expand-contract)" section in `backend.instructions.md`
+(mirroring item 3's DB section), a cross-referencing bullet in
+`copilot-instructions.md`, and a new docs page
+[API compatibility (expand-contract)](../backend/api-compatibility.md)
+(linked from `mkdocs.yml`) carrying both the rule and the full reasoning.
+CI enforcement: the `heavy_api_schema_diff` job in `ci.yml` generates the
+OpenAPI spec from both `main` and the PR branch
+(`backend/scripts/dump_openapi.py`) and runs `oasdiff breaking` via
+`.github/scripts/ci/check-api-breaking-changes.sh` (tested in
+`check-api-breaking-changes.bats`), with `oasdiff` itself installed via a
+checksum-verified `install-oasdiff.sh`. On a detected breaking change,
+`heavy_api_breaking_change_notify` posts to Slack (`channel: teaching`) and
+`heavy_api_breaking_change_gate` requires approval on the new
+`api-breaking-change-review` GitHub Actions environment
+(`prevent_self_review = false`, by design — see rationale below) before the
+check passes. Both job names were added as required status checks in
+`infra/github/branch_rules.tf`; the environment and its reviewer
+(`Cotswoldsmaker`) are defined in `infra/github/environments.tf`.
+**Terraform not yet applied** — these Terraform changes are committed but
+`terraform apply` has not been run, so the required checks are not yet
+enforced on the repo.
 
 _(client-side expand-contract)_ — treat every API response shape and required
 request field as a contract that stale clients still depend on during (and
@@ -1013,11 +1037,26 @@ out-of-scope edge case per item 14's decision.)
   mechanism above; it is reassurance for a risk the staging has already
   eliminated, not the thing eliminating it.
 
-- [ ] Build the "Updating to the latest version…" banner as a proper
+- [x] Build the "Updating to the latest version…" banner as a proper
       Storybook component — `.stories.tsx` + `.test.tsx` alongside it — not
       inline JSX bolted onto the reload-trigger code. **Mounted only for the
       forced/contract-step reload path** — routine and expand-step reloads
       stay fully silent per item 14 and never render this banner.
+
+Implemented as `components/updating-banner/UpdatingBanner.tsx` — pure
+presentational, no props, no internal state or timer, following the
+`OfflineStrip` precedent exactly (`role="status"`, `aria-live="polite"`,
+composed from `Icon`/`BodyTextInline`, `var(--info-color)` accent,
+`IconRefresh` from the existing icon registry). `UpdatingBanner.stories.tsx`
+covers the default state and dark mode (rendered inside `MainLayout`, per
+the `OfflineStrip` stories pattern). `UpdatingBanner.test.tsx` asserts the
+copy renders, `role="status"`/`aria-live="polite"` are present, and no
+button/dismiss control exists. Verified with `just uf
+src/components/updating-banner` (4/4 passing) and `yarn eslint` +
+`tsc --noEmit` (both clean) inside the frontend container. **Not yet
+wired up** — nothing mounts this component yet; that is the separate
+"close the client-side half" item below, which still needs a design for
+how the reload-trigger code learns a given reload is a contract-step one.
 
 **Follow the existing `OfflineStrip` precedent, don't invent a new pattern.**
 `components/offline-strip/OfflineStrip.tsx` is exactly this shape already: a
@@ -1057,9 +1096,20 @@ notify-then-reload banner on the contract deploy only, as reassurance, not
 as the mitigation — routine and expand-step deploys stay fully silent, per
 item 14.**
 
-- [ ] Document the API expand-contract rule explicitly — for human
+- [x] Document the API expand-contract rule explicitly — for human
       developers **and** AI coding agents — not left implicit in this plan
       doc alone.
+
+Implemented alongside the checks above, in the same commit (`f1ed1ef`):
+`backend.instructions.md` gained the new named "API compatibility
+(expand-contract)" section (sibling to item 3's DB section),
+`copilot-instructions.md` gained the short cross-referencing bullet under
+"Backend (FastAPI)", and
+[API compatibility (expand-contract)](../backend/api-compatibility.md)
+carries both the rule and the full reasoning (the refresh-token
+stale-tab risk, why a single-deploy breaking change is unsafe, and why item
+14's hourly-timer-and-navigation check is sufficient given the
+release-cycle gap) — exactly as decided below.
 
 **Why this needs its own item, not just item 16's general cadence**: item 3
 gave the DB expand-contract rule its own named section in

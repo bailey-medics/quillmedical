@@ -2,6 +2,7 @@
 agent: "agent"
 name: e
 description: Explain in simple terms the highlighted lines
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Explain in simple terms the highlighted lines

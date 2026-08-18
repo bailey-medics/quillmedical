@@ -2,6 +2,7 @@
 agent: "agent"
 name: read-copilot-instructions
 description: Read Copilot instructions
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Read copilot-instructions.md
