@@ -88,14 +88,105 @@ who could each be equally lazy.
   `oasdiff`'s changelog summary of what changed, so the approval prompt
   shows _what_ is being confirmed rather than a bare "approve?".
 
+## Decision files: `api-compatibility/` folder
+
+Once a breaking change has been approved by the required reviewer, that
+approval and its reasoning must be recorded durably and clearly. The
+`api-compatibility/` folder at the repo root holds one YAML decision file
+per flagged change, each recording the human's verdict on whether the
+change requires every open browser tab to force-reload immediately
+(contract-step risk) or can be handled by the routine silent update
+mechanism (expand-step, or backwards-compatible addition).
+
+### File format
+
+Each file follows the naming pattern `YYYYMMDDHHMMSS-<slug>.yaml` (UTC
+timestamp, no separators, followed by kebab-case slug). Example:
+
+```yaml
+generation: 2
+forces_reload: true
+change: "api-path-removed-without-deprecation DELETE /api/v1/encounters/{id}"
+reason: "Old bundles call this endpoint from the encounter close button. Removing it without deprecation will cause immediate 404 errors in open tabs running that old bundle."
+```
+
+### Field meanings
+
+- `generation` — a positive integer assigned by the script when the file is
+  created. On files where `forces_reload: true`, this is a globally unique
+  identifier: if two files ever both claim `forces_reload: true` with the
+  same generation number, CI fails (enforced by branch protection requiring
+  up-to-date merges). On `forces_reload: false` files, the generation is
+  informational only and is not required to be unique. The backend and
+  frontend bake this value in at build time and compare it at runtime to
+  detect when a tab is running an older bundle than the current API
+  requires (the client forced-reload mechanism, see below).
+
+- `forces_reload` — boolean. `true` means every open browser tab is
+  incompatible with the new API and must reload immediately; `false` means
+  the existing quiet background-update mechanism (hourly timer or
+  navigation, whichever comes first) is sufficient for users to pick up the
+  new bundle before they encounter the changed API. This decision is a human
+  judgement call recorded by the required reviewer.
+
+- `change` — the exact oasdiff flagged change ID and operation, copied
+  verbatim from the CI log so a reviewer can match the file against what
+  the CI tool actually found. Example: `api-path-removed-without-deprecation DELETE /api/v1/encounters/{id}`.
+
+- `reason` — free-form text explaining why the human made this
+  `forces_reload` decision. This is the safety/hazard-log artefact: it
+  records the thinking for a clinical/compliance audit trail, not just the
+  outcome. Must be non-empty.
+
+### Immutability and edits
+
+Once a file is merged to `main`, the `generation`, `forces_reload`, and
+`change` fields become immutable — editing them retroactively would make
+the original approval meaningless for compliance purposes. The `reason`
+field may be edited in later PRs to fix typos or add context, and comments
+may be added, but only via the same `api-breaking-change-review` gate to
+keep the audit trail clear. Deleting an existing file is never permitted;
+if a decision is superseded, record a new decision file instead.
+
 ## Client-side reassurance: the "Updating…" banner
+
+### Routine and expand-step deploys (forces_reload: false)
 
 Routine and expand-step deploys stay fully silent — the existing
 whitelist-gated reload (hourly timer or navigation, whichever is first)
-picks up the new bundle with no message. A contract-step deploy is the one
-point of actual client risk, so it additionally shows a short,
-non-dismissible "Updating to the latest version…" banner
-(`components/updating-banner/UpdatingBanner.tsx`, modelled on the existing
-`OfflineStrip` pattern) for a few seconds before reloading — reassurance
-for a risk the staging has already eliminated, not the thing eliminating
-it.
+picks up the new bundle with no message. These cases cover the vast
+majority of API changes (additions, deprecations, optional field removals).
+
+### Contract-step deploys (forces_reload: true)
+
+A contract-step deploy is the one point of actual client risk: a breaking
+change that open tabs cannot tolerate. When the backend starts serving a
+new `Compat-Generation` value (bumped when a `forces_reload: true` decision
+is merged), any open tab running an older client bundle will detect the
+mismatch at its next API call. The detection works as follows:
+
+- Both backend and frontend bake in their `Compat-Generation` value at
+  build/deploy time (the backend serves it as an HTTP header on every
+  response, the frontend bakes it as a build-time constant).
+- On every API response, the frontend's interceptor compares its own
+  generation (baked in at build) against the backend's generation (served
+  in the response header). If they match, the tab is compatible and
+  continues normally. If the tab's generation is _older_ than the backend's
+  generation, the tab is incompatible.
+- When incompatibility is detected (`client_generation < server_generation`),
+  the tab immediately:
+  1. Shows a blocking modal based on the `UpdatingBanner` component,
+     telling the user the app must update.
+  2. Persists any in-progress form or editor state to `sessionStorage`.
+  3. Reloads the page, restores the persisted state after reload, and
+     continues.
+
+If the reload fails (e.g. the backend generation mismatch persists after
+reload due to deploy ordering issues), a second failure triggers a
+fallback: a dismissible banner with a manual-refresh prompt instead of
+automatic reloading, to avoid an infinite loop.
+
+This forced-reload mechanism is the only thing that protects users in
+genuinely breaking contract-step scenarios — the expand-contract staging
+already eliminates the risk operationally, so the reload is reassurance
+rather than the risk-elimination mechanism itself.
