@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validates api-compatibility/ decision files against the schema and CI rules.
+# Validates api-compatibility / decision files against the schema and CI rules.
 #
 # Usage: validate-compat-files.sh <oasdiff-json-output> [api-compat-dir]
 #
@@ -39,10 +39,15 @@ GIT_MAIN_BRANCH="${GIT_MAIN_BRANCH:-main}"
 # State
 declare -a FAILURES=()
 declare -a OASDIFF_CHANGES=()
-declare -a ALL_FLAGGED_CHANGES=()
 declare -i MAX_TRUE_GENERATION=0
 declare -i MAX_FALSE_GENERATION=0
 declare -i NUM_TRUE_FILES=0
+
+# YAML field names: constants so set -u catches a misspelled variable reference
+readonly GENERATION="generation"
+readonly FORCES_RELOAD="forces_reload"
+readonly CHANGE="change"
+readonly REASON="reason"
 
 # ============================================================================
 # Helper functions
@@ -73,7 +78,7 @@ read_yaml_field() {
   fi
 
   # Remove field: prefix and any leading spaces
-  local value="${line#${field}:}"
+  local value="${line#"${field}":}"
   value="${value#"${value%%[![:space:]]*}"}"  # strip leading whitespace
 
   # Remove quotes if present
@@ -89,6 +94,7 @@ read_yaml_field() {
 # Check if a string looks like a YAML list (starts with [ or contains \n or has multiple items).
 is_yaml_list() {
   local value="$1"
+
   [[ "$value" == "["* ]] || [[ "$value" == *$'\n'* ]] || [[ "$value" == *","* ]]
 }
 
@@ -160,15 +166,20 @@ validate_coverage() {
   log "Checking coverage: ${#OASDIFF_CHANGES[@]} flagged change(s) must have matching files..."
 
   local new_files
+
   new_files=$(get_new_compat_files)
 
   local covered_changes=()
 
-  # For each new file, extract its 'change' field and mark it as covered
+  # For each new file, extract its 'change' field and store for later comparison
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
+
     local change_str
-    change_str=$(read_yaml_field "$file" "change")
+    change_str=$(read_yaml_field "$file" "$CHANGE")
+
     if [ -n "$change_str" ]; then
       covered_changes+=("$change_str")
     fi
@@ -177,6 +188,7 @@ validate_coverage() {
   # Check if all oasdiff changes are covered
   for oasdiff_change in "${OASDIFF_CHANGES[@]}"; do
     local found=0
+
     for covered_change in "${covered_changes[@]}"; do
       if [ "$oasdiff_change" = "$covered_change" ]; then
         found=1
@@ -198,9 +210,13 @@ validate_reasons_nonempty() {
   new_files=$(get_new_compat_files)
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
+
     local reason
-    reason=$(read_yaml_field "$file" "reason")
+    reason=$(read_yaml_field "$file" "$REASON")
+
     if [ -z "$reason" ]; then
       fail "File $file has empty or missing 'reason' field"
     fi
@@ -215,9 +231,12 @@ validate_change_is_scalar() {
   new_files=$(get_new_compat_files)
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
+
     local change
-    change=$(read_yaml_field "$file" "change")
+    change=$(read_yaml_field "$file" "$CHANGE")
 
     if [ -z "$change" ]; then
       fail "File $file has empty or missing 'change' field"
@@ -238,19 +257,26 @@ validate_immutability() {
   modified_files=$(get_modified_compat_files)
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
 
-    # Get the version on main
-    local main_generation main_forces_reload main_change
-    main_generation=$(git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null | read_yaml_field /dev/stdin "generation" || echo "")
-    main_forces_reload=$(git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null | read_yaml_field /dev/stdin "forces_reload" || echo "")
-    main_change=$(git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null | read_yaml_field /dev/stdin "change" || echo "")
+    # Get the version on main (single git call, reused for all three fields)
+    local main_content
+    local main_generation
+    local main_forces_reload
+    local main_change
+
+    main_content=$(git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null || echo "")
+    main_generation=$(echo "$main_content" | read_yaml_field /dev/stdin "$GENERATION" || echo "")
+    main_forces_reload=$(echo "$main_content" | read_yaml_field /dev/stdin "$FORCES_RELOAD" || echo "")
+    main_change=$(echo "$main_content" | read_yaml_field /dev/stdin "$CHANGE" || echo "")
 
     # Get the version in this PR
     local pr_generation pr_forces_reload pr_change
-    pr_generation=$(read_yaml_field "$file" "generation")
-    pr_forces_reload=$(read_yaml_field "$file" "forces_reload")
-    pr_change=$(read_yaml_field "$file" "change")
+    pr_generation=$(read_yaml_field "$file" "$GENERATION")
+    pr_forces_reload=$(read_yaml_field "$file" "$FORCES_RELOAD")
+    pr_change=$(read_yaml_field "$file" "$CHANGE")
 
     # Check for changes in frozen fields
     if [ "$main_generation" != "$pr_generation" ]; then
@@ -291,7 +317,9 @@ validate_filename_regex() {
   local regex='^[0-9]{14}-[a-z0-9]+(-[a-z0-9]+)*\.yaml$'
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
 
     local basename
     basename=$(basename "$file")
@@ -302,7 +330,7 @@ validate_filename_regex() {
   done <<< "$new_files"
 }
 
-# Rule 7: No duplicate generations for forces_reload: true files
+# Rule 7: No duplicate generations for `forces_reload: true` files
 validate_duplicate_generations_true() {
   log "Checking for duplicate generations in forces_reload:true files..."
 
@@ -314,11 +342,14 @@ validate_duplicate_generations_true() {
   MAX_TRUE_GENERATION=0
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
 
-    local forces_reload generation
-    forces_reload=$(read_yaml_field "$file" "forces_reload")
-    generation=$(read_yaml_field "$file" "generation")
+    local forces_reload
+    local generation
+    forces_reload=$(read_yaml_field "$file" "$FORCES_RELOAD")
+    generation=$(read_yaml_field "$file" "$GENERATION")
 
     if [ "$forces_reload" = "true" ]; then
       ((NUM_TRUE_FILES++))
@@ -352,11 +383,14 @@ validate_generation_range() {
   MAX_FALSE_GENERATION=0
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
 
-    local forces_reload generation
-    forces_reload=$(read_yaml_field "$file" "forces_reload")
-    generation=$(read_yaml_field "$file" "generation")
+    local forces_reload
+    local generation
+    forces_reload=$(read_yaml_field "$file" "$FORCES_RELOAD")
+    generation=$(read_yaml_field "$file" "$GENERATION")
 
     if [ "$forces_reload" = "false" ]; then
       # Track max generation for false files
@@ -364,12 +398,13 @@ validate_generation_range() {
         MAX_FALSE_GENERATION="$generation"
       fi
 
-      # Check range: must be between 1 and MAX_TRUE_GENERATION
+      # Check that generation is numeric
       if ! [[ "$generation" =~ ^[0-9]+$ ]]; then
         fail "File $file: generation is not numeric: '$generation'"
         continue
       fi
 
+      # Check range: must be between 1 and MAX_TRUE_GENERATION
       if [ "$generation" -lt 1 ] || [ "$generation" -gt "$MAX_TRUE_GENERATION" ]; then
         fail "File $file: generation $generation out of valid range [1, $MAX_TRUE_GENERATION]"
       fi
@@ -390,17 +425,21 @@ validate_stale_change_strings() {
   new_files=$(get_new_compat_files)
 
   while IFS= read -r file; do
-    if [ -z "$file" ]; then continue; fi
+    if [ -z "$file" ];
+      then continue;
+    fi
 
     local change
-    change=$(read_yaml_field "$file" "change")
+    change=$(read_yaml_field "$file" "$CHANGE")
 
     if [ -z "$change" ]; then
-      continue  # Already caught by validate_change_is_scalar
+      log "Skipping file $file: change field is empty (already caught by validate_change_is_scalar)"
+      continue
     fi
 
     # Check if this change is in the oasdiff output
     local found=0
+
     for oasdiff_change in "${OASDIFF_CHANGES[@]}"; do
       if [ "$change" = "$oasdiff_change" ]; then
         found=1

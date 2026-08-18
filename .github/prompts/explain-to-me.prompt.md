@@ -1,5 +1,5 @@
 ---
-agent: "agent"
+agent: "ask"
 name: e
 description: Explain in simple terms the highlighted lines
 model: "Claude Haiku 4.5 (copilot)"

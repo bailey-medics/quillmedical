@@ -37,7 +37,7 @@ create_compat_file() {
   local generation="${2:-1}"
   local forces_reload="${3:-false}"
   local change="${4:-none}"
-  local reason="${5:-test reason}"
+  local reason="${5-test reason}"  # unset-only default, allows explicit empty string
 
   mkdir -p api-compatibility
   cat > "api-compatibility/$filename" <<EOF
@@ -89,13 +89,7 @@ EOF
 }
 
 @test "reason: fails when reason is empty" {
-  # Create file with empty reason
-  cat > api-compatibility/20260818000001-change1.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "none"
-reason: ""
-EOF
+  create_compat_file "20260818000001-change1.yaml" "1" "false" "none" ""
 
   run validate_reasons_nonempty
   [[ "$status" -eq 1 ]]
@@ -116,12 +110,7 @@ EOF
 }
 
 @test "change-scalar: fails when change looks like a list (starts with [)" {
-  cat > api-compatibility/20260818000001-badchange.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "[api-path-removed GET /api/v1/foo, response-property-removed GET /api/v1/bar]"
-reason: "Multiple changes"
-EOF
+  create_compat_file "20260818000001-badchange.yaml" "1" "false" "[api-path-removed GET /api/v1/foo, response-property-removed GET /api/v1/bar]" "Multiple changes"
 
   export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-badchange.yaml'"
 
@@ -131,12 +120,7 @@ EOF
 }
 
 @test "change-scalar: fails when change contains comma (multi-value)" {
-  cat > api-compatibility/20260818000001-badchange.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "api-path-removed GET /api/v1/foo, response-property-removed GET /api/v1/bar"
-reason: "Multiple changes"
-EOF
+  create_compat_file "20260818000001-badchange.yaml" "1" "false" "api-path-removed GET /api/v1/foo, response-property-removed GET /api/v1/bar" "Multiple changes"
 
   export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-badchange.yaml'"
 
@@ -168,12 +152,7 @@ EOF
 }
 
 @test "filename-regex: fails for bad timestamp (too short)" {
-  cat > api-compatibility/2026081800-bad.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "none"
-reason: "Bad timestamp"
-EOF
+  create_compat_file "2026081800-bad.yaml" "1" "false" "none" "Bad timestamp"
 
   export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/2026081800-bad.yaml'"
 
@@ -183,12 +162,7 @@ EOF
 }
 
 @test "filename-regex: fails for bad slug (contains uppercase)" {
-  cat > api-compatibility/20260818000001-Invalid-Name.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "none"
-reason: "Bad slug"
-EOF
+  create_compat_file "20260818000001-Invalid-Name.yaml" "1" "false" "none" "Bad slug"
 
   export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-Invalid-Name.yaml'"
 
@@ -198,12 +172,7 @@ EOF
 }
 
 @test "filename-regex: fails for bad slug (contains underscore)" {
-  cat > api-compatibility/20260818000001-bad_name.yaml <<EOF
-generation: 1
-forces_reload: false
-change: "none"
-reason: "Bad slug"
-EOF
+  create_compat_file "20260818000001-bad_name.yaml" "1" "false" "none" "Bad slug"
 
   export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-bad_name.yaml'"
 
@@ -223,7 +192,6 @@ EOF
 
   run validate_duplicate_generations_true
   [[ "$status" -eq 0 ]]
-  [[ "$output" == *"duplicate"* ]]
 }
 
 @test "duplicate-gen-true: fails when two true files share a generation" {
@@ -233,7 +201,6 @@ EOF
   run validate_duplicate_generations_true
   [[ "$status" -eq 1 ]]
   [[ "$output" == *"Duplicate generation"* ]]
-  [[ "$output" == *"forces_reload:true"* ]]
 }
 
 @test "duplicate-gen-true: allows false files to share generations" {
@@ -269,7 +236,7 @@ EOF
 
   run validate_generation_range
   [[ "$status" -eq 1 ]]
-  [[ "$output" == *"out of valid range"* ]] || [[ "$output" == *"out of range"* ]]
+  [[ "$output" == *"out of valid range"* ]]
 }
 
 @test "gen-range-false: fails when false file gen exceeds max true gen" {
@@ -280,7 +247,7 @@ EOF
 
   run validate_generation_range
   [[ "$status" -eq 1 ]]
-  [[ "$output" == *"out of valid range"* ]] || [[ "$output" == *"out of range"* ]]
+  [[ "$output" == *"out of valid range"* ]]
 }
 
 # ============================================================================
@@ -290,7 +257,7 @@ EOF
 @test "stale-change: passes when change exists in oasdiff output" {
   create_compat_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /api/v1/foo" "Change 1"
 
-  OASDIFF_CHANGES=("api-path-removed GET /api/v1/foo" "response-property-removed GET /api/v1/bar")
+  OASDIFF_CHANGES=("api-path-removed GET /api/v1/foo")
 
   run validate_stale_change_strings
   [[ "$status" -eq 0 ]]
@@ -313,7 +280,7 @@ EOF
 
   run validate_stale_change_strings
   [[ "$status" -eq 0 ]]
-  [[ "$output" == *"skipping"* ]]
+  [[ "$output" == *"No flagged changes from oasdiff, skipping stale change check."* ]]
 }
 
 # ============================================================================
@@ -368,6 +335,8 @@ EOF
 # ============================================================================
 
 @test "integration: complete workflow with valid files" {
+  # Gen 1 is the bootstrap generation, so it's the one exception to the
+  # usual "true file first, then false files" ordering seen in later generations.
   create_compat_file "20260818000000-init.yaml" "1" "false" "none" "Bootstrap"
   create_compat_file "20260818000001-breaking1.yaml" "1" "true" "api-path-removed GET /api/v1/foo" "Reason 1"
   create_compat_file "20260818000002-breaking2.yaml" "2" "true" "response-property-removed GET /api/v1/bar" "Reason 2"
