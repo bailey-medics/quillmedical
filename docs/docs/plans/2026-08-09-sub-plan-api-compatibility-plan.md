@@ -503,20 +503,20 @@ jobs so new `api-compatibility/` files continue to route through the
 
 ### `api-compatibility/` folder
 
-- [ ] Create `api-compatibility/` at the repo root
-- [ ] Add the bootstrap file (`generation: 1`, `forces_reload: false`,
+- [x] Create `api-compatibility/` at the repo root
+- [x] Add the bootstrap file (`generation: 1`, `forces_reload: false`,
       `change: "none"`)
-- [ ] Document the YAML schema (field meanings, immutability rules) in
+- [x] Document the YAML schema (field meanings, immutability rules) in
       `docs/docs/backend/api-compatibility.md` or a new linked page
 
 ### `backend/scripts/new_compat_decision.py`
 
-- [ ] Implement the interactive CLI per the spec above
-- [ ] `backend/tests/test_new_compat_decision.py` covering slug
+- [x] Implement the interactive CLI per the spec above
+- [x] `backend/tests/test_new_compat_decision.py` covering slug
       derivation, generation increment/collision handling (both
       `forces_reload` values), filename regex, and empty/newline
       input refusal
-- [ ] Verify script conventions match `backend/scripts/create_user.py` /
+- [x] Verify script conventions match `backend/scripts/create_user.py` /
       `admin_cli.py` (docstring, `from __future__ import annotations`,
       stdlib-only prompts)
 
