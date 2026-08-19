@@ -83,6 +83,8 @@ EOF
 @test "reason: passes when all reasons are non-empty" {
   create_compat_file "20260818000001-change1.yaml" "1" "false" "none" "This is a reason"
 
+  export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+
   run validate_reasons_nonempty
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"reason"* ]]
@@ -90,6 +92,8 @@ EOF
 
 @test "reason: fails when reason is empty" {
   create_compat_file "20260818000001-change1.yaml" "1" "false" "none" ""
+
+  export GET_NEW_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
 
   run validate_reasons_nonempty
   [[ "$status" -eq 1 ]]
