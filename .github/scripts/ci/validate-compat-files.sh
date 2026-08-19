@@ -78,6 +78,7 @@ read_yaml_field() {
   fi
 
   # Remove field: prefix and any leading spaces
+  # shellcheck disable=SC2295
   local value="${line#${field}:}"
   value="${value#"${value%%[![:space:]]*}"}"  # strip leading whitespace
 
