@@ -37,11 +37,14 @@ COMPAT_DIR="${2:-.}/api-compatibility"
 GIT_MAIN_BRANCH="${GIT_MAIN_BRANCH:-main}"
 
 # State
-declare -a FAILURES=()
-declare -a OASDIFF_CHANGES=()
-declare -i MAX_TRUE_GENERATION=0
-declare -i MAX_FALSE_GENERATION=0
-declare -i NUM_TRUE_FILES=0
+# Plain assignment (no declare/local) so these stay global even when this
+# script is sourced inside a function (e.g. bats' setup()) - `declare` would
+# otherwise scope them to that function and they'd vanish once it returns.
+FAILURES=()
+OASDIFF_CHANGES=()
+MAX_TRUE_GENERATION=0
+MAX_FALSE_GENERATION=0
+NUM_TRUE_FILES=0
 
 # YAML field names: constants so set -u catches a misspelled variable reference
 readonly GENERATION="generation"
@@ -166,6 +169,7 @@ validate_coverage() {
 
   log "Checking coverage: ${#OASDIFF_CHANGES[@]} flagged change(s) must have matching files..."
 
+  local start_failures=${#FAILURES[@]}
   local new_files
 
   new_files=$(get_new_compat_files)
@@ -201,12 +205,15 @@ validate_coverage() {
       fail "Flagged change not covered by any decision file: '$oasdiff_change'"
     fi
   done
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 3: Every new file's reason must be non-empty
 validate_reasons_nonempty() {
   log "Checking reason fields are non-empty..."
 
+  local start_failures=${#FAILURES[@]}
   local new_files
   new_files=$(get_new_compat_files)
 
@@ -222,12 +229,15 @@ validate_reasons_nonempty() {
       fail "File $file has empty or missing 'reason' field"
     fi
   done <<< "$new_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 4: change field must be a single scalar (not a list or multi-line)
 validate_change_is_scalar() {
   log "Checking change fields are single scalars..."
 
+  local start_failures=${#FAILURES[@]}
   local new_files
   new_files=$(get_new_compat_files)
 
@@ -248,12 +258,15 @@ validate_change_is_scalar() {
       fail "File $file has change field that looks like a list or multi-line: $change"
     fi
   done <<< "$new_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 5: Field-level immutability for generation/forces_reload/change
 validate_immutability() {
   log "Checking immutability of generation/forces_reload/change fields..."
 
+  local start_failures=${#FAILURES[@]}
   local modified_files
   modified_files=$(get_modified_compat_files)
 
@@ -292,12 +305,15 @@ validate_immutability() {
       fail "File $file: 'change' field changed (was '$main_change', now '$pr_change'). This field is immutable after merge."
     fi
   done <<< "$modified_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 5 (continued): No deleted files
 validate_no_deletions() {
   log "Checking for deleted files..."
 
+  local start_failures=${#FAILURES[@]}
   local deleted_files
   deleted_files=$(get_deleted_compat_files)
 
@@ -306,12 +322,15 @@ validate_no_deletions() {
       fail "File deletion not permitted: $file. Superseded decisions get a new file, never deletion."
     fi
   done <<< "$deleted_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 6: Filename regex
 validate_filename_regex() {
   log "Checking filename regex for new files..."
 
+  local start_failures=${#FAILURES[@]}
   local new_files
   new_files=$(get_new_compat_files)
 
@@ -329,12 +348,15 @@ validate_filename_regex() {
       fail "File $file does not match required regex: $regex"
     fi
   done <<< "$new_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 7: No duplicate generations for `forces_reload: true` files
 validate_duplicate_generations_true() {
   log "Checking for duplicate generations in forces_reload:true files..."
 
+  local start_failures=${#FAILURES[@]}
   local all_files
   all_files=$(get_all_compat_files)
 
@@ -368,6 +390,8 @@ validate_duplicate_generations_true() {
       fi
     fi
   done <<< "$all_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 7a: Generation range for forces_reload: false files
@@ -378,6 +402,7 @@ validate_generation_range() {
     MAX_TRUE_GENERATION=1
   fi
 
+  local start_failures=${#FAILURES[@]}
   local all_files
   all_files=$(get_all_compat_files)
 
@@ -411,6 +436,8 @@ validate_generation_range() {
       fi
     fi
   done <<< "$all_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # Rule 10: Stale change strings (change field matches something in oasdiff output)
@@ -422,6 +449,7 @@ validate_stale_change_strings() {
     return 0
   fi
 
+  local start_failures=${#FAILURES[@]}
   local new_files
   new_files=$(get_new_compat_files)
 
@@ -452,6 +480,8 @@ validate_stale_change_strings() {
       fail "File $file references change '$change' which was not flagged by oasdiff in this run (possible copy-paste of stale change string)"
     fi
   done <<< "$new_files"
+
+  [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
 # ============================================================================
