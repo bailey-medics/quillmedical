@@ -78,7 +78,7 @@ read_yaml_field() {
   fi
 
   # Remove field: prefix and any leading spaces
-  local value="${line#"${field}":}"
+  local value="${line#${field}:}"
   value="${value#"${value%%[![:space:]]*}"}"  # strip leading whitespace
 
   # Remove quotes if present
