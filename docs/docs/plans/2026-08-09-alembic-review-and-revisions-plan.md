@@ -978,6 +978,13 @@ to `main`.**
       must be forced onto a new bundle before an _approved_ breaking change
       goes live, not just eventually.
 
+**TODO — design and implementation now live in a separate sub-plan:**
+see [2026-08-09-sub-plan-api-compatibility-plan.md](2026-08-09-sub-plan-api-compatibility-plan.md)
+for the `api-compatibility/` decision-file mechanism, the `generation` /
+`Compat-Generation` header, and the forced-reload flow that closes this
+gap. Run that sub-plan alongside this one; tick this item once its own
+implementation checklist is complete.
+
 **Why a stale tab is a real risk, not a theoretical one**: refresh tokens
 rotate on every use (`main.py`, `/api/auth/refresh`), so a tab kept alive by
 routine use never hits the 7-day refresh TTL and never re-logs-in — and
@@ -1055,8 +1062,12 @@ button/dismiss control exists. Verified with `just uf
 src/components/updating-banner` (4/4 passing) and `yarn eslint` +
 `tsc --noEmit` (both clean) inside the frontend container. **Not yet
 wired up** — nothing mounts this component yet; that is the separate
-"close the client-side half" item below, which still needs a design for
-how the reload-trigger code learns a given reload is a contract-step one.
+"close the client-side half" item below. The design for how the
+reload-trigger code learns a given reload is a contract-step one is now
+specified in
+[2026-08-09-sub-plan-api-compatibility-plan.md](2026-08-09-sub-plan-api-compatibility-plan.md)
+(the `Compat-Generation` runtime signal), which this component should be
+reused/extended for rather than wired up ad hoc.
 
 **Follow the existing `OfflineStrip` precedent, don't invent a new pattern.**
 `components/offline-strip/OfflineStrip.tsx` is exactly this shape already: a
