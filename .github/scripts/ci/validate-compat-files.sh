@@ -69,7 +69,7 @@ read_yaml_field() {
   local field="$2"
   local line
 
-  if [ ! -f "$file" ]; then
+  if [ ! -e "$file" ]; then
     echo ""
     return 0
   fi
@@ -154,6 +154,19 @@ get_deleted_compat_files() {
 # Get all compat files currently in the directory.
 get_all_compat_files() {
   find "$COMPAT_DIR" -name "*.yaml" -type f 2>/dev/null | sort || true
+}
+
+# Get a file's content as it exists on the main branch (empty if not present there).
+# Can be overridden in tests via GET_MAIN_FILE_CONTENT_OVERRIDE (a shell function
+# receiving $1=file, echoing the content).
+get_main_file_content() {
+  local file="$1"
+
+  if [ -n "${GET_MAIN_FILE_CONTENT_OVERRIDE:-}" ]; then
+    "$GET_MAIN_FILE_CONTENT_OVERRIDE" "$file"
+  else
+    git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null || echo ""
+  fi
 }
 
 # ============================================================================
@@ -281,7 +294,7 @@ validate_immutability() {
     local main_forces_reload
     local main_change
 
-    main_content=$(git show "origin/$GIT_MAIN_BRANCH:$file" 2>/dev/null || echo "")
+    main_content=$(get_main_file_content "$file")
     main_generation=$(echo "$main_content" | read_yaml_field /dev/stdin "$GENERATION" || echo "")
     main_forces_reload=$(echo "$main_content" | read_yaml_field /dev/stdin "$FORCES_RELOAD" || echo "")
     main_change=$(echo "$main_content" | read_yaml_field /dev/stdin "$CHANGE" || echo "")

@@ -522,7 +522,7 @@ jobs so new `api-compatibility/` files continue to route through the
 
 ### CI enforcement
 
-- [ ] New script(s) under `.github/scripts/ci/` implementing: every
+- [x] New script(s) under `.github/scripts/ci/` implementing: every
       flagged change has a matching file; `reason` non-empty; `change`
       is a single scalar; field-level immutability diff (`generation`,
       `forces_reload`, `change`) against `main`; no deleted files;
@@ -530,19 +530,85 @@ jobs so new `api-compatibility/` files continue to route through the
       `forces_reload: true` files only; range check for
       `forces_reload: false` generations (rule 7a); stale `change`
       string check against this run's oasdiff output
-- [ ] Companion `.bats` tests for each new CI script
-- [ ] Wire the new step(s) into `.github/workflows/ci.yml`, gated the
+
+Implemented as `.github/scripts/ci/validate-compat-files.sh`, mirroring the
+existing `check-api-breaking-changes.sh` pattern (sources
+`shared/logging.sh`, `set -euo pipefail`, testable via override env vars for
+its git-shelling-out helpers). Covers rules 2–7, 7a and 10 (rule 1 is
+oasdiff itself; rule 8 is structural-only, not a separate check; rules 9
+and 11 are workflow/repo-setting, not script checks). Found and fixed a
+pre-existing bug while adding immutability test coverage: `read_yaml_field`
+used `[ -f "$file" ]`, which is false for a piped `/dev/stdin` (a FIFO, not
+a regular file) — this silently made `validate_immutability`'s main-branch
+side always read as empty. Changed to `[ -e "$file" ]`.
+
+- [x] Companion `.bats` tests for each new CI script
+
+`.github/scripts/ci/validate-compat-files.bats`, 36 tests, all green.
+Added a `GET_MAIN_FILE_CONTENT_OVERRIDE` hook (mirroring the existing
+`GET_NEW/MODIFIED/DELETED_COMPAT_FILES_OVERRIDE` pattern) so
+`validate_immutability`'s `git show origin/main:<file>` call is testable
+without a real git history — this uncovered the `-f`/`-e` bug above.
+
+- [x] Wire the new step(s) into `.github/workflows/ci.yml`, gated the
       same way as `heavy_api_schema_diff` /
       `heavy_api_breaking_change_gate`
-- [ ] Confirm `strict_required_status_checks_policy` in
+
+Added as two new steps inside the existing `heavy_api_schema_diff` job
+(same `if` condition, no new job): generate `oasdiff breaking --format
+json` alongside the existing human-readable check, then run
+`validate-compat-files.sh` against it. Runs unconditionally (not gated on
+`breaking == 'true'`) so a malformed/incomplete decision file fails CI even
+when reviewers haven't been prompted yet. Also switched the PR checkout to
+`fetch-depth: 0` plus an explicit `git fetch origin main:refs/remotes/origin/main`
+so the script's `git diff origin/main...HEAD` (merge-base) calls resolve
+correctly — the previous shallow (`depth: 1`) checkout had no `origin/main`
+ref and insufficient history for that diff.
+
+- [x] Confirm `strict_required_status_checks_policy` in
       `infra/github/branch_rules.tf` still covers `main` once the new
       checks are added as required status checks (no change expected)
 
+Confirmed — the new validation runs as a step inside the existing
+`heavy_api_schema_diff` job, whose required-status-check name ("API
+breaking-change check") is unchanged in `infra/github/branch_rules.tf`.
+No new job name, so no Terraform change needed.
+
 ### Backend
 
-- [ ] Read `api-compatibility/` at startup/build and compute
+- [x] Read `api-compatibility/` at startup/build and compute
       `required_client_generation`
-- [ ] Serve `Compat-Generation` on every API response
+- [x] Serve `Compat-Generation` on every API response
+
+Implemented as `backend/app/api_compatibility.py`:
+`compute_required_client_generation()` reads all `*.yaml` files in
+`api-compatibility/` and returns `max(generation for forces_reload: true)`,
+or 1 if none exist — computed once at import time into
+`REQUIRED_CLIENT_GENERATION`. A new `add_compat_generation_header`
+middleware in `main.py` sets `Compat-Generation: <value>` on every
+response. Malformed YAML files are skipped rather than raising (CI's
+`validate-compat-files.sh` is the authority on well-formedness).
+
+Path resolution mirrors the existing `shared/` YAML pattern in
+`app/cbac/competencies.py` — `Path(__file__).parent.parent.parent /
+"api-compatibility"` resolves to `/api-compatibility` inside the container
+and to `<repo-root>/api-compatibility` when run directly from a checkout.
+`backend/Dockerfile` now `COPY api-compatibility/ /api-compatibility/`
+alongside the existing `shared/` copy, and `compose.dev.yml` mounts
+`./api-compatibility:/api-compatibility` for dev hot-reload parity (no
+change needed for `compose.ci.yml` / `compose.prod.cloud-run.yml`, which
+don't volume-override `shared/` either, so the Dockerfile `COPY` suffices).
+
+Tests: `backend/tests/test_api_compatibility.py` — formula correctness
+(single/multiple `true` files, `false` files ignored, missing directory,
+malformed/non-mapping YAML, non-integer `generation`), plus a
+`test_client` integration check that the header is present and numeric on
+`/api/health`. Confirmed via `just ub` that no other backend tests
+regressed — some pre-existing, unrelated failures were found in
+`test_auth.py`/`test_clinical_services.py`/etc. (a "self-registration not
+available" 403 and stale `CLINICAL_SERVICES_ENABLED` expectations); these
+reproduce identically with this change stashed out, so they predate this
+work and are outside its scope.
 
 ### Frontend
 
@@ -552,7 +618,8 @@ jobs so new `api-compatibility/` files continue to route through the
 - [ ] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
       modal, stop/queue mutating requests, persist and restore
       in-progress form state via `sessionStorage`, second-failure
-      passive-banner fallback
+      passive-banner fallback. If update not available yet (as frontend is taking
+      its time to deploy), try to force reload every 5 mins.
 - [ ] `.stories.tsx` + `.test.tsx` for any new/modified component
 - [ ] Confirm this path is documented as overriding (not conflicting
       with) the existing item 14/15 whitelist-gated silent reload, which

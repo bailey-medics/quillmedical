@@ -40,6 +40,9 @@ COPY backend/alembic.ini ./
 # Shared YAML config (CBAC competencies, base professions)
 COPY shared/ /shared/
 
+# API compatibility decision files (Compat-Generation header source)
+COPY api-compatibility/ /api-compatibility/
+
 # Create an unprivileged user and fix ownership
 RUN useradd --uid 10001 --create-home appuser \
  && chown -R appuser:appuser /app

@@ -25,6 +25,7 @@ services:
     volumes:
       - ./backend:/app
       - ./shared:/shared
+      - ./api-compatibility:/api-compatibility
       - ./teaching-repos:/teaching-repos
       - ./teaching-tooling/scripts:/teaching-tooling-scripts
 
