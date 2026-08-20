@@ -1,20 +1,8 @@
 /**
  * UpdatingBanner Styles
  *
- * Thin horizontal strip, matching the OfflineStrip precedent.
- * Sits in layout flow (not an overlay).
+ * Full-screen blocking overlay.
  */
-
-.strip {
-  width: 100%;
-  padding: 0.25rem 1rem;
-  text-align: center;
-  background-color: var(--mantine-color-gray-1);
-}
-
-[data-mantine-color-scheme="dark"] .strip {
-  background-color: var(--mantine-color-primary-9);
-}
 
 .overlay {
   position: fixed;

@@ -12,7 +12,7 @@ import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
 import Footer from "@components/footer/Footer";
-import OfflineStrip from "@components/offline-strip/OfflineStrip";
+import StatusStrip from "@components/status-strip/StatusStrip";
 import OfflineModal from "@components/offline-modal/OfflineModal";
 import {
   PageMessageDisplay,
@@ -33,6 +33,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useSearch } from "@lib/search";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useConnectivity } from "@lib/connectivity";
+import { useForcedReload } from "@lib/compat-generation";
 import {
   LAYOUT_RIBBON_Z_INDEX,
   LAYOUT_PADDING_BOTTOM,
@@ -103,6 +104,10 @@ export default function MainLayout({
     clearReconnected,
   } = useConnectivity();
 
+  // Forced-reload state for the fallback strip (blocking overlay renders
+  // at the app root, unaffected by layout — see ForcedReloadGate).
+  const { phase } = useForcedReload();
+
   // Clear reconnected strip on route change
   useEffect(() => {
     if (isReconnected) {
@@ -137,6 +142,16 @@ export default function MainLayout({
     }
   }, [patient, navigate]);
 
+  const showOfflineStrip = !isOnline && !!lastSyncedAt;
+  const showReconnectedStrip = isReconnected && !!lastSyncedAt;
+  const showFallbackStrip = phase === "fallback";
+  const activeStripCount = [
+    showOfflineStrip,
+    showReconnectedStrip,
+    showFallbackStrip,
+  ].filter(Boolean).length;
+  const multipleStrips = activeStripCount > 1;
+
   return (
     <Flex
       direction="column"
@@ -169,11 +184,18 @@ export default function MainLayout({
         />
       </Box>
 
-      {(!isOnline || isReconnected) && lastSyncedAt && (
-        <OfflineStrip
-          state={isReconnected ? "reconnected" : "offline"}
-          lastSyncedAt={lastSyncedAt}
+      {showOfflineStrip && (
+        <StatusStrip
+          variant="offline"
+          lastSyncedAt={lastSyncedAt ?? undefined}
+          multiple={multipleStrips}
         />
+      )}
+      {showReconnectedStrip && (
+        <StatusStrip variant="reconnected" multiple={multipleStrips} />
+      )}
+      {showFallbackStrip && (
+        <StatusStrip variant="fallback" multiple={multipleStrips} />
       )}
 
       <OfflineModal opened={showOfflineModal} onClose={dismissOfflineModal} />

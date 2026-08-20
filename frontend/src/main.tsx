@@ -99,6 +99,7 @@ import AccountPage from "./pages/settings/AccountPage";
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
 import ForcedReloadGate from "@lib/compat-generation/ForcedReloadGate";
+import { ForcedReloadProvider } from "@lib/compat-generation";
 import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
@@ -481,10 +482,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     defaultColorScheme="light"
   >
     <ConnectivityProvider>
-      <AuthProvider>
-        <ForcedReloadGate />
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ForcedReloadProvider>
+        <AuthProvider>
+          <ForcedReloadGate />
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ForcedReloadProvider>
     </ConnectivityProvider>
   </MantineProvider>,
 );
