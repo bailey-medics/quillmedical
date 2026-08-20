@@ -52,6 +52,9 @@ jobs:
       name: teaching
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
       - name: Download public site
         uses: actions/download-artifact@v8.0.1
         with:
@@ -71,3 +74,18 @@ jobs:
 
       - name: List deployed files
         run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
+
+  notify-teaching-failure:
+    name: Notify teaching deploy failure
+    needs: [build, deploy-teaching]
+    if: ${{ always() && (needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Public site deploy failed*
+
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
