@@ -20,6 +20,7 @@ setup() {
   unset GET_NEW_COMPAT_FILES_OVERRIDE
   unset GET_MODIFIED_COMPAT_FILES_OVERRIDE
   unset GET_DELETED_COMPAT_FILES_OVERRIDE
+  unset GET_MAIN_FILE_CONTENT_OVERRIDE
 }
 
 teardown() {
@@ -285,6 +286,125 @@ EOF
   run validate_stale_change_strings
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"No flagged changes from oasdiff, skipping stale change check."* ]]
+}
+
+# ============================================================================
+# Rule 5: Field-level immutability (generation/forces_reload/change)
+# ============================================================================
+
+main_file_content_stub() {
+  # Args: $1=file. Reads content from a matching decision file keyed by basename
+  # under $TEST_REPO/main-decisions/, echoing "" when no decision file exists.
+  local file_basename
+  local fixture
+  file_basename="$(basename "$1")"
+  fixture="$TEST_REPO/main-decisions/$file_basename"
+
+  if [ -f "$fixture" ]; then
+    cat "$fixture"
+  else
+    echo ""
+  fi
+}
+
+create_main_decision_file() {
+  local filename="$1"
+  local generation="${2:-1}"
+  local forces_reload="${3:-false}"
+  local change="${4:-none}"
+  local reason="${5:-test reason}"
+
+  mkdir -p "$TEST_REPO/main-decisions"
+  cat > "$TEST_REPO/main-decisions/$filename" <<EOF
+generation: $generation
+forces_reload: $forces_reload
+change: "$change"
+reason: "$reason"
+EOF
+}
+
+@test "immutability: passes when generation/forces_reload/change are unchanged" {
+  create_main_decision_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /foo" "Old reason"
+  create_compat_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /foo" "Updated reason with more context"
+
+  export GET_MODIFIED_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+  export GET_MAIN_FILE_CONTENT_OVERRIDE="main_file_content_stub"
+
+  run validate_immutability
+  [[ "$status" -eq 0 ]]
+}
+
+@test "immutability: fails when generation changes" {
+  create_main_decision_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /foo" "Old reason"
+  create_compat_file "20260818000001-change1.yaml" "2" "true" "api-path-removed GET /foo" "Old reason"
+
+  export GET_MODIFIED_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+  export GET_MAIN_FILE_CONTENT_OVERRIDE="main_file_content_stub"
+
+  run validate_immutability
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"'generation' field changed"* ]]
+}
+
+@test "immutability: fails when forces_reload changes" {
+  create_main_decision_file "20260818000001-change1.yaml" "1" "false" "api-path-removed GET /foo" "Old reason"
+  create_compat_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /foo" "Old reason"
+
+  export GET_MODIFIED_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+  export GET_MAIN_FILE_CONTENT_OVERRIDE="main_file_content_stub"
+
+  run validate_immutability
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"'forces_reload' field changed"* ]]
+}
+
+@test "immutability: fails when change field changes" {
+  create_main_decision_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /foo" "Old reason"
+  create_compat_file "20260818000001-change1.yaml" "1" "true" "api-path-removed GET /bar" "Old reason"
+
+  export GET_MODIFIED_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+  export GET_MAIN_FILE_CONTENT_OVERRIDE="main_file_content_stub"
+
+  run validate_immutability
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"'change' field changed"* ]]
+}
+
+@test "immutability: no modified files passes trivially" {
+  export GET_MODIFIED_COMPAT_FILES_OVERRIDE="echo ''"
+  export GET_MAIN_FILE_CONTENT_OVERRIDE="main_file_content_stub"
+
+  run validate_immutability
+  [[ "$status" -eq 0 ]]
+}
+
+# ============================================================================
+# Rule 5 (continued): no deletions permitted
+# ============================================================================
+
+@test "no-deletions: passes when no files are deleted" {
+  export GET_DELETED_COMPAT_FILES_OVERRIDE="echo ''"
+
+  run validate_no_deletions
+  [[ "$status" -eq 0 ]]
+}
+
+@test "no-deletions: fails when a file is deleted" {
+  export GET_DELETED_COMPAT_FILES_OVERRIDE="echo 'api-compatibility/20260818000001-change1.yaml'"
+
+  run validate_no_deletions
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"File deletion not permitted"* ]]
+  [[ "$output" == *"20260818000001-change1.yaml"* ]]
+}
+
+@test "no-deletions: fails and reports each of multiple deleted files" {
+  export GET_DELETED_COMPAT_FILES_OVERRIDE="echo -e 'api-compatibility/20260818000001-a.yaml\napi-compatibility/20260818000002-b.yaml'"
+
+  run validate_no_deletions
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"20260818000001-a.yaml"* ]]
+  [[ "$output" == *"20260818000002-b.yaml"* ]]
 }
 
 # ============================================================================

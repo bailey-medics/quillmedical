@@ -477,6 +477,11 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           path: pr
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for api-compatibility diff)
+        working-directory: pr
+        run: git fetch origin main:refs/remotes/origin/main
 
       - name: Checkout main branch
         uses: actions/checkout@v7.0.1
@@ -529,6 +534,20 @@ jobs:
           bash pr/.github/scripts/ci/check-api-breaking-changes.sh \
             main/docs/docs/code/swagger/openapi.json \
             pr/docs/docs/code/swagger/openapi.json
+
+      - name: Generate oasdiff JSON report (for api-compatibility validation)
+        run: |
+          oasdiff breaking --format json \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json \
+            > oasdiff-report.json || true
+
+      - name: Validate api-compatibility decision files
+        working-directory: pr
+        run: |
+          bash .github/scripts/ci/validate-compat-files.sh \
+            ../oasdiff-report.json \
+            api-compatibility
 
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
   # Only runs when heavy_api_schema_diff found a breaking change - otherwise
