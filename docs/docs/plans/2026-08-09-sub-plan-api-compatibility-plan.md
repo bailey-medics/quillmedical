@@ -722,6 +722,114 @@ pass `yarn tsc --project tsconfig.check.json --noEmit` and
 `eslint --max-warnings=0`; the full frontend suite (`just uf`, 184 files /
 1702 tests) shows no regressions.
 
+### Frontend follow-up: consolidate status strip components
+
+Post-implementation review noted `OfflineStrip`, `UpdatingBanner`'s passive
+strip variant, and `UpdateFallbackBanner` had converged on almost the same
+shape (icon + short message, `role="status"`, `aria-live="polite"`), and
+raised an unhandled race: if the app is offline when a `Compat-Generation`
+mismatch fires, or two mismatches fire in quick succession, the fixed
+bottom banner and `OfflineStrip` could overlap or the blocking overlay
+could get stuck mid-transition. Resolution below consolidates the three
+into one component and removes the fixed-position/dismissible design in
+favour of a simpler, always-visible, non-dismissible stack, directly below
+`TopRibbon` in **both** `MainLayout` and `TeachingLayout` (the latter has
+no connectivity/update indicator at all today — this is a deliberate
+scope addition, agreed as part of this consolidation, not a pre-existing
+gap being silently left).
+
+**Decisions made during scoping (resolved via clarifying questions, not
+assumptions):**
+
+- The fallback state (automatic reload didn't resolve the mismatch) drops
+  its "Refresh now" button entirely, not just "Dismiss" — it becomes pure
+  passive status text. The user is never left with no path forward
+  because the background retry (every `RETRY_INTERVAL_MS`) keeps running
+  regardless; a manual button was judged unnecessary complexity once
+  dismissal was already removed.
+- `ForcedReloadGate` is mounted at the app root specifically so the
+  _blocking_ full-screen overlay works on every route, including guest
+  pages (`/login`, `/register`, etc.) that have no `TopRibbon` at all. But
+  the plan's own requirement — the _fallback_ strip stacks directly below
+  `TopRibbon`, alongside `MainLayout`/`TeachingLayout`'s own offline strip
+  — cannot be satisfied by a component mounted outside both layouts.
+  Resolution: split the existing side-effect logic (event listener, retry
+  timers, `sessionStorage` bookkeeping) out of the `ForcedReloadGate`
+  component and into a `ForcedReloadProvider` + `useForcedReload()` hook
+  pair, mirroring the codebase's existing `ConnectivityProvider` /
+  `useConnectivity()` pattern exactly. The provider wraps the app once in
+  `main.tsx` (replacing the bare `<ForcedReloadGate />`) so the
+  side-effects run exactly once; the _blocking_ overlay keeps rendering at
+  the root (unaffected by layout, still covers guest pages); the
+  _fallback_ `StatusStrip` is rendered by `MainLayout` and `TeachingLayout`
+  themselves, each calling `useForcedReload()` to read `phase` and
+  stacking it alongside their own connectivity strip below `TopRibbon`.
+  Guest/public pages (no layout) will not show a fallback strip if a
+  mismatch happens to occur there — an accepted gap, consistent with
+  `OfflineStrip` never having covered guest pages either.
+
+- [x] Create `frontend/src/components/status-strip/StatusStrip.tsx` — a
+      single component replacing `OfflineStrip`, `UpdatingBanner`'s strip
+      variant, and `UpdateFallbackBanner`, with a `variant` prop
+      (`offline` | `reconnected` | `updating` | `fallback`) driving icon,
+      message, and colour. No `onDismiss` prop, no buttons at all — these
+      strips are status information, not dismissible flash messages, and
+      must stay visible until their underlying condition clears
+- [ ] Render all strips in normal layout flow directly below `TopRibbon`
+      (no fixed/overlay positioning, no z-index tiering needed); when more
+      than one condition is true at once (e.g. offline **and** a pending
+      forced reload), each renders its own `StatusStrip` and they stack
+      vertically in the order mounted — no priority ordering between them
+- [x] Responsive behaviour: full-width strip with icon + full message text
+      by default; below `theme.breakpoints.sm`, only switches to a compact
+      horizontal badge (icon + short label only) when a `multiple` prop is
+      set — i.e. when more than one strip is showing at once. A lone
+      strip always stays full-width, even on mobile; consumers
+      (`MainLayout`/`TeachingLayout`) compute how many conditions are
+      active and pass `multiple` to each `StatusStrip` accordingly
+- [x] `frontend/src/components/status-strip/StatusStrip.module.css` —
+      desktop strip layout + mobile badge layout, reusing the existing
+      `--info-color`/`--warning-color`/`--success-color` design tokens
+- [x] `frontend/src/components/status-strip/StatusStrip.stories.tsx` —
+      every variant individually, plus explicit multi-strip stories (two
+      stacked, three stacked). No viewport addon is configured in this
+      repo's Storybook, so the mobile badge layout is demonstrated via a
+      `StoryNote` instructing the reviewer to narrow the browser below the
+      `sm` breakpoint, rather than a separate fake-mobile story
+- [x] `frontend/src/components/status-strip/StatusStrip.test.tsx` —
+      variant rendering, responsive class switching (via a mocked
+      `window.matchMedia`, matching the `PublicLayout.test.tsx`
+      precedent), accessibility attributes; no dismiss/button-related
+      assertions. 12 tests, all passing
+- [ ] Split `ForcedReloadGate.tsx`'s side-effect logic into
+      `lib/compat-generation/ForcedReloadProvider.tsx` (context provider,
+      mounted once in `main.tsx`) + `useForcedReload()` hook exposing
+      `phase`. Add a guard so a second `app:compat-mismatch` event while a
+      reload is already in flight (`phase !== "idle"`) is ignored rather
+      than overwriting the pending transition, and check `isOnline`
+      (from `useConnectivity()`) before scheduling the automatic
+      `location.reload()` so an offline tab goes straight to the fallback
+      state instead of attempting (and silently failing) a reload
+- [ ] Root-mounted piece (still rendered directly in `main.tsx`, sibling to
+      `RouterProvider`) keeps only the `blocking` full-screen
+      `UpdatingBanner` overlay — unaffected by layout, still covers guest
+      pages
+- [ ] Delete `frontend/src/components/offline-strip/` and
+      `frontend/src/components/update-fallback-banner/` entirely; simplify
+      `UpdatingBanner.tsx` back down to its `blocking` full-screen overlay
+      only (that variant remains architecturally distinct — it blocks
+      interaction rather than sitting in flow)
+- [ ] Update `MainLayout.tsx` to call `useForcedReload()` alongside its
+      existing `useConnectivity()`, rendering `StatusStrip` for
+      offline/reconnected/fallback (replacing `OfflineStrip`) directly
+      below `TopRibbon`
+- [ ] Update `TeachingLayout.tsx` to do the same — call
+      `useConnectivity()` (new for this layout) and `useForcedReload()`,
+      rendering the same stacked `StatusStrip`s below its own `TopRibbon`
+- [ ] Update `MainLayout.test.tsx`, add `TeachingLayout.test.tsx`
+      coverage, and update/replace `ForcedReloadGate.test.tsx` for the
+      provider/hook split and the two new guards above
+
 ### Deploy pipeline
 
 - [ ] Extend the frontend deploy step in `.github/workflows/deploy.yml`
