@@ -265,9 +265,13 @@ schema. This whole step is only safe inside the current no-data window.
       fixtures.
 - [x] **Unit suite green** — `just ub` passes unchanged (SQLite `create_all`
       path is independent of migration history).
-- [ ] **Drift gate green (parent item 4)** — once the autogenerate-drift CI job
+- [x] **Drift gate green (parent item 4)** — once the autogenerate-drift CI job
       lands, it passes immediately against the baseline. Building that CI job is
       tracked and implemented under item 4 of the
       [Alembic review and migration safety plan](2026-08-09-alembic-review-plan.md),
       not here — this item just confirms it passes cleanly against the baseline
       once it lands.
+
+Confirmed — the `alembic_drift_check` CI job (parent item 4) has been live
+and green on every push since it landed, including throughout all the work
+in this PR, proving it passes cleanly against the squashed baseline.
