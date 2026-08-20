@@ -9,6 +9,12 @@ export {
 } from "./compatGeneration";
 export { default as ForcedReloadGate } from "./ForcedReloadGate";
 export {
+  ForcedReloadProvider,
+  useForcedReload,
+  type ForcedReloadCtx,
+  type ForcedReloadPhase,
+} from "./ForcedReloadProvider";
+export {
   clearRetryRecord,
   decideRetryAction,
   hasPendingRetryRecord,

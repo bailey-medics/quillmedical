@@ -775,7 +775,7 @@ assumptions):**
       message, and colour. No `onDismiss` prop, no buttons at all — these
       strips are status information, not dismissible flash messages, and
       must stay visible until their underlying condition clears
-- [ ] Render all strips in normal layout flow directly below `TopRibbon`
+- [x] Render all strips in normal layout flow directly below `TopRibbon`
       (no fixed/overlay positioning, no z-index tiering needed); when more
       than one condition is true at once (e.g. offline **and** a pending
       forced reload), each renders its own `StatusStrip` and they stack
@@ -801,7 +801,7 @@ assumptions):**
       `window.matchMedia`, matching the `PublicLayout.test.tsx`
       precedent), accessibility attributes; no dismiss/button-related
       assertions. 12 tests, all passing
-- [ ] Split `ForcedReloadGate.tsx`'s side-effect logic into
+- [x] Split `ForcedReloadGate.tsx`'s side-effect logic into
       `lib/compat-generation/ForcedReloadProvider.tsx` (context provider,
       mounted once in `main.tsx`) + `useForcedReload()` hook exposing
       `phase`. Add a guard so a second `app:compat-mismatch` event while a
@@ -810,23 +810,23 @@ assumptions):**
       (from `useConnectivity()`) before scheduling the automatic
       `location.reload()` so an offline tab goes straight to the fallback
       state instead of attempting (and silently failing) a reload
-- [ ] Root-mounted piece (still rendered directly in `main.tsx`, sibling to
+- [x] Root-mounted piece (still rendered directly in `main.tsx`, sibling to
       `RouterProvider`) keeps only the `blocking` full-screen
       `UpdatingBanner` overlay — unaffected by layout, still covers guest
       pages
-- [ ] Delete `frontend/src/components/offline-strip/` and
+- [x] Delete `frontend/src/components/offline-strip/` and
       `frontend/src/components/update-fallback-banner/` entirely; simplify
       `UpdatingBanner.tsx` back down to its `blocking` full-screen overlay
       only (that variant remains architecturally distinct — it blocks
       interaction rather than sitting in flow)
-- [ ] Update `MainLayout.tsx` to call `useForcedReload()` alongside its
+- [x] Update `MainLayout.tsx` to call `useForcedReload()` alongside its
       existing `useConnectivity()`, rendering `StatusStrip` for
       offline/reconnected/fallback (replacing `OfflineStrip`) directly
       below `TopRibbon`
-- [ ] Update `TeachingLayout.tsx` to do the same — call
+- [x] Update `TeachingLayout.tsx` to do the same — call
       `useConnectivity()` (new for this layout) and `useForcedReload()`,
       rendering the same stacked `StatusStrip`s below its own `TopRibbon`
-- [ ] Update `MainLayout.test.tsx`, add `TeachingLayout.test.tsx`
+- [x] Update `MainLayout.test.tsx`, add `TeachingLayout.test.tsx`
       coverage, and update/replace `ForcedReloadGate.test.tsx` for the
       provider/hook split and the two new guards above
 
@@ -837,12 +837,31 @@ assumptions):**
       the backend uses `deploy-tagged.sh`'s `--no-traffic` +
       health-check-then-promote; the frontend promotes immediately)
 - [ ] Ensure the backend does not start serving a new `Compat-Generation`
-      until the matching frontend bundle is confirmed live and reachable
+      until the matching frontend bundle is confirmed live and reachable -
+      talk to a human and decided on if and how best to do this.
 
 ### Documentation
 
-- [ ] Update `docs/docs/backend/api-compatibility.md` to describe the
+- [x] Update `docs/docs/backend/api-compatibility.md` to describe the
       `api-compatibility/` decision-file mechanism
-- [ ] Cross-reference this sub-plan from
+
+The decision-file mechanism (file format, field meanings, immutability
+rules) was already documented under "Decision files: `api-compatibility/`
+folder". Updated the "Client-side reassurance" section to match the
+consolidated component architecture from the frontend follow-up above:
+replaced the outdated "dismissible fallback banner" description with the
+actual non-dismissible `StatusStrip` (`variant="fallback"`) behaviour, and
+added a "Component architecture" subsection describing the
+`ForcedReloadProvider`/`useForcedReload()` split (mirroring
+`ConnectivityProvider`), the root-mounted blocking overlay, and
+`StatusStrip` replacing the three converged components.
+
+- [x] Cross-reference this sub-plan from
       `2026-08-09-alembic-review-and-revisions-plan.md` item 14/15, since
       it resolves the "not yet wired up" gap noted there
+
+Already in place from item 14's own write-up (references this sub-plan by
+name for "the design for how the reload-trigger code learns a given reload
+is a contract-step one") and from the "Close the client-side half of the
+compatibility window" item, which explicitly points here and defers
+ticking itself until this sub-plan's own checklist is complete.

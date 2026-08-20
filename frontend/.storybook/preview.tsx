@@ -82,6 +82,7 @@ import { theme, cssVariablesResolver } from "../src/theme";
 // Import real AuthProvider after mocking fetch
 import { AuthProvider, useAuth } from "../src/auth/AuthContext";
 import { ConnectivityProvider } from "../src/lib/connectivity/ConnectivityContext";
+import { ForcedReloadProvider } from "../src/lib/compat-generation/ForcedReloadProvider";
 
 // Wrapper to ensure auth is available (renders immediately, auth loads in background)
 // eslint-disable-next-line react-refresh/only-export-components
@@ -127,18 +128,20 @@ const decorators = [
                 forceColorScheme={colorScheme}
               >
                 <ConnectivityProvider>
-                  <AuthWrapper>
-                    <div
-                      style={{
-                        padding: 0,
-                        background: "var(--mantine-color-body)",
-                        color: "var(--mantine-color-text)",
-                        minHeight: "100vh",
-                      }}
-                    >
-                      {Story()}
-                    </div>
-                  </AuthWrapper>
+                  <ForcedReloadProvider>
+                    <AuthWrapper>
+                      <div
+                        style={{
+                          padding: 0,
+                          background: "var(--mantine-color-body)",
+                          color: "var(--mantine-color-text)",
+                          minHeight: "100vh",
+                        }}
+                      >
+                        {Story()}
+                      </div>
+                    </AuthWrapper>
+                  </ForcedReloadProvider>
                 </ConnectivityProvider>
               </MantineProvider>
             </AuthProvider>
