@@ -47,6 +47,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.cbac.decorators import has_competency
 from app.config import settings
 from app.db import get_core_db
@@ -194,6 +195,17 @@ async def limit_request_body_size(
     if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
         return Response(status_code=413, content="Request body too large")
     return await call_next(request)  # type: ignore[no-any-return]
+
+
+@app.middleware("http")
+async def add_compat_generation_header(
+    request: Request,
+    call_next: Callable,  # type: ignore[type-arg]
+) -> Response:
+    """Attach Compat-Generation so clients can detect a forced-reload API change."""
+    response: Response = await call_next(request)
+    response.headers["Compat-Generation"] = str(REQUIRED_CLIENT_GENERATION)
+    return response
 
 
 # --- Rate limiting (slowapi) ---

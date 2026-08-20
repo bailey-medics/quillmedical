@@ -576,9 +576,39 @@ No new job name, so no Terraform change needed.
 
 ### Backend
 
-- [ ] Read `api-compatibility/` at startup/build and compute
+- [x] Read `api-compatibility/` at startup/build and compute
       `required_client_generation`
-- [ ] Serve `Compat-Generation` on every API response
+- [x] Serve `Compat-Generation` on every API response
+
+Implemented as `backend/app/api_compatibility.py`:
+`compute_required_client_generation()` reads all `*.yaml` files in
+`api-compatibility/` and returns `max(generation for forces_reload: true)`,
+or 1 if none exist — computed once at import time into
+`REQUIRED_CLIENT_GENERATION`. A new `add_compat_generation_header`
+middleware in `main.py` sets `Compat-Generation: <value>` on every
+response. Malformed YAML files are skipped rather than raising (CI's
+`validate-compat-files.sh` is the authority on well-formedness).
+
+Path resolution mirrors the existing `shared/` YAML pattern in
+`app/cbac/competencies.py` — `Path(__file__).parent.parent.parent /
+"api-compatibility"` resolves to `/api-compatibility` inside the container
+and to `<repo-root>/api-compatibility` when run directly from a checkout.
+`backend/Dockerfile` now `COPY api-compatibility/ /api-compatibility/`
+alongside the existing `shared/` copy, and `compose.dev.yml` mounts
+`./api-compatibility:/api-compatibility` for dev hot-reload parity (no
+change needed for `compose.ci.yml` / `compose.prod.cloud-run.yml`, which
+don't volume-override `shared/` either, so the Dockerfile `COPY` suffices).
+
+Tests: `backend/tests/test_api_compatibility.py` — formula correctness
+(single/multiple `true` files, `false` files ignored, missing directory,
+malformed/non-mapping YAML, non-integer `generation`), plus a
+`test_client` integration check that the header is present and numeric on
+`/api/health`. Confirmed via `just ub` that no other backend tests
+regressed — some pre-existing, unrelated failures were found in
+`test_auth.py`/`test_clinical_services.py`/etc. (a "self-registration not
+available" 403 and stale `CLINICAL_SERVICES_ENABLED` expectations); these
+reproduce identically with this change stashed out, so they predate this
+work and are outside its scope.
 
 ### Frontend
 
@@ -588,7 +618,8 @@ No new job name, so no Terraform change needed.
 - [ ] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
       modal, stop/queue mutating requests, persist and restore
       in-progress form state via `sessionStorage`, second-failure
-      passive-banner fallback
+      passive-banner fallback. If update not available yet (as frontend is taking
+      its time to deploy), try to force reload every 5 mins.
 - [ ] `.stories.tsx` + `.test.tsx` for any new/modified component
 - [ ] Confirm this path is documented as overriding (not conflicting
       with) the existing item 14/15 whitelist-gated silent reload, which
