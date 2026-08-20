@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 9
   cacheKey: 10c0
 
 "@adobe/css-tools@npm:^4.4.0":
@@ -2636,9 +2636,9 @@ __metadata:
   linkType: hard
 
 "@fontsource-variable/atkinson-hyperlegible-next@npm:^5.2.6":
-  version: 5.2.6
-  resolution: "@fontsource-variable/atkinson-hyperlegible-next@npm:5.2.6"
-  checksum: 10c0/e3f7f577e37bec88cc6680a1d6ef93b198f65696d8e35a75c8ee2c7220b54521f9c30c98500329b7a44e55bbbb41225e803dce4d22d6be7e3a58839f90ac06e8
+  version: 5.3.0
+  resolution: "@fontsource-variable/atkinson-hyperlegible-next@npm:5.3.0"
+  checksum: 10c0/616fb9a9fc0c32a85aae59d4adb83170e27d4621207c33bfdfd7e23ac4c2411ff9a9cef362f557ff302f1c477551caa916be9b9a79bf7813ec3738af54c2ccff
   languageName: node
   linkType: hard
 
@@ -4461,20 +4461,20 @@ __metadata:
   linkType: hard
 
 "@tabler/icons-react@npm:^3.34.1":
-  version: 3.41.1
-  resolution: "@tabler/icons-react@npm:3.41.1"
+  version: 3.46.0
+  resolution: "@tabler/icons-react@npm:3.46.0"
   dependencies:
-    "@tabler/icons": "npm:3.41.1"
+    "@tabler/icons": "npm:3.46.0"
   peerDependencies:
     react: ">= 16"
-  checksum: 10c0/d103816d91df212ef6a4fc05e9f8d5f01deec2197d3accc4a398d325d1cfa8910e06b4daaf82cd08749f242c3908885ac60b21c4129b21094ece9fe0ecd46e4c
+  checksum: 10c0/8fab7d3a9ec6b62724a1628b8bad68a7b503979e4418f97d057c442adc5257b227a08185a884d452d171983648e36fa92cd7bfe9457f693e9b67bbf4ecf8ec24
   languageName: node
   linkType: hard
 
-"@tabler/icons@npm:3.41.1":
-  version: 3.41.1
-  resolution: "@tabler/icons@npm:3.41.1"
-  checksum: 10c0/b1238157fe6e57c0202f1f7153621ad937a6f73ff7c0f0af5a71fcbdace18a3281cddd6632229029c3a3df7c530ae8bcefa75c18e35db4b65e7f884282762cf1
+"@tabler/icons@npm:3.46.0":
+  version: 3.46.0
+  resolution: "@tabler/icons@npm:3.46.0"
+  checksum: 10c0/c9671449c2f53fa7e329c487162f89a28417cdd5ce96cfa290fe21388724da303dd2297af3b39a88a74b02c36ce55598bc3cf6537dbddf548881da2c05f35f5e
   languageName: node
   linkType: hard
 
@@ -12730,11 +12730,11 @@ __metadata:
   linkType: hard
 
 "react-hook-form@npm:^7.75.0":
-  version: 7.75.0
-  resolution: "react-hook-form@npm:7.75.0"
+  version: 7.85.0
+  resolution: "react-hook-form@npm:7.85.0"
   peerDependencies:
     react: ^16.8.0 || ^17 || ^18 || ^19
-  checksum: 10c0/4c264ffde2fae6d5f3158a97784d5bb44e7cbffea3204af364244fcd6921b763f4e66fd8e34423fb416baa8bee2cfa4777556a7245f66de24a28be28b6af172e
+  checksum: 10c0/53e81f4116129efa8e08c620cd334f74541174a82f3e4ce7a8839193c69a561b9bed070b4a46f24654c4860c474ddbb504d2ad402297708c8c2b80f1f6116d59
   languageName: node
   linkType: hard
 
