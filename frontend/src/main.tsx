@@ -98,6 +98,7 @@ import AccountPage from "./pages/settings/AccountPage";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
+import ForcedReloadGate from "@lib/compat-generation/ForcedReloadGate";
 import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
@@ -481,6 +482,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   >
     <ConnectivityProvider>
       <AuthProvider>
+        <ForcedReloadGate />
         <RouterProvider router={router} />
       </AuthProvider>
     </ConnectivityProvider>

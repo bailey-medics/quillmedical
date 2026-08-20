@@ -39,6 +39,20 @@ export const Default: Story = {
   ),
 };
 
+/** Blocking full-screen overlay — used by ForcedReloadGate for the API-compatibility forced-reload flow */
+export const Blocking: Story = {
+  render: () => (
+    <>
+      <UpdatingBanner blocking />
+      <StoryNote>
+        Full-screen, non-dismissible overlay used when a tab is running a bundle
+        older than the API now requires (the C &lt; S case) — not route-gated,
+        mutating requests are stopped until the reload completes.
+      </StoryNote>
+    </>
+  ),
+};
+
 /** Dark mode */
 export const DarkMode: Story = {
   ...Default,

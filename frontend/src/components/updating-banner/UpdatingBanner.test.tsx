@@ -29,4 +29,32 @@ describe("UpdatingBanner Component", () => {
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
   });
+
+  describe("Blocking variant", () => {
+    it("renders a full-screen alertdialog instead of the strip", () => {
+      renderWithMantine(<UpdatingBanner blocking />);
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("has aria-live assertive", () => {
+      renderWithMantine(<UpdatingBanner blocking />);
+      expect(screen.getByRole("alertdialog")).toHaveAttribute(
+        "aria-live",
+        "assertive",
+      );
+    });
+
+    it("still renders no dismiss control", () => {
+      renderWithMantine(<UpdatingBanner blocking />);
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("renders the updating message", () => {
+      renderWithMantine(<UpdatingBanner blocking />);
+      expect(
+        screen.getByText("Updating to the latest version…"),
+      ).toBeInTheDocument();
+    });
+  });
 });

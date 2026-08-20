@@ -353,9 +353,23 @@ On every PR that touches the API surface:
    silently discard a half-written clinical note.
 5. After reload, if `C < S` still holds (e.g. deploy ordering was wrong —
    frontend generation was published before the matching bundle was
-   actually live), do **not** force again immediately. Track the attempted
-   generation in `sessionStorage`; wait 2 mins, and on a second consecutive failure, fall
-   back to a passive, dismissible banner (something like "An update is available but couldn't be applied automatically, please refresh manually") instead of looping the reload.
+   actually live), do **not** force again immediately for the _same_
+   generation. Track the attempted generation, attempt count, and next
+   allowed retry time in `sessionStorage` (survives the reload). Combine
+   both of the following rather than choosing one over the other:
+   - Show a dismissible fallback banner ("An update is available but
+     couldn't be applied automatically, please refresh manually") so the
+     user is never stuck without a way forward and is never subjected to
+     a tight reload loop.
+   - Keep retrying automatically in the background every 5 minutes, via a
+     real compatibility check (a lightweight request through the normal
+     interceptor) rather than a blind reload with no evidence — if the
+     deploy has since caught up, this check's own detected mismatch (or
+     lack of one) drives the next action exactly as it would for any
+     other mismatch. Dismissing the banner only hides the UI; the
+     background retry keeps running regardless, so a tab left open
+     eventually self-heals once the correct bundle is live, without
+     requiring the user to keep re-checking.
 
 ### Deploy ordering constraint
 
@@ -612,18 +626,101 @@ work and are outside its scope.
 
 ### Frontend
 
-- [ ] Bake `COMPAT_GENERATION` in at build time (Vite `define`)
-- [ ] Response interceptor in `lib/api.ts` comparing baked-in `C` against
+- [x] Bake `COMPAT_GENERATION` in at build time (Vite `define`)
+- [x] Response interceptor in `lib/api.ts` comparing baked-in `C` against
       served `S`
-- [ ] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
+- [x] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
       modal, stop/queue mutating requests, persist and restore
       in-progress form state via `sessionStorage`, second-failure
-      passive-banner fallback. If update not available yet (as frontend is taking
+      passive-banner fallback. If update not available yet (eg new frontend is taking
       its time to deploy), try to force reload every 5 mins.
-- [ ] `.stories.tsx` + `.test.tsx` for any new/modified component
-- [ ] Confirm this path is documented as overriding (not conflicting
+- [x] `.stories.tsx` + `.test.tsx` for any new/modified component
+- [x] Confirm this path is documented as overriding (not conflicting
       with) the existing item 14/15 whitelist-gated silent reload, which
       continues to handle all `forces_reload: false` cases unchanged
+
+Implemented as a new `frontend/src/lib/compat-generation/` module plus two
+new/extended components:
+
+- **Build-time constant**: `frontend/scripts/computeCompatGeneration.ts`
+  mirrors the backend's formula exactly (max `generation` among
+  `forces_reload: true` files, or 1), reading the same repo-root
+  `api-compatibility/` folder. `vite.config.ts` computes this once at
+  config-load time and injects it via `define: { __COMPAT_GENERATION__ }`;
+  `vitest.config.ts` instead defines a fixed test value (`"1"`) so
+  unrelated unit tests stay deterministic regardless of what's actually
+  merged into `api-compatibility/`. Declared in `vite-env.d.ts`, exposed
+  at runtime as `CLIENT_COMPAT_GENERATION` from
+  `lib/compat-generation/compatGeneration.ts`.
+- **Comparison + response interceptor**: `checkCompatGeneration(client,
+serverHeader)` is a pure function (compatible / client-behind /
+  server-behind / unknown — never infers incompatibility from a missing or
+  non-numeric header). `lib/api.ts`'s `request()` and `requestBlob()` both
+  call it right after every `fetch` resolves; on `client-behind` it marks a
+  module-level `reloadPending` flag (read by a guard clause that now
+  rejects further non-GET requests with a clear error) and dispatches
+  `window` event `app:compat-mismatch` with the server's generation, mirroring
+  the existing `app:network-error` / `app:api-success` event pattern already
+  used for `ConnectivityContext`. On `compatible`, it clears any tracked
+  retry record (see below) as a hygiene step.
+- **Retry/fallback state machine**: `lib/compat-generation/retryState.ts`'s
+  `decideRetryAction(serverGeneration, now, storage)` is a pure,
+  storage-injectable function (tested against an in-memory `Storage` stub)
+  tracking `{ generation, attempts, nextRetryAt }` in `sessionStorage` (so it
+  survives the reloads this mechanism itself triggers). A mismatch against a
+  _new_ generation always resets and reloads immediately; a mismatch
+  against the _same_ tracked generation before `nextRetryAt` returns
+  `fallback` (still `RETRY_INTERVAL_MS` = 5 minutes away); once
+  `nextRetryAt` has passed it returns `reload-now` again. This directly
+  implements the finalised combined behaviour above: an immediate first
+  reload, then (if that didn't fix it) both a dismissible fallback banner
+  _and_ a background retry every 5 minutes, not one or the other.
+- **`ForcedReloadGate`** (`lib/compat-generation/ForcedReloadGate.tsx`,
+  logic-only — no stories, same precedent as `NavigationBlocker` in
+  `lib/connectivity/`) is mounted once at the app root in `main.tsx`
+  (sibling to `RouterProvider`, inside `AuthProvider`/`ConnectivityProvider`,
+  so it applies regardless of which layout — `MainLayout` or
+  `TeachingLayout` — is currently active). It listens for
+  `app:compat-mismatch`, persists in-progress form state, and renders either
+  the blocking `UpdatingBanner` (briefly, before reloading) or the new
+  dismissible `UpdateFallbackBanner`. On mount, if a retry record already
+  exists in `sessionStorage` (this load is itself a previous forced-reload
+  attempt), it proactively fires a real compatibility check
+  (`api.get("/health")`) rather than waiting passively for organic traffic
+  — this is what makes the background retry actually periodic rather than
+  dependent on incidental API calls.
+- **`UpdatingBanner`** gained a `blocking` prop: a full-screen,
+  non-dismissible overlay (`role="alertdialog"`, `aria-live="assertive"`)
+  for this flow, alongside its existing passive `role="status"` strip
+  (unused elsewhere in the app today, built ahead of time for the item
+  14/15 case per the Storybook-first component reuse hierarchy).
+- **`UpdateFallbackBanner`** (new component,
+  `components/update-fallback-banner/`) is the dismissible fallback —
+  fixed to the viewport bottom (it's mounted at the root, not inside a page
+  layout, so it can't rely on normal layout flow like `OfflineStrip`), with
+  a `ButtonPair` offering "Refresh now" / "Dismiss".
+- **Form-state persistence** (`lib/compat-generation/formStatePersistence.ts`):
+  a deliberately generic, best-effort snapshot of native `<input
+type="text/email/tel/number/search">` and `<textarea>` values to
+  `sessionStorage`, keyed by `name` (falling back to `id`) and scoped per
+  pathname. Restore is **exact-match only** — a saved field is written
+  back via the native value setter + a bubbling `input` event (so React's
+  controlled inputs pick it up) only if an element with that exact
+  `name`/`id` exists after reload; anything without an exact match is
+  silently dropped, never guessed at. Custom Mantine controls (`Select`,
+  rich text editors, etc.) are explicitly out of scope for this generic
+  mechanism.
+
+Tests: `compatGeneration.test.ts`, `retryState.test.ts`,
+`formStatePersistence.test.ts`, `ForcedReloadGate.test.tsx` (mocks
+`lib/api.ts` and uses fake timers — `act()` around both event dispatch and
+timer advances, not `waitFor`, since `waitFor` and fake timers don't mix
+well), `UpdatingBanner.test.tsx` (extended for the `blocking` variant),
+`UpdateFallbackBanner.test.tsx`, and
+`scripts/computeCompatGeneration.test.ts`. All new/modified frontend files
+pass `yarn tsc --project tsconfig.check.json --noEmit` and
+`eslint --max-warnings=0`; the full frontend suite (`just uf`, 184 files /
+1702 tests) shows no regressions.
 
 ### Deploy pipeline
 

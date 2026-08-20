@@ -182,9 +182,15 @@ mismatch at its next API call. The detection works as follows:
      continues.
 
 If the reload fails (e.g. the backend generation mismatch persists after
-reload due to deploy ordering issues), a second failure triggers a
-fallback: a dismissible banner with a manual-refresh prompt instead of
-automatic reloading, to avoid an infinite loop.
+reload due to deploy ordering issues), the tab does **both** of the
+following rather than choosing one: it shows a dismissible fallback banner
+("An update is available but couldn't be applied automatically, please
+refresh manually") so the user is never stuck, **and** keeps retrying
+automatically in the background every 5 minutes via a real compatibility
+check (never a blind reload with no evidence) — so a tab left open
+eventually self-heals once the correct bundle is live, without needing the
+user to do anything. Dismissing the banner only hides the notice; the
+background retry keeps running regardless.
 
 This forced-reload mechanism is the only thing that protects users in
 genuinely breaking contract-step scenarios — the expand-contract staging
