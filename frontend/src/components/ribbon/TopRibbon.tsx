@@ -194,6 +194,7 @@ export default function TopRibbon({
             <RibbonSkeleton isNarrow={isNarrow} />
           ) : patient ? (
             <div
+              className={classes.demographics}
               onClick={onPatientClick}
               onDoubleClick={onPatientDoubleClick}
               style={{ cursor: "pointer" }}
