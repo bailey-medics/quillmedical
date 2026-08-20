@@ -1,0 +1,23 @@
+/**
+ * UpdateFallbackBanner Styles
+ *
+ * Fixed to the bottom of the viewport — this banner is mounted at the
+ * app root (ForcedReloadGate), not inside a page layout, so it cannot
+ * rely on being in normal layout flow like OfflineStrip.
+ */
+
+.strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  background-color: var(--mantine-color-gray-1);
+  border-top: 0.0625rem solid var(--warning-color);
+}
+
+[data-mantine-color-scheme="dark"] .strip {
+  background-color: var(--mantine-color-primary-9);
+}

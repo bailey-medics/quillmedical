@@ -4,6 +4,14 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths({ projects: ["tsconfig.check.json"] })],
+  // Fixed test value for the compat-generation build constant, decoupled
+  // from the real api-compatibility/ folder's current state so unrelated
+  // tests stay deterministic regardless of what's merged there. See
+  // vite.config.ts for the real build-time computation and
+  // src/lib/compat-generation/compatGeneration.ts for the runtime usage.
+  define: {
+    __COMPAT_GENERATION__: "1",
+  },
   test: {
     globals: true,
     environment: "jsdom",

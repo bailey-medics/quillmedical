@@ -1,0 +1,34 @@
+/**
+ * StatusStrip Styles
+ *
+ * Desktop: thin full-width strip in normal layout flow, matching the
+ * previous OfflineStrip/UpdatingBanner precedent.
+ *
+ * Mobile: compact horizontal badge — several strips render as
+ * consecutive inline-flex badges that wrap onto new lines rather than
+ * each consuming a full row.
+ */
+
+.strip {
+  width: 100%;
+  padding: 0.25rem 1rem;
+  text-align: center;
+  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme="dark"] .strip {
+  background-color: var(--mantine-color-primary-9);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  margin: 0.125rem;
+  border-radius: 1rem;
+  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme="dark"] .badge {
+  background-color: var(--mantine-color-primary-9);
+}

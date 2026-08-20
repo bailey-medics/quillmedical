@@ -353,9 +353,23 @@ On every PR that touches the API surface:
    silently discard a half-written clinical note.
 5. After reload, if `C < S` still holds (e.g. deploy ordering was wrong —
    frontend generation was published before the matching bundle was
-   actually live), do **not** force again immediately. Track the attempted
-   generation in `sessionStorage`; wait 2 mins, and on a second consecutive failure, fall
-   back to a passive, dismissible banner (something like "An update is available but couldn't be applied automatically, please refresh manually") instead of looping the reload.
+   actually live), do **not** force again immediately for the _same_
+   generation. Track the attempted generation, attempt count, and next
+   allowed retry time in `sessionStorage` (survives the reload). Combine
+   both of the following rather than choosing one over the other:
+   - Show a dismissible fallback banner ("An update is available but
+     couldn't be applied automatically, please refresh manually") so the
+     user is never stuck without a way forward and is never subjected to
+     a tight reload loop.
+   - Keep retrying automatically in the background every 5 minutes, via a
+     real compatibility check (a lightweight request through the normal
+     interceptor) rather than a blind reload with no evidence — if the
+     deploy has since caught up, this check's own detected mismatch (or
+     lack of one) drives the next action exactly as it would for any
+     other mismatch. Dismissing the banner only hides the UI; the
+     background retry keeps running regardless, so a tab left open
+     eventually self-heals once the correct bundle is live, without
+     requiring the user to keep re-checking.
 
 ### Deploy ordering constraint
 
@@ -612,18 +626,209 @@ work and are outside its scope.
 
 ### Frontend
 
-- [ ] Bake `COMPAT_GENERATION` in at build time (Vite `define`)
-- [ ] Response interceptor in `lib/api.ts` comparing baked-in `C` against
+- [x] Bake `COMPAT_GENERATION` in at build time (Vite `define`)
+- [x] Response interceptor in `lib/api.ts` comparing baked-in `C` against
       served `S`
-- [ ] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
+- [x] Forced-reload flow: reuse/extend `UpdatingBanner` for the blocking
       modal, stop/queue mutating requests, persist and restore
       in-progress form state via `sessionStorage`, second-failure
-      passive-banner fallback. If update not available yet (as frontend is taking
+      passive-banner fallback. If update not available yet (eg new frontend is taking
       its time to deploy), try to force reload every 5 mins.
-- [ ] `.stories.tsx` + `.test.tsx` for any new/modified component
-- [ ] Confirm this path is documented as overriding (not conflicting
+- [x] `.stories.tsx` + `.test.tsx` for any new/modified component
+- [x] Confirm this path is documented as overriding (not conflicting
       with) the existing item 14/15 whitelist-gated silent reload, which
       continues to handle all `forces_reload: false` cases unchanged
+
+Implemented as a new `frontend/src/lib/compat-generation/` module plus two
+new/extended components:
+
+- **Build-time constant**: `frontend/scripts/computeCompatGeneration.ts`
+  mirrors the backend's formula exactly (max `generation` among
+  `forces_reload: true` files, or 1), reading the same repo-root
+  `api-compatibility/` folder. `vite.config.ts` computes this once at
+  config-load time and injects it via `define: { __COMPAT_GENERATION__ }`;
+  `vitest.config.ts` instead defines a fixed test value (`"1"`) so
+  unrelated unit tests stay deterministic regardless of what's actually
+  merged into `api-compatibility/`. Declared in `vite-env.d.ts`, exposed
+  at runtime as `CLIENT_COMPAT_GENERATION` from
+  `lib/compat-generation/compatGeneration.ts`.
+- **Comparison + response interceptor**: `checkCompatGeneration(client,
+serverHeader)` is a pure function (compatible / client-behind /
+  server-behind / unknown — never infers incompatibility from a missing or
+  non-numeric header). `lib/api.ts`'s `request()` and `requestBlob()` both
+  call it right after every `fetch` resolves; on `client-behind` it marks a
+  module-level `reloadPending` flag (read by a guard clause that now
+  rejects further non-GET requests with a clear error) and dispatches
+  `window` event `app:compat-mismatch` with the server's generation, mirroring
+  the existing `app:network-error` / `app:api-success` event pattern already
+  used for `ConnectivityContext`. On `compatible`, it clears any tracked
+  retry record (see below) as a hygiene step.
+- **Retry/fallback state machine**: `lib/compat-generation/retryState.ts`'s
+  `decideRetryAction(serverGeneration, now, storage)` is a pure,
+  storage-injectable function (tested against an in-memory `Storage` stub)
+  tracking `{ generation, attempts, nextRetryAt }` in `sessionStorage` (so it
+  survives the reloads this mechanism itself triggers). A mismatch against a
+  _new_ generation always resets and reloads immediately; a mismatch
+  against the _same_ tracked generation before `nextRetryAt` returns
+  `fallback` (still `RETRY_INTERVAL_MS` = 5 minutes away); once
+  `nextRetryAt` has passed it returns `reload-now` again. This directly
+  implements the finalised combined behaviour above: an immediate first
+  reload, then (if that didn't fix it) both a dismissible fallback banner
+  _and_ a background retry every 5 minutes, not one or the other.
+- **`ForcedReloadGate`** (`lib/compat-generation/ForcedReloadGate.tsx`,
+  logic-only — no stories, same precedent as `NavigationBlocker` in
+  `lib/connectivity/`) is mounted once at the app root in `main.tsx`
+  (sibling to `RouterProvider`, inside `AuthProvider`/`ConnectivityProvider`,
+  so it applies regardless of which layout — `MainLayout` or
+  `TeachingLayout` — is currently active). It listens for
+  `app:compat-mismatch`, persists in-progress form state, and renders either
+  the blocking `UpdatingBanner` (briefly, before reloading) or the new
+  dismissible `UpdateFallbackBanner`. On mount, if a retry record already
+  exists in `sessionStorage` (this load is itself a previous forced-reload
+  attempt), it proactively fires a real compatibility check
+  (`api.get("/health")`) rather than waiting passively for organic traffic
+  — this is what makes the background retry actually periodic rather than
+  dependent on incidental API calls.
+- **`UpdatingBanner`** gained a `blocking` prop: a full-screen,
+  non-dismissible overlay (`role="alertdialog"`, `aria-live="assertive"`)
+  for this flow, alongside its existing passive `role="status"` strip
+  (unused elsewhere in the app today, built ahead of time for the item
+  14/15 case per the Storybook-first component reuse hierarchy).
+- **`UpdateFallbackBanner`** (new component,
+  `components/update-fallback-banner/`) is the dismissible fallback —
+  fixed to the viewport bottom (it's mounted at the root, not inside a page
+  layout, so it can't rely on normal layout flow like `OfflineStrip`), with
+  a `ButtonPair` offering "Refresh now" / "Dismiss".
+- **Form-state persistence** (`lib/compat-generation/formStatePersistence.ts`):
+  a deliberately generic, best-effort snapshot of native `<input
+type="text/email/tel/number/search">` and `<textarea>` values to
+  `sessionStorage`, keyed by `name` (falling back to `id`) and scoped per
+  pathname. Restore is **exact-match only** — a saved field is written
+  back via the native value setter + a bubbling `input` event (so React's
+  controlled inputs pick it up) only if an element with that exact
+  `name`/`id` exists after reload; anything without an exact match is
+  silently dropped, never guessed at. Custom Mantine controls (`Select`,
+  rich text editors, etc.) are explicitly out of scope for this generic
+  mechanism.
+
+Tests: `compatGeneration.test.ts`, `retryState.test.ts`,
+`formStatePersistence.test.ts`, `ForcedReloadGate.test.tsx` (mocks
+`lib/api.ts` and uses fake timers — `act()` around both event dispatch and
+timer advances, not `waitFor`, since `waitFor` and fake timers don't mix
+well), `UpdatingBanner.test.tsx` (extended for the `blocking` variant),
+`UpdateFallbackBanner.test.tsx`, and
+`scripts/computeCompatGeneration.test.ts`. All new/modified frontend files
+pass `yarn tsc --project tsconfig.check.json --noEmit` and
+`eslint --max-warnings=0`; the full frontend suite (`just uf`, 184 files /
+1702 tests) shows no regressions.
+
+### Frontend follow-up: consolidate status strip components
+
+Post-implementation review noted `OfflineStrip`, `UpdatingBanner`'s passive
+strip variant, and `UpdateFallbackBanner` had converged on almost the same
+shape (icon + short message, `role="status"`, `aria-live="polite"`), and
+raised an unhandled race: if the app is offline when a `Compat-Generation`
+mismatch fires, or two mismatches fire in quick succession, the fixed
+bottom banner and `OfflineStrip` could overlap or the blocking overlay
+could get stuck mid-transition. Resolution below consolidates the three
+into one component and removes the fixed-position/dismissible design in
+favour of a simpler, always-visible, non-dismissible stack, directly below
+`TopRibbon` in **both** `MainLayout` and `TeachingLayout` (the latter has
+no connectivity/update indicator at all today — this is a deliberate
+scope addition, agreed as part of this consolidation, not a pre-existing
+gap being silently left).
+
+**Decisions made during scoping (resolved via clarifying questions, not
+assumptions):**
+
+- The fallback state (automatic reload didn't resolve the mismatch) drops
+  its "Refresh now" button entirely, not just "Dismiss" — it becomes pure
+  passive status text. The user is never left with no path forward
+  because the background retry (every `RETRY_INTERVAL_MS`) keeps running
+  regardless; a manual button was judged unnecessary complexity once
+  dismissal was already removed.
+- `ForcedReloadGate` is mounted at the app root specifically so the
+  _blocking_ full-screen overlay works on every route, including guest
+  pages (`/login`, `/register`, etc.) that have no `TopRibbon` at all. But
+  the plan's own requirement — the _fallback_ strip stacks directly below
+  `TopRibbon`, alongside `MainLayout`/`TeachingLayout`'s own offline strip
+  — cannot be satisfied by a component mounted outside both layouts.
+  Resolution: split the existing side-effect logic (event listener, retry
+  timers, `sessionStorage` bookkeeping) out of the `ForcedReloadGate`
+  component and into a `ForcedReloadProvider` + `useForcedReload()` hook
+  pair, mirroring the codebase's existing `ConnectivityProvider` /
+  `useConnectivity()` pattern exactly. The provider wraps the app once in
+  `main.tsx` (replacing the bare `<ForcedReloadGate />`) so the
+  side-effects run exactly once; the _blocking_ overlay keeps rendering at
+  the root (unaffected by layout, still covers guest pages); the
+  _fallback_ `StatusStrip` is rendered by `MainLayout` and `TeachingLayout`
+  themselves, each calling `useForcedReload()` to read `phase` and
+  stacking it alongside their own connectivity strip below `TopRibbon`.
+  Guest/public pages (no layout) will not show a fallback strip if a
+  mismatch happens to occur there — an accepted gap, consistent with
+  `OfflineStrip` never having covered guest pages either.
+
+- [x] Create `frontend/src/components/status-strip/StatusStrip.tsx` — a
+      single component replacing `OfflineStrip`, `UpdatingBanner`'s strip
+      variant, and `UpdateFallbackBanner`, with a `variant` prop
+      (`offline` | `reconnected` | `updating` | `fallback`) driving icon,
+      message, and colour. No `onDismiss` prop, no buttons at all — these
+      strips are status information, not dismissible flash messages, and
+      must stay visible until their underlying condition clears
+- [ ] Render all strips in normal layout flow directly below `TopRibbon`
+      (no fixed/overlay positioning, no z-index tiering needed); when more
+      than one condition is true at once (e.g. offline **and** a pending
+      forced reload), each renders its own `StatusStrip` and they stack
+      vertically in the order mounted — no priority ordering between them
+- [x] Responsive behaviour: full-width strip with icon + full message text
+      by default; below `theme.breakpoints.sm`, only switches to a compact
+      horizontal badge (icon + short label only) when a `multiple` prop is
+      set — i.e. when more than one strip is showing at once. A lone
+      strip always stays full-width, even on mobile; consumers
+      (`MainLayout`/`TeachingLayout`) compute how many conditions are
+      active and pass `multiple` to each `StatusStrip` accordingly
+- [x] `frontend/src/components/status-strip/StatusStrip.module.css` —
+      desktop strip layout + mobile badge layout, reusing the existing
+      `--info-color`/`--warning-color`/`--success-color` design tokens
+- [x] `frontend/src/components/status-strip/StatusStrip.stories.tsx` —
+      every variant individually, plus explicit multi-strip stories (two
+      stacked, three stacked). No viewport addon is configured in this
+      repo's Storybook, so the mobile badge layout is demonstrated via a
+      `StoryNote` instructing the reviewer to narrow the browser below the
+      `sm` breakpoint, rather than a separate fake-mobile story
+- [x] `frontend/src/components/status-strip/StatusStrip.test.tsx` —
+      variant rendering, responsive class switching (via a mocked
+      `window.matchMedia`, matching the `PublicLayout.test.tsx`
+      precedent), accessibility attributes; no dismiss/button-related
+      assertions. 12 tests, all passing
+- [ ] Split `ForcedReloadGate.tsx`'s side-effect logic into
+      `lib/compat-generation/ForcedReloadProvider.tsx` (context provider,
+      mounted once in `main.tsx`) + `useForcedReload()` hook exposing
+      `phase`. Add a guard so a second `app:compat-mismatch` event while a
+      reload is already in flight (`phase !== "idle"`) is ignored rather
+      than overwriting the pending transition, and check `isOnline`
+      (from `useConnectivity()`) before scheduling the automatic
+      `location.reload()` so an offline tab goes straight to the fallback
+      state instead of attempting (and silently failing) a reload
+- [ ] Root-mounted piece (still rendered directly in `main.tsx`, sibling to
+      `RouterProvider`) keeps only the `blocking` full-screen
+      `UpdatingBanner` overlay — unaffected by layout, still covers guest
+      pages
+- [ ] Delete `frontend/src/components/offline-strip/` and
+      `frontend/src/components/update-fallback-banner/` entirely; simplify
+      `UpdatingBanner.tsx` back down to its `blocking` full-screen overlay
+      only (that variant remains architecturally distinct — it blocks
+      interaction rather than sitting in flow)
+- [ ] Update `MainLayout.tsx` to call `useForcedReload()` alongside its
+      existing `useConnectivity()`, rendering `StatusStrip` for
+      offline/reconnected/fallback (replacing `OfflineStrip`) directly
+      below `TopRibbon`
+- [ ] Update `TeachingLayout.tsx` to do the same — call
+      `useConnectivity()` (new for this layout) and `useForcedReload()`,
+      rendering the same stacked `StatusStrip`s below its own `TopRibbon`
+- [ ] Update `MainLayout.test.tsx`, add `TeachingLayout.test.tsx`
+      coverage, and update/replace `ForcedReloadGate.test.tsx` for the
+      provider/hook split and the two new guards above
 
 ### Deploy pipeline
 

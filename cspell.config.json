@@ -313,6 +313,7 @@
     "noprimaryorg",
     "norole",
     "noroleuser",
+    "nosemgrep",
     "nosetests",
     "nosniff",
     "notin",
