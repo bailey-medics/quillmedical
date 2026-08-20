@@ -67,3 +67,49 @@ export async function checkForUpdateAndReloadIfSafe(
   storage.setItem(RELOADED_ONCE_KEY, "1");
   waiting.postMessage("SKIP_WAITING");
 }
+
+export interface RouterLike {
+  subscribe: (listener: () => void) => () => void;
+  state: {
+    matches: RouteMatchLike[];
+    location: { state: unknown };
+  };
+}
+
+export const HOURLY_INTERVAL_MS = 60 * 60 * 1000;
+
+/**
+ * Wires the three update-check triggers (navigation, hourly timer, initial
+ * check on load) to the route-safety gate above. Extracted out of
+ * `main.tsx` so the wiring itself - not just the pure gate function - is
+ * covered by tests (see `swUpdateGate.test.ts`'s `wireUpdateChecks` suite).
+ */
+export function wireUpdateChecks(
+  router: RouterLike,
+  registration: ServiceWorkerRegistration,
+  isProd: boolean,
+  intervalMs: number = HOURLY_INTERVAL_MS,
+): void {
+  const runUpdateCheck = (hasFlash: boolean): void => {
+    void checkForUpdateAndReloadIfSafe({
+      registration,
+      isProd,
+      routeIsSafe: isRouteSafeForReload(router.state.matches),
+      hasFlash,
+    });
+  };
+
+  const currentHasFlash = (): boolean =>
+    Boolean((router.state.location.state as { flash?: unknown } | null)?.flash);
+
+  // Navigation trigger: re-checks every time the matched route changes.
+  router.subscribe(() => runUpdateCheck(currentHasFlash()));
+
+  // Hourly trigger: catches a tab that stays on one safe route without
+  // navigating away.
+  setInterval(() => runUpdateCheck(false), intervalMs);
+
+  // Also check once on load, in case a build already shipped while this
+  // tab was open before its first navigation.
+  runUpdateCheck(currentHasFlash());
+}

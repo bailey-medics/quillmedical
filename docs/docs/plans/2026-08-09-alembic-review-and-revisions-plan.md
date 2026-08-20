@@ -1369,7 +1369,7 @@ code integrates it correctly.
   manually at implementation time via a full downgrade/upgrade/check
   round-trip against live Postgres.
 
-- [ ] **Client version detection** — on navigation to a whitelisted
+- [x] **Client version detection** — on navigation to a whitelisted
       (`handle.safeForReload`) route with a service worker already waiting
       (`registration.waiting` populated), the app reloads automatically with
       no visible prompt; a non-whitelisted route (e.g. an in-progress exam
@@ -1379,14 +1379,22 @@ code integrates it correctly.
       never reloads; the hourly timer defers on an unsafe route and acts
       immediately on a whitelisted one.
 
-  `frontend/src/lib/swUpdateGate.test.ts` covers every scenario above
-  **except** the hourly timer: it thoroughly tests the pure
-  `checkForUpdateAndReloadIfSafe`/`isRouteSafeForReload` functions in
-  isolation, but nothing exercises `main.tsx`'s actual
-  `setInterval(() => runUpdateCheck(false), 60 * 60 * 1000)` wiring — no
-  `main.test.tsx` exists at all. **Still to do:** add a test proving the
-  hourly timer calls the gate with the currently-active route and defers /
-  acts correctly. Not implemented yet — planned as the next piece of work.
+  `frontend/src/lib/swUpdateGate.test.ts` covers every scenario above,
+  including the previously-untested hourly timer. The gap was that the
+  timer wiring lived inline in `main.tsx` (a `setInterval` calling a local
+  closure), so nothing outside a real browser could exercise it. Fixed by
+  extracting the wiring itself — `router.subscribe`, the hourly
+  `setInterval`, and the initial on-load check — into a new exported
+  `wireUpdateChecks(router, registration, isProd, intervalMs?)` function in
+  `swUpdateGate.ts`; `main.tsx` now just calls it. Six new tests added
+  (`wireUpdateChecks` describe block) using `vi.useFakeTimers()` +
+  `vi.advanceTimersByTimeAsync()` and a minimal fake `RouterLike`: initial
+  check on wiring (safe and unsafe route), re-check on navigation, hourly
+  timer deferring on an unsafe route, hourly timer acting on a safe route,
+  and a custom-interval override (used by the tests themselves to avoid a
+  real hour-long advance where not needed). Verified via `just uf` (183
+  files / 1714 tests, all green), `tsc --noEmit`, and `eslint
+--max-warnings=0` on the three touched files.
 
 - [x] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
       "Updating to the latest version…" copy renders, `role="status"` /
