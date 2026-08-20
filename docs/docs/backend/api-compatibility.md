@@ -148,7 +148,7 @@ may be added, but only via the same `api-breaking-change-review` gate to
 keep the audit trail clear. Deleting an existing file is never permitted;
 if a decision is superseded, record a new decision file instead.
 
-## Client-side reassurance: the "Updating…" banner
+## Client-side reassurance: the status strip and "Updating…" overlay
 
 ### Routine and expand-step deploys (forces_reload: false)
 
@@ -175,22 +175,51 @@ mismatch at its next API call. The detection works as follows:
   generation, the tab is incompatible.
 - When incompatibility is detected (`client_generation < server_generation`),
   the tab immediately:
-  1. Shows a blocking modal based on the `UpdatingBanner` component,
-     telling the user the app must update.
+  1. Shows a blocking, full-screen overlay (the `UpdatingBanner` component,
+     mounted at the app root via `ForcedReloadGate` so it covers every
+     route including guest pages), telling the user the app must update.
   2. Persists any in-progress form or editor state to `sessionStorage`.
   3. Reloads the page, restores the persisted state after reload, and
      continues.
+     A second mismatch event received while this transition is already in
+     flight is ignored rather than overwritten, and an offline tab skips the
+     reload attempt entirely (it would just fail to reach anything) and goes
+     straight to the fallback state below instead.
 
-If the reload fails (e.g. the backend generation mismatch persists after
-reload due to deploy ordering issues), the tab does **both** of the
-following rather than choosing one: it shows a dismissible fallback banner
-("An update is available but couldn't be applied automatically, please
-refresh manually") so the user is never stuck, **and** keeps retrying
-automatically in the background every 5 minutes via a real compatibility
-check (never a blind reload with no evidence) — so a tab left open
-eventually self-heals once the correct bundle is live, without needing the
-user to do anything. Dismissing the banner only hides the notice; the
-background retry keeps running regardless.
+If the reload fails to resolve the mismatch (e.g. the backend generation
+mismatch persists after reload due to deploy ordering issues), the tab
+shows a non-dismissible `StatusStrip` (`variant="fallback"`) in normal
+layout flow directly below `TopRibbon` — pure passive status text, with no
+"Refresh now" or dismiss button — **and** keeps retrying automatically in
+the background every 5 minutes via a real compatibility check (never a
+blind reload with no evidence), so a tab left open eventually self-heals
+once the correct bundle is live, without needing the user to do anything.
+The strip stays visible until the underlying condition clears on its own.
+
+### Component architecture
+
+The side-effect logic (listening for the mismatch event, running the
+retry timer, persisting/restoring form state) lives in
+`lib/compat-generation/ForcedReloadProvider.tsx` and its `useForcedReload()`
+hook, mounted once at the app root — mirroring the existing
+`ConnectivityProvider`/`useConnectivity()` pattern exactly. This keeps the
+side effects running exactly once regardless of which layout is active,
+while still letting each layout render its own status strip:
+
+- `ForcedReloadGate` (root-mounted, sibling to `RouterProvider`) renders
+  only the blocking `UpdatingBanner` overlay while `phase === "blocking"` —
+  this covers every route, including guest pages with no layout at all.
+- `MainLayout` and `TeachingLayout` each call `useForcedReload()` and
+  `useConnectivity()` directly, rendering `StatusStrip` for the
+  offline/reconnected/fallback conditions below their own `TopRibbon`,
+  alongside each other when more than one condition is true at once (no
+  priority ordering between them).
+- `StatusStrip` (`components/status-strip/StatusStrip.tsx`) is a single
+  component covering all four non-blocking variants (`offline` |
+  `reconnected` | `updating` | `fallback`) — it replaced three separate,
+  near-identical components (`OfflineStrip`, `UpdatingBanner`'s old passive
+  strip variant, `UpdateFallbackBanner`) that had converged on the same
+  shape (icon + short message, `role="status"`, `aria-live="polite"`).
 
 This forced-reload mechanism is the only thing that protects users in
 genuinely breaking contract-step scenarios — the expand-contract staging
