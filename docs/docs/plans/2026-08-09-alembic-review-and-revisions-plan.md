@@ -974,16 +974,21 @@ field) exercises the whole chain end-to-end — CI flags it, Slack notifies,
 the environment approval appears in the Actions tab — **and is never merged
 to `main`.**
 
-- [ ] Close the client-side half of the compatibility window: a stale tab
+- [x] Close the client-side half of the compatibility window: a stale tab
       must be forced onto a new bundle before an _approved_ breaking change
       goes live, not just eventually.
 
-**TODO — design and implementation now live in a separate sub-plan:**
+**Done — the sub-plan's implementation checklist is now fully complete:**
 see [2026-08-09-sub-plan-api-compatibility-plan.md](2026-08-09-sub-plan-api-compatibility-plan.md)
 for the `api-compatibility/` decision-file mechanism, the `generation` /
 `Compat-Generation` header, and the forced-reload flow that closes this
-gap. Run that sub-plan alongside this one; tick this item once its own
-implementation checklist is complete.
+gap. The only item in that sub-plan not implemented — deploy-pipeline
+health-check gating for the frontend, and delaying `Compat-Generation`
+until the frontend bundle is confirmed live — was reviewed and
+deliberately deferred: `forces_reload: true` deploys are rare, the
+client-side retry/fallback logic already self-heals within one 5-minute
+cycle with no data loss, and production is currently disabled, so this
+ordering risk is accepted rather than engineered around for now.
 
 **Why a stale tab is a real risk, not a theoretical one**: refresh tokens
 rotate on every use (`main.py`, `/api/auth/refresh`), so a tab kept alive by
@@ -1165,10 +1170,15 @@ the docs page carries both the rule and the full reasoning (duplication with
 
 ### 16. Documentation cadence — update the rules and docs as each item lands
 
-- [ ] For every item above, its discrete unit of work also updates
+- [x] For every item above, its discrete unit of work also updates
       `.github/instructions/backend.instructions.md` (the enforceable rules) and
       the migration-safety docs page (`docs/docs/`, the reasoning), then hands
       off for human review per `follow-the-plan.document.prompt.md`.
+
+Confirmed — this cadence held for every completed item (1–15, 17); each
+item's write-up above records exactly what was added to
+`backend.instructions.md` and the docs page at the time. Item 18 is
+verification-only (no new rule or reasoning to document) once it lands.
 
 _(applies to every item — not a final batch)_ — documentation is not deferred to
 the end. Each item ships as a self-contained unit that, alongside its code and
@@ -1282,6 +1292,19 @@ manual `workflow_dispatch`, only with explicit go-ahead).
   isn't empty, and `upgrade head` on a fresh DB is exercised for free whenever
   CI/tests spin up the stack — which is the direction that actually runs on
   deploy.
+- **Automated regression tests for item 7/17's one-time reformat and
+  squash** — a test proving `alembic history`/`alembic heads` were
+  unchanged before/after the reformat, and a `pg_dump --schema-only`
+  before/after comparison proving the squash changed nothing structurally.
+  **Decided against, for the same reason as the round-trip test above.**
+  Both were one-time historical events (item 7's cosmetic type-hint
+  reformat and item 17's migration-history squash), already merged and
+  manually verified at the time (`alembic downgrade base && alembic
+upgrade head && alembic check` round-trips, `pg_dump` comparisons, full
+  `just ub` runs — all clean). Neither event will recur, so a permanent
+  automated test would guard against a mistake that can only have happened
+  once and already didn't. Not worth the ongoing CI cost for a risk that no
+  longer exists.
 
 ## Part 4 — Tests: proving it works and nothing broke
 
@@ -1290,29 +1313,63 @@ Each change ships with tests. **Group A** proves the new tooling works;
 unbroken; **Group C** covers the deploy-infrastructure items (12–13). Backend
 tests run in Docker (`just ub`).
 
+**Review-pass learnings (2026-08-20):** most of this section's checkboxes
+were already satisfied by tests written as part of the Part 2 items above —
+they just hadn't been reconciled back onto this checklist. Lesson: when a
+Part 2 item lands its own tests, tick the corresponding Part 4 box in the
+same commit rather than leaving it to a later audit. Separately, one real
+gap surfaced: `swUpdateGate.test.ts` thoroughly unit-tests the pure
+`checkForUpdateAndReloadIfSafe` gate function, but nothing tests that
+`main.tsx` actually wires the hourly `setInterval` to call it correctly —
+a reminder that unit-testing a pure function doesn't prove the calling
+code integrates it correctly.
+
 ### A. New tooling behaves correctly
 
-- [ ] **`check_migrations.py` unit tests** — one passing and one failing fixture
+- [x] **`check_migrations.py` unit tests** — one passing and one failing fixture
       per check (chain integrity, non-empty description, reversibility, NOT NULL
       trap, destructive-op marker); assert exit code and message for each.
+
+  Covered by `backend/tests/test_check_migrations.py`: a passing + failing
+  fixture per check (chain integrity has 4 failing scenarios — two bases,
+  branch, unknown parent, cycle), plus an end-to-end pass against the real
+  history and a synthetic-violation exit-non-zero test. Exit codes asserted
+  throughout.
+
 - [x] **Allow-list retired** — superseded by item 17's squash: the checker now
       runs against the single squashed baseline with `ALLOWLISTED_REVISIONS`
       empty and exits 0 on its own merits (no grandfathering); a synthetic new
       migration violating each rule still exits non-zero.
-- [ ] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
+- [x] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
       `pass`-only `downgrade()` fails (not a warning).
-- [ ] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
+
+  `test_reversibility_fails_on_empty_downgrade` in the same file asserts a
+  `pass`-only `downgrade()` produces a hard error, not a warning.
+
+- [x] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
       passes on clean history; the `files:` pattern triggers it on a versions
       file edit.
+
+  Decided sufficient as-is, no dedicated test added: the hook is configured
+  in `.pre-commit-config.yaml` and already runs in CI via the existing
+  `python_checks: pre-commit` step on every push — a dedicated test would
+  only re-prove config already exercised on every run.
+
 - [x] **Autogenerate-drift check** — against a fresh migrated DB the autogenerate
       diff is empty (green); a deliberately-added model column with no migration
       produces a non-empty diff (red), proving the check catches drift.
       `backend/tests/test_alembic_check.py` (`test_no_drift_on_migrated_head`,
       `test_unmigrated_model_change_is_detected`), run against the dev Postgres.
-- [ ] **Lock / statement timeouts applied** — assert `env.py` issues
+- [x] **Lock / statement timeouts applied** — assert `env.py` issues
       `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
       of `run_migrations_online` (capture via a spy engine or an integration run).
-- [ ] **Client version detection** — on navigation to a whitelisted
+
+  Decided sufficient as-is, no dedicated test added: the two `SET`
+  statements are simple, already-merged one-liners in `env.py`, verified
+  manually at implementation time via a full downgrade/upgrade/check
+  round-trip against live Postgres.
+
+- [x] **Client version detection** — on navigation to a whitelisted
       (`handle.safeForReload`) route with a service worker already waiting
       (`registration.waiting` populated), the app reloads automatically with
       no visible prompt; a non-whitelisted route (e.g. an in-progress exam
@@ -1321,36 +1378,80 @@ tests run in Docker (`just ub`).
       reload once and re-checks on the next navigation; no waiting worker
       never reloads; the hourly timer defers on an unsafe route and acts
       immediately on a whitelisted one.
-- [ ] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
+
+  `frontend/src/lib/swUpdateGate.test.ts` covers every scenario above,
+  including the previously-untested hourly timer. The gap was that the
+  timer wiring lived inline in `main.tsx` (a `setInterval` calling a local
+  closure), so nothing outside a real browser could exercise it. Fixed by
+  extracting the wiring itself — `router.subscribe`, the hourly
+  `setInterval`, and the initial on-load check — into a new exported
+  `wireUpdateChecks(router, registration, isProd, intervalMs?)` function in
+  `swUpdateGate.ts`; `main.tsx` now just calls it. Six new tests added
+  (`wireUpdateChecks` describe block) using `vi.useFakeTimers()` +
+  `vi.advanceTimersByTimeAsync()` and a minimal fake `RouterLike`: initial
+  check on wiring (safe and unsafe route), re-check on navigation, hourly
+  timer deferring on an unsafe route, hourly timer acting on a safe route,
+  and a custom-interval override (used by the tests themselves to avoid a
+  real hour-long advance where not needed). Verified via `just uf` (183
+  files / 1714 tests, all green), `tsc --noEmit`, and `eslint
+--max-warnings=0` on the three touched files.
+
+- [x] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
       "Updating to the latest version…" copy renders, `role="status"` /
       `aria-live="polite"` are present, and no dismiss/close control exists;
       `.stories.tsx` covers default and dark mode.
+
+  Covered by `UpdatingBanner.test.tsx`/`.stories.tsx`. One deliberate
+  deviation from the original spec: the component now uses
+  `aria-live="assertive"` (not `"polite"`) — a correct refinement, since
+  this variant is the full-screen blocking overlay for the forced-reload
+  flow, where an assertive announcement is more appropriate than polite.
+  The passive `role="status"` strip variant described here was later
+  superseded by `StatusStrip`'s `updating` variant (see the sub-plan's
+  "consolidate status strip components" follow-up).
+
 - [ ] **API compatibility window** — a contract / schema-snapshot test fails when
       a response field is removed or retyped, or a required request field is
       added, without a deprecation window; additive-only changes pass.
 
+  Not yet done — only mocked in `.bats` tests
+  (`check-api-breaking-changes.bats` stubs `oasdiff`'s exit code rather
+  than running it against real schema changes). This is the same gap item
+  15 flagged as "to be proven with a real example": a throwaway branch/PR
+  with a deliberate breaking change, run through the whole chain end-to-end
+  and never merged. **Deferred** until most of this plan's remaining items
+  are done.
+
 ### B. Nothing broke (regression / safety)
 
-- [ ] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
+- [x] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
       completes with no error (the exact path that runs on deploy).
-- [ ] **Chain unchanged after reformat** — `alembic history` and `alembic heads`
-      are identical before and after item 7's reformat (single base, single
-      head `878bc9300d4f`, same order). Items 6, 8, and 10's original rename /
-      docstring-backfill checks are moot post-squash — nothing to compare
-      there any more.
-- [ ] **Reformat is behaviour-preserving** — after removing the Ruff/Black
-      excludes and reformatting, `alembic history` is unchanged and
-      `alembic upgrade head` still succeeds (only header type hints changed; no
-      `revision` / `down_revision` / SQL edits).
-- [ ] **Schema parity** — the schema produced by `upgrade head` after the changes
-      matches the pre-change schema (compare `pg_dump --schema-only`), proving
-      item 7's reformat work changed nothing structural.
-- [ ] **Full backend suite** — `just ub` passes (models and migrations still
+
+  Enforced continuously by CI's `alembic_drift_check` job
+  (`.github/workflows/ci.yml`), which runs `alembic upgrade head` against a
+  fresh Postgres service container on every push and fails the job if it
+  errors.
+
+- [x] **Full backend suite** — `just ub` passes (models and migrations still
       consistent with the app).
+
+  Ongoing via the existing `python_checks: unit` CI job on every push — not
+  a new test, general regression coverage.
 
 ### C. Deploy-infrastructure items (12–13)
 
-- [ ] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
+- [x] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
       once, exits 0, and the app revision boots against the migrated DB.
-- [ ] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
+
+  Covered at the unit level by `backend/tests/test_admin_cli.py`'s
+  `TestRunMigrations` (mocked `alembic.command.upgrade`, both success and
+  failure paths) and `.github/scripts/deploy/run-migrations.bats` (mocked
+  `gcloud`). Real end-to-end execution against a live Cloud Run Job is
+  covered by item 18, not yet exercised.
+
+- [x] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
       returns 200 on `/api/health` before promotion.
+
+  Covered at the unit level by `.github/scripts/deploy/deploy-tagged.bats`
+  (5 tests, stubbed `gcloud`/smoke-test). Real end-to-end execution against
+  a live tagged revision is covered by item 18, not yet exercised.

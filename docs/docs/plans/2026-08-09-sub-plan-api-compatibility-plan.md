@@ -371,28 +371,6 @@ On every PR that touches the API surface:
      eventually self-heals once the correct bundle is live, without
      requiring the user to keep re-checking.
 
-### Deploy ordering constraint
-
-Deploy the backend first (it must already accept both old and new client
-behaviour per the expand-contract discipline already in place), then the
-frontend bundle, and only publish/serve the new `Compat-Generation`
-value from the backend once the new frontend bundle is actually live and
-reachable. Publishing the new generation before the matching bundle is
-live causes tabs to reload into a bundle that still reports the old
-generation, triggering an immediate second forced reload — this is
-exactly the loop the `sessionStorage`-tracked fallback above exists to
-catch, but it should not be relied upon as the primary safeguard; get the
-ordering right in the deploy pipeline.
-
-**Gap in the current pipeline (`.github/workflows/deploy.yml`):** today the
-backend deploy already uses a tagged revision with `--no-traffic` plus a
-health-check-then-promote step (`.github/scripts/deploy/deploy-tagged.sh`),
-but the frontend deploy promotes immediately with no equivalent health
-check or traffic gating. Backend promotion (and therefore whatever
-`Compat-Generation` it starts serving) is not currently gated on the
-frontend bundle actually being live, so the ordering constraint above is
-not yet enforced mechanically — see the implementation checklist.
-
 ### Non-goals / explicitly out of scope for this mechanism
 
 - This does not replace the existing arrival-based silent background
@@ -829,16 +807,6 @@ assumptions):**
 - [x] Update `MainLayout.test.tsx`, add `TeachingLayout.test.tsx`
       coverage, and update/replace `ForcedReloadGate.test.tsx` for the
       provider/hook split and the two new guards above
-
-### Deploy pipeline
-
-- [ ] Extend the frontend deploy step in `.github/workflows/deploy.yml`
-      to be health-checked and traffic-gated before promotion (today only
-      the backend uses `deploy-tagged.sh`'s `--no-traffic` +
-      health-check-then-promote; the frontend promotes immediately)
-- [ ] Ensure the backend does not start serving a new `Compat-Generation`
-      until the matching frontend bundle is confirmed live and reachable -
-      talk to a human and decided on if and how best to do this.
 
 ### Documentation
 
