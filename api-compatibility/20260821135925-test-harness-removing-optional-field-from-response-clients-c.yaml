@@ -1,4 +1,0 @@
-generation: 1
-forces_reload: false
-change: "response-required-property-removed message GET /api/test/breaking-api"
-reason: "Test harness: removing optional field from response; clients can adapt to missing field"
