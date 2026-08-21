@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/test/breaking-api removed the required property `detail` from the response with the `200` status"
+reason: "test harness for api-compatibility CI validation - intentional removal of detail property for Phase 2 partial-coverage testing"
