@@ -154,6 +154,7 @@ from app.system_permissions.permissions import (
     PERMISSION_STAFF,
     check_permission_level,
 )
+from app.test_api_endpoints import test_api_router
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -164,6 +165,12 @@ DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 router = APIRouter(prefix=settings.API_PREFIX)
 
 router.include_router(push_router)
+
+# Permanent API-compatibility test harness (item 19) — always false in real
+# deployments; CI sets this true only when dumping OpenAPI specs for the
+# breaking-change check.
+if settings.TEST_API_ENDPOINTS_ENABLED:
+    router.include_router(test_api_router)
 
 app = FastAPI(
     title="Quill API",

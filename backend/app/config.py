@@ -89,6 +89,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Permanent API-compatibility test harness flag ---
+    TEST_API_ENDPOINTS_ENABLED: bool = Field(
+        False,
+        description=(
+            "Whether the dummy /api/test/* endpoints are registered. "
+            "Always false in real deployments; CI sets this true only "
+            "when dumping OpenAPI specs for the breaking-change check."
+        ),
+    )
+
     # --- Core Database ---
     CORE_DB_NAME: str = Field(
         "quill_core",

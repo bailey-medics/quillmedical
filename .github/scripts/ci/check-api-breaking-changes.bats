@@ -44,3 +44,35 @@ setup() {
   [[ "$output" == *"Breaking API change(s) detected"* ]]
   [[ "$(cat "$GITHUB_OUTPUT")" == "breaking=true" ]]
 }
+
+@test "writes the oasdiff report to GITHUB_STEP_SUMMARY when breaking" {
+  oasdiff() {
+    echo "removed required field 'foo'"
+    return 1
+  }
+
+  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/github_output"
+  : >"$GITHUB_OUTPUT"
+  export GITHUB_STEP_SUMMARY="${BATS_TEST_TMPDIR}/github_step_summary"
+  : >"$GITHUB_STEP_SUMMARY"
+
+  run main "base.json" "revision.json"
+  [ "$status" -eq 0 ]
+  [[ "$(cat "$GITHUB_STEP_SUMMARY")" == *"Breaking API change(s) detected"* ]]
+  [[ "$(cat "$GITHUB_STEP_SUMMARY")" == *"removed required field 'foo'"* ]]
+}
+
+@test "does not write GITHUB_STEP_SUMMARY when not breaking" {
+  oasdiff() {
+    echo "no changes found"
+  }
+
+  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/github_output"
+  : >"$GITHUB_OUTPUT"
+  export GITHUB_STEP_SUMMARY="${BATS_TEST_TMPDIR}/github_step_summary"
+  : >"$GITHUB_STEP_SUMMARY"
+
+  run main "base.json" "revision.json"
+  [ "$status" -eq 0 ]
+  [ -z "$(cat "$GITHUB_STEP_SUMMARY")" ]
+}
