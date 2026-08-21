@@ -463,8 +463,10 @@ jobs:
   # Detects an undeclared breaking change to the API contract by diffing the
   # OpenAPI spec generated from `main` against the spec generated from this
   # PR branch. See docs/docs/backend/api-compatibility.md for the full
-  # reasoning. This job always succeeds (it only detects); the downstream
-  # notify/gate jobs act on its `breaking` output.
+  # reasoning. Detecting a breaking change itself never fails this job (the
+  # downstream notify/gate jobs act on its `breaking` output) - but the
+  # api-compatibility decision-file validation step below does fail the job
+  # when coverage/schema rules are violated; see heavy_api_compat_notify.
   heavy_api_schema_diff:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
@@ -472,6 +474,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       breaking: ${{ steps.diff.outputs.breaking }}
+      compat_validation_error: ${{ steps.validate.outputs.error_output }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
@@ -547,11 +550,29 @@ jobs:
             > oasdiff-report.json || true
 
       - name: Validate api-compatibility decision files
+        id: validate
         working-directory: pr
         run: |
+          set +e
           bash .github/scripts/ci/validate-compat-files.sh \
             ../oasdiff-report.json \
-            api-compatibility
+            api-compatibility > ../validate-compat-output.txt 2>&1
+          exit_code=$?
+          set -e
+
+          # Strip ANSI colour codes (logging.sh's error() adds red) before
+          # printing or exposing as a job output - Slack renders escape codes
+          # as garbage text.
+          sed -i -E 's/\x1b\[[0-9;]*m//g' ../validate-compat-output.txt
+          cat ../validate-compat-output.txt
+
+          {
+            echo "error_output<<COMPAT_VALIDATION_EOF"
+            tail -c 3000 ../validate-compat-output.txt
+            echo "COMPAT_VALIDATION_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          exit "$exit_code"
 
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
   # Only runs when heavy_api_schema_diff found a breaking change - otherwise
@@ -591,4 +612,34 @@ jobs:
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
+    secrets: inherit
+
+  # ---------- Slack notification on api-compatibility validation failure ----------
+  # Fires when the "API breaking-change check" job fails - in practice this
+  # is almost always validate-compat-files.sh rejecting the PR (e.g. a
+  # breaking change with no covering decision file, or an invalid decision
+  # file). `always()` is required because a failed `needs:` job otherwise
+  # skips its dependents by default.
+  heavy_api_compat_notify:
+    name: Notify Slack of api-compatibility validation failure
+    needs: heavy_api_schema_diff
+    if: always() && needs.heavy_api_schema_diff.result == 'failure'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *🚨 api-compatibility validation failed*
+
+        The "API breaking-change check" job failed on this PR - most likely
+        `validate-compat-files.sh` rejected a breaking API change because it
+        isn't covered by a valid decision file. Open the run below to fix it
+        (see docs/docs/backend/api-compatibility.md).
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
+        ```
+        ${{ needs.heavy_api_schema_diff.outputs.compat_validation_error }}
+        ```
     secrets: inherit
