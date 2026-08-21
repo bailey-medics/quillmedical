@@ -37,6 +37,7 @@ class UserCompetenciesResponse(BaseModel):
     base_profession: str
     additional_competencies: list[str]
     removed_competencies: list[str]
+    final_competencies: list[str]
 
 
 class ProfessionalRegistration(BaseModel):

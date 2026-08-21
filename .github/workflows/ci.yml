@@ -579,11 +579,12 @@ jobs:
         *⚠️ Undeclared breaking API change detected*
 
         This PR changes the API in a way that could break clients that
-        haven't updated yet. Approve the `api-breaking-change-review`
-        environment on the workflow run below only if this is a deliberate,
-        staged (expand-then-contract) change.
+        haven't updated yet. Open the run below, check its summary for
+        exactly what changed, then click *Review deployments* and approve
+        the `api-breaking-change-review` environment only if this is a
+        deliberate, staged (expand-then-contract) change.
 
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
-        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
     secrets: inherit

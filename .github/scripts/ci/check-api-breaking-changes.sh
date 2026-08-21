@@ -5,8 +5,12 @@
 # Usage: check-api-breaking-changes.sh <base-spec> <revision-spec>
 #
 # Environment:
-#   GITHUB_OUTPUT  Optional. Destination file `breaking=true`/`breaking=false`
-#                  is additionally written to; set by the runner in CI.
+#   GITHUB_OUTPUT        Optional. Destination file `breaking=true`/`breaking=false`
+#                        is additionally written to; set by the runner in CI.
+#   GITHUB_STEP_SUMMARY  Optional. When a breaking change is found, the oasdiff
+#                        report is additionally written here so it renders on
+#                        the run's summary page - the same page the approver
+#                        lands on for the api-breaking-change-review gate.
 #
 # Prints oasdiff's human-readable report to stdout regardless of outcome, so a
 # downstream job can route through the api-breaking-change-review environment
@@ -59,6 +63,16 @@ main() {
 
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     echo "breaking=$breaking" >>"$GITHUB_OUTPUT"
+  fi
+
+  if [ "$breaking" = true ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+      echo "## Breaking API change(s) detected"
+      echo
+      echo '```'
+      cat "$report"
+      echo '```'
+    } >>"$GITHUB_STEP_SUMMARY"
   fi
 }
 

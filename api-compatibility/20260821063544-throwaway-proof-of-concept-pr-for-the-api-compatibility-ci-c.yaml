@@ -1,4 +1,0 @@
-generation: 1
-forces_reload: true
-change: "response-property-removed GET /api/cbac/my-competencies"
-reason: "Throwaway proof-of-concept PR for the API compatibility CI chain (item 15/Part 4 test) - removes final_competencies from the response as a deliberate breaking change never to be merged"
