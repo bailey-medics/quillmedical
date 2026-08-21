@@ -36,8 +36,14 @@ main() {
 
   report="$(mktemp)"
 
+  # --fail-on WARN is required: without it, `oasdiff breaking` always exits 0
+  # regardless of how many ERR/WARN findings it prints, so the exit-code
+  # check below would be dead code and the downstream review-gate/Slack
+  # jobs would never fire. WARN (not ERR) matches "oasdiff breaking detects
+  # changes with level ERR and WARN only" - any finding that command can
+  # report at all should route through the human gate.
   set +e
-  oasdiff breaking "$base_spec" "$revision_spec" >"$report" 2>&1
+  oasdiff breaking --fail-on WARN "$base_spec" "$revision_spec" >"$report" 2>&1
   exit_code=$?
   set -e
 
