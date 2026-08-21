@@ -1463,7 +1463,7 @@ As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
 
 - [x] Add decision file via `backend/scripts/new_compat_decision.py` and push. Verify `API breaking-change check` goes green and gate goes WAITING.
 
-- [ ] **Scenario 2 (partial coverage)**: Extend mutation to TWO breaking changes (e.g. `MUTATE_REMOVE_MESSAGE_1 = True` and `MUTATE_REMOVE_DETAIL_1 = True`). Add decision file for only the first. Push. Verify `API breaking-change check` fails with specific error naming the second undeclared change (validates error message quality).
+- [x] **Scenario 2 (partial coverage)**: Extend mutation to TWO breaking changes (e.g. `MUTATE_REMOVE_MESSAGE_1 = True` and `MUTATE_REMOVE_DETAIL_1 = True`). Add decision file for only the first. Push. Verify `API breaking-change check` fails with specific error naming the second undeclared change (validates error message quality).
 
 - [ ] **Scenario 3 (full coverage)**: Add second decision file. Push. Verify `API breaking-change check` passes, `breaking=true`, Slack notification fires, `API breaking-change review gate` transitions to WAITING.
 

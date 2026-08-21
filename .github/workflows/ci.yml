@@ -605,13 +605,12 @@ jobs:
     with:
       channel: teaching
       text: |
-        *⚠️ Undeclared breaking API change detected*
+        *⚠️ Breaking API change requires approval*
 
-        This PR changes the API in a way that could break clients that
-        haven't updated yet. Open the run below, check its summary for
-        exactly what changed, then click *Review deployments* and approve
-        the `api-breaking-change-review` environment only if this is a
-        deliberate, staged (expand-then-contract) change.
+        This PR contains a breaking API change. Review the summary below to
+        confirm the change is intentional and staged (expand-then-contract).
+        Click *Review deployments* to approve the `api-breaking-change-review`
+        environment and allow the PR to proceed.
 
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
