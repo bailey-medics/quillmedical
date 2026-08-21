@@ -106,10 +106,13 @@ is_yaml_list() {
 #
 # `oasdiff breaking --format json` emits a bare JSON array of change objects
 # (not a { "changes": [...] } wrapper), each with an "id" field (the check ID,
-# e.g. "response-required-property-removed") and, for path-scoped changes,
+# e.g. "response-required-property-removed"), a "text" field (human-readable
+# detail, e.g. "removed the required property message" - the ONLY field that
+# differentiates two changes with the same id/operation/path, such as two
+# properties removed from the same endpoint) and, for path-scoped changes,
 # "operation" and "path" fields - see
 # https://github.com/oasdiff/oasdiff/blob/main/formatters/changes.go.
-# Decision files record the change as "<id> <operation> <path>" (see
+# Decision files record the change as "<id> <operation> <path> <text>" (see
 # backend/scripts/new_compat_decision.py), so rebuild that same string here.
 parse_oasdiff_changes() {
   local oasdiff_file="$1"
@@ -137,7 +140,7 @@ parse_oasdiff_changes() {
   local jq_output
 
   if ! jq_output=$(jq -r \
-    '.[] | [.id, .operation, .path] | map(select(. != null and . != "")) | join(" ")' \
+    '.[] | [.id, .operation, .path, .text] | map(select(. != null and . != "")) | join(" ")' \
     <<<"$content" 2>&1); then
     fail "Failed to parse oasdiff JSON output as a JSON array: $jq_output"
     return 1
