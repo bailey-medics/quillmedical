@@ -3294,7 +3294,6 @@ async def get_my_competencies(
         base_profession=user.base_profession,
         additional_competencies=user.additional_competencies or [],
         removed_competencies=user.removed_competencies or [],
-        final_competencies=user.get_final_competencies(),
     )
 
 
@@ -3388,7 +3387,6 @@ async def update_my_competencies(
         base_profession=user.base_profession,
         additional_competencies=user.additional_competencies or [],
         removed_competencies=user.removed_competencies or [],
-        final_competencies=user.get_final_competencies(),
     )
 
 

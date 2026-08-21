@@ -1,0 +1,4 @@
+generation: 2
+forces_reload: true
+change: "response-property-removed PATCH /api/cbac/my-competencies"
+reason: "Throwaway proof-of-concept PR for the API compatibility CI chain (item 15/Part 4 test) - same field removal, PATCH operation"
