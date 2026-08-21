@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed detail GET /api/test/breaking-api"
+reason: "Test harness: removing additional detail field; clients can handle missing detail"
