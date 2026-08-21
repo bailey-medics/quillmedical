@@ -19,71 +19,66 @@ cd /Users/markbailey/github/quillmedical
 git checkout -b feature/test-api-compat
 ```
 
-## Step 1: Create a breaking change to the OpenAPI spec
+## Step 1: Trigger a breaking change with the built-in test harness
 
-Edit the FastAPI backend to introduce a breaking change. For testing, a safe option is to rename or remove a response field.
+Don't touch any real endpoint. The repo has a permanent, flag-gated test
+harness purpose-built for this — `backend/app/test_api_endpoints.py`,
+registered only when `TEST_API_ENDPOINTS_ENABLED=true` (always false in real
+deployments; CI sets it true only when dumping specs for this check). It
+exposes `GET /api/test/non-breaking-api` (a control endpoint, never mutated)
+and `GET /api/test/breaking-api` / `GET /api/test/breaking-api-2` (endpoints
+whose response schema you mutate per scenario).
 
-**Example: remove an optional field from a response** (`backend/app/main.py` or a relevant route file):
-
-Before:
-
-```python
-class UserResponse(BaseModel):
-    id: int
-    email: str
-    full_name: str  # ← Will be removed
-    created_at: datetime
-```
-
-After:
+Open [backend/app/test_api_endpoints.py](../../../backend/app/test_api_endpoints.py) and flip one of the mutation
+constants near the top from `False` to `True`:
 
 ```python
-class UserResponse(BaseModel):
-    id: int
-    email: str
-    created_at: datetime
+# Flip any of these to True in a test PR to remove that property from its
+# response — a genuine response-property-removed breaking change for
+# oasdiff to catch.
+MUTATE_REMOVE_MESSAGE_1 = True   # ← was False
+MUTATE_REMOVE_DETAIL_1 = False
+MUTATE_REMOVE_SUMMARY_2 = False
 ```
 
-**Example: add a required request field** (even more obviously breaking):
-
-Before:
-
-```python
-@router.post("/api/patients")
-def create_patient(data: PatientCreateRequest):
-    ...
-```
-
-After (add a new **required** field):
-
-```python
-class PatientCreateRequest(BaseModel):
-    name: str
-    nhs_number: str  # ← NEW and required
-    dob: date
-
-@router.post("/api/patients")
-def create_patient(data: PatientCreateRequest):
-    ...
-```
+Each constant removes one field from the corresponding response model
+(`TestBreakingResponse1.message`, `TestBreakingResponse1.detail`, or
+`TestBreakingResponse2.summary`) via the `if not MUTATE_...:` guards already
+in the model/handler bodies — no other code changes needed. Flipping
+`MUTATE_REMOVE_MESSAGE_1` and `MUTATE_REMOVE_DETAIL_1` together produces two
+breaking changes on the same endpoint at once, useful for testing partial
+decision-file coverage.
 
 Push your change:
 
 ```bash
-git add backend/app/main.py
-git commit -m "test: introduce breaking API change for compat testing"
+git add backend/app/test_api_endpoints.py
+git commit -m "test: mutate breaking-api harness for compat testing"
 git push origin feature/test-api-compat
 ```
 
 ## Step 2: Trigger CI and observe the breaking-change detection
 
-Go to GitHub and open a pull request from `feature/test-api-compat` → `main`. Do **not** draft it (the CI only runs on non-draft PRs).
+Pushing a `feature/**` branch triggers `.github/workflows/auto-pr.yml`, which
+auto-creates the PR as a **draft** — by design, this holds back the heavy
+tier (including `heavy_api_schema_diff`) entirely; a draft PR shows no
+schema-diff check at all, not even a pending one. Click **Ready for review**
+on the PR before continuing — that's what actually fires the heavy tier
+(`pull_request.ready_for_review`), not the initial push.
 
 The CI workflow will:
 
 1. Generate the OpenAPI spec from your branch
 2. Download and diff against the `main` branch spec via `oasdiff breaking`
 3. Report any breaking changes found
+
+### Github will report the failure as below
+
+![Github api-compatibility failed](images/github-api-check-failed.png)
+
+### You will get a slack message similar to the one below when the check fails
+
+![Slack message showing api-compatibility validation failed](images/slack-message-api-compatibility-validation-failed.png)
 
 **Check the CI logs:**
 
@@ -132,18 +127,23 @@ Before you can merge, the `validate-compat-files.sh` script must pass. It will *
 **To run validation locally:**
 
 ```bash
-cd /Users/markbailey/github/quillmedical
+cd /Users/markbailey/github/quillmedical/backend
 
-# Download the oasdiff report the CI generated, or generate it locally
-# Option A: Use CI's report from the PR
-#   (Click the PR's "Checks" tab → heavy_api_schema_diff → download oasdiff-report.json)
+# Dump the spec for your mutated PR branch (same command + flag CI uses)
+TEST_API_ENDPOINTS_ENABLED=true poetry run python scripts/dump_openapi.py --dev
+cp ../docs/docs/code/swagger/openapi.json /tmp/pr.json
 
-# Option B: Generate locally
-bash backend/scripts/dump_openapi.py > /tmp/main.json  # on main branch
-git stash && bash backend/scripts/dump_openapi.py > /tmp/pr.json && git stash pop
+# Dump the spec for main (stash your mutation, dump, restore it)
+git stash
+TEST_API_ENDPOINTS_ENABLED=true poetry run python scripts/dump_openapi.py --dev
+cp ../docs/docs/code/swagger/openapi.json /tmp/main.json
+git stash pop
+
+# Diff the two specs into the JSON report the validator expects
 oasdiff breaking --format json /tmp/main.json /tmp/pr.json > /tmp/oasdiff-report.json
 
-# Now run the validation
+# Now run the validation (from repo root)
+cd /Users/markbailey/github/quillmedical
 bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-compatibility
 ```
 
@@ -151,7 +151,7 @@ bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-co
 
 ```
 [validate-compat-files] ERROR: Flagged change not covered by any decision file:
-'response-required-property-removed GET /api/users'
+'response-required-property-removed GET /api/test/breaking-api'
 ```
 
 The script lists which exact `oasdiff` change ID + operation + path it found but for which no decision file exists.
@@ -168,7 +168,7 @@ python backend/scripts/new_compat_decision.py
 
 ```
 Enter the oasdiff change ID + operation + path exactly as it appears in the error:
-> response-required-property-removed GET /api/users
+> response-required-property-removed GET /api/test/breaking-api
 
 Enter forces_reload (true/false) — does this breaking change require every open
 tab to reload immediately?
@@ -182,21 +182,22 @@ Enter (true/false):
 > false
 
 Enter a reason (for the safety/audit trail):
-> The removed field "full_name" was only used in the admin dashboard list view,
-  not in core workflows. The UI safely renders without it (displays "N/A" as
-  fallback). Existing tabs pick up the new bundle silently via the hourly timer,
-  well before the contract-step deploy.
+> Test scenario for the api-compatibility CI harness (see
+  docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19,
+  Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the
+  disposable /api/test/breaking-api endpoint, which is never called by the
+  real app — no client, real or stale, depends on it.
 
 ```
 
 The script generates a file like:
 
 ```yaml
-# api-compatibility/20260821120345-user-fullname-removal.yaml
+# api-compatibility/20260821120345-breaking-api-message-removal.yaml
 generation: 3
 forces_reload: false
-change: "response-required-property-removed GET /api/users"
-reason: 'The removed field "full_name" was only used in the admin dashboard list view, not in core workflows. The UI safely renders without it (displays "N/A" as fallback). Existing tabs pick up the new bundle silently via the hourly timer, well before the contract-step deploy.'
+change: "response-required-property-removed GET /api/test/breaking-api"
+reason: 'Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app — no client, real or stale, depends on it.'
 ```
 
 ## Step 6: Run validation again (expect pass)
@@ -217,7 +218,7 @@ No errors, exit code 0.
 
 ```bash
 git add api-compatibility/
-git commit -m "docs: add decision file for user.full_name removal (forces_reload=false)"
+git commit -m "docs: add decision file for breaking-api message removal (forces_reload=false)"
 git push origin feature/test-api-compat
 ```
 
@@ -233,7 +234,7 @@ Push to the PR. CI re-runs:
 To test the **failure path** (Slack alert when validation fails), temporarily remove or corrupt your decision file:
 
 ```bash
-rm api-compatibility/20260821120345-user-fullname-removal.yaml
+rm api-compatibility/20260821120345-breaking-api-message-removal.yaml
 git add api-compatibility/
 git commit -m "test: remove decision file to trigger Slack alert"
 git push origin feature/test-api-compat
@@ -263,13 +264,17 @@ Restore your decision file and push again to verify it clears.
 
 ## Step 9: Clean up
 
-Delete your test branch:
+If this was just a dry run, delete your test branch without merging:
 
 ```bash
 git checkout main
 git branch -D feature/test-api-compat
 git push origin --delete feature/test-api-compat
 ```
+
+Also flip the mutation constant in `test_api_endpoints.py` back to `False` on `main` if it was ever merged there by mistake — it must stay off outside a deliberate test round.
+
+Note: the actual Phase 2 test round tracked in [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) does the opposite deliberately — its branch merges to `main` once the gate-approve scenario is proven, so the decision files and the mutated harness become the new permanent baseline rather than being reverted.
 
 ## Common errors and fixes
 
