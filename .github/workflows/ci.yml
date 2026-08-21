@@ -566,9 +566,13 @@ jobs:
           sed -i -E 's/\x1b\[[0-9;]*m//g' ../validate-compat-output.txt
           cat ../validate-compat-output.txt
 
+          # Extract only the actual error messages (change IDs that lack decision
+          # files) rather than the entire verbose log. Slack message is cleaner
+          # if it shows just "response-required-property-removed GET /api/test/breaking-api"
+          # instead of all the validation step logs.
           {
             echo "error_output<<COMPAT_VALIDATION_EOF"
-            tail -c 3000 ../validate-compat-output.txt
+            grep "ERROR:" ../validate-compat-output.txt | sed -E "s/.*'([^']*)'.*/\1/" || echo "[No error details found]"
             echo "COMPAT_VALIDATION_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -633,7 +637,7 @@ jobs:
         The "API breaking-change check" job failed on this PR - most likely
         `validate-compat-files.sh` rejected a breaking API change because it
         isn't covered by a valid decision file. Open the run below to fix it
-        (see docs/docs/backend/api-compatibility.md).
+        (see docs/docs/backend/api-compatibility.md for a walk through).
 
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
