@@ -968,11 +968,36 @@ releases; enforced via `oasdiff` in CI plus a required-reviewer GitHub
 environment gate (Slack-notified) — not a code marker, commit trailer, or
 label.**
 
-**To be proven with a real example before this is trusted**: a throwaway
-branch/PR carrying a deliberate breaking change (e.g. dropping a response
-field) exercises the whole chain end-to-end — CI flags it, Slack notifies,
-the environment approval appears in the Actions tab — **and is never merged
-to `main`.**
+- [x] Prove the chain end-to-end with a real example, then keep it
+      exercisable on demand without ever touching a real production schema
+      again.
+
+**Proven via PR [#379](https://github.com/bailey-medics/quillmedical/pull/379)**
+(branch `feature/throwaway-api-breaking-change-proof`): a deliberate breaking
+change (removing `UserCompetenciesResponse.final_competencies` on both `GET`
+and `PATCH /api/cbac/my-competencies`) exercised the whole chain — and
+surfaced a genuine, previously-undetected bug in the mechanism itself:
+`oasdiff breaking` only _reports_ findings and always exits `0` unless
+`--fail-on` is passed, so `check-api-breaking-changes.sh`'s exit-code check
+was dead code — `breaking` was always written `false`, meaning the
+`api-breaking-change-review` gate and the Slack notification could **never
+fire**, no matter how breaking a real change was. Fixed by passing
+`--fail-on WARN` (matches `oasdiff breaking`'s own ERR/WARN detection
+scope); verified locally with a synthetic spec pair, then live in PR #379's
+CI — `breaking=true` was written correctly, Slack fired, and the
+`api-breaking-change-review` gate went to `waiting` for approval. Two
+further gaps found while reviewing the proof were fixed in the same PR: the
+oasdiff report is now also written to `$GITHUB_STEP_SUMMARY` on a breaking
+finding (so the approver sees exactly what changed on the same page as the
+"Review deployments" prompt, without digging through job logs), and the
+Slack message now points the approver at the run summary and the "Review
+deployments" button rather than a bare "View Run" link. The deliberate
+schema change and its two `api-compatibility/` decision files were reverted
+before merge — PR #379 shipped only the CI/CD fixes.
+
+**Follow-up decided, not yet built**: see item 19 below for the full plan —
+a permanent, flag-gated pair of dummy test endpoints so the chain can be
+re-exercised on demand without ever touching a real endpoint again.
 
 - [x] Close the client-side half of the compatibility window: a stale tab
       must be forced onto a new bundle before an _approved_ breaking change
@@ -1265,6 +1290,178 @@ tagged-deploy path itself has not yet been exercised against a real
 `backend/**` change. To be tested on the next backend-touching merge (or a
 manual `workflow_dispatch`, only with explicit go-ahead).
 
+### 19. Permanent API-compatibility test harness (toggle test endpoints)
+
+- [ ] Add two permanent, flag-gated dummy backend endpoints so the full
+      oasdiff/api-compatibility chain (fixed in PR #379, item 15) can be
+      re-exercised on demand, without ever touching a real production
+      schema again.
+
+**Key research finding (relevant to Phase 3):** `validate-compat-files.sh`'s
+immutability (rule 5a) and no-deletions (rule 5b) checks both diff
+`origin/main...HEAD` (merge-base compare). Anything a PR adds and only that
+same PR ever removes never appears in `main`'s tree at any point, so
+neither rule ever fires for content that never gets merged — which is
+exactly Phase 3's situation below, since a correctly-rejected gate blocks
+that PR from merging at all.
+
+**Three-phase design.** Within a single _unmerged_ PR, "main" never moves —
+so a brand-new endpoint introduced and mutated all within one unmerged PR
+always diffs as "endpoint added" (non-breaking), never a genuine "property
+removed from an existing endpoint" breaking change. The baseline shape must
+already be on `main` before a mutation is diffed. Hence **Phase 1** merges
+the baseline first. **Phase 2** (branched off the updated `main`) walks
+through the no-decision-file, partial-coverage, full-coverage, and
+gate-approve scenarios and **merges to `main`** once approved — the
+decision files created along the way become a permanent, legitimate record
+of an approved (test) breaking change, exactly like a real one, and the
+mutated endpoint shape becomes the new committed baseline (no
+revert/cleanup — nothing to undo). **Phase 3** (a separate, later PR
+branched off that merge) proves the gate-**reject** path on a fresh
+mutation; since a rejected required check structurally can never merge,
+that PR is closed without merging, mirroring PR #379's disposable pattern —
+nothing it creates ever needs deleting from `main`'s perspective, since
+none of it lands there.
+
+**Scope: the 4 core scenarios + gate-reject only** — not the other 8
+`validate-compat-files.sh` rules, not WARN-vs-ERR severity (see "explicitly
+out of scope" below).
+
+#### Phase 1 — toggle + baseline endpoints (real, reviewable, merges first)
+
+- [x] `backend/app/config.py`: add `TEST_API_ENDPOINTS_ENABLED: bool = False`
+      (matches the existing `_ENABLED` suffix convention, e.g.
+      `CLINICAL_SERVICES_ENABLED`).
+- [x] New file `backend/app/test_api_endpoints.py`:
+  - `TestNonBreakingResponse(BaseModel)` / `TestBreakingResponse(BaseModel)`
+    — both `{message: str}` initially.
+  - `test_api_router = APIRouter(prefix="/test", tags=["test"])`, nested
+    under `main.py`'s existing `/api`-prefixed `router` (the same pattern
+    already used for `teaching_router`) — giving the same final paths as
+    originally planned below, without a doubled `/api` prefix.
+  - `GET /api/test/non-breaking-api` → static
+    `"This is a test response from the non-breaking api"` — a control
+    endpoint, **never mutated** in Phase 2, proving unrelated endpoints are
+    unaffected during a breaking-change PR.
+  - `GET /api/test/breaking-api` → static
+    `"This is a test response from the breaking api"` — the endpoint whose
+    schema gets deliberately mutated per scenario in Phase 2.
+- [x] `backend/app/main.py`: conditionally register —
+      `if settings.TEST_API_ENDPOINTS_ENABLED:
+router.include_router(test_api_router)`. Absent from the live app and
+      its real OpenAPI spec whenever the flag is `False` (i.e. every real
+      deployment, always).
+- [x] `.github/workflows/ci.yml`: in `heavy_api_schema_diff`'s two "Dump ...
+      OpenAPI spec" steps (PR-branch dump and main-branch dump), add
+      `env: TEST_API_ENDPOINTS_ENABLED: "true"`. This is what makes the
+      endpoints permanently diffable by oasdiff regardless of the app's real
+      default — future test rounds need zero further CI changes.
+- [x] Backend tests in `backend/tests/` (new small test file): 404 when the
+      flag is `False` (default); 200 + expected body when `True` (override
+      the settings dependency in the test).
+
+Implemented as `backend/tests/test_test_api_endpoints.py`: a config-level
+test that `TEST_API_ENDPOINTS_ENABLED` defaults to `False`; two tests using
+the standard `test_client` fixture (built from the real app, flag left at
+its default `False` in the test env, exactly matching every real
+deployment) proving both `/api/test/*` paths 404 since the routes don't
+exist at all; and two tests mounting `test_api_router` directly on a
+throwaway `FastAPI()` instance (the same way `main.py` mounts it when the
+flag is `True`) proving each endpoint's response body. This avoids a
+fragile `importlib.reload` of `app.main`/`app.config` just to flip the
+flag for a single test — the one-line conditional in `main.py` is
+self-evidently correct and is also exercised for real by CI's `--dev`
+OpenAPI dump. All 5 tests pass (`just ub -k test_test_api_endpoints`);
+ruff/black/mypy --strict/bandit/cspell all clean via `pre-commit run
+--files`. Confirmed unaffected: re-ran the full suite with our changes
+stashed out and reproduced the same pre-existing, unrelated failures
+(`test_auth.py::TestRegister::*`, `test_clinical_services.py::...
+test_patients_returns_503` — both fail against a real outbound call to an
+unreachable `fhir` host in this dev container, nothing to do with this
+change).
+
+- [x] Verify locally: `TEST_API_ENDPOINTS_ENABLED=true poetry run python
+scripts/dump_openapi.py --dev` (inside the `quill_backend` container)
+      and confirm both endpoints appear in the generated spec.
+
+The dev container only mounts `backend/` (not the whole repo), so the
+script's `--dev` file-write path (`docs/docs/code/swagger/openapi.json`,
+resolved relative to a repo root that doesn't exist inside this container)
+isn't reachable locally the way it is in CI (which checks out the full
+repo). Verified the equivalent, and more targeted, thing instead: imported
+`app.main.app` directly inside the container with
+`TEST_API_ENDPOINTS_ENABLED=true` and printed `app.openapi()["paths"]` —
+both `/api/test/non-breaking-api` and `/api/test/breaking-api` present;
+repeated with the flag unset (this container's default) — neither path
+present. Exercises the identical import/route-registration code path the
+script itself relies on.
+
+- [ ] Commit, push, open a PR, get it reviewed and merged to `main`.
+
+#### Phase 2 — no-decision-file, partial-coverage, full-coverage, gate-approve (branch off updated main; depends on Phase 1 merged; this PR merges to `main`)
+
+Branch from latest `main`. Each scenario is a separate commit; push and
+check `gh pr checks <n>` / job logs after each. **This PR merges to `main`
+once the gate-approve scenario is proven** — no revert or cleanup step:
+the decision files created along the way become a permanent, legitimate
+record of an approved (test) breaking change, exactly like a real one, and
+`TestBreakingResponse`'s mutated shape becomes the new committed baseline.
+
+- [ ] **No decision file**: mutate `TestBreakingResponse` to drop/rename its
+      one field (a `response-required-property-removed`-style change on
+      `GET /api/test/breaking-api`). Add **no** `api-compatibility/*.yaml`
+      file. Push. Expect: `API breaking-change check` job **fails** on the
+      coverage rule; capture the exact error text and whether the PR checks
+      UI surfaces it clearly. Then push a follow-up commit adding the
+      matching decision file (via `backend/scripts/new_compat_decision.py`,
+      run on host) and confirm the job goes green — proving the "add
+      decision file, push again" recovery loop works end-to-end.
+- [ ] **Partial coverage**: extend the mutation so `TestBreakingResponse` has
+      TWO breaking changes at once (e.g. drop two fields), but add a
+      decision file for only one. Push. Expect: coverage rule still fails,
+      and the error specifically names the one remaining undeclared change
+      (verifies message quality for partial misses, not just a generic
+      failure).
+- [ ] **Full coverage**: add the second matching decision file. Push.
+      Expect: `API breaking-change check` passes (`breaking=true`), Slack
+      notification fires, `API breaking-change review gate` goes to
+      `waiting`.
+- [ ] **Gate approve**: approve the `api-breaking-change-review` environment
+      deployment (via Actions UI, or `gh api -X POST
+repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
+      `state: approved`). Expect: gate job succeeds, all required checks
+      green.
+- [ ] Merge this PR to `main`.
+
+#### Phase 3 — gate-reject (separate, later PR branched off the Phase 2 merge; never merged)
+
+A fresh breaking mutation is needed here — gate approval is scoped to an
+exact commit SHA, and Phase 2 already consumed that approval on its own
+commit.
+
+- [ ] Mutate `TestBreakingResponse` again (a further field removal/rename)
+      and add its matching decision file, so `API breaking-change check`
+      passes and the gate reaches `waiting` — same recipe as Phase 2's
+      full-coverage step, just a fresh change.
+- [ ] **Gate reject**: this time, **reject** the `api-breaking-change-review`
+      environment deployment (Actions UI, or `gh api -X POST
+  repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
+      `state: rejected`). Expect: gate job fails/rejected, required check
+      red, PR correctly and permanently blocked from merging. (This path
+      has never been tested before — only approve was proven in PR #379.)
+- [ ] Since a rejected required check structurally can never merge, close
+      this PR without merging — mirrors PR #379's disposable pattern. No
+      revert/cleanup needed: nothing this PR creates ever lands on `main`.
+
+**Explicitly not to be done:** the other 8
+`validate-compat-files.sh` rules as individual test scenarios — stale
+change string, duplicate generation numbers, generation-range violation,
+editing an immutable field, deleting an existing decision file, empty
+`reason` field, non-scalar `change` field, filename-regex mismatch; the
+WARN-vs-ERR severity distinction (confirming a WARN-only oasdiff finding
+also routes through the gate, not just ERR); draft-PR/heavy-tier-skip
+behaviour (already witnessed/understood via PR #379, not re-tested).
+
 ## Part 3 — What we decided not to do
 
 - **Explicit rollback step (deploy)** — an "on failure → update-traffic to the
@@ -1414,13 +1611,20 @@ code integrates it correctly.
       a response field is removed or retyped, or a required request field is
       added, without a deprecation window; additive-only changes pass.
 
-  Not yet done — only mocked in `.bats` tests
-  (`check-api-breaking-changes.bats` stubs `oasdiff`'s exit code rather
-  than running it against real schema changes). This is the same gap item
-  15 flagged as "to be proven with a real example": a throwaway branch/PR
-  with a deliberate breaking change, run through the whole chain end-to-end
-  and never merged. **Deferred** until most of this plan's remaining items
-  are done.
+  **Proven manually via PR #379** (see item 15's write-up above): a real
+  deliberate breaking change, run through the whole chain end-to-end and
+  never merged — which additionally surfaced and fixed a genuine bug
+  (`oasdiff breaking` needs `--fail-on` or its exit code is always `0`, so
+  the gate/Slack chain could never have fired on a real breaking change
+  before this). Still no _permanent, repeatable_ test exists —
+  `check-api-breaking-changes.bats` still only stubs `oasdiff`'s exit code
+  rather than running it against real schema changes. **Follow-up planned,
+  not yet built**: a permanent pair of flag-gated dummy endpoints
+  (`TEST_BREAKING_API` / `TEST_NON_BREAKING_API`,
+  `TEST_API_ENDPOINTS_ENABLED` defaulting off) so the full chain — including
+  the no-decision-file, partial-coverage, and gate-reject paths never
+  exercised in PR #379 — can be re-run on demand without ever touching a
+  real production endpoint again.
 
 ### B. Nothing broke (regression / safety)
 
