@@ -38,12 +38,14 @@ main() {
     echo "The following breaking changes must be approved:"
     echo
 
-    if jq empty "$oasdiff_report" 2>/dev/null && [ "$(jq length "$oasdiff_report" 2>/dev/null)" -gt 0 ]; then
-      echo '```'
-      jq -r '.[] | "\(.id) \(.operation) \(.path) - \(.text)"' "$oasdiff_report" 2>/dev/null | sed 's/^/  /'
-      echo '```'
+    if ! jq empty "$oasdiff_report" 2>/dev/null; then
+      echo "Unable to parse oasdiff report as JSON (see logs above for details)."
+    elif [ "$(jq 'length' "$oasdiff_report")" -eq 0 ]; then
+      echo "oasdiff report contained no entries (see logs above for details)."
     else
-      echo "Unable to parse breaking changes from report (see logs above for details)."
+      echo '```'
+      jq -r '.[] | "\(.id) \(.operation) \(.path) - \(.text)"' "$oasdiff_report" | sed 's/^/  /'
+      echo '```'
     fi
 
     echo
