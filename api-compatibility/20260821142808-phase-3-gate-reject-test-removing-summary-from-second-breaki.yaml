@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed summary GET /api/test/breaking-api-2"
+reason: "Phase 3 gate-reject test: removing summary from second breaking endpoint"
