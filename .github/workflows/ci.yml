@@ -580,22 +580,7 @@ jobs:
 
       - name: Write breaking changes summary to job summary
         if: steps.diff.outputs.breaking == 'true'
-        run: |
-          {
-            echo "## ⚠️ Breaking API Changes Detected"
-            echo
-            echo "The following breaking changes must be approved:"
-            echo
-            if [ -f oasdiff-report.json ]; then
-              echo '```json'
-              jq '.[] | "\(.id) \(.operation) \(.path) - \(.text)"' -r oasdiff-report.json 2>/dev/null | sed 's/^/  /'
-              echo '```'
-            else
-              echo "See the oasdiff report in the logs above."
-            fi
-            echo
-            echo "**Review the changes carefully** before clicking **Review deployments** to approve."
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
 
 
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
