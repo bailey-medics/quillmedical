@@ -552,31 +552,7 @@ jobs:
       - name: Validate api-compatibility decision files
         id: validate
         working-directory: pr
-        run: |
-          set +e
-          bash .github/scripts/ci/validate-compat-files.sh \
-            ../oasdiff-report.json \
-            api-compatibility > ../validate-compat-output.txt 2>&1
-          exit_code=$?
-          set -e
-
-          # Strip ANSI colour codes (logging.sh's error() adds red) before
-          # printing or exposing as a job output - Slack renders escape codes
-          # as garbage text.
-          sed -i -E 's/\x1b\[[0-9;]*m//g' ../validate-compat-output.txt
-          cat ../validate-compat-output.txt
-
-          # Extract only the actual error messages (change IDs that lack decision
-          # files) rather than the entire verbose log. Slack message is cleaner
-          # if it shows just "response-required-property-removed GET /api/test/breaking-api"
-          # instead of all the validation step logs.
-          {
-            echo "error_output<<COMPAT_VALIDATION_EOF"
-            grep "ERROR:" ../validate-compat-output.txt | sed -E "s/.*'([^']*)'.*/\1/" || echo "[No error details found]"
-            echo "COMPAT_VALIDATION_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-          exit "$exit_code"
+        run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
 
       - name: Write breaking changes summary to job summary
         if: steps.diff.outputs.breaking == 'true'
