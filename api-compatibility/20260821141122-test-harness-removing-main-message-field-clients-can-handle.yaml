@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed message GET /api/test/breaking-api"
+reason: "Test harness: removing main message field; clients can handle missing message"
