@@ -1459,7 +1459,9 @@ repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
 
 As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
 
-- [ ] **Scenario 1 (no decision file)**: PR created, CI running. `API breaking-change check` detects the breaking change. Gate reaches WAITING or fails with coverage error. Capture the UX / error message. Add decision file via `backend/scripts/new_compat_decision.py` and push. Verify `API breaking-change check` goes green and gate goes WAITING.
+- [x] **Scenario 1 (no decision file)**: PR created, CI running. `API breaking-change check` detects the breaking change and **fails** with coverage error (gate never reached). Capture the exact error message.
+
+- [x] Add decision file via `backend/scripts/new_compat_decision.py` and push. Verify `API breaking-change check` goes green and gate goes WAITING.
 
 - [ ] **Scenario 2 (partial coverage)**: Extend mutation to TWO breaking changes (e.g. `MUTATE_REMOVE_MESSAGE_1 = True` and `MUTATE_REMOVE_DETAIL_1 = True`). Add decision file for only the first. Push. Verify `API breaking-change check` fails with specific error naming the second undeclared change (validates error message quality).
 
