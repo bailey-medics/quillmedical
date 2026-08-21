@@ -23,8 +23,8 @@ test_api_router = APIRouter(prefix="/test", tags=["test"])
 # identical env, so only an actual source diff between the two checkouts
 # gives oasdiff anything to detect.
 MUTATE_REMOVE_MESSAGE_1 = True
-MUTATE_REMOVE_DETAIL_1 = True
-MUTATE_REMOVE_SUMMARY_2 = True
+MUTATE_REMOVE_DETAIL_1 = False
+MUTATE_REMOVE_SUMMARY_2 = False
 
 
 class TestNonBreakingResponse(BaseModel):
