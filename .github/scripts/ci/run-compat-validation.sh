@@ -37,7 +37,8 @@ main() {
     exit 1
   fi
 
-  local output_file exit_code
+  local output_file
+  local exit_code
   output_file="$(mktemp)"
   trap 'rm -f "$output_file"' RETURN
 
@@ -48,6 +49,7 @@ main() {
 
   # Use a temp file + mv rather than `sed -i` for portability between GNU
   # and BSD sed (macOS ships BSD sed, whose -i requires a backup suffix arg).
+  # Remove ANSI codes.
   sed -E 's/\x1b\[[0-9;]*m//g' "$output_file" >"$output_file.clean"
   mv "$output_file.clean" "$output_file"
   cat "$output_file"

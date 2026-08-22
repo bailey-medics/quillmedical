@@ -989,7 +989,7 @@ CI — `breaking=true` was written correctly, Slack fired, and the
 further gaps found while reviewing the proof were fixed in the same PR: the
 oasdiff report is now also written to `$GITHUB_STEP_SUMMARY` on a breaking
 finding (so the approver sees exactly what changed on the same page as the
-"Review deployments" prompt, without digging through job logs), and the
+"Review pending deployments" prompt, without digging through job logs), and the
 Slack message now points the approver at the run summary and the "Review
 deployments" button rather than a bare "View Run" link. The deliberate
 schema change and its two `api-compatibility/` decision files were reverted

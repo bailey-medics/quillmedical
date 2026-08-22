@@ -23,6 +23,7 @@ setup() {
 
 @test "errors when GITHUB_STEP_SUMMARY is not set" {
   unset GITHUB_STEP_SUMMARY
+
   local report="${BATS_TEST_TMPDIR}/report.json"
   echo '[]' >"$report"
 
@@ -69,8 +70,8 @@ JSON
 
   local summary
   summary="$(cat "$GITHUB_STEP_SUMMARY")"
-  [[ "$summary" == *"no entries"* ]]
-  [[ "$summary" != *"Unable to parse"* ]]
+  [[ "$summary" == *"oasdiff report contained no entries"* ]]
+  [[ "$summary" != *"Unable to parse oasdiff report as JSON"* ]]
 }
 
 @test "reports invalid JSON as a parse failure" {
