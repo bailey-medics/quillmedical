@@ -104,15 +104,29 @@ Once CI detects `breaking=true`, GitHub Actions will pause and require approval 
 
 **What you'll see:**
 
+### Slack shows this message
+
+![Slack message stating api breakage needs an approval](./images/slack-message-api-breaking-approval.png)
+
+### Github PR looks like this
+
+![Github checks awaiting approval](./images/github-api-check-awaiting-review.png)
+
 In your PR, a new check appears: "Waiting for approval in api-breaking-change-review environment" (with a clickable link).
+
+### Approval page
 
 Click the environment link or go to **Settings** → **Environments** → **api-breaking-change-review** to see:
 
+![Github gate page](./images/github-gate.png)
+
 - Required reviewers (repo owner/author)
 - Deployment summary showing your run awaiting approval
-- A blue **Approve and deploy** button
+- A green **Approve and deploy** button
 
 **To approve:**
+
+![Github gate page modal](./images/github-gate-review-modal.png)
 
 1. Click **Approve and deploy**
 2. (Optional) add a comment explaining the business case for the breaking change
