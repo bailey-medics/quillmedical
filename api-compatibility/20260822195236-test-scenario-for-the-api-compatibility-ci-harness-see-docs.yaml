@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status"
+reason: "Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19). MUTATE_REMOVE_MESSAGE_1 removes the \"message\" field from the disposable /api/test/breaking-api endpoint for a screenshot demo of the gate-approval flow -- no client depends on it."
