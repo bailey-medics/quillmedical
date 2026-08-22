@@ -18,12 +18,8 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "run-compat-validation"
 
-# Can be overridden in tests via RUN_VALIDATOR_OVERRIDE (a shell function name).
+# Can be overridden in tests by redefining this function after sourcing.
 run_validator() {
-  if [ -n "${RUN_VALIDATOR_OVERRIDE:-}" ]; then
-    "$RUN_VALIDATOR_OVERRIDE" "$1" "$2"
-    return $?
-  fi
   bash "$(dirname "${BASH_SOURCE[0]}")/validate-compat-files.sh" "$1" "$2"
 }
 
