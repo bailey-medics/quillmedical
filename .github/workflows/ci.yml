@@ -463,8 +463,10 @@ jobs:
   # Detects an undeclared breaking change to the API contract by diffing the
   # OpenAPI spec generated from `main` against the spec generated from this
   # PR branch. See docs/docs/backend/api-compatibility.md for the full
-  # reasoning. This job always succeeds (it only detects); the downstream
-  # notify/gate jobs act on its `breaking` output.
+  # reasoning. Detecting a breaking change itself never fails this job (the
+  # downstream notify/gate jobs act on its `breaking` output) - but the
+  # api-compatibility decision-file validation step below does fail the job
+  # when coverage/schema rules are violated; see heavy_api_compat_notify.
   heavy_api_schema_diff:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
@@ -472,6 +474,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       breaking: ${{ steps.diff.outputs.breaking }}
+      compat_validation_error: ${{ steps.validate.outputs.error_output }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
@@ -547,11 +550,14 @@ jobs:
             > oasdiff-report.json || true
 
       - name: Validate api-compatibility decision files
+        id: validate
         working-directory: pr
-        run: |
-          bash .github/scripts/ci/validate-compat-files.sh \
-            ../oasdiff-report.json \
-            api-compatibility
+        run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
+
+      - name: Write breaking changes summary to job summary
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
+
 
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
   # Only runs when heavy_api_schema_diff found a breaking change - otherwise
@@ -580,15 +586,44 @@ jobs:
     with:
       channel: teaching
       text: |
-        *⚠️ Undeclared breaking API change detected*
+        *⚠️ Breaking API change requires approval*
 
-        This PR changes the API in a way that could break clients that
-        haven't updated yet. Open the run below, check its summary for
-        exactly what changed, then click *Review deployments* and approve
-        the `api-breaking-change-review` environment only if this is a
-        deliberate, staged (expand-then-contract) change.
+        This PR contains a breaking API change. Review the summary below to
+        confirm the change is intentional and staged (expand-then-contract).
+        Click *Review pending deployments* to approve the `api-breaking-change-review`
+        environment and allow the PR to proceed.
 
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
+    secrets: inherit
+
+  # ---------- Slack notification on api-compatibility validation failure ----------
+  # Fires when the "API breaking-change check" job fails - in practice this
+  # is almost always validate-compat-files.sh rejecting the PR (e.g. a
+  # breaking change with no covering decision file, or an invalid decision
+  # file). `always()` is required because a failed `needs:` job otherwise
+  # skips its dependents by default.
+  heavy_api_compat_notify:
+    name: Notify Slack of api-compatibility validation failure
+    needs: heavy_api_schema_diff
+    if: always() && needs.heavy_api_schema_diff.result == 'failure'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *🚨 api-compatibility validation failed*
+
+        The "API breaking-change check" job failed on this PR - most likely
+        `validate-compat-files.sh` rejected a breaking API change because it
+        isn't covered by a valid decision file. Open the run below to fix it
+        (see docs/docs/backend/api-compatibility.md for a walk through).
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
+        ```
+        ${{ needs.heavy_api_schema_diff.outputs.compat_validation_error }}
+        ```
     secrets: inherit

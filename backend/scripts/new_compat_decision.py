@@ -11,7 +11,10 @@ Usage: python backend/scripts/new_compat_decision.py
        (run from anywhere in the repo)
 
 Prompts interactively for:
-- oasdiff change ID and operation (e.g. "api-path-removed DELETE /api/v1/foo")
+- oasdiff change ID, operation, path and text (e.g. "response-required-
+  property-removed GET /api/v1/foo removed the required property bar") -
+  the trailing text is what differentiates two changes sharing the same
+  id/operation/path, e.g. two properties removed from one endpoint
 - Whether the change requires forced reload (y/n)
 - Reasoning for the decision (free text)
 
@@ -87,7 +90,10 @@ def read_change_and_reason() -> tuple[str, str]:
     """
     print("\nEnter the oasdiff-flagged change:")
     print(
-        "(e.g. 'api-path-removed-without-deprecation DELETE /api/v1/encounters/{id}')"
+        "(<id> <operation> <path> <text>, e.g. 'response-required-property-removed "
+        "GET /api/v1/encounters/{id} removed the required property notes' - include "
+        "the trailing text so changes to different properties on the same "
+        "endpoint don't collide)"
     )
     change = input("change> ").strip()
 

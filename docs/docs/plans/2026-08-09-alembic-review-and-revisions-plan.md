@@ -989,7 +989,7 @@ CI — `breaking=true` was written correctly, Slack fired, and the
 further gaps found while reviewing the proof were fixed in the same PR: the
 oasdiff report is now also written to `$GITHUB_STEP_SUMMARY` on a breaking
 finding (so the approver sees exactly what changed on the same page as the
-"Review deployments" prompt, without digging through job logs), and the
+"Review pending deployments" prompt, without digging through job logs), and the
 Slack message now points the approver at the run summary and the "Review
 deployments" button rather than a bare "View Run" link. The deliberate
 schema change and its two `api-compatibility/` decision files were reverted
@@ -1396,7 +1396,9 @@ repeated with the flag unset (this container's default) — neither path
 present. Exercises the identical import/route-registration code path the
 script itself relies on.
 
-- [ ] Commit, push, open a PR, get it reviewed and merged to `main`.
+- [x] Commit, push, open a PR, get it reviewed and merged to `main`.
+
+**Phase 1 Complete** (commit 23b260ea): All pre-commit checks passed (ruff, black, mypy --strict, bandit, cspell, gitleaks). Backend unit tests: all 10 tests passed (`test_test_api_endpoints.py`). Pre-existing unrelated failures remain (`test_auth.py`, `test_clinical_services.py` — FHIR connectivity issues). PR #383 merged to `main`. Baseline endpoints now live on `main`; Phase 2 ready to begin.
 
 #### Phase 2 — no-decision-file, partial-coverage, full-coverage, gate-approve (branch off updated main; depends on Phase 1 merged; this PR merges to `main`)
 
@@ -1426,6 +1428,12 @@ record of an approved (test) breaking change, exactly like a real one, and
       Expect: `API breaking-change check` passes (`breaking=true`), Slack
       notification fires, `API breaking-change review gate` goes to
       `waiting`.
+- [ ] **Gate reject**: reject the `api-breaking-change-review` environment
+      deployment for the current commit (via Actions UI). Approval/rejection
+      is scoped to an exact commit SHA, so this consumes this commit's one
+      decision. Expect: gate job fails/rejected, required check red, PR
+      blocked from merging. Push a trivial follow-up commit afterwards to
+      get a fresh pending deployment before testing gate approve below.
 - [ ] **Gate approve**: approve the `api-breaking-change-review` environment
       deployment (via Actions UI, or `gh api -X POST
 repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
@@ -1445,13 +1453,33 @@ commit.
       full-coverage step, just a fresh change.
 - [ ] **Gate reject**: this time, **reject** the `api-breaking-change-review`
       environment deployment (Actions UI, or `gh api -X POST
-  repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
+repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
       `state: rejected`). Expect: gate job fails/rejected, required check
       red, PR correctly and permanently blocked from merging. (This path
       has never been tested before — only approve was proven in PR #379.)
 - [ ] Since a rejected required check structurally can never merge, close
       this PR without merging — mirrors PR #379's disposable pattern. No
       revert/cleanup needed: nothing this PR creates ever lands on `main`.
+
+#### Human review — Phase 2 manual GitHub walkthrough
+
+As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
+
+- [x] **Scenario 1 (no decision file)**: PR created, CI running. `API breaking-change check` detects the breaking change and **fails** with coverage error (gate never reached). Capture the exact error message.
+
+- [x] Add decision file via `backend/scripts/new_compat_decision.py` and push. Verify `API breaking-change check` goes green and gate goes WAITING.
+
+- [x] **Scenario 2 (partial coverage)**: Extend mutation to TWO breaking changes (e.g. `MUTATE_REMOVE_MESSAGE_1 = True` and `MUTATE_REMOVE_DETAIL_1 = True`). Add decision file for only the first. Push. Verify `API breaking-change check` fails with specific error naming the second undeclared change (validates error message quality).
+
+- [x] **Scenario 3 (full coverage)**: Add second decision file. Push. Verify `API breaking-change check` passes, `breaking=true`, Slack notification fires, `API breaking-change review gate` transitions to WAITING.
+
+- [x] **Scenario 4 (full coverage)**: Break the second api by setting `MUTATE_REMOVE_SUMMARY_2 = True`. Push, check API check fails. Then add another decision file and push again and make sure check passes.
+
+- [x] **Scenario 5 (gate reject)**: Reject the `api-breaking-change-review` environment deployment via GitHub Actions UI. Verify gate transitions to failed/rejected and the required check is red, blocking merge. Since approval is scoped to an exact commit SHA, push a trivial follow-up commit afterwards to get a fresh pending deployment for Scenario 6.
+
+- [ ] **Scenario 6 (gate approve)**: Approve the `api-breaking-change-review` environment deployment via GitHub Actions UI (or `gh api -X POST repos/bailey-medics/quillmedical/actions/runs/{run_id}/pending_deployments` with `state: approved`). Verify gate transitions to SUCCESS, all required checks green.
+
+- [ ] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline.
 
 **Explicitly not to be done:** the other 8
 `validate-compat-files.sh` rules as individual test scenarios — stale
