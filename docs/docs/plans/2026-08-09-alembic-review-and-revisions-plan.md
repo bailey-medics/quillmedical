@@ -1,7 +1,7 @@
 # Alembic review and migration safety plan
 
 **Date:** 2026-08-09
-**Status:** Review complete; decisions made; awaiting implementation
+**Status:** Complete — all items implemented and verified
 **Scope:** `backend/alembic/` — to be reviewed during the backend human code review
 
 This document is organised in four parts:
@@ -1255,9 +1255,22 @@ squash plan file linked above.
 
 ### 18. Verify the tagged-deploy path against a real backend change
 
-- [ ] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
+- [x] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
       real `backend/**` change end-to-end in teaching (not just skipped-step
       "success").
+
+**Verified 2026-08-22** by the item 19 revert PR #386 (a genuine
+`backend/app/test_api_endpoints.py` change): `deploy.yml` run
+[32594370759](https://github.com/bailey-medics/quillmedical/actions/runs/32594370759)
+shows `Build backend`, `Run database migrations`, `Deploy backend`
+(`deploy-tagged.sh`), and `Smoke test` all ran for real and succeeded — not
+skipped. `Promote to production` correctly stayed `skipped`: it is gated on
+the `ENABLE_PRODUCTION_DEPLOY` repo variable, deliberately off while
+production is offline to save cost (see the `TODO` notes beside that job in
+`deploy.yml`), and unrelated to whether `deploy-tagged.sh` itself works —
+the same script (and its 12-char SHA tag fix from PR #368) is exercised
+identically for both teaching and production. This is the same tagged-deploy
+recipe that will run production promotion once re-enabled.
 
 Three bugs surfaced only once item 12/13's work actually tried to ship,
 none caught by pre-merge CI:
@@ -1292,7 +1305,7 @@ manual `workflow_dispatch`, only with explicit go-ahead).
 
 ### 19. Permanent API-compatibility test harness (toggle test endpoints)
 
-- [ ] Add two permanent, flag-gated dummy backend endpoints so the full
+- [x] Add two permanent, flag-gated dummy backend endpoints so the full
       oasdiff/api-compatibility chain (fixed in PR #379, item 15) can be
       re-exercised on demand, without ever touching a real production
       schema again.
@@ -1409,16 +1422,23 @@ the decision files created along the way become a permanent, legitimate
 record of an approved (test) breaking change, exactly like a real one, and
 `TestBreakingResponse`'s mutated shape becomes the new committed baseline.
 
-> **Update (2026-08-22)**: this was revisited — see PR
-> `fix/revert-test-harness-mutations`. All three mutation flags were reverted
-> to `False` and the 3 decision files created during this phase were deleted,
-> restoring the harness to its reusable/disposable-by-default state for
-> future test rounds. Deleting existing decision files required a temporary,
+> **Update (2026-08-22)**: this was revisited — see PR #386 (revert) and
+> PR #387 (restore). All three mutation flags were reverted to `False` and
+> the 3 decision files created during this phase were deleted, restoring
+> the harness to its reusable/disposable-by-default state for future test
+> rounds. Deleting existing decision files required a temporary,
 > clearly-commented bypass of `validate-compat-files.sh`'s
 > `validate_no_deletions` rule (its call in `main()` commented out), restored
 > again in an immediate follow-up PR — never a permanent exemption.
+>
+> - [x] Revert `MUTATE_REMOVE_MESSAGE_1`/`MUTATE_REMOVE_DETAIL_1`/`MUTATE_REMOVE_SUMMARY_2` to `False` (PR #386).
+> - [x] Delete the 3 test-harness decision files (PR #386).
+> - [x] Temporarily bypass `validate_no_deletions` with an audit-trail comment (PR #386).
+> - [x] Update this plan doc and `api-compatibility-testing.md` (PR #386).
+> - [x] Restore the `validate_no_deletions` call (PR #387).
+> - [x] Both PRs merged to `main`; local branches cleaned up.
 
-- [ ] **No decision file**: mutate `TestBreakingResponse` to drop/rename its
+- [x] **No decision file**: mutate `TestBreakingResponse` to drop/rename its
       one field (a `response-required-property-removed`-style change on
       `GET /api/test/breaking-api`). Add **no** `api-compatibility/*.yaml`
       file. Push. Expect: `API breaking-change check` job **fails** on the
@@ -1427,48 +1447,37 @@ record of an approved (test) breaking change, exactly like a real one, and
       matching decision file (via `backend/scripts/new_compat_decision.py`,
       run on host) and confirm the job goes green — proving the "add
       decision file, push again" recovery loop works end-to-end.
-- [ ] **Partial coverage**: extend the mutation so `TestBreakingResponse` has
+- [x] **Partial coverage**: extend the mutation so `TestBreakingResponse` has
       TWO breaking changes at once (e.g. drop two fields), but add a
       decision file for only one. Push. Expect: coverage rule still fails,
       and the error specifically names the one remaining undeclared change
       (verifies message quality for partial misses, not just a generic
       failure).
-- [ ] **Full coverage**: add the second matching decision file. Push.
+- [x] **Full coverage**: add the second matching decision file. Push.
       Expect: `API breaking-change check` passes (`breaking=true`), Slack
       notification fires, `API breaking-change review gate` goes to
       `waiting`.
-- [ ] **Gate reject**: reject the `api-breaking-change-review` environment
+- [x] **Gate reject**: reject the `api-breaking-change-review` environment
       deployment for the current commit (via Actions UI). Approval/rejection
       is scoped to an exact commit SHA, so this consumes this commit's one
       decision. Expect: gate job fails/rejected, required check red, PR
       blocked from merging. Push a trivial follow-up commit afterwards to
       get a fresh pending deployment before testing gate approve below.
-- [ ] **Gate approve**: approve the `api-breaking-change-review` environment
+- [x] **Gate approve**: approve the `api-breaking-change-review` environment
       deployment (via Actions UI, or `gh api -X POST
 repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
       `state: approved`). Expect: gate job succeeds, all required checks
       green.
-- [ ] Merge this PR to `main`.
+- [x] Merge this PR to `main`.
 
-#### Phase 3 — gate-reject (separate, later PR branched off the Phase 2 merge; never merged)
+#### Phase 3 — gate-reject (superseded, not needed)
 
-A fresh breaking mutation is needed here — gate approval is scoped to an
-exact commit SHA, and Phase 2 already consumed that approval on its own
-commit.
-
-- [ ] Mutate `TestBreakingResponse` again (a further field removal/rename)
-      and add its matching decision file, so `API breaking-change check`
-      passes and the gate reaches `waiting` — same recipe as Phase 2's
-      full-coverage step, just a fresh change.
-- [ ] **Gate reject**: this time, **reject** the `api-breaking-change-review`
-      environment deployment (Actions UI, or `gh api -X POST
-repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
-      `state: rejected`). Expect: gate job fails/rejected, required check
-      red, PR correctly and permanently blocked from merging. (This path
-      has never been tested before — only approve was proven in PR #379.)
-- [ ] Since a rejected required check structurally can never merge, close
-      this PR without merging — mirrors PR #379's disposable pattern. No
-      revert/cleanup needed: nothing this PR creates ever lands on `main`.
+Originally planned as a separate, later PR to prove the gate-**reject**
+path (never tested before, only approve was proven in PR #379). **Superseded**:
+Scenario 5 in the Phase 2 human-review walkthrough below tested gate-reject
+directly, on Phase 2's own commit, before moving on to gate-approve on a
+fresh follow-up commit — proving both reject and approve without a separate
+PR. A dedicated Phase 3 PR is therefore unnecessary.
 
 #### Human review — Phase 2 manual GitHub walkthrough
 
@@ -1486,9 +1495,9 @@ As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
 
 - [x] **Scenario 5 (gate reject)**: Reject the `api-breaking-change-review` environment deployment via GitHub Actions UI. Verify gate transitions to failed/rejected and the required check is red, blocking merge. Since approval is scoped to an exact commit SHA, push a trivial follow-up commit afterwards to get a fresh pending deployment for Scenario 6.
 
-- [ ] **Scenario 6 (gate approve)**: Approve the `api-breaking-change-review` environment deployment via GitHub Actions UI (or `gh api -X POST repos/bailey-medics/quillmedical/actions/runs/{run_id}/pending_deployments` with `state: approved`). Verify gate transitions to SUCCESS, all required checks green.
+- [x] **Scenario 6 (gate approve)**: Approve the `api-breaking-change-review` environment deployment via GitHub Actions UI (or `gh api -X POST repos/bailey-medics/quillmedical/actions/runs/{run_id}/pending_deployments` with `state: approved`). Verify gate transitions to SUCCESS, all required checks green.
 
-- [ ] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline. (Later reverted — see the Update note above the Phase 2 section.)
+- [x] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline. (Later reverted — see the Update note above the Phase 2 section.)
 
 **Explicitly not to be done:** the other 8
 `validate-compat-files.sh` rules as individual test scenarios — stale
@@ -1644,24 +1653,21 @@ code integrates it correctly.
   superseded by `StatusStrip`'s `updating` variant (see the sub-plan's
   "consolidate status strip components" follow-up).
 
-- [ ] **API compatibility window** — a contract / schema-snapshot test fails when
+- [x] **API compatibility window** — a contract / schema-snapshot test fails when
       a response field is removed or retyped, or a required request field is
       added, without a deprecation window; additive-only changes pass.
 
-  **Proven manually via PR #379** (see item 15's write-up above): a real
-  deliberate breaking change, run through the whole chain end-to-end and
-  never merged — which additionally surfaced and fixed a genuine bug
-  (`oasdiff breaking` needs `--fail-on` or its exit code is always `0`, so
-  the gate/Slack chain could never have fired on a real breaking change
-  before this). Still no _permanent, repeatable_ test exists —
-  `check-api-breaking-changes.bats` still only stubs `oasdiff`'s exit code
-  rather than running it against real schema changes. **Follow-up planned,
-  not yet built**: a permanent pair of flag-gated dummy endpoints
-  (`TEST_BREAKING_API` / `TEST_NON_BREAKING_API`,
-  `TEST_API_ENDPOINTS_ENABLED` defaulting off) so the full chain — including
-  the no-decision-file, partial-coverage, and gate-reject paths never
-  exercised in PR #379 — can be re-run on demand without ever touching a
-  real production endpoint again.
+  **Proven manually via PR #379** (see item 15's write-up above), then **built
+  as a permanent harness via item 19**: two flag-gated dummy endpoints
+  (`test_api_endpoints.py`, `TEST_API_ENDPOINTS_ENABLED`) exercised the
+  no-decision-file, partial-coverage, full-coverage, gate-reject, and
+  gate-approve paths end-to-end (PR #385), then reverted to a clean baseline
+  afterwards (PRs #386/#387) so the harness stays reusable for future rounds.
+  A further disposable demo (PR #388, closed unmerged) captured gate-approval
+  screenshots now in `docs/docs/backend/api-compatibility-testing.md` (PR
+  #389). `check-api-breaking-changes.bats` still only stubs `oasdiff`'s exit
+  code rather than running it against real schema changes — acceptable, since
+  the harness above already proves the real end-to-end chain on demand.
 
 ### B. Nothing broke (regression / safety)
 
