@@ -1409,6 +1409,15 @@ the decision files created along the way become a permanent, legitimate
 record of an approved (test) breaking change, exactly like a real one, and
 `TestBreakingResponse`'s mutated shape becomes the new committed baseline.
 
+> **Update (2026-08-22)**: this was revisited — see PR
+> `fix/revert-test-harness-mutations`. All three mutation flags were reverted
+> to `False` and the 3 decision files created during this phase were deleted,
+> restoring the harness to its reusable/disposable-by-default state for
+> future test rounds. Deleting existing decision files required a temporary,
+> clearly-commented bypass of `validate-compat-files.sh`'s
+> `validate_no_deletions` rule (its call in `main()` commented out), restored
+> again in an immediate follow-up PR — never a permanent exemption.
+
 - [ ] **No decision file**: mutate `TestBreakingResponse` to drop/rename its
       one field (a `response-required-property-removed`-style change on
       `GET /api/test/breaking-api`). Add **no** `api-compatibility/*.yaml`
@@ -1479,7 +1488,7 @@ As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
 
 - [ ] **Scenario 6 (gate approve)**: Approve the `api-breaking-change-review` environment deployment via GitHub Actions UI (or `gh api -X POST repos/bailey-medics/quillmedical/actions/runs/{run_id}/pending_deployments` with `state: approved`). Verify gate transitions to SUCCESS, all required checks green.
 
-- [ ] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline.
+- [ ] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline. (Later reverted — see the Update note above the Phase 2 section.)
 
 **Explicitly not to be done:** the other 8
 `validate-compat-files.sh` rules as individual test scenarios — stale
