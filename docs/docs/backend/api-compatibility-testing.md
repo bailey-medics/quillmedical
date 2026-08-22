@@ -272,9 +272,7 @@ git branch -D feature/test-api-compat
 git push origin --delete feature/test-api-compat
 ```
 
-Also flip the mutation constant in `test_api_endpoints.py` back to `False` on `main` if it was ever merged there by mistake — it must stay off outside a deliberate test round.
-
-Note: the actual Phase 2 test round tracked in [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) does the opposite deliberately — its branch merges to `main` once the gate-approve scenario is proven, so the decision files and the mutated harness become the new permanent baseline rather than being reverted.
+Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on `main`, and delete the decision file(s) created for the test round, so the harness stays reusable for future demos. Deleting a decision file requires a temporary bypass of the `validate_no_deletions` CI rule (comment out its call in `validate-compat-files.sh`'s `main()`), restored again in an immediate follow-up PR — see [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) for the worked example from the Phase 2 test round.
 
 ## Common errors and fixes
 
