@@ -33,7 +33,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "validate-compat-fi
 
 # Configuration
 OASDIFF_JSON="${1:-}"
-COMPAT_DIR="${2:-.}/api-compatibility"
+COMPAT_DIR="${2:-./api-compatibility}"
 GIT_MAIN_BRANCH="${GIT_MAIN_BRANCH:-main}"
 
 # State
@@ -103,7 +103,17 @@ is_yaml_list() {
 }
 
 # Parse oasdiff JSON output to extract flagged change strings.
-# Expects format: { "changes": [ { "change": "api-path-removed GET /path", ... }, ... ] }
+#
+# `oasdiff breaking --format json` emits a bare JSON array of change objects
+# (not a { "changes": [...] } wrapper), each with an "id" field (the check ID,
+# e.g. "response-required-property-removed"), a "text" field (human-readable
+# detail, e.g. "removed the required property message" - the ONLY field that
+# differentiates two changes with the same id/operation/path, such as two
+# properties removed from the same endpoint) and, for path-scoped changes,
+# "operation" and "path" fields - see
+# https://github.com/oasdiff/oasdiff/blob/main/formatters/changes.go.
+# Decision files record the change as "<id> <operation> <path> <text>" (see
+# backend/scripts/new_compat_decision.py), so rebuild that same string here.
 parse_oasdiff_changes() {
   local oasdiff_file="$1"
 
@@ -112,13 +122,35 @@ parse_oasdiff_changes() {
     return 1
   fi
 
-  # Extract change strings using grep/sed (no jq dependency in CI scripts)
-  # Pattern: "change": "api-path-removed GET /path"
-  while IFS= read -r line; do
-    if [[ "$line" =~ \"change\":[[:space:]]*\"([^\"]+)\" ]]; then
-      OASDIFF_CHANGES+=("${BASH_REMATCH[1]}")
+  if ! command -v jq >/dev/null 2>&1; then
+    fail "jq is required to parse oasdiff JSON output but was not found on PATH"
+    return 1
+  fi
+
+  local content
+  content=$(cat "$oasdiff_file")
+
+  # oasdiff may write nothing at all if the CLI invocation failed upstream
+  # (e.g. piped through `|| true`); treat that as "no changes" rather than a
+  # parse failure.
+  if [ -z "$content" ]; then
+    return 0
+  fi
+
+  local jq_output
+
+  if ! jq_output=$(jq -r \
+    '.[] | [.id, .operation, .path, .text] | map(select(. != null and . != "")) | join(" ")' \
+    <<<"$content" 2>&1); then
+    fail "Failed to parse oasdiff JSON output as a JSON array: $jq_output"
+    return 1
+  fi
+
+  while IFS= read -r change_str; do
+    if [ -n "$change_str" ]; then
+      OASDIFF_CHANGES+=("$change_str")
     fi
-  done < "$oasdiff_file"
+  done <<< "$jq_output"
 }
 
 # Get all new files added in this PR compared to main branch.

@@ -111,7 +111,7 @@ docs:
     {{initialise}} "docs"
     # Copy prompts to docs for inclusion in MkDocs build
     mkdir -p docs/docs/llm/prompts
-    cp -r prompts/* docs/docs/llm/prompts/
+    cp -r .github/prompts/* docs/docs/llm/prompts/
     cd frontend
     yarn docs:build
     yarn storybook:build

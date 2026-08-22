@@ -489,3 +489,105 @@ EOF
   run validate_generation_range
   [[ "$status" -eq 0 ]]
 }
+
+# ============================================================================
+# parse_oasdiff_changes: parsing real oasdiff `--format json` output
+#
+# oasdiff emits a bare JSON array of change objects (not a
+# { "changes": [...] } wrapper), each with an "id" field, a "text" field
+# (human-readable detail - the only field distinguishing two changes sharing
+# the same id/operation/path, e.g. two properties removed from one endpoint)
+# and, for path-scoped changes, "operation"/"path" fields - see
+# https://github.com/oasdiff/oasdiff/blob/main/formatters/changes.go. It is
+# also compact (single-line, no indentation), since it goes through Go's
+# json.Marshal with no indent option.
+# ============================================================================
+
+@test "parse_oasdiff_changes: parses a compact single-line array (real oasdiff shape)" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  echo -n '[{"id":"response-required-property-removed","text":"removed the required property message","level":3,"operation":"GET","operationId":"getBreaking","path":"/api/test/breaking-api","section":"response"},{"id":"api-path-removed-without-deprecation","text":"api path removed","level":3,"operation":"DELETE","path":"/api/v1/foo","section":"paths"}]' > "$oasdiff_file"
+
+  parse_oasdiff_changes "$oasdiff_file"
+
+  [[ "${#OASDIFF_CHANGES[@]}" -eq 2 ]]
+  [[ "${OASDIFF_CHANGES[0]}" == "response-required-property-removed GET /api/test/breaking-api removed the required property message" ]]
+  [[ "${OASDIFF_CHANGES[1]}" == "api-path-removed-without-deprecation DELETE /api/v1/foo api path removed" ]]
+}
+
+@test "parse_oasdiff_changes: parses a pretty-printed (multi-line) array too" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  cat > "$oasdiff_file" <<'EOF'
+[
+  {
+    "id": "response-required-property-removed",
+    "operation": "GET",
+    "path": "/api/test/breaking-api",
+    "text": "removed the required property message"
+  }
+]
+EOF
+
+  parse_oasdiff_changes "$oasdiff_file"
+
+  [[ "${#OASDIFF_CHANGES[@]}" -eq 1 ]]
+  [[ "${OASDIFF_CHANGES[0]}" == "response-required-property-removed GET /api/test/breaking-api removed the required property message" ]]
+}
+
+@test "parse_oasdiff_changes: empty array yields no changes" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  echo -n '[]' > "$oasdiff_file"
+
+  parse_oasdiff_changes "$oasdiff_file"
+
+  [[ "${#OASDIFF_CHANGES[@]}" -eq 0 ]]
+}
+
+@test "parse_oasdiff_changes: empty file (upstream oasdiff failure) yields no changes, not an error" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  : > "$oasdiff_file"
+
+  run parse_oasdiff_changes "$oasdiff_file"
+  [[ "$status" -eq 0 ]]
+  [[ "${#OASDIFF_CHANGES[@]}" -eq 0 ]]
+}
+
+@test "parse_oasdiff_changes: change without operation/path (e.g. a component-level change) uses id+text" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  echo -n '[{"id":"api-schema-removed","text":"schema removed"}]' > "$oasdiff_file"
+
+  parse_oasdiff_changes "$oasdiff_file"
+
+  [[ "${#OASDIFF_CHANGES[@]}" -eq 1 ]]
+  [[ "${OASDIFF_CHANGES[0]}" == "api-schema-removed schema removed" ]]
+}
+
+@test "parse_oasdiff_changes: fails cleanly on malformed JSON" {
+  local oasdiff_file="$BATS_TEST_TMPDIR/oasdiff-report.json"
+  echo -n 'not valid json' > "$oasdiff_file"
+
+  run parse_oasdiff_changes "$oasdiff_file"
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"Failed to parse oasdiff JSON output"* ]]
+}
+
+@test "parse_oasdiff_changes: fails when oasdiff file does not exist" {
+  run parse_oasdiff_changes "$BATS_TEST_TMPDIR/does-not-exist.json"
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == *"not found"* ]]
+}
+
+# ============================================================================
+# COMPAT_DIR argument resolution (regression test for path-doubling bug)
+# ============================================================================
+
+@test "COMPAT_DIR: resolves to the given directory as-is, not doubled" {
+  # Simulates the real CI call site (working-directory: pr; args: ... api-compatibility),
+  # where $2 is already the path to the api-compatibility directory itself.
+  run bash -c "source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 'api-compatibility' 2>/dev/null; echo \"\$COMPAT_DIR\""
+  [[ "$output" == "api-compatibility" ]]
+}
+
+@test "COMPAT_DIR: defaults to ./api-compatibility when no second argument is given" {
+  run bash -c "source '${BATS_TEST_DIRNAME}/validate-compat-files.sh' 'oasdiff.json' 2>/dev/null; echo \"\$COMPAT_DIR\""
+  [[ "$output" == "./api-compatibility" ]]
+}
