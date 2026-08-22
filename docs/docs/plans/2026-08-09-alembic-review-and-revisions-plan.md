@@ -1,7 +1,7 @@
 # Alembic review and migration safety plan
 
 **Date:** 2026-08-09
-**Status:** Review complete; decisions made; awaiting implementation
+**Status:** Complete — all items implemented and verified
 **Scope:** `backend/alembic/` — to be reviewed during the backend human code review
 
 This document is organised in four parts:
@@ -1255,9 +1255,22 @@ squash plan file linked above.
 
 ### 18. Verify the tagged-deploy path against a real backend change
 
-- [ ] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
+- [x] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
       real `backend/**` change end-to-end in teaching (not just skipped-step
       "success").
+
+**Verified 2026-08-22** by the item 19 revert PR #386 (a genuine
+`backend/app/test_api_endpoints.py` change): `deploy.yml` run
+[32594370759](https://github.com/bailey-medics/quillmedical/actions/runs/32594370759)
+shows `Build backend`, `Run database migrations`, `Deploy backend`
+(`deploy-tagged.sh`), and `Smoke test` all ran for real and succeeded — not
+skipped. `Promote to production` correctly stayed `skipped`: it is gated on
+the `ENABLE_PRODUCTION_DEPLOY` repo variable, deliberately off while
+production is offline to save cost (see the `TODO` notes beside that job in
+`deploy.yml`), and unrelated to whether `deploy-tagged.sh` itself works —
+the same script (and its 12-char SHA tag fix from PR #368) is exercised
+identically for both teaching and production. This is the same tagged-deploy
+recipe that will run production promotion once re-enabled.
 
 Three bugs surfaced only once item 12/13's work actually tried to ship,
 none caught by pre-merge CI:
