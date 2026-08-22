@@ -95,6 +95,7 @@ clinical/NHS go-live.
 ## Documentation
 
 - [ ] Create `.github/instructions/backend.instructions.md` scoped to `backend/**` with Alembic expand-contract rules
+- [ ] [https://bailey-medics.com/quillmedical/](https://bailey-medics.com/quillmedical/) needs a favicon.
 
 ## Public site
 
