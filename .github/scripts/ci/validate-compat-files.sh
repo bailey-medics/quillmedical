@@ -554,7 +554,7 @@ main() {
   validate_change_is_scalar
   validate_immutability
   # Temporarily bypassed to allow deleting the 3 disposable test-harness decision
-  # files in fix/revert-test-harness-mutations; restored in the immediate
+  # files in feature/revert-test-harness-mutations; restored in the immediate
   # follow-up PR. See docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md.
   # validate_no_deletions
   validate_filename_regex
