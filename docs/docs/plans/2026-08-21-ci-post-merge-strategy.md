@@ -1,7 +1,7 @@
 # CI post-merge strategy: require rebase-before-merge
 
 **Date:** 2026-08-21
-**Status:** Planning
+**Status:** Complete — all items implemented and verified
 **Scope:** `.github/workflows/ci.yml` and branch protection rules
 **Problem:** CI only runs on PRs (non-draft, targeting main). After merge, no tests re-run against the merge commit — silent integration bugs can slip through to deploy.
 
