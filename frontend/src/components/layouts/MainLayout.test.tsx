@@ -107,10 +107,22 @@ vi.mock("@components/offline-modal/OfflineModal", () => ({
   default: () => null,
 }));
 
+const mockLocation: { pathname: string } = { pathname: "/" };
+
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/" }),
+  useLocation: () => mockLocation,
 }));
+
+const mockIsSm: { value: boolean } = { value: false };
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return {
+    ...actual,
+    useMediaQuery: () => mockIsSm.value,
+  };
+});
 
 const mockConnectivity: {
   isOnline: boolean;
@@ -191,6 +203,8 @@ describe("MainLayout", () => {
     mockConnectivity.isReconnected = false;
     mockConnectivity.lastSyncedAt = null;
     mockForcedReload.phase = "idle";
+    mockLocation.pathname = "/";
+    mockIsSm.value = false;
   });
 
   describe("Basic rendering", () => {
@@ -419,6 +433,35 @@ describe("MainLayout", () => {
       );
       expect(hasDesktopNav).toBe(true);
     });
+
+    it("shows mobile nav search on ordinary pages", () => {
+      mockIsSm.value = true;
+      mockLocation.pathname = "/messages";
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const sideNav = screen.getByTestId("side-nav");
+      expect(sideNav).toHaveAttribute("data-show-search", "true");
+    });
+
+    it.each(["/settings", "/settings/account", "/admin", "/admin/users"])(
+      "hides mobile nav search on %s (not yet wired up)",
+      (pathname) => {
+        mockIsSm.value = true;
+        mockLocation.pathname = pathname;
+        renderWithMantine(
+          <MainLayout patient={null}>
+            <div>Content</div>
+          </MainLayout>,
+        );
+
+        const sideNav = screen.getByTestId("side-nav");
+        expect(sideNav).toHaveAttribute("data-show-search", "false");
+      },
+    );
   });
 
   describe("Content rendering", () => {

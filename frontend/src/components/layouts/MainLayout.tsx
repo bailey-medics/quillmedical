@@ -94,6 +94,12 @@ export default function MainLayout({
     mainRef.current?.scrollTo?.(0, 0);
   }, [location.pathname]);
 
+  // Search isn't hooked up to settings/admin pages yet — hide the mobile
+  // nav drawer's search field there.
+  const isSearchDisabledRoute =
+    location.pathname.startsWith("/settings") ||
+    location.pathname.startsWith("/admin");
+
   // Connectivity state for offline strip/modal
   const {
     isOnline,
@@ -210,7 +216,7 @@ export default function MainLayout({
           >
             <div style={{ width: LAYOUT_SIDEBAR_WIDTH }}>
               <SideNav
-                showSearch={isSm}
+                showSearch={isSm && !isSearchDisabledRoute}
                 showIcons
                 onNavigate={close}
                 patientNav={patientNav}
