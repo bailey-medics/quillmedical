@@ -36,6 +36,8 @@ on:
 
 Running heavy E2E tests post-merge is expensive (15–20 min per merge). We could do it, but it's wasteful: if all tests passed in the PR (which ran minutes earlier on nearly identical code), running them again is just duplicating effort. **The real fix is to guarantee the PR tests run against the actual final merge state.**
 
+**Decision: no CI runs on `main` at all** (not even a fast-tier sanity check). Merges are gated entirely pre-merge: branch protection requires the PR branch to be rebased onto (up to date with) `main`, and all required checks — fast and heavy tier — must pass on that rebased branch before the merge button unlocks. Once that gate passes, the merge commit is guaranteed to be `main` HEAD + already-tested commits, so no further test run is needed or triggered.
+
 ### Why rebasing solves this
 
 If a PR is **rebased onto main before merge**, the PR tests run against `main + your commits`. Any incompatibilities surface during that rebase + test run. The merge then has the guarantee: "this code was tested against the exact version of main it's merging into."
@@ -57,8 +59,8 @@ If a PR is **rebased onto main before merge**, the PR tests run against `main + 
    - For follow-on work, create a fresh branch from updated main
 
 3. **CI benefit:** All test combinations guaranteed
-   - PR tests run on `main + your commits`
-   - When merged, no new test run needed
+   - PR tests (fast + heavy tier) run on `main + your commits`
+   - When merged, no new test run needed — CI does not run on `main` pushes at all
    - Merge commit is atomic with already-tested code
 
 ---
@@ -96,43 +98,31 @@ The safest CI strategy is only as good as developers understand when to rebase a
 
 ## Part 2 — What we'll do
 
-### 1. Update `.github/workflows/ci.yml` — allow main pushes (fast tier only)
+### 1. `.github/workflows/ci.yml` — no change needed
 
-- [x] Remove `branches-ignore: [main]` from the `push` trigger
-- [x] Ensure fast-tier jobs run on main pushes (pre-commit, unit tests, Alembic drift check, shell checks, version consistency)
-- [x] Keep heavy tier restricted to PRs (they're expensive; rebase-before-merge guarantees testing before merge)
+- [x] Confirmed `branches-ignore: [main]` stays on the `push` trigger — CI does not run on `main` at all
+- [x] Confirmed fast-tier jobs are unaffected (they continue to run on every push to non-main branches)
+- [x] Confirmed heavy tier stays restricted to PRs
 
-**Rationale:** After merge, fast tier provides a sanity check (no new linting errors, no broken imports). Heavy tier already ran on the PR. This is cheap insurance, not duplication.
+**Rationale:** Rebase-before-merge (enforced by branch protection, below) guarantees both fast and heavy tier already passed against `main + your commits` before the merge button unlocks. A post-merge run — even a cheap fast-tier one — would be pure duplication with no new information, since the merge commit's tree is identical to what was just tested.
 
 **Tier details:**
 
 - **Fast tier** (fast-tier, every push): `python_checks: [pre-commit, unit]`, `alembic_drift_check`, `typescript_checks`, `shell_checks`, `version_consistency`
 - **Heavy tier** (PR only): `heavy_storybook_tests`, `heavy_semgrep`, `heavy_e2e_images`, `heavy_e2e`
 
-### 2. Configure GitHub branch protection rule — require up-to-date branches
+### 2. GitHub branch protection rule — require up-to-date branches
 
-In `infra/github/branch_rules.tf`:
-
-```hcl
-# Branch protection rule for 'main'
-resource "github_branch_protection" "main" {
-  repository_id            = github_repository.quillmedical.name
-  pattern                  = "main"
-  require_status_checks    = true
-  require_branches_up_to_date_before_merge = true  # ← New
-
-  required_status_checks = [
-    "Python pre-commit",
-    "Python unit tests",
-    "Alembic autogenerate drift check",
-    # ... existing checks
-  ]
-
-  dismiss_stale_reviews           = false
-  require_code_owner_reviews      = false  # Adjust per policy
-  require_conversation_resolution = true
-}
-```
+**Already in place — no Terraform change needed.** This repo uses the modern
+GitHub Repository Rulesets model (`github_repository_ruleset`), not the
+classic `github_branch_protection` resource. The ruleset equivalent of
+"require branches up to date before merging" is
+`strict_required_status_checks_policy`, already set to `true` in
+[`infra/github/branch_rules.tf`](../../../infra/github/branch_rules.tf) inside
+`github_repository_ruleset.protected_branches`'s `required_status_checks`
+block (predates this plan — introduced alongside the API expand-contract
+compatibility check). Confirmed via `terraform plan`: no drift between the
+`.tf` file and the live GitHub state.
 
 **Effect:** If a PR is behind main when someone tries to merge, GitHub disables the merge button and shows: "This branch is behind the base branch. Update it to compare and merge."
 
@@ -222,11 +212,9 @@ In `.github/pull_request_template.md` or `CONTRIBUTING.md`:
 
 ## Part 3 — Rollout sequence
 
-1. **Update CI workflow** to allow main pushes (10 min, low risk)
-2. **Apply branch protection rule** via Terraform (5 min)
-3. **Announce to team** — send a message explaining the new requirement + link to docs
-4. **Update docs** with clear workflow guide
-5. **Monitor first few merges** — ensure rebase happens, tests re-run, no gotchas
+1. **Announce to team** — send a message explaining the requirement (branch protection already enforces it) + link to docs
+2. **Update docs** with clear workflow guide
+3. **Monitor first few merges** — ensure rebase happens, checks pass pre-merge, no gotchas
 
 ---
 
@@ -266,7 +254,7 @@ Once the branch is rebased and up to date:
 
 ✅ **Testing guarantee:** All code combinations tested before merge
 ✅ **No silent incompatibilities:** Rebase-before-merge forces detection
-✅ **No duplicate test runs:** Heavy tier doesn't re-run post-merge
+✅ **No duplicate test runs:** No CI run of any kind on `main` — nothing re-runs post-merge
 ✅ **Clean history:** Rebases prevent merge-commit noise
 ✅ **Clear workflow:** Developers know when/how to rebase
 
@@ -275,7 +263,7 @@ Once the branch is rebased and up to date:
 - PR review + approval flow
 - Deploy workflow
 - Test coverage (if anything, more thorough)
-- CI job list (just running on different triggers)
+- CI job list and triggers (`.github/workflows/ci.yml` is unchanged)
 
 ### What developers need to know
 
@@ -288,11 +276,9 @@ Once the branch is rebased and up to date:
 
 ## Checklist
 
-- [ ] Remove `branches-ignore: [main]` from `.github/workflows/ci.yml`
-- [ ] Verify fast-tier jobs will run on main pushes
-- [ ] Update `infra/github/branch_rules.tf` to require up-to-date branches
-- [ ] Apply Terraform changes
-- [ ] Create `.github/instructions/ci.instructions.md` with workflow guide
+- [x] Confirm `.github/workflows/ci.yml` needs no change — `branches-ignore: [main]` stays, no CI runs on main
+- [x] Confirm `infra/github/branch_rules.tf` already requires up-to-date branches (`strict_required_status_checks_policy = true`, pre-existing, verified live via `terraform plan` — no drift)
+- [x] Create `.github/instructions/ci.instructions.md` with workflow guide (synced to `.claude/rules/ci.md`)
 - [ ] Update `docs/docs/cicd/rebase-before-merge.md` with rationale + how-to
 - [ ] Update `.github/pull_request_template.md` with rebase reminder
 - [ ] Announce to team + point to docs

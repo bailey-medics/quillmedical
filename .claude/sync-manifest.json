@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-08-22T20:32:02Z",
+  "lastRun": "2026-08-22T21:19:09Z",
   "notes": [
     "Targets marked targetRenamed:true deliberately do not use the default source-derived filename. A .claude/commands/<file>.md is invoked by its FILENAME (frontmatter 'name' is only a display label), so the Copilot 'name:' values were used as the filenames to preserve /crp and /e.",
     "Do NOT add disable-model-invocation:true to .claude/commands/*.md. It removes the command from the registry entirely, so the user gets \"no matching command\" when typing the slash command. Restraint on side-effecting commands comes from CLAUDE.md and the prompt body, not this flag.",
@@ -21,6 +21,13 @@
       "sourceSha256": "9d1505d2385c9b52be29582b3158075d63e18c4a8ad78832e54b85c963b4a4c4",
       "targetSha256": "5bf477622b39f09dad67887fdd833fd20d07e7474996b162c745f48dab7169eb",
       "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/instructions/ci.instructions.md",
+      "target": ".claude/rules/ci.md",
+      "sourceSha256": "28847283282e41aa0cb51e6211d037b48175951cbaad5f50df4f578fd7734306",
+      "targetSha256": "979ee50fdda6927fb5bfb98c517b3ee53b616e1865de58b4752ce52a0fe08a9a",
+      "syncedAt": "2026-08-22T21:19:09Z"
     },
     {
       "source": ".github/instructions/components.instructions.md",
