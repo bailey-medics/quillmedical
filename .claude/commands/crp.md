@@ -1,6 +1,8 @@
 ---
 description: Commit, rebase, and push code
 argument-hint: "[repo: tooling|eoeeta|resp|all]"
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git -C *)
+
 model: haiku
 ---
 
@@ -10,13 +12,13 @@ model: haiku
 
 The user may specify a repo name after the command (e.g. `/crp eoeeta`). Use this mapping:
 
-| Argument | Repository path |
-|----------|----------------|
-| *(none)* | `/Users/markbailey/github/quillmedical` |
-| `tooling` | `/Users/markbailey/github/quillmedical/teaching-tooling` |
-| `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching` |
-| `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
-| `all` | *all of the above repos* |
+| Argument  | Repository path                                                             |
+| --------- | --------------------------------------------------------------------------- |
+| _(none)_  | `/Users/markbailey/github/quillmedical`                                     |
+| `tooling` | `/Users/markbailey/github/quillmedical/teaching-tooling`                    |
+| `eoeeta`  | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching`      |
+| `resp`    | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
+| `all`     | _all of the above repos_                                                    |
 
 The argument supplied to this command is: `$ARGUMENTS`
 

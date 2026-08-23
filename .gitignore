@@ -33,3 +33,6 @@ __pycache__/
 
 # Stray Yarn state (no Yarn project at repo root; real project is in frontend/)
 /.yarn/
+
+# eslint
+.eslintcache
