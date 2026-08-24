@@ -17,7 +17,6 @@ from app.cbac.competencies import (
     ClinicalCompetency,
     CompetencyId,
     get_competency_details,
-    get_competency_risk_level,
     is_valid_competency,
 )
 
@@ -26,7 +25,6 @@ __all__ = [
     "ClinicalCompetency",
     "get_competency_details",
     "is_valid_competency",
-    "get_competency_risk_level",
     "COMPETENCY_IDS",
     "BaseProfessionId",
     "get_profession_details",

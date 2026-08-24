@@ -15,7 +15,6 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import get_competency_risk_level
 from app.db import get_core_db
 from app.log_context import user_id_var
 from app.models import User
@@ -101,8 +100,6 @@ def has_competency(competency: str) -> Callable[[Request, User], User]:
     possesses a specific clinical competency. Use in route decorators
     to protect endpoints requiring specific capabilities.
 
-    High-risk competencies are automatically logged for audit purposes.
-
     Usage Example:
         from app.deps import has_competency, DEP_CURRENT_USER
 
@@ -130,31 +127,23 @@ def has_competency(competency: str) -> Callable[[Request, User], User]:
         final_competencies = user.get_final_competencies()
 
         if competency not in final_competencies:
-            # Log failed competency check (high-risk operations)
-            risk_level = get_competency_risk_level(competency)
             # TODO: Add audit logging here when audit system is implemented
             # audit_log(
             #     user_id=user.id,
             #     action="competency_check_failed",
             #     competency=competency,
-            #     risk_level=risk_level,
             # )
             raise HTTPException(
                 status_code=403,
                 detail=f"Forbidden: User lacks required competency '{competency}'",
             )
 
-        # Log successful competency check for high-risk operations
-        risk_level = get_competency_risk_level(competency)
-        if risk_level == "high":
-            # TODO: Add audit logging here when audit system is implemented
-            # audit_log(
-            #     user_id=user.id,
-            #     action="competency_check_success",
-            #     competency=competency,
-            #     risk_level=risk_level,
-            # )
-            pass
+        # TODO: Add audit logging here when audit system is implemented
+        # audit_log(
+        #     user_id=user.id,
+        #     action="competency_check_success",
+        #     competency=competency,
+        # )
 
         return user
 
@@ -201,7 +190,7 @@ def requires_competency_decorator(competency: str) -> Callable[..., Any]:
             final_competencies = user.get_final_competencies()
 
             if competency not in final_competencies:
-                # TODO: Audit logging (log risk level: get_competency_risk_level(competency))
+                # TODO: Add audit logging here when audit system is implemented
                 raise HTTPException(
                     status_code=403,
                     detail=f"Forbidden: User lacks required competency '{competency}'",
