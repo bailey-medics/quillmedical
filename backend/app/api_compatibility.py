@@ -12,12 +12,7 @@ from pathlib import Path
 
 import yaml
 
-# Mirrors the shared/ YAML loading pattern in app/cbac/competencies.py:
-# resolves to /api-compatibility in the container (Dockerfile COPY) and to
-# <repo-root>/api-compatibility when run directly from a repo checkout.
-API_COMPATIBILITY_DIR = (
-    Path(__file__).parent.parent.parent / "api-compatibility"
-)
+from app.paths import API_COMPATIBILITY_DIR
 
 
 def compute_required_client_generation(

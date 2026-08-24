@@ -6,15 +6,14 @@ file, providing type-safe access to competency IDs and metadata.
 """
 
 from enum import Enum
-from pathlib import Path
 from typing import Any, Literal
 
 import yaml
 
+from app.paths import SHARED_DIR
+
 # Load competencies from YAML
-COMPETENCIES_YAML_PATH = (
-    Path(__file__).parent.parent.parent.parent / "shared" / "competencies.yaml"
-)
+COMPETENCIES_YAML_PATH = SHARED_DIR / "competencies.yaml"
 
 with open(COMPETENCIES_YAML_PATH) as f:
     COMPETENCIES_DATA = yaml.safe_load(f)
