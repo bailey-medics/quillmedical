@@ -1,5 +1,8 @@
 # iOS PWA not entering standalone mode: diagnostic brief
 
+**Date:** 2026-08-16
+**Status:** Complete — fixed, see `fix(pwa): correct manifest scope/start_url to match SPA root`
+
 ## Task
 
 The Quill Teaching web app at `teaching.quill-medical.com` is installed to the iOS home screen but does not run in standalone mode. Investigate the causes below, confirm which apply to this repository, and fix so that the app launches with no browser chrome.
