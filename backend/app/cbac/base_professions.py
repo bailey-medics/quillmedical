@@ -5,17 +5,14 @@ Provides templates for common healthcare professions with their standard
 competency sets, which can be customised per-user.
 """
 
-from pathlib import Path
 from typing import Any, Literal
 
 import yaml
 
+from app.paths import SHARED_DIR
+
 # Load base professions from YAML
-BASE_PROFESSIONS_YAML_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "shared"
-    / "base-professions.yaml"
-)
+BASE_PROFESSIONS_YAML_PATH = SHARED_DIR / "base-professions.yaml"
 
 with open(BASE_PROFESSIONS_YAML_PATH) as f:
     BASE_PROFESSIONS_DATA = yaml.safe_load(f)
