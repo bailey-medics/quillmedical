@@ -48,9 +48,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
-from app.cbac.decorators import has_competency
 from app.config import settings
 from app.db import get_core_db
+from app.deps import has_competency
 from app.ehrbase_client import (
     EhrbaseClientError,
     create_letter_composition,

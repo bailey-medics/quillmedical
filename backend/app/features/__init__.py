@@ -2,7 +2,7 @@
 
 Provides ``requires_feature`` — a FastAPI dependency that checks whether
 any of the authenticated user's organisations has a given feature enabled.
-Same ergonomics as ``has_competency`` in ``app.cbac.decorators``.
+Same ergonomics as ``has_competency`` in ``app.deps``.
 """
 
 from collections.abc import Callable

@@ -17,8 +17,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.decorators import has_competency
 from app.db import get_core_db
+from app.deps import has_competency
 from app.features import requires_feature
 from app.features.teaching.models import (
     Assessment,
