@@ -12,11 +12,6 @@ Permission Levels:
     - superadmin: Global platform management
 """
 
-from app.system_permissions.decorators import (
-    requires_admin,
-    requires_staff,
-    requires_superadmin,
-)
 from app.system_permissions.permissions import (
     PERMISSION_ADMIN,
     PERMISSION_LEVELS,
@@ -35,7 +30,4 @@ __all__ = [
     "PERMISSION_SUPERADMIN",
     "SystemPermission",
     "check_permission_level",
-    "requires_staff",
-    "requires_admin",
-    "requires_superadmin",
 ]

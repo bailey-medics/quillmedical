@@ -5,12 +5,14 @@ Provides templates for common healthcare professions with their standard
 competency sets, which can be customised per-user.
 """
 
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict
 
 from app.paths import SHARED_DIR
+from app.system_permissions import SystemPermission
 
 
 class BaseProfessionEntry(BaseModel):
@@ -21,26 +23,24 @@ class BaseProfessionEntry(BaseModel):
     id: str
     display_name: str
     description: str
-    default_system_permission: Literal[
-        "single-user", "staff", "admin", "superadmin"
-    ]
+    default_system_permission: SystemPermission
     requires_clinical_services: bool
     base_competencies: list[str]
     notes: str
 
 
 # Load base professions from YAML
-BASE_PROFESSIONS_YAML_PATH = SHARED_DIR / "base-professions.yaml"
+BASE_PROFESSIONS_YAML_PATH: Path = SHARED_DIR / "base-professions.yaml"
 
 with open(BASE_PROFESSIONS_YAML_PATH) as f:
-    BASE_PROFESSIONS_DATA = yaml.safe_load(f)
+    BASE_PROFESSIONS_DATA: Any = yaml.safe_load(f)
 
-BASE_PROFESSIONS = [
+BASE_PROFESSIONS: list[BaseProfessionEntry] = [
     BaseProfessionEntry(**p) for p in BASE_PROFESSIONS_DATA["base_professions"]
 ]
 
 # Extract profession IDs
-PROFESSION_IDS = tuple(p.id for p in BASE_PROFESSIONS)
+PROFESSION_IDS: tuple[str, ...] = tuple(p.id for p in BASE_PROFESSIONS)
 
 # Create Literal type
 BaseProfessionId = Literal[PROFESSION_IDS]  # type: ignore[valid-type]
