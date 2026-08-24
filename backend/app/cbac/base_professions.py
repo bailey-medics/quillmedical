@@ -26,7 +26,6 @@ class BaseProfessionEntry(BaseModel):
     default_system_permission: SystemPermission
     requires_clinical_services: bool
     base_competencies: list[str]
-    notes: str
 
 
 # Load base professions from YAML

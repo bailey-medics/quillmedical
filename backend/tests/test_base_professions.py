@@ -75,7 +75,6 @@ def test_base_profession_entry_rejects_extra_fields() -> None:
             default_system_permission="staff",
             requires_clinical_services=True,
             base_competencies=[],
-            notes="",
             unexpected_field="oops",  # type: ignore[call-arg]
         )
 
@@ -89,5 +88,4 @@ def test_base_profession_entry_rejects_invalid_permission_level() -> None:
             default_system_permission="not-a-real-level",  # type: ignore[arg-type]
             requires_clinical_services=True,
             base_competencies=[],
-            notes="",
         )
