@@ -62,9 +62,9 @@ function does immediately before/after the commit:
   failure doesn't roll back the write. Must not be touched — flagged for
   awareness, not action.
 
-### Bucket 1 — delete the `db.commit()` line (35 sites)
+### Bucket 1 — delete the `db.commit()` line (34 sites)
 
-- [ ] `backend/app/main.py`: 1104 (verify-email), 1231 (reset-password),
+- [x] `backend/app/main.py`: 1104 (verify-email), 1231 (reset-password),
       1419 (create_user_with_cbac), 1630 (update_user), 1697
       (deactivate user), 1753 (reactivate user), 1871 (totp/setup), 1949
       (totp/verify), 1987 (totp/disable), 2196 (update profile), 3163
@@ -77,14 +77,24 @@ function does immediately before/after the commit:
       (link_site_to_org), 4550 (unlink_site_from_org), 4629/4637
       (add_site_staff), 4665 (remove_site_staff), 4720
       (link_patient_to_user), 4831/4834/4865 (accept_invite), 4909
-      (revoke_external_access)
-- [ ] `backend/app/push_send.py:80` (send_test)
-- [ ] `backend/app/push.py:96` (subscribe)
-- [ ] `backend/app/messaging.py:512` (mark_conversation_read)
-- [ ] `backend/app/features/teaching/router.py:926` (submit_answer),
+      (revoke_external_access). Manually re-verified each site's
+      post-commit code for a fresh query dependent on the pending write
+      before deleting (see reclassification note below) — all confirmed
+      to only return values already held in memory.
+- [x] `backend/app/push_send.py:80` (send_test)
+- [x] `backend/app/messaging.py:512` (mark_conversation_read)
+- [x] `backend/app/features/teaching/router.py:926` (submit_answer),
       `:1007` (update_answer)
 
-### Bucket 2 — replace `db.commit()` with `db.flush()` (15 sites)
+**Reclassified during implementation** — `backend/app/push.py:96`
+(subscribe) was originally Bucket 1, but on inspection the `else`
+branch does `db.add()` for a new subscription, then the very next line
+runs `count = db.scalar(select(func.count(...)))` to return the total.
+This session has `autoflush=False` (`core_db.py`), so without a flush
+that count would silently undercount by one on first-subscribe. Moved
+to Bucket 2 — see below.
+
+### Bucket 2 — replace `db.commit()` with `db.flush()` (16 sites)
 
 - [ ] `backend/app/main.py`: 3389 (update_my_competencies), 3698
       (update_organisation), 3760 (create_organisation), 4292
@@ -95,6 +105,8 @@ function does immediately before/after the commit:
       (add_participant), 634 (join_conversation)
 - [ ] `backend/app/features/teaching/router.py`: 635 (start_assessment),
       2130 (update_settings), 2361 (update_bank_org_settings)
+- [x] `backend/app/push.py:96` (subscribe) — reclassified from Bucket 1
+      during implementation, see note above. Already done.
 
 Each of these keeps its existing `db.refresh(obj)` call immediately
 after — only the `db.commit()` → `db.flush()` swap changes.
@@ -116,6 +128,20 @@ after — only the `db.commit()` → `db.flush()` swap changes.
   - `backend/app/features/teaching/router.py:1416`
     (download_certificate — commits a backfilled `exam_ref` before GCS
     image download/PDF generation)
+
+**Important discovery during implementation** — deleting Bucket 1's
+`db.commit()` calls broke `test_totp_verify_success` (and would have
+broken more tests touching other Bucket 1 routes). Root cause:
+`backend/tests/conftest.py`'s `override_get_core_db` (used by the
+`test_client` fixture) never committed at all — it only worked before
+because every route committed for itself. In production this is fine
+(the real `get_core_db()` auto-commits after Phase 1), but the test
+double didn't mirror that, so Bucket 1 routes' writes silently stopped
+reaching the test database even though production behaviour was
+correct. Fixed by updating `override_get_core_db` to mirror the real
+dependency's commit-on-success / rollback-on-exception behaviour
+(minus `db.close()`, which `db_session`'s own fixture still owns).
+Full `just ub` suite passes after this fix.
 
 ## Phase 3: Regression tests
 

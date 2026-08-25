@@ -923,8 +923,6 @@ def submit_answer(
     if next_answer:
         next_item = _build_candidate_item(next_answer, config, config_row.type)
 
-    db.commit()
-
     return {
         "answered": True,
         "next_item": next_item,
@@ -1004,7 +1002,6 @@ def update_answer(
     answer.is_correct = is_correct
     answer.resolved_tags = resolved_tags
     answer.answered_at = now
-    db.commit()
 
     return _build_candidate_item(answer, config, config_row.type)
 

@@ -509,7 +509,6 @@ def mark_conversation_read(
     if cp is None:
         return False
     cp.last_read_at = func.now()
-    db.commit()
     return True
 
 
