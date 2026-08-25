@@ -9,7 +9,7 @@ OpenAPI spec for that response is a bare `{"type": "object"}` with no
 `properties` — there is nothing for `oasdiff` to diff. `mypy --strict`
 does not catch this: `dict[str, Any]` is a fully explicit, valid
 annotation from mypy's point of view. The gap is specifically
-*Pydantic-typedness*, a narrower property mypy doesn't check.
+_Pydantic-typedness_, a narrower property mypy doesn't check.
 
 A follow-up survey (Explore agent, full route inventory across
 `backend/app/main.py`, `push.py`, `push_send.py`, and
@@ -23,7 +23,7 @@ show it is fixable — nearly all of their routes already use
 `response_model=`.
 
 This plan has two parts: (1) build a static check that measures exactly
-what `oasdiff` can see, so no *new* opaque route ships silently, and (2)
+what `oasdiff` can see, so no _new_ opaque route ships silently, and (2)
 retrofit the 73 existing opaque routes to typed Pydantic response models,
 phased by feature area so each phase stays reviewable.
 
@@ -38,39 +38,104 @@ phased by feature area so each phase stays reviewable.
       `dump_openapi.py`'s generation logic rather than duplicating it —
       import and call it, or extract a shared helper if needed) and walks
       every path+method's response schema for the success status code
-- [ ] Flag any response schema that resolves to a bare `{"type":
-      "object"}` with no `properties` key, or has no schema at all — this
-      is precisely the shape `oasdiff` cannot diff
-- [ ] Add an `ALLOWLISTED_ROUTES: frozenset[tuple[str, str]]` constant
-      (method, path pairs), following the exact pattern of
-      `ALLOWLISTED_REVISIONS` in `check_migrations.py` — a comment noting
-      "do not add new routes here, fix the return type instead" for
-      anything added during Phase 2's grandfathering
-      - [ ] The 3 binary `FileResponse` image-serving routes
-            (`_serve_teaching_image`, `_serve_cover_image`,
-            `_serve_learning_image`) get a **separate, permanent**
-            allowlist category (e.g. `PERMANENTLY_OPAQUE_ROUTES`) since
-            they serve raw bytes, not JSON — there is no "properties"
-            shape to ever document for these
+- [ ] Flag any response schema `oasdiff` cannot meaningfully diff by
+      field. A single literal-shape match (`{"type": "object"}` with no
+      `properties`) is not enough — it misses `dict[str, X]` for a
+      concrete `X` (renders as `additionalProperties`, still arbitrary
+      keys, still opaque per-field), a bare top-level array of untyped
+      objects (`-> list[dict[str, Any]]`, top-level `type` is `"array"`
+      not `"object"`), and `Optional`/union-wrapped opaque returns
+      (`-> dict[str, Any] | None` renders as `anyOf` with no top-level
+      `type` at all). Define the check as a function applied recursively,
+      resolving `$ref` as the _first step inside every call_ — not once
+      up front — since `$ref` can reappear at any depth (an array's
+      `items` can itself be a `$ref`, e.g. `list[SomeModel]`; a branch of
+      `anyOf`/`oneOf` can be a `$ref`, e.g. `SomeModel | None`). After
+      resolving whatever schema is passed in:
+  - Object schema: flag if it has no `properties` key, regardless of
+    whether `additionalProperties` is present — arbitrary keys mean no
+    named field for `oasdiff` to diff either way
+  - Array schema: recurse into `items` (which may itself need resolving)
+  - `anyOf`/`oneOf`: flag if any non-null branch is opaque by the above
+    (one untyped branch still leaves that field's shape impossible to
+    diff) — recurse into each branch (each may itself need resolving)
+  - No schema, or an empty schema (`{}`): flag — unconstrained/`Any`
+
+- [ ] Use an **inline marker comment**, not a central allowlist constant
+      — mirroring `DESTRUCTIVE_MARKER` in `check_migrations.py`
+      (`# migration-check: allow-destructive`, checked by scanning each
+      file's source), not the (since-removed) `ALLOWLISTED_REVISIONS`
+      central-list pattern. `ALLOWLISTED_REVISIONS` fit immutable
+      historical revision IDs that never move once created; a route's
+      `(method, path)` is living code that can be renamed or refactored
+      with nothing keeping a central list in sync.
+      An inline marker travels with the function, disappears
+      automatically when the route is deleted, and gets removed in the
+      same diff as the fix during Phases 3-7 — no second file to
+      remember to update. Two marker strings, checked the same way
+      `DESTRUCTIVE_MARKER` is (substring search over each route file's
+      source, or an AST walk that checks for a comment on the line(s)
+      immediately above each `@router.<method>(...)` decorator):
+  - `# api-schema-check: allow-opaque-grandfathered` — placed above each
+    of the 73 currently-opaque routes in Phase 2, removed as each is
+    retyped in Phases 3-7. Phase 8 confirms zero of these remain, then
+    deletes recognition of this marker from the checker entirely — it
+    is not usable again after that work is done
+  - `# api-schema-check: allow-opaque-permanent` — placed above the 3
+    binary `FileResponse` image-serving routes (`_serve_teaching_image`,
+    `_serve_cover_image`, `_serve_learning_image`), with a one-line
+    reason (serves raw bytes, not JSON — no `properties` shape will ever
+    apply). Not expected to ever reach zero, and that's fine — Phase 8
+    only checks the grandfathered marker count, not this one
+
+- [ ] Don't just trust `allow-opaque-permanent` as a blanket comment —
+      verify it. Route deletion is self-cleaning (the marker goes with
+      the function) and a bare rename is harmless (the marker is
+      physically attached to the code, so it travels with a renamed
+      function), but neither of those is the real risk. The real risk is
+      someone changing what the route _returns_ — e.g. converting
+      `_serve_teaching_image` from `FileResponse` to a JSON-shaped
+      response — while the marker comment sits there unchanged, since a
+      permanent marker (unlike the grandfathered one) is never
+      independently revisited. For any route bearing
+      `allow-opaque-permanent`, the checker must confirm the function's
+      return annotation is actually one of a small explicit set of
+      non-JSON Starlette/FastAPI response classes (`FileResponse`,
+      `StreamingResponse`, `PlainTextResponse`, `RedirectResponse`, or a
+      raw `Response` used for non-JSON content) — if the marker is
+      present but the return type doesn't match, that's a check failure
+      ("permanent marker present but route no longer returns a
+      recognised non-JSON response type"), not a silent pass
 - [ ] `--all` CLI flag matching `check_migrations.py`'s convention, exit
       non-zero listing every offending route (method + path + file:line)
-      when run with no allowlisted routes remaining unaccounted for
+      that has neither marker
 - [ ] Regression tests in `backend/tests/test_api_schema_coverage.py`
       (mirroring `backend/tests/test_alembic_check.py`'s structure) —
-      cover: a typed route passes, an opaque route fails, an allowlisted
-      opaque route passes, a `FileResponse` route in the permanent
-      allowlist passes
+      cover: a typed route passes, an opaque route with no marker fails,
+      an opaque route with the grandfathered marker passes (until plan
+      complete, and then the marker becomes obsolete). For the permanent
+      marker, test each recognised class individually, not just
+      `FileResponse` — a route with the permanent marker passes for each
+      of `FileResponse`, `StreamingResponse`, `PlainTextResponse`,
+      `RedirectResponse`, and a raw `Response` used for non-JSON content
+      (five separate cases; a bug that only recognises `FileResponse`
+      and silently mishandles the other four would pass a test suite
+      that only exercises `FileResponse`). Also cover the negative case:
+      a route with the permanent marker whose return type is _not_ one
+      of those five fails (proves the marker is verified, not just
+      trusted)
 - [ ] `just ub -k test_api_schema_coverage` — new tests pass
 
 ## Phase 2: Grandfather existing gaps and wire into CI
 
-- [ ] Populate `ALLOWLISTED_ROUTES` with all 73 currently-opaque routes
-      (full list below, from the Explore survey) so the check passes
-      immediately without blocking on the retrofit
+- [ ] Add `# api-schema-check: allow-opaque-grandfathered` above each of
+      the 73 currently-opaque routes (full list below, from the Explore
+      survey) so the check passes immediately without blocking on the
+      retrofit
 - [ ] Add a `check-api-schema-coverage` hook to `.pre-commit-config.yaml`,
       following the `check-migrations` hook's shape: `entry: python3
-      backend/scripts/check_api_schema_coverage.py --all`, `language:
-      system`, scoped to `files: ^backend/app/.*\.py$` so it only reruns
+backend/scripts/check_api_schema_coverage.py --all`, `language:
+system`, scoped to `files: ^backend/app/.*\.py$` so it only reruns
       when route files change
 - [ ] Confirm the hook runs clean on the current branch (0 unexpected
       opaque routes beyond the allowlist)
@@ -83,8 +148,9 @@ Define a Pydantic response model per route (or reuse one across routes
 with an identical shape — several `dict[str, str]` "detail" responses may
 collapse into a single shared model) and set both the function's return
 type annotation and, where the return value isn't already an instance of
-that model, `response_model=` on the decorator. Remove each route from
-`ALLOWLISTED_ROUTES` as it's fixed.
+that model, `response_model=` on the decorator. Delete the
+`# api-schema-check: allow-opaque-grandfathered` marker above each route
+as it's fixed.
 
 - [ ] `health_check` — GET `/health`
 - [ ] `login` — POST `/auth/login`
@@ -217,12 +283,33 @@ the two smaller route files.
 
 ## Phase 8: Final verification
 
-- [ ] `ALLOWLISTED_ROUTES` in `check_api_schema_coverage.py` is empty
-      (only `PERMANENTLY_OPAQUE_ROUTES` remains, holding the binary
-      `FileResponse` routes and any routes Phase 7 decided belong there)
+- [ ] Zero `# api-schema-check: allow-opaque-grandfathered` markers
+      remain anywhere in `backend/app/` (only
+      `# api-schema-check: allow-opaque-permanent` markers remain, on
+      the binary `FileResponse` routes and any routes Phase 7 decided
+      belong there)
+- [ ] Delete `allow-opaque-grandfathered` recognition from
+      `check_api_schema_coverage.py` entirely — not just leave the
+      marker unused. This applies the same lesson that led to actually
+      removing `check_migrations.py`'s `ALLOWLISTED_REVISIONS` outright
+      (`feature/remove-allowlisted-revisions`): an always-empty frozenset
+      with a "do NOT add new revisions here"
+      comment was still live code that would honour a new entry if
+      someone added one, relying on the comment as the only thing
+      stopping it. A route's grandfathered marker is a one-line comment
+      above a decorator — a much lower-friction bypass than adding a
+      whole migration revision — so leave nothing in the checker that
+      would recognise the string as valid again. Only
+      `allow-opaque-permanent` recognition remains
+- [ ] Update the Phase 1 regression test that asserted "an opaque route
+      with the grandfathered marker passes" — flip it to assert that a
+      route bearing that (now-unrecognised) comment still fails the
+      check, proving the escape hatch is actually closed rather than
+      just unused
 - [ ] `python backend/scripts/check_api_schema_coverage.py --all` passes
       with zero unexpected findings
-- [ ] `just ub` — full backend unit suite
+- [ ] `just ub` — full backend unit suite (including the flipped
+      regression test)
 - [ ] Push and confirm the `pre-commit` CI job runs the new hook cleanly
 - [ ] Manually verify `oasdiff` now has real schema to diff: temporarily
       remove a field from one retyped response locally, confirm
@@ -232,9 +319,58 @@ the two smaller route files.
 
 ## Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| OpenAPI-spec-based check, not an AST heuristic on return-type annotations | Measures exactly what `oasdiff` can see — the real downstream artifact — rather than approximating it. An AST check on annotations would need to special-case every way FastAPI can end up with a typed schema (`response_model=`, a Pydantic return type, `response_model` inherited from a router-level default), which the spec-walk sidesteps entirely |
-| Grandfather all 73 existing routes into an allowlist rather than blocking on the full retrofit before shipping the check | Mirrors `check_migrations.py`'s `ALLOWLISTED_REVISIONS` precedent for a pre-existing-history squash. Lets Phase 1's tooling ship immediately and stop new opaque routes from landing, while the retrofit proceeds incrementally and reviewably across Phases 3-7 |
-| Binary `FileResponse` routes get a separate, permanent allowlist category rather than being retrofitted | They serve raw bytes, not a JSON object — there is no `properties` shape to ever document, so "opaque" here isn't a gap, it's correct. Keeping them in a distinct constant (not the retrofit-tracking `ALLOWLISTED_ROUTES`) makes that permanence explicit rather than looking like unfinished work |
-| Phase boundaries follow the feature-area groupings from the Explore survey, not a flat alphabetical or file-order list | Each phase stays within one reviewable feature area (matching how `/follow-the-plan-document`'s human-review-per-unit gate is meant to work), and mirrors the existing well-typed precedents (messaging, teaching router) that each phase should converge toward |
+- **OpenAPI-spec-based check, not an AST heuristic on return-type
+  annotations** — Measures exactly what `oasdiff` can see — the real
+  downstream artifact — rather than approximating it. An AST check on
+  annotations would need to special-case every way FastAPI can end up
+  with a typed schema (`response_model=`, a Pydantic return type,
+  `response_model` inherited from a router-level default), which the
+  spec-walk sidesteps entirely
+- **Grandfather all 73 existing routes with an inline marker comment,
+  not a central allowlist constant** — `check_migrations.py` used to
+  offer two precedents, for two different situations:
+  `ALLOWLISTED_REVISIONS` (a central list) fit immutable historical
+  revision IDs that never move once created; `DESTRUCTIVE_MARKER` (an
+  inline `# migration-check: allow-destructive` comment, checked via
+  source scan) fits a specific operation that needs a deliberate,
+  visible acknowledgement right where it happens. A route's
+  `(method, path)` is living code — it can be renamed or refactored
+  with nothing keeping a central list in sync — so it fits the
+  inline-marker precedent, not the central-list one. The marker travels
+  with the function, disappears when the route is deleted, and comes
+  out in the same diff as the fix during Phases 3-7.
+  (`ALLOWLISTED_REVISIONS` itself was subsequently removed from
+  `check_migrations.py` — see the next entry — leaving
+  `DESTRUCTIVE_MARKER` as the sole surviving precedent)
+- **Two distinct marker strings (`allow-opaque-grandfathered` vs
+  `allow-opaque-permanent`) rather than one** — Keeps Phase 8's
+  completion check meaningful — it counts only the grandfathered marker
+  and expects zero, while the permanent marker (on the binary
+  `FileResponse` routes) is expected to persist forever without that
+  meaning the retrofit is incomplete
+- **Binary `FileResponse` routes get a separate, permanent marker
+  rather than being retrofitted** — They serve raw bytes, not a JSON
+  object — there is no `properties` shape to ever document, so
+  "opaque" here isn't a gap, it's correct. Using a distinct marker
+  string (not the retrofit-tracking `allow-opaque-grandfathered`) makes
+  that permanence explicit rather than looking like unfinished work
+- **Phase boundaries follow the feature-area groupings from the Explore
+  survey, not a flat alphabetical or file-order list** — Each phase
+  stays within one reviewable feature area (matching how
+  `/follow-the-plan-document`'s human-review-per-unit gate is meant to
+  work), and mirrors the existing well-typed precedents (messaging,
+  teaching router) that each phase should converge toward
+- **Phase 8 deletes `allow-opaque-grandfathered` recognition from the
+  checker entirely, rather than leaving it as an always-empty,
+  discouraged-by-comment marker** — `ALLOWLISTED_REVISIONS` in
+  `check_migrations.py` was a weaker precedent, worth deviating from
+  rather than copying: it stayed as live code that would honour a new
+  entry, relying purely on a "do NOT add new revisions here" comment to
+  stop anyone. A route's grandfathered marker is a single comment line
+  above a decorator — far lower friction to add than a whole migration
+  revision — so once the retrofit is done, the checker itself should
+  stop recognising the string, closing the bypass structurally instead
+  of trusting convention. This same reasoning led to removing
+  `ALLOWLISTED_REVISIONS` from `check_migrations.py` outright
+  (`feature/remove-allowlisted-revisions`), rather than leaving it in
+  place as dead-but-discouraged code
