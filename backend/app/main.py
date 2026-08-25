@@ -3371,7 +3371,7 @@ async def update_my_competencies(
     if data.removed_competencies is not None:
         user.removed_competencies = data.removed_competencies
 
-    db.commit()
+    db.flush()
     db.refresh(user)
 
     return UserCompetenciesResponse(
@@ -3680,7 +3680,7 @@ def update_organisation(
     if body.location is not None:
         org.location = body.location.strip() or None
 
-    db.commit()
+    db.flush()
     db.refresh(org)
 
     return {
@@ -3742,7 +3742,7 @@ def create_organisation(
         location=body.location.strip() if body.location else None,
     )
     db.add(org)
-    db.commit()
+    db.flush()
     db.refresh(org)
 
     return {
@@ -4267,7 +4267,7 @@ def create_site(
         location=body.location,
     )
     db.add(site)
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -4392,7 +4392,7 @@ def update_site(
     if body.location is not None:
         site.location = body.location
 
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -4426,7 +4426,7 @@ def toggle_site_active(
         raise HTTPException(status_code=422, detail="is_active field required")
 
     site.is_active = body["is_active"]
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -5119,7 +5119,7 @@ def update_conversation_status_endpoint(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     conv.status = body.status
-    db.commit()
+    db.flush()
     db.refresh(conv)
 
     # Calculate unread

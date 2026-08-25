@@ -96,14 +96,14 @@ to Bucket 2 — see below.
 
 ### Bucket 2 — replace `db.commit()` with `db.flush()` (16 sites)
 
-- [ ] `backend/app/main.py`: 3389 (update_my_competencies), 3698
+- [x] `backend/app/main.py`: 3389 (update_my_competencies), 3698
       (update_organisation), 3760 (create_organisation), 4292
       (create_site), 4417 (update_site), 4451 (toggle_site_active), 5157
       (update_conversation_status_endpoint)
-- [ ] `backend/app/messaging.py`: 253 (create_conversation), 367
+- [x] `backend/app/messaging.py`: 253 (create_conversation), 367
       (get_conversation_detail), 456 (send_message), 492
       (add_participant), 634 (join_conversation)
-- [ ] `backend/app/features/teaching/router.py`: 635 (start_assessment),
+- [x] `backend/app/features/teaching/router.py`: 635 (start_assessment),
       2130 (update_settings), 2361 (update_bank_org_settings)
 - [x] `backend/app/push.py:96` (subscribe) — reclassified from Bucket 1
       during implementation, see note above. Already done.
@@ -113,7 +113,7 @@ after — only the `db.commit()` → `db.flush()` swap changes.
 
 ### Bucket 3 — leave unchanged, do not touch (7 sites)
 
-- [ ] Confirm these are left exactly as-is during the Bucket 1/2 sweep
+- [x] Confirm these are left exactly as-is during the Bucket 1/2 sweep
       (no code change — this is a checklist item to actively verify,
       not skip):
   - `backend/app/main.py:1050` (register — commits the new
@@ -161,7 +161,7 @@ Full `just ub` suite passes after this fix.
 ## Phase 4: Verification
 
 - [x] `just ub -k test_get_core_db` — targeted run of the new/updated tests
-- [ ] `just ub` — full backend unit suite, covering the Bucket 1/2
+- [x] `just ub` — full backend unit suite, covering the Bucket 1/2
       call-site changes across `main.py`, `messaging.py`,
       `teaching/router.py`, `push.py`, `push_send.py`
 - [ ] Confirm mypy/ruff/black pass via the existing pre-commit hooks
