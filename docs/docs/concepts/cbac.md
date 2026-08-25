@@ -208,7 +208,7 @@ Protect endpoints by requiring specific competencies:
 
 ```python
 from fastapi import Depends
-from app.cbac.decorators import has_competency
+from app.deps import has_competency
 from app.main import DEP_CURRENT_USER
 
 @router.post("/prescriptions/controlled")
@@ -238,7 +238,7 @@ async def prescribe_controlled(
 Use `requires_any_competency()` for "user needs at least one of these":
 
 ```python
-from app.cbac.decorators import requires_any_competency
+from app.deps import requires_any_competency
 
 @router.post("/certify-fitness")
 async def certify_fitness(

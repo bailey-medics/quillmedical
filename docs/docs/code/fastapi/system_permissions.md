@@ -8,6 +8,5 @@
 
 ::: app.system_permissions.permissions
 
-## Decorators
-
-::: app.system_permissions.decorators
+`require_staff()`, `require_admin()`, and `require_superadmin()` were
+moved into `app.deps` — see [Dependencies](deps.md).
