@@ -164,7 +164,7 @@ Full `just ub` suite passes after this fix.
 - [x] `just ub` — full backend unit suite, covering the Bucket 1/2
       call-site changes across `main.py`, `messaging.py`,
       `teaching/router.py`, `push.py`, `push_send.py`
-- [ ] Confirm mypy/ruff/black pass via the existing pre-commit hooks
+- [x] Confirm mypy/ruff/black pass via the existing pre-commit hooks
 
 ## Decisions
 
