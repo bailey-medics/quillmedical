@@ -15,7 +15,7 @@ now rather than deferred to a "later" pass that won't happen.
 
 ## Phase 1: Update `get_core_db()`
 
-- [ ] Change `backend/app/db/core_db.py`'s `get_core_db()` to commit
+- [x] Change `backend/app/db/core_db.py`'s `get_core_db()` to commit
       after a successful `yield` and roll back on any exception, before
       the existing `finally: db.close()`:
 
@@ -32,12 +32,12 @@ now rather than deferred to a "later" pass that won't happen.
           db.close()
   ```
 
-- [ ] Update the function's docstring to describe the new auto-commit /
+- [x] Update the function's docstring to describe the new auto-commit /
       auto-rollback behaviour (replacing the current "caller is
       responsible for committing" caveat), and keep the `select()` /
       `db.add()` + `db.commit()` examples — the explicit commit in the
       `POST` example stays valid and harmless (a no-op second commit)
-- [ ] Update Claude's rules md file with this updated practice.
+- [x] Update Claude's rules md file with this updated practice.
 
 ## Phase 2: Reduce redundant `db.commit()` call sites
 
@@ -119,7 +119,7 @@ after — only the `db.commit()` → `db.flush()` swap changes.
 
 ## Phase 3: Regression tests
 
-- [ ] Add to `backend/tests/test_db.py`'s `TestCoreDB` class — both
+- [x] Add to `backend/tests/test_db.py`'s `TestCoreDB` class — both
       driving `get_core_db()` directly as a generator (the `test_client`
       fixture's `override_get_core_db` in `conftest.py` bypasses the
       real function entirely, so it won't exercise this change):
@@ -134,7 +134,7 @@ after — only the `db.commit()` → `db.flush()` swap changes.
 
 ## Phase 4: Verification
 
-- [ ] `just ub -k test_get_core_db` — targeted run of the new/updated tests
+- [x] `just ub -k test_get_core_db` — targeted run of the new/updated tests
 - [ ] `just ub` — full backend unit suite, covering the Bucket 1/2
       call-site changes across `main.py`, `messaging.py`,
       `teaching/router.py`, `push.py`, `push_send.py`

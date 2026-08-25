@@ -33,10 +33,12 @@ CoreSessionLocal = sessionmaker(
 def get_core_db() -> Generator[Session]:
     """FastAPI dependency to provide core database sessions.
 
-    The caller is responsible for calling `db.commit()` after any write —
-    this dependency never commits. If a route forgets, the request still
-    succeeds but the change is silently rolled back when the session
-    closes at the end of the request.
+    Commits automatically if the route returns without error, and rolls
+    back if any exception is raised — a route no longer needs to call
+    `db.commit()` itself. If a server-generated value (e.g. a new row's
+    `id`) is needed mid-request, use `db.flush()` instead — it populates
+    generated columns without ending the transaction, so the row stays
+    rollback-able if something later in the request fails.
 
     Yields:
         Session: SQLAlchemy database session for core database.
@@ -51,7 +53,7 @@ def get_core_db() -> Generator[Session]:
         def create_user(user_in: UserCreate, db: Session = Depends(get_core_db)):
             user = User(**user_in.model_dump())
             db.add(user)
-            db.commit()
+            db.flush()
             db.refresh(user)
             return user
         ```
@@ -59,5 +61,9 @@ def get_core_db() -> Generator[Session]:
     db = CoreSessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
