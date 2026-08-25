@@ -18,8 +18,9 @@ Every ``backend/alembic/versions/*.py`` file is parsed and checked for:
    allow-destructive`` marker to force expand-contract deliberateness.
 
 The pre-launch history was squashed into a single compliant baseline, so
-``ALLOWLISTED_REVISIONS`` is now empty and every migration — the baseline
-included — is held to the full standard.
+every migration — the baseline included — is held to the full standard.
+There is no grandfathering mechanism; a migration that fails a check
+must be fixed, not exempted.
 
 Run with::
 
@@ -33,11 +34,6 @@ import ast
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-
-# Revisions that predate these checks are grandfathered here. The pre-launch
-# history was squashed into a single compliant baseline, so this is now empty.
-# Do NOT add new revisions here — fix the migration instead.
-ALLOWLISTED_REVISIONS: frozenset[str] = frozenset()
 
 DESTRUCTIVE_MARKER = "# migration-check: allow-destructive"
 DESTRUCTIVE_OPS: frozenset[str] = frozenset(
@@ -388,14 +384,10 @@ def check_destructive(migration: Migration) -> list[Problem]:
     return []
 
 
-def check_all(
-    migrations: list[Migration], allowlist: frozenset[str]
-) -> list[Problem]:
-    """Run every check, grandfathering allow-listed revisions."""
+def check_all(migrations: list[Migration]) -> list[Problem]:
+    """Run every check against every migration."""
     problems: list[Problem] = list(check_chain_integrity(migrations))
     for migration in migrations:
-        if migration.revision in allowlist:
-            continue
         problems.extend(check_description(migration))
         problems.extend(check_reversibility(migration))
         problems.extend(check_not_null_trap(migration))
@@ -439,7 +431,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     migrations = collect_migrations(versions_dir)
-    problems = check_all(migrations, ALLOWLISTED_REVISIONS)
+    problems = check_all(migrations)
 
     warnings = [p for p in problems if p.severity == SEVERITY_WARNING]
     errors = [p for p in problems if p.severity == SEVERITY_ERROR]
