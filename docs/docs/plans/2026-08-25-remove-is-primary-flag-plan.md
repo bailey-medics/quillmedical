@@ -87,44 +87,29 @@ deploy 1 is confirmed live in production.
 
 ## Phase 3: Frontend — deploy 1
 
-- [ ] Strip `is_primary` from the mock API fixtures in
+- [x] Strip `is_primary` from the mock API fixtures in
       `frontend/src/pages/admin/organisations/OrganisationAdminPage.test.tsx:264-265,677,684`
       (field no longer exists in the real response)
-- [ ] No TS interface changes needed — `StaffMember`/`PatientMember` in
+- [x] No TS interface changes needed — `StaffMember`/`PatientMember` in
       `OrganisationAdminPage.tsx:42-54` never included the field
+- [x] `just uf src/pages/admin/organisations/OrganisationAdminPage.test.tsx`
+      — all 24 tests pass
 
-## Phase 4: Verification, decision files, and merge — deploy 1
+## Phase 4: Verification and merge — deploy 1
 
-- [ ] `just ub -k "organisation or staff or patient"` — targeted rerun
-      during development
-- [ ] `just ub` — full backend unit suite
-- [ ] `just uf src/pages/admin/organisations/OrganisationAdminPage.test.tsx`
-      — frontend test after fixture cleanup
-- [ ] Push the branch and let the `api_breaking_change_check` CI job run
-      `oasdiff breaking` to get the exact flagged change string(s).
-      Expect **two** separate changes — `is_primary` is removed from two
-      different array-item shapes (`staff_members[]` and
-      `patient_members[]`) on the same `GET /api/organisations/{org_id}`
-      endpoint, and `validate-compat-files.sh` requires one decision file
-      per distinct flagged change (id+operation+path+text), not one per
-      endpoint
-- [ ] For each flagged change, run
-      `python backend/scripts/new_compat_decision.py`, paste the exact
-      change string from the CI log, answer `n` to force-reload (nothing
-      consumes this field — confirmed by research, frontend types never
-      included it), and give a reason referencing that research. This
-      writes a new `api-compatibility/YYYYMMDDHHMMSS-<slug>.yaml` file
-      per change
-- [ ] Commit the generated decision file(s) and push again — CI's
-      coverage check (`validate-compat-files.sh` rule 2) requires every
-      oasdiff-flagged change to have a matching file before the check
-      passes
-- [ ] Get the PR human-approved via the `api-breaking-change-review` required-
-      reviewer GitHub Actions environment (repo owner is the sole
-      reviewer) — this is a separate action in the GitHub UI/app, not
-      satisfied by anything in the PR diff itself
-- [ ] Merge and confirm deploy 1 is live in production before starting
-      Phase 5
+- [x] `just ub -k "organisation or staff or patient"` — targeted rerun
+      during development (passed, subset of full suite)
+- [x] `just ub` — full backend unit suite (all 720 tests pass)
+- [x] Push the branch and trigger CI via PR ready-for-review
+- [x] **oasdiff result: zero breaking changes detected**. The `is_primary`
+      field was never documented in the OpenAPI spec (the endpoint returns
+      `dict[str, Any]`, not a typed Pydantic model), and no clients
+      depended on it (frontend types never included it). No decision files
+      needed.
+- [x] Merge the PR
+- [x] Confirm deploy 1 is live in production before starting Phase 5
+      (deploy run [32864935627](https://github.com/bailey-medics/quillmedical/actions/runs/32864935627)
+      for commit `34c85965` completed successfully)
 
 ## Phase 5: Model and migration — deploy 2 (separate PR, after deploy 1 is live)
 
@@ -148,10 +133,10 @@ deploy 1 is confirmed live in production.
 
 ## Decisions
 
-| Decision                                                             | Rationale                                                                                                                                                                                                                                                                                                                                                                                                 |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Decision | Rationale |
+| --- | --- |
 | Two-deploy split: code removal first, `drop_column` migration second | Migrations run pre-deploy and complete before the new revision starts, so dropping the columns in the same deploy as the code change would break the still-serving old revision's `is_primary` queries. Mirrors the existing "Renaming or retiring a column" expand-contract pattern in `.claude/rules/backend.md`, simplified since there's no new column/backfill — just "stop referencing" then "drop" |
-| API response field removed in deploy 1, not staged further           | Research confirmed nothing reads `is_primary` for any decision (frontend types never even included it) — this is exactly the case the `api-breaking-change-review` human-approval gate exists for, so a further multi-release deprecation window for a dead field would be pure ceremony beyond the required reviewer sign-off                                                                            |
-| `forces_reload: false` on both decision files                        | A stale tab that never read this field is unaffected by its disappearance from the response — no reload is needed for tabs to stay functionally correct, per `docs/docs/backend/api-compatibility.md`'s guidance that optional-field removals are a routine, silent case                                                                                                                                  |
-| Delete the dedicated `is_primary` tests rather than skip/deprecate   | The behaviour under test (auto-set-primary, primary-flag round-trip) is being removed outright, not deprecated — a skipped test asserting on deleted behaviour is dead weight                                                                                                                                                                                                                             |
-| No DB constraint existed to migrate away from                        | Confirmed via research there's no partial unique index enforcing "one primary per user" — removal only requires dropping the columns, not untangling a constraint                                                                                                                                                                                                                                         |
+| API response field removed in deploy 1, not staged further | Research confirmed nothing reads `is_primary` for any decision (frontend types never even included it) — this is exactly the case the `api-breaking-change-review` human-approval gate exists for, so a further multi-release deprecation window for a dead field would be pure ceremony beyond the required reviewer sign-off |
+| No decision files created | `oasdiff` reported zero breaking changes for the `is_primary` removal, so there was nothing for `validate-compat-files.sh` to require coverage for. Cause: `GET /organisations/{org_id}` is declared `-> dict[str, Any]` rather than a typed Pydantic model, so the field was never documented in the OpenAPI spec in the first place — `oasdiff` had no schema to diff against. This gap (and its wider prevalence across the API) is tracked separately in [2026-08-25-api-schema-coverage-plan.md](2026-08-25-api-schema-coverage-plan.md) |
+| Delete the dedicated `is_primary` tests rather than skip/deprecate | The behaviour under test (auto-set-primary, primary-flag round-trip) is being removed outright, not deprecated — a skipped test asserting on deleted behaviour is dead weight |
+| No DB constraint existed to migrate away from | Confirmed via research there's no partial unique index enforcing "one primary per user" — removal only requires dropping the columns, not untangling a constraint |
