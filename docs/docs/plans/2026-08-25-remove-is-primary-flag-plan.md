@@ -28,26 +28,30 @@ deploy 1 is confirmed live in production.
 
 ## Phase 1: Backend application code (`backend/app/main.py`) — deploy 1
 
-- [ ] Remove `is_primary=True` from the signup-flow insert (~line 1017)
-- [ ] Remove `is_primary=(org_id == payload.organisation_ids[0])` from
+- [x] Remove `is_primary=True` from the signup-flow insert (~line 1017)
+- [x] Remove `is_primary=(org_id == payload.organisation_ids[0])` from
       the admin create-user insert (~lines 1397-1405)
-- [ ] Remove `is_primary=(i == 0)` from the admin update-user insert
-      (~lines 1575-1581)
-- [ ] Delete the "Auto-set as primary if user has no existing primary
+- [x] Remove `is_primary=(i == 0)` from the admin update-user insert
+      (~lines 1575-1581) — discovered while implementing: this also
+      required changing `for i, org_id in enumerate(payload.organisation_ids)`
+      to a plain `for org_id in payload.organisation_ids`, since `i` had
+      no other use once `is_primary=(i == 0)` was removed
+- [x] Delete the "Auto-set as primary if user has no existing primary
       org" block entirely (~lines 3871-3884): the `has_primary` query
       and the `is_primary=has_primary is None` kwarg — the insert
       becomes a plain `organisation_id`/`user_id` insert
-- [ ] Remove `is_primary=False` from `add_patient_to_organisation`'s
+- [x] Remove `is_primary=False` from `add_patient_to_organisation`'s
       insert (~line 3966)
-- [ ] Drop `organisation_staff_member.c.is_primary` and
+- [x] Drop `organisation_staff_member.c.is_primary` and
       `organisation_patient_member.c.is_primary` from the two `select()`
       statements in the org-detail endpoint (~lines 3500-3530)
-- [ ] Drop `"is_primary": sm.is_primary or False` and `"is_primary":
+- [x] Drop `"is_primary": sm.is_primary or False` and `"is_primary":
     pm.is_primary or False` from the response dicts (~lines 3569-3585)
-- [ ] Verify the docstrings at `main.py:2070` and `main.py:2084`
+- [x] Verify the docstrings at `main.py:2070` and `main.py:2084`
       (already corrected to describe the org-union behaviour earlier
-      this session) stay consistent with these changes
-- [ ] Note: the `is_primary` columns are **not** touched in this phase —
+      this session) stay consistent with these changes — confirmed no
+      stale "primary org" text remains anywhere in `main.py`
+- [x] Note: the `is_primary` columns are **not** touched in this phase —
       they stay in the schema, `nullable=False`. Since no insert passes a
       value for the column any more, SQLAlchemy applies the Core column's
       Python-side `default=False` automatically, so `NOT NULL` stays
@@ -55,26 +59,31 @@ deploy 1 is confirmed live in production.
 
 ## Phase 2: Backend tests — deploy 1
 
-- [ ] Delete `test_add_staff_auto_sets_primary` and
+- [x] Delete `test_add_staff_auto_sets_primary` and
       `test_add_staff_does_not_override_primary` from
       `backend/tests/test_main_endpoints.py` (~lines 741-855) — both
       test behaviour that no longer exists
-- [ ] Delete `test_organisation_primary_flag` from
+- [x] Delete `test_organisation_primary_flag` from
       `backend/tests/test_models.py` (~lines 357-395)
-- [ ] Remove `assert org_row.is_primary is True` from
+- [x] Remove `assert org_row.is_primary is True` from
       `backend/tests/test_validate_clinical_lead.py:255` (rest of test
       stays)
-- [ ] Remove the "Verify primary flag" block from
+- [x] Remove the "Verify primary flag" block from
       `test_organisation_patient_relationship` in
       `backend/tests/test_models.py:344-355` (rest of test stays)
-- [ ] Strip the now-invalid `is_primary=...` kwarg from remaining
+- [x] Strip the now-invalid `is_primary=...` kwarg from remaining
       fixture inserts (mechanical, value never asserted on):
       `test_main_endpoints.py` (multiple sites, e.g. 402, 837, 875, 942,
       972, 977, 1009, 1031, 1068, 1099, 1104, 1225, 1243, 1337, 1355,
       1452), `test_organisation_features.py:173,409`,
       `test_messaging.py:49,56,80,1073,1298,1347`,
       `test_teaching_router.py:64,86,244`,
-      `test_clinical_services.py:132`
+      `test_clinical_services.py:132` — also fixed two now-stale
+      docstrings discovered while editing (`_make_educator`/
+      `_make_learner` in `test_teaching_router.py` said "linked as
+      primary staff") and one stale comment ("Link user to org as
+      primary" in `test_organisation_features.py`)
+- [x] `just ub` — full backend unit suite passes (720 tests, all green)
 
 ## Phase 3: Frontend — deploy 1
 

@@ -46,14 +46,12 @@ def _setup_org_context(
         organisation_staff_member.insert().values(
             organisation_id=test_org.id,
             user_id=test_user.id,
-            is_primary=True,
         )
     )
     db_session.execute(
         organisation_patient_member.insert().values(
             organisation_id=test_org.id,
             patient_id=PATIENT_ID,
-            is_primary=True,
         )
     )
     db_session.commit()
@@ -77,7 +75,6 @@ def second_user(db_session: Session, test_org: Organisation) -> User:
         organisation_staff_member.insert().values(
             organisation_id=test_org.id,
             user_id=user.id,
-            is_primary=False,
         )
     )
     db_session.commit()
@@ -1070,7 +1067,6 @@ class TestOrgScopedAccess:
             organisation_staff_member.insert().values(
                 organisation_id=other_org.id,
                 user_id=outsider.id,
-                is_primary=True,
             )
         )
         db_session.commit()
@@ -1295,7 +1291,6 @@ class TestRemoveStaffFromOrg:
             organisation_staff_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
-                is_primary=False,
             )
         )
         db_session.commit()
@@ -1344,7 +1339,6 @@ class TestRemovePatientFromOrg:
             organisation_staff_member.insert().values(
                 organisation_id=test_org.id,
                 user_id=test_admin.id,
-                is_primary=False,
             )
         )
         db_session.commit()
