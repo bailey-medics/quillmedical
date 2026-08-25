@@ -24,7 +24,14 @@ if the columns were dropped in the same deploy as the code change, the
 on every request touching signup, org-detail, add-staff, add-patient,
 and create/update-user. Phase 1-4 is deploy 1 (code only, column stays);
 Phase 5 is deploy 2 (destructive migration only), started only after
-deploy 1 is confirmed live in production.
+deploy 1 is confirmed live in the teaching environment.
+
+Note: production promotion is currently disabled repo-wide
+(`ENABLE_PRODUCTION_DEPLOY` unset — see `deploy.yml`'s `promote-to-production`
+job, offline to save GCP costs), so "live" here means the teaching
+environment, which is the only environment either deploy actually
+reached. The two-deploy reasoning above still applies unchanged: teaching
+is the environment serving real traffic during the migration window.
 
 ## Phase 1: Backend application code (`backend/app/main.py`) — deploy 1
 
@@ -107,9 +114,12 @@ deploy 1 is confirmed live in production.
       depended on it (frontend types never included it). No decision files
       needed.
 - [x] Merge the PR
-- [x] Confirm deploy 1 is live in production before starting Phase 5
-      (deploy run [32864935627](https://github.com/bailey-medics/quillmedical/actions/runs/32864935627)
-      for commit `34c85965` completed successfully)
+- [x] Confirm deploy 1 is live in the teaching environment before
+      starting Phase 5 (deploy run
+      [32864935627](https://github.com/bailey-medics/quillmedical/actions/runs/32864935627)
+      for commit `34c85965` — `Deploy to teaching` succeeded;
+      `Promote to production` was skipped, as it is for every push while
+      production is offline (see note above))
 
 ## Phase 5: Model and migration — deploy 2 (separate PR, after deploy 1 is live)
 
@@ -132,6 +142,18 @@ deploy 1 is confirmed live in production.
       (exit 0)
 - [x] `just ub` — full backend unit suite (all 720 tests pass, no
       behavioural change — columns were already unused as of deploy 1)
+- [x] Merge the PR and confirm the pre-deploy migration job succeeds and
+      deploy 2 is live in the teaching environment — this is the step
+      that actually drops the columns; migrations run as a separate
+      Cloud Run Job before the new revision starts
+      (`.claude/rules/backend.md`), so a failed migration job blocks the
+      deploy rather than silently no-op-ing. Merged as PR #401
+      (`94bb042a`); deploy run
+      [32868151270](https://github.com/bailey-medics/quillmedical/actions/runs/32868151270)
+      — `Deploy to teaching` succeeded (migration job ran as part of
+      that job, per `deploy.yml`); `Promote to production` skipped, as
+      expected while production is offline (see note under the plan
+      title)
 
 ## Decisions
 
@@ -142,3 +164,4 @@ deploy 1 is confirmed live in production.
 | No decision files created | `oasdiff` reported zero breaking changes for the `is_primary` removal, so there was nothing for `validate-compat-files.sh` to require coverage for. Cause: `GET /organisations/{org_id}` is declared `-> dict[str, Any]` rather than a typed Pydantic model, so the field was never documented in the OpenAPI spec in the first place — `oasdiff` had no schema to diff against. This gap (and its wider prevalence across the API) is tracked separately in [2026-08-25-api-schema-coverage-plan.md](2026-08-25-api-schema-coverage-plan.md) |
 | Delete the dedicated `is_primary` tests rather than skip/deprecate | The behaviour under test (auto-set-primary, primary-flag round-trip) is being removed outright, not deprecated — a skipped test asserting on deleted behaviour is dead weight |
 | No DB constraint existed to migrate away from | Confirmed via research there's no partial unique index enforcing "one primary per user" — removal only requires dropping the columns, not untangling a constraint |
+| "Live in production" in this plan actually means the teaching environment | Production promotion is disabled repo-wide (`ENABLE_PRODUCTION_DEPLOY` unset, `promote-to-production` skipped for every push) — an existing, deliberate cost-saving decision unrelated to this work, not something introduced or worked around here. Both deploy 1 and deploy 2 reached only the teaching environment, which is currently the sole live-serving environment the two-deploy expand-contract reasoning protects. When production is re-enabled, its schema will need the same migration applied (already captured by the standard `just migrate-remote production`-style pre-deploy job — no extra action needed at that point, just noting it hasn't happened yet) |
