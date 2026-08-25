@@ -113,23 +113,25 @@ deploy 1 is confirmed live in production.
 
 ## Phase 5: Model and migration — deploy 2 (separate PR, after deploy 1 is live)
 
-- [ ] Remove `Column("is_primary", Boolean, default=False,
+- [x] Remove `Column("is_primary", Boolean, default=False,
     nullable=False)` from `organisation_staff_member`
       (`backend/app/models.py:196`) and `organisation_patient_member`
       (`backend/app/models.py:208`)
-- [ ] Run `just migrate "drop is_primary from organisation membership
-    tables"` to generate the revision
-- [ ] Add `# migration-check: allow-destructive` above both
+- [x] Run `just migrate "drop is_primary from organisation membership
+    tables"` to generate the revision — produced
+      `fa4401ce1b92_drop_is_primary_from_organisation_.py`
+- [x] Add `# migration-check: allow-destructive` above both
       `drop_column` calls in the generated `upgrade()`
-- [ ] Write a real `downgrade()` that re-adds both columns with
-      `server_default=sa.false()` (required since `nullable=False`)
-- [ ] Confirm the migration's docstring/slug is meaningful (required by
+- [x] Write a real `downgrade()` that re-adds both columns with
+      `server_default=sa.false()` (required since `nullable=False`) —
+      verified locally with a downgrade/upgrade round trip against the
+      dev database
+- [x] Confirm the migration's docstring/slug is meaningful (required by
       `backend/scripts/check_migrations.py`)
-- [ ] `python backend/scripts/check_migrations.py --all` — confirms the
-      migration passes the destructive-marker/downgrade/linear-chain
-      checks
-- [ ] `just ub` — full backend unit suite (no behavioural change
-      expected, columns are already unused as of deploy 1)
+- [x] `python backend/scripts/check_migrations.py --all` — passes
+      (exit 0)
+- [x] `just ub` — full backend unit suite (all 720 tests pass, no
+      behavioural change — columns were already unused as of deploy 1)
 
 ## Decisions
 
