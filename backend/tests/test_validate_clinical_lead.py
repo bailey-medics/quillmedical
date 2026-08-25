@@ -252,7 +252,6 @@ class TestRegisterWithSiteMembership:
             )
         ).first()
         assert org_row is not None
-        assert org_row.is_primary is True
 
         # Verify site membership as trainee
         site_row = db_session.execute(

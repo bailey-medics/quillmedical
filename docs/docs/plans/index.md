@@ -39,3 +39,4 @@
 - [Alembic Review and Migration Safety](2026-08-09-alembic-review-plan.md)
 - [Alembic Migrations Squash](2026-08-11-migrations-squash-plan.md)
 - [Core DB Auto-Commit](2026-08-25-core-db-auto-commit-plan.md)
+- [Remove is_primary Flag](2026-08-25-remove-is-primary-flag-plan.md)

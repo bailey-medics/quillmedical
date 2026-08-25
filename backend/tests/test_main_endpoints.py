@@ -399,7 +399,7 @@ class TestOrganisationEndpoints:
 
         # Add staff member
         stmt = insert(organisation_staff_member).values(
-            organisation_id=org.id, user_id=test_admin.id, is_primary=True
+            organisation_id=org.id, user_id=test_admin.id
         )
         db_session.execute(stmt)
         db_session.commit()
@@ -738,122 +738,6 @@ class TestOrganisationEndpoints:
         assert data["user_id"] == staff_user.id
         assert data["username"] == staff_user.username
 
-    def test_add_staff_auto_sets_primary(
-        self,
-        authenticated_admin_client: TestClient,
-        db_session,
-        test_admin: User,
-    ):
-        """Test first org membership is auto-set as primary."""
-        from sqlalchemy import insert, select
-
-        from app.models import Organisation, organisation_staff_member
-
-        org = Organisation(name="Primary Org", type="hospital_team")
-        db_session.add(org)
-        db_session.commit()
-
-        # Pre-add admin as member so they can manage this org
-        db_session.execute(
-            insert(organisation_staff_member).values(
-                organisation_id=org.id, user_id=test_admin.id
-            )
-        )
-        db_session.commit()
-
-        # Create a new staff user with no existing memberships
-        staff_user = User(
-            username="primarytest",
-            email="primarytest@example.com",
-            password_hash=hash_password("StaffPass123!"),
-            is_active=True,
-            system_permissions="staff",
-        )
-        db_session.add(staff_user)
-        db_session.commit()
-
-        authenticated_admin_client.post(
-            f"/api/organisations/{org.id}/staff",
-            json={"user_id": staff_user.id},
-        )
-
-        row = db_session.execute(
-            select(organisation_staff_member).where(
-                organisation_staff_member.c.user_id == staff_user.id,
-                organisation_staff_member.c.organisation_id == org.id,
-            )
-        ).first()
-        assert row is not None
-        assert row.is_primary is True
-
-    def test_add_staff_does_not_override_primary(
-        self,
-        authenticated_admin_client: TestClient,
-        db_session,
-        test_admin: User,
-    ):
-        """Test second org membership does not override existing primary."""
-        from sqlalchemy import insert, select
-
-        from app.models import Organisation, organisation_staff_member
-
-        org1 = Organisation(name="First Org", type="hospital_team")
-        org2 = Organisation(name="Second Org", type="hospital_team")
-        db_session.add_all([org1, org2])
-        db_session.commit()
-
-        # Admin is member of both orgs
-        db_session.execute(
-            insert(organisation_staff_member).values(
-                [
-                    {
-                        "organisation_id": org1.id,
-                        "user_id": test_admin.id,
-                    },
-                    {
-                        "organisation_id": org2.id,
-                        "user_id": test_admin.id,
-                    },
-                ]
-            )
-        )
-        db_session.commit()
-
-        # Create a staff user with primary in org1
-        staff_user = User(
-            username="multiorgstaff",
-            email="multiorgstaff@example.com",
-            password_hash=hash_password("StaffPass123!"),
-            is_active=True,
-            system_permissions="staff",
-        )
-        db_session.add(staff_user)
-        db_session.commit()
-
-        db_session.execute(
-            insert(organisation_staff_member).values(
-                organisation_id=org1.id,
-                user_id=staff_user.id,
-                is_primary=True,
-            )
-        )
-        db_session.commit()
-
-        # Add staff_user to org2 — should NOT be primary
-        authenticated_admin_client.post(
-            f"/api/organisations/{org2.id}/staff",
-            json={"user_id": staff_user.id},
-        )
-
-        row = db_session.execute(
-            select(organisation_staff_member).where(
-                organisation_staff_member.c.user_id == staff_user.id,
-                organisation_staff_member.c.organisation_id == org2.id,
-            )
-        ).first()
-        assert row is not None
-        assert row.is_primary is False
-
     def test_add_staff_duplicate(
         self,
         authenticated_admin_client: TestClient,
@@ -872,7 +756,6 @@ class TestOrganisationEndpoints:
         stmt = insert(organisation_staff_member).values(
             organisation_id=org.id,
             user_id=test_admin.id,
-            is_primary=False,
         )
         db_session.execute(stmt)
         db_session.commit()
@@ -939,7 +822,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
-                is_primary=True,
             )
         )
 
@@ -969,12 +851,10 @@ class TestOrganisationEndpoints:
                     {
                         "organisation_id": org.id,
                         "user_id": patient_user.id,
-                        "is_primary": True,
                     },
                     {
                         "organisation_id": org.id,
                         "user_id": staff_user.id,
-                        "is_primary": True,
                     },
                 ]
             )
@@ -1006,7 +886,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org_a.id,
                 user_id=test_admin.id,
-                is_primary=True,
             )
         )
 
@@ -1028,7 +907,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org_b.id,
                 user_id=other_user.id,
-                is_primary=True,
             )
         )
         db_session.commit()
@@ -1065,7 +943,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
-                is_primary=True,
             )
         )
 
@@ -1096,12 +973,10 @@ class TestOrganisationEndpoints:
                     {
                         "organisation_id": org.id,
                         "user_id": member_user.id,
-                        "is_primary": False,
                     },
                     {
                         "organisation_id": org.id,
                         "user_id": non_member_user.id,
-                        "is_primary": False,
                     },
                 ]
             )
@@ -1222,7 +1097,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
-                is_primary=True,
             )
         )
         # Create a superadmin in the same org
@@ -1240,7 +1114,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=superadmin.id,
-                is_primary=True,
             )
         )
         db_session.commit()
@@ -1334,7 +1207,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=test_admin.id,
-                is_primary=True,
             )
         )
         # Staff user in same org
@@ -1352,7 +1224,6 @@ class TestOrganisationEndpoints:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=staff_user.id,
-                is_primary=True,
             )
         )
         db_session.commit()
@@ -1449,7 +1320,6 @@ class TestOrganisationEndpoints:
             insert(organisation_patient_member).values(
                 organisation_id=org.id,
                 patient_id="fhir-789",
-                is_primary=False,
             )
         )
         db_session.commit()

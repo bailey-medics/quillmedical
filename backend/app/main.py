@@ -1014,7 +1014,6 @@ def register(
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
 
@@ -1400,7 +1399,6 @@ def create_user_with_cbac(
             organisation_staff_member.insert().values(
                 organisation_id=org_id,
                 user_id=user.id,
-                is_primary=(org_id == payload.organisation_ids[0]),
             )
         )
 
@@ -1563,7 +1561,7 @@ def update_user(
                 )
             )
         # Add new org memberships
-        for i, org_id in enumerate(payload.organisation_ids):
+        for org_id in payload.organisation_ids:
             org = db.scalar(
                 select(Organisation).where(Organisation.id == org_id)
             )
@@ -1576,7 +1574,6 @@ def update_user(
                 organisation_staff_member.insert().values(
                     user_id=user_id,
                     organisation_id=org_id,
-                    is_primary=(i == 0),
                 )
             )
 
@@ -2067,7 +2064,7 @@ def me(
 
     Returns the authenticated user's profile information including username,
     email, assigned roles, system permissions, TOTP status, and enabled
-    features from the user's primary organisation.
+    features from the union of the user's organisations.
 
     Args:
         current_user: Currently authenticated user from JWT.
@@ -2081,7 +2078,7 @@ def me(
             - roles: List of assigned role names
             - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
-            - enabled_features: Features enabled on user's primary org
+            - enabled_features: Features enabled on any of the user's orgs
             - competencies: Resolved CBAC competency IDs
     """
     # Resolve features from all user's organisations (union)
@@ -3497,14 +3494,13 @@ def get_organisation(
                 detail="Organisation not found",
             )
 
-    # Get staff members with primary status
+    # Get staff members
     staff_query = (
         select(
             User.id,
             User.username,
             User.email,
             User.full_name,
-            organisation_staff_member.c.is_primary,
         )
         .join(
             organisation_staff_member,
@@ -3524,7 +3520,6 @@ def get_organisation(
     # Get patient members
     patient_query = select(
         organisation_patient_member.c.patient_id,
-        organisation_patient_member.c.is_primary,
     ).where(organisation_patient_member.c.organisation_id == org_id)
 
     patient_members = db.execute(patient_query).all()
@@ -3572,14 +3567,12 @@ def get_organisation(
                 "username": sm.username,
                 "email": sm.email,
                 "full_name": sm.full_name or "",
-                "is_primary": sm.is_primary or False,
             }
             for sm in staff_members
         ],
         "patient_members": [
             {
                 "patient_id": pm.patient_id,
-                "is_primary": pm.is_primary or False,
             }
             for pm in patient_members
         ],
@@ -3868,19 +3861,10 @@ def add_staff_to_organisation(
             detail="User is already a staff member of this organisation",
         )
 
-    # Auto-set as primary if user has no existing primary org
-    has_primary = db.scalar(
-        select(organisation_staff_member.c.organisation_id).where(
-            organisation_staff_member.c.user_id == body.user_id,
-            organisation_staff_member.c.is_primary.is_(True),
-        )
-    )
-
     db.execute(
         organisation_staff_member.insert().values(
             organisation_id=org_id,
             user_id=body.user_id,
-            is_primary=has_primary is None,
         )
     )
 
@@ -3963,7 +3947,6 @@ def add_patient_to_organisation(
         organisation_patient_member.insert().values(
             organisation_id=org_id,
             patient_id=body.patient_id,
-            is_primary=False,
         )
     )
 
