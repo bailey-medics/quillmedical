@@ -29,16 +29,16 @@ phased by feature area so each phase stays reviewable.
 
 ## Phase 1: API schema coverage check script
 
-- [ ] Add `backend/scripts/check_api_schema_coverage.py`, mirroring the
+- [x] Add `backend/scripts/check_api_schema_coverage.py`, mirroring the
       structure of `backend/scripts/check_migrations.py` (pure-stdlib
       where possible; this one needs to import the FastAPI app to get the
       OpenAPI spec, same as `backend/scripts/dump_openapi.py` already
       does)
-- [ ] The script generates the OpenAPI spec (reuse
+- [x] The script generates the OpenAPI spec (reuse
       `dump_openapi.py`'s generation logic rather than duplicating it —
       import and call it, or extract a shared helper if needed) and walks
       every path+method's response schema for the success status code
-- [ ] Flag any response schema `oasdiff` cannot meaningfully diff by
+- [x] Flag any response schema `oasdiff` cannot meaningfully diff by
       field. A single literal-shape match (`{"type": "object"}` with no
       `properties`) is not enough — it misses `dict[str, X]` for a
       concrete `X` (renders as `additionalProperties`, still arbitrary
@@ -61,7 +61,7 @@ phased by feature area so each phase stays reviewable.
     diff) — recurse into each branch (each may itself need resolving)
   - No schema, or an empty schema (`{}`): flag — unconstrained/`Any`
 
-- [ ] Use an **inline marker comment**, not a central allowlist constant
+- [x] Use an **inline marker comment**, not a central allowlist constant
       — mirroring `DESTRUCTIVE_MARKER` in `check_migrations.py`
       (`# migration-check: allow-destructive`, checked by scanning each
       file's source), not the (since-removed) `ALLOWLISTED_REVISIONS`
@@ -88,7 +88,7 @@ phased by feature area so each phase stays reviewable.
     apply). Not expected to ever reach zero, and that's fine — Phase 8
     only checks the grandfathered marker count, not this one
 
-- [ ] Don't just trust `allow-opaque-permanent` as a blanket comment —
+- [x] Don't just trust `allow-opaque-permanent` as a blanket comment —
       verify it. Route deletion is self-cleaning (the marker goes with
       the function) and a bare rename is harmless (the marker is
       physically attached to the code, so it travels with a renamed
@@ -106,10 +106,10 @@ phased by feature area so each phase stays reviewable.
       present but the return type doesn't match, that's a check failure
       ("permanent marker present but route no longer returns a
       recognised non-JSON response type"), not a silent pass
-- [ ] `--all` CLI flag matching `check_migrations.py`'s convention, exit
+- [x] `--all` CLI flag matching `check_migrations.py`'s convention, exit
       non-zero listing every offending route (method + path + file:line)
       that has neither marker
-- [ ] Regression tests in `backend/tests/test_api_schema_coverage.py`
+- [x] Regression tests in `backend/tests/test_api_schema_coverage.py`
       (mirroring `backend/tests/test_alembic_check.py`'s structure) —
       cover: a typed route passes, an opaque route with no marker fails,
       an opaque route with the grandfathered marker passes (until plan
@@ -124,7 +124,7 @@ phased by feature area so each phase stays reviewable.
       a route with the permanent marker whose return type is _not_ one
       of those five fails (proves the marker is verified, not just
       trusted)
-- [ ] `just ub -k test_api_schema_coverage` — new tests pass
+- [x] `just ub -k test_api_schema_coverage` — new tests pass
 
 ## Phase 2: Grandfather existing gaps and wire into CI
 
@@ -374,3 +374,20 @@ the two smaller route files.
   `ALLOWLISTED_REVISIONS` from `check_migrations.py` outright
   (`feature/remove-allowlisted-revisions`), rather than leaving it in
   place as dead-but-discouraged code
+- **Route <-> source cross-referencing goes through the running
+  `app.routes`, not a pure source-file AST scan** — Matching an
+  OpenAPI-spec path like `/api/organisations/{org_id}` back to the
+  Python function that defines it requires resolving every
+  `APIRouter(prefix=...)` and `app.include_router(prefix=...)` in play;
+  the running app already does this resolution to build both `app.routes`
+  and the OpenAPI spec, so re-deriving it from source would duplicate
+  FastAPI's own routing logic and risk drifting from it. Each
+  `app.routes` entry's `.endpoint` is cross-referenced against a
+  per-file AST index (built once per file, keyed by function name) to
+  find the marker comment and return-type annotation.
+  `slowapi`'s `@limiter.limit(...)` decorator wraps the endpoint in a
+  function defined inside `slowapi`'s own package, so
+  `inspect.getsourcefile()` on a rate-limited route's raw `.endpoint`
+  resolves to `slowapi/extension.py`, not the app's route file —
+  `inspect.unwrap()` (a no-op on undecorated endpoints) is required
+  before the file lookup to reach the real source location
