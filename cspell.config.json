@@ -293,6 +293,7 @@
     "multirole",
     "MVCC",
     "mypy",
+    "monkeypatch",
     "naqcyber",
     "navpanes",
     "Navs",

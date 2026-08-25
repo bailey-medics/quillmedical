@@ -128,6 +128,31 @@ the baseline included — is held to the full standard below.
   transactional DDL) instead of queueing behind a long-running query and
   stalling all traffic to that table.
 
+## Database session lifecycle (`get_core_db`)
+
+`DEP_GET_SESSION` (`get_core_db()` in `backend/app/db/core_db.py`)
+auto-commits when a route returns successfully, and auto-rolls-back on
+any exception — this is what makes "the request succeeded" and "the
+write was persisted" the same event, closing off a silent-data-loss
+failure mode where a route forgets to commit.
+
+- **Don't add a bare `db.commit()`** at the end of a route just to
+  persist a write — it's redundant; the dependency already commits on
+  success.
+- **Use `db.flush()`, not `db.commit()`**, when you need a
+  server-generated value (a new row's `id`, an `onupdate` timestamp)
+  mid-function — e.g. before `db.refresh(obj)` so the response can read
+  `obj.id`. `flush()` sends pending SQL and populates generated columns
+  without ending the transaction, so the row stays rollback-able if
+  something later in the same request fails; `commit()` would end the
+  transaction early and lose that safety net.
+- **Keep an explicit `db.commit()`** only when it's a deliberate
+  partial-durability checkpoint — locking in a write on purpose before a
+  later risky step (an external HTTP call, an email/push send, a
+  per-item loop) so that step's failure doesn't undo the earlier write.
+  This is rare; if you're not sure a route needs this, it probably
+  doesn't.
+
 ## API compatibility (expand-contract)
 
 Mirrors the database expand-contract rule above, applied to the API

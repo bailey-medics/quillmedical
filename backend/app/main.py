@@ -1101,7 +1101,6 @@ def verify_email(
         return {"detail": "verified"}
 
     user.email_verified = True
-    db.commit()
     return {"detail": "verified"}
 
 
@@ -1228,7 +1227,6 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
-    db.commit()
     return {"detail": "Password reset successfully"}
 
 
@@ -1416,7 +1414,6 @@ def create_user_with_cbac(
             )
         )
 
-    db.commit()
     db.refresh(user)
 
     return {
@@ -1626,8 +1623,6 @@ def update_user(
                 )
             )
 
-    # Commit changes
-    db.commit()
     db.refresh(user)
 
     return {
@@ -1694,7 +1689,6 @@ def deactivate_user(
         )
 
     user.is_active = False
-    db.commit()
 
     return {
         "detail": "deactivated",
@@ -1750,7 +1744,6 @@ def reactivate_user(
         raise HTTPException(status_code=400, detail="User is already active")
 
     user.is_active = True
-    db.commit()
 
     return {
         "detail": "reactivated",
@@ -1868,7 +1861,6 @@ def totp_setup(
         current_user.totp_secret = generate_totp_secret()
 
     db.add(current_user)
-    db.commit()
     issuer = getattr(settings, "PROJECT_NAME", "Quill")
     uri = totp_provisioning_uri(
         current_user.totp_secret or "",
@@ -1946,7 +1938,6 @@ def totp_verify(
         )
     current_user.is_totp_enabled = True
     db.add(current_user)
-    db.commit()
     return {"detail": "enabled"}
 
 
@@ -1984,7 +1975,6 @@ def totp_disable(
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
     db.add(current_user)
-    db.commit()
     return {"detail": "disabled"}
 
 
@@ -2193,7 +2183,6 @@ def update_profile(
             current_user.email_verified = False
 
     db.add(current_user)
-    db.commit()
     return {"detail": "Profile updated"}
 
 
@@ -3160,8 +3149,6 @@ def deactivate_patient(
         )
         db.add(metadata)
 
-    db.commit()
-
     return {
         "patient_id": patient_id,
         "is_active": False,
@@ -3226,8 +3213,6 @@ def activate_patient(
             is_active=True,
         )
         db.add(metadata)
-
-    db.commit()
 
     return {
         "patient_id": patient_id,
@@ -3386,7 +3371,7 @@ async def update_my_competencies(
     if data.removed_competencies is not None:
         user.removed_competencies = data.removed_competencies
 
-    db.commit()
+    db.flush()
     db.refresh(user)
 
     return UserCompetenciesResponse(
@@ -3695,7 +3680,7 @@ def update_organisation(
     if body.location is not None:
         org.location = body.location.strip() or None
 
-    db.commit()
+    db.flush()
     db.refresh(org)
 
     return {
@@ -3757,7 +3742,7 @@ def create_organisation(
         location=body.location.strip() if body.location else None,
     )
     db.add(org)
-    db.commit()
+    db.flush()
     db.refresh(org)
 
     return {
@@ -3813,7 +3798,6 @@ def delete_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     db.delete(org)
-    db.commit()
     return {"detail": "Organisation deleted"}
 
 
@@ -3899,7 +3883,6 @@ def add_staff_to_organisation(
             is_primary=has_primary is None,
         )
     )
-    db.commit()
 
     return {
         "organisation_id": org_id,
@@ -3983,7 +3966,6 @@ def add_patient_to_organisation(
             is_primary=False,
         )
     )
-    db.commit()
 
     return {
         "organisation_id": org_id,
@@ -4039,7 +4021,6 @@ def remove_staff_from_organisation(
             organisation_staff_member.c.user_id == user_id,
         )
     )
-    db.commit()
     return {"status": "removed"}
 
 
@@ -4091,7 +4072,6 @@ def remove_patient_from_organisation(
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
-    db.commit()
     return {"status": "removed"}
 
 
@@ -4182,13 +4162,11 @@ def toggle_org_feature(
             enabled_by=current_user.id,
         )
         db.add(feature)
-        db.commit()
         return {"status": "enabled"}
     else:
         if not existing:
             return {"status": "already_disabled"}
         db.delete(existing)
-        db.commit()
         return {"status": "disabled"}
 
 
@@ -4289,7 +4267,7 @@ def create_site(
         location=body.location,
     )
     db.add(site)
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -4414,7 +4392,7 @@ def update_site(
     if body.location is not None:
         site.location = body.location
 
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -4448,7 +4426,7 @@ def toggle_site_active(
         raise HTTPException(status_code=422, detail="is_active field required")
 
     site.is_active = body["is_active"]
-    db.commit()
+    db.flush()
     db.refresh(site)
 
     return {
@@ -4478,7 +4456,6 @@ def delete_site(
         raise HTTPException(status_code=404, detail="Site not found")
 
     db.delete(site)
-    db.commit()
     return {"status": "deleted"}
 
 
@@ -4519,7 +4496,6 @@ def link_site_to_org(
             organisation_id=org_id, site_id=site_id
         )
     )
-    db.commit()
     return {"status": "linked"}
 
 
@@ -4546,8 +4522,6 @@ def unlink_site_from_org(
 
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Link not found")
-
-    db.commit()
 
     return {"status": "unlinked"}
 
@@ -4626,7 +4600,6 @@ def add_site_staff(
             )
             .values(role=role)
         )
-        db.commit()
         return {"status": "updated"}
 
     db.execute(
@@ -4634,7 +4607,6 @@ def add_site_staff(
             site_id=site_id, user_id=user_id, role=role
         )
     )
-    db.commit()
     return {"status": "added"}
 
 
@@ -4661,8 +4633,6 @@ def remove_site_staff(
 
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Staff member not found")
-
-    db.commit()
 
     return {"status": "removed"}
 
@@ -4717,7 +4687,6 @@ def link_patient_to_user(
         )
 
     target.fhir_patient_id = fhir_patient_id
-    db.commit()
 
     return {
         "user_id": user_id,
@@ -4828,10 +4797,8 @@ def accept_invite(
                     granted_by_user_id=existing.id,
                 )
             )
-            db.commit()
         elif grant.revoked_at is not None:
             grant.revoked_at = None
-            db.commit()
         return {"status": "access_granted", "user_id": existing.id}
 
     # New user registration
@@ -4862,7 +4829,6 @@ def accept_invite(
             granted_by_user_id=new_user.id,
         )
     )
-    db.commit()
 
     return {"status": "registered", "user_id": new_user.id}
 
@@ -4906,7 +4872,6 @@ def revoke_external_access(
         )
 
     grant.revoked_at = datetime.now(UTC)
-    db.commit()
 
     return {"status": "revoked"}
 
@@ -5154,7 +5119,7 @@ def update_conversation_status_endpoint(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     conv.status = body.status
-    db.commit()
+    db.flush()
     db.refresh(conv)
 
     # Calculate unread

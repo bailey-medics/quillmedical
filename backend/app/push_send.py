@@ -77,5 +77,4 @@ def send_test(
             removed.append(sub.endpoint)
             db.delete(sub)
 
-    db.commit()
     return {"sent": True, "removed": removed}

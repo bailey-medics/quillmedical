@@ -93,7 +93,7 @@ def subscribe(
             )
         )
 
-    db.commit()
+    db.flush()
 
     count = db.scalar(
         select(func.count(PushSubscriptionModel.id)).where(

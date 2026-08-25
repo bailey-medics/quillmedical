@@ -632,7 +632,7 @@ def start_assessment(
                 display_order=idx,
             )
         )
-    db.commit()
+    db.flush()
     db.refresh(assessment)
 
     # Build first item
@@ -923,8 +923,6 @@ def submit_answer(
     if next_answer:
         next_item = _build_candidate_item(next_answer, config, config_row.type)
 
-    db.commit()
-
     return {
         "answered": True,
         "next_item": next_item,
@@ -1004,7 +1002,6 @@ def update_answer(
     answer.is_correct = is_correct
     answer.resolved_tags = resolved_tags
     answer.answered_at = now
-    db.commit()
 
     return _build_candidate_item(answer, config, config_row.type)
 
@@ -2127,7 +2124,7 @@ def update_settings(
         )
         db.add(settings_row)
 
-    db.commit()
+    db.flush()
     db.refresh(settings_row)
     return settings_row
 
@@ -2358,7 +2355,7 @@ def update_bank_org_settings(
         )
         db.add(status_row)
 
-    db.commit()
+    db.flush()
     db.refresh(status_row)
     return QuestionBankOrgSettingsOut(
         question_bank_id=bank_id,

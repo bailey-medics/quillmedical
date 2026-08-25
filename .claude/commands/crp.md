@@ -31,9 +31,21 @@ If it is empty, default to **quillmedical**.
 3. Check git status and confirm there are changes to commit.
 4. Review the changes and create a clear, descriptive commit message following conventional commit format (e.g., "feat:", "fix:", "refactor:").
 5. Stage and commit the changes.
-6. If pre-commit hooks fail:
-   - For auto-fixable issues (formatting, linting): apply fixes and re-commit.
-   - For complex issues: report what needs manual attention.
+6. If pre-commit hooks fail, distinguish two cases:
+   - **Applied by the hook itself** (the hook's own output says it modified
+     files — e.g. ruff `--fix`, black, trailing-whitespace, end-of-file-fixer)
+     — these are mechanical and don't change program behaviour. Stage the
+     hook's changes and re-commit without pausing.
+   - **Spelling** (cspell) — adding a word to the dictionary or fixing a typo
+     is safe to apply and re-commit without pausing.
+   - **Everything else** — mypy errors, ruff findings the hook didn't
+     auto-fix, bandit findings, or any other failure that requires you
+     (Claude) to write or edit code to satisfy the hook: this is a real code
+     change the human has not reviewed yet, even though it was only made to
+     satisfy a hook. Stop. Show the exact diff of the fix and a one-line
+     reason it was needed, and wait for explicit approval before staging or
+     re-committing. Do not loop silently through multiple fix-and-recommit
+     attempts.
 7. Fetch the latest `main` (`git fetch origin main`) before checking whether
    the branch is behind — a stale local `main` ref will falsely report the
    branch as up to date. Rebase onto `origin/main` if behind, resolve any
