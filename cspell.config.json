@@ -239,6 +239,7 @@
     "iterdir",
     "itsdangerous",
     "janedoe",
+    "kwarg",
     "janesmith",
     "JBSWY",
     "jdbc",

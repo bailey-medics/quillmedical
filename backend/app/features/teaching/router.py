@@ -2251,7 +2251,7 @@ def list_bank_organisations(
     db: Session = _DEP_SESSION,
 ) -> list[BankOrgRow]:
     """List all organisations with teaching enabled and their status for this bank."""
-    # Verify caller has a primary org (i.e. is an educator)
+    # Verify caller has an organisation (i.e. is an educator)
     _get_user_org_id(user, db)
 
     # All orgs that have the "teaching" feature enabled

@@ -2067,7 +2067,7 @@ def me(
 
     Returns the authenticated user's profile information including username,
     email, assigned roles, system permissions, TOTP status, and enabled
-    features from the user's primary organisation.
+    features from the union of the user's organisations.
 
     Args:
         current_user: Currently authenticated user from JWT.
@@ -2081,7 +2081,7 @@ def me(
             - roles: List of assigned role names
             - system_permissions: User's system permission level
             - totp_enabled: Whether 2FA is active
-            - enabled_features: Features enabled on user's primary org
+            - enabled_features: Features enabled on any of the user's orgs
             - competencies: Resolved CBAC competency IDs
     """
     # Resolve features from all user's organisations (union)

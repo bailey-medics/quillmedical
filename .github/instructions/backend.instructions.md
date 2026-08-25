@@ -161,3 +161,39 @@ depends on the current response/request shape for as long as it stays open.
   reusable `.github/workflows/slack-notify.yml`) with `oasdiff`'s changelog
   summary, so the approval prompt shows *what* is being confirmed rather
   than a bare "approve?".
+
+### Decision files: `api-compatibility/` folder
+
+- Every `oasdiff`-flagged breaking change also needs a YAML decision file
+  under `api-compatibility/` at the repo root recording the
+  `forces_reload` verdict for that change — not a substitute for the
+  environment approval above, an addition to it. The file itself can be
+  drafted with LLM help like any other content; the actual human-only
+  gate is the `api-breaking-change-review` required-reviewer environment
+  approval, a distinct GitHub Actions UI/app action nothing in the diff
+  can satisfy. Coverage is enforced by CI
+  (`.github/scripts/ci/validate-compat-files.sh`): every flagged change
+  (by exact `id`+`operation`+`path`+`text`) must have a matching file, or
+  the build fails. Two properties removed from the same endpoint are two
+  separate flagged changes and need two separate files.
+- Create a YAML file with `python backend/scripts/new_compat_decision.py` — it
+  prompts for the exact oasdiff change string (copy verbatim from the CI
+  log) and whether the change needs a forced reload of open tabs
+  (interactive `y`/`n` prompt, written to the file as boolean
+  `forces_reload: true`/`false`), plus a reason, then writes
+  `api-compatibility/YYYYMMDDHHMMSS-<slug>.yaml` with an auto-computed
+  `generation` number.
+- `forces_reload: true` means every open browser tab is incompatible and
+  must reload immediately (bumps the shared `Compat-Generation` value,
+  triggering the client's forced-reload overlay); `forces_reload: false`
+  means the existing silent background-update mechanism (hourly timer or
+  navigation) is sufficient — this covers the vast majority of changes
+  (additions, deprecations, optional-field removals).
+- Once merged, a decision file's `generation`, `forces_reload`, and
+  `change` fields are immutable — never edit them retroactively, and
+  never delete a file. If a decision is superseded, add a new file
+  instead. Only `reason` may be edited later, via the same
+  `api-breaking-change-review` gate.
+- Full detail: `docs/docs/backend/api-compatibility.md` (why this exists,
+  the client-side forced-reload mechanism, the `Compat-Generation`
+  header).
