@@ -1,13 +1,14 @@
 """Core database connection and session management.
 
 This module provides SQLAlchemy engine and session management for the
-core database (user accounts, roles, sessions).
+core database (non-patient-facing application state: users, roles,
+permissions, organisations, sites, teaching, and more).
 """
 
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
@@ -15,7 +16,7 @@ from app.config import settings
 core_engine = create_engine(
     settings.CORE_DATABASE_URL,
     future=True,
-    pool_pre_ping=True,  # Verify connections before use
+    pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
 )
@@ -27,12 +28,6 @@ CoreSessionLocal = sessionmaker(
     autocommit=False,
     future=True,
 )
-
-
-class CoreBase(DeclarativeBase):
-    """Base class for core database models."""
-
-    pass
 
 
 def get_core_db() -> Generator[Session]:
