@@ -33,6 +33,11 @@ CoreSessionLocal = sessionmaker(
 def get_core_db() -> Generator[Session]:
     """FastAPI dependency to provide core database sessions.
 
+    The caller is responsible for calling `db.commit()` after any write —
+    this dependency never commits. If a route forgets, the request still
+    succeeds but the change is silently rolled back when the session
+    closes at the end of the request.
+
     Yields:
         Session: SQLAlchemy database session for core database.
 
@@ -40,8 +45,15 @@ def get_core_db() -> Generator[Session]:
         ```python
         @router.get("/users")
         def list_users(db: Session = Depends(get_core_db)):
-            users = db.query(User).all()
-            return users
+            return db.scalars(select(User)).all()
+
+        @router.post("/users")
+        def create_user(user_in: UserCreate, db: Session = Depends(get_core_db)):
+            user = User(**user_in.model_dump())
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            return user
         ```
     """
     db = CoreSessionLocal()
