@@ -574,6 +574,55 @@ yarn-install:
     yarn install
 
 
+# ── Claude Code cloud sessions ──────────────────────────────────────────
+
+# Start a Claude Code cloud session for a task (run from a real terminal — needs a TTY)
+cloud-start task:
+    #!/usr/bin/env bash
+    {{initialise}} "cloud-start"
+    set -euo pipefail
+
+    if [ -n "$(git status --short)" ]; then
+        echo "Uncommitted changes present — commit first. The cloud VM clones the pushed branch, not your working tree."
+        git status --short
+        exit 1
+    fi
+
+    if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+        echo "No upstream tracking branch set. Push first: git push -u origin $(git branch --show-current)"
+        exit 1
+    fi
+
+    if [ -n "$(git log @{u}..HEAD --oneline)" ]; then
+        echo "Unpushed commits present — push first. The cloud VM won't see them until then."
+        exit 1
+    fi
+
+    claude --cloud "{{task}}"
+
+
+# List local Claude Code sessions for this repo (cloud sessions: check claude.ai/code or run /tasks)
+cloud-status:
+    #!/usr/bin/env bash
+    {{initialise}} "cloud-status"
+    set -euo pipefail
+
+    echo "Local sessions (interactive + background):"
+    claude agents --json --all
+
+    echo ""
+    echo "Cloud sessions aren't visible here — check claude.ai/code, the Claude mobile app, or run /tasks inside an interactive terminal session."
+
+
+# Pull a Claude Code cloud session down into this terminal (omit session_id for an interactive picker)
+cloud-teleport session_id="":
+    #!/usr/bin/env bash
+    {{initialise}} "cloud-teleport"
+    set -euo pipefail
+
+    claude --teleport {{session_id}}
+
+
 # ── Cloud Run Admin Job (remote environments) ──────────────────────────
 
 _gcp_env_project env:
