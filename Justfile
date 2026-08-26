@@ -576,10 +576,11 @@ yarn-install:
 
 # ── Claude Code cloud sessions ──────────────────────────────────────────
 
+alias clst := claude-cloud-start
 # Start a Claude Code cloud session for a task (run from a real terminal — needs a TTY)
-cloud-start task:
+claude-cloud-start task:
     #!/usr/bin/env bash
-    {{initialise}} "cloud-start"
+    {{initialise}} "claude-cloud-start"
     set -euo pipefail
 
     if [ -n "$(git status --short)" ]; then
@@ -601,10 +602,11 @@ cloud-start task:
     claude --cloud "{{task}}"
 
 
+alias clss := claude-cloud-status
 # List local Claude Code sessions for this repo (cloud sessions: check claude.ai/code or run /tasks)
-cloud-status:
+claude-cloud-status:
     #!/usr/bin/env bash
-    {{initialise}} "cloud-status"
+    {{initialise}} "claude-cloud-status"
     set -euo pipefail
 
     echo "Local sessions (interactive + background):"
@@ -614,10 +616,11 @@ cloud-status:
     echo "Cloud sessions aren't visible here — check claude.ai/code, the Claude mobile app, or run /tasks inside an interactive terminal session."
 
 
+alias cltp := claude-cloud-teleport
 # Pull a Claude Code cloud session down into this terminal (omit session_id for an interactive picker)
-cloud-teleport session_id="":
+claude-cloud-teleport session_id="":
     #!/usr/bin/env bash
-    {{initialise}} "cloud-teleport"
+    {{initialise}} "claude-cloud-teleport"
     set -euo pipefail
 
     claude --teleport {{session_id}}

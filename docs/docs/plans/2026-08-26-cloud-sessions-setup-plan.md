@@ -107,9 +107,9 @@ breaking `$ARGUMENTS` substitution — both hit during Phase 4 testing.
 A `just` recipe run directly by the user in their own terminal also
 sidesteps the TTY problem from Phase 4 entirely: unlike a skill
 invoked through Claude's Bash tool, the human's own terminal already
-has a real TTY, so `cloud-start` and `cloud-teleport` can run
-`claude --cloud`/`claude --teleport` directly instead of merely
-printing the command back.
+has a real TTY, so `claude-cloud-start` and `claude-cloud-teleport`
+can run `claude --cloud`/`claude --teleport` directly instead of
+merely printing the command back.
 
 - [x] Add `cloud-start`, `cloud-status`, `cloud-teleport` recipes to
       the `Justfile` under a new "Claude Code cloud sessions" section,
@@ -122,12 +122,23 @@ printing the command back.
       uncommitted change (the Justfile edit itself) — correctly caught
       it and exited before attempting `claude --cloud`
 - [x] Remove the three superseded `.claude/skills/cloud-*` directories
-- [ ] User runs `just cloud-start "<task>"` for real in their own
-      terminal (a genuine TTY, unlike any tool-driven invocation),
+- [x] Rename the recipes to a `claude-` prefix (`claude-start`,
+      `claude-status`, `claude-teleport`) to avoid ambiguity with the
+      existing GCP "Cloud Run Admin Job" recipes further down the
+      `Justfile`, and add short aliases (`clst`, `clss`, `cltp`)
+      matching the file's convention
+- [x] Rename again to `claude-cloud-*` (`claude-cloud-start`,
+      `claude-cloud-status`, `claude-cloud-teleport`) — keeps both
+      "claude" and "cloud" in the name for clarity, still distinct from
+      the GCP Cloud Run recipes. Aliases (`clst`, `clss`, `cltp`) stay
+      unchanged, since they were already short mnemonics rather than
+      literal abbreviations of the full name
+- [ ] User runs `just claude-cloud-start "<task>"` for real in their
+      own terminal (a genuine TTY, unlike any tool-driven invocation),
       confirms a cloud session actually starts
 - [ ] Monitor the session via claude.ai/code or the Claude mobile app
       while offline, then pull it back locally with
-      `just cloud-teleport <session-id>` once reconnected
+      `just claude-cloud-teleport <session-id>` once reconnected
 
 ## Decisions
 
@@ -144,8 +155,8 @@ printing the command back.
   silently invisible to the cloud session. Considered skipping the
   check and letting a mismatch surface only once the cloud session
   started work on stale code — rejected as a silent-failure risk not
-  worth the saved step. Superseded by Phase 5's `just cloud-start`,
-  which keeps this same check.
+  worth the saved step. Superseded by Phase 5's
+  `just claude-cloud-start`, which keeps this same check.
 - **`cloud-start` hands back the `claude --cloud` command rather than running it (superseded by Phase 5 — see below):**
   confirmed by direct testing that `claude --cloud` refuses to run
   without a real interactive terminal, erroring with `--cloud requires
@@ -176,9 +187,21 @@ printing the command back.
   unmatched quote breaking `$ARGUMENTS` substitution, both hit during
   Phase 4 testing. A `just` recipe run directly by the user in their
   own terminal also sidesteps the Phase 4 TTY problem entirely — the
-  human's own terminal already has a real TTY, so `cloud-start` and
-  `cloud-teleport` can run `claude --cloud`/`claude --teleport`
-  directly instead of merely printing the command back. Considered
-  keeping the skills as a documentation layer even after adding the
-  recipes, but rejected it — two ways to do the same thing invites
-  them drifting out of sync.
+  human's own terminal already has a real TTY, so `claude-cloud-start`
+  and `claude-cloud-teleport` can run `claude --cloud`/
+  `claude --teleport` directly instead of merely printing the command
+  back. Considered keeping the skills as a documentation layer even
+  after adding the recipes, but rejected it — two ways to do the same
+  thing invites them drifting out of sync.
+- **Renamed the recipes from `cloud-*` to `claude-cloud-*` (via an intermediate `claude-*`), and added short aliases:**
+  the `Justfile` already has an unrelated "Cloud Run Admin Job" section
+  further down for GCP Cloud Run environments — a bare `cloud-*` prefix
+  on these Claude-specific recipes courted confusion between the two.
+  First renamed to `claude-*`, then to `claude-cloud-*` to keep both
+  "claude" and "cloud" in the name for clarity while staying distinct
+  from the GCP recipes. Added `clst`, `clss`, `cltp` aliases to match
+  the short-alias convention every other recipe in the file follows,
+  checked against the full existing alias list for collisions before
+  picking them — these stayed unchanged across both renames, since
+  they were short mnemonics rather than literal abbreviations of the
+  full name.
