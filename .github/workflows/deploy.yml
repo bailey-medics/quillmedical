@@ -58,7 +58,7 @@ jobs:
         with:
           ref: ${{ steps.resolve.outputs.sha }}
 
-      - uses: dorny/paths-filter@v4.0.2
+      - uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -102,7 +102,7 @@ jobs:
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.3.0
 
       - name: Build and push
         uses: docker/build-push-action@v7.3.0
