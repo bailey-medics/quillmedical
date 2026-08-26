@@ -140,7 +140,7 @@ phased by feature area so each phase stays reviewable.
       since Phase 1 already designed that marker for exactly these 3
       routes and there is no later phase that would otherwise apply it).
       Verified via `python3 backend/scripts/check_api_schema_coverage.py
-    --all --dev`, run both with and without `TEACHING_QUESTION_BANK_PATH`
+--all --dev`, run both with and without `TEACHING_QUESTION_BANK_PATH`
       set (the 3 image routes only register when that env var is set and
       `TEACHING_GCS_BUCKET` is not) — clean (exit 0) in both cases
 - [x] Add a `check-api-schema-coverage` hook to `.pre-commit-config.yaml`,
@@ -148,7 +148,7 @@ phased by feature area so each phase stays reviewable.
       scoped to `files: ^backend/app/.*\.py$` so it only reruns when route
       files change) — **with one necessary deviation from the shape**:
       the entry needs `--dev` appended (`entry: python3
-    backend/scripts/check_api_schema_coverage.py --all --dev`).
+backend/scripts/check_api_schema_coverage.py --all --dev`).
       `check_migrations.py` is pure-stdlib and never imports the app, so
       it needed no such flag; this new script must import the real
       FastAPI app (`import_app`, shared with `dump_openapi.py`) to read
@@ -175,16 +175,16 @@ phased by feature area so each phase stays reviewable.
       `install-backend-deps` condition now also covers
       `matrix.task == 'pre-commit'`, so that job's Poetry venv actually
       gets built; (2) the hook's `entry` changed from bare `python3
-    backend/scripts/check_api_schema_coverage.py --all --dev` to
+backend/scripts/check_api_schema_coverage.py --all --dev` to
       `poetry -C backend run python3
-    scripts/check_api_schema_coverage.py --all --dev` — `poetry run`
+scripts/check_api_schema_coverage.py --all --dev` — `poetry run`
       resolves backend's venv explicitly regardless of what happens to
       be active on `PATH`, so local and CI behaviour no longer depend on
       an accident of the invoking shell. Verified locally via `pre-commit
-    run check-api-schema-coverage --all-files`
+run check-api-schema-coverage --all-files`
 - [x] **Third CI-only gap, found because the second fix's own CI run still
       failed with the identical `ModuleNotFoundError: No module named
-    'httpx'`** — traced with `gh run view --log-failed`, which showed
+'httpx'`** — traced with `gh run view --log-failed`, which showed
       `poetry install` genuinely succeeded and wrote `httpx` into
       `backend/.venv` in the `pre-commit` job, yet the hook's `sys.path`
       still pointed at the _other_, backend-deps-free `.venv` created by
@@ -194,7 +194,7 @@ phased by feature area so each phase stays reviewable.
       active, `poetry -C backend run` deferred to the **active**
       `VIRTUAL_ENV` instead of resolving backend's own project venv —
       confirmed with an isolated reproduction (a throwaway Poetry project, `env
-    -i` to strip all ambient state, a foreign venv activated): without
+-i` to strip all ambient state, a foreign venv activated): without
       a fix, `poetry -C <project> run python3 -c "import httpx"` fails
       with the foreign venv's interpreter; prefixing the same command
       with `env -u VIRTUAL_ENV` makes it correctly resolve the project's
@@ -205,7 +205,7 @@ phased by feature area so each phase stays reviewable.
       of any foreign active venv; the throwaway project, with no such
       registry, faithfully matches a fresh CI runner.) Fixed by changing
       the hook's `entry` to `env -u VIRTUAL_ENV poetry -C backend run
-    python3 scripts/check_api_schema_coverage.py --all --dev`, so
+python3 scripts/check_api_schema_coverage.py --all --dev`, so
       Poetry's project-venv resolution no longer depends on whatever
       happens to already be active on `PATH`/`VIRTUAL_ENV` at hook-run
       time — deterministic in both CI and any developer's shell,
@@ -214,7 +214,7 @@ phased by feature area so each phase stays reviewable.
       the isolated reproduction above
 - [x] Confirm the hook runs clean on the current branch (0 unexpected
       opaque routes beyond the allowlist) — `python3
-    backend/scripts/check_api_schema_coverage.py --all --dev` exits 0
+backend/scripts/check_api_schema_coverage.py --all --dev` exits 0
       with no errors
 - [x] `just ub` — full backend suite still green (no behavioural change
       yet, this phase is tooling + grandfathering only). Note: this must
@@ -464,6 +464,7 @@ the two smaller route files.
       `oasdiff breaking` (per `backend/scripts/dump_openapi.py`) flags it,
       then revert — proves the fix actually closes the detection gap
       that started this plan
+- [ ] We need to figure out with a human what needs doing for phase 5 items.
 
 ## Decisions
 
@@ -581,7 +582,7 @@ the two smaller route files.
   `DemographicsIn` with `extra="forbid"`. This tightened validation
   surfaced a real behaviour change: the existing
   `test_update_patient_demographics` test sent `{"name": "Updated
-  Name"}`, a field the endpoint silently ignored under the old
+Name"}`, a field the endpoint silently ignored under the old
   `dict[str, Any]` body — now correctly rejected with 422. Fixed the
   test's payload to use real field names and added
   `test_update_patient_demographics_rejects_unknown_field` to cover the

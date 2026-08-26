@@ -148,6 +148,20 @@ from app.schemas.messaging import (
     MessageOut,
     ParticipantOut,
 )
+from app.schemas.organisations import (
+    AddPatientIn,
+    AddStaffIn,
+    CreateOrganisationIn,
+    CreateSiteIn,
+    LinkedSiteItem,
+    OrganisationDetailOut,
+    OrganisationOut,
+    OrganisationsListOut,
+    PatientMemberItem,
+    StaffMemberItem,
+    UpdateOrganisationIn,
+    UpdateSiteIn,
+)
 from app.schemas.patients import (
     AcceptInviteOut,
     DemographicsIn,
@@ -3054,45 +3068,17 @@ def update_patient(
         if not existing:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Build update dict with provided fields
+        # Build update dict in the format update_fhir_patient expects
         updates: dict[str, Any] = {}
 
-        # Update name
-        if data.given_name or data.family_name:
-            updates["name"] = [
-                {
-                    "use": "official",
-                    "given": [data.given_name] if data.given_name else [],
-                    "family": data.family_name if data.family_name else "",
-                }
-            ]
-
-        # Update birth date
+        if data.given_name:
+            updates["given_name"] = data.given_name
+        if data.family_name:
+            updates["family_name"] = data.family_name
         if data.birth_date:
-            updates["birthDate"] = data.birth_date
-
-        # Update gender
+            updates["date_of_birth"] = data.birth_date
         if data.gender:
-            updates["gender"] = data.gender
-
-        # Update identifiers (NHS number, MRN)
-        identifiers = []
-        if data.nhs_number:
-            identifiers.append(
-                {
-                    "system": "https://fhir.nhs.uk/Id/nhs-number",
-                    "value": data.nhs_number,
-                }
-            )
-        if data.mrn:
-            identifiers.append(
-                {
-                    "system": "http://hospital.example.org/mrn",
-                    "value": data.mrn,
-                }
-            )
-        if identifiers:
-            updates["identifier"] = identifiers
+            updates["sex"] = data.gender
 
         # Perform update
         updated_patient = update_fhir_patient(patient_id, updates)
@@ -3453,11 +3439,10 @@ async def update_my_competencies(
 # ==========================================================================
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/organisations")
+@router.get("/organisations", response_model=OrganisationsListOut)
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
-) -> dict[str, Any]:
+) -> OrganisationsListOut:
     """List all organisations.
 
     Retrieves all organisations from the database. Returns basic information
@@ -3499,30 +3484,29 @@ def list_organisations(
                 .scalars()
                 .all()
             )
-        return {
-            "organisations": [
-                {
-                    "id": org.id,
-                    "name": org.name,
-                    "type": org.type,
-                    "location": org.location,
-                    "created_at": org.created_at.isoformat(),
-                    "updated_at": org.updated_at.isoformat(),
-                }
+        return OrganisationsListOut(
+            organisations=[
+                OrganisationListItem(
+                    id=org.id,
+                    name=org.name,
+                    type=org.type,
+                    location=org.location,
+                    created_at=org.created_at.isoformat(),
+                    updated_at=org.updated_at.isoformat(),
+                )
                 for org in organisations
             ]
-        }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/organisations/{org_id}")
+@router.get("/organisations/{org_id}", response_model=OrganisationDetailOut)
 def get_organisation(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationDetailOut:
     """Get Organisation Details.
 
     Retrieves detailed information about a specific organisation including
@@ -3621,72 +3605,51 @@ def get_organisation(
         for row in db.execute(cl_query).all():
             clinical_leads[row.site_id] = row.full_name or row.username
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-        "staff_count": len(staff_members),
-        "patient_count": len(patient_members),
-        "staff_members": [
-            {
-                "id": sm.id,
-                "username": sm.username,
-                "email": sm.email,
-                "full_name": sm.full_name or "",
-            }
+    return OrganisationDetailOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+        staff_count=len(staff_members),
+        patient_count=len(patient_members),
+        staff_members=[
+            StaffMemberItem(
+                id=sm.id,
+                username=sm.username,
+                email=sm.email,
+                full_name=sm.full_name or "",
+            )
             for sm in staff_members
         ],
-        "patient_members": [
-            {
-                "patient_id": pm.patient_id,
-            }
+        patient_members=[
+            PatientMemberItem(
+                patient_id=pm.patient_id,
+            )
             for pm in patient_members
         ],
-        "sites": [
-            {
-                "id": s.id,
-                "name": s.name,
-                "type": s.type,
-                "location": s.location or "",
-                "is_active": s.is_active,
-                "clinical_lead": clinical_leads.get(s.id, ""),
-            }
+        sites=[
+            LinkedSiteItem(
+                id=s.id,
+                name=s.name,
+                type=s.type,
+                location=s.location or "",
+                is_active=s.is_active,
+                clinical_lead=clinical_leads.get(s.id, ""),
+            )
             for s in sites
         ],
-    }
+    )
 
 
-class CreateOrganisationIn(BaseModel):
-    """Request body for creating a new organisation."""
-
-    name: str
-    type: str
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-class UpdateOrganisationIn(BaseModel):
-    """Request body for updating an organisation."""
-
-    name: str | None = None
-    type: str | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-# api-schema-check: allow-opaque-grandfathered
-@router.put("/organisations/{org_id}")
+@router.put("/organisations/{org_id}", response_model=OrganisationOut)
 def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationOut:
     """Update Organisation.
 
     Updates an existing organisation's details.
@@ -3746,23 +3709,22 @@ def update_organisation(
     db.flush()
     db.refresh(org)
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-    }
+    return OrganisationOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/organisations")
+@router.post("/organisations", response_model=OrganisationOut)
 def create_organisation(
     body: CreateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationOut:
     """Create Organisation.
 
     Creates a new organisation in the database.
@@ -3809,31 +3771,22 @@ def create_organisation(
     db.flush()
     db.refresh(org)
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-    }
+    return OrganisationOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+    )
 
 
-class AddStaffIn(BaseModel):
-    """Request body for adding a staff member to an organisation."""
-
-    user_id: int
-
-    model_config = {"extra": "forbid"}
-
-
-# api-schema-check: allow-opaque-grandfathered
-@router.delete("/organisations/{org_id}")
+@router.delete("/organisations/{org_id}", response_model=DetailResponse)
 def delete_organisation(
     org_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Delete Organisation.
 
     Permanently removes an organisation and all associated memberships.
@@ -3863,7 +3816,7 @@ def delete_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     db.delete(org)
-    return {"detail": "Organisation deleted"}
+    return DetailResponse(detail="Organisation deleted")
 
 
 # api-schema-check: allow-opaque-grandfathered
@@ -3946,14 +3899,6 @@ def add_staff_to_organisation(
         "user_id": body.user_id,
         "username": user.username,
     }
-
-
-class AddPatientIn(BaseModel):
-    """Request body for adding a patient to an organisation."""
-
-    patient_id: str
-
-    model_config = {"extra": "forbid"}
 
 
 # api-schema-check: allow-opaque-grandfathered
@@ -4234,28 +4179,6 @@ def toggle_org_feature(
 # ==========================================================================
 # SITES
 # ==========================================================================
-
-
-class CreateSiteIn(BaseModel):
-    """Request body for creating a site."""
-
-    name: str
-    type: str
-    parent_id: int | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-class UpdateSiteIn(BaseModel):
-    """Request body for updating a site."""
-
-    name: str | None = None
-    type: str | None = None
-    parent_id: int | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
 
 
 VALID_SITE_TYPES = {

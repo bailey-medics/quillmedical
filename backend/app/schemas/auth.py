@@ -216,7 +216,9 @@ class HealthCheckOut(BaseModel):
     """
 
     status: str
-    services: dict[str, ServiceHealthStatus | dict[str, bool | str | None]]
+    services: dict[
+        str, ServiceHealthStatus | dict[str, bool | int | str | None]
+    ]
 
 
 class OrganisationListItem(BaseModel):
