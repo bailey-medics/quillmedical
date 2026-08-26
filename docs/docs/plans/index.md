@@ -41,3 +41,5 @@
 - [Core DB Auto-Commit](2026-08-25-core-db-auto-commit-plan.md)
 - [Remove is_primary Flag](2026-08-25-remove-is-primary-flag-plan.md)
 - [API Schema Coverage](2026-08-25-api-schema-coverage-plan.md)
+- [Cloud Sessions Setup](2026-08-26-cloud-sessions-setup-plan.md)
+- [Cloud Session Smoke Test](2026-08-26-cloud-session-smoke-test-plan.md)
