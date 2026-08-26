@@ -177,16 +177,25 @@ def test_index_file_finds_grandfathered_marker(tmp_path: Path) -> None:
     assert index["foo"].marker == GRANDFATHERED_MARKER
 
 
-def test_index_file_finds_permanent_marker_with_reason(
-    tmp_path: Path,
-) -> None:
+def test_index_file_finds_permanent_marker(tmp_path: Path) -> None:
+    path = _write_route_file(
+        tmp_path, marker=PERMANENT_MARKER, func_name="foo"
+    )
+    index = _index_file(path)
+    assert index["foo"].marker == PERMANENT_MARKER
+
+
+def test_index_file_rejects_marker_with_trailing_text(tmp_path: Path) -> None:
+    """The marker line must match exactly — no appended reason or other
+    trailing text. A marker is a fixed, static line, not a per-route
+    customisable comment."""
     path = _write_route_file(
         tmp_path,
         marker=f"{PERMANENT_MARKER}  # serves raw bytes",
         func_name="foo",
     )
     index = _index_file(path)
-    assert index["foo"].marker == PERMANENT_MARKER
+    assert index["foo"].marker is None
 
 
 def test_index_file_captures_return_type(tmp_path: Path) -> None:

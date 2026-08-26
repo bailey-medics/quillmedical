@@ -475,6 +475,7 @@ def clear_auth_cookies(response: Response) -> None:
     )
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/health")
 def health_check() -> dict[str, Any]:
     """Health Check Endpoint.
@@ -629,6 +630,7 @@ DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/login")
 @limiter.limit("5/minute")
 def login(
@@ -727,6 +729,7 @@ def login(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/auth/organisations")
 def list_organisations_public(
     db: Session = DEP_GET_SESSION,
@@ -749,6 +752,7 @@ def list_organisations_public(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/teaching/public/modules")
 def list_teaching_modules_public(
     db: Session = DEP_GET_SESSION,
@@ -813,6 +817,7 @@ class ValidateClinicalLeadIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/teaching/public/validate-clinical-lead")
 @limiter.limit("10/minute")
 def validate_clinical_lead(
@@ -909,6 +914,7 @@ def validate_clinical_lead(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/register")
 @limiter.limit("3/minute")
 def register(
@@ -1066,6 +1072,7 @@ def register(
     return {"detail": "created"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/verify-email")
 @limiter.limit("10/minute")
 def verify_email(
@@ -1103,6 +1110,7 @@ def verify_email(
     return {"detail": "verified"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/resend-verification")
 @limiter.limit("1/minute")
 def resend_verification(
@@ -1142,6 +1150,7 @@ def resend_verification(
     return {"detail": "ok"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/forgot-password")
 @limiter.limit("3/minute")
 def forgot_password(
@@ -1183,6 +1192,7 @@ def forgot_password(
     return {"detail": "ok"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/reset-password")
 @limiter.limit("5/minute")
 def reset_password(
@@ -1293,6 +1303,7 @@ class AdminUserUpdateIn(BaseModel):
     site_ids: list[int] | None = None
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/users")
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
@@ -1422,6 +1433,7 @@ def create_user_with_cbac(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch("/users/{user_id}")
 def update_user(
     user_id: int,
@@ -1630,6 +1642,7 @@ def update_user(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/users/{user_id}/deactivate")
 def deactivate_user(
     user_id: int,
@@ -1694,6 +1707,7 @@ def deactivate_user(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/users/{user_id}/reactivate")
 def reactivate_user(
     user_id: int,
@@ -1749,6 +1763,7 @@ def reactivate_user(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/users/{user_id}/send-invite")
 def send_invite_email(
     user_id: int,
@@ -1883,6 +1898,7 @@ class TotpVerifyIn(BaseModel):
     code: str
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/totp/verify")
 @limiter.limit("5/minute")
 def totp_verify(
@@ -1938,6 +1954,7 @@ def totp_verify(
     return {"detail": "enabled"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/totp/disable")
 @limiter.limit("5/minute")
 def totp_disable(
@@ -1975,6 +1992,7 @@ def totp_disable(
     return {"detail": "disabled"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/change-password")
 def change_password(
     data: ChangePasswordIn,
@@ -2035,6 +2053,7 @@ def change_password(
     return {"detail": "Password changed"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/logout")
 def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
     """User Logout.
@@ -2055,6 +2074,7 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
     return {"detail": "ok"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/auth/me")
 def me(
     current_user: User = DEP_CURRENT_USER,
@@ -2135,6 +2155,7 @@ def me(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch("/auth/profile")
 def update_profile(
     data: UpdateProfileIn,
@@ -2183,6 +2204,7 @@ def update_profile(
     return {"detail": "Profile updated"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/users")
 def list_users(
     patient_id: str | None = None,
@@ -2370,6 +2392,7 @@ def list_users(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
@@ -2456,6 +2479,7 @@ def get_user(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/auth/refresh")
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
@@ -2525,6 +2549,7 @@ def refresh(
     return {"detail": "refreshed"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/verify",
     dependencies=[
@@ -2567,6 +2592,7 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
 def list_patients(
     include_inactive: bool = False,
@@ -2632,6 +2658,7 @@ def list_patients(
         return {"patients": [], "fhir_ready": False}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.put(
     "/patients/{patient_id}/demographics",
     dependencies=[
@@ -2678,6 +2705,7 @@ def upsert_demographics(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -2715,6 +2743,7 @@ def get_demographics(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/letters",
     dependencies=[
@@ -2766,6 +2795,7 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/letters/{composition_uid}",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -2811,6 +2841,7 @@ def read_letter(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -2875,6 +2906,7 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -2915,6 +2947,7 @@ def create_patient_in_fhir(
         ) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -2955,6 +2988,7 @@ def get_patient(
         ) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -3045,6 +3079,7 @@ def update_patient(
         ) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/metadata",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -3087,6 +3122,7 @@ def get_patient_metadata(
         }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/deactivate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -3153,6 +3189,7 @@ def deactivate_patient(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/activate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -3218,6 +3255,7 @@ def activate_patient(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/shared-organisations",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -3287,6 +3325,7 @@ async def get_my_competencies(
     )
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/prescriptions/controlled",
     tags=["cbac", "prescriptions"],
@@ -3386,6 +3425,7 @@ async def update_my_competencies(
 # ==========================================================================
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/organisations")
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
@@ -3448,6 +3488,7 @@ def list_organisations(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/organisations/{org_id}")
 def get_organisation(
     org_id: int,
@@ -3610,6 +3651,7 @@ class UpdateOrganisationIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.put("/organisations/{org_id}")
 def update_organisation(
     org_id: int,
@@ -3686,6 +3728,7 @@ def update_organisation(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/organisations")
 def create_organisation(
     body: CreateOrganisationIn,
@@ -3756,6 +3799,7 @@ class AddStaffIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete("/organisations/{org_id}")
 def delete_organisation(
     org_id: int,
@@ -3794,6 +3838,7 @@ def delete_organisation(
     return {"detail": "Organisation deleted"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/organisations/{org_id}/staff")
 def add_staff_to_organisation(
     org_id: int,
@@ -3883,6 +3928,7 @@ class AddPatientIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/patients",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -3956,6 +4002,7 @@ def add_patient_to_organisation(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4007,6 +4054,7 @@ def remove_staff_from_organisation(
     return {"status": "removed"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4063,6 +4111,7 @@ def remove_patient_from_organisation(
 # ==========================================================================
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/organisations/{org_id}/features")
 def list_org_features(
     org_id: int,
@@ -4099,6 +4148,7 @@ def list_org_features(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.put(
     "/organisations/{org_id}/features/{feature_key}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4191,6 +4241,7 @@ VALID_SITE_TYPES = {
 }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/sites")
 def list_sites(
     current_user: User = DEP_CURRENT_USER,
@@ -4219,6 +4270,7 @@ def list_sites(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/sites", dependencies=[DEP_REQUIRE_CSRF])
 def create_site(
     body: CreateSiteIn,
@@ -4265,6 +4317,7 @@ def create_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/sites/{site_id}")
 def get_site(
     site_id: int,
@@ -4334,6 +4387,7 @@ def get_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.put("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
 def update_site(
     site_id: int,
@@ -4390,6 +4444,7 @@ def update_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch("/sites/{site_id}/active", dependencies=[DEP_REQUIRE_CSRF])
 def toggle_site_active(
     site_id: int,
@@ -4424,6 +4479,7 @@ def toggle_site_active(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
 def delete_site(
     site_id: int,
@@ -4442,6 +4498,7 @@ def delete_site(
     return {"status": "deleted"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4482,6 +4539,7 @@ def link_site_to_org(
     return {"status": "linked"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4509,6 +4567,7 @@ def unlink_site_from_org(
     return {"status": "unlinked"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/sites/{site_id}/staff",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4593,6 +4652,7 @@ def add_site_staff(
     return {"status": "added"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4620,6 +4680,7 @@ def remove_site_staff(
     return {"status": "removed"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch(
     "/users/{user_id}/link-patient",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4682,6 +4743,7 @@ def link_patient_to_user(
 # ==========================================================================
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/invite-external",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -4730,6 +4792,7 @@ def invite_external_user(
     return {"invite_url": invite_url, "token": token}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/accept-invite")
 def accept_invite(
     body: AcceptInviteIn,
@@ -4816,6 +4879,7 @@ def accept_invite(
     return {"status": "registered", "user_id": new_user.id}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -4859,6 +4923,7 @@ def revoke_external_access(
     return {"status": "revoked"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/external-access",
     dependencies=[DEP_REQUIRE_CLINICAL],
@@ -5328,6 +5393,7 @@ def join_conversation_endpoint(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/conversations/{conversation_id}/read",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -5364,6 +5430,7 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/ci/teaching/sync")
 def ci_teaching_sync(
     request: Request,
@@ -5514,6 +5581,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
     _qb_base = settings.TEACHING_QUESTION_BANK_PATH
 
+    # api-schema-check: allow-opaque-permanent
     @app.get(
         "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
     )
@@ -5550,6 +5618,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
+    # api-schema-check: allow-opaque-permanent
     @app.get("/api/teaching/images/cover/{module_id}/{filename}")
     async def _serve_cover_image(
         module_id: str,
@@ -5583,6 +5652,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
+    # api-schema-check: allow-opaque-permanent
     @app.get("/api/teaching/images/learning/{module_id}/{filename}")
     async def _serve_learning_image(
         module_id: str,

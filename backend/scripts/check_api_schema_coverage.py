@@ -197,13 +197,19 @@ def _decorator_is_http_route(decorator: ast.expr) -> bool:
 
 
 def _marker_above(lines: list[str], lineno: int) -> str | None:
-    """Return the marker on the line immediately above 1-indexed `lineno`."""
+    """Return the marker on the line immediately above 1-indexed `lineno`.
+
+    Requires an exact match against the marker constant — no appended
+    reason text or other trailing content. A marker is a fixed, static
+    line, not a per-route customisable comment; allowing a suffix would
+    invite exactly that impression without the checker ever reading it.
+    """
     if lineno < 2:
         return None
     above = lines[lineno - 2].strip()
-    if above.startswith(GRANDFATHERED_MARKER):
+    if above == GRANDFATHERED_MARKER:
         return GRANDFATHERED_MARKER
-    if above.startswith(PERMANENT_MARKER):
+    if above == PERMANENT_MARKER:
         return PERMANENT_MARKER
     return None
 

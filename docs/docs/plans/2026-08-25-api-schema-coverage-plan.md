@@ -83,9 +83,11 @@ phased by feature area so each phase stays reviewable.
     is not usable again after that work is done
   - `# api-schema-check: allow-opaque-permanent` — placed above the 3
     binary `FileResponse` image-serving routes (`_serve_teaching_image`,
-    `_serve_cover_image`, `_serve_learning_image`), with a one-line
-    reason (serves raw bytes, not JSON — no `properties` shape will ever
-    apply). Not expected to ever reach zero, and that's fine — Phase 8
+    `_serve_cover_image`, `_serve_learning_image`), as a bare marker line
+    with no appended reason text — the checker only matches the marker
+    string itself (via a return-type check, not the comment text), so a
+    per-route reason would just look editable/customisable without doing
+    anything. Not expected to ever reach zero, and that's fine — Phase 8
     only checks the grandfathered marker count, not this one
 
 - [x] Don't just trust `allow-opaque-permanent` as a blanket comment —
@@ -128,19 +130,48 @@ phased by feature area so each phase stays reviewable.
 
 ## Phase 2: Grandfather existing gaps and wire into CI
 
-- [ ] Add `# api-schema-check: allow-opaque-grandfathered` above each of
-      the 73 currently-opaque routes (full list below, from the Explore
-      survey) so the check passes immediately without blocking on the
-      retrofit
-- [ ] Add a `check-api-schema-coverage` hook to `.pre-commit-config.yaml`,
-      following the `check-migrations` hook's shape: `entry: python3
-backend/scripts/check_api_schema_coverage.py --all`, `language:
-system`, scoped to `files: ^backend/app/.*\.py$` so it only reruns
-      when route files change
-- [ ] Confirm the hook runs clean on the current branch (0 unexpected
-      opaque routes beyond the allowlist)
-- [ ] `just ub` — full backend suite still green (no behavioural change
-      yet, this phase is tooling + grandfathering only)
+- [x] Add `# api-schema-check: allow-opaque-grandfathered` above each of
+      the 70 currently-opaque, to-be-retrofitted routes (the Phase 3-7
+      lists below total 70, not 73 — the "73" in the intro/survey also
+      counts the 3 permanently-opaque `FileResponse` image routes, which
+      get the distinct permanent marker instead, applied to
+      `backend/app/main.py`'s `_serve_teaching_image`,
+      `_serve_cover_image`, `_serve_learning_image` in this same phase
+      since Phase 1 already designed that marker for exactly these 3
+      routes and there is no later phase that would otherwise apply it).
+      Verified via `python3 backend/scripts/check_api_schema_coverage.py
+      --all --dev`, run both with and without `TEACHING_QUESTION_BANK_PATH`
+      set (the 3 image routes only register when that env var is set and
+      `TEACHING_GCS_BUCKET` is not) — clean (exit 0) in both cases
+- [x] Add a `check-api-schema-coverage` hook to `.pre-commit-config.yaml`,
+      following the `check-migrations` hook's shape (`language: system`,
+      scoped to `files: ^backend/app/.*\.py$` so it only reruns when route
+      files change) — **with one necessary deviation from the shape**:
+      the entry needs `--dev` appended (`entry: python3
+      backend/scripts/check_api_schema_coverage.py --all --dev`).
+      `check_migrations.py` is pure-stdlib and never imports the app, so
+      it needed no such flag; this new script must import the real
+      FastAPI app (`import_app`, shared with `dump_openapi.py`) to read
+      the live OpenAPI spec, which fails with a `pydantic` validation
+      error for missing `JWT_SECRET`/`CORE_DB_PASSWORD`/etc. under the
+      repo-root `.env` alone — confirmed by literally running the
+      no-`--dev` entry from the repo root and reproducing the crash.
+      `--dev` supplies the same fallback secrets `dump_openapi.py --dev`
+      already uses in CI (`ci.yml`'s `api_breaking_change_check` and
+      `docs.yml`), so this keeps the new hook consistent with the
+      existing precedent rather than introducing a new one
+- [x] Confirm the hook runs clean on the current branch (0 unexpected
+      opaque routes beyond the allowlist) — `python3
+      backend/scripts/check_api_schema_coverage.py --all --dev` exits 0
+      with no errors
+- [x] `just ub` — full backend suite still green (no behavioural change
+      yet, this phase is tooling + grandfathering only). Note: this must
+      be run against a container started via `just start-teaching`
+      (`CLINICAL_SERVICES_ENABLED=false`), matching the CI `unit` job's
+      env — a `just start-dev` container (clinical services enabled)
+      fails `test_register_success` regardless of this plan's changes,
+      since `/auth/register` is teaching-only and 403s when clinical
+      services are enabled (confirmed pre-existing via `git stash`)
 
 ## Phase 3: Retrofit — auth & health (16 routes)
 
