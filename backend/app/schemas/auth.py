@@ -137,3 +137,127 @@ class UpdateProfileIn(BaseModel):
 
     full_name: str | None = None
     email: EmailStr | None = None
+
+
+class DetailResponse(BaseModel):
+    """Simple success response with detail message."""
+
+    detail: str
+
+
+class LoginOut(BaseModel):
+    """Login response payload.
+
+    Attributes:
+        detail: Success message ("ok").
+        user: User profile with username and roles.
+    """
+
+    detail: str
+    user: dict[str, str | list[str]]
+
+
+class RefreshOut(BaseModel):
+    """Refresh token response payload.
+
+    Attributes:
+        detail: Success message ("ok").
+    """
+
+    detail: str
+
+
+class MeOut(BaseModel):
+    """Current user profile response.
+
+    Attributes:
+        id: User's database ID.
+        username: User's username.
+        name: User's full name (may be null).
+        email: User's email address.
+        roles: List of assigned role names.
+        system_permissions: User's system permission level.
+        totp_enabled: Whether 2FA is active.
+        enabled_features: Features enabled on any of the user's orgs.
+        clinical_services_enabled: Whether clinical services are enabled.
+        competencies: Resolved CBAC competency IDs.
+    """
+
+    id: int
+    username: str
+    name: str | None
+    email: str
+    roles: list[str]
+    system_permissions: str
+    totp_enabled: bool
+    enabled_features: list[str]
+    clinical_services_enabled: bool
+    competencies: list[str]
+
+
+class ServiceHealthStatus(BaseModel):
+    """Health status of a single service.
+
+    Attributes:
+        available: Whether the service is available.
+        error: Error message if service is unavailable.
+    """
+
+    available: bool
+    error: str | None = None
+
+
+class HealthCheckOut(BaseModel):
+    """Health check response.
+
+    Attributes:
+        status: Overall status ("healthy" or "degraded").
+        services: Health status for each service (core_db, fhir, ehrbase).
+    """
+
+    status: str
+    services: dict[str, ServiceHealthStatus | dict[str, bool | str | None]]
+
+
+class OrganisationListItem(BaseModel):
+    """Organisation summary for public listing.
+
+    Attributes:
+        id: Organisation ID.
+        name: Organisation name.
+    """
+
+    id: int
+    name: str
+
+
+class OrganisationsOut(BaseModel):
+    """List organisations response.
+
+    Attributes:
+        organisations: List of organisations available for registration.
+    """
+
+    organisations: list[OrganisationListItem]
+
+
+class TeachingModuleItem(BaseModel):
+    """Teaching module summary for public listing.
+
+    Attributes:
+        value: Module ID or key.
+        label: Human-readable module name.
+    """
+
+    value: str
+    label: str
+
+
+class TeachingModulesOut(BaseModel):
+    """List teaching modules response.
+
+    Attributes:
+        modules: List of teaching modules available for registration.
+    """
+
+    modules: list[TeachingModuleItem]

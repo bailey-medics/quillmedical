@@ -102,11 +102,20 @@ from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.schemas.auth import (
     ChangePasswordIn,
+    DetailResponse,
     ForgotPasswordIn,
+    HealthCheckOut,
     LoginIn,
+    LoginOut,
+    MeOut,
+    OrganisationListItem,
+    OrganisationsOut,
+    RefreshOut,
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
+    TeachingModuleItem,
+    TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
     VerifyEmailIn,
@@ -475,9 +484,8 @@ def clear_auth_cookies(response: Response) -> None:
     )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/health")
-def health_check() -> dict[str, Any]:
+@router.get("/health", response_model=HealthCheckOut)
+def health_check() -> HealthCheckOut:
     """Health Check Endpoint.
 
     Checks availability of all required services (FHIR, EHRbase).
@@ -508,10 +516,10 @@ def health_check() -> dict[str, Any]:
 
     all_healthy = all(s.get("available", False) for s in services.values())
 
-    return {
-        "status": "healthy" if all_healthy else "degraded",
-        "services": services,
-    }
+    return HealthCheckOut(
+        status="healthy" if all_healthy else "degraded",
+        services=services,
+    )
 
 
 def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
@@ -630,15 +638,14 @@ DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/login")
+@router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
 def login(
     request: Request,
     data: LoginIn,
     response: Response,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> LoginOut:
     """User Login with Optional TOTP.
 
     Authenticates a user with username and password, optionally verifying a
@@ -723,17 +730,16 @@ def login(
     refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
-    return {
-        "detail": "ok",
-        "user": {"username": user.username, "roles": roles},
-    }
+    return LoginOut(
+        detail="ok",
+        user={"username": user.username, "roles": roles},
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/auth/organisations")
+@router.get("/auth/organisations", response_model=OrganisationsOut)
 def list_organisations_public(
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, Any]]]:
+) -> OrganisationsOut:
     """List organisations for registration.
 
     Public endpoint that returns organisation names and IDs for the
@@ -745,18 +751,18 @@ def list_organisations_public(
         ``{id, name}`` objects.
     """
     organisations = db.execute(select(Organisation)).scalars().all()
-    return {
-        "organisations": [
-            {"id": org.id, "name": org.name} for org in organisations
+    return OrganisationsOut(
+        organisations=[
+            OrganisationListItem(id=org.id, name=org.name)
+            for org in organisations
         ]
-    }
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/teaching/public/modules")
+@router.get("/teaching/public/modules", response_model=TeachingModulesOut)
 def list_teaching_modules_public(
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, str]]]:
+) -> TeachingModulesOut:
     """List teaching modules available for registration.
 
     Public endpoint (no authentication required) that returns question
@@ -783,7 +789,7 @@ def list_teaching_modules_public(
     )
 
     if not registrable_bank_ids:
-        return {"modules": []}
+        return TeachingModulesOut(modules=[])
 
     configs = (
         db.execute(
@@ -799,13 +805,15 @@ def list_teaching_modules_public(
 
     # Deduplicate by question_bank_id (may exist for multiple orgs)
     seen: set[str] = set()
-    modules: list[dict[str, str]] = []
+    modules: list[TeachingModuleItem] = []
     for c in configs:
         if c.question_bank_id not in seen:
             seen.add(c.question_bank_id)
-            modules.append({"value": c.question_bank_id, "label": c.title})
+            modules.append(
+                TeachingModuleItem(value=c.question_bank_id, label=c.title)
+            )
 
-    return {"modules": modules}
+    return TeachingModulesOut(modules=modules)
 
 
 class ValidateClinicalLeadIn(BaseModel):
@@ -914,14 +922,13 @@ def validate_clinical_lead(
     }
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/register")
+@router.post("/auth/register", response_model=DetailResponse)
 @limiter.limit("3/minute")
 def register(
     request: Request,
     payload: RegisterIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """User Registration.
 
     Creates a new user account with username, email, and password. Performs
@@ -1069,17 +1076,16 @@ def register(
         ),
     )
 
-    return {"detail": "created"}
+    return DetailResponse(detail="created")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/verify-email")
+@router.post("/auth/verify-email", response_model=DetailResponse)
 @limiter.limit("10/minute")
 def verify_email(
     request: Request,
     data: VerifyEmailIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Verify a user's email address using a signed token.
 
     Validates the token from the email link and marks the user's email
@@ -1104,20 +1110,19 @@ def verify_email(
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     if user.email_verified:
-        return {"detail": "verified"}
+        return DetailResponse(detail="verified")
 
     user.email_verified = True
-    return {"detail": "verified"}
+    return DetailResponse(detail="verified")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/resend-verification")
+@router.post("/auth/resend-verification", response_model=DetailResponse)
 @limiter.limit("1/minute")
 def resend_verification(
     request: Request,
     data: ResendVerificationIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Resend the email verification link.
 
     Looks up the user by email and sends a new verification token.
@@ -1147,17 +1152,16 @@ def resend_verification(
             ),
         )
     # Always return ok to prevent account enumeration
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/forgot-password")
+@router.post("/auth/forgot-password", response_model=DetailResponse)
 @limiter.limit("3/minute")
 def forgot_password(
     request: Request,
     data: ForgotPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Request a password reset email.
 
     Accepts an email address and, if a matching account exists, sends a
@@ -1189,17 +1193,16 @@ def forgot_password(
             ),
         )
     # Always return ok to prevent account enumeration
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/reset-password")
+@router.post("/auth/reset-password", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def reset_password(
     request: Request,
     data: ResetPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Reset a user's password using a reset token.
 
     Verifies the token from the email link, validates the new password,
@@ -1236,7 +1239,7 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
-    return {"detail": "Password reset successfully"}
+    return DetailResponse(detail="Password reset successfully")
 
 
 class AdminUserCreateIn(BaseModel):
@@ -1898,15 +1901,14 @@ class TotpVerifyIn(BaseModel):
     code: str
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/totp/verify")
+@router.post("/auth/totp/verify", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def totp_verify(
     request: Request,
     payload: TotpVerifyIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Verify TOTP and Enable Two-Factor.
 
     Verifies the 6-digit TOTP code from the user's authenticator app and
@@ -1951,18 +1953,17 @@ def totp_verify(
         )
     current_user.is_totp_enabled = True
     db.add(current_user)
-    return {"detail": "enabled"}
+    return DetailResponse(detail="enabled")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/totp/disable")
+@router.post("/auth/totp/disable", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def totp_disable(
     request: Request,
     data: TotpDisableIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
@@ -1989,17 +1990,16 @@ def totp_disable(
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
     db.add(current_user)
-    return {"detail": "disabled"}
+    return DetailResponse(detail="disabled")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/change-password")
+@router.post("/auth/change-password", response_model=DetailResponse)
 def change_password(
     data: ChangePasswordIn,
     response: Response,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Change the current user's password.
 
     Verifies the current password, validates the new password meets
@@ -2050,12 +2050,11 @@ def change_password(
     xsrf = make_csrf(current_user.username)
     set_auth_cookies(response, access, refresh, xsrf)
 
-    return {"detail": "Password changed"}
+    return DetailResponse(detail="Password changed")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/logout")
-def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
+@router.post("/auth/logout", response_model=DetailResponse)
+def logout(response: Response, _u: User = DEP_CURRENT_USER) -> DetailResponse:
     """User Logout.
 
     Logs out the current user by clearing all authentication cookies (access_token,
@@ -2068,18 +2067,17 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
         _u: Currently authenticated user (validates auth before logout).
 
     Returns:
-        dict: Success response with {"detail": "ok"}.
+        DetailResponse: Success response.
     """
     clear_auth_cookies(response)
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/auth/me")
+@router.get("/auth/me", response_model=MeOut)
 def me(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> MeOut:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
@@ -2141,27 +2139,26 @@ def me(
         )
         enabled_features = list(features)
 
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "name": current_user.full_name,
-        "email": current_user.email,
-        "roles": [r.name for r in current_user.roles],
-        "system_permissions": current_user.system_permissions,
-        "totp_enabled": current_user.is_totp_enabled,
-        "enabled_features": enabled_features,
-        "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
-        "competencies": current_user.get_final_competencies(),
-    }
+    return MeOut(
+        id=current_user.id,
+        username=current_user.username,
+        name=current_user.full_name,
+        email=current_user.email,
+        roles=[r.name for r in current_user.roles],
+        system_permissions=current_user.system_permissions,
+        totp_enabled=current_user.is_totp_enabled,
+        enabled_features=enabled_features,
+        clinical_services_enabled=settings.CLINICAL_SERVICES_ENABLED,
+        competencies=current_user.get_final_competencies(),
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.patch("/auth/profile")
+@router.patch("/auth/profile", response_model=DetailResponse)
 def update_profile(
     data: UpdateProfileIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Update the current user's profile.
 
     Allows updating full_name and email. If email is changed,
@@ -2201,7 +2198,7 @@ def update_profile(
             current_user.email_verified = False
 
     db.add(current_user)
-    return {"detail": "Profile updated"}
+    return DetailResponse(detail="Profile updated")
 
 
 # api-schema-check: allow-opaque-grandfathered
@@ -2479,11 +2476,10 @@ def get_user(
     }
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/auth/refresh")
+@router.post("/auth/refresh", response_model=RefreshOut)
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
-) -> dict[str, str]:
+) -> RefreshOut:
     """Rotate Tokens and Issue New Access Token.
 
     Validates the refresh token from cookies and issues new access, refresh,
@@ -2546,7 +2542,7 @@ def refresh(
     )  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
-    return {"detail": "refreshed"}
+    return RefreshOut(detail="refreshed")
 
 
 # api-schema-check: allow-opaque-grandfathered
