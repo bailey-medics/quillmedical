@@ -125,14 +125,16 @@ merely printing the command back.
 - [x] Rename the recipes to a `claude-` prefix (`claude-start`,
       `claude-status`, `claude-teleport`) to avoid ambiguity with the
       existing GCP "Cloud Run Admin Job" recipes further down the
-      `Justfile`, and add short aliases (`clst`, `clss`, `cltp`)
-      matching the file's convention
+      `Justfile`, and add short aliases (initially `clst`, `clss`,
+      `cltp`; later renamed to `cclst`, `cclss`, `ccltp`)
 - [x] Rename again to `claude-cloud-*` (`claude-cloud-start`,
       `claude-cloud-status`, `claude-cloud-teleport`) — keeps both
       "claude" and "cloud" in the name for clarity, still distinct from
-      the GCP Cloud Run recipes. Aliases (`clst`, `clss`, `cltp`) stay
-      unchanged, since they were already short mnemonics rather than
-      literal abbreviations of the full name
+      the GCP Cloud Run recipes. Aliases renamed to `cclst`, `cclss`,
+      `ccltp` to keep both "claude" and "cloud" letters in the short
+      form for consistency with the full names
+- [x] Update cspell dictionary with new alias names (`cclst`, `cclss`,
+      `ccltp`)
 - [ ] User runs `just claude-cloud-start "<task>"` for real in their
       own terminal (a genuine TTY, unlike any tool-driven invocation),
       confirms a cloud session actually starts
@@ -193,15 +195,13 @@ merely printing the command back.
   back. Considered keeping the skills as a documentation layer even
   after adding the recipes, but rejected it — two ways to do the same
   thing invites them drifting out of sync.
-- **Renamed the recipes from `cloud-*` to `claude-cloud-*` (via an intermediate `claude-*`), and added short aliases:**
+- **Renamed the recipes from `cloud-*` to `claude-cloud-*` (via an intermediate `claude-*`), and added short aliases `cclst`/`cclss`/`ccltp`:**
   the `Justfile` already has an unrelated "Cloud Run Admin Job" section
   further down for GCP Cloud Run environments — a bare `cloud-*` prefix
   on these Claude-specific recipes courted confusion between the two.
   First renamed to `claude-*`, then to `claude-cloud-*` to keep both
   "claude" and "cloud" in the name for clarity while staying distinct
-  from the GCP recipes. Added `clst`, `clss`, `cltp` aliases to match
-  the short-alias convention every other recipe in the file follows,
-  checked against the full existing alias list for collisions before
-  picking them — these stayed unchanged across both renames, since
-  they were short mnemonics rather than literal abbreviations of the
-  full name.
+  from the GCP recipes. Added `cclst`, `cclss`, `ccltp` aliases to
+  match the short-alias convention while keeping both "claude" and
+  "cloud" letters in the mnemonic, checked against the full existing
+  alias list for collisions before picking them.
