@@ -63,7 +63,7 @@ repos:
 
       - id: check-api-schema-coverage
         name: check API schema coverage
-        entry: python3 backend/scripts/check_api_schema_coverage.py --all --dev
+        entry: poetry -C backend run python3 scripts/check_api_schema_coverage.py --all --dev
         language: system
         files: ^backend/app/.*\.py$
         pass_filenames: false

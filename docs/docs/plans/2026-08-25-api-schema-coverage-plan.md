@@ -160,6 +160,28 @@ phased by feature area so each phase stays reviewable.
       already uses in CI (`ci.yml`'s `api_breaking_change_check` and
       `docs.yml`), so this keeps the new hook consistent with the
       existing precedent rather than introducing a new one
+- [x] **Second CI-only gap found after pushing**: the `pre-commit` matrix
+      task in `ci.yml` deliberately runs in a bare venv containing only
+      `pre-commit` itself (`ensure-pre-commit-venv.sh`) —
+      `install-backend-deps: ${{ matrix.task == 'unit' }}` skips
+      installing the backend's Poetry-managed dependencies for that job,
+      since `check_migrations.py` never needed them. This new hook
+      imports the real FastAPI app, which needs the full dependency set
+      (`httpx`, `sqlalchemy`, etc.) — confirmed by a CI failure:
+      `ModuleNotFoundError: No module named 'httpx'`. `--dev` (a secrets
+      fallback) cannot fix a missing-package error. Locally this was
+      masked because `python3` on the developer's PATH already resolved
+      into backend's Poetry venv. Fixed with two changes: (1) `ci.yml`'s
+      `install-backend-deps` condition now also covers
+      `matrix.task == 'pre-commit'`, so that job's Poetry venv actually
+      gets built; (2) the hook's `entry` changed from bare `python3
+      backend/scripts/check_api_schema_coverage.py --all --dev` to
+      `poetry -C backend run python3
+      scripts/check_api_schema_coverage.py --all --dev` — `poetry run`
+      resolves backend's venv explicitly regardless of what happens to
+      be active on `PATH`, so local and CI behaviour no longer depend on
+      an accident of the invoking shell. Verified locally via `pre-commit
+      run check-api-schema-coverage --all-files`
 - [x] Confirm the hook runs clean on the current branch (0 unexpected
       opaque routes beyond the allowlist) — `python3
       backend/scripts/check_api_schema_coverage.py --all --dev` exits 0
