@@ -182,6 +182,36 @@ phased by feature area so each phase stays reviewable.
       be active on `PATH`, so local and CI behaviour no longer depend on
       an accident of the invoking shell. Verified locally via `pre-commit
       run check-api-schema-coverage --all-files`
+- [x] **Third CI-only gap, found because the second fix's own CI run still
+      failed with the identical `ModuleNotFoundError: No module named
+      'httpx'`** — traced with `gh run view --log-failed`, which showed
+      `poetry install` genuinely succeeded and wrote `httpx` into
+      `backend/.venv` in the `pre-commit` job, yet the hook's `sys.path`
+      still pointed at the *other*, backend-deps-free `.venv` created by
+      `ensure-pre-commit-venv.sh` at the repo root (the one the "Run
+      pre-commit" step activates via `. .venv/bin/activate` before
+      invoking any hooks). Root cause: with that unrelated venv already
+      active, `poetry -C backend run` deferred to the **active**
+      `VIRTUAL_ENV` instead of resolving backend's own project venv —
+      confirmed with an isolated reproduction (a throwaway Poetry project, `env
+      -i` to strip all ambient state, a foreign venv activated): without
+      a fix, `poetry -C <project> run python3 -c "import httpx"` fails
+      with the foreign venv's interpreter; prefixing the same command
+      with `env -u VIRTUAL_ENV` makes it correctly resolve the project's
+      own venv and succeed. (Testing directly against the real local
+      `backend` project didn't discriminate — it already has a
+      *pre-existing* Poetry-registered venv from before `in-project` mode
+      was adopted, which Poetry finds via its on-disk registry regardless
+      of any foreign active venv; the throwaway project, with no such
+      registry, faithfully matches a fresh CI runner.) Fixed by changing
+      the hook's `entry` to `env -u VIRTUAL_ENV poetry -C backend run
+      python3 scripts/check_api_schema_coverage.py --all --dev`, so
+      Poetry's project-venv resolution no longer depends on whatever
+      happens to already be active on `PATH`/`VIRTUAL_ENV` at hook-run
+      time — deterministic in both CI and any developer's shell,
+      regardless of their own local Poetry/venv setup. Verified locally
+      via `pre-commit run check-api-schema-coverage --all-files` and via
+      the isolated reproduction above
 - [x] Confirm the hook runs clean on the current branch (0 unexpected
       opaque routes beyond the allowlist) — `python3
       backend/scripts/check_api_schema_coverage.py --all --dev` exits 0
