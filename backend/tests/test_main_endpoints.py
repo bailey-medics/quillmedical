@@ -175,10 +175,27 @@ class TestPatientEndpoints:
 
         response = authenticated_clinician_client.put(
             "/api/patients/123/demographics",
-            json={"name": "Updated Name"},
+            json={"given_name": "Updated", "family_name": "Name"},
             headers={"X-CSRF-Token": csrf_token},
         )
         assert response.status_code == 200
+
+    @patch("app.main.update_fhir_patient")
+    def test_update_patient_demographics_rejects_unknown_field(
+        self, mock_update, authenticated_clinician_client: TestClient
+    ):
+        """Unknown fields in the demographics body are rejected (422)."""
+        mock_update.return_value = {"resourceType": "Patient", "id": "123"}
+
+        authenticated_clinician_client.get("/api/auth/me")
+        csrf_token = authenticated_clinician_client.cookies.get("XSRF-TOKEN")
+
+        response = authenticated_clinician_client.put(
+            "/api/patients/123/demographics",
+            json={"name": "Updated Name"},
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert response.status_code == 422
 
 
 class TestLetterEndpoints:

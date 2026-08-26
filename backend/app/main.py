@@ -148,6 +148,27 @@ from app.schemas.messaging import (
     MessageOut,
     ParticipantOut,
 )
+from app.schemas.patients import (
+    AcceptInviteOut,
+    DemographicsIn,
+    DemographicsOut,
+    DemographicsUpsertOut,
+    ExternalAccessGrant,
+    ExternalAccessListOut,
+    FhirPatientResource,
+    InviteExternalOut,
+    LetterCreateOut,
+    LetterOut,
+    LettersListOut,
+    PatientActivationOut,
+    PatientListItem,
+    PatientMetadataOut,
+    PatientsListOut,
+    PatientVerifyOut,
+    RevokeAccessOut,
+    SharedOrganisationsOut,
+    SharedOrganisationSummary,
+)
 from app.security import (
     create_email_verify_token,
     create_invite_token,
@@ -2548,7 +2569,6 @@ def refresh(
     return RefreshOut(detail="refreshed")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/verify",
     dependencies=[
@@ -2556,8 +2576,9 @@ def refresh(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=PatientVerifyOut,
 )
-def create_patient_record(patient_id: str) -> dict[str, str]:
+def create_patient_record(patient_id: str) -> PatientVerifyOut:
     """Create or Verify Patient in FHIR.
 
     Verifies that a patient exists in the FHIR server before allowing clinical
@@ -2584,21 +2605,24 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
             raise HTTPException(
                 status_code=404, detail="Patient not found in FHIR server"
             )
-        return {"patient_id": patient_id, "status": "ready"}
+        return PatientVerifyOut(patient_id=patient_id, status="ready")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
+@router.get(
+    "/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=PatientsListOut,
+)
 def list_patients(
     include_inactive: bool = False,
     scope: str | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientsListOut:
     """List patients from FHIR, filtered by organisation membership.
 
     By default, staff see only patients in their organisation(s).
@@ -2633,7 +2657,7 @@ def list_patients(
             accessible_ids = get_accessible_patient_ids(db, current_user)
 
         # Enrich patients with activation status and filter
-        enriched_patients = []
+        enriched_patients: list[PatientListItem] = []
         for patient in patients:
             patient_id = patient.get("id")
             if patient_id is None:
@@ -2647,17 +2671,19 @@ def list_patients(
 
             # Filter based on activation status
             if is_active or (include_inactive and is_admin):
-                patient["is_active"] = is_active
-                enriched_patients.append(patient)
+                enriched_patients.append(
+                    PatientListItem.model_validate(
+                        {**patient, "is_active": is_active}
+                    )
+                )
 
-        return {"patients": enriched_patients, "fhir_ready": True}
+        return PatientsListOut(patients=enriched_patients, fhir_ready=True)
     except FhirClientError:
         raise
     except Exception:
-        return {"patients": [], "fhir_ready": False}
+        return PatientsListOut(patients=[], fhir_ready=False)
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.put(
     "/patients/{patient_id}/demographics",
     dependencies=[
@@ -2665,53 +2691,59 @@ def list_patients(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=DemographicsUpsertOut,
 )
 def upsert_demographics(
     patient_id: str,
-    demographics: dict[str, Any],
+    demographics: DemographicsIn,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, str | Any]:
+) -> DemographicsUpsertOut:
     """Update Patient Demographics in FHIR.
 
-    Updates patient demographic information in the FHIR server. Accepts a
-    dictionary of FHIR-compatible demographic fields (name, address, telecom,
-    birthDate, gender, etc.). Requires Clinician role and CSRF token validation
-    since this modifies patient data.
+    Updates patient demographic information in the FHIR server. Accepts
+    the fixed set of demographic fields ``update_fhir_patient`` maps onto
+    the FHIR resource (given/family name, date of birth, sex, address,
+    contact). Requires Clinician role and CSRF token validation since
+    this modifies patient data.
 
     Args:
         patient_id: FHIR Patient resource ID to update.
-        demographics: Dictionary of FHIR Patient fields to update.
+        demographics: Demographic fields to update.
         current_user: Currently authenticated user (unused but validates auth).
 
     Returns:
-        dict: Update response with keys:
-            - patient_id: The updated patient ID
-            - updated: True indicating success
-            - data: Complete updated FHIR Patient resource
+        DemographicsUpsertOut: The updated patient ID, success flag, and
+            the complete updated FHIR Patient resource.
 
     Raises:
         HTTPException: 404 if patient not found in FHIR server.
         HTTPException: 500 if FHIR update operation fails.
     """
     try:
-        result = update_fhir_patient(patient_id, demographics)
+        result = update_fhir_patient(
+            patient_id, demographics.model_dump(exclude_none=True)
+        )
         if result is None:
             raise HTTPException(status_code=404, detail="Patient not found")
-        return {"patient_id": patient_id, "updated": True, "data": result}
+        return DemographicsUpsertOut(
+            patient_id=patient_id,
+            updated=True,
+            data=FhirPatientResource.model_validate(result),
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=DemographicsOut,
 )
 def get_demographics(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, str | Any]:
+) -> DemographicsOut:
     """Get Patient Demographics from FHIR.
 
     Retrieves complete demographic information for a specific patient from the
@@ -2735,14 +2767,16 @@ def get_demographics(
         patient = read_fhir_patient(patient_id)
         if patient is None:
             raise HTTPException(status_code=404, detail="Patient not found")
-        return {"patient_id": patient_id, "data": patient}
+        return DemographicsOut(
+            patient_id=patient_id,
+            data=FhirPatientResource.model_validate(patient),
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/letters",
     dependencies=[
@@ -2750,8 +2784,9 @@ def get_demographics(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=LetterCreateOut,
 )
-def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
+def write_letter(patient_id: str, letter: LetterIn) -> LetterCreateOut:
     """Create Clinical Letter in OpenEHR.
 
     Creates a new clinical letter composition in EHRbase for the specified patient.
@@ -2785,25 +2820,25 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
             body=letter.body,
             author_name=letter.author_name,
         )
-        return {
-            "patient_id": patient_id,
-            "composition_uid": result.get("uid", {}).get("value"),
-            "title": letter.title,
-        }
+        return LetterCreateOut(
+            patient_id=patient_id,
+            composition_uid=result.get("uid", {}).get("value"),
+            title=letter.title,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/letters/{composition_uid}",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=LetterOut,
 )
 def read_letter(
     patient_id: str,
     composition_uid: str,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, Any]:
+) -> LetterOut:
     """Read Specific Clinical Letter from OpenEHR.
 
     Retrieves a specific clinical letter composition from EHRbase by its
@@ -2829,25 +2864,25 @@ def read_letter(
         composition = get_letter_composition(patient_id, composition_uid)
         if composition is None:
             raise HTTPException(status_code=404, detail="Letter not found")
-        return {
-            "patient_id": patient_id,
-            "composition_uid": composition_uid,
-            "data": composition,
-        }
+        return LetterOut(
+            patient_id=patient_id,
+            composition_uid=composition_uid,
+            data=composition,
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=LettersListOut,
 )
 def list_letters(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> LettersListOut:
     """List All Clinical Letters for Patient.
 
     Retrieves all clinical letter compositions for a specific patient from
@@ -2869,7 +2904,7 @@ def list_letters(
     """
     try:
         letters = list_letters_for_patient(patient_id)
-        return {"patient_id": patient_id, "letters": letters}
+        return LettersListOut(patient_id=patient_id, letters=letters)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -2905,14 +2940,14 @@ class FHIRPatientCreateIn(BaseModel):
     patient_id: str | None = None
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=FhirPatientResource,
 )
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Create New Patient in FHIR Server.
 
     Creates a new FHIR R4 Patient resource with the provided name information.
@@ -2939,21 +2974,21 @@ def create_patient_in_fhir(
             mrn=data.mrn,
             patient_id=data.patient_id,
         )
-        return patient
+        return FhirPatientResource.model_validate(patient)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create FHIR patient: {e}"
         ) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=FhirPatientResource,
 )
 def get_patient(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Get Single Patient from FHIR.
 
     Retrieves a specific patient's demographics from the FHIR server by ID.
@@ -2976,9 +3011,7 @@ def get_patient(
         patient = read_fhir_patient(patient_id)
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
-        # Mypy type narrowing: patient is now guaranteed to be dict[str, Any]
-        assert patient is not None
-        return patient
+        return FhirPatientResource.model_validate(patient)
     except HTTPException:
         raise
     except Exception as e:
@@ -2987,16 +3020,16 @@ def get_patient(
         ) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.patch(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=FhirPatientResource,
 )
 def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Update Patient in FHIR.
 
     Updates an existing patient's demographics in the FHIR server. Accepts
@@ -3067,9 +3100,7 @@ def update_patient(
             raise HTTPException(
                 status_code=500, detail="Failed to update patient"
             )
-        # Mypy type narrowing: updated_patient is now guaranteed to be dict[str, Any]
-        assert updated_patient is not None
-        return updated_patient
+        return FhirPatientResource.model_validate(updated_patient)
     except HTTPException:
         raise
     except Exception as e:
@@ -3078,16 +3109,16 @@ def update_patient(
         ) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/metadata",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=PatientMetadataOut,
 )
 def get_patient_metadata(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientMetadataOut:
     """Get Patient Metadata.
 
     Returns application-specific metadata for a patient, including activation
@@ -3109,28 +3140,25 @@ def get_patient_metadata(
     metadata = db.execute(stmt).scalar_one_or_none()
 
     if metadata:
-        return {
-            "patient_id": metadata.patient_id,
-            "is_active": metadata.is_active,
-        }
+        return PatientMetadataOut(
+            patient_id=metadata.patient_id,
+            is_active=metadata.is_active,
+        )
     else:
         # No metadata record means patient is active by default
-        return {
-            "patient_id": patient_id,
-            "is_active": True,
-        }
+        return PatientMetadataOut(patient_id=patient_id, is_active=True)
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/deactivate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=PatientActivationOut,
 )
 def deactivate_patient(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientActivationOut:
     """Deactivate Patient Record.
 
     Marks a patient as inactive in the system. Deactivated patients are hidden
@@ -3181,23 +3209,23 @@ def deactivate_patient(
         )
         db.add(metadata)
 
-    return {
-        "patient_id": patient_id,
-        "is_active": False,
-        "message": "Patient deactivated successfully",
-    }
+    return PatientActivationOut(
+        patient_id=patient_id,
+        is_active=False,
+        message="Patient deactivated successfully",
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/activate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=PatientActivationOut,
 )
 def activate_patient(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientActivationOut:
     """Activate Patient Record.
 
     Reactivates a previously deactivated patient, making them visible in all
@@ -3247,23 +3275,23 @@ def activate_patient(
         )
         db.add(metadata)
 
-    return {
-        "patient_id": patient_id,
-        "is_active": True,
-        "message": "Patient activated successfully",
-    }
+    return PatientActivationOut(
+        patient_id=patient_id,
+        is_active=True,
+        message="Patient activated successfully",
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/shared-organisations",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=SharedOrganisationsOut,
 )
 def shared_organisations_endpoint(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SharedOrganisationsOut:
     """Return organisations shared between the current user and a patient.
 
     For external users this returns an empty list (they use
@@ -3279,18 +3307,19 @@ def shared_organisations_endpoint(
     """
     shared_ids = get_shared_org_ids(db, current_user.id, patient_id)
     if not shared_ids:
-        return {"organisations": []}
+        return SharedOrganisationsOut(organisations=[])
 
     orgs = (
         db.execute(select(Organisation).where(Organisation.id.in_(shared_ids)))
         .scalars()
         .all()
     )
-    return {
-        "organisations": [
-            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
+    return SharedOrganisationsOut(
+        organisations=[
+            SharedOrganisationSummary(id=o.id, name=o.name, type=o.type)
+            for o in orgs
         ]
-    }
+    )
 
 
 # ==========================================================================
@@ -3420,7 +3449,7 @@ async def update_my_competencies(
 
 
 # ==========================================================================
-# ORGANIZATION ENDPOINTS
+# ORGANISATION ENDPOINTS
 # ==========================================================================
 
 
@@ -3429,12 +3458,12 @@ async def update_my_competencies(
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> dict[str, Any]:
-    """List All Organisations.
+    """List all organisations.
 
     Retrieves all organisations from the database. Returns basic information
-    for each organisation. Used by admin interface to display organisation
+    Retrieves all organisations from the database. Returns basic information
+    for each organisation. Used by the admin interface to display organisation
     list and management options.
-
     Requires admin or superadmin system permissions.
 
     Args:
@@ -4742,17 +4771,17 @@ def link_patient_to_user(
 # ==========================================================================
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/patients/{patient_id}/invite-external",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=InviteExternalOut,
 )
 def invite_external_user(
     patient_id: str,
     body: InviteExternalIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> InviteExternalOut:
     """Generate an invite link for an external user.
 
     Only the patient themselves (via ``fhir_patient_id``) or an
@@ -4788,15 +4817,14 @@ def invite_external_user(
     # In production the base URL would come from settings
     invite_url = f"/app/accept-invite?token={token}"
 
-    return {"invite_url": invite_url, "token": token}
+    return InviteExternalOut(invite_url=invite_url, token=token)
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/accept-invite")
+@router.post("/accept-invite", response_model=AcceptInviteOut)
 def accept_invite(
     body: AcceptInviteIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> AcceptInviteOut:
     """Accept an invite — register or grant access to existing user.
 
     If the email matches an existing user, access is granted
@@ -4844,7 +4872,7 @@ def accept_invite(
             )
         elif grant.revoked_at is not None:
             grant.revoked_at = None
-        return {"status": "access_granted", "user_id": existing.id}
+        return AcceptInviteOut(status="access_granted", user_id=existing.id)
 
     # New user registration
     if not body.username or not body.password:
@@ -4875,20 +4903,20 @@ def accept_invite(
         )
     )
 
-    return {"status": "registered", "user_id": new_user.id}
+    return AcceptInviteOut(status="registered", user_id=new_user.id)
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=RevokeAccessOut,
 )
 def revoke_external_access(
     patient_id: str,
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> RevokeAccessOut:
     """Revoke an external user's access to a patient.
 
     Admin/superadmin only. Soft-deletes by setting ``revoked_at``.
@@ -4919,19 +4947,19 @@ def revoke_external_access(
 
     grant.revoked_at = datetime.now(UTC)
 
-    return {"status": "revoked"}
+    return RevokeAccessOut(status="revoked")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.get(
     "/patients/{patient_id}/external-access",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=ExternalAccessListOut,
 )
 def list_external_access(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> ExternalAccessListOut:
     """List external users with access to a patient.
 
     Returns active (non-revoked) external access grants.
@@ -4964,19 +4992,19 @@ def list_external_access(
         .all()
     )
 
-    return {
-        "grants": [
-            {
-                "user_id": g.user_id,
-                "username": g.user.username,
-                "email": g.user.email,
-                "user_type": g.user.system_permissions,
-                "granted_at": g.granted_at.isoformat(),
-                "access_level": g.access_level,
-            }
+    return ExternalAccessListOut(
+        grants=[
+            ExternalAccessGrant(
+                user_id=g.user_id,
+                username=g.user.username,
+                email=g.user.email,
+                user_type=g.user.system_permissions,
+                granted_at=g.granted_at.isoformat(),
+                access_level=g.access_level,
+            )
             for g in grants
         ]
-    }
+    )
 
 
 # ---------------------------------------------------------------------------

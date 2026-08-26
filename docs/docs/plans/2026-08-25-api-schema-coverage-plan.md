@@ -293,34 +293,79 @@ Schema coverage check passes.
 
 ## Phase 5: Retrofit — patients / FHIR / EHRbase (18 routes)
 
-- [ ] `create_patient_record` — POST `/patients/verify`
-- [ ] `list_patients` — GET `/patients`
-- [ ] `upsert_demographics` — PUT `/patients/{patient_id}/demographics`
+- [x] `create_patient_record` — POST `/patients/verify`
+- [x] `list_patients` — GET `/patients`
+- [x] `upsert_demographics` — PUT `/patients/{patient_id}/demographics`
       (also takes a raw `dict[str, Any]` request body — type the request
       too; check whether this genuinely needs to stay dynamic given FHIR
       payload variability, and if so document why in this plan's
       Decisions table rather than silently leaving it opaque)
-- [ ] `get_demographics` — GET `/patients/{patient_id}/demographics`
-- [ ] `write_letter` — POST `/patients/{patient_id}/letters`
-- [ ] `read_letter` — GET `/patients/{patient_id}/letters/{composition_uid}`
-- [ ] `list_letters` — GET `/patients/{patient_id}/letters`
-- [ ] `create_patient_in_fhir` — POST `/patients`
-- [ ] `get_patient` — GET `/patients/{patient_id}`
-- [ ] `update_patient` — PATCH `/patients/{patient_id}`
-- [ ] `get_patient_metadata` — GET `/patients/{patient_id}/metadata`
-- [ ] `deactivate_patient` — POST `/patients/{patient_id}/deactivate`
-- [ ] `activate_patient` — POST `/patients/{patient_id}/activate`
-- [ ] `shared_organisations_endpoint` — GET
+- [x] `get_demographics` — GET `/patients/{patient_id}/demographics`
+- [x] `write_letter` — POST `/patients/{patient_id}/letters`
+- [x] `read_letter` — GET `/patients/{patient_id}/letters/{composition_uid}`
+- [x] `list_letters` — GET `/patients/{patient_id}/letters`
+- [x] `create_patient_in_fhir` — POST `/patients`
+- [x] `get_patient` — GET `/patients/{patient_id}`
+- [x] `update_patient` — PATCH `/patients/{patient_id}`
+- [x] `get_patient_metadata` — GET `/patients/{patient_id}/metadata`
+- [x] `deactivate_patient` — POST `/patients/{patient_id}/deactivate`
+- [x] `activate_patient` — POST `/patients/{patient_id}/activate`
+- [x] `shared_organisations_endpoint` — GET
       `/patients/{patient_id}/shared-organisations`
-- [ ] `invite_external_user` — POST `/patients/{patient_id}/invite-external`
-- [ ] `accept_invite` — POST `/accept-invite`
-- [ ] `revoke_external_access` — DELETE
+- [x] `invite_external_user` — POST `/patients/{patient_id}/invite-external`
+- [x] `accept_invite` — POST `/accept-invite`
+- [x] `revoke_external_access` — DELETE
       `/patients/{patient_id}/external-access/{user_id}`
-- [ ] `list_external_access` — GET
+- [x] `list_external_access` — GET
       `/patients/{patient_id}/external-access`
-- [ ] `just ub -k "patient or fhir or ehrbase or letter"` — targeted
+- [x] `just ub -k "patient or fhir or ehrbase or letter"` — targeted
       rerun
-- [ ] `just ub` — full backend suite
+- [x] `just ub` — full backend suite
+
+**Phase 5 summary** — New `backend/app/schemas/patients.py` adds 24
+models. Two categories of finding, both recorded in the Decisions table
+below:
+
+- Three routes (`get_patient`, `create_patient_in_fhir`,
+  `update_patient`) return the raw FHIR `Patient` resource directly as
+  the entire response body, with no envelope — wrapping them would be a
+  breaking API change, so they needed a real typed
+  `FhirPatientResource` model (with `extra="allow"` for forward
+  compatibility) rather than an envelope trick. The other FHIR/EHRbase
+  passthrough routes already had an envelope (`{"data": ...}`,
+  `{"patients": [...]}`, etc.); since the coverage checker only
+  inspects a response's top-level schema (doesn't recurse into object
+  properties — see `is_opaque_schema` in
+  `check_api_schema_coverage.py`), typing the envelope alone was
+  sufficient there and inner content (`data`, `letters`) was left as
+  `dict[str, Any]` / `list[dict[str, Any]]` by design.
+- `upsert_demographics`'s request body turned out not to need to stay
+  dynamic (`DemographicsIn`, `extra="forbid"`) — contrary to its
+  docstring, the actual consumer (`update_fhir_patient`) only reads six
+  fixed keys, not an arbitrary FHIR fragment. Fixing this surfaced a
+  behaviour change: a previously-accepted-but-ignored field
+  (`{"name": ...}`, as sent by the existing
+  `test_update_patient_demographics` test) is now rejected with 422.
+  Updated that test's payload to real field names and added
+  `test_update_patient_demographics_rejects_unknown_field` as a
+  regression test for the new, correct behaviour.
+
+Two pre-existing issues surfaced but deliberately not fixed in this
+phase, since both are out of scope for API schema typedness and neither
+was introduced by this phase's diff:
+
+- `update_patient` (main.py) builds an `updates` dict using FHIR-shaped
+  keys (`name`, `birthDate`, `gender`, `identifier`) that don't match
+  any key `update_fhir_patient` actually reads (`given_name`,
+  `family_name`, `date_of_birth`, `sex`, `address`, `contact`) — so most
+  fields silently fail to update via this route. Left as-is pending a
+  separate fix decision.
+- `health_check`'s `HealthCheckOut(services=services)` call
+  (`main.py:550`, from Phase 3) fails `mypy --strict` — `services` is
+  built as `dict[str, dict[str, bool | int | str]]`, incompatible with
+  `HealthCheckOut.services`'s declared
+  `dict[str, ServiceHealthStatus | dict[str, bool | str | None]]`.
+  Predates this phase; flagged for a separate fix.
 
 ## Phase 6: Retrofit — organisations & sites (24 routes)
 
@@ -494,3 +539,50 @@ the two smaller route files.
   resolves to `slowapi/extension.py`, not the app's route file —
   `inspect.unwrap()` (a no-op on undecorated endpoints) is required
   before the file lookup to reach the real source location
+- **`get_patient`, `create_patient_in_fhir`, and `update_patient` get a
+  real `FhirPatientResource` Pydantic model, not a permanent-opaque
+  marker or an envelope** — These three return the raw FHIR `Patient`
+  resource JSON as the _entire_ response body, with no wrapping object;
+  they can't gain `properties` by adding an envelope key without
+  changing the response shape (a breaking API change requiring
+  expand-contract). The only non-breaking fix was a real model.
+  `FhirPatientResource` models the fields Quill's own `fhir_client.py`
+  actually sets/reads (`resourceType`, `id`, `name`, `telecom`,
+  `gender`, `birthDate`, `address`, `identifier`, `extension`, `active`)
+  rather than the full FHIR R4 Patient specification, with
+  `extra="allow"` so any other field the HAPI FHIR server returns
+  (`meta`, `text`, `communication`, etc.) still passes through
+  unchanged instead of being silently dropped. Considered and rejected:
+  extending `allow-opaque-permanent` to these routes — Phase 8's text
+  implies only Phase 7 was expected to add further permanent markers,
+  and it would leave the original oasdiff blind spot (the bug that
+  started this plan) unfixed for these three routes specifically
+- **Other FHIR/EHRbase passthrough routes (`list_patients`,
+  `get_demographics`, `upsert_demographics`'s response,
+  `read_letter`, `list_letters`) only needed their existing envelope
+  typed, not a full resource model** — `is_opaque_schema` in
+  `check_api_schema_coverage.py` only inspects a response's _top-level_
+  schema: for an object schema, `"properties" in schema` short-circuits
+  to "not opaque" without recursing into what each property's own type
+  is (recursion only happens for array `items` and `anyOf`/`oneOf`
+  branches at the top level). So a response model like
+  `{patient_id: str, data: dict[str, Any]}` already satisfies the
+  checker — it matches what `oasdiff` can actually do (diff whether a
+  top-level field appeared/disappeared), even though `data`'s internal
+  shape stays opaque. `data`/`letters` fields were deliberately left as
+  `dict[str, Any]` / `list[dict[str, Any]]` rather than over-modelled to
+  match this
+- **`upsert_demographics`'s request body did not need to stay
+  dynamic** — Contrary to its own docstring ("FHIR-compatible fields"),
+  the only consumer, `update_fhir_patient`
+  (`app/fhir_client.py:297`), reads exactly six fixed keys
+  (`given_name`, `family_name`, `date_of_birth`, `sex`, `address`,
+  `contact`), not an arbitrary FHIR resource fragment. Typed as
+  `DemographicsIn` with `extra="forbid"`. This tightened validation
+  surfaced a real behaviour change: the existing
+  `test_update_patient_demographics` test sent `{"name": "Updated
+  Name"}`, a field the endpoint silently ignored under the old
+  `dict[str, Any]` body — now correctly rejected with 422. Fixed the
+  test's payload to use real field names and added
+  `test_update_patient_demographics_rejects_unknown_field` to cover the
+  new rejection behaviour as a regression test
