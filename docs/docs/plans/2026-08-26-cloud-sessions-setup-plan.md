@@ -67,19 +67,29 @@ are easy to start, monitor, and pull back down on this project.
 - [x] `.claude/skills/cloud-teleport/SKILL.md` — deliberately
       guidance-only, not auto-executed: hands back the exact
       `claude --teleport` command for the user to run themselves
-- [ ] Commit the three `SKILL.md` files
-- [ ] Restart this Claude Code session (or start a fresh one) so
-      `.claude/skills/` is picked up — a top-level skills directory
-      that didn't exist when the session started requires a restart
-      to be watched
+- [x] Commit the three `SKILL.md` files
+- [x] Restart this Claude Code session — turned out unnecessary in
+      practice; the skill directory loaded live without a restart
 
 ## Phase 4: Verify end to end
 
-- [ ] After restart, run `/cloud-status` and confirm it correctly
-      lists local sessions
-- [ ] Run `/cloud-start "<a real task>"` and confirm a genuine cloud
-      session is created (session ID + claude.ai URL returned, not a
-      local worktree fallback)
+- [ ] Run `/cloud-status` and confirm it correctly lists local
+      sessions
+- [x] Attempted to run `claude --cloud "<task>"` directly via the Bash
+      tool from inside `/cloud-start` — failed:
+      `--cloud requires an interactive terminal`. Confirmed a faked
+      pseudo-TTY (`script -q /dev/null claude --cloud ...`) gets past
+      that specific check, but then blocks on the CLI's first-run
+      onboarding wizard (theme selection), which needs real keystrokes
+      no automated tool call can supply. No working automated path was
+      found — see the corresponding Decision below
+- [x] Redesigned `/cloud-start` to hand back the exact
+      `claude --cloud "..."` command for the user to run themselves in
+      a real terminal, rather than attempting to run it via Bash —
+      matching the `/cloud-teleport` pattern
+- [ ] User runs the handed-back command in a real terminal, confirms a
+      genuine cloud session starts (session ID + claude.ai URL
+      returned)
 - [ ] Monitor the session via claude.ai/code or the Claude mobile app
       while offline, then pull it back locally with
       `/cloud-teleport <session-id>` once reconnected
@@ -93,13 +103,23 @@ are easy to start, monitor, and pull back down on this project.
   skill run `claude --teleport` directly via Bash, but rejected it —
   there's no TTY inside a skill invocation for the stash/branch prompts
   to attach to.
-- **`cloud-start` checks git status before running `claude --cloud`:**
+- **`cloud-start` checks git status before handing back the `claude --cloud` command:**
   the cloud VM clones the GitHub remote at the current branch, not the
   local working tree, so uncommitted or unpushed changes are otherwise
   silently invisible to the cloud session. Considered skipping the
   check and letting a mismatch surface only once the cloud session
   started work on stale code — rejected as a silent-failure risk not
   worth the saved step.
+- **`cloud-start` hands back the `claude --cloud` command rather than running it:**
+  confirmed by direct testing that `claude --cloud` refuses to run
+  without a real interactive terminal, erroring with `--cloud requires
+  an interactive terminal`. Considered forcing a pseudo-TTY via
+  `script`/`expect` to work around this — tried it, and it does get
+  past that specific check, but then blocks on the CLI's first-run
+  onboarding wizard (theme selection), which needs real keystrokes.
+  Rejected piling on further automation to fight through onboarding
+  too, in favour of matching the `cloud-teleport` pattern: hand the
+  user the exact command to run themselves.
 - **Skills scaffolded at project level (`.claude/skills/`), not personal (`~/.claude/skills/`):**
   committing them to the repo makes them available to every session
   working on this project, and to cloud sessions themselves, which
