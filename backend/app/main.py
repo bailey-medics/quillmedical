@@ -105,6 +105,8 @@ from app.schemas.auth import (
     DetailResponse,
     ForgotPasswordIn,
     HealthCheckOut,
+    LinkPatientIn,
+    LinkPatientOut,
     LoginIn,
     LoginOut,
     MeOut,
@@ -118,6 +120,12 @@ from app.schemas.auth import (
     TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
+    UserActionOut,
+    UserIdActionOut,
+    UserOut,
+    UsersListOut,
+    UserSummaryItem,
+    ValidateClinicalLeadOut,
     VerifyEmailIn,
 )
 from app.schemas.cbac import (
@@ -825,14 +833,16 @@ class ValidateClinicalLeadIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/teaching/public/validate-clinical-lead")
+@router.post(
+    "/teaching/public/validate-clinical-lead",
+    response_model=ValidateClinicalLeadOut,
+)
 @limiter.limit("10/minute")
 def validate_clinical_lead(
     request: Request,
     payload: ValidateClinicalLeadIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, bool | str | int | None]:
+) -> ValidateClinicalLeadOut:
     """Validate that an email belongs to a clinical lead for a bank.
 
     Public endpoint used during registration. Checks whether the given
@@ -853,7 +863,7 @@ def validate_clinical_lead(
         .first()
     )
     if not user:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Get org IDs that have this bank with site_registration enabled
     org_ids = (
@@ -867,7 +877,7 @@ def validate_clinical_lead(
         .all()
     )
     if not org_ids:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Get site IDs linked to those organisations
     site_ids = (
@@ -880,7 +890,7 @@ def validate_clinical_lead(
         .all()
     )
     if not site_ids:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Check if this user is a clinical_lead at any of those sites
     staff_row = db.execute(
@@ -891,7 +901,7 @@ def validate_clinical_lead(
         )
     ).first()
     if not staff_row:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     matched_site_id: int = staff_row[0]
 
@@ -914,12 +924,12 @@ def validate_clinical_lead(
         .first()
     )
 
-    return {
-        "valid": True,
-        "site_name": site.name if site else None,
-        "organisation_id": org_id_for_site,
-        "site_id": matched_site_id,
-    }
+    return ValidateClinicalLeadOut(
+        valid=True,
+        site_name=site.name if site else None,
+        organisation_id=org_id_for_site,
+        site_id=matched_site_id,
+    )
 
 
 @router.post("/auth/register", response_model=DetailResponse)
@@ -1306,13 +1316,12 @@ class AdminUserUpdateIn(BaseModel):
     site_ids: list[int] | None = None
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/users")
+@router.post("/users", response_model=UserActionOut)
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserActionOut:
     """Admin User Creation with CBAC.
 
     Creates a new user account with full CBAC (Competency-Based Access Control)
@@ -1428,22 +1437,21 @@ def create_user_with_cbac(
 
     db.refresh(user)
 
-    return {
-        "detail": "created",
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-    }
+    return UserActionOut(
+        detail="created",
+        id=user.id,
+        username=user.username,
+        email=user.email,
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.patch("/users/{user_id}")
+@router.patch("/users/{user_id}", response_model=UserActionOut)
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserActionOut:
     """Update User Account.
 
     Updates an existing user account with new CBAC settings and/or credentials.
@@ -1637,21 +1645,20 @@ def update_user(
 
     db.refresh(user)
 
-    return {
-        "detail": "updated",
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-    }
+    return UserActionOut(
+        detail="updated",
+        id=user.id,
+        username=user.username,
+        email=user.email,
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/users/{user_id}/deactivate")
+@router.post("/users/{user_id}/deactivate", response_model=UserIdActionOut)
 def deactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserIdActionOut:
     """Deactivate User Account.
 
     Marks a user account as inactive. Deactivated users cannot log in
@@ -1703,20 +1710,19 @@ def deactivate_user(
 
     user.is_active = False
 
-    return {
-        "detail": "deactivated",
-        "id": user.id,
-        "username": user.username,
-    }
+    return UserIdActionOut(
+        detail="deactivated",
+        id=user.id,
+        username=user.username,
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/users/{user_id}/reactivate")
+@router.post("/users/{user_id}/reactivate", response_model=UserIdActionOut)
 def reactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserIdActionOut:
     """Reactivate User Account.
 
     Marks a previously deactivated user account as active again.
@@ -1759,20 +1765,19 @@ def reactivate_user(
 
     user.is_active = True
 
-    return {
-        "detail": "reactivated",
-        "id": user.id,
-        "username": user.username,
-    }
+    return UserIdActionOut(
+        detail="reactivated",
+        id=user.id,
+        username=user.username,
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/users/{user_id}/send-invite")
+@router.post("/users/{user_id}/send-invite", response_model=DetailResponse)
 def send_invite_email(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Send Invite Email.
 
     Sends an email to the user inviting them to set up or update their
@@ -1817,7 +1822,7 @@ def send_invite_email(
         ),
     )
 
-    return {"detail": "Invite email sent"}
+    return DetailResponse(detail="Invite email sent")
 
 
 class TotpSetupOut(BaseModel):
@@ -2201,15 +2206,14 @@ def update_profile(
     return DetailResponse(detail="Profile updated")
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/users")
+@router.get("/users", response_model=UsersListOut)
 def list_users(
     patient_id: str | None = None,
     permission_level: str | None = None,
     exclude_org: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UsersListOut:
     """List users, optionally filtered by shared org with a patient.
 
     When ``patient_id`` is provided, returns staff who share an org with
@@ -2254,7 +2258,7 @@ def list_users(
 
         all_ids = staff_ids | external_ids
         if not all_ids:
-            return {"users": []}
+            return UsersListOut(users=[])
 
         users = (
             db.execute(select(User).where(User.id.in_(all_ids)))
@@ -2262,18 +2266,18 @@ def list_users(
             .unique()
             .all()
         )
-        return {
-            "users": [
-                {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "system_permissions": user.system_permissions,
-                    "is_active": user.is_active,
-                }
+        return UsersListOut(
+            users=[
+                UserSummaryItem(
+                    id=user.id,
+                    username=user.username,
+                    email=user.email,
+                    system_permissions=user.system_permissions,
+                    is_active=user.is_active,
+                )
                 for user in users
             ]
-        }
+        )
 
     # Unfiltered mode: admin/superadmin only
     if current_user.system_permissions not in ["admin", "superadmin"]:
@@ -2329,7 +2333,7 @@ def list_users(
 
         all_scoped_ids = org_scoped_ids | site_scoped_ids
         if not all_scoped_ids:
-            return {"users": []}
+            return UsersListOut(users=[])
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
         # Admins must not see superadmin users
@@ -2370,32 +2374,31 @@ def list_users(
         for row in site_rows:
             user_sites.setdefault(row[0], []).append(row[1])
 
-        return {
-            "users": [
-                {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "full_name": user.full_name or "",
-                    "system_permissions": user.system_permissions,
-                    "is_active": user.is_active,
-                    "organisations": user_orgs.get(user.id, []),
-                    "sites": user_sites.get(user.id, []),
-                }
+        return UsersListOut(
+            users=[
+                UserSummaryItem(
+                    id=user.id,
+                    username=user.username,
+                    email=user.email,
+                    full_name=user.full_name or "",
+                    system_permissions=user.system_permissions,
+                    is_active=user.is_active,
+                    organisations=user_orgs.get(user.id, []),
+                    sites=user_sites.get(user.id, []),
+                )
                 for user in users
             ]
-        }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/users/{user_id}")
+@router.get("/users/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserOut:
     """Get User Details.
 
     Retrieves detailed information about a specific user including their
@@ -2461,19 +2464,19 @@ def get_user(
         ).all()
     ]
 
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "name": user.full_name or user.username,
-        "base_profession": user.base_profession,
-        "additional_competencies": user.additional_competencies or [],
-        "removed_competencies": user.removed_competencies or [],
-        "system_permissions": user.system_permissions,
-        "is_active": user.is_active,
-        "organisation_ids": user_org_ids,
-        "site_ids": user_site_ids,
-    }
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        name=user.full_name or user.username,
+        base_profession=user.base_profession,
+        additional_competencies=user.additional_competencies or [],
+        removed_competencies=user.removed_competencies or [],
+        system_permissions=user.system_permissions,
+        is_active=user.is_active,
+        organisation_ids=user_org_ids,
+        site_ids=user_site_ids,
+    )
 
 
 @router.post("/auth/refresh", response_model=RefreshOut)
@@ -4676,17 +4679,17 @@ def remove_site_staff(
     return {"status": "removed"}
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.patch(
     "/users/{user_id}/link-patient",
+    response_model=LinkPatientOut,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def link_patient_to_user(
     user_id: int,
-    body: dict[str, str],
+    body: LinkPatientIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> LinkPatientOut:
     """Link a user account to a FHIR patient record.
 
     Admin/superadmin only. Sets ``fhir_patient_id`` on the user.
@@ -4703,7 +4706,7 @@ def link_patient_to_user(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    fhir_patient_id = body.get("fhir_patient_id")
+    fhir_patient_id = body.fhir_patient_id
     if not fhir_patient_id:
         raise HTTPException(
             status_code=422, detail="fhir_patient_id is required"
@@ -4728,10 +4731,10 @@ def link_patient_to_user(
 
     target.fhir_patient_id = fhir_patient_id
 
-    return {
-        "user_id": user_id,
-        "fhir_patient_id": fhir_patient_id,
-    }
+    return LinkPatientOut(
+        user_id=user_id,
+        fhir_patient_id=fhir_patient_id,
+    )
 
 
 # ==========================================================================

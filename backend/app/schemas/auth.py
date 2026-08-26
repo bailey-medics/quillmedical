@@ -261,3 +261,136 @@ class TeachingModulesOut(BaseModel):
     """
 
     modules: list[TeachingModuleItem]
+
+
+class ValidateClinicalLeadOut(BaseModel):
+    """Clinical lead validation response.
+
+    Attributes:
+        valid: Whether the email is a clinical lead for the bank.
+        site_name: Name of the site if valid, else None.
+        organisation_id: ID of the organisation if valid, else None.
+        site_id: ID of the site if valid, else None.
+    """
+
+    valid: bool
+    site_name: str | None = None
+    organisation_id: int | None = None
+    site_id: int | None = None
+
+
+class UserActionOut(BaseModel):
+    """User creation or update response.
+
+    Attributes:
+        detail: Status message ("created" or "updated").
+        id: New or updated user's ID.
+        username: New or updated user's username.
+        email: New or updated user's email.
+    """
+
+    detail: str
+    id: int
+    username: str
+    email: str
+
+
+class UserIdActionOut(BaseModel):
+    """User state change response (deactivate/reactivate).
+
+    Attributes:
+        detail: Status message ("deactivated" or "reactivated").
+        id: User's ID.
+        username: User's username.
+    """
+
+    detail: str
+    id: int
+    username: str
+
+
+class UserSummaryItem(BaseModel):
+    """Summary of a user in list context.
+
+    Attributes:
+        id: User's ID.
+        username: User's username.
+        email: User's email.
+        system_permissions: User's system permission level.
+        is_active: Whether user is active.
+        full_name: User's full name (optional, for admin responses).
+        organisations: List of organisation names (optional, for admin responses).
+        sites: List of site names (optional, for admin responses).
+    """
+
+    id: int
+    username: str
+    email: str
+    system_permissions: str
+    is_active: bool
+    full_name: str | None = None
+    organisations: list[str] | None = None
+    sites: list[str] | None = None
+
+
+class UsersListOut(BaseModel):
+    """List users response.
+
+    Attributes:
+        users: List of user summaries.
+    """
+
+    users: list[UserSummaryItem]
+
+
+class UserOut(BaseModel):
+    """Detailed user profile response.
+
+    Attributes:
+        id: User's ID.
+        username: User's username.
+        email: User's email.
+        name: User's full name or username.
+        base_profession: User's base profession ID.
+        additional_competencies: User's additional competencies.
+        removed_competencies: User's removed competencies.
+        system_permissions: User's system permission level.
+        is_active: Whether user is active.
+        organisation_ids: Organisations the user belongs to.
+        site_ids: Sites the user belongs to.
+    """
+
+    id: int
+    username: str
+    email: str
+    name: str
+    base_profession: str
+    additional_competencies: list[str]
+    removed_competencies: list[str]
+    system_permissions: str
+    is_active: bool
+    organisation_ids: list[int]
+    site_ids: list[int]
+
+
+class LinkPatientIn(BaseModel):
+    """Link patient to user request.
+
+    Attributes:
+        fhir_patient_id: FHIR patient ID to link.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    fhir_patient_id: str
+
+
+class LinkPatientOut(BaseModel):
+    """Link patient to user response.
+
+    Attributes:
+        user_id: ID of the user linked to patient.
+        fhir_patient_id: FHIR patient ID.
+    """
+
+    user_id: int
+    fhir_patient_id: str
