@@ -133,7 +133,7 @@ from app.schemas.cbac import (
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
-from app.schemas.features import FeatureOut, FeatureToggleIn
+from app.schemas.features import FeatureToggleIn
 from app.schemas.letters import LetterIn
 from app.schemas.messaging import (
     AcceptInviteIn,
@@ -153,12 +153,13 @@ from app.schemas.organisations import (
     AddStaffIn,
     CreateOrganisationIn,
     CreateSiteIn,
-    LinkedSiteItem,
+    FeaturesListOut,
     OrganisationDetailOut,
     OrganisationOut,
     OrganisationsListOut,
-    PatientMemberItem,
-    StaffMemberItem,
+    OrgPatientAddResponse,
+    OrgStaffAddResponse,
+    StatusResponse,
     UpdateOrganisationIn,
     UpdateSiteIn,
 )
@@ -973,7 +974,7 @@ def register(
     request: Request,
     payload: RegisterIn,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """User Registration.
 
     Creates a new user account with username, email, and password. Performs
@@ -1130,7 +1131,7 @@ def verify_email(
     request: Request,
     data: VerifyEmailIn,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Verify a user's email address using a signed token.
 
     Validates the token from the email link and marks the user's email
@@ -1167,7 +1168,7 @@ def resend_verification(
     request: Request,
     data: ResendVerificationIn,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Resend the email verification link.
 
     Looks up the user by email and sends a new verification token.
@@ -1206,7 +1207,7 @@ def forgot_password(
     request: Request,
     data: ForgotPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Request a password reset email.
 
     Accepts an email address and, if a matching account exists, sends a
@@ -1247,7 +1248,7 @@ def reset_password(
     request: Request,
     data: ResetPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Reset a user's password using a reset token.
 
     Verifies the token from the email link, validates the new password,
@@ -1812,7 +1813,7 @@ def send_invite_email(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Send Invite Email.
 
     Sends an email to the user inviting them to set up or update their
@@ -1948,7 +1949,7 @@ def totp_verify(
     payload: TotpVerifyIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Verify TOTP and Enable Two-Factor.
 
     Verifies the 6-digit TOTP code from the user's authenticator app and
@@ -2003,7 +2004,7 @@ def totp_disable(
     data: TotpDisableIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
@@ -2039,7 +2040,7 @@ def change_password(
     response: Response,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Change the current user's password.
 
     Verifies the current password, validates the new password meets
@@ -2094,7 +2095,7 @@ def change_password(
 
 
 @router.post("/auth/logout", response_model=DetailResponse)
-def logout(response: Response, _u: User = DEP_CURRENT_USER) -> DetailResponse:
+def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
     """User Logout.
 
     Logs out the current user by clearing all authentication cookies (access_token,
@@ -2198,7 +2199,7 @@ def update_profile(
     data: UpdateProfileIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Update the current user's profile.
 
     Allows updating full_name and email. If email is changed,
@@ -3442,7 +3443,7 @@ async def update_my_competencies(
 @router.get("/organisations", response_model=OrganisationsListOut)
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
-) -> OrganisationsListOut:
+) -> dict[str, Any]:
     """List all organisations.
 
     Retrieves all organisations from the database. Returns basic information
@@ -3484,19 +3485,19 @@ def list_organisations(
                 .scalars()
                 .all()
             )
-        return OrganisationsListOut(
-            organisations=[
-                OrganisationListItem(
-                    id=org.id,
-                    name=org.name,
-                    type=org.type,
-                    location=org.location,
-                    created_at=org.created_at.isoformat(),
-                    updated_at=org.updated_at.isoformat(),
-                )
+        return {
+            "organisations": [
+                {
+                    "id": org.id,
+                    "name": org.name,
+                    "type": org.type,
+                    "location": org.location,
+                    "created_at": org.created_at.isoformat(),
+                    "updated_at": org.updated_at.isoformat(),
+                }
                 for org in organisations
             ]
-        )
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -3506,7 +3507,7 @@ def get_organisation(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> OrganisationDetailOut:
+) -> dict[str, Any]:
     """Get Organisation Details.
 
     Retrieves detailed information about a specific organisation including
@@ -3605,42 +3606,42 @@ def get_organisation(
         for row in db.execute(cl_query).all():
             clinical_leads[row.site_id] = row.full_name or row.username
 
-    return OrganisationDetailOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-        staff_count=len(staff_members),
-        patient_count=len(patient_members),
-        staff_members=[
-            StaffMemberItem(
-                id=sm.id,
-                username=sm.username,
-                email=sm.email,
-                full_name=sm.full_name or "",
-            )
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+        "staff_count": len(staff_members),
+        "patient_count": len(patient_members),
+        "staff_members": [
+            {
+                "id": sm.id,
+                "username": sm.username,
+                "email": sm.email,
+                "full_name": sm.full_name or "",
+            }
             for sm in staff_members
         ],
-        patient_members=[
-            PatientMemberItem(
-                patient_id=pm.patient_id,
-            )
+        "patient_members": [
+            {
+                "patient_id": pm.patient_id,
+            }
             for pm in patient_members
         ],
-        sites=[
-            LinkedSiteItem(
-                id=s.id,
-                name=s.name,
-                type=s.type,
-                location=s.location or "",
-                is_active=s.is_active,
-                clinical_lead=clinical_leads.get(s.id, ""),
-            )
+        "sites": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "type": s.type,
+                "location": s.location or "",
+                "is_active": s.is_active,
+                "clinical_lead": clinical_leads.get(s.id, ""),
+            }
             for s in sites
         ],
-    )
+    }
 
 
 @router.put("/organisations/{org_id}", response_model=OrganisationOut)
@@ -3649,7 +3650,7 @@ def update_organisation(
     body: UpdateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> OrganisationOut:
+) -> dict[str, Any]:
     """Update Organisation.
 
     Updates an existing organisation's details.
@@ -3709,14 +3710,14 @@ def update_organisation(
     db.flush()
     db.refresh(org)
 
-    return OrganisationOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-    )
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+    }
 
 
 @router.post("/organisations", response_model=OrganisationOut)
@@ -3724,7 +3725,7 @@ def create_organisation(
     body: CreateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> OrganisationOut:
+) -> dict[str, Any]:
     """Create Organisation.
 
     Creates a new organisation in the database.
@@ -3771,14 +3772,14 @@ def create_organisation(
     db.flush()
     db.refresh(org)
 
-    return OrganisationOut(
-        id=org.id,
-        name=org.name,
-        type=org.type,
-        location=org.location,
-        created_at=org.created_at.isoformat(),
-        updated_at=org.updated_at.isoformat(),
-    )
+    return {
+        "id": org.id,
+        "name": org.name,
+        "type": org.type,
+        "location": org.location,
+        "created_at": org.created_at.isoformat(),
+        "updated_at": org.updated_at.isoformat(),
+    }
 
 
 @router.delete("/organisations/{org_id}", response_model=DetailResponse)
@@ -3786,7 +3787,7 @@ def delete_organisation(
     org_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
+) -> dict[str, str]:
     """Delete Organisation.
 
     Permanently removes an organisation and all associated memberships.
@@ -3816,11 +3817,12 @@ def delete_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     db.delete(org)
-    return DetailResponse(detail="Organisation deleted")
+    return {"detail": "Organisation deleted"}
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/organisations/{org_id}/staff")
+@router.post(
+    "/organisations/{org_id}/staff", response_model=OrgStaffAddResponse
+)
 def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
@@ -3901,10 +3903,10 @@ def add_staff_to_organisation(
     }
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/patients",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=OrgPatientAddResponse,
 )
 def add_patient_to_organisation(
     org_id: int,
@@ -3975,10 +3977,10 @@ def add_patient_to_organisation(
     }
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
+    response_model=StatusResponse,
 )
 def remove_staff_from_organisation(
     org_id: int,
@@ -4027,10 +4029,10 @@ def remove_staff_from_organisation(
     return {"status": "removed"}
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CSRF],
+    response_model=StatusResponse,
 )
 def remove_patient_from_organisation(
     org_id: int,
@@ -4084,13 +4086,12 @@ def remove_patient_from_organisation(
 # ==========================================================================
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/organisations/{org_id}/features")
+@router.get("/organisations/{org_id}/features", response_model=FeaturesListOut)
 def list_org_features(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, Any]:
     """List enabled features for an organisation.
 
     Admin/superadmin only.
@@ -4111,11 +4112,13 @@ def list_org_features(
 
     return {
         "features": [
-            FeatureOut(
-                feature_key=f.feature_key,
-                enabled_at=f.enabled_at,
-                enabled_by=f.enabled_by,
-            ).model_dump()
+            {
+                "feature_key": f.feature_key,
+                "enabled_at": (
+                    f.enabled_at.isoformat() if f.enabled_at else None
+                ),
+                "enabled_by": f.enabled_by,
+            }
             for f in org.features
         ]
     }

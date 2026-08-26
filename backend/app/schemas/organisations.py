@@ -247,12 +247,12 @@ class FeatureItem(BaseModel):
     Attributes:
         feature_key: Feature identifier.
         enabled_at: ISO timestamp when enabled (may be null if not enabled).
-        enabled_by: Username of user who enabled it (may be null).
+        enabled_by: User ID who enabled it (may be null).
     """
 
     feature_key: str
     enabled_at: str | None
-    enabled_by: str | None
+    enabled_by: int | None
 
 
 class FeaturesListOut(BaseModel):
