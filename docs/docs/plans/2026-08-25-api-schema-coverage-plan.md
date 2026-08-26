@@ -269,20 +269,27 @@ Grandfathered markers removed. Schema coverage check passes.
 
 ## Phase 4: Retrofit — users & admin (9 routes)
 
-- [ ] `validate_clinical_lead` — POST
+- [x] `validate_clinical_lead` — POST
       `/teaching/public/validate-clinical-lead`
-- [ ] `create_user_with_cbac` — POST `/users`
-- [ ] `update_user` — PATCH `/users/{user_id}`
-- [ ] `deactivate_user` — POST `/users/{user_id}/deactivate`
-- [ ] `reactivate_user` — POST `/users/{user_id}/reactivate`
-- [ ] `send_invite_email` — POST `/users/{user_id}/send-invite`
-- [ ] `list_users` — GET `/users`
-- [ ] `get_user` — GET `/users/{user_id}`
-- [ ] `link_patient_to_user` — PATCH `/users/{user_id}/link-patient`
+- [x] `create_user_with_cbac` — POST `/users`
+- [x] `update_user` — PATCH `/users/{user_id}`
+- [x] `deactivate_user` — POST `/users/{user_id}/deactivate`
+- [x] `reactivate_user` — POST `/users/{user_id}/reactivate`
+- [x] `send_invite_email` — POST `/users/{user_id}/send-invite`
+- [x] `list_users` — GET `/users`
+- [x] `get_user` — GET `/users/{user_id}`
+- [x] `link_patient_to_user` — PATCH `/users/{user_id}/link-patient`
       (also takes a raw `dict[str, str]` request body — type the request
       too, not just the response)
-- [ ] `just ub -k "user"` — targeted rerun
-- [ ] `just ub` — full backend suite
+- [x] `just ub -k "user"` — targeted rerun
+- [x] `just ub` — full backend suite
+
+**Phase 4 summary** — Commit `ca25d6af`. Added 8 response models and 1 request model to
+`backend/app/schemas/auth.py`: ValidateClinicalLeadOut, UserActionOut, UserIdActionOut,
+UserSummaryItem, UsersListOut, UserOut, LinkPatientIn, LinkPatientOut. All 9 routes
+now have explicit response_model set and typed return annotations. Request body for
+link_patient_to_user is also typed (LinkPatientIn). Grandfathered markers removed.
+Schema coverage check passes.
 
 ## Phase 5: Retrofit — patients / FHIR / EHRbase (18 routes)
 
