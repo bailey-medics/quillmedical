@@ -235,24 +235,36 @@ that model, `response_model=` on the decorator. Delete the
 `# api-schema-check: allow-opaque-grandfathered` marker above each route
 as it's fixed.
 
-- [ ] `health_check` — GET `/health`
-- [ ] `login` — POST `/auth/login`
-- [ ] `list_organisations_public` — GET `/auth/organisations`
-- [ ] `register` — POST `/auth/register`
-- [ ] `verify_email` — POST `/auth/verify-email`
-- [ ] `resend_verification` — POST `/auth/resend-verification`
-- [ ] `forgot_password` — POST `/auth/forgot-password`
-- [ ] `reset_password` — POST `/auth/reset-password`
-- [ ] `totp_verify` — POST `/auth/totp/verify`
-- [ ] `totp_disable` — POST `/auth/totp/disable`
-- [ ] `change_password` — POST `/auth/change-password`
-- [ ] `logout` — POST `/auth/logout`
-- [ ] `me` — GET `/auth/me`
-- [ ] `update_profile` — PATCH `/auth/profile`
-- [ ] `refresh` — POST `/auth/refresh`
-- [ ] `list_teaching_modules_public` — GET `/teaching/public/modules`
-- [ ] `just ub -k "auth or health or teaching_public"` — targeted rerun
-- [ ] `just ub` — full backend suite
+- [x] `health_check` — GET `/health`
+- [x] `login` — POST `/auth/login`
+- [x] `list_organisations_public` — GET `/auth/organisations`
+- [x] `register` — POST `/auth/register`
+- [x] `verify_email` — POST `/auth/verify-email`
+- [x] `resend_verification` — POST `/auth/resend-verification`
+- [x] `forgot_password` — POST `/auth/forgot-password`
+- [x] `reset_password` — POST `/auth/reset-password`
+- [x] `totp_verify` — POST `/auth/totp/verify`
+- [x] `totp_disable` — POST `/auth/totp/disable`
+- [x] `change_password` — POST `/auth/change-password`
+- [x] `logout` — POST `/auth/logout`
+- [x] `me` — GET `/auth/me`
+- [x] `update_profile` — PATCH `/auth/profile`
+- [x] `refresh` — POST `/auth/refresh`
+- [x] `list_teaching_modules_public` — GET `/teaching/public/modules`
+- [x] `just ub -k "auth or health or teaching_public"` — targeted rerun
+- [x] `just ub` — full backend suite
+
+**Phase 3 summary** — Commit `0ac013a4`. Added 7 response models to `backend/app/schemas/auth.py`:
+- `DetailResponse` (simple `{"detail": str}` responses, used by 11 routes)
+- `LoginOut` (login response with user object)
+- `RefreshOut` (token refresh response)
+- `MeOut` (current user profile with roles, permissions, features, competencies)
+- `HealthCheckOut` (health check with service availability)
+- `OrganisationsOut` & `OrganisationListItem` (public organisations list)
+- `TeachingModulesOut` & `TeachingModuleItem` (public teaching modules list)
+
+All 16 routes now have explicit `response_model=` set and typed return annotations.
+Grandfathered markers removed. Schema coverage check passes.
 
 ## Phase 4: Retrofit — users & admin (9 routes)
 
