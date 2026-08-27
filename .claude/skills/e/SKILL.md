@@ -1,4 +1,5 @@
 ---
+name: e
 description: Explain in simple terms the highlighted lines
 model: haiku
 disallowed-tools: Edit, Write, NotebookEdit

@@ -1,4 +1,5 @@
 ---
+name: sync-copilot-config
 description: Sync Copilot instructions and prompts from .github into the .claude structure, reporting drift since the last run
 argument-hint: "[apply|dry-run] (default: dry-run)"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(find:*), Bash(shasum:*), Bash(mkdir:*), Bash(cat:*)
