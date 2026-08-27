@@ -1,4 +1,5 @@
 ---
+name: fast-api-docs
 description: Generate FastAPI Code Documentation
 disable-model-invocation: true
 ---

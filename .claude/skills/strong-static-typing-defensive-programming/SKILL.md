@@ -1,4 +1,5 @@
 ---
+name: strong-static-typing-defensive-programming
 description: Strong static typing and defensive programming
 disable-model-invocation: true
 ---
