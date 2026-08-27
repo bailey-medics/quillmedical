@@ -1,6 +1,6 @@
-# Deploy public marketing site to GCS landing buckets.
-# Builds the public_pages Vite workspace and syncs to the landing bucket
-# in both staging and production projects.
+# Deploy public marketing site to the GCS landing bucket.
+# Builds the public_pages Vite workspace once and syncs it to the teaching
+# project's landing bucket, which serves the apex quill-medical.com domain.
 name: Deploy public site
 
 on:
@@ -25,117 +25,67 @@ concurrency:
 jobs:
   build:
     name: Build public pages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Build public pages
         working-directory: frontend
         run: yarn workspace public-pages build
 
-      - uses: actions/upload-artifact@v7
+      - name: Upload public site
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: public-site
           path: frontend/dist/public_pages/
 
   deploy-teaching:
     name: Deploy to teaching
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     environment:
       name: teaching
 
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Download public site
+        uses: actions/download-artifact@v8.0.1
         with:
           name: public-site
           path: public-site/
 
-      - id: auth
-        uses: google-github-actions/auth@v3
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@v3.0.1
 
-      # Sync files to the landing bucket. Set cache headers:
-      # - Hashed assets (js/css): 1 year immutable cache
-      # - Static assets (images, icons, manifest): 30 day cache
-      # - HTML files: no-cache (always revalidate)
       - name: Upload to GCS
-        run: |
-          BUCKET="${{ secrets.GCP_TEACHING_PROJECT_ID }}-landing"
+        run: bash .github/scripts/public-site/deploy-to-gcs.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
 
-          # Upload hashed assets with aggressive caching
-          gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
-            rsync -r -x '.*\.html$' public-site/assets/ "gs://${BUCKET}/assets/"
+      - name: List deployed files
+        run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_TEACHING_PROJECT_ID }}"
 
-          # Upload static assets (images, icons, manifest)
-          gsutil -m -h "Cache-Control:public, max-age=2592000" \
-            cp public-site/*.png public-site/*.ico public-site/*.webmanifest "gs://${BUCKET}/"
+  notify-teaching-failure:
+    name: Notify teaching deploy failure
+    needs: [build, deploy-teaching]
+    if: ${{ always() && (needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Public site deploy failed*
 
-          # Upload HTML files with no-cache
-          gsutil -m -h "Cache-Control:no-cache" \
-            cp public-site/*.html "gs://${BUCKET}/"
-
-      - name: Verify deployment
-        run: |
-          BUCKET="${{ secrets.GCP_TEACHING_PROJECT_ID }}-landing"
-          echo "Checking bucket contents..."
-          gsutil ls "gs://${BUCKET}/"
-          gsutil ls "gs://${BUCKET}/assets/"
-
-  # deploy-production:
-  #   TODO: Enable when the production GCS landing bucket is created.
-  #   name: Deploy to production
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   environment: production
-  #
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: public-site
-  #         path: public-site/
-  #
-  #     - id: auth
-  #       uses: google-github-actions/auth@v2
-  #       with:
-  #         workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
-  #         service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
-  #
-  #     - uses: google-github-actions/setup-gcloud@v2
-  #
-  #     - name: Upload to GCS
-  #       run: |
-  #         BUCKET="${{ secrets.GCP_PROD_PROJECT_ID }}-landing"
-  #
-  #         # Upload hashed assets with aggressive caching
-  #         gsutil -m -h "Cache-Control:public, max-age=31536000, immutable" \
-  #           rsync -r -x '.*\.html$' public-site/assets/ "gs://${BUCKET}/assets/"
-  #
-  #         # Upload HTML files with no-cache
-  #         gsutil -m -h "Cache-Control:no-cache" \
-  #           cp public-site/*.html "gs://${BUCKET}/"
-  #
-  #     - name: Verify deployment
-  #       run: |
-  #         BUCKET="${{ secrets.GCP_PROD_PROJECT_ID }}-landing"
-  #         echo "Checking bucket contents..."
-  #         gsutil ls "gs://${BUCKET}/"
-  #         gsutil ls "gs://${BUCKET}/assets/"
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

@@ -9,38 +9,54 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from pydantic import BaseModel, ConfigDict
+
+from app.paths import SHARED_DIR
+from app.system_permissions import SystemPermission
+
+
+class BaseProfessionEntry(BaseModel):
+    """A single base profession definition, validated from YAML."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    display_name: str
+    description: str
+    default_system_permission: SystemPermission
+    requires_clinical_services: bool
+    base_competencies: list[str]
+
 
 # Load base professions from YAML
-BASE_PROFESSIONS_YAML_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "shared"
-    / "base-professions.yaml"
-)
+BASE_PROFESSIONS_YAML_PATH: Path = SHARED_DIR / "base-professions.yaml"
 
 with open(BASE_PROFESSIONS_YAML_PATH) as f:
-    BASE_PROFESSIONS_DATA = yaml.safe_load(f)
+    BASE_PROFESSIONS_DATA: Any = yaml.safe_load(f)
+
+BASE_PROFESSIONS: list[BaseProfessionEntry] = [
+    BaseProfessionEntry(**p) for p in BASE_PROFESSIONS_DATA["base_professions"]
+]
 
 # Extract profession IDs
-PROFESSION_IDS = tuple(
-    p["id"] for p in BASE_PROFESSIONS_DATA["base_professions"]
-)
+PROFESSION_IDS: tuple[str, ...] = tuple(p.id for p in BASE_PROFESSIONS)
 
 # Create Literal type
 BaseProfessionId = Literal[PROFESSION_IDS]  # type: ignore[valid-type]
 
 
-def get_profession_details(profession_id: str) -> dict[str, Any] | None:
+def get_profession_details(profession_id: str) -> BaseProfessionEntry | None:
     """Get full details of a base profession by ID."""
-    for profession in BASE_PROFESSIONS_DATA["base_professions"]:
-        if profession["id"] == profession_id:
-            return profession  # type: ignore[no-any-return]
+    for profession in BASE_PROFESSIONS:
+        if profession.id == profession_id:
+            return profession
     return None
 
 
 def get_profession_base_competencies(profession_id: str) -> list[str]:
     """Get the base competencies for a profession."""
     details = get_profession_details(profession_id)
-    return details.get("base_competencies", []) if details else []
+    return details.base_competencies if details else []
 
 
 def resolve_user_competencies(

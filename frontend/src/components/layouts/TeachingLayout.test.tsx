@@ -55,8 +55,40 @@ vi.mock("@components/footer/Footer", () => ({
   ),
 }));
 
+vi.mock("@/components/status-strip/StatusStrip", () => ({
+  default: ({ variant, multiple }: { variant: string; multiple?: boolean }) => (
+    <div
+      data-testid="status-strip"
+      data-variant={variant}
+      data-multiple={multiple}
+    />
+  ),
+}));
+
 vi.mock("react-router-dom", () => ({
   useLocation: () => ({ pathname: "/teaching" }),
+}));
+
+const mockConnectivity: {
+  isOnline: boolean;
+  isReconnected: boolean;
+  lastSyncedAt: Date | null;
+} = {
+  isOnline: true,
+  isReconnected: false,
+  lastSyncedAt: null,
+};
+
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => mockConnectivity,
+}));
+
+const mockForcedReload: { phase: "idle" | "blocking" | "fallback" } = {
+  phase: "idle",
+};
+
+vi.mock("@lib/compat-generation", () => ({
+  useForcedReload: () => mockForcedReload,
 }));
 
 type AuthState =
@@ -95,6 +127,10 @@ vi.mock("@/auth/AuthContext", async () => {
 describe("TeachingLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockConnectivity.isOnline = true;
+    mockConnectivity.isReconnected = false;
+    mockConnectivity.lastSyncedAt = null;
+    mockForcedReload.phase = "idle";
   });
 
   it("renders children", () => {
@@ -175,5 +211,78 @@ describe("TeachingLayout", () => {
     expect(drawer).toBeInTheDocument();
     expect(screen.getByTestId("drawer-nav")).toBeInTheDocument();
     expect(screen.getByTestId("desktop-nav")).toBeInTheDocument();
+  });
+
+  describe("Status strips", () => {
+    it("renders no strip when online and no forced-reload mismatch", () => {
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.queryByTestId("status-strip")).not.toBeInTheDocument();
+    });
+
+    it("renders an offline strip when offline with a last-synced time", () => {
+      mockConnectivity.isOnline = false;
+      mockConnectivity.lastSyncedAt = new Date();
+
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "offline");
+      expect(strip).toHaveAttribute("data-multiple", "false");
+    });
+
+    it("renders a reconnected strip when reconnected with a last-synced time", () => {
+      mockConnectivity.isReconnected = true;
+      mockConnectivity.lastSyncedAt = new Date();
+
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "reconnected");
+    });
+
+    it("renders a fallback strip when the forced-reload phase is fallback", () => {
+      mockForcedReload.phase = "fallback";
+
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "fallback");
+      expect(strip).toHaveAttribute("data-multiple", "false");
+    });
+
+    it("stacks both strips and marks them multiple when offline and fallback are both active", () => {
+      mockConnectivity.isOnline = false;
+      mockConnectivity.lastSyncedAt = new Date();
+      mockForcedReload.phase = "fallback";
+
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      const strips = screen.getAllByTestId("status-strip");
+      expect(strips).toHaveLength(2);
+      strips.forEach((strip) => {
+        expect(strip).toHaveAttribute("data-multiple", "true");
+      });
+    });
   });
 });

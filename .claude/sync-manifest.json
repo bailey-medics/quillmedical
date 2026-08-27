@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "generatedBy": "/sync-copilot-config",
+  "lastRun": "2026-08-26T19:00:07Z",
+  "notes": [
+    "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
+    "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
+    "Corrected 2026-08-26: disable-model-invocation:true does NOT remove a skill/command from the registry - it only stops Claude auto-invoking it; /name still works. A previous version of this note claimed otherwise; that was wrong. The skill now sets disable-model-invocation:true on crp specifically, because it commits/pushes and must only ever run when explicitly typed as /crp, per CLAUDE.md's 'NEVER auto-commit/push' rule.",
+    "The .claude/commands/ directory has been retired in favour of .claude/skills/ (migrated 2026-08-26). Do not recreate .claude/commands/*.md for these sources.",
+    "Do not re-create the pre-rename directory names on a future sync run; that would register duplicate skills."
+  ],
+  "files": [
+    {
+      "source": ".github/copilot-instructions.md",
+      "target": "CLAUDE.md",
+      "sourceSha256": "a2ce6050a7bbb569bbec186c1f7511f9778328d32a854e075b9faef67c95cba1",
+      "targetSha256": "a2f3b19a8a9023dcb6e7c3ea714b6eb388c9b115e89a276639e8455177313eb6",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/instructions/backend.instructions.md",
+      "target": ".claude/rules/backend.md",
+      "sourceSha256": "b7569b365c7d9758fec81a99e2a2fdc064e44eff22140ab0a23ae007bf352a0f",
+      "targetSha256": "346bd5fc6f43590418a1d5eaa73a04c5bff7920b29c99eddb1aeeaa28297b2ce",
+      "syncedAt": "2026-08-26T19:00:07Z"
+    },
+    {
+      "source": ".github/instructions/ci.instructions.md",
+      "target": ".claude/rules/ci.md",
+      "sourceSha256": "28847283282e41aa0cb51e6211d037b48175951cbaad5f50df4f578fd7734306",
+      "targetSha256": "979ee50fdda6927fb5bfb98c517b3ee53b616e1865de58b4752ce52a0fe08a9a",
+      "syncedAt": "2026-08-22T21:19:09Z"
+    },
+    {
+      "source": ".github/instructions/components.instructions.md",
+      "target": ".claude/rules/components.md",
+      "sourceSha256": "d763da017035393d91cd3244166baec2476b08af554acf1f39fe3b696b0b5d84",
+      "targetSha256": "f27f3f0fb46003fc45560102c2902e19f5c67b8b1e50ce19398d39569a74fc04",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/instructions/just.instructions.md",
+      "target": ".claude/rules/just.md",
+      "sourceSha256": "87a092c65d2b18c68312a992648c9c02b60dfea65c192267e3365f3077617869",
+      "targetSha256": "ea8ccbb6883c902f02c29d6f96fc78be690f0ef9e3eb9f8a696ff211085480b3",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/instructions/pages.instructions.md",
+      "target": ".claude/rules/pages.md",
+      "sourceSha256": "d7f4f1a0b6ef4ac34155e4ca4675fca657637cdbf5d399fbf58b8a326f9b6cfe",
+      "targetSha256": "cf24f533492a8733417b63005764364c6f3b612b58ff464fd2ed8d5f77e3ed51",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/instructions/workflows.instructions.md",
+      "target": ".claude/rules/workflows.md",
+      "sourceSha256": "2b675f3c90ee0f6f48fe73b50b7f0001175493582434ccb379b7b30f058d2f39",
+      "targetSha256": "ee5c53c46cc928b25afc9b48dd6e35e6d7bf4b310b92006c45fa188518a552fd",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/commit-rebase-push.prompt.md",
+      "target": ".claude/skills/crp/SKILL.md",
+      "sourceSha256": "d98f4cecb4d6cb848063127f0c80c973c5b31a22d314c48b5b537e47e5823c6b",
+      "targetSha256": "235286ebf7a73fefde660c15b63b90ce03e353cddb36764572083538e54fc6a2",
+      "syncedAt": "2026-08-26T15:35:13Z",
+      "targetRenamed": true
+    },
+    {
+      "source": ".github/prompts/explain-to-me.prompt.md",
+      "target": ".claude/skills/e/SKILL.md",
+      "sourceSha256": "6633ee69fc753dbe060ebeabb33450cec6c72e6f0897fd1b804878dc0073f75f",
+      "targetSha256": "cfe442cd94430ae067f38ef9774a03127d847c9ff900e09b719b0a362385e407",
+      "syncedAt": "2026-08-22T20:32:02Z",
+      "targetRenamed": true
+    },
+    {
+      "source": ".github/prompts/fast-api-docs.prompt.md",
+      "target": ".claude/skills/fast-api-docs/SKILL.md",
+      "sourceSha256": "0f92a9634ca1822a209ed483cb9fd8567ea19c4c3425893aff320dba75483c9b",
+      "targetSha256": "0cf16b18543083b52e56918c4e3e68af35201ae9f4a46eda3b496bab460b65c3",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/fix-vs-code-problems.prompt.md",
+      "target": ".claude/skills/fix-vs-code-problems/SKILL.md",
+      "sourceSha256": "dd7ec939ae5293d03e018743d82f66895c7d5e8fc05b3d4612af02d642533344",
+      "targetSha256": "a0a9137bd4790489e5e391cf56cc646640ba015793d170b36ba3599aa40d9e9a",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/follow-the-plan-document.prompt.md",
+      "target": ".claude/skills/follow-the-plan-document/SKILL.md",
+      "sourceSha256": "317b50268896fafea4e419dd081b0cbca8130a2962c495c44a5134e113788ed7",
+      "targetSha256": "c02a3417ce64d92c37498cf5b1949bfc78900bab57dc7aad55e3214e10e81575",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/in-code-documentation.prompt.md",
+      "target": ".claude/skills/in-code-documentation/SKILL.md",
+      "sourceSha256": "aac758795496c6c20fae41b68e515b0644aa5d1a319799a425f0a571fb2e75ea",
+      "targetSha256": "00a5dd32a2a582762d110f59220d5da8f3474fb56d884e2442df909bdd57b661",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/play-finished-sound.prompt.md",
+      "target": ".claude/skills/play-finished-sound/SKILL.md",
+      "sourceSha256": "07b0b5978d0a380e813abbac6fedacfea3aaf33fcfd9e2405924c624a67933f7",
+      "targetSha256": "edc490481f8c98a8346dcfff4ba982582898971f08ca78284d2e80f7732837a1",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/read-copilot-instructions.prompt.md",
+      "target": ".claude/skills/read-project-instructions/SKILL.md",
+      "sourceSha256": "9749fe70a0f63bc1af200cb77513bd5d5352a2919d3549516df5d23f07f8218e",
+      "targetSha256": "2e891c9358e87083285ed9ee39a9354fdc2e0e030e360b68e6e9fbe6d43d7589",
+      "syncedAt": "2026-08-22T20:32:02Z",
+      "targetRenamed": true
+    },
+    {
+      "source": ".github/prompts/run-all-tests.prompt.md",
+      "target": ".claude/skills/run-all-tests/SKILL.md",
+      "sourceSha256": "911db1bb72aebfb2b39ec521a7016b8809e93ee8e8f45b4327cfb9f0d8e2ffa5",
+      "targetSha256": "229841c46cebee03bb45b0aaed7e6b12228f11a1da72d2d03b688eb0c11c1af9",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/strong-static-typing-defensive-programming.prompt.md",
+      "target": ".claude/skills/strong-static-typing-defensive-programming/SKILL.md",
+      "sourceSha256": "af91b6fbe8fbf794cf2bedc3294cc780abedfd6b8b29787358d9f0e70738bb6f",
+      "targetSha256": "86c894f67b8898a6aa7bedec2cdfbbbfaed1e9ceef6fa7e5bed55f4126412294",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/update-docs-docs.prompt.md",
+      "target": ".claude/skills/update-docs-docs/SKILL.md",
+      "sourceSha256": "78d5806004c09ec1a3930752062b5cebc4359d13f97af8fa7aa2e057eded639d",
+      "targetSha256": "76a2c09644c16173ff44745de6c2b59e3888af632473bc94673b211ab4a62797",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    },
+    {
+      "source": ".github/prompts/update-nav.prompt.md",
+      "target": ".claude/skills/update-nav/SKILL.md",
+      "sourceSha256": "dc3e136913e339b9d74dbfe69bb041ba99e5bbfbe3cf3d36a9dd58d5aabb8b6b",
+      "targetSha256": "3c79cdc5a9589240185c0220bd4f44e17cca101a528b646f597d59f8dc842468",
+      "syncedAt": "2026-08-22T20:32:02Z"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 # backend/app/cbac/__init__.py
 """Competency-Based Access Control (CBAC) module for Quill Medical.
 
-This module implements CBAC authorization, allowing users to have specific
+This module implements CBAC authorisation, allowing users to have specific
 clinical competencies rather than rigid job roles.
 """
 
@@ -17,7 +17,6 @@ from app.cbac.competencies import (
     ClinicalCompetency,
     CompetencyId,
     get_competency_details,
-    get_competency_risk_level,
     is_valid_competency,
 )
 
@@ -26,7 +25,6 @@ __all__ = [
     "ClinicalCompetency",
     "get_competency_details",
     "is_valid_competency",
-    "get_competency_risk_level",
     "COMPETENCY_IDS",
     "BaseProfessionId",
     "get_profession_details",

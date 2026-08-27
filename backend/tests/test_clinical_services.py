@@ -129,7 +129,6 @@ class TestRequireFeatureDependency:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
         db_session.commit()

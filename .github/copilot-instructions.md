@@ -49,6 +49,8 @@ See the `Justfile` if you want to know more.
   - `DEP_CURRENT_USER` — Authenticated user from JWT cookie
   - `DEP_REQUIRE_ROLES_CLINICIAN` — Clinician role gate
   - `DEP_REQUIRE_CSRF` — CSRF token validation (mutating endpoints)
+- **API changes**: additive-only; breaking changes need the expand-contract
+  two-deploy pattern — see `backend.instructions.md`
 
 ### Frontend (React + TypeScript)
 
@@ -81,7 +83,7 @@ When building UI, follow this priority order:
 
 All reusable UI must live in `frontend/src/components/` with Storybook stories. Pages consume components; pages do not contain reusable UI inline.
 
-**Reference stories**: `Typography` and `PageLayoutConsistency` live in `src/stories/`.
+**Reference stories**: `Typography` and `Colours` live in `src/stories/`.
 
 #### Variant display helpers
 
@@ -110,7 +112,7 @@ All cards MUST use the `<BaseCard>` component from `components/base-card/` — n
 
 #### Icons
 
-All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.tsx` — when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
+All icons come from `@tabler/icons-react` and MUST be wrapped in the `<Icon>` component for consistent sizing. The allowed icon set is defined in `components/icons/appIcons.ts` — when using a new Tabler icon anywhere in the app, register it there first. The Icon stories display this list automatically.
 
 ### Healthcare
 
@@ -126,7 +128,7 @@ Two orthogonal layers control access:
 | Layer | Controls | Mechanism |
 |-------|----------|-----------|
 | **System permissions** | Platform management (users, orgs, dashboards) | 4-level hierarchy |
-| **CBAC** | All data access — clinical actions, feature admin, patient self-access | Competency set per user |
+| **CBAC** | All data access — clinical actions and feature admin | Competency set per user |
 
 #### System permissions
 
@@ -149,13 +151,12 @@ System permissions have **nothing to do with clinical data access** — that is 
 
 #### CBAC (competency-based access control)
 
-Controls **all data access and actions** — clinical, feature admin, and patient self-access. Competencies are categorised by purpose:
+Controls **all data access and actions** — clinical and feature admin. Competencies are categorised by purpose:
 
 | Category | Examples | Risk |
 |----------|----------|------|
-| **Clinical** | `prescribe_controlled_schedule_2`, `request_radiology`, `view_patient_records` | medium–high |
-| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `manage_letter_templates` | low–medium |
-| **Patient access** | `view_own_records`, `manage_own_demographics` | low |
+| **Clinical** | `prescribe_controlled_schedule_2`, `request_ct_scan`, `access_patient_records` | medium–high |
+| **Feature admin** | `manage_teaching_content`, `view_teaching_analytics`, `approve_clinical_letters` | low–medium |
 
 Resolution formula per user: `(base_profession_competencies + additional) − removed`
 
@@ -169,7 +170,6 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 | Scenario | System permission | CBAC profile |
 |----------|------------------|--------------|
-| Patient | `single-user` | `view_own_records`, `manage_own_demographics` |
 | Teaching delegate | `single-user` | `view_teaching_cases` only |
 | Teaching coordinator | `staff` | `manage_teaching_content` + `view_teaching_analytics` |
 | Junior doctor | `staff` | Standard clinical set |
@@ -181,6 +181,14 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 - Backend model `Organisation` in `models.py` with staff/patient membership via association tables
 - API endpoints under `/api/organisations` (admin/superadmin only)
 - Admin pages at `pages/admin/organisations/`
+
+#### Sites
+
+- Backend model `Site` in `models.py` — a physical or virtual location forming a self-referential hierarchy (hospital > building > ward > room; `type` one of hospital/building/ward/room/clinic/department/virtual)
+- Linked to organisations many-to-many via the `organisation_site` association table; staff belong to a site with a `role` (`clinical_lead`, `staff`, `trainee`) via `site_staff_member`
+- Underpins teaching governance — clinical-lead resolution runs via the site → organisation linkage
+- API endpoints under `/api/sites` (CRUD), `/api/organisations/{org_id}/sites/{site_id}` (link/unlink), and `/api/sites/{site_id}/staff` (staff membership) — admin/superadmin only
+- Admin pages at `pages/admin/sites/` (plus `AddSiteToOrgPage` under `pages/admin/organisations/`)
 
 ### Web Push notifications
 
@@ -212,6 +220,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 #### Input Validation
 
+- **Validate all inputs before any business logic** — check every parameter and precondition at the top of a function (fail-fast guard clauses), so no work runs on unvalidated data
 - Never trust user input: validate at API boundaries (Pydantic/Zod)
 - Sanitise data, enforce length limits, validate types/ranges/formats
 - Use Pydantic `extra='forbid'` to reject unexpected fields
@@ -247,7 +256,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 
 ## Quick Patterns
 
-**New API endpoint**: Route in `backend/app/main.py` under `@router`, Pydantic schemas in `backend/app/schemas/`, then `just docs`
+**New API endpoint**: Route in `backend/app/main.py` under `@router`, Pydantic schemas in `backend/app/schemas/`
 
 **CBAC-protected endpoint**: Add `Depends(has_competency("competency_id"))` to route params — raises 403 if user lacks competency
 

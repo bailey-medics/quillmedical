@@ -25,10 +25,12 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -191,7 +193,6 @@ organisation_staff_member = Table(
         "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("user_id", ForeignKey("users.id"), primary_key=True),
-    Column("is_primary", Boolean, default=False, nullable=False),
 )
 """Association table for many-to-many relationship between organisations and staff."""
 
@@ -203,7 +204,6 @@ organisation_patient_member = Table(
         "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("patient_id", String(255), primary_key=True),
-    Column("is_primary", Boolean, default=False, nullable=False),
 )
 """Association table for many-to-many relationship between organisations and patients."""
 
@@ -640,6 +640,13 @@ site_staff_member = Table(
         primary_key=True,
     ),
     Column("role", String(50), nullable=False),
+    Index(
+        "ix_site_staff_one_clinical_lead",
+        "site_id",
+        unique=True,
+        postgresql_where=text("role = 'clinical_lead'"),
+        sqlite_where=text("role = 'clinical_lead'"),
+    ),
 )
 """Association table: staff at a site with a role (clinical_lead, staff, trainee)."""
 

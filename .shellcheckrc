@@ -1,0 +1,2 @@
+# Follow source directives to lint sourced files
+external-sources=true

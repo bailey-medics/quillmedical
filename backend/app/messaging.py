@@ -250,7 +250,7 @@ def create_conversation(
         body=initial_message,
     )
     db.add(msg)
-    db.commit()
+    db.flush()
     db.refresh(conv)
 
     return ConversationDetailOut(
@@ -364,7 +364,7 @@ def get_conversation_detail(
     # Mark as read only for participants
     if cp is not None:
         cp.last_read_at = func.now()
-        db.commit()
+        db.flush()
         db.refresh(conv)
 
     sorted_msgs = sorted(conv.messages, key=lambda m: m.created_at)
@@ -453,7 +453,7 @@ def send_message(
     if conv.status == "new":
         conv.status = "active"
 
-    db.commit()
+    db.flush()
     db.refresh(msg)
 
     return _message_out(msg)
@@ -489,7 +489,7 @@ def add_participant(
     # Snowball: add the new participant's orgs to the conversation
     _snowball_orgs(db, conversation_id, user_id)
 
-    db.commit()
+    db.flush()
     db.refresh(cp)
     return _participant_out(cp)
 
@@ -509,7 +509,6 @@ def mark_conversation_read(
     if cp is None:
         return False
     cp.last_read_at = func.now()
-    db.commit()
     return True
 
 
@@ -631,6 +630,6 @@ def join_conversation(
     # Snowball the joining user's orgs
     _snowball_orgs(db, conversation_id, user.id)
 
-    db.commit()
+    db.flush()
     db.refresh(cp)
     return _participant_out(cp)

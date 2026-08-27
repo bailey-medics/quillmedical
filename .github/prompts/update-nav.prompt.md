@@ -2,6 +2,7 @@
 agent: "agent"
 name: update-nav
 description: Update navigation
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Update navigation

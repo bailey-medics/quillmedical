@@ -3,13 +3,26 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import postcssPresetMantine from "postcss-preset-mantine";
 import postcssSimpleVars from "postcss-simple-vars";
+import remarkGfm from "remark-gfm";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
-  addons: ["@storybook/addon-docs", "storybook-addon-pseudo-states"],
+  addons: [
+    {
+      name: "@storybook/addon-docs",
+      options: {
+        mdxPluginOptions: {
+          mdxCompileOptions: {
+            remarkPlugins: [remarkGfm],
+          },
+        },
+      },
+    },
+    "storybook-addon-pseudo-states",
+  ],
   staticDirs: ["../public"],
 
   framework: {

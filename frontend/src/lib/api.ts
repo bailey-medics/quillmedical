@@ -6,6 +6,47 @@
  * authentication failure. All requests include credentials (cookies) and use JSON format.
  */
 
+import {
+  CLIENT_COMPAT_GENERATION,
+  COMPAT_GENERATION_HEADER,
+  COMPAT_MISMATCH_EVENT,
+  checkCompatGeneration,
+  isReloadPending,
+  markReloadPending,
+} from "@lib/compat-generation/compatGeneration";
+import { clearRetryRecord } from "@lib/compat-generation/retryState";
+
+/**
+ * Compat-Generation response interceptor
+ *
+ * Compares this bundle's baked-in generation against the value the
+ * backend just served. On a client-behind mismatch, marks a reload as
+ * pending (blocking further mutating requests) and dispatches
+ * COMPAT_MISMATCH_EVENT for ForcedReloadGate to act on. Never infers
+ * incompatibility from a missing/invalid header. See
+ * docs/docs/plans/2026-08-09-sub-plan-api-compatibility-plan.md.
+ */
+function checkCompatHeader(res: Response): void {
+  const result = checkCompatGeneration(
+    CLIENT_COMPAT_GENERATION,
+    res.headers.get(COMPAT_GENERATION_HEADER),
+  );
+  if (result === "compatible") {
+    clearRetryRecord();
+    return;
+  }
+  if (result === "client-behind") {
+    markReloadPending();
+    window.dispatchEvent(
+      new CustomEvent(COMPAT_MISMATCH_EVENT, {
+        detail: {
+          serverGeneration: Number(res.headers.get(COMPAT_GENERATION_HEADER)),
+        },
+      }),
+    );
+  }
+}
+
 /**
  * HTTP Methods
  *
@@ -65,6 +106,14 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
 
   // Auto-include CSRF token for state-changing requests
   const method = opts.method ?? "GET";
+
+  // A forced reload is already pending (this tab is speaking a contract
+  // the backend no longer honours) — stop further mutations rather than
+  // sending a request that will only compound the mismatch.
+  if (method !== "GET" && isReloadPending()) {
+    throw new Error("App update pending — please wait for the page to reload.");
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((opts.headers as Record<string, string>) ?? {}),
@@ -93,6 +142,8 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     }
     throw err;
   }
+
+  checkCompatHeader(res);
 
   // Silent, single refresh try on 401
   if (res.status === 401 && !opts.retry) {
@@ -226,6 +277,11 @@ async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
   }
 
   const method = opts.method ?? "GET";
+
+  if (method !== "GET" && isReloadPending()) {
+    throw new Error("App update pending — please wait for the page to reload.");
+  }
+
   const headers: Record<string, string> = {
     ...((opts.headers as Record<string, string>) ?? {}),
   };
@@ -252,6 +308,8 @@ async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
     }
     throw err;
   }
+
+  checkCompatHeader(res);
 
   if (res.status === 401 && !opts.retry) {
     const refreshed = await fetch(`/api/auth/refresh`, {

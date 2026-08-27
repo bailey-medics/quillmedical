@@ -1,33 +1,31 @@
 #!/usr/bin/env sh
-# shellcheck disable=SC1091
-. "$(dirname -- "$0")/_/husky.sh"
 
-# Run repository-level pre-commit hooks (Python / repo hooks)
+# Python / repo hooks
 if command -v pre-commit >/dev/null 2>&1; then
 	echo "Running repo pre-commit hooks"
-	# Run hooks on staged files for speed; fail if any hook fails
-	pre-commit run
+	# Run hooks on staged files for speed; abort the commit if any hook fails
+	pre-commit run || exit $?
 else
 	echo "pre-commit not found in PATH; please install pre-commit" >&2
 	exit 1
 fi
 
-# Ensure we run lint-staged from the frontend workspace where package.json now lives
+# Move to package.json folder
 if [ -d "frontend" ]; then
 	cd frontend || exit 1
 fi
 
-# Use npx with --no-install so it fails if lint-staged isn't installed (encourages running install)
-# Require Yarn Berry (v2+) for running lint-staged
+# TS/JS / repo hooks
 if [ -f "../.yarnrc.yml" ] || [ -f "./.yarnrc.yml" ] || [ -d "../.yarn" ] || [ -d "./.yarn" ]; then
 	if command -v yarn >/dev/null 2>&1; then
-	# Use yarn dlx in Yarn v2+ to run binaries from the project
-	yarn dlx lint-staged || exit $?
+		# Run the project's pinned lint-staged. Avoid `yarn dlx`, which downloads a
+		# fresh unpinned copy from the registry on every commit.
+		yarn lint-staged || exit $?
 	else
-		echo "Error: Yarn is not available in PATH, but Yarn Berry is required to run lint-staged" >&2
+		echo "Error: Yarn is not available in PATH, but is required to run lint-staged" >&2
 		exit 1
 	fi
 else
-	echo "Error: Yarn Berry not detected (no .yarnrc.yml or .yarn). Husky pre-commit requires Yarn Berry." >&2
+	echo "Error: Yarn not detected (no .yarnrc.yml or .yarn). Husky pre-commit requires Yarn." >&2
 	exit 1
 fi

@@ -1,4 +1,3 @@
-# cspell:words zaproxy
 # Weekly OWASP ZAP baseline scan against the teaching environment.
 #
 # Runs a passive scan (safe, read-only) to detect common
@@ -24,16 +23,15 @@ concurrency:
 
 jobs:
   zap-baseline:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: ZAP baseline scan
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v6
-        with: { fetch-depth: 1 }
+      - uses: actions/checkout@v7.0.1
 
       - name: ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "https://teaching.quill-medical.com"
           rules_file_name: ".zap/rules.tsv"
@@ -43,8 +41,40 @@ jobs:
 
       - name: Upload ZAP report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: zap-report
           path: report_html.html
           retention-days: 90
+
+  # ---------- Slack notify ----------
+
+  notify-success:
+    name: Notify success (teaching)
+    needs: zap-baseline
+    if: ${{ success() }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *✅ Weekly ZAP scan completed (teaching)*
+
+        Passive scan ran; any findings are filed as GitHub issues.
+        *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+    secrets: inherit
+
+  # ---------- Notify: weekly scan failed ----------
+  # Fires only on genuine breakage (fail_action is false, so findings stay green).
+  notify-failure:
+    name: Notify failure (teaching)
+    needs: zap-baseline
+    if: ${{ failure() }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Weekly ZAP scan failed (teaching)*
+
+        The scan job did not complete — the security control may not have run.
+        *Logs:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+    secrets: inherit

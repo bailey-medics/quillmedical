@@ -261,8 +261,8 @@ describe("OrganisationAdminPage", () => {
         updated_at: "2024-01-15T10:00:00Z",
         staff_members: [],
         patient_members: [
-          { patient_id: "fhir-001", is_primary: false },
-          { patient_id: "fhir-002", is_primary: true },
+          { patient_id: "fhir-001" },
+          { patient_id: "fhir-002" },
         ],
         patient_count: 2,
       };
@@ -674,14 +674,12 @@ describe("OrganisationAdminPage", () => {
           username: "alice",
           full_name: "Alice Smith",
           email: "alice@example.com",
-          is_primary: true,
         },
         {
           id: 20,
           username: "bob",
           full_name: "Bob Jones",
           email: "bob@example.com",
-          is_primary: false,
         },
       ],
       patient_members: [],

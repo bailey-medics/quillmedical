@@ -14,6 +14,10 @@ Two complementary tools work together:
 
 Renovate is preferred for PRs because it supports Yarn 4, Poetry, pre-commit hooks, and Terraform — ecosystems that Dependabot does not handle uniformly. Dependabot is retained for its native GitHub vulnerability alert integration, which surfaces CVEs in the GitHub Security tab.
 
+## Version pinning
+
+Dependencies are pinned to exact versions wherever practical — including GitHub Actions (for example `actions/checkout@v7.0.1`, `docker/build-push-action@v7.3.0`), Docker base images, and lockfile-managed packages. Exact pins keep builds reproducible and make every version change an explicit, reviewable Renovate PR rather than a silent floating-tag update.
+
 ## Dependabot alerts
 
 Configured in `.github/dependabot.yml`.

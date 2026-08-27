@@ -93,12 +93,15 @@ resource "github_repository_ruleset" "protected_branches" {
     required_status_checks {
       strict_required_status_checks_policy = true
 
-      # Python (matrix: styling, unit)
+      # Python (matrix: pre-commit, unit)
       required_check {
-        context = "Python styling"
+        context = "Python pre-commit"
       }
       required_check {
         context = "Python unit"
+      }
+      required_check {
+        context = "Alembic autogenerate drift check"
       }
 
       # TypeScript (matrix: all tasks)
@@ -121,7 +124,7 @@ resource "github_repository_ruleset" "protected_branches" {
         context = "typescript_checks (storybook:build)"
       }
       required_check {
-        context = "typescript_checks (storybook:test:ci)"
+        context = "Storybook interaction tests"
       }
 
       # Security
@@ -132,6 +135,14 @@ resource "github_repository_ruleset" "protected_branches" {
       # E2E
       required_check {
         context = "E2E (Playwright)"
+      }
+
+      # API compatibility (item 15 — see docs/docs/backend/api-compatibility.md)
+      required_check {
+        context = "API breaking-change check"
+      }
+      required_check {
+        context = "API breaking-change review gate"
       }
     }
 

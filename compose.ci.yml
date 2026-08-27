@@ -16,8 +16,8 @@ services:
     environment:
       # Core DB — individual components (Settings computes the URL)
       CORE_DB_PASSWORD: ci_password
-      # Defaults match: CORE_DB_NAME=quill_core, CORE_DB_USER=auth_user,
-      # CORE_DB_HOST=postgres-auth, CORE_DB_PORT=5432
+      # Defaults match: CORE_DB_NAME=quill_core, CORE_DB_USER=core_user,
+      # CORE_DB_HOST=postgres-core, CORE_DB_PORT=5432
       JWT_SECRET: ci-e2e-jwt-secret-key-minimum-32-chars
       BACKEND_ENV: testing
       CLINICAL_SERVICES_ENABLED: "false"
@@ -32,7 +32,7 @@ services:
     expose:
       - "8000"
     depends_on:
-      postgres-auth:
+      postgres-core:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
@@ -63,17 +63,17 @@ services:
     networks:
       - ci
 
-  postgres-auth:
+  postgres-core:
     image: postgres:18-alpine
-    container_name: ci_postgres_auth
+    container_name: ci_postgres_core
     environment:
       POSTGRES_DB: quill_core
-      POSTGRES_USER: auth_user
+      POSTGRES_USER: core_user
       POSTGRES_PASSWORD: ci_password
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_core"]
+      test: ["CMD-SHELL", "pg_isready -U core_user -d quill_core"]
       interval: 3s
       timeout: 2s
       retries: 10

@@ -89,13 +89,23 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Permanent API-compatibility test harness flag ---
+    TEST_API_ENDPOINTS_ENABLED: bool = Field(
+        False,
+        description=(
+            "Whether the dummy /api/test/* endpoints are registered. "
+            "Always false in real deployments; CI sets this true only "
+            "when dumping OpenAPI specs for the breaking-change check."
+        ),
+    )
+
     # --- Core Database ---
     CORE_DB_NAME: str = Field(
         "quill_core",
         description="Core database name",
     )
     CORE_DB_USER: str = Field(
-        "auth_user",
+        "core_user",
         description="Core database user",
     )
     CORE_DB_PASSWORD: SecretStr = Field(
@@ -103,7 +113,7 @@ class Settings(BaseSettings):
         description="Core database password",
     )
     CORE_DB_HOST: str = Field(
-        "postgres-auth",
+        "postgres-core",
         description="Core database host",
     )
     CORE_DB_PORT: int = Field(

@@ -299,7 +299,7 @@ class TestOrganisationModel:
         from sqlalchemy import insert
 
         stmt = insert(organisation_staff_member).values(
-            organisation_id=org.id, user_id=user.id, is_primary=True
+            organisation_id=org.id, user_id=user.id
         )
         db_session.execute(stmt)
         db_session.commit()
@@ -322,12 +322,10 @@ class TestOrganisationModel:
         stmt1 = insert(organisation_patient_member).values(
             organisation_id=org.id,
             patient_id="patient-123",
-            is_primary=True,
         )
         stmt2 = insert(organisation_patient_member).values(
             organisation_id=org.id,
             patient_id="patient-456",
-            is_primary=False,
         )
         db_session.execute(stmt1)
         db_session.execute(stmt2)
@@ -340,56 +338,3 @@ class TestOrganisationModel:
             .where(organisation_patient_member.c.organisation_id == org.id)
         )
         assert patient_count == 2
-
-        # Verify primary flag
-        primary_patients = (
-            db_session.execute(
-                select(organisation_patient_member.c.patient_id)
-                .where(organisation_patient_member.c.organisation_id == org.id)
-                .where(organisation_patient_member.c.is_primary.is_(True))
-            )
-            .scalars()
-            .all()
-        )
-        assert len(primary_patients) == 1
-        assert "patient-123" in primary_patients
-
-    def test_organisation_primary_flag(self, db_session: Session):
-        """Test is_primary flag on staff membership."""
-        from sqlalchemy import insert, select
-
-        from app.models import Organisation, organisation_staff_member
-
-        org1 = Organisation(name="Primary Clinic", type="clinic")
-        org2 = Organisation(name="Secondary Clinic", type="clinic")
-        user = User(
-            username="doctor2",
-            email="doctor2@example.com",
-            password_hash=hash_password("password"),
-        )
-
-        db_session.add_all([org1, org2, user])
-        db_session.commit()
-
-        # Add to org1 as primary
-        stmt1 = insert(organisation_staff_member).values(
-            organisation_id=org1.id, user_id=user.id, is_primary=True
-        )
-        db_session.execute(stmt1)
-
-        # Add to org2 as non-primary
-        stmt2 = insert(organisation_staff_member).values(
-            organisation_id=org2.id, user_id=user.id, is_primary=False
-        )
-        db_session.execute(stmt2)
-        db_session.commit()
-
-        # Query primary membership
-        stmt = select(organisation_staff_member).where(
-            organisation_staff_member.c.user_id == user.id,
-            organisation_staff_member.c.is_primary == True,  # noqa: E712
-        )
-        result = db_session.execute(stmt).first()
-
-        assert result is not None
-        assert result.organisation_id == org1.id
