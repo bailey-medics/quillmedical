@@ -49,13 +49,24 @@ class PushSubscriptionIn(BaseModel):
     keys: PushKeys
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/subscribe")
+class SubscribeOut(BaseModel):
+    """Result of registering a push subscription.
+
+    Attributes:
+        ok: Whether the subscription was registered successfully.
+        count: Total number of subscriptions for this user.
+    """
+
+    ok: bool
+    count: int
+
+
+@router.post("/subscribe", response_model=SubscribeOut)
 def subscribe(
     sub: PushSubscriptionIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = Depends(get_core_db),
-) -> dict[str, bool | int]:
+) -> SubscribeOut:
     """Register a new push notification subscription.
 
     Requires authentication via access_token cookie.
@@ -101,4 +112,4 @@ def subscribe(
             PushSubscriptionModel.user_id == current_user.id
         )
     )
-    return {"ok": True, "count": count or 0}
+    return SubscribeOut(ok=True, count=count or 0)

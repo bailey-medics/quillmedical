@@ -1,4 +1,5 @@
 ---
+name: read-project-instructions
 description: Re-read the project instructions (CLAUDE.md and .claude/rules/)
 model: haiku
 ---
