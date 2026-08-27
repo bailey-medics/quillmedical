@@ -1,4 +1,5 @@
 ---
+name: crp
 description: Commit, rebase, and push code
 argument-hint: "[repo: tooling|eoeeta|resp|all]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git -C *)

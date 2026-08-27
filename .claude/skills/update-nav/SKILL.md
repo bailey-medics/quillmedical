@@ -1,4 +1,5 @@
 ---
+name: update-nav
 description: Update navigation
 model: haiku
 disable-model-invocation: true
