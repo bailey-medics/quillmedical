@@ -1312,6 +1312,7 @@ def complete_assessment(
 # ------------------------------------------------------------------
 
 
+# api-schema-check: allow-opaque-grandfathered
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
 )

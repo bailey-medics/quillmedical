@@ -4,6 +4,7 @@ import os
 import secrets
 import sys
 from pathlib import Path
+from typing import Any
 
 # Make imports robust regardless of current working directory. Ensure the
 # repository root and the backend package directory are on sys.path before
@@ -18,7 +19,116 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(BACKEND_DIR))
 
 
-def main():
+def inject_dev_defaults() -> None:
+    """Inject temporary dev environment values so the app can be imported
+    locally without a full environment (local use only).
+    """
+    if not os.environ.get("JWT_SECRET"):
+        tmp = secrets.token_hex(32)
+        os.environ["JWT_SECRET"] = tmp
+        print(
+            "(export_openapi) WARNING: JWT_SECRET not set; "
+            "using temporary dev secret for export"
+        )
+    if not os.environ.get("DATABASE_URL"):
+        os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
+        print(
+            "(export_openapi) WARNING: DATABASE_URL not set; "
+            "using in-memory SQLite for export"
+        )
+    # Database passwords
+    if not os.environ.get("CORE_DB_PASSWORD"):
+        os.environ["CORE_DB_PASSWORD"] = "dev-auth-password"
+        print(
+            "(export_openapi) WARNING: CORE_DB_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    if not os.environ.get("FHIR_DB_PASSWORD"):
+        os.environ["FHIR_DB_PASSWORD"] = "dev-fhir-password"
+        print(
+            "(export_openapi) WARNING: FHIR_DB_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    if not os.environ.get("EHRBASE_DB_PASSWORD"):
+        os.environ["EHRBASE_DB_PASSWORD"] = "dev-ehrbase-db-password"
+        print(
+            "(export_openapi) WARNING: EHRBASE_DB_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    # EHRbase API credentials
+    if not os.environ.get("EHRBASE_PASSWORD"):
+        os.environ["EHRBASE_PASSWORD"] = "dev-password"
+        print(
+            "(export_openapi) WARNING: EHRBASE_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    if not os.environ.get("EHRBASE_ADMIN_PASSWORD"):
+        os.environ["EHRBASE_ADMIN_PASSWORD"] = "dev-admin-password"
+        print(
+            "(export_openapi) WARNING: EHRBASE_ADMIN_PASSWORD not set; "
+            "using temporary dev admin password for export"
+        )
+    if not os.environ.get("EHRBASE_API_PASSWORD"):
+        os.environ["EHRBASE_API_PASSWORD"] = "dev-api-password"
+        print(
+            "(export_openapi) WARNING: EHRBASE_API_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    if not os.environ.get("EHRBASE_API_ADMIN_PASSWORD"):
+        os.environ["EHRBASE_API_ADMIN_PASSWORD"] = "dev-api-admin-password"
+        print(
+            "(export_openapi) WARNING: EHRBASE_API_ADMIN_PASSWORD not set; "
+            "using temporary dev password for export"
+        )
+    if not os.environ.get("VAPID_PRIVATE"):
+        # Generate a temporary VAPID key for export
+        os.environ["VAPID_PRIVATE"] = "dev-vapid-private-key"
+        print(
+            "(export_openapi) WARNING: VAPID_PRIVATE not set; "
+            "using temporary dev VAPID key for export"
+        )
+    if not os.environ.get("COMPANY_EMAIL"):
+        os.environ["COMPANY_EMAIL"] = "admin@example.com"
+        print(
+            "(export_openapi) WARNING: COMPANY_EMAIL not set; "
+            "using temporary dev email for export"
+        )
+
+
+def import_app(dev: bool = False) -> Any:
+    """Import and return the FastAPI app.
+
+    Shared by ``dump_openapi.py`` and ``check_api_schema_coverage.py`` so
+    both tools import the app — and thus generate the OpenAPI spec —
+    identically.
+    """
+    # If requested, inject temporary dev environment values to allow importing
+    # the app when running locally without a full environment.
+    if dev:
+        inject_dev_defaults()
+
+    # Import after any env injection so pydantic Settings pick up the
+    # temporary values when run with --dev.
+    try:
+        from app.main import app
+    except Exception:  # pragma: no cover - helpful runtime diagnostics
+        print("Failed to import FastAPI app for OpenAPI export.")
+        print("sys.path contains:")
+        for p in sys.path[:10]:
+            print("  ", p)
+        # Re-raise the original exception so the caller sees the traceback
+        raise
+    return app
+
+
+def generate_spec(dev: bool = False) -> dict[str, Any]:
+    """Import the FastAPI app and return its OpenAPI spec as a dict."""
+    app = import_app(dev=dev)
+    spec: dict[str, Any] = app.openapi()
+    return spec
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Dump the FastAPI app OpenAPI JSON to "
@@ -35,93 +145,9 @@ def main():
     )
     args = parser.parse_args()
 
-    # If requested, inject temporary dev environment values to allow importing
-    # the app when running locally without a full environment.
-    if args.dev:
-        if not os.environ.get("JWT_SECRET"):
-            tmp = secrets.token_hex(32)
-            os.environ["JWT_SECRET"] = tmp
-            print(
-                "(export_openapi) WARNING: JWT_SECRET not set; "
-                "using temporary dev secret for export"
-            )
-        if not os.environ.get("DATABASE_URL"):
-            os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
-            print(
-                "(export_openapi) WARNING: DATABASE_URL not set; "
-                "using in-memory SQLite for export"
-            )
-        # Database passwords
-        if not os.environ.get("CORE_DB_PASSWORD"):
-            os.environ["CORE_DB_PASSWORD"] = "dev-auth-password"
-            print(
-                "(export_openapi) WARNING: CORE_DB_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        if not os.environ.get("FHIR_DB_PASSWORD"):
-            os.environ["FHIR_DB_PASSWORD"] = "dev-fhir-password"
-            print(
-                "(export_openapi) WARNING: FHIR_DB_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        if not os.environ.get("EHRBASE_DB_PASSWORD"):
-            os.environ["EHRBASE_DB_PASSWORD"] = "dev-ehrbase-db-password"
-            print(
-                "(export_openapi) WARNING: EHRBASE_DB_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        # EHRbase API credentials
-        if not os.environ.get("EHRBASE_PASSWORD"):
-            os.environ["EHRBASE_PASSWORD"] = "dev-password"
-            print(
-                "(export_openapi) WARNING: EHRBASE_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        if not os.environ.get("EHRBASE_ADMIN_PASSWORD"):
-            os.environ["EHRBASE_ADMIN_PASSWORD"] = "dev-admin-password"
-            print(
-                "(export_openapi) WARNING: EHRBASE_ADMIN_PASSWORD not set; "
-                "using temporary dev admin password for export"
-            )
-        if not os.environ.get("EHRBASE_API_PASSWORD"):
-            os.environ["EHRBASE_API_PASSWORD"] = "dev-api-password"
-            print(
-                "(export_openapi) WARNING: EHRBASE_API_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        if not os.environ.get("EHRBASE_API_ADMIN_PASSWORD"):
-            os.environ["EHRBASE_API_ADMIN_PASSWORD"] = "dev-api-admin-password"
-            print(
-                "(export_openapi) WARNING: EHRBASE_API_ADMIN_PASSWORD not set; "
-                "using temporary dev password for export"
-            )
-        if not os.environ.get("VAPID_PRIVATE"):
-            # Generate a temporary VAPID key for export
-            os.environ["VAPID_PRIVATE"] = "dev-vapid-private-key"
-            print(
-                "(export_openapi) WARNING: VAPID_PRIVATE not set; "
-                "using temporary dev VAPID key for export"
-            )
-        if not os.environ.get("COMPANY_EMAIL"):
-            os.environ["COMPANY_EMAIL"] = "admin@example.com"
-            print(
-                "(export_openapi) WARNING: COMPANY_EMAIL not set; "
-                "using temporary dev email for export"
-            )
-    # Now import the FastAPI app; do this after any env injection so
-    # pydantic Settings pick up the temporary values when run with --dev.
-    try:
-        from app.main import app
-    except Exception:  # pragma: no cover - helpful runtime diagnostics
-        print("Failed to import FastAPI app for OpenAPI export.")
-        print("sys.path contains:")
-        for p in sys.path[:10]:
-            print("  ", p)
-        # Re-raise the original exception so the caller sees the traceback
-        raise
+    spec = generate_spec(dev=args.dev)
     out = REPO_ROOT / "docs" / "docs" / "code" / "swagger" / "openapi.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    spec = app.openapi()
     out.write_text(json.dumps(spec, indent=2))
     print(f"✅ Wrote {out.resolve()}")
 

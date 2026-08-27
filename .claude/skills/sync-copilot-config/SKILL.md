@@ -12,7 +12,7 @@ Copilot config present:
 !`find .github -maxdepth 2 \( -name 'copilot-instructions.md' -o -name '*.instructions.md' -o -name '*.prompt.md' -o -name '*.chatmode.md' \) 2>/dev/null | sort`
 
 Existing Claude config:
-!`find .claude CLAUDE.md -maxdepth 3 -type f 2>/dev/null | sort`
+!`find .claude CLAUDE.md -maxdepth 4 -type f 2>/dev/null | sort`
 
 Existing sync manifest:
 !`cat .claude/sync-manifest.json 2>/dev/null || echo 'NONE - this is a first run'`
@@ -31,14 +31,28 @@ Apply these mappings. Where a target already exists, merge rather than overwrite
 |---|---|---|
 | `.github/copilot-instructions.md` | `CLAUDE.md` | Create it if absent; merge into it if present. Never truncate it. |
 | `.github/instructions/*.instructions.md` | `.claude/rules/<name>.md` | Convert the `applyTo` frontmatter string to a `paths` array. |
-| `.github/prompts/*.prompt.md` | `.claude/commands/<name>.md` | Body becomes the command prompt. |
+| `.github/prompts/*.prompt.md` | `.claude/skills/<name>/SKILL.md` | Body becomes the skill's instructions. The target is a directory containing `SKILL.md`, not a single file — see Skill naming below. |
 | `.github/chatmodes/*.chatmode.md` | `.claude/agents/<name>.md` | Only if such files exist; skip silently otherwise. |
+
+### Skill naming
+
+A skill's invocable name (`/name`) comes from its **directory name**, never from the `SKILL.md` filename (which is always literally `SKILL.md`) and never from a `name:` field in personal/project skills (that field only sets a display label). Derive `<name>` for the target directory as follows:
+
+- Default: the source file's basename with `.prompt.md` stripped (e.g. `run-all-tests.prompt.md` → `.claude/skills/run-all-tests/`).
+- If the Copilot prompt's own frontmatter declares a `name:` that differs from its filename, use that `name:` value as the directory name instead, so the invoked command matches what the prompt was actually authored to be called (e.g. `commit-rebase-push.prompt.md` with `name: crp` → `.claude/skills/crp/`). Record this as `targetRenamed: true` in the manifest, same as before.
+- Never leave stale directories behind: if a previous sync created `.claude/skills/<old-name>/` for a source that has since been renamed, flag it as **orphaned** (see Drift detection) rather than silently leaving two directories for one source.
 
 ## Conversion rules
 
 **Frontmatter.** Copilot instruction files use `applyTo: "glob"` as a single string. Claude rules use `paths:` as a YAML array. A file with `applyTo: "**/*.tsx"` becomes `paths: ["**/*.tsx"]`. A comma-separated Copilot glob string must be split into separate array entries. If a source file has no `applyTo`, omit `paths` entirely rather than writing `paths: ["**"]`.
 
-**Prompt files.** Copilot prompt files may carry `mode`, `model`, `tools` or `description` frontmatter. Carry `description` across unchanged. Drop `mode`. Do not invent an `allowed-tools` value: if the source declared tools, list them in your report as something for me to decide on, and leave the frontmatter field out.
+**Prompt files.** Copilot prompt files may carry `mode`, `model`, `tools`, `agent` or `description` frontmatter. Carry `description` across unchanged. Drop `mode` and `agent`. Do not invent an `allowed-tools` value: if the source declared tools, list them in your report as something for me to decide on, and leave the frontmatter field out.
+
+**When to add `disable-model-invocation: true`.** Skills (unlike the old bare command files) genuinely support Claude auto-invoking them from conversational judgement, so this field is meaningful — it stops that and leaves the skill runnable only by typing `/name`. Copilot's `mode: agent` vs `mode: ask` doesn't map cleanly onto this; decide instead on what the prompt does:
+
+- Any prompt whose steps commit, push, or otherwise mutate git history or a remote (e.g. the `crp` skill) must get `disable-model-invocation: true`. This is a hard rule — it mirrors CLAUDE.md's "NEVER auto-commit/push — always ask permission first", and a skill Claude can silently trigger from a vague request would undermine that.
+- A prompt that only reads, reports, or explains (e.g. `e`, `read-project-instructions`) does not need it — leave model-invocation on unless the prompt's own body says otherwise.
+- Otherwise, preserve whatever the existing target already has; don't flip it without a reason tied to the prompt's actual behaviour, and call out the reasoning in your report if you do change it.
 
 **Body text.** Preserve the wording. Do not rewrite, tighten, summarise or "improve" my instructions. The only edits permitted are: rewriting references to Copilot-specific paths so they point at the Claude equivalent, and rewriting references to Copilot-specific features that have no Claude counterpart. Flag each such edit in your report rather than making it silently.
 
@@ -48,12 +62,12 @@ Apply these mappings. Where a target already exists, merge rather than overwrite
 
 ## Drift detection
 
-Maintain `.claude/sync-manifest.json`. For each synced source file record: the source path, the target path, a SHA-256 of the source file at time of sync, and an ISO date. On each run, compare current source hashes against the manifest and classify every file as one of:
+Maintain `.claude/sync-manifest.json`. For each synced source file record: the source path, the target path (for prompts, the `.claude/skills/<name>/SKILL.md` path), a SHA-256 of the source file at time of sync, and an ISO date. On each run, compare current source hashes against the manifest and classify every file as one of:
 
 - **new** — source exists, no manifest entry
 - **changed** — source hash differs from the manifest
 - **unchanged** — hashes match, no action needed
-- **orphaned** — manifest entry exists but the source file is gone
+- **orphaned** — manifest entry exists but the source file is gone, or (for prompts) the source still exists but its resolved skill name changed and the old `.claude/skills/<old-name>/` directory is still present
 - **diverged** — the target has been hand-edited since sync, detectable because it no longer matches what the recorded source would have produced
 
 Never delete an orphaned or diverged target. Report it and let me decide.

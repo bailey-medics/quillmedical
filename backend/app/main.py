@@ -102,13 +102,30 @@ from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.schemas.auth import (
     ChangePasswordIn,
+    DetailResponse,
     ForgotPasswordIn,
+    HealthCheckOut,
+    LinkPatientIn,
+    LinkPatientOut,
     LoginIn,
+    LoginOut,
+    MeOut,
+    OrganisationListItem,
+    OrganisationsOut,
+    RefreshOut,
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
+    TeachingModuleItem,
+    TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
+    UserActionOut,
+    UserIdActionOut,
+    UserOut,
+    UsersListOut,
+    UserSummaryItem,
+    ValidateClinicalLeadOut,
     VerifyEmailIn,
 )
 from app.schemas.cbac import (
@@ -116,7 +133,7 @@ from app.schemas.cbac import (
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
-from app.schemas.features import FeatureOut, FeatureToggleIn
+from app.schemas.features import FeatureToggleIn
 from app.schemas.letters import LetterIn
 from app.schemas.messaging import (
     AcceptInviteIn,
@@ -130,6 +147,43 @@ from app.schemas.messaging import (
     MessageCreateIn,
     MessageOut,
     ParticipantOut,
+)
+from app.schemas.organisations import (
+    AddPatientIn,
+    AddStaffIn,
+    CreateOrganisationIn,
+    CreateSiteIn,
+    FeaturesListOut,
+    FeatureToggleResponse,
+    OrganisationDetailOut,
+    OrganisationOut,
+    OrganisationsListOut,
+    OrgPatientAddResponse,
+    OrgStaffAddResponse,
+    StatusResponse,
+    UpdateOrganisationIn,
+    UpdateSiteIn,
+)
+from app.schemas.patients import (
+    AcceptInviteOut,
+    DemographicsIn,
+    DemographicsOut,
+    DemographicsUpsertOut,
+    ExternalAccessGrant,
+    ExternalAccessListOut,
+    FhirPatientResource,
+    InviteExternalOut,
+    LetterCreateOut,
+    LetterOut,
+    LettersListOut,
+    PatientActivationOut,
+    PatientListItem,
+    PatientMetadataOut,
+    PatientsListOut,
+    PatientVerifyOut,
+    RevokeAccessOut,
+    SharedOrganisationsOut,
+    SharedOrganisationSummary,
 )
 from app.security import (
     create_email_verify_token,
@@ -475,8 +529,8 @@ def clear_auth_cookies(response: Response) -> None:
     )
 
 
-@router.get("/health")
-def health_check() -> dict[str, Any]:
+@router.get("/health", response_model=HealthCheckOut)
+def health_check() -> HealthCheckOut:
     """Health Check Endpoint.
 
     Checks availability of all required services (FHIR, EHRbase).
@@ -507,10 +561,10 @@ def health_check() -> dict[str, Any]:
 
     all_healthy = all(s.get("available", False) for s in services.values())
 
-    return {
-        "status": "healthy" if all_healthy else "degraded",
-        "services": services,
-    }
+    return HealthCheckOut(
+        status="healthy" if all_healthy else "degraded",
+        services=services,
+    )
 
 
 def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
@@ -629,14 +683,14 @@ DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
 DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", response_model=LoginOut)
 @limiter.limit("5/minute")
 def login(
     request: Request,
     data: LoginIn,
     response: Response,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> LoginOut:
     """User Login with Optional TOTP.
 
     Authenticates a user with username and password, optionally verifying a
@@ -721,16 +775,16 @@ def login(
     refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
-    return {
-        "detail": "ok",
-        "user": {"username": user.username, "roles": roles},
-    }
+    return LoginOut(
+        detail="ok",
+        user={"username": user.username, "roles": roles},
+    )
 
 
-@router.get("/auth/organisations")
+@router.get("/auth/organisations", response_model=OrganisationsOut)
 def list_organisations_public(
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, Any]]]:
+) -> OrganisationsOut:
     """List organisations for registration.
 
     Public endpoint that returns organisation names and IDs for the
@@ -742,17 +796,18 @@ def list_organisations_public(
         ``{id, name}`` objects.
     """
     organisations = db.execute(select(Organisation)).scalars().all()
-    return {
-        "organisations": [
-            {"id": org.id, "name": org.name} for org in organisations
+    return OrganisationsOut(
+        organisations=[
+            OrganisationListItem(id=org.id, name=org.name)
+            for org in organisations
         ]
-    }
+    )
 
 
-@router.get("/teaching/public/modules")
+@router.get("/teaching/public/modules", response_model=TeachingModulesOut)
 def list_teaching_modules_public(
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, str]]]:
+) -> TeachingModulesOut:
     """List teaching modules available for registration.
 
     Public endpoint (no authentication required) that returns question
@@ -779,7 +834,7 @@ def list_teaching_modules_public(
     )
 
     if not registrable_bank_ids:
-        return {"modules": []}
+        return TeachingModulesOut(modules=[])
 
     configs = (
         db.execute(
@@ -795,13 +850,15 @@ def list_teaching_modules_public(
 
     # Deduplicate by question_bank_id (may exist for multiple orgs)
     seen: set[str] = set()
-    modules: list[dict[str, str]] = []
+    modules: list[TeachingModuleItem] = []
     for c in configs:
         if c.question_bank_id not in seen:
             seen.add(c.question_bank_id)
-            modules.append({"value": c.question_bank_id, "label": c.title})
+            modules.append(
+                TeachingModuleItem(value=c.question_bank_id, label=c.title)
+            )
 
-    return {"modules": modules}
+    return TeachingModulesOut(modules=modules)
 
 
 class ValidateClinicalLeadIn(BaseModel):
@@ -813,13 +870,16 @@ class ValidateClinicalLeadIn(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-@router.post("/teaching/public/validate-clinical-lead")
+@router.post(
+    "/teaching/public/validate-clinical-lead",
+    response_model=ValidateClinicalLeadOut,
+)
 @limiter.limit("10/minute")
 def validate_clinical_lead(
     request: Request,
     payload: ValidateClinicalLeadIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, bool | str | int | None]:
+) -> ValidateClinicalLeadOut:
     """Validate that an email belongs to a clinical lead for a bank.
 
     Public endpoint used during registration. Checks whether the given
@@ -840,7 +900,7 @@ def validate_clinical_lead(
         .first()
     )
     if not user:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Get org IDs that have this bank with site_registration enabled
     org_ids = (
@@ -854,7 +914,7 @@ def validate_clinical_lead(
         .all()
     )
     if not org_ids:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Get site IDs linked to those organisations
     site_ids = (
@@ -867,7 +927,7 @@ def validate_clinical_lead(
         .all()
     )
     if not site_ids:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     # Check if this user is a clinical_lead at any of those sites
     staff_row = db.execute(
@@ -878,7 +938,7 @@ def validate_clinical_lead(
         )
     ).first()
     if not staff_row:
-        return {"valid": False, "site_name": None}
+        return ValidateClinicalLeadOut(valid=False)
 
     matched_site_id: int = staff_row[0]
 
@@ -901,15 +961,15 @@ def validate_clinical_lead(
         .first()
     )
 
-    return {
-        "valid": True,
-        "site_name": site.name if site else None,
-        "organisation_id": org_id_for_site,
-        "site_id": matched_site_id,
-    }
+    return ValidateClinicalLeadOut(
+        valid=True,
+        site_name=site.name if site else None,
+        organisation_id=org_id_for_site,
+        site_id=matched_site_id,
+    )
 
 
-@router.post("/auth/register")
+@router.post("/auth/register", response_model=DetailResponse)
 @limiter.limit("3/minute")
 def register(
     request: Request,
@@ -1063,10 +1123,10 @@ def register(
         ),
     )
 
-    return {"detail": "created"}
+    return DetailResponse(detail="created")
 
 
-@router.post("/auth/verify-email")
+@router.post("/auth/verify-email", response_model=DetailResponse)
 @limiter.limit("10/minute")
 def verify_email(
     request: Request,
@@ -1097,13 +1157,13 @@ def verify_email(
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     if user.email_verified:
-        return {"detail": "verified"}
+        return DetailResponse(detail="verified")
 
     user.email_verified = True
-    return {"detail": "verified"}
+    return DetailResponse(detail="verified")
 
 
-@router.post("/auth/resend-verification")
+@router.post("/auth/resend-verification", response_model=DetailResponse)
 @limiter.limit("1/minute")
 def resend_verification(
     request: Request,
@@ -1139,10 +1199,10 @@ def resend_verification(
             ),
         )
     # Always return ok to prevent account enumeration
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-@router.post("/auth/forgot-password")
+@router.post("/auth/forgot-password", response_model=DetailResponse)
 @limiter.limit("3/minute")
 def forgot_password(
     request: Request,
@@ -1180,10 +1240,10 @@ def forgot_password(
             ),
         )
     # Always return ok to prevent account enumeration
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-@router.post("/auth/reset-password")
+@router.post("/auth/reset-password", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def reset_password(
     request: Request,
@@ -1226,7 +1286,7 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
-    return {"detail": "Password reset successfully"}
+    return DetailResponse(detail="Password reset successfully")
 
 
 class AdminUserCreateIn(BaseModel):
@@ -1293,12 +1353,12 @@ class AdminUserUpdateIn(BaseModel):
     site_ids: list[int] | None = None
 
 
-@router.post("/users")
+@router.post("/users", response_model=UserActionOut)
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserActionOut:
     """Admin User Creation with CBAC.
 
     Creates a new user account with full CBAC (Competency-Based Access Control)
@@ -1414,21 +1474,21 @@ def create_user_with_cbac(
 
     db.refresh(user)
 
-    return {
-        "detail": "created",
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-    }
+    return UserActionOut(
+        detail="created",
+        id=user.id,
+        username=user.username,
+        email=user.email,
+    )
 
 
-@router.patch("/users/{user_id}")
+@router.patch("/users/{user_id}", response_model=UserActionOut)
 def update_user(
     user_id: int,
     payload: AdminUserUpdateIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserActionOut:
     """Update User Account.
 
     Updates an existing user account with new CBAC settings and/or credentials.
@@ -1622,20 +1682,20 @@ def update_user(
 
     db.refresh(user)
 
-    return {
-        "detail": "updated",
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-    }
+    return UserActionOut(
+        detail="updated",
+        id=user.id,
+        username=user.username,
+        email=user.email,
+    )
 
 
-@router.post("/users/{user_id}/deactivate")
+@router.post("/users/{user_id}/deactivate", response_model=UserIdActionOut)
 def deactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserIdActionOut:
     """Deactivate User Account.
 
     Marks a user account as inactive. Deactivated users cannot log in
@@ -1687,19 +1747,19 @@ def deactivate_user(
 
     user.is_active = False
 
-    return {
-        "detail": "deactivated",
-        "id": user.id,
-        "username": user.username,
-    }
+    return UserIdActionOut(
+        detail="deactivated",
+        id=user.id,
+        username=user.username,
+    )
 
 
-@router.post("/users/{user_id}/reactivate")
+@router.post("/users/{user_id}/reactivate", response_model=UserIdActionOut)
 def reactivate_user(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserIdActionOut:
     """Reactivate User Account.
 
     Marks a previously deactivated user account as active again.
@@ -1742,14 +1802,14 @@ def reactivate_user(
 
     user.is_active = True
 
-    return {
-        "detail": "reactivated",
-        "id": user.id,
-        "username": user.username,
-    }
+    return UserIdActionOut(
+        detail="reactivated",
+        id=user.id,
+        username=user.username,
+    )
 
 
-@router.post("/users/{user_id}/send-invite")
+@router.post("/users/{user_id}/send-invite", response_model=DetailResponse)
 def send_invite_email(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -1799,7 +1859,7 @@ def send_invite_email(
         ),
     )
 
-    return {"detail": "Invite email sent"}
+    return DetailResponse(detail="Invite email sent")
 
 
 class TotpSetupOut(BaseModel):
@@ -1883,7 +1943,7 @@ class TotpVerifyIn(BaseModel):
     code: str
 
 
-@router.post("/auth/totp/verify")
+@router.post("/auth/totp/verify", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def totp_verify(
     request: Request,
@@ -1935,10 +1995,10 @@ def totp_verify(
         )
     current_user.is_totp_enabled = True
     db.add(current_user)
-    return {"detail": "enabled"}
+    return DetailResponse(detail="enabled")
 
 
-@router.post("/auth/totp/disable")
+@router.post("/auth/totp/disable", response_model=DetailResponse)
 @limiter.limit("5/minute")
 def totp_disable(
     request: Request,
@@ -1972,10 +2032,10 @@ def totp_disable(
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
     db.add(current_user)
-    return {"detail": "disabled"}
+    return DetailResponse(detail="disabled")
 
 
-@router.post("/auth/change-password")
+@router.post("/auth/change-password", response_model=DetailResponse)
 def change_password(
     data: ChangePasswordIn,
     response: Response,
@@ -2032,10 +2092,10 @@ def change_password(
     xsrf = make_csrf(current_user.username)
     set_auth_cookies(response, access, refresh, xsrf)
 
-    return {"detail": "Password changed"}
+    return DetailResponse(detail="Password changed")
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", response_model=DetailResponse)
 def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
     """User Logout.
 
@@ -2049,17 +2109,17 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
         _u: Currently authenticated user (validates auth before logout).
 
     Returns:
-        dict: Success response with {"detail": "ok"}.
+        DetailResponse: Success response.
     """
     clear_auth_cookies(response)
-    return {"detail": "ok"}
+    return DetailResponse(detail="ok")
 
 
-@router.get("/auth/me")
+@router.get("/auth/me", response_model=MeOut)
 def me(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> MeOut:
     """Get Current User Profile.
 
     Returns the authenticated user's profile information including username,
@@ -2121,21 +2181,21 @@ def me(
         )
         enabled_features = list(features)
 
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "name": current_user.full_name,
-        "email": current_user.email,
-        "roles": [r.name for r in current_user.roles],
-        "system_permissions": current_user.system_permissions,
-        "totp_enabled": current_user.is_totp_enabled,
-        "enabled_features": enabled_features,
-        "clinical_services_enabled": settings.CLINICAL_SERVICES_ENABLED,
-        "competencies": current_user.get_final_competencies(),
-    }
+    return MeOut(
+        id=current_user.id,
+        username=current_user.username,
+        name=current_user.full_name,
+        email=current_user.email,
+        roles=[r.name for r in current_user.roles],
+        system_permissions=current_user.system_permissions,
+        totp_enabled=current_user.is_totp_enabled,
+        enabled_features=enabled_features,
+        clinical_services_enabled=settings.CLINICAL_SERVICES_ENABLED,
+        competencies=current_user.get_final_competencies(),
+    )
 
 
-@router.patch("/auth/profile")
+@router.patch("/auth/profile", response_model=DetailResponse)
 def update_profile(
     data: UpdateProfileIn,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -2180,17 +2240,17 @@ def update_profile(
             current_user.email_verified = False
 
     db.add(current_user)
-    return {"detail": "Profile updated"}
+    return DetailResponse(detail="Profile updated")
 
 
-@router.get("/users")
+@router.get("/users", response_model=UsersListOut)
 def list_users(
     patient_id: str | None = None,
     permission_level: str | None = None,
     exclude_org: int | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UsersListOut:
     """List users, optionally filtered by shared org with a patient.
 
     When ``patient_id`` is provided, returns staff who share an org with
@@ -2235,7 +2295,7 @@ def list_users(
 
         all_ids = staff_ids | external_ids
         if not all_ids:
-            return {"users": []}
+            return UsersListOut(users=[])
 
         users = (
             db.execute(select(User).where(User.id.in_(all_ids)))
@@ -2243,18 +2303,18 @@ def list_users(
             .unique()
             .all()
         )
-        return {
-            "users": [
-                {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "system_permissions": user.system_permissions,
-                    "is_active": user.is_active,
-                }
+        return UsersListOut(
+            users=[
+                UserSummaryItem(
+                    id=user.id,
+                    username=user.username,
+                    email=user.email,
+                    system_permissions=user.system_permissions,
+                    is_active=user.is_active,
+                )
                 for user in users
             ]
-        }
+        )
 
     # Unfiltered mode: admin/superadmin only
     if current_user.system_permissions not in ["admin", "superadmin"]:
@@ -2310,7 +2370,7 @@ def list_users(
 
         all_scoped_ids = org_scoped_ids | site_scoped_ids
         if not all_scoped_ids:
-            return {"users": []}
+            return UsersListOut(users=[])
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
         # Admins must not see superadmin users
@@ -2351,31 +2411,31 @@ def list_users(
         for row in site_rows:
             user_sites.setdefault(row[0], []).append(row[1])
 
-        return {
-            "users": [
-                {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "full_name": user.full_name or "",
-                    "system_permissions": user.system_permissions,
-                    "is_active": user.is_active,
-                    "organisations": user_orgs.get(user.id, []),
-                    "sites": user_sites.get(user.id, []),
-                }
+        return UsersListOut(
+            users=[
+                UserSummaryItem(
+                    id=user.id,
+                    username=user.username,
+                    email=user.email,
+                    full_name=user.full_name or "",
+                    system_permissions=user.system_permissions,
+                    is_active=user.is_active,
+                    organisations=user_orgs.get(user.id, []),
+                    sites=user_sites.get(user.id, []),
+                )
                 for user in users
             ]
-        }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/users/{user_id}")
+@router.get("/users/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> UserOut:
     """Get User Details.
 
     Retrieves detailed information about a specific user including their
@@ -2441,25 +2501,25 @@ def get_user(
         ).all()
     ]
 
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "name": user.full_name or user.username,
-        "base_profession": user.base_profession,
-        "additional_competencies": user.additional_competencies or [],
-        "removed_competencies": user.removed_competencies or [],
-        "system_permissions": user.system_permissions,
-        "is_active": user.is_active,
-        "organisation_ids": user_org_ids,
-        "site_ids": user_site_ids,
-    }
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        name=user.full_name or user.username,
+        base_profession=user.base_profession,
+        additional_competencies=user.additional_competencies or [],
+        removed_competencies=user.removed_competencies or [],
+        system_permissions=user.system_permissions,
+        is_active=user.is_active,
+        organisation_ids=user_org_ids,
+        site_ids=user_site_ids,
+    )
 
 
-@router.post("/auth/refresh")
+@router.post("/auth/refresh", response_model=RefreshOut)
 def refresh(
     response: Response, request: Request, db: Session = DEP_GET_SESSION
-) -> dict[str, str]:
+) -> RefreshOut:
     """Rotate Tokens and Issue New Access Token.
 
     Validates the refresh token from cookies and issues new access, refresh,
@@ -2522,7 +2582,7 @@ def refresh(
     )  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
-    return {"detail": "refreshed"}
+    return RefreshOut(detail="refreshed")
 
 
 @router.post(
@@ -2532,8 +2592,9 @@ def refresh(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=PatientVerifyOut,
 )
-def create_patient_record(patient_id: str) -> dict[str, str]:
+def create_patient_record(patient_id: str) -> PatientVerifyOut:
     """Create or Verify Patient in FHIR.
 
     Verifies that a patient exists in the FHIR server before allowing clinical
@@ -2560,20 +2621,24 @@ def create_patient_record(patient_id: str) -> dict[str, str]:
             raise HTTPException(
                 status_code=404, detail="Patient not found in FHIR server"
             )
-        return {"patient_id": patient_id, "status": "ready"}
+        return PatientVerifyOut(patient_id=patient_id, status="ready")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/patients", dependencies=[DEP_REQUIRE_CLINICAL])
+@router.get(
+    "/patients",
+    dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=PatientsListOut,
+)
 def list_patients(
     include_inactive: bool = False,
     scope: str | None = None,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientsListOut:
     """List patients from FHIR, filtered by organisation membership.
 
     By default, staff see only patients in their organisation(s).
@@ -2608,7 +2673,7 @@ def list_patients(
             accessible_ids = get_accessible_patient_ids(db, current_user)
 
         # Enrich patients with activation status and filter
-        enriched_patients = []
+        enriched_patients: list[PatientListItem] = []
         for patient in patients:
             patient_id = patient.get("id")
             if patient_id is None:
@@ -2622,14 +2687,17 @@ def list_patients(
 
             # Filter based on activation status
             if is_active or (include_inactive and is_admin):
-                patient["is_active"] = is_active
-                enriched_patients.append(patient)
+                enriched_patients.append(
+                    PatientListItem.model_validate(
+                        {**patient, "is_active": is_active}
+                    )
+                )
 
-        return {"patients": enriched_patients, "fhir_ready": True}
+        return PatientsListOut(patients=enriched_patients, fhir_ready=True)
     except FhirClientError:
         raise
     except Exception:
-        return {"patients": [], "fhir_ready": False}
+        return PatientsListOut(patients=[], fhir_ready=False)
 
 
 @router.put(
@@ -2639,39 +2707,45 @@ def list_patients(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=DemographicsUpsertOut,
 )
 def upsert_demographics(
     patient_id: str,
-    demographics: dict[str, Any],
+    demographics: DemographicsIn,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, str | Any]:
+) -> DemographicsUpsertOut:
     """Update Patient Demographics in FHIR.
 
-    Updates patient demographic information in the FHIR server. Accepts a
-    dictionary of FHIR-compatible demographic fields (name, address, telecom,
-    birthDate, gender, etc.). Requires Clinician role and CSRF token validation
-    since this modifies patient data.
+    Updates patient demographic information in the FHIR server. Accepts
+    the fixed set of demographic fields ``update_fhir_patient`` maps onto
+    the FHIR resource (given/family name, date of birth, sex, address,
+    contact). Requires Clinician role and CSRF token validation since
+    this modifies patient data.
 
     Args:
         patient_id: FHIR Patient resource ID to update.
-        demographics: Dictionary of FHIR Patient fields to update.
+        demographics: Demographic fields to update.
         current_user: Currently authenticated user (unused but validates auth).
 
     Returns:
-        dict: Update response with keys:
-            - patient_id: The updated patient ID
-            - updated: True indicating success
-            - data: Complete updated FHIR Patient resource
+        DemographicsUpsertOut: The updated patient ID, success flag, and
+            the complete updated FHIR Patient resource.
 
     Raises:
         HTTPException: 404 if patient not found in FHIR server.
         HTTPException: 500 if FHIR update operation fails.
     """
     try:
-        result = update_fhir_patient(patient_id, demographics)
+        result = update_fhir_patient(
+            patient_id, demographics.model_dump(exclude_none=True)
+        )
         if result is None:
             raise HTTPException(status_code=404, detail="Patient not found")
-        return {"patient_id": patient_id, "updated": True, "data": result}
+        return DemographicsUpsertOut(
+            patient_id=patient_id,
+            updated=True,
+            data=FhirPatientResource.model_validate(result),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -2681,10 +2755,11 @@ def upsert_demographics(
 @router.get(
     "/patients/{patient_id}/demographics",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=DemographicsOut,
 )
 def get_demographics(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, str | Any]:
+) -> DemographicsOut:
     """Get Patient Demographics from FHIR.
 
     Retrieves complete demographic information for a specific patient from the
@@ -2708,7 +2783,10 @@ def get_demographics(
         patient = read_fhir_patient(patient_id)
         if patient is None:
             raise HTTPException(status_code=404, detail="Patient not found")
-        return {"patient_id": patient_id, "data": patient}
+        return DemographicsOut(
+            patient_id=patient_id,
+            data=FhirPatientResource.model_validate(patient),
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -2722,8 +2800,9 @@ def get_demographics(
         DEP_REQUIRE_ROLES_CLINICIAN,
         DEP_REQUIRE_CSRF,
     ],
+    response_model=LetterCreateOut,
 )
-def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
+def write_letter(patient_id: str, letter: LetterIn) -> LetterCreateOut:
     """Create Clinical Letter in OpenEHR.
 
     Creates a new clinical letter composition in EHRbase for the specified patient.
@@ -2757,11 +2836,11 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
             body=letter.body,
             author_name=letter.author_name,
         )
-        return {
-            "patient_id": patient_id,
-            "composition_uid": result.get("uid", {}).get("value"),
-            "title": letter.title,
-        }
+        return LetterCreateOut(
+            patient_id=patient_id,
+            composition_uid=result.get("uid", {}).get("value"),
+            title=letter.title,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -2769,12 +2848,13 @@ def write_letter(patient_id: str, letter: LetterIn) -> dict[str, str]:
 @router.get(
     "/patients/{patient_id}/letters/{composition_uid}",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=LetterOut,
 )
 def read_letter(
     patient_id: str,
     composition_uid: str,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, Any]:
+) -> LetterOut:
     """Read Specific Clinical Letter from OpenEHR.
 
     Retrieves a specific clinical letter composition from EHRbase by its
@@ -2800,11 +2880,11 @@ def read_letter(
         composition = get_letter_composition(patient_id, composition_uid)
         if composition is None:
             raise HTTPException(status_code=404, detail="Letter not found")
-        return {
-            "patient_id": patient_id,
-            "composition_uid": composition_uid,
-            "data": composition,
-        }
+        return LetterOut(
+            patient_id=patient_id,
+            composition_uid=composition_uid,
+            data=composition,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -2814,10 +2894,11 @@ def read_letter(
 @router.get(
     "/patients/{patient_id}/letters",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=LettersListOut,
 )
 def list_letters(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> LettersListOut:
     """List All Clinical Letters for Patient.
 
     Retrieves all clinical letter compositions for a specific patient from
@@ -2839,7 +2920,7 @@ def list_letters(
     """
     try:
         letters = list_letters_for_patient(patient_id)
-        return {"patient_id": patient_id, "letters": letters}
+        return LettersListOut(patient_id=patient_id, letters=letters)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -2878,10 +2959,11 @@ class FHIRPatientCreateIn(BaseModel):
 @router.post(
     "/patients",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=FhirPatientResource,
 )
 def create_patient_in_fhir(
     data: FHIRPatientCreateIn, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Create New Patient in FHIR Server.
 
     Creates a new FHIR R4 Patient resource with the provided name information.
@@ -2908,7 +2990,7 @@ def create_patient_in_fhir(
             mrn=data.mrn,
             patient_id=data.patient_id,
         )
-        return patient
+        return FhirPatientResource.model_validate(patient)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create FHIR patient: {e}"
@@ -2918,10 +3000,11 @@ def create_patient_in_fhir(
 @router.get(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=FhirPatientResource,
 )
 def get_patient(
     patient_id: str, current_user: User = DEP_CURRENT_USER
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Get Single Patient from FHIR.
 
     Retrieves a specific patient's demographics from the FHIR server by ID.
@@ -2944,9 +3027,7 @@ def get_patient(
         patient = read_fhir_patient(patient_id)
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
-        # Mypy type narrowing: patient is now guaranteed to be dict[str, Any]
-        assert patient is not None
-        return patient
+        return FhirPatientResource.model_validate(patient)
     except HTTPException:
         raise
     except Exception as e:
@@ -2958,12 +3039,13 @@ def get_patient(
 @router.patch(
     "/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=FhirPatientResource,
 )
 def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
     current_user: User = DEP_CURRENT_USER,
-) -> dict[str, Any]:
+) -> FhirPatientResource:
     """Update Patient in FHIR.
 
     Updates an existing patient's demographics in the FHIR server. Accepts
@@ -2988,45 +3070,17 @@ def update_patient(
         if not existing:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Build update dict with provided fields
+        # Build update dict in the format update_fhir_patient expects
         updates: dict[str, Any] = {}
 
-        # Update name
-        if data.given_name or data.family_name:
-            updates["name"] = [
-                {
-                    "use": "official",
-                    "given": [data.given_name] if data.given_name else [],
-                    "family": data.family_name if data.family_name else "",
-                }
-            ]
-
-        # Update birth date
+        if data.given_name:
+            updates["given_name"] = data.given_name
+        if data.family_name:
+            updates["family_name"] = data.family_name
         if data.birth_date:
-            updates["birthDate"] = data.birth_date
-
-        # Update gender
+            updates["date_of_birth"] = data.birth_date
         if data.gender:
-            updates["gender"] = data.gender
-
-        # Update identifiers (NHS number, MRN)
-        identifiers = []
-        if data.nhs_number:
-            identifiers.append(
-                {
-                    "system": "https://fhir.nhs.uk/Id/nhs-number",
-                    "value": data.nhs_number,
-                }
-            )
-        if data.mrn:
-            identifiers.append(
-                {
-                    "system": "http://hospital.example.org/mrn",
-                    "value": data.mrn,
-                }
-            )
-        if identifiers:
-            updates["identifier"] = identifiers
+            updates["sex"] = data.gender
 
         # Perform update
         updated_patient = update_fhir_patient(patient_id, updates)
@@ -3034,9 +3088,7 @@ def update_patient(
             raise HTTPException(
                 status_code=500, detail="Failed to update patient"
             )
-        # Mypy type narrowing: updated_patient is now guaranteed to be dict[str, Any]
-        assert updated_patient is not None
-        return updated_patient
+        return FhirPatientResource.model_validate(updated_patient)
     except HTTPException:
         raise
     except Exception as e:
@@ -3048,12 +3100,13 @@ def update_patient(
 @router.get(
     "/patients/{patient_id}/metadata",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=PatientMetadataOut,
 )
 def get_patient_metadata(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientMetadataOut:
     """Get Patient Metadata.
 
     Returns application-specific metadata for a patient, including activation
@@ -3075,27 +3128,25 @@ def get_patient_metadata(
     metadata = db.execute(stmt).scalar_one_or_none()
 
     if metadata:
-        return {
-            "patient_id": metadata.patient_id,
-            "is_active": metadata.is_active,
-        }
+        return PatientMetadataOut(
+            patient_id=metadata.patient_id,
+            is_active=metadata.is_active,
+        )
     else:
         # No metadata record means patient is active by default
-        return {
-            "patient_id": patient_id,
-            "is_active": True,
-        }
+        return PatientMetadataOut(patient_id=patient_id, is_active=True)
 
 
 @router.post(
     "/patients/{patient_id}/deactivate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=PatientActivationOut,
 )
 def deactivate_patient(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientActivationOut:
     """Deactivate Patient Record.
 
     Marks a patient as inactive in the system. Deactivated patients are hidden
@@ -3146,22 +3197,23 @@ def deactivate_patient(
         )
         db.add(metadata)
 
-    return {
-        "patient_id": patient_id,
-        "is_active": False,
-        "message": "Patient deactivated successfully",
-    }
+    return PatientActivationOut(
+        patient_id=patient_id,
+        is_active=False,
+        message="Patient deactivated successfully",
+    )
 
 
 @router.post(
     "/patients/{patient_id}/activate",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=PatientActivationOut,
 )
 def activate_patient(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PatientActivationOut:
     """Activate Patient Record.
 
     Reactivates a previously deactivated patient, making them visible in all
@@ -3211,22 +3263,23 @@ def activate_patient(
         )
         db.add(metadata)
 
-    return {
-        "patient_id": patient_id,
-        "is_active": True,
-        "message": "Patient activated successfully",
-    }
+    return PatientActivationOut(
+        patient_id=patient_id,
+        is_active=True,
+        message="Patient activated successfully",
+    )
 
 
 @router.get(
     "/patients/{patient_id}/shared-organisations",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=SharedOrganisationsOut,
 )
 def shared_organisations_endpoint(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SharedOrganisationsOut:
     """Return organisations shared between the current user and a patient.
 
     For external users this returns an empty list (they use
@@ -3242,18 +3295,19 @@ def shared_organisations_endpoint(
     """
     shared_ids = get_shared_org_ids(db, current_user.id, patient_id)
     if not shared_ids:
-        return {"organisations": []}
+        return SharedOrganisationsOut(organisations=[])
 
     orgs = (
         db.execute(select(Organisation).where(Organisation.id.in_(shared_ids)))
         .scalars()
         .all()
     )
-    return {
-        "organisations": [
-            {"id": o.id, "name": o.name, "type": o.type} for o in orgs
+    return SharedOrganisationsOut(
+        organisations=[
+            SharedOrganisationSummary(id=o.id, name=o.name, type=o.type)
+            for o in orgs
         ]
-    }
+    )
 
 
 # ==========================================================================
@@ -3287,6 +3341,7 @@ async def get_my_competencies(
     )
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/prescriptions/controlled",
     tags=["cbac", "prescriptions"],
@@ -3382,20 +3437,20 @@ async def update_my_competencies(
 
 
 # ==========================================================================
-# ORGANIZATION ENDPOINTS
+# ORGANISATION ENDPOINTS
 # ==========================================================================
 
 
-@router.get("/organisations")
+@router.get("/organisations", response_model=OrganisationsListOut)
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
 ) -> dict[str, Any]:
-    """List All Organisations.
+    """List all organisations.
 
     Retrieves all organisations from the database. Returns basic information
-    for each organisation. Used by admin interface to display organisation
+    Retrieves all organisations from the database. Returns basic information
+    for each organisation. Used by the admin interface to display organisation
     list and management options.
-
     Requires admin or superadmin system permissions.
 
     Args:
@@ -3448,7 +3503,7 @@ def list_organisations(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/organisations/{org_id}")
+@router.get("/organisations/{org_id}", response_model=OrganisationDetailOut)
 def get_organisation(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
@@ -3590,27 +3645,7 @@ def get_organisation(
     }
 
 
-class CreateOrganisationIn(BaseModel):
-    """Request body for creating a new organisation."""
-
-    name: str
-    type: str
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-class UpdateOrganisationIn(BaseModel):
-    """Request body for updating an organisation."""
-
-    name: str | None = None
-    type: str | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-@router.put("/organisations/{org_id}")
+@router.put("/organisations/{org_id}", response_model=OrganisationOut)
 def update_organisation(
     org_id: int,
     body: UpdateOrganisationIn,
@@ -3686,7 +3721,7 @@ def update_organisation(
     }
 
 
-@router.post("/organisations")
+@router.post("/organisations", response_model=OrganisationOut)
 def create_organisation(
     body: CreateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -3748,15 +3783,7 @@ def create_organisation(
     }
 
 
-class AddStaffIn(BaseModel):
-    """Request body for adding a staff member to an organisation."""
-
-    user_id: int
-
-    model_config = {"extra": "forbid"}
-
-
-@router.delete("/organisations/{org_id}")
+@router.delete("/organisations/{org_id}", response_model=DetailResponse)
 def delete_organisation(
     org_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
@@ -3794,7 +3821,9 @@ def delete_organisation(
     return {"detail": "Organisation deleted"}
 
 
-@router.post("/organisations/{org_id}/staff")
+@router.post(
+    "/organisations/{org_id}/staff", response_model=OrgStaffAddResponse
+)
 def add_staff_to_organisation(
     org_id: int,
     body: AddStaffIn,
@@ -3875,17 +3904,10 @@ def add_staff_to_organisation(
     }
 
 
-class AddPatientIn(BaseModel):
-    """Request body for adding a patient to an organisation."""
-
-    patient_id: str
-
-    model_config = {"extra": "forbid"}
-
-
 @router.post(
     "/organisations/{org_id}/patients",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=OrgPatientAddResponse,
 )
 def add_patient_to_organisation(
     org_id: int,
@@ -3959,6 +3981,7 @@ def add_patient_to_organisation(
 @router.delete(
     "/organisations/{org_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
+    response_model=StatusResponse,
 )
 def remove_staff_from_organisation(
     org_id: int,
@@ -4010,6 +4033,7 @@ def remove_staff_from_organisation(
 @router.delete(
     "/organisations/{org_id}/patients/{patient_id}",
     dependencies=[DEP_REQUIRE_CSRF],
+    response_model=StatusResponse,
 )
 def remove_patient_from_organisation(
     org_id: int,
@@ -4063,12 +4087,12 @@ def remove_patient_from_organisation(
 # ==========================================================================
 
 
-@router.get("/organisations/{org_id}/features")
+@router.get("/organisations/{org_id}/features", response_model=FeaturesListOut)
 def list_org_features(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, Any]:
     """List enabled features for an organisation.
 
     Admin/superadmin only.
@@ -4089,11 +4113,13 @@ def list_org_features(
 
     return {
         "features": [
-            FeatureOut(
-                feature_key=f.feature_key,
-                enabled_at=f.enabled_at,
-                enabled_by=f.enabled_by,
-            ).model_dump()
+            {
+                "feature_key": f.feature_key,
+                "enabled_at": (
+                    f.enabled_at.isoformat() if f.enabled_at else None
+                ),
+                "enabled_by": f.enabled_by,
+            }
             for f in org.features
         ]
     }
@@ -4101,6 +4127,7 @@ def list_org_features(
 
 @router.put(
     "/organisations/{org_id}/features/{feature_key}",
+    response_model=FeatureToggleResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def toggle_org_feature(
@@ -4158,28 +4185,6 @@ def toggle_org_feature(
 # ==========================================================================
 
 
-class CreateSiteIn(BaseModel):
-    """Request body for creating a site."""
-
-    name: str
-    type: str
-    parent_id: int | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
-class UpdateSiteIn(BaseModel):
-    """Request body for updating a site."""
-
-    name: str | None = None
-    type: str | None = None
-    parent_id: int | None = None
-    location: str | None = None
-
-    model_config = {"extra": "forbid"}
-
-
 VALID_SITE_TYPES = {
     "hospital",
     "building",
@@ -4191,6 +4196,7 @@ VALID_SITE_TYPES = {
 }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/sites")
 def list_sites(
     current_user: User = DEP_CURRENT_USER,
@@ -4219,6 +4225,7 @@ def list_sites(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/sites", dependencies=[DEP_REQUIRE_CSRF])
 def create_site(
     body: CreateSiteIn,
@@ -4265,6 +4272,7 @@ def create_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.get("/sites/{site_id}")
 def get_site(
     site_id: int,
@@ -4334,6 +4342,7 @@ def get_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.put("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
 def update_site(
     site_id: int,
@@ -4390,6 +4399,7 @@ def update_site(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.patch("/sites/{site_id}/active", dependencies=[DEP_REQUIRE_CSRF])
 def toggle_site_active(
     site_id: int,
@@ -4424,6 +4434,7 @@ def toggle_site_active(
     }
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
 def delete_site(
     site_id: int,
@@ -4442,6 +4453,7 @@ def delete_site(
     return {"status": "deleted"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4482,6 +4494,7 @@ def link_site_to_org(
     return {"status": "linked"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4509,6 +4522,7 @@ def unlink_site_from_org(
     return {"status": "unlinked"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/sites/{site_id}/staff",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4593,6 +4607,7 @@ def add_site_staff(
     return {"status": "added"}
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
     dependencies=[DEP_REQUIRE_CSRF],
@@ -4622,14 +4637,15 @@ def remove_site_staff(
 
 @router.patch(
     "/users/{user_id}/link-patient",
+    response_model=LinkPatientOut,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def link_patient_to_user(
     user_id: int,
-    body: dict[str, str],
+    body: LinkPatientIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> LinkPatientOut:
     """Link a user account to a FHIR patient record.
 
     Admin/superadmin only. Sets ``fhir_patient_id`` on the user.
@@ -4646,7 +4662,7 @@ def link_patient_to_user(
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
-    fhir_patient_id = body.get("fhir_patient_id")
+    fhir_patient_id = body.fhir_patient_id
     if not fhir_patient_id:
         raise HTTPException(
             status_code=422, detail="fhir_patient_id is required"
@@ -4671,10 +4687,10 @@ def link_patient_to_user(
 
     target.fhir_patient_id = fhir_patient_id
 
-    return {
-        "user_id": user_id,
-        "fhir_patient_id": fhir_patient_id,
-    }
+    return LinkPatientOut(
+        user_id=user_id,
+        fhir_patient_id=fhir_patient_id,
+    )
 
 
 # ==========================================================================
@@ -4685,13 +4701,14 @@ def link_patient_to_user(
 @router.post(
     "/patients/{patient_id}/invite-external",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=InviteExternalOut,
 )
 def invite_external_user(
     patient_id: str,
     body: InviteExternalIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> InviteExternalOut:
     """Generate an invite link for an external user.
 
     Only the patient themselves (via ``fhir_patient_id``) or an
@@ -4727,14 +4744,14 @@ def invite_external_user(
     # In production the base URL would come from settings
     invite_url = f"/app/accept-invite?token={token}"
 
-    return {"invite_url": invite_url, "token": token}
+    return InviteExternalOut(invite_url=invite_url, token=token)
 
 
-@router.post("/accept-invite")
+@router.post("/accept-invite", response_model=AcceptInviteOut)
 def accept_invite(
     body: AcceptInviteIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> AcceptInviteOut:
     """Accept an invite — register or grant access to existing user.
 
     If the email matches an existing user, access is granted
@@ -4782,7 +4799,7 @@ def accept_invite(
             )
         elif grant.revoked_at is not None:
             grant.revoked_at = None
-        return {"status": "access_granted", "user_id": existing.id}
+        return AcceptInviteOut(status="access_granted", user_id=existing.id)
 
     # New user registration
     if not body.username or not body.password:
@@ -4813,19 +4830,20 @@ def accept_invite(
         )
     )
 
-    return {"status": "registered", "user_id": new_user.id}
+    return AcceptInviteOut(status="registered", user_id=new_user.id)
 
 
 @router.delete(
     "/patients/{patient_id}/external-access/{user_id}",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
+    response_model=RevokeAccessOut,
 )
 def revoke_external_access(
     patient_id: str,
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> RevokeAccessOut:
     """Revoke an external user's access to a patient.
 
     Admin/superadmin only. Soft-deletes by setting ``revoked_at``.
@@ -4856,18 +4874,19 @@ def revoke_external_access(
 
     grant.revoked_at = datetime.now(UTC)
 
-    return {"status": "revoked"}
+    return RevokeAccessOut(status="revoked")
 
 
 @router.get(
     "/patients/{patient_id}/external-access",
     dependencies=[DEP_REQUIRE_CLINICAL],
+    response_model=ExternalAccessListOut,
 )
 def list_external_access(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> ExternalAccessListOut:
     """List external users with access to a patient.
 
     Returns active (non-revoked) external access grants.
@@ -4900,19 +4919,19 @@ def list_external_access(
         .all()
     )
 
-    return {
-        "grants": [
-            {
-                "user_id": g.user_id,
-                "username": g.user.username,
-                "email": g.user.email,
-                "user_type": g.user.system_permissions,
-                "granted_at": g.granted_at.isoformat(),
-                "access_level": g.access_level,
-            }
+    return ExternalAccessListOut(
+        grants=[
+            ExternalAccessGrant(
+                user_id=g.user_id,
+                username=g.user.username,
+                email=g.user.email,
+                user_type=g.user.system_permissions,
+                granted_at=g.granted_at.isoformat(),
+                access_level=g.access_level,
+            )
             for g in grants
         ]
-    }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -5328,6 +5347,7 @@ def join_conversation_endpoint(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/conversations/{conversation_id}/read",
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
@@ -5364,6 +5384,7 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/ci/teaching/sync")
 def ci_teaching_sync(
     request: Request,
@@ -5514,6 +5535,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
     _qb_base = settings.TEACHING_QUESTION_BANK_PATH
 
+    # api-schema-check: allow-opaque-permanent
     @app.get(
         "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
     )
@@ -5550,6 +5572,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
+    # api-schema-check: allow-opaque-permanent
     @app.get("/api/teaching/images/cover/{module_id}/{filename}")
     async def _serve_cover_image(
         module_id: str,
@@ -5583,6 +5606,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
         )
         return FileResponse(file_path, media_type=content_type)
 
+    # api-schema-check: allow-opaque-permanent
     @app.get("/api/teaching/images/learning/{module_id}/{filename}")
     async def _serve_learning_image(
         module_id: str,
