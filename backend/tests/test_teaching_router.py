@@ -592,6 +592,58 @@ class TestAssessmentLifecycle:
 
 
 # ------------------------------------------------------------------
+# Certificate download
+# ------------------------------------------------------------------
+
+
+class TestDownloadCertificate:
+    """GET /assessments/{id}/certificate endpoint."""
+
+    def test_requires_auth(self, test_client):
+        resp = test_client.get(
+            "/api/teaching/assessments/1/certificate",
+        )
+        assert resp.status_code == 401
+
+    def test_nonexistent_assessment_returns_404(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.get(
+            "/api/teaching/assessments/999999/certificate",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+        assert "Assessment not found" in resp.json()["detail"]
+
+    def test_incomplete_assessment_returns_400(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            json={"question_bank_id": "test-bank"},
+            headers=headers,
+        )
+        assessment_id = resp.json()["assessment"]["id"]
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/certificate",
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "passed assessments" in resp.json()["detail"]
+
+
+# ------------------------------------------------------------------
 # Assessment history
 # ------------------------------------------------------------------
 

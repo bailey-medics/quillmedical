@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "new-required-request-property PATCH /api/users/{user_id}/link-patient added the new required request property `fhir_patient_id`"
+reason: "fhir_patient_id was already runtime-required (route returned 422 if missing) before Phase 4 typed the request body as LinkPatientIn; this only makes that pre-existing requirement visible in the OpenAPI schema. No frontend code calls this endpoint yet, so no existing client is affected."

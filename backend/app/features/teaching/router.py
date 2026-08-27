@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -1312,6 +1313,7 @@ def complete_assessment(
 # ------------------------------------------------------------------
 
 
+# api-schema-check: allow-opaque-permanent
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
 )
@@ -1319,10 +1321,8 @@ def download_certificate(
     assessment_id: int,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> Any:
+) -> Response:
     """Generate and return a PDF certificate for a passed assessment."""
-    from fastapi.responses import Response
-
     from app.config import settings
     from app.features.teaching.certificate import (
         download_certificate_background_from_gcs,

@@ -46,7 +46,7 @@ jobs:
       - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
         with:
-          install-backend-deps: ${{ matrix.task == 'unit' }}
+          install-backend-deps: ${{ matrix.task == 'unit' || matrix.task == 'pre-commit' }}
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
@@ -109,7 +109,7 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
+        image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
         env:
           POSTGRES_DB: quill_core
           POSTGRES_USER: core_user
@@ -209,7 +209,7 @@ jobs:
         run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
       # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
       - name: Lint GitHub Actions workflows
-        uses: docker://rhysd/actionlint:1.7.7
+        uses: docker://rhysd/actionlint:1.7.8
         with:
           args: -color
       - name: Set up bats
@@ -347,7 +347,7 @@ jobs:
           path: teaching-tooling
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
+        uses: docker/setup-buildx-action@v4.3.0
 
       - name: Log in to GHCR
         uses: docker/login-action@v4.6.0
@@ -474,6 +474,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       breaking: ${{ steps.diff.outputs.breaking }}
+      breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
       compat_validation_error: ${{ steps.validate.outputs.error_output }}
     steps:
       - name: Checkout PR branch
@@ -549,6 +550,11 @@ jobs:
             pr/docs/docs/code/swagger/openapi.json \
             > oasdiff-report.json || true
 
+      - name: Compute breaking-change hash (for Slack notification dedup)
+        id: hash
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
+
       - name: Validate api-compatibility decision files
         id: validate
         working-directory: pr
@@ -577,11 +583,37 @@ jobs:
       - name: Breaking change approved
         run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.sha }}."
 
+  # ---------- Dedup: only notify Slack when the breaking-change set changed ----------
+  # Compares heavy_api_schema_diff's breaking_hash against the hash recorded
+  # on a sticky PR comment from the last time Slack was notified. Silent on
+  # a re-run with the same break(s); signals should_notify=true only for the
+  # first breaking change ever, or when the set of breaking changes changed.
+  # See docs/docs/backend/api-compatibility.md for the known trade-off (a
+  # fixed-then-reintroduced identical breaking change won't re-notify).
+  heavy_api_breaking_change_dedup:
+    name: Dedupe breaking-change Slack notification
+    needs: heavy_api_schema_diff
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      should_notify: ${{ steps.dedup.outputs.should_notify }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check whether this breaking-change set was already notified
+        id: dedup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/dedup-breaking-change-notify.sh \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}"
+
   # ---------- Slack notification on breaking API change ----------
   heavy_api_breaking_change_notify:
     name: Notify Slack of API breaking change
-    needs: heavy_api_schema_diff
-    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    needs: [heavy_api_schema_diff, heavy_api_breaking_change_dedup]
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_breaking_change_dedup.outputs.should_notify == 'true'
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching

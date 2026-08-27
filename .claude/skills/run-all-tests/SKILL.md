@@ -1,4 +1,5 @@
 ---
+name: run-all-tests
 description: Run all non-main CI/CD checks locally
 allowed-tools: Bash(./scripts/run-ci-checks.sh)
 disable-model-invocation: true
