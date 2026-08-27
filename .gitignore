@@ -20,7 +20,6 @@ frontend/src/generated/*.json
 prompt-output.md
 
 site/
-.claude/
 
 # Teaching content repos (cloned locally)
 teaching-repos/
@@ -34,3 +33,6 @@ __pycache__/
 
 # Stray Yarn state (no Yarn project at repo root; real project is in frontend/)
 /.yarn/
+
+# eslint
+.eslintcache

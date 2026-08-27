@@ -1,8 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   checkForUpdateAndReloadIfSafe,
   isRouteSafeForReload,
+  wireUpdateChecks,
+  HOURLY_INTERVAL_MS,
   type RouteMatchLike,
+  type RouterLike,
 } from "./swUpdateGate";
 
 function makeStorage(initial: Record<string, string> = {}) {
@@ -182,5 +185,136 @@ describe("checkForUpdateAndReloadIfSafe", () => {
       "1",
     );
     expect(postMessage).toHaveBeenCalledWith("SKIP_WAITING");
+  });
+});
+
+function makeRouter(safeForReload: boolean): RouterLike & {
+  setSafe: (safe: boolean) => void;
+  triggerNavigation: () => void;
+} {
+  const state: RouterLike["state"] = {
+    matches: [{ route: { handle: { safeForReload } } }],
+    location: { state: null },
+  };
+  let listener: (() => void) | undefined;
+
+  return {
+    subscribe: vi.fn((l: () => void) => {
+      listener = l;
+      return () => {};
+    }),
+    get state() {
+      return state;
+    },
+    setSafe(safe: boolean) {
+      state.matches = [{ route: { handle: { safeForReload: safe } } }];
+    },
+    triggerNavigation() {
+      listener?.();
+    },
+  };
+}
+
+describe("wireUpdateChecks", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs an initial check on wiring using the route safety at that moment", async () => {
+    const postMessage = vi.fn();
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({
+      update,
+      waiting: { postMessage } as unknown as ServiceWorker,
+    });
+    const router = makeRouter(true);
+
+    wireUpdateChecks(router, registration, true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith("SKIP_WAITING");
+  });
+
+  it("does nothing on the initial check when the current route is unsafe", async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({ update });
+    const router = makeRouter(false);
+
+    wireUpdateChecks(router, registration, true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("re-checks on every navigation, using the route safety at that time", async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({ update, waiting: null });
+    const router = makeRouter(false);
+
+    wireUpdateChecks(router, registration, true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(update).not.toHaveBeenCalled();
+
+    router.setSafe(true);
+    router.triggerNavigation();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("the hourly timer defers on an unsafe route", async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({ update, waiting: null });
+    const router = makeRouter(false);
+
+    wireUpdateChecks(router, registration, true);
+    await vi.advanceTimersByTimeAsync(0);
+    update.mockClear();
+
+    await vi.advanceTimersByTimeAsync(HOURLY_INTERVAL_MS);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("the hourly timer acts immediately when the current route is safe", async () => {
+    const postMessage = vi.fn();
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({
+      update,
+      waiting: { postMessage } as unknown as ServiceWorker,
+    });
+    const router = makeRouter(false);
+
+    wireUpdateChecks(router, registration, true);
+    await vi.advanceTimersByTimeAsync(0);
+    update.mockClear();
+    postMessage.mockClear();
+
+    router.setSafe(true);
+    await vi.advanceTimersByTimeAsync(HOURLY_INTERVAL_MS);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith("SKIP_WAITING");
+  });
+
+  it("respects a custom interval", async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const registration = makeRegistration({ update, waiting: null });
+    const router = makeRouter(true);
+    const customIntervalMs = 1000;
+
+    wireUpdateChecks(router, registration, true, customIntervalMs);
+    await vi.advanceTimersByTimeAsync(0);
+    update.mockClear();
+
+    await vi.advanceTimersByTimeAsync(customIntervalMs);
+
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });

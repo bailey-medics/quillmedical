@@ -139,7 +139,7 @@ resource "github_repository_ruleset" "protected_branches" {
 
       # API compatibility (item 15 — see docs/docs/backend/api-compatibility.md)
       required_check {
-        context = "API breaking-change check (oasdiff)"
+        context = "API breaking-change check"
       }
       required_check {
         context = "API breaking-change review gate"

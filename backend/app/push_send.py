@@ -16,6 +16,7 @@ Example:
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from pywebpush import WebPushException, webpush  # type: ignore[import-untyped]
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,11 +31,24 @@ VAPID_PRIVATE = os.environ["VAPID_PRIVATE"]
 VAPID_CLAIM = os.environ.get("COMPANY_EMAIL") or "mailto:admin@example.com"
 
 
-@router.post("/send-test")
+class SendTestOut(BaseModel):
+    """Result of sending a test push notification.
+
+    Attributes:
+        sent: Whether the send attempt ran.
+        removed: Endpoints removed because their subscription had expired
+            or become invalid.
+    """
+
+    sent: bool
+    removed: list[str]
+
+
+@router.post("/send-test", response_model=SendTestOut)
 def send_test(
     _u: User = DEP_REQUIRE_ADMIN,
     db: Session = Depends(get_core_db),
-) -> dict[str, bool | list[str]]:
+) -> SendTestOut:
     """Send test push notification to all subscribed clients.
 
     Requires admin or superadmin permissions.
@@ -77,5 +91,4 @@ def send_test(
             removed.append(sub.endpoint)
             db.delete(sub)
 
-    db.commit()
-    return {"sent": True, "removed": removed}
+    return SendTestOut(sent=True, removed=removed)

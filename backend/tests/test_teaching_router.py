@@ -47,7 +47,7 @@ def _make_teaching_org(db: Session) -> Organisation:
 
 
 def _make_educator(db: Session, org: Organisation) -> User:
-    """Create an educator user linked as primary staff."""
+    """Create an educator user linked as staff."""
     user = User(
         username="testeducator",
         email="educator@test.local",
@@ -61,7 +61,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
     db.flush()
     db.execute(
         organisation_staff_member.insert().values(
-            organisation_id=org.id, user_id=user.id, is_primary=True
+            organisation_id=org.id, user_id=user.id
         )
     )
     db.flush()
@@ -69,7 +69,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
 
 
 def _make_learner(db: Session, org: Organisation) -> User:
-    """Create a learner user linked as primary staff."""
+    """Create a learner user linked as staff."""
     user = User(
         username="testlearner",
         email="learner@test.local",
@@ -83,7 +83,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     db.flush()
     db.execute(
         organisation_staff_member.insert().values(
-            organisation_id=org.id, user_id=user.id, is_primary=True
+            organisation_id=org.id, user_id=user.id
         )
     )
     db.flush()
@@ -241,7 +241,6 @@ class TestFeatureGating:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
         db_session.commit()
@@ -590,6 +589,58 @@ class TestAssessmentLifecycle:
         )
         assert resp.status_code == 409
         assert "Time limit" in resp.json()["detail"]
+
+
+# ------------------------------------------------------------------
+# Certificate download
+# ------------------------------------------------------------------
+
+
+class TestDownloadCertificate:
+    """GET /assessments/{id}/certificate endpoint."""
+
+    def test_requires_auth(self, test_client):
+        resp = test_client.get(
+            "/api/teaching/assessments/1/certificate",
+        )
+        assert resp.status_code == 401
+
+    def test_nonexistent_assessment_returns_404(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.get(
+            "/api/teaching/assessments/999999/certificate",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+        assert "Assessment not found" in resp.json()["detail"]
+
+    def test_incomplete_assessment_returns_400(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        headers = _login(test_client, "testlearner", "Learner123!")
+
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            json={"question_bank_id": "test-bank"},
+            headers=headers,
+        )
+        assessment_id = resp.json()["assessment"]["id"]
+
+        resp = test_client.get(
+            f"/api/teaching/assessments/{assessment_id}/certificate",
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "passed assessments" in resp.json()["detail"]
 
 
 # ------------------------------------------------------------------

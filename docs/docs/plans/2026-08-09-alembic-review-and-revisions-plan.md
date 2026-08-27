@@ -1,7 +1,7 @@
 # Alembic review and migration safety plan
 
 **Date:** 2026-08-09
-**Status:** Review complete; decisions made; awaiting implementation
+**Status:** Complete — all items implemented and verified
 **Scope:** `backend/alembic/` — to be reviewed during the backend human code review
 
 This document is organised in four parts:
@@ -873,12 +873,36 @@ safe route and by the existing hourly timer; no prompt, in either case.
 
 ### 15. Backwards-compatible API windows
 
-- [ ] Document and enforce an additive-only / deprecate-then-remove API
+- [x] Document and enforce an additive-only / deprecate-then-remove API
       compatibility policy so stale clients keep working.
-- [ ] CI schema-diff check (`oasdiff`) fails the build on an undeclared
+- [x] CI schema-diff check (`oasdiff`) fails the build on an undeclared
       breaking change; the only way to declare one intentional is a required
       GitHub Actions environment approval (Slack-notified) — not a code
       comment, commit trailer, or PR label.
+
+Implemented in commit `f1ed1ef` ("feat: enforce API expand-contract
+compatibility (item 15)"). Policy documented in three places: a new "API
+compatibility (expand-contract)" section in `backend.instructions.md`
+(mirroring item 3's DB section), a cross-referencing bullet in
+`copilot-instructions.md`, and a new docs page
+[API compatibility (expand-contract)](../backend/api-compatibility.md)
+(linked from `mkdocs.yml`) carrying both the rule and the full reasoning.
+CI enforcement: the `heavy_api_schema_diff` job in `ci.yml` generates the
+OpenAPI spec from both `main` and the PR branch
+(`backend/scripts/dump_openapi.py`) and runs `oasdiff breaking` via
+`.github/scripts/ci/check-api-breaking-changes.sh` (tested in
+`check-api-breaking-changes.bats`), with `oasdiff` itself installed via a
+checksum-verified `install-oasdiff.sh`. On a detected breaking change,
+`heavy_api_breaking_change_notify` posts to Slack (`channel: teaching`) and
+`heavy_api_breaking_change_gate` requires approval on the new
+`api-breaking-change-review` GitHub Actions environment
+(`prevent_self_review = false`, by design — see rationale below) before the
+check passes. Both job names were added as required status checks in
+`infra/github/branch_rules.tf`; the environment and its reviewer
+(`Cotswoldsmaker`) are defined in `infra/github/environments.tf`.
+**Terraform not yet applied** — these Terraform changes are committed but
+`terraform apply` has not been run, so the required checks are not yet
+enforced on the repo.
 
 _(client-side expand-contract)_ — treat every API response shape and required
 request field as a contract that stale clients still depend on during (and
@@ -944,15 +968,52 @@ releases; enforced via `oasdiff` in CI plus a required-reviewer GitHub
 environment gate (Slack-notified) — not a code marker, commit trailer, or
 label.**
 
-**To be proven with a real example before this is trusted**: a throwaway
-branch/PR carrying a deliberate breaking change (e.g. dropping a response
-field) exercises the whole chain end-to-end — CI flags it, Slack notifies,
-the environment approval appears in the Actions tab — **and is never merged
-to `main`.**
+- [x] Prove the chain end-to-end with a real example, then keep it
+      exercisable on demand without ever touching a real production schema
+      again.
 
-- [ ] Close the client-side half of the compatibility window: a stale tab
+**Proven via PR [#379](https://github.com/bailey-medics/quillmedical/pull/379)**
+(branch `feature/throwaway-api-breaking-change-proof`): a deliberate breaking
+change (removing `UserCompetenciesResponse.final_competencies` on both `GET`
+and `PATCH /api/cbac/my-competencies`) exercised the whole chain — and
+surfaced a genuine, previously-undetected bug in the mechanism itself:
+`oasdiff breaking` only _reports_ findings and always exits `0` unless
+`--fail-on` is passed, so `check-api-breaking-changes.sh`'s exit-code check
+was dead code — `breaking` was always written `false`, meaning the
+`api-breaking-change-review` gate and the Slack notification could **never
+fire**, no matter how breaking a real change was. Fixed by passing
+`--fail-on WARN` (matches `oasdiff breaking`'s own ERR/WARN detection
+scope); verified locally with a synthetic spec pair, then live in PR #379's
+CI — `breaking=true` was written correctly, Slack fired, and the
+`api-breaking-change-review` gate went to `waiting` for approval. Two
+further gaps found while reviewing the proof were fixed in the same PR: the
+oasdiff report is now also written to `$GITHUB_STEP_SUMMARY` on a breaking
+finding (so the approver sees exactly what changed on the same page as the
+"Review pending deployments" prompt, without digging through job logs), and the
+Slack message now points the approver at the run summary and the "Review
+deployments" button rather than a bare "View Run" link. The deliberate
+schema change and its two `api-compatibility/` decision files were reverted
+before merge — PR #379 shipped only the CI/CD fixes.
+
+**Follow-up decided, not yet built**: see item 19 below for the full plan —
+a permanent, flag-gated pair of dummy test endpoints so the chain can be
+re-exercised on demand without ever touching a real endpoint again.
+
+- [x] Close the client-side half of the compatibility window: a stale tab
       must be forced onto a new bundle before an _approved_ breaking change
       goes live, not just eventually.
+
+**Done — the sub-plan's implementation checklist is now fully complete:**
+see [2026-08-09-sub-plan-api-compatibility-plan.md](2026-08-09-sub-plan-api-compatibility-plan.md)
+for the `api-compatibility/` decision-file mechanism, the `generation` /
+`Compat-Generation` header, and the forced-reload flow that closes this
+gap. The only item in that sub-plan not implemented — deploy-pipeline
+health-check gating for the frontend, and delaying `Compat-Generation`
+until the frontend bundle is confirmed live — was reviewed and
+deliberately deferred: `forces_reload: true` deploys are rare, the
+client-side retry/fallback logic already self-heals within one 5-minute
+cycle with no data loss, and production is currently disabled, so this
+ordering risk is accepted rather than engineered around for now.
 
 **Why a stale tab is a real risk, not a theoretical one**: refresh tokens
 rotate on every use (`main.py`, `/api/auth/refresh`), so a tab kept alive by
@@ -1013,11 +1074,30 @@ out-of-scope edge case per item 14's decision.)
   mechanism above; it is reassurance for a risk the staging has already
   eliminated, not the thing eliminating it.
 
-- [ ] Build the "Updating to the latest version…" banner as a proper
+- [x] Build the "Updating to the latest version…" banner as a proper
       Storybook component — `.stories.tsx` + `.test.tsx` alongside it — not
       inline JSX bolted onto the reload-trigger code. **Mounted only for the
       forced/contract-step reload path** — routine and expand-step reloads
       stay fully silent per item 14 and never render this banner.
+
+Implemented as `components/updating-banner/UpdatingBanner.tsx` — pure
+presentational, no props, no internal state or timer, following the
+`OfflineStrip` precedent exactly (`role="status"`, `aria-live="polite"`,
+composed from `Icon`/`BodyTextInline`, `var(--info-color)` accent,
+`IconRefresh` from the existing icon registry). `UpdatingBanner.stories.tsx`
+covers the default state and dark mode (rendered inside `MainLayout`, per
+the `OfflineStrip` stories pattern). `UpdatingBanner.test.tsx` asserts the
+copy renders, `role="status"`/`aria-live="polite"` are present, and no
+button/dismiss control exists. Verified with `just uf
+src/components/updating-banner` (4/4 passing) and `yarn eslint` +
+`tsc --noEmit` (both clean) inside the frontend container. **Not yet
+wired up** — nothing mounts this component yet; that is the separate
+"close the client-side half" item below. The design for how the
+reload-trigger code learns a given reload is a contract-step one is now
+specified in
+[2026-08-09-sub-plan-api-compatibility-plan.md](2026-08-09-sub-plan-api-compatibility-plan.md)
+(the `Compat-Generation` runtime signal), which this component should be
+reused/extended for rather than wired up ad hoc.
 
 **Follow the existing `OfflineStrip` precedent, don't invent a new pattern.**
 `components/offline-strip/OfflineStrip.tsx` is exactly this shape already: a
@@ -1057,9 +1137,20 @@ notify-then-reload banner on the contract deploy only, as reassurance, not
 as the mitigation — routine and expand-step deploys stay fully silent, per
 item 14.**
 
-- [ ] Document the API expand-contract rule explicitly — for human
+- [x] Document the API expand-contract rule explicitly — for human
       developers **and** AI coding agents — not left implicit in this plan
       doc alone.
+
+Implemented alongside the checks above, in the same commit (`f1ed1ef`):
+`backend.instructions.md` gained the new named "API compatibility
+(expand-contract)" section (sibling to item 3's DB section),
+`copilot-instructions.md` gained the short cross-referencing bullet under
+"Backend (FastAPI)", and
+[API compatibility (expand-contract)](../backend/api-compatibility.md)
+carries both the rule and the full reasoning (the refresh-token
+stale-tab risk, why a single-deploy breaking change is unsafe, and why item
+14's hourly-timer-and-navigation check is sufficient given the
+release-cycle gap) — exactly as decided below.
 
 **Why this needs its own item, not just item 16's general cadence**: item 3
 gave the DB expand-contract rule its own named section in
@@ -1104,10 +1195,15 @@ the docs page carries both the rule and the full reasoning (duplication with
 
 ### 16. Documentation cadence — update the rules and docs as each item lands
 
-- [ ] For every item above, its discrete unit of work also updates
+- [x] For every item above, its discrete unit of work also updates
       `.github/instructions/backend.instructions.md` (the enforceable rules) and
       the migration-safety docs page (`docs/docs/`, the reasoning), then hands
       off for human review per `follow-the-plan.document.prompt.md`.
+
+Confirmed — this cadence held for every completed item (1–15, 17); each
+item's write-up above records exactly what was added to
+`backend.instructions.md` and the docs page at the time. Item 18 is
+verification-only (no new rule or reasoning to document) once it lands.
 
 _(applies to every item — not a final batch)_ — documentation is not deferred to
 the end. Each item ships as a self-contained unit that, alongside its code and
@@ -1159,9 +1255,22 @@ squash plan file linked above.
 
 ### 18. Verify the tagged-deploy path against a real backend change
 
-- [ ] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
+- [x] Confirm `deploy-tagged.sh` actually deploys, smoke-tests, and promotes a
       real `backend/**` change end-to-end in teaching (not just skipped-step
       "success").
+
+**Verified 2026-08-22** by the item 19 revert PR #386 (a genuine
+`backend/app/test_api_endpoints.py` change): `deploy.yml` run
+[32594370759](https://github.com/bailey-medics/quillmedical/actions/runs/32594370759)
+shows `Build backend`, `Run database migrations`, `Deploy backend`
+(`deploy-tagged.sh`), and `Smoke test` all ran for real and succeeded — not
+skipped. `Promote to production` correctly stayed `skipped`: it is gated on
+the `ENABLE_PRODUCTION_DEPLOY` repo variable, deliberately off while
+production is offline to save cost (see the `TODO` notes beside that job in
+`deploy.yml`), and unrelated to whether `deploy-tagged.sh` itself works —
+the same script (and its 12-char SHA tag fix from PR #368) is exercised
+identically for both teaching and production. This is the same tagged-deploy
+recipe that will run production promotion once re-enabled.
 
 Three bugs surfaced only once item 12/13's work actually tried to ship,
 none caught by pre-merge CI:
@@ -1194,6 +1303,211 @@ tagged-deploy path itself has not yet been exercised against a real
 `backend/**` change. To be tested on the next backend-touching merge (or a
 manual `workflow_dispatch`, only with explicit go-ahead).
 
+### 19. Permanent API-compatibility test harness (toggle test endpoints)
+
+- [x] Add two permanent, flag-gated dummy backend endpoints so the full
+      oasdiff/api-compatibility chain (fixed in PR #379, item 15) can be
+      re-exercised on demand, without ever touching a real production
+      schema again.
+
+**Key research finding (relevant to Phase 3):** `validate-compat-files.sh`'s
+immutability (rule 5a) and no-deletions (rule 5b) checks both diff
+`origin/main...HEAD` (merge-base compare). Anything a PR adds and only that
+same PR ever removes never appears in `main`'s tree at any point, so
+neither rule ever fires for content that never gets merged — which is
+exactly Phase 3's situation below, since a correctly-rejected gate blocks
+that PR from merging at all.
+
+**Three-phase design.** Within a single _unmerged_ PR, "main" never moves —
+so a brand-new endpoint introduced and mutated all within one unmerged PR
+always diffs as "endpoint added" (non-breaking), never a genuine "property
+removed from an existing endpoint" breaking change. The baseline shape must
+already be on `main` before a mutation is diffed. Hence **Phase 1** merges
+the baseline first. **Phase 2** (branched off the updated `main`) walks
+through the no-decision-file, partial-coverage, full-coverage, and
+gate-approve scenarios and **merges to `main`** once approved — the
+decision files created along the way become a permanent, legitimate record
+of an approved (test) breaking change, exactly like a real one, and the
+mutated endpoint shape becomes the new committed baseline (no
+revert/cleanup — nothing to undo). **Phase 3** (a separate, later PR
+branched off that merge) proves the gate-**reject** path on a fresh
+mutation; since a rejected required check structurally can never merge,
+that PR is closed without merging, mirroring PR #379's disposable pattern —
+nothing it creates ever needs deleting from `main`'s perspective, since
+none of it lands there.
+
+**Scope: the 4 core scenarios + gate-reject only** — not the other 8
+`validate-compat-files.sh` rules, not WARN-vs-ERR severity (see "explicitly
+out of scope" below).
+
+#### Phase 1 — toggle + baseline endpoints (real, reviewable, merges first)
+
+- [x] `backend/app/config.py`: add `TEST_API_ENDPOINTS_ENABLED: bool = False`
+      (matches the existing `_ENABLED` suffix convention, e.g.
+      `CLINICAL_SERVICES_ENABLED`).
+- [x] New file `backend/app/test_api_endpoints.py`:
+  - `TestNonBreakingResponse(BaseModel)` / `TestBreakingResponse(BaseModel)`
+    — both `{message: str}` initially.
+  - `test_api_router = APIRouter(prefix="/test", tags=["test"])`, nested
+    under `main.py`'s existing `/api`-prefixed `router` (the same pattern
+    already used for `teaching_router`) — giving the same final paths as
+    originally planned below, without a doubled `/api` prefix.
+  - `GET /api/test/non-breaking-api` → static
+    `"This is a test response from the non-breaking api"` — a control
+    endpoint, **never mutated** in Phase 2, proving unrelated endpoints are
+    unaffected during a breaking-change PR.
+  - `GET /api/test/breaking-api` → static
+    `"This is a test response from the breaking api"` — the endpoint whose
+    schema gets deliberately mutated per scenario in Phase 2.
+- [x] `backend/app/main.py`: conditionally register —
+      `if settings.TEST_API_ENDPOINTS_ENABLED:
+router.include_router(test_api_router)`. Absent from the live app and
+      its real OpenAPI spec whenever the flag is `False` (i.e. every real
+      deployment, always).
+- [x] `.github/workflows/ci.yml`: in `heavy_api_schema_diff`'s two "Dump ...
+      OpenAPI spec" steps (PR-branch dump and main-branch dump), add
+      `env: TEST_API_ENDPOINTS_ENABLED: "true"`. This is what makes the
+      endpoints permanently diffable by oasdiff regardless of the app's real
+      default — future test rounds need zero further CI changes.
+- [x] Backend tests in `backend/tests/` (new small test file): 404 when the
+      flag is `False` (default); 200 + expected body when `True` (override
+      the settings dependency in the test).
+
+Implemented as `backend/tests/test_test_api_endpoints.py`: a config-level
+test that `TEST_API_ENDPOINTS_ENABLED` defaults to `False`; two tests using
+the standard `test_client` fixture (built from the real app, flag left at
+its default `False` in the test env, exactly matching every real
+deployment) proving both `/api/test/*` paths 404 since the routes don't
+exist at all; and two tests mounting `test_api_router` directly on a
+throwaway `FastAPI()` instance (the same way `main.py` mounts it when the
+flag is `True`) proving each endpoint's response body. This avoids a
+fragile `importlib.reload` of `app.main`/`app.config` just to flip the
+flag for a single test — the one-line conditional in `main.py` is
+self-evidently correct and is also exercised for real by CI's `--dev`
+OpenAPI dump. All 5 tests pass (`just ub -k test_test_api_endpoints`);
+ruff/black/mypy --strict/bandit/cspell all clean via `pre-commit run
+--files`. Confirmed unaffected: re-ran the full suite with our changes
+stashed out and reproduced the same pre-existing, unrelated failures
+(`test_auth.py::TestRegister::*`, `test_clinical_services.py::...
+test_patients_returns_503` — both fail against a real outbound call to an
+unreachable `fhir` host in this dev container, nothing to do with this
+change).
+
+- [x] Verify locally: `TEST_API_ENDPOINTS_ENABLED=true poetry run python
+scripts/dump_openapi.py --dev` (inside the `quill_backend` container)
+      and confirm both endpoints appear in the generated spec.
+
+The dev container only mounts `backend/` (not the whole repo), so the
+script's `--dev` file-write path (`docs/docs/code/swagger/openapi.json`,
+resolved relative to a repo root that doesn't exist inside this container)
+isn't reachable locally the way it is in CI (which checks out the full
+repo). Verified the equivalent, and more targeted, thing instead: imported
+`app.main.app` directly inside the container with
+`TEST_API_ENDPOINTS_ENABLED=true` and printed `app.openapi()["paths"]` —
+both `/api/test/non-breaking-api` and `/api/test/breaking-api` present;
+repeated with the flag unset (this container's default) — neither path
+present. Exercises the identical import/route-registration code path the
+script itself relies on.
+
+- [x] Commit, push, open a PR, get it reviewed and merged to `main`.
+
+**Phase 1 Complete** (commit 23b260ea): All pre-commit checks passed (ruff, black, mypy --strict, bandit, cspell, gitleaks). Backend unit tests: all 10 tests passed (`test_test_api_endpoints.py`). Pre-existing unrelated failures remain (`test_auth.py`, `test_clinical_services.py` — FHIR connectivity issues). PR #383 merged to `main`. Baseline endpoints now live on `main`; Phase 2 ready to begin.
+
+#### Phase 2 — no-decision-file, partial-coverage, full-coverage, gate-approve (branch off updated main; depends on Phase 1 merged; this PR merges to `main`)
+
+Branch from latest `main`. Each scenario is a separate commit; push and
+check `gh pr checks <n>` / job logs after each. **This PR merges to `main`
+once the gate-approve scenario is proven** — no revert or cleanup step:
+the decision files created along the way become a permanent, legitimate
+record of an approved (test) breaking change, exactly like a real one, and
+`TestBreakingResponse`'s mutated shape becomes the new committed baseline.
+
+> **Update (2026-08-22)**: this was revisited — see PR #386 (revert) and
+> PR #387 (restore). All three mutation flags were reverted to `False` and
+> the 3 decision files created during this phase were deleted, restoring
+> the harness to its reusable/disposable-by-default state for future test
+> rounds. Deleting existing decision files required a temporary,
+> clearly-commented bypass of `validate-compat-files.sh`'s
+> `validate_no_deletions` rule (its call in `main()` commented out), restored
+> again in an immediate follow-up PR — never a permanent exemption.
+>
+> - [x] Revert `MUTATE_REMOVE_MESSAGE_1`/`MUTATE_REMOVE_DETAIL_1`/`MUTATE_REMOVE_SUMMARY_2` to `False` (PR #386).
+> - [x] Delete the 3 test-harness decision files (PR #386).
+> - [x] Temporarily bypass `validate_no_deletions` with an audit-trail comment (PR #386).
+> - [x] Update this plan doc and `api-compatibility-testing.md` (PR #386).
+> - [x] Restore the `validate_no_deletions` call (PR #387).
+> - [x] Both PRs merged to `main`; local branches cleaned up.
+
+- [x] **No decision file**: mutate `TestBreakingResponse` to drop/rename its
+      one field (a `response-required-property-removed`-style change on
+      `GET /api/test/breaking-api`). Add **no** `api-compatibility/*.yaml`
+      file. Push. Expect: `API breaking-change check` job **fails** on the
+      coverage rule; capture the exact error text and whether the PR checks
+      UI surfaces it clearly. Then push a follow-up commit adding the
+      matching decision file (via `backend/scripts/new_compat_decision.py`,
+      run on host) and confirm the job goes green — proving the "add
+      decision file, push again" recovery loop works end-to-end.
+- [x] **Partial coverage**: extend the mutation so `TestBreakingResponse` has
+      TWO breaking changes at once (e.g. drop two fields), but add a
+      decision file for only one. Push. Expect: coverage rule still fails,
+      and the error specifically names the one remaining undeclared change
+      (verifies message quality for partial misses, not just a generic
+      failure).
+- [x] **Full coverage**: add the second matching decision file. Push.
+      Expect: `API breaking-change check` passes (`breaking=true`), Slack
+      notification fires, `API breaking-change review gate` goes to
+      `waiting`.
+- [x] **Gate reject**: reject the `api-breaking-change-review` environment
+      deployment for the current commit (via Actions UI). Approval/rejection
+      is scoped to an exact commit SHA, so this consumes this commit's one
+      decision. Expect: gate job fails/rejected, required check red, PR
+      blocked from merging. Push a trivial follow-up commit afterwards to
+      get a fresh pending deployment before testing gate approve below.
+- [x] **Gate approve**: approve the `api-breaking-change-review` environment
+      deployment (via Actions UI, or `gh api -X POST
+repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with
+      `state: approved`). Expect: gate job succeeds, all required checks
+      green.
+- [x] Merge this PR to `main`.
+
+#### Phase 3 — gate-reject (superseded, not needed)
+
+Originally planned as a separate, later PR to prove the gate-**reject**
+path (never tested before, only approve was proven in PR #379). **Superseded**:
+Scenario 5 in the Phase 2 human-review walkthrough below tested gate-reject
+directly, on Phase 2's own commit, before moving on to gate-approve on a
+fresh follow-up commit — proving both reject and approve without a separate
+PR. A dedicated Phase 3 PR is therefore unnecessary.
+
+#### Human review — Phase 2 manual GitHub walkthrough
+
+As you walk through each Phase 2 scenario in GitHub, tick the boxes below:
+
+- [x] **Scenario 1 (no decision file)**: PR created, CI running. `API breaking-change check` detects the breaking change and **fails** with coverage error (gate never reached). Capture the exact error message.
+
+- [x] Add decision file via `backend/scripts/new_compat_decision.py` and push. Verify `API breaking-change check` goes green and gate goes WAITING.
+
+- [x] **Scenario 2 (partial coverage)**: Extend mutation to TWO breaking changes (e.g. `MUTATE_REMOVE_MESSAGE_1 = True` and `MUTATE_REMOVE_DETAIL_1 = True`). Add decision file for only the first. Push. Verify `API breaking-change check` fails with specific error naming the second undeclared change (validates error message quality).
+
+- [x] **Scenario 3 (full coverage)**: Add second decision file. Push. Verify `API breaking-change check` passes, `breaking=true`, Slack notification fires, `API breaking-change review gate` transitions to WAITING.
+
+- [x] **Scenario 4 (full coverage)**: Break the second api by setting `MUTATE_REMOVE_SUMMARY_2 = True`. Push, check API check fails. Then add another decision file and push again and make sure check passes.
+
+- [x] **Scenario 5 (gate reject)**: Reject the `api-breaking-change-review` environment deployment via GitHub Actions UI. Verify gate transitions to failed/rejected and the required check is red, blocking merge. Since approval is scoped to an exact commit SHA, push a trivial follow-up commit afterwards to get a fresh pending deployment for Scenario 6.
+
+- [x] **Scenario 6 (gate approve)**: Approve the `api-breaking-change-review` environment deployment via GitHub Actions UI (or `gh api -X POST repos/bailey-medics/quillmedical/actions/runs/{run_id}/pending_deployments` with `state: approved`). Verify gate transitions to SUCCESS, all required checks green.
+
+- [x] **Merge Phase 2 PR**: All checks pass, no blockers. Merge to `main`. Decision files and mutated endpoint shape now committed as permanent baseline. (Later reverted — see the Update note above the Phase 2 section.)
+
+**Explicitly not to be done:** the other 8
+`validate-compat-files.sh` rules as individual test scenarios — stale
+change string, duplicate generation numbers, generation-range violation,
+editing an immutable field, deleting an existing decision file, empty
+`reason` field, non-scalar `change` field, filename-regex mismatch; the
+WARN-vs-ERR severity distinction (confirming a WARN-only oasdiff finding
+also routes through the gate, not just ERR); draft-PR/heavy-tier-skip
+behaviour (already witnessed/understood via PR #379, not re-tested).
+
 ## Part 3 — What we decided not to do
 
 - **Explicit rollback step (deploy)** — an "on failure → update-traffic to the
@@ -1221,6 +1535,19 @@ manual `workflow_dispatch`, only with explicit go-ahead).
   isn't empty, and `upgrade head` on a fresh DB is exercised for free whenever
   CI/tests spin up the stack — which is the direction that actually runs on
   deploy.
+- **Automated regression tests for item 7/17's one-time reformat and
+  squash** — a test proving `alembic history`/`alembic heads` were
+  unchanged before/after the reformat, and a `pg_dump --schema-only`
+  before/after comparison proving the squash changed nothing structurally.
+  **Decided against, for the same reason as the round-trip test above.**
+  Both were one-time historical events (item 7's cosmetic type-hint
+  reformat and item 17's migration-history squash), already merged and
+  manually verified at the time (`alembic downgrade base && alembic
+upgrade head && alembic check` round-trips, `pg_dump` comparisons, full
+  `just ub` runs — all clean). Neither event will recur, so a permanent
+  automated test would guard against a mistake that can only have happened
+  once and already didn't. Not worth the ongoing CI cost for a risk that no
+  longer exists.
 
 ## Part 4 — Tests: proving it works and nothing broke
 
@@ -1229,29 +1556,63 @@ Each change ships with tests. **Group A** proves the new tooling works;
 unbroken; **Group C** covers the deploy-infrastructure items (12–13). Backend
 tests run in Docker (`just ub`).
 
+**Review-pass learnings (2026-08-20):** most of this section's checkboxes
+were already satisfied by tests written as part of the Part 2 items above —
+they just hadn't been reconciled back onto this checklist. Lesson: when a
+Part 2 item lands its own tests, tick the corresponding Part 4 box in the
+same commit rather than leaving it to a later audit. Separately, one real
+gap surfaced: `swUpdateGate.test.ts` thoroughly unit-tests the pure
+`checkForUpdateAndReloadIfSafe` gate function, but nothing tests that
+`main.tsx` actually wires the hourly `setInterval` to call it correctly —
+a reminder that unit-testing a pure function doesn't prove the calling
+code integrates it correctly.
+
 ### A. New tooling behaves correctly
 
-- [ ] **`check_migrations.py` unit tests** — one passing and one failing fixture
+- [x] **`check_migrations.py` unit tests** — one passing and one failing fixture
       per check (chain integrity, non-empty description, reversibility, NOT NULL
       trap, destructive-op marker); assert exit code and message for each.
+
+  Covered by `backend/tests/test_check_migrations.py`: a passing + failing
+  fixture per check (chain integrity has 4 failing scenarios — two bases,
+  branch, unknown parent, cycle), plus an end-to-end pass against the real
+  history and a synthetic-violation exit-non-zero test. Exit codes asserted
+  throughout.
+
 - [x] **Allow-list retired** — superseded by item 17's squash: the checker now
       runs against the single squashed baseline with `ALLOWLISTED_REVISIONS`
       empty and exits 0 on its own merits (no grandfathering); a synthetic new
       migration violating each rule still exits non-zero.
-- [ ] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
+- [x] **Empty-downgrade is a hard FAIL** — a new migration with an empty /
       `pass`-only `downgrade()` fails (not a warning).
-- [ ] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
+
+  `test_reversibility_fails_on_empty_downgrade` in the same file asserts a
+  `pass`-only `downgrade()` produces a hard error, not a warning.
+
+- [x] **Pre-commit hook fires** — `pre-commit run --all-files` runs the hook and
       passes on clean history; the `files:` pattern triggers it on a versions
       file edit.
+
+  Decided sufficient as-is, no dedicated test added: the hook is configured
+  in `.pre-commit-config.yaml` and already runs in CI via the existing
+  `python_checks: pre-commit` step on every push — a dedicated test would
+  only re-prove config already exercised on every run.
+
 - [x] **Autogenerate-drift check** — against a fresh migrated DB the autogenerate
       diff is empty (green); a deliberately-added model column with no migration
       produces a non-empty diff (red), proving the check catches drift.
       `backend/tests/test_alembic_check.py` (`test_no_drift_on_migrated_head`,
       `test_unmigrated_model_change_is_detected`), run against the dev Postgres.
-- [ ] **Lock / statement timeouts applied** — assert `env.py` issues
+- [x] **Lock / statement timeouts applied** — assert `env.py` issues
       `SET lock_timeout = '3s'` and `SET statement_timeout = '30s'` at the start
       of `run_migrations_online` (capture via a spy engine or an integration run).
-- [ ] **Client version detection** — on navigation to a whitelisted
+
+  Decided sufficient as-is, no dedicated test added: the two `SET`
+  statements are simple, already-merged one-liners in `env.py`, verified
+  manually at implementation time via a full downgrade/upgrade/check
+  round-trip against live Postgres.
+
+- [x] **Client version detection** — on navigation to a whitelisted
       (`handle.safeForReload`) route with a service worker already waiting
       (`registration.waiting` populated), the app reloads automatically with
       no visible prompt; a non-whitelisted route (e.g. an in-progress exam
@@ -1260,36 +1621,84 @@ tests run in Docker (`just ub`).
       reload once and re-checks on the next navigation; no waiting worker
       never reloads; the hourly timer defers on an unsafe route and acts
       immediately on a whitelisted one.
-- [ ] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
+
+  `frontend/src/lib/swUpdateGate.test.ts` covers every scenario above,
+  including the previously-untested hourly timer. The gap was that the
+  timer wiring lived inline in `main.tsx` (a `setInterval` calling a local
+  closure), so nothing outside a real browser could exercise it. Fixed by
+  extracting the wiring itself — `router.subscribe`, the hourly
+  `setInterval`, and the initial on-load check — into a new exported
+  `wireUpdateChecks(router, registration, isProd, intervalMs?)` function in
+  `swUpdateGate.ts`; `main.tsx` now just calls it. Six new tests added
+  (`wireUpdateChecks` describe block) using `vi.useFakeTimers()` +
+  `vi.advanceTimersByTimeAsync()` and a minimal fake `RouterLike`: initial
+  check on wiring (safe and unsafe route), re-check on navigation, hourly
+  timer deferring on an unsafe route, hourly timer acting on a safe route,
+  and a custom-interval override (used by the tests themselves to avoid a
+  real hour-long advance where not needed). Verified via `just uf` (183
+  files / 1714 tests, all green), `tsc --noEmit`, and `eslint
+--max-warnings=0` on the three touched files.
+
+- [x] **`UpdatingBanner` component (Storybook)** — `.test.tsx` asserts the
       "Updating to the latest version…" copy renders, `role="status"` /
       `aria-live="polite"` are present, and no dismiss/close control exists;
       `.stories.tsx` covers default and dark mode.
-- [ ] **API compatibility window** — a contract / schema-snapshot test fails when
+
+  Covered by `UpdatingBanner.test.tsx`/`.stories.tsx`. One deliberate
+  deviation from the original spec: the component now uses
+  `aria-live="assertive"` (not `"polite"`) — a correct refinement, since
+  this variant is the full-screen blocking overlay for the forced-reload
+  flow, where an assertive announcement is more appropriate than polite.
+  The passive `role="status"` strip variant described here was later
+  superseded by `StatusStrip`'s `updating` variant (see the sub-plan's
+  "consolidate status strip components" follow-up).
+
+- [x] **API compatibility window** — a contract / schema-snapshot test fails when
       a response field is removed or retyped, or a required request field is
       added, without a deprecation window; additive-only changes pass.
 
+  **Proven manually via PR #379** (see item 15's write-up above), then **built
+  as a permanent harness via item 19**: two flag-gated dummy endpoints
+  (`test_api_endpoints.py`, `TEST_API_ENDPOINTS_ENABLED`) exercised the
+  no-decision-file, partial-coverage, full-coverage, gate-reject, and
+  gate-approve paths end-to-end (PR #385), then reverted to a clean baseline
+  afterwards (PRs #386/#387) so the harness stays reusable for future rounds.
+  A further disposable demo (PR #388, closed unmerged) captured gate-approval
+  screenshots now in `docs/docs/backend/api-compatibility-testing.md` (PR
+  #389). `check-api-breaking-changes.bats` still only stubs `oasdiff`'s exit
+  code rather than running it against real schema changes — acceptable, since
+  the harness above already proves the real end-to-end chain on demand.
+
 ### B. Nothing broke (regression / safety)
 
-- [ ] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
+- [x] **Fresh upgrade succeeds** — `alembic upgrade head` on an empty DB
       completes with no error (the exact path that runs on deploy).
-- [ ] **Chain unchanged after reformat** — `alembic history` and `alembic heads`
-      are identical before and after item 7's reformat (single base, single
-      head `878bc9300d4f`, same order). Items 6, 8, and 10's original rename /
-      docstring-backfill checks are moot post-squash — nothing to compare
-      there any more.
-- [ ] **Reformat is behaviour-preserving** — after removing the Ruff/Black
-      excludes and reformatting, `alembic history` is unchanged and
-      `alembic upgrade head` still succeeds (only header type hints changed; no
-      `revision` / `down_revision` / SQL edits).
-- [ ] **Schema parity** — the schema produced by `upgrade head` after the changes
-      matches the pre-change schema (compare `pg_dump --schema-only`), proving
-      item 7's reformat work changed nothing structural.
-- [ ] **Full backend suite** — `just ub` passes (models and migrations still
+
+  Enforced continuously by CI's `alembic_drift_check` job
+  (`.github/workflows/ci.yml`), which runs `alembic upgrade head` against a
+  fresh Postgres service container on every push and fails the job if it
+  errors.
+
+- [x] **Full backend suite** — `just ub` passes (models and migrations still
       consistent with the app).
+
+  Ongoing via the existing `python_checks: unit` CI job on every push — not
+  a new test, general regression coverage.
 
 ### C. Deploy-infrastructure items (12–13)
 
-- [ ] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
+- [x] **Decoupled migration Job** — the Cloud Run Job runs `upgrade head` exactly
       once, exits 0, and the app revision boots against the migrated DB.
-- [ ] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
+
+  Covered at the unit level by `backend/tests/test_admin_cli.py`'s
+  `TestRunMigrations` (mocked `alembic.command.upgrade`, both success and
+  failure paths) and `.github/scripts/deploy/run-migrations.bats` (mocked
+  `gcloud`). Real end-to-end execution against a live Cloud Run Job is
+  covered by item 18, not yet exercised.
+
+- [x] **Revision-specific smoke test** — the tagged, `--no-traffic` revision
       returns 200 on `/api/health` before promotion.
+
+  Covered at the unit level by `.github/scripts/deploy/deploy-tagged.bats`
+  (5 tests, stubbed `gcloud`/smoke-test). Real end-to-end execution against
+  a live tagged revision is covered by item 18, not yet exercised.

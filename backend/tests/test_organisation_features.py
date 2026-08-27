@@ -170,7 +170,6 @@ def _make_admin(db_session, org: Organisation | None = None) -> User:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
     db_session.commit()
@@ -401,12 +400,11 @@ class TestMeEnabledFeatures:
         db_session.add(user)
         db_session.flush()
 
-        # Link user to org as primary
+        # Link user to org
         db_session.execute(
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
         # Enable teaching on the org

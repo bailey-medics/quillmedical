@@ -111,7 +111,7 @@ docs:
     {{initialise}} "docs"
     # Copy prompts to docs for inclusion in MkDocs build
     mkdir -p docs/docs/llm/prompts
-    cp -r prompts/* docs/docs/llm/prompts/
+    cp -r .github/prompts/* docs/docs/llm/prompts/
     cd frontend
     yarn docs:build
     yarn storybook:build
@@ -299,16 +299,35 @@ pre-commit:
 
 
 alias pb := prune-branches
-# Remove local branches whose remote tracking branch is gone
+# Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main
 prune-branches:
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
     git fetch --prune
     GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' || true)
     if [ -z "$GONE" ]; then
-        echo "No stale branches to remove."
+        echo "No stale tracked branches to remove."
     else
         echo "$GONE" | xargs git branch -D
+    fi
+
+    CURRENT=$(git branch --show-current)
+    MERGED_UNTRACKED=""
+    for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
+        if [ "$branch" = "main" ] || [ "$branch" = "$CURRENT" ]; then
+            continue
+        fi
+        if git config --get "branch.$branch.remote" > /dev/null 2>&1; then
+            continue
+        fi
+        if git merge-base --is-ancestor "$branch" origin/main 2>/dev/null; then
+            MERGED_UNTRACKED="$MERGED_UNTRACKED $branch"
+        fi
+    done
+    if [ -z "$MERGED_UNTRACKED" ]; then
+        echo "No merged untracked branches to remove."
+    else
+        echo $MERGED_UNTRACKED | xargs git branch -d
     fi
 
 

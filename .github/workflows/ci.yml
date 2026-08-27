@@ -46,7 +46,7 @@ jobs:
       - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
         with:
-          install-backend-deps: ${{ matrix.task == 'unit' }}
+          install-backend-deps: ${{ matrix.task == 'unit' || matrix.task == 'pre-commit' }}
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
@@ -463,8 +463,10 @@ jobs:
   # Detects an undeclared breaking change to the API contract by diffing the
   # OpenAPI spec generated from `main` against the spec generated from this
   # PR branch. See docs/docs/backend/api-compatibility.md for the full
-  # reasoning. This job always succeeds (it only detects); the downstream
-  # notify/gate jobs act on its `breaking` output.
+  # reasoning. Detecting a breaking change itself never fails this job (the
+  # downstream notify/gate jobs act on its `breaking` output) - but the
+  # api-compatibility decision-file validation step below does fail the job
+  # when coverage/schema rules are violated; see heavy_api_compat_notify.
   heavy_api_schema_diff:
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
@@ -472,11 +474,18 @@ jobs:
     timeout-minutes: 15
     outputs:
       breaking: ${{ steps.diff.outputs.breaking }}
+      breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
+      compat_validation_error: ${{ steps.validate.outputs.error_output }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
         with:
           path: pr
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for api-compatibility diff)
+        working-directory: pr
+        run: git fetch origin main:refs/remotes/origin/main
 
       - name: Checkout main branch
         uses: actions/checkout@v7.0.1
@@ -510,6 +519,8 @@ jobs:
 
       - name: Dump PR branch OpenAPI spec
         working-directory: pr/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
         run: poetry run python scripts/dump_openapi.py --dev
 
       - name: Install main branch backend deps
@@ -518,6 +529,8 @@ jobs:
 
       - name: Dump main branch OpenAPI spec
         working-directory: main/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
         run: poetry run python scripts/dump_openapi.py --dev
 
       - name: Install oasdiff
@@ -529,6 +542,28 @@ jobs:
           bash pr/.github/scripts/ci/check-api-breaking-changes.sh \
             main/docs/docs/code/swagger/openapi.json \
             pr/docs/docs/code/swagger/openapi.json
+
+      - name: Generate oasdiff JSON report (for api-compatibility validation)
+        run: |
+          oasdiff breaking --format json \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json \
+            > oasdiff-report.json || true
+
+      - name: Compute breaking-change hash (for Slack notification dedup)
+        id: hash
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
+
+      - name: Validate api-compatibility decision files
+        id: validate
+        working-directory: pr
+        run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
+
+      - name: Write breaking changes summary to job summary
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
+
 
   # ---------- Human gate: required-reviewer approval for the breaking change ----------
   # Only runs when heavy_api_schema_diff found a breaking change - otherwise
@@ -548,23 +583,79 @@ jobs:
       - name: Breaking change approved
         run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.sha }}."
 
+  # ---------- Dedup: only notify Slack when the breaking-change set changed ----------
+  # Compares heavy_api_schema_diff's breaking_hash against the hash recorded
+  # on a sticky PR comment from the last time Slack was notified. Silent on
+  # a re-run with the same break(s); signals should_notify=true only for the
+  # first breaking change ever, or when the set of breaking changes changed.
+  # See docs/docs/backend/api-compatibility.md for the known trade-off (a
+  # fixed-then-reintroduced identical breaking change won't re-notify).
+  heavy_api_breaking_change_dedup:
+    name: Dedupe breaking-change Slack notification
+    needs: heavy_api_schema_diff
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      should_notify: ${{ steps.dedup.outputs.should_notify }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check whether this breaking-change set was already notified
+        id: dedup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/dedup-breaking-change-notify.sh \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}"
+
   # ---------- Slack notification on breaking API change ----------
   heavy_api_breaking_change_notify:
     name: Notify Slack of API breaking change
-    needs: heavy_api_schema_diff
-    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    needs: [heavy_api_schema_diff, heavy_api_breaking_change_dedup]
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_breaking_change_dedup.outputs.should_notify == 'true'
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
       text: |
-        *⚠️ Undeclared breaking API change detected*
+        *⚠️ Breaking API change requires approval*
 
-        This PR changes the API in a way that could break clients that
-        haven't updated yet. Approve the `api-breaking-change-review`
-        environment on the workflow run below only if this is a deliberate,
-        staged (expand-then-contract) change.
+        This PR contains a breaking API change. Review the summary below to
+        confirm the change is intentional and staged (expand-then-contract).
+        Click *Review pending deployments* to approve the `api-breaking-change-review`
+        environment and allow the PR to proceed.
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
+    secrets: inherit
+
+  # ---------- Slack notification on api-compatibility validation failure ----------
+  # Fires when the "API breaking-change check" job fails - in practice this
+  # is almost always validate-compat-files.sh rejecting the PR (e.g. a
+  # breaking change with no covering decision file, or an invalid decision
+  # file). `always()` is required because a failed `needs:` job otherwise
+  # skips its dependents by default.
+  heavy_api_compat_notify:
+    name: Notify Slack of api-compatibility validation failure
+    needs: heavy_api_schema_diff
+    if: always() && needs.heavy_api_schema_diff.result == 'failure'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *🚨 api-compatibility validation failed*
+
+        The "API breaking-change check" job failed on this PR - most likely
+        `validate-compat-files.sh` rejected a breaking API change because it
+        isn't covered by a valid decision file. Open the run below to fix it
+        (see docs/docs/backend/api-compatibility.md for a walk through).
 
         *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
         *Author:* ${{ github.actor }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
+        ```
+        ${{ needs.heavy_api_schema_diff.outputs.compat_validation_error }}
+        ```
     secrets: inherit

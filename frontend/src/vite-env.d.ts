@@ -8,3 +8,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/**
+ * Baked in at build time (Vite `define`, see vite.config.ts) from the
+ * repo-root api-compatibility/ decision files. See
+ * src/lib/compat-generation/compatGeneration.ts.
+ */
+declare const __COMPAT_GENERATION__: number;

@@ -26,6 +26,19 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
+// Mock connectivity and forced-reload hooks used by TeachingLayout
+vi.mock("@lib/connectivity", () => ({
+  useConnectivity: () => ({
+    isOnline: true,
+    isReconnected: false,
+    lastSyncedAt: null,
+  }),
+}));
+
+vi.mock("@lib/compat-generation", () => ({
+  useForcedReload: () => ({ phase: "idle" }),
+}));
+
 import { api } from "@/lib/api";
 import TeachingDashboard from "./TeachingDashboard";
 import SyncStatus from "./SyncStatus";

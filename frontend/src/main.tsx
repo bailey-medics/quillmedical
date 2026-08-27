@@ -50,10 +50,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
-import {
-  checkForUpdateAndReloadIfSafe,
-  isRouteSafeForReload,
-} from "@lib/swUpdateGate";
+import { wireUpdateChecks } from "@lib/swUpdateGate";
 
 import RootLayout from "./RootLayout";
 import AdminPage from "./pages/AdminPage";
@@ -98,6 +95,8 @@ import AccountPage from "./pages/settings/AccountPage";
 
 // NEW: auth imports
 import { AuthProvider } from "./auth/AuthContext";
+import ForcedReloadGate from "@lib/compat-generation/ForcedReloadGate";
+import { ForcedReloadProvider } from "@lib/compat-generation";
 import { ConnectivityProvider } from "@lib/connectivity";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
@@ -480,9 +479,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     defaultColorScheme="light"
   >
     <ConnectivityProvider>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ForcedReloadProvider>
+        <AuthProvider>
+          <ForcedReloadGate />
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ForcedReloadProvider>
     </ConnectivityProvider>
   </MantineProvider>,
 );
@@ -505,30 +507,9 @@ if ("serviceWorker" in navigator) {
       // waiting worker (via the reload-loop-guarded gate below, which
       // triggers the controllerchange listener above) when the
       // currently-rendered route opts in via `handle.safeForReload`.
-      const runUpdateCheck = (hasFlash: boolean) => {
-        void checkForUpdateAndReloadIfSafe({
-          registration: reg,
-          isProd: import.meta.env.PROD,
-          routeIsSafe: isRouteSafeForReload(router.state.matches),
-          hasFlash,
-        });
-      };
-
-      const currentHasFlash = (): boolean =>
-        Boolean(
-          (router.state.location.state as { flash?: unknown } | null)?.flash,
-        );
-
-      // Navigation trigger: re-checks every time the matched route changes.
-      router.subscribe(() => runUpdateCheck(currentHasFlash()));
-
-      // Hourly trigger: catches a tab that stays on one safe route without
-      // navigating away.
-      setInterval(() => runUpdateCheck(false), 60 * 60 * 1000);
-
-      // Also check once on load, in case a build already shipped while
-      // this tab was open before its first navigation.
-      runUpdateCheck(currentHasFlash());
+      // Wiring itself lives in swUpdateGate.ts's `wireUpdateChecks` so it
+      // can be covered by tests without a real browser navigation/timer.
+      wireUpdateChecks(router, reg, import.meta.env.PROD);
     } catch (err) {
       console.error("Service worker registration failed:", err);
     }

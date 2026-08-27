@@ -2,6 +2,7 @@
 agent: "agent"
 name: crp
 description: Commit, rebase, and push code
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Commit, rebase, and push code
@@ -30,7 +31,10 @@ If no argument is given, default to **quillmedical**.
 6. If pre-commit hooks fail:
    - For auto-fixable issues (formatting, linting): apply fixes and re-commit.
    - For complex issues: report what needs manual attention.
-7. Rebase if the branch is behind main, resolve any conflicts, and ensure tests pass. Force push if the rebase rewrites history.
+7. Fetch the latest `main` (`git fetch origin main`) before checking whether
+   the branch is behind — a stale local `main` ref will falsely report the
+   branch as up to date. Rebase onto `origin/main` if behind, resolve any
+   conflicts, and ensure tests pass. Force push if the rebase rewrites history.
 8. Push to current branch (do not create a new branch).
 
 If at any step there's an error requiring human judgement, stop and report the issue.

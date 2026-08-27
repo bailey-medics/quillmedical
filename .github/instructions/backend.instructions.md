@@ -127,6 +127,49 @@ the baseline included — is held to the full standard below.
   transactional DDL) instead of queueing behind a long-running query and
   stalling all traffic to that table.
 
+## API response typing (Pydantic response models)
+
+Every route needs a typed Pydantic `response_model=` (and a matching
+return-type annotation) — never `-> dict[str, Any]`, `-> dict[str, X]`,
+or a bare `-> Any`. A response schema with no `properties` is invisible
+to `oasdiff`: a field can be silently removed with zero flagged breaking
+changes, defeating the API compatibility enforcement below entirely.
+This isn't hypothetical — it's exactly how a removed field escaped
+review and prompted
+`docs/docs/plans/2026-08-25-api-schema-coverage-plan.md`.
+
+- Enforced statically by `backend/scripts/check_api_schema_coverage.py`
+  (pre-commit and CI), which walks the real OpenAPI spec and flags any
+  response schema `oasdiff` can't meaningfully diff by field — a bare
+  object with no `properties`, `dict[str, X]` (renders as
+  `additionalProperties` only, still no named fields), an untyped
+  array, or an `Optional`/union with an opaque branch.
+- Response models live in `backend/app/schemas/`, one module per
+  feature area (`auth.py`, `patients.py`, `messaging.py`, etc.).
+- **Genuinely dynamic external-system payloads** (a raw FHIR resource,
+  an openEHR composition) still need real typing wherever they form the
+  entire response body, since wrapping them in an envelope after the
+  fact is a breaking change. Model the fields your own code actually
+  sets or reads — not the full external spec — and set
+  `model_config = ConfigDict(extra="allow")` so any other field the
+  external system returns still passes through unchanged. See
+  `FhirPatientResource` in `backend/app/schemas/patients.py`.
+- Where such a payload is nested inside an already-typed envelope
+  (rather than being the whole response body), it's fine to leave that
+  inner field `dict[str, Any]` — the coverage check only inspects a
+  response's top-level schema, matching what `oasdiff` can actually
+  diff (whether a top-level field appeared or disappeared), not deep
+  field-by-field structure.
+- One inline marker, checked the same way `DESTRUCTIVE_MARKER` is
+  above — a comment on the line immediately above the route decorator:
+  `# api-schema-check: allow-opaque-permanent` (a route that genuinely
+  never returns JSON, e.g. `FileResponse` — the checker verifies this
+  against the function's actual return type rather than just trusting
+  the marker). A second marker, `allow-opaque-grandfathered`, tracked
+  the retrofit of pre-existing opaque routes to typed responses; once
+  that retrofit finished, recognition of the string was deleted from
+  the checker entirely — not just left unused.
+
 ## API compatibility (expand-contract)
 
 Mirrors the database expand-contract rule above, applied to the API
@@ -161,3 +204,39 @@ depends on the current response/request shape for as long as it stays open.
   reusable `.github/workflows/slack-notify.yml`) with `oasdiff`'s changelog
   summary, so the approval prompt shows *what* is being confirmed rather
   than a bare "approve?".
+
+### Decision files: `api-compatibility/` folder
+
+- Every `oasdiff`-flagged breaking change also needs a YAML decision file
+  under `api-compatibility/` at the repo root recording the
+  `forces_reload` verdict for that change — not a substitute for the
+  environment approval above, an addition to it. The file itself can be
+  drafted with LLM help like any other content; the actual human-only
+  gate is the `api-breaking-change-review` required-reviewer environment
+  approval, a distinct GitHub Actions UI/app action nothing in the diff
+  can satisfy. Coverage is enforced by CI
+  (`.github/scripts/ci/validate-compat-files.sh`): every flagged change
+  (by exact `id`+`operation`+`path`+`text`) must have a matching file, or
+  the build fails. Two properties removed from the same endpoint are two
+  separate flagged changes and need two separate files.
+- Create a YAML file with `python backend/scripts/new_compat_decision.py` — it
+  prompts for the exact oasdiff change string (copy verbatim from the CI
+  log) and whether the change needs a forced reload of open tabs
+  (interactive `y`/`n` prompt, written to the file as boolean
+  `forces_reload: true`/`false`), plus a reason, then writes
+  `api-compatibility/YYYYMMDDHHMMSS-<slug>.yaml` with an auto-computed
+  `generation` number.
+- `forces_reload: true` means every open browser tab is incompatible and
+  must reload immediately (bumps the shared `Compat-Generation` value,
+  triggering the client's forced-reload overlay); `forces_reload: false`
+  means the existing silent background-update mechanism (hourly timer or
+  navigation) is sufficient — this covers the vast majority of changes
+  (additions, deprecations, optional-field removals).
+- Once merged, a decision file's `generation`, `forces_reload`, and
+  `change` fields are immutable — never edit them retroactively, and
+  never delete a file. If a decision is superseded, add a new file
+  instead. Only `reason` may be edited later, via the same
+  `api-breaking-change-review` gate.
+- Full detail: `docs/docs/backend/api-compatibility.md` (why this exists,
+  the client-side forced-reload mechanism, the `Compat-Generation`
+  header).

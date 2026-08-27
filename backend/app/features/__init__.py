@@ -2,7 +2,7 @@
 
 Provides ``requires_feature`` — a FastAPI dependency that checks whether
 any of the authenticated user's organisations has a given feature enabled.
-Same ergonomics as ``has_competency`` in ``app.cbac.decorators``.
+Same ergonomics as ``has_competency`` in ``app.deps``.
 """
 
 from collections.abc import Callable
@@ -32,7 +32,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         )
         def list_items(...): ...
 
-    Returns 403 if the user has no primary org or the feature is not enabled.
+    Returns 403 if the user has no organisation or the feature is not enabled.
     """
 
     def _check(

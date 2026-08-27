@@ -1,4 +1,3 @@
-# alembic/env.py
 from __future__ import annotations
 
 # --- Make 'app' importable when running from alembic/ ---
@@ -59,11 +58,6 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        # Fail fast instead of queueing behind a long-running query/lock.
-        # SET (not SET LOCAL) is session-scoped and survives commit/rollback,
-        # so it's safe to close this transaction here — and necessary,
-        # otherwise it stays open and context.begin_transaction() below nests
-        # the real migration in a SAVEPOINT that's never committed with it.
         connection.execute(text("SET lock_timeout = '3s'"))
         connection.execute(text("SET statement_timeout = '30s'"))
         connection.commit()
