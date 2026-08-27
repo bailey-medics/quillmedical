@@ -681,3 +681,26 @@ jobs:
         run: |
           bash .github/scripts/ci/write-destructive-migrations-summary.sh \
             "${{ steps.detect.outputs.report }}"
+
+  # ---------- Human gate: destructive DB migration requires approval ----------
+  # Sits downstream of the detection job and runs only when a newly-added
+  # migration drops a column, table, or constraint. The `environment:` key is
+  # what blocks the run: db-destructive-migration-review has a required
+  # reviewer, so the job waits on a human clicking "Review deployments". That
+  # approval is the accountable decision the marker comment cannot provide -
+  # nothing in the diff can satisfy it.
+  heavy_db_destructive_migration_gate:
+    name: DB destructive migration review gate
+    needs: heavy_db_destructive_migration_check
+    if: needs.heavy_db_destructive_migration_check.outputs.destructive == 'true'
+    runs-on: ubuntu-24.04
+    environment: db-destructive-migration-review
+    timeout-minutes: 30
+    steps:
+      - name: Destructive migration approved
+        run: |
+          echo "Destructive DB migration approved by ${{ github.actor }} for commit ${{ github.sha }}."
+          echo "Approved migrations:"
+          cat <<'REPORT'
+          ${{ needs.heavy_db_destructive_migration_check.outputs.report }}
+          REPORT

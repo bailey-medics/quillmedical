@@ -131,7 +131,10 @@ false`, and a comment carrying the same accountability rationale (a
 ## Phase 4: Human gate job
 
 **Sequencing hazard, found during implementation — Phase 3 must be applied
-before this phase merges.** The gate's entire blocking power comes from the
+before this phase merges. Resolved: Phase 3's `terraform apply` ran on
+2026-08-27 and both environments were verified live via the GitHub API
+(`can_admins_bypass: false`, reviewer `Cotswoldsmaker`) before this phase was
+committed.** The gate's entire blocking power comes from the
 `db-destructive-migration-review` environment having a required reviewer. That
 environment is created by Phase 3's Terraform, and `terraform apply` is a
 manual step. If this phase merges first, the environment does not yet exist
