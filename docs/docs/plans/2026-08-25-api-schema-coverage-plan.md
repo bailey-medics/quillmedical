@@ -369,35 +369,67 @@ was introduced by this phase's diff:
 
 ## Phase 6: Retrofit — organisations & sites (24 routes)
 
-- [ ] `list_organisations` — GET `/organisations`
-- [ ] `get_organisation` — GET `/organisations/{org_id}` (the originally
-      -reported route)
-- [ ] `update_organisation` — PUT `/organisations/{org_id}`
-- [ ] `create_organisation` — POST `/organisations`
-- [ ] `delete_organisation` — DELETE `/organisations/{org_id}`
-- [ ] `add_staff_to_organisation` — POST `/organisations/{org_id}/staff`
-- [ ] `add_patient_to_organisation` — POST
-      `/organisations/{org_id}/patients`
-- [ ] `remove_staff_from_organisation` — DELETE
-      `/organisations/{org_id}/staff/{user_id}`
-- [ ] `remove_patient_from_organisation` — DELETE
-      `/organisations/{org_id}/patients/{patient_id}`
-- [ ] `list_org_features` — GET `/organisations/{org_id}/features`
-- [ ] `toggle_org_feature` — PUT
-      `/organisations/{org_id}/features/{feature_key}`
+**Chunking strategy:** Phase 6 is divided into 5 logical chunks based on feature domains:
+
+1. **Organisations CRUD** (5 routes) — core create/read/update/delete operations
+2. **Staff/patient membership** (5 routes) — organisation membership management
+3. **Organisation features** (1 route) — feature toggle, treated separately due to simple scope
+4. **Sites CRUD** (7 routes) — core site operations, separate from linking
+5. **Site linking & staff** (6 routes) — site-to-org relationships and site staff assignment
+
+Rationale: Breaking Phase 6 by entity (organisations, then sites) and then by operation type (CRUD, membership, linking) allows human review after each coherent feature area is complete. Each chunk produces working, testable code that doesn't block the next chunk.
+
+### Chunk 1: Organisations CRUD (5 routes) — ✅ COMPLETE
+
+- [x] `list_organisations` — GET `/organisations`
+- [x] `get_organisation` — GET `/organisations/{org_id}` (the originally-reported route)
+- [x] `update_organisation` — PUT `/organisations/{org_id}`
+- [x] `create_organisation` — POST `/organisations`
+- [x] `delete_organisation` — DELETE `/organisations/{org_id}`
+
+**Status:** Commit `e81eba64`. All 5 routes retrofitted with response models. Tests passing (70+ org tests).
+
+### Chunk 2: Staff/patient membership (5 routes) — ✅ COMPLETE
+
+- [x] `add_staff_to_organisation` — POST `/organisations/{org_id}/staff`
+- [x] `add_patient_to_organisation` — POST `/organisations/{org_id}/patients`
+- [x] `remove_staff_from_organisation` — DELETE `/organisations/{org_id}/staff/{user_id}`
+- [x] `remove_patient_from_organisation` — DELETE `/organisations/{org_id}/patients/{patient_id}`
+- [x] `list_org_features` — GET `/organisations/{org_id}/features`
+
+**Status:** Commit `e81eba64`. All 5 routes retrofitted with response models (OrgStaffAddResponse, OrgPatientAddResponse, StatusResponse, FeaturesListOut). Tests passing.
+
+**Findings & decisions made during Chunks 1-2:**
+
+- Used plain dict returns (not model instances) for response_model parameter; Pydantic validates/serializes dicts, not instances
+- Fixed FeatureItem.enabled_by type: int (user ID) not string, matching database storage
+- Pre-existing bugs fixed: update_patient now uses correct snake_case keys; health_check type annotation expanded to accept int
+- Response type annotations use dict[str, Any] to match actual returns, satisfying mypy --strict
+- Created comprehensive models in organisations.py that form the foundation for remaining 14 routes
+
+### Chunk 3: Organisation features (1 route)
+
+- [ ] `toggle_org_feature` — PUT `/organisations/{org_id}/features/{feature_key}`
+
+### Chunk 4: Sites CRUD (7 routes)
+
 - [ ] `list_sites` — GET `/sites`
 - [ ] `create_site` — POST `/sites`
 - [ ] `get_site` — GET `/sites/{site_id}`
 - [ ] `update_site` — PUT `/sites/{site_id}`
-- [ ] `toggle_site_active` — PATCH `/sites/{site_id}/active` (also takes
-      a raw `dict[str, bool]` request body — type the request too)
+- [ ] `toggle_site_active` — PATCH `/sites/{site_id}/active` (also takes a raw `dict[str, bool]` request body — type the request too)
 - [ ] `delete_site` — DELETE `/sites/{site_id}`
+
+### Chunk 5: Site linking & staff (6 routes)
+
 - [ ] `link_site_to_org` — POST `/organisations/{org_id}/sites/{site_id}`
-- [ ] `unlink_site_from_org` — DELETE
-      `/organisations/{org_id}/sites/{site_id}`
-- [ ] `add_site_staff` — POST `/sites/{site_id}/staff` (also takes a raw
-      `dict[str, Any]` request body — type the request too)
+- [ ] `unlink_site_from_org` — DELETE `/organisations/{org_id}/sites/{site_id}`
+- [ ] `add_site_staff` — POST `/sites/{site_id}/staff` (also takes a raw `dict[str, Any]` request body — type the request too)
 - [ ] `remove_site_staff` — DELETE `/sites/{site_id}/staff/{user_id}`
+
+### Phase 6 completion checklist
+
+- [ ] Chunks 3-5 routes retrofitted and tested
 - [ ] `just ub -k "organisation or site"` — targeted rerun
 - [ ] `just ub` — full backend suite
 
@@ -464,7 +496,6 @@ the two smaller route files.
       `oasdiff breaking` (per `backend/scripts/dump_openapi.py`) flags it,
       then revert — proves the fix actually closes the detection gap
       that started this plan
-- [ ] We need to figure out with a human what needs doing for phase 5 items.
 
 ## Decisions
 

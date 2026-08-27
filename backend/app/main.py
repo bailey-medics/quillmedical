@@ -154,6 +154,7 @@ from app.schemas.organisations import (
     CreateOrganisationIn,
     CreateSiteIn,
     FeaturesListOut,
+    FeatureToggleResponse,
     OrganisationDetailOut,
     OrganisationOut,
     OrganisationsListOut,
@@ -4124,9 +4125,9 @@ def list_org_features(
     }
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.put(
     "/organisations/{org_id}/features/{feature_key}",
+    response_model=FeatureToggleResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def toggle_org_feature(
