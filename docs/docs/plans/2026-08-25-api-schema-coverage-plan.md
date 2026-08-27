@@ -367,15 +367,15 @@ was introduced by this phase's diff:
   `dict[str, ServiceHealthStatus | dict[str, bool | str | None]]`.
   Predates this phase; flagged for a separate fix.
 
-## Phase 6: Retrofit — organisations & sites (24 routes)
+## Phase 6: Retrofit — organisations & sites (21 routes)
 
 **Chunking strategy:** Phase 6 is divided into 5 logical chunks based on feature domains:
 
 1. **Organisations CRUD** (5 routes) — core create/read/update/delete operations
 2. **Staff/patient membership** (5 routes) — organisation membership management
 3. **Organisation features** (1 route) — feature toggle, treated separately due to simple scope
-4. **Sites CRUD** (7 routes) — core site operations, separate from linking
-5. **Site linking & staff** (6 routes) — site-to-org relationships and site staff assignment
+4. **Sites CRUD** (6 routes) — core site operations, separate from linking
+5. **Site linking & staff** (4 routes) — site-to-org relationships and site staff assignment
 
 Rationale: Breaking Phase 6 by entity (organisations, then sites) and then by operation type (CRUD, membership, linking) allows human review after each coherent feature area is complete. Each chunk produces working, testable code that doesn't block the next chunk.
 
@@ -407,18 +407,22 @@ Rationale: Breaking Phase 6 by entity (organisations, then sites) and then by op
 - Response type annotations use dict[str, Any] to match actual returns, satisfying mypy --strict
 - Created comprehensive models in organisations.py that form the foundation for remaining 14 routes
 
-### Chunk 3: Organisation features (1 route)
+### Chunk 3: Organisation features (1 route) — ✅ COMPLETE
 
-- [ ] `toggle_org_feature` — PUT `/organisations/{org_id}/features/{feature_key}`
+- [x] `toggle_org_feature` — PUT `/organisations/{org_id}/features/{feature_key}`
 
-### Chunk 4: Sites CRUD (7 routes)
+**Status:** Commit `a5b30104`. Route retrofitted with response_model=FeatureToggleResponse. Tests passing.
 
-- [ ] `list_sites` — GET `/sites`
-- [ ] `create_site` — POST `/sites`
-- [ ] `get_site` — GET `/sites/{site_id}`
-- [ ] `update_site` — PUT `/sites/{site_id}`
-- [ ] `toggle_site_active` — PATCH `/sites/{site_id}/active` (also takes a raw `dict[str, bool]` request body — type the request too)
-- [ ] `delete_site` — DELETE `/sites/{site_id}`
+### Chunk 4: Sites CRUD (6 routes) — ✅ COMPLETE
+
+- [x] `list_sites` — GET `/sites`
+- [x] `create_site` — POST `/sites`
+- [x] `get_site` — GET `/sites/{site_id}`
+- [x] `update_site` — PUT `/sites/{site_id}`
+- [x] `toggle_site_active` — PATCH `/sites/{site_id}/active` (also takes a Pydantic request body — now typed as ToggleSiteActiveIn)
+- [x] `delete_site` — DELETE `/sites/{site_id}`
+
+**Status:** Commit pending. All 6 routes retrofitted with response models (SitesListOut, SiteOut, SiteDetailOut, StatusResponse). Changed toggle_site_active from dict[str, bool] to ToggleSiteActiveIn. Tests passing (10+ site tests).
 
 ### Chunk 5: Site linking & staff (6 routes)
 
