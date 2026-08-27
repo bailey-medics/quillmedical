@@ -30,7 +30,7 @@ describe("MultiSelectField", () => {
     const user = userEvent.setup();
     renderWithMantine(<MultiSelectField label="Participants" data={options} />);
 
-    await user.click(screen.getByRole("textbox"));
+    await user.click(screen.getByRole("combobox"));
     expect(screen.getByText("Dr Corbett")).toBeInTheDocument();
     expect(screen.getByText("Nurse Adams")).toBeInTheDocument();
   });
@@ -50,6 +50,6 @@ describe("MultiSelectField", () => {
     renderWithMantine(
       <MultiSelectField label="Participants" data={options} disabled />,
     );
-    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByRole("combobox")).toBeDisabled();
   });
 });

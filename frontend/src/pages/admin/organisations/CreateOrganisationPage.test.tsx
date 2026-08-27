@@ -47,7 +47,7 @@ describe("CreateOrganisationPage", () => {
     it("renders type select", () => {
       renderWithRouter(<CreateOrganisationPage />);
       expect(
-        screen.getByRole("textbox", { name: /organisation type/i }),
+        screen.getByRole("combobox", { name: /organisation type/i }),
       ).toBeInTheDocument();
     });
 
@@ -108,7 +108,7 @@ describe("CreateOrganisationPage", () => {
         "Test Hospital",
       );
       await user.click(
-        screen.getByRole("textbox", { name: /organisation type/i }),
+        screen.getByRole("combobox", { name: /organisation type/i }),
       );
       await user.click(screen.getByText("Hospital team"));
       await user.type(screen.getByLabelText(/location/i), "London");
@@ -140,7 +140,7 @@ describe("CreateOrganisationPage", () => {
         "Test Hospital",
       );
       await user.click(
-        screen.getByRole("textbox", { name: /organisation type/i }),
+        screen.getByRole("combobox", { name: /organisation type/i }),
       );
       await user.click(screen.getByText("Hospital team"));
 
@@ -163,7 +163,7 @@ describe("CreateOrganisationPage", () => {
         "Test Hospital",
       );
       await user.click(
-        screen.getByRole("textbox", { name: /organisation type/i }),
+        screen.getByRole("combobox", { name: /organisation type/i }),
       );
       await user.click(screen.getByText("Hospital team"));
 

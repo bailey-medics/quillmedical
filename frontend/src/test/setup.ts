@@ -58,3 +58,14 @@ global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
 } as unknown as typeof ResizeObserver;
+
+// Mock document.fonts (used by Mantine Textarea autosize to recalculate
+// height once web fonts finish loading; jsdom does not implement the
+// FontFaceSet API at all)
+Object.defineProperty(document, "fonts", {
+  writable: true,
+  value: {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  },
+});
