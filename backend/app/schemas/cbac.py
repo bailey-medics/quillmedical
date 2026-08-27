@@ -68,3 +68,15 @@ class PrescriptionRequest(BaseModel):
     medication: str
     dose: str
     duration_days: int
+
+
+class PrescriptionResponse(BaseModel):
+    """Example prescription confirmation schema."""
+
+    status: str
+    prescription_id: str
+    prescriber: str
+    patient_id: str
+    medication: str
+    dose: str
+    duration_days: int

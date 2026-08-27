@@ -465,23 +465,29 @@ diffed against a `main` worktree's spec) rather than guessed wording.
 - [x] `just ub -k "organisation or site"` — targeted rerun
 - [x] `just ub` — full backend suite
 
-## Phase 7: Retrofit — remaining outliers (11 routes)
+## Phase 7: Retrofit — remaining outliers (6 routes)
 
 Routes that slipped through in otherwise well-typed feature areas, plus
 the two smaller route files.
 
-- [ ] `prescribe_controlled` — POST `/prescriptions/controlled`
+(Corrected from "(11 routes)" in this section's original heading — the
+6 items below match the 6 remaining `allow-opaque-grandfathered` markers
+in the codebase, and 16+9+18+21+6 = 70, the plan's own stated total for
+Phases 3-7. The heading count was a typo, same class of error as
+Chunk 5's.)
+
+- [x] `prescribe_controlled` — POST `/prescriptions/controlled`
       (`backend/app/main.py`) — sibling CBAC routes already use
       `response_model=UserCompetenciesResponse`; follow that pattern
-- [ ] `mark_read_endpoint` — POST
+- [x] `mark_read_endpoint` — POST
       `/conversations/{conversation_id}/read` (`backend/app/main.py`) —
       sole opaque route among 9 fully `response_model`-typed messaging
       siblings
-- [ ] `ci_teaching_sync` — POST `/ci/teaching/sync` (`backend/app/main.py`)
-- [ ] `subscribe` — POST `/api/push/subscribe` (`backend/app/push.py`)
-- [ ] `send_test` — POST `/api/push/send-test`
+- [x] `ci_teaching_sync` — POST `/ci/teaching/sync` (`backend/app/main.py`)
+- [x] `subscribe` — POST `/api/push/subscribe` (`backend/app/push.py`)
+- [x] `send_test` — POST `/api/push/send-test`
       (`backend/app/push_send.py`)
-- [ ] `download_certificate` — GET
+- [x] `download_certificate` — GET
       `/api/teaching/assessments/{assessment_id}/certificate`
       (`backend/app/features/teaching/router.py`) — returns a raw PDF
       `Response`; likely belongs in the permanent
@@ -489,9 +495,61 @@ the two smaller route files.
       routes rather than being retrofitted, since there's no JSON shape
       to type — decide during this phase and record the outcome in the
       Decisions table
-- [ ] `just ub -k "prescription or conversation or push or certificate"`
+- [x] `just ub -k "prescription or conversation or push or certificate"`
       — targeted rerun
-- [ ] `just ub` — full backend suite
+- [x] `just ub` — full backend suite
+
+**Phase 7 summary** — Retrofit 5 routes with typed Pydantic response
+models, plus 1 (`download_certificate`) reclassified to the permanent
+marker:
+
+- `prescribe_controlled` → `PrescriptionResponse` (new, in
+  `schemas/cbac.py`, alongside the existing `PrescriptionRequest`)
+- `mark_read_endpoint` → `MarkReadOut` (new, in `schemas/messaging.py`)
+- `ci_teaching_sync` → `CiTeachingSyncOut` / `CiSyncBankResult` /
+  `CiSyncErrorItem` (new, in `features/teaching/schemas.py` — this route
+  lives in `main.py` but is teaching-domain, so its models joined the
+  teaching feature's existing schema module rather than starting a new
+  one)
+- `subscribe` → `SubscribeOut` (new, colocated in `push.py` alongside
+  its sibling request models — that file defines its Pydantic models
+  inline rather than in `schemas/`, so this follows the file's own
+  existing convention rather than the repo-wide one)
+- `send_test` → `SendTestOut` (new, colocated in `push_send.py`, same
+  reasoning as `subscribe`)
+- `download_certificate` → marker changed from
+  `allow-opaque-grandfathered` to `allow-opaque-permanent`, per the
+  plan's own prediction: it returns a raw PDF `Response` with no JSON
+  shape to type. Return annotation changed from `-> Any` to `-> Response`
+  (moved the previously function-local `from fastapi.responses import
+  Response` to a module-level import) so the checker's permanent-marker
+  return-type verification actually matches against something —
+  `allow-opaque-permanent` requires the annotation be one of a fixed
+  set of non-JSON response classes, and `Any` isn't one of them.
+
+Also fixed a heading-count typo (same class as Chunk 5's): the section
+said "(11 routes)" but always listed 6, and 16+9+18+21+6 = 70 confirms 6
+is correct.
+
+Test coverage findings: 3 of these 6 routes (`prescribe_controlled`,
+`ci_teaching_sync`, `download_certificate`) had **zero** prior test
+coverage. Added `test_prescribe_controlled.py` (auth-required, 403
+without competency, 201 success with competency),
+`test_ci_teaching_sync.py` (token not configured → 503, missing/invalid
+bearer → 401, no-banks-found response shape), and a
+`TestDownloadCertificate` class in `test_teaching_router.py`
+(auth-required, nonexistent assessment → 404, incomplete assessment →
+400) — cheap route-level tests that don't require the full PDF/GCS
+fixture machinery already covered at the unit level in
+`test_teaching_certificate.py`. `mark_read_endpoint`, `subscribe`, and
+`send_test` already had solid coverage; no new tests needed there.
+`mypy --strict` on all touched files shows the same 21 pre-existing
+errors as before this phase (verified via `git stash`) — zero new
+errors introduced. Re-ran `oasdiff breaking` against `origin/main` after
+this phase (via the same local-`oasdiff` + `main`-worktree approach as
+Chunk 5) and confirmed zero new breaking-change findings — the 3 findings
+still present are the already-decided Chunk 5 ones, not yet merged to
+`main`.
 
 ## Phase 8: Final verification
 

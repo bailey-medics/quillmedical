@@ -58,6 +58,11 @@ from app.ehrbase_client import (
     list_letters_for_patient,
 )
 from app.email_send import send_email
+from app.features.teaching.schemas import (
+    CiSyncBankResult,
+    CiSyncErrorItem,
+    CiTeachingSyncOut,
+)
 from app.fhir_client import (
     FhirClientError,
     FhirCommunicationError,
@@ -130,6 +135,7 @@ from app.schemas.auth import (
 )
 from app.schemas.cbac import (
     PrescriptionRequest,
+    PrescriptionResponse,
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
@@ -144,6 +150,7 @@ from app.schemas.messaging import (
     ConversationOut,
     ConversationStatusUpdateIn,
     InviteExternalIn,
+    MarkReadOut,
     MessageCreateIn,
     MessageOut,
     ParticipantOut,
@@ -3347,9 +3354,9 @@ async def get_my_competencies(
     )
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/prescriptions/controlled",
+    response_model=PrescriptionResponse,
     tags=["cbac", "prescriptions"],
     status_code=201,
 )
@@ -3357,7 +3364,7 @@ async def prescribe_controlled(
     prescription: PrescriptionRequest,
     user: User = Depends(has_competency("prescribe_controlled_schedule_2")),
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PrescriptionResponse:
     """Prescribe controlled substance (Schedule 2).
 
     Example endpoint demonstrating CBAC protection. Only users with
@@ -3373,21 +3380,21 @@ async def prescribe_controlled(
         db: Database session
 
     Returns:
-        dict: Prescription confirmation
+        PrescriptionResponse: Prescription confirmation
 
     Raises:
         HTTPException: 403 if user lacks competency
     """
     # In real implementation, this would create prescription in database
-    return {
-        "status": "success",
-        "prescription_id": "RX001",
-        "prescriber": user.username,
-        "patient_id": prescription.patient_id,
-        "medication": prescription.medication,
-        "dose": prescription.dose,
-        "duration_days": prescription.duration_days,
-    }
+    return PrescriptionResponse(
+        status="success",
+        prescription_id="RX001",
+        prescriber=user.username,
+        patient_id=prescription.patient_id,
+        medication=prescription.medication,
+        dose=prescription.dose,
+        duration_days=prescription.duration_days,
+    )
 
 
 @router.patch(
@@ -5348,16 +5355,16 @@ def join_conversation_endpoint(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/conversations/{conversation_id}/read",
+    response_model=MarkReadOut,
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def mark_read_endpoint(
     conversation_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, bool]:
+) -> MarkReadOut:
     """Mark a conversation as read for the current user.
 
     Args:
@@ -5366,7 +5373,7 @@ def mark_read_endpoint(
         db: Database session.
 
     Returns:
-        dict: Success status.
+        MarkReadOut: Success status.
 
     Raises:
         HTTPException: 404 if not found or user is not a participant.
@@ -5376,7 +5383,7 @@ def mark_read_endpoint(
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return {"ok": True}
+    return MarkReadOut(ok=True)
 
 
 from app.features.teaching.router import teaching_router  # noqa: E402
@@ -5385,12 +5392,11 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/ci/teaching/sync")
+@router.post("/ci/teaching/sync", response_model=CiTeachingSyncOut)
 def ci_teaching_sync(
     request: Request,
     db: Session = Depends(get_core_db),
-) -> dict[str, Any]:
+) -> CiTeachingSyncOut:
     """Trigger teaching content sync from CI/CD pipeline.
 
     Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
@@ -5436,7 +5442,9 @@ def ci_teaching_sync(
         bank_ids = discover_local_banks(base_path)
 
     if not bank_ids:
-        return {"synced": [], "errors": [], "message": "No banks found"}
+        return CiTeachingSyncOut(
+            synced=[], errors=[], message="No banks found"
+        )
 
     # Resolve the organisation — use the first org that has
     # a teaching bank configured, or the first org in the system
@@ -5447,8 +5455,8 @@ def ci_teaching_sync(
     ).scalar_one_or_none()
     org_id = existing_config.organisation_id if existing_config else 1
 
-    synced: list[dict[str, str]] = []
-    errors: list[dict[str, str]] = []
+    synced: list[CiSyncBankResult] = []
+    errors: list[CiSyncErrorItem] = []
 
     for bank_id in bank_ids:
         bank_path: Path | None = None
@@ -5480,17 +5488,17 @@ def ci_teaching_sync(
                 tooling_errors = run_tooling_validation(tooling_module_dir)
                 if tooling_errors:
                     msg = "; ".join(e["message"] for e in tooling_errors[:5])
-                    errors.append({"bank_id": bank_id, "error": msg})
+                    errors.append(CiSyncErrorItem(bank_id=bank_id, error=msg))
                     continue
             else:
                 errors.append(
-                    {
-                        "bank_id": bank_id,
-                        "error": (
+                    CiSyncErrorItem(
+                        bank_id=bank_id,
+                        error=(
                             "module directory not found — "
                             "cannot run tooling validation"
                         ),
-                    }
+                    )
                 )
                 continue
 
@@ -5512,18 +5520,20 @@ def ci_teaching_sync(
             )
             if sync_record:
                 synced.append(
-                    {"bank_id": bank_id, "version": str(sync_record.version)}
+                    CiSyncBankResult(
+                        bank_id=bank_id, version=str(sync_record.version)
+                    )
                 )
         except Exception as exc:
             logger.exception("CI sync: failed to sync bank '%s'", bank_id)
-            errors.append({"bank_id": bank_id, "error": str(exc)})
+            errors.append(CiSyncErrorItem(bank_id=bank_id, error=str(exc)))
         finally:
             if is_temp and bank_path:
                 shutil.rmtree(bank_path.parent, ignore_errors=True)
             if tooling_is_temp and tooling_module_dir:
                 shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
 
-    return {"synced": synced, "errors": errors}
+    return CiTeachingSyncOut(synced=synced, errors=errors)
 
 
 app.include_router(router)
