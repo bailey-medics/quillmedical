@@ -87,6 +87,25 @@ who could each be equally lazy.
   reusable `.github/workflows/slack-notify.yml`, `channel: teaching`) with
   `oasdiff`'s changelog summary of what changed, so the approval prompt
   shows _what_ is being confirmed rather than a bare "approve?".
+- **Notification dedup**: `heavy_api_breaking_change_gate` re-requires
+  approval on every commit — deliberately, see above — but re-sending an
+  identical Slack ping on every one of those commits is just noise, not a
+  safety property. `heavy_api_breaking_change_dedup` hashes the set of
+  breaking changes (`compute-breaking-change-hash.sh`, sorted so ordering
+  doesn't affect the hash) and compares it against the hash recorded on a
+  sticky PR comment from the last time Slack fired
+  (`dedup-breaking-change-notify.sh`, found/edited in place via a hidden
+  `<!-- breaking-api-change-hash: ... -->` marker). Slack only fires again
+  when that hash changes — the first breaking change on a PR, or a later
+  commit that alters which changes are breaking — never on a re-push that
+  leaves the same break(s) in place. State lives in a PR comment rather
+  than `actions/cache` because cache entries are branch/key-scoped, evict
+  after inactivity, and can't be overwritten in place, whereas a comment is
+  simple, persists indefinitely, and doubles as a visible audit trail.
+  Known trade-off: if a breaking change is fixed and later reintroduced
+  identically, the stale marker still matches and Slack stays silent —
+  accepted because the ask was "once per distinct breaking-change set",
+  and the gate's fresh-approval requirement is unaffected either way.
 
 ## Decision files: `api-compatibility/` folder
 

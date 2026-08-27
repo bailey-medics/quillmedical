@@ -127,6 +127,49 @@ the baseline included — is held to the full standard below.
   transactional DDL) instead of queueing behind a long-running query and
   stalling all traffic to that table.
 
+## API response typing (Pydantic response models)
+
+Every route needs a typed Pydantic `response_model=` (and a matching
+return-type annotation) — never `-> dict[str, Any]`, `-> dict[str, X]`,
+or a bare `-> Any`. A response schema with no `properties` is invisible
+to `oasdiff`: a field can be silently removed with zero flagged breaking
+changes, defeating the API compatibility enforcement below entirely.
+This isn't hypothetical — it's exactly how a removed field escaped
+review and prompted
+`docs/docs/plans/2026-08-25-api-schema-coverage-plan.md`.
+
+- Enforced statically by `backend/scripts/check_api_schema_coverage.py`
+  (pre-commit and CI), which walks the real OpenAPI spec and flags any
+  response schema `oasdiff` can't meaningfully diff by field — a bare
+  object with no `properties`, `dict[str, X]` (renders as
+  `additionalProperties` only, still no named fields), an untyped
+  array, or an `Optional`/union with an opaque branch.
+- Response models live in `backend/app/schemas/`, one module per
+  feature area (`auth.py`, `patients.py`, `messaging.py`, etc.).
+- **Genuinely dynamic external-system payloads** (a raw FHIR resource,
+  an openEHR composition) still need real typing wherever they form the
+  entire response body, since wrapping them in an envelope after the
+  fact is a breaking change. Model the fields your own code actually
+  sets or reads — not the full external spec — and set
+  `model_config = ConfigDict(extra="allow")` so any other field the
+  external system returns still passes through unchanged. See
+  `FhirPatientResource` in `backend/app/schemas/patients.py`.
+- Where such a payload is nested inside an already-typed envelope
+  (rather than being the whole response body), it's fine to leave that
+  inner field `dict[str, Any]` — the coverage check only inspects a
+  response's top-level schema, matching what `oasdiff` can actually
+  diff (whether a top-level field appeared or disappeared), not deep
+  field-by-field structure.
+- One inline marker, checked the same way `DESTRUCTIVE_MARKER` is
+  above — a comment on the line immediately above the route decorator:
+  `# api-schema-check: allow-opaque-permanent` (a route that genuinely
+  never returns JSON, e.g. `FileResponse` — the checker verifies this
+  against the function's actual return type rather than just trusting
+  the marker). A second marker, `allow-opaque-grandfathered`, tracked
+  the retrofit of pre-existing opaque routes to typed responses; once
+  that retrofit finished, recognition of the string was deleted from
+  the checker entirely — not just left unused.
+
 ## API compatibility (expand-contract)
 
 Mirrors the database expand-contract rule above, applied to the API

@@ -49,7 +49,7 @@ jobs:
         run: bash .github/scripts/slack-notify/validate-channel.sh
 
       - name: Post to Slack
-        uses: slackapi/slack-github-action@v3.0.1
+        uses: slackapi/slack-github-action@v3.0.2
         with:
           webhook: ${{ fromJSON(env.CHANNEL_WEBHOOKS)[inputs.channel] }}
           webhook-type: incoming-webhook
