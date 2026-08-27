@@ -21,20 +21,37 @@ no record that anyone weighed that cost.
 The outcome of this plan is a second instance of the same pattern already
 proven for API changes — automated detection plus a required-reviewer
 GitHub Actions environment gate, Slack-notified — applied to destructive DB
-migrations. It reuses the existing reviewer, the existing Slack channel, and
-the existing accountability rationale (the author is the approver, by
-design — see below) rather than inventing new mechanics. The static marker
-check stays as-is; it's still a useful fast, pre-commit-level nudge that
+migrations. It reuses the existing reviewer, the existing Slack channel, the
+existing notification-dedup mechanism (see Phase 4), and the existing
+accountability rationale (a set author is the approver, by design — see
+below) rather than inventing new mechanics. The static marker
+check stays as-is (note location change below); it's still a useful fast,
+pre-commit-level nudge that
 forces the marker to exist, and does not need replacing — this plan adds the
 missing human decision on top of it, and deliberately does **not** let the
 marker's presence or absence influence whether the gate fires, so the gate
 can't be satisfied by the same text the checker already accepts.
 
+Note where that marker lives, since the comparison above could suggest
+otherwise: `# migration-check: allow-destructive` sits inside the **migration
+file** (`backend/alembic/versions/*.py`), directly above the destructive
+call — not in application source, where the rejected
+`# api-check: breaking-change` comment would have gone. That difference is
+what makes a comment an acceptable home for this attestation at all.
+`docs/docs/backend/api-compatibility.md` rejects a code comment for the API
+boundary partly because application source "is edited repeatedly forever, so
+a marker added for one breaking change sits there permanently and can
+silently 'cover' an unrelated, unreviewed change to the same endpoint months
+later" — and names the Alembic migration file ("write once, reviewed once,
+never revisited") as the explicit counterexample. A migration is authored
+once and never revisited, so its marker cannot drift onto work it was never
+written for.
+
 ## Phase 1: Detection — report destructive ops independent of the marker
 
 - [ ] Add a non-failing, informational mode to
       `backend/scripts/check_migrations.py` (e.g. `--report-destructive
-      <file> [<file> ...]`) that parses the given migration file paths and
+<file> [<file> ...]`) that parses the given migration file paths and
       prints one line per file listing any `drop_column` / `drop_table` /
       `drop_constraint` calls found in `upgrade()` — **regardless of
       whether the `allow-destructive` marker is present**. Reuse the
@@ -55,12 +72,12 @@ can't be satisfied by the same text the checker already accepts.
 
 - [ ] Add `heavy_db_destructive_migration_check` to `.github/workflows/ci.yml`,
       heavy tier (`if: github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false`), mirroring
+github.event.pull_request.draft == false`), mirroring
       `heavy_api_schema_diff`'s two-checkout structure (PR branch + main
       branch, `fetch-depth: 0`).
 - [ ] Diff `backend/alembic/versions/*.py` between `origin/main` and the PR
       branch (`git diff --name-only --diff-filter=A
-      origin/main...HEAD -- backend/alembic/versions/*.py`) to get the set
+origin/main...HEAD -- backend/alembic/versions/*.py`) to get the set
       of migration files **newly added on this PR** — mirroring how
       `oasdiff` diffs `main` against the PR branch rather than re-scanning
       the whole history each time. A migration merged in an earlier PR was
@@ -78,24 +95,63 @@ can't be satisfied by the same text the checker already accepts.
 ## Phase 3: Human gate job
 
 - [ ] Add `heavy_db_destructive_migration_gate` to `ci.yml`: `needs:
-      heavy_db_destructive_migration_check`, `if:
-      needs.heavy_db_destructive_migration_check.outputs.destructive ==
-      'true'`, `environment: db-destructive-migration-review` — directly
+heavy_db_destructive_migration_check`, `if:
+needs.heavy_db_destructive_migration_check.outputs.destructive ==
+'true'`, `environment: db-destructive-migration-review` — directly
       mirroring `heavy_api_breaking_change_gate`.
 - [ ] Add both job names (`DB destructive migration check`, `DB
-      destructive migration review gate`) as required status checks in
+destructive migration review gate`) as required status checks in
       `infra/github/branch_rules.tf`, alongside the existing "API
       compatibility" required-check block.
 
-## Phase 4: Slack notification
+## Phase 4: Slack notification, deduplicated
 
+The API gate's Slack job originally re-pinged on every push to a non-draft
+PR, because the `pull_request` trigger fires on `synchronize` and not just
+on PR open; the
+[API breaking change notification dedup plan](2026-08-27-api-breaking-change-notify-dedup-plan.md)
+closed that by hashing the current change-set and recording the hash on a
+sticky PR comment, notifying only when the hash moves. The same trigger
+applies to this gate, so dedup is built in from the start here rather than
+shipping a noisy job and retrofitting it.
+
+- [ ] Generalise `.github/scripts/ci/dedup-breaking-change-notify.sh` into
+      a marker-key-parameterised `.github/scripts/ci/dedup-notify.sh`
+      (`<marker-key> <pr-number> <hash> <title>`): the marker becomes
+      `<!-- <marker-key>: <hash> -->` and `build_body`'s blurb takes the
+      title, leaving `find_marker_comment`'s matching/capture logic
+      otherwise as-is. Update the existing `heavy_api_breaking_change_dedup`
+      caller to pass `breaking-api-change-hash`, keeping its marker string
+      byte-identical so marker comments already sitting on in-flight PRs
+      still match.
+- [ ] Carry `dedup-breaking-change-notify.bats` over to the renamed script
+      and extend it with a second, distinct marker key, proving the two
+      gates' marker comments don't collide on a PR that trips both.
+- [ ] Extract `compute-breaking-change-hash.sh`'s `hash_change_lines`
+      (`sort | sha256sum`) into a shared helper both callers source, so the
+      "sorted identity lines in, stable hash out" contract lives in one
+      place. Hash the Phase 1 `--report-destructive` output lines — one per
+      flagged migration, each carrying its revision id and the ops found —
+      to get the destructive-change-set hash, and set it as a
+      `heavy_db_destructive_migration_check` job output alongside
+      `destructive`.
+- [ ] Add `heavy_db_destructive_migration_dedup` to `ci.yml`, mirroring
+      `heavy_api_breaking_change_dedup`: `needs:
+heavy_db_destructive_migration_check`, same `if:` condition as the
+      gate job, marker key `db-destructive-migration-hash`, output
+      `should_notify`.
 - [ ] Add `heavy_db_destructive_migration_notify` to `ci.yml`, using the
       existing reusable `.github/workflows/slack-notify.yml`, `channel:
-      teaching` (same webhook, no new secret) — same trigger condition as
-      the gate job. Message includes the flagged migration(s), the ops
-      found, the PR link, and a link to "Review pending deployments" for
-      the `db-destructive-migration-review` environment, mirroring the API
+teaching` (same webhook, no new secret), gated on **both**
+      `...check.outputs.destructive == 'true'` and
+      `...dedup.outputs.should_notify == 'true'`. Message includes the
+      flagged migration(s), the ops found, the PR link, and a link to
+      "Review pending deployments" for the
+      `db-destructive-migration-review` environment, mirroring the API
       breaking-change Slack message.
+- [ ] Leave `heavy_db_destructive_migration_gate` (Phase 3) untouched by
+      the dedup output — as with the API gate, approval is SHA-scoped and
+      stays required on every push; only Slack noise is deduplicated.
 
 ## Phase 5: Terraform — new environment
 
@@ -104,7 +160,7 @@ can't be satisfied by the same text the checker already accepts.
       `api_breaking_change_review`: same reviewer
       (`data.github_user.api_breaking_change_reviewer` — reuse rather than
       look up `Cotswoldsmaker` a second time), `prevent_self_review =
-      false`, and a comment carrying the same accountability rationale (a
+false`, and a comment carrying the same accountability rationale (a
       second reviewer isn't inherently more careful than the author; the
       goal is one genuine, separate, deliberate approval action from
       whoever is accountable, not diffusing accountability across more
@@ -126,34 +182,101 @@ can't be satisfied by the same text the checker already accepts.
       way a destructive migration proceeds.
 - [ ] Add a "Layer 3 — human review gate for destructive migrations"
       section to `docs/docs/backend/alembic-migration-safety.md`,
-      following the existing Layer 1 / Layer 2 structure, and add this
-      plan to its "Related" list.
+      following the existing Layer 1 / Layer 2 structure, covering the
+      Slack dedup mechanism and its trade-off (as
+      `docs/docs/backend/api-compatibility.md` does for the API gate), and
+      add this plan to its "Related" list.
+- [ ] Update `docs/docs/backend/api-compatibility.md` where it names
+      `dedup-breaking-change-notify.sh` to reflect the Phase 4 rename to
+      the shared `dedup-notify.sh`.
 - [ ] Run `/sync-copilot-config` to propagate the instructions edit into
       `.claude/rules/backend.md` and report any other drift it finds.
 - [ ] Register this plan in `docs/docs/plans/index.md`.
 
 ## Phase 7: Verification
 
-- [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`).
+- [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`), and
+      the Phase 4 `.bats` suites pass for both marker keys.
 - [ ] One-off manual GitHub walkthrough on a throwaway branch/PR (not
-      merged): a migration with no destructive ops leaves the gate
-      skipped; a migration with a `drop_column` (marker present or not —
+      merged):
+- [ ] a migration with no destructive ops leaves the gate
+      skipped
+- [ ] a migration with a `drop_column` (marker present or not —
       prove the marker doesn't suppress the gate) sends it to `waiting`,
       posts to Slack, and blocks the required check until the environment
-      is approved or rejected. Unlike the API gate's permanent dummy
-      endpoints, don't leave a fabricated destructive migration in the
-      real chain afterwards — close/delete the throwaway branch once the
-      walkthrough is captured, since a real Alembic chain can't carry a
-      disposable fixture revision the way a pair of flag-gated dummy API
-      endpoints can.
+      is approved or rejected.
+- [ ] On the same throwaway PR, push a second,
+      unrelated commit and confirm Slack stays silent while the gate still
+      re-blocks
+- [ ] add a second destructive migration and confirm the
+      hash moves, the marker comment is edited in place (not appended to),
+      and one fresh Slack message lands.
+- [ ] Review and reject the gate
+- [ ] Submit another unrelated PR
+- [ ] Review and accept the gate
+
+### DO NOT MERGE TO MAIN
+
+Unlike the API gate's permanent dummy
+endpoints, don't leave a fabricated destructive migration in the
+real chain afterwards — close/delete the throwaway branch once the
+walkthrough is captured, since a real Alembic chain can't carry a
+disposable fixture revision the way a pair of flag-gated dummy API
+endpoints can.
 
 ## Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| Detection ignores the `allow-destructive` marker entirely | The whole point is a check the marker's own text can't satisfy — mirrors the API gate's rejection of a code comment as proof of a human decision. The existing static check (marker required) is left in place unchanged, purely as a separate, faster nudge |
-| Reuse the existing reviewer and Slack channel rather than create new ones | No reason to diffuse accountability further or fragment notifications; the same rationale that put a single named, non-self-review-exempt reviewer on `api-breaking-change-review` applies unchanged here |
-| Gate covers `drop_column` / `drop_table` / `drop_constraint` uniformly, no per-op risk tiering | Matches `check_migrations.py`'s existing `DESTRUCTIVE_OPS` set; splitting risk tiers (e.g. treating a constraint drop as lower-risk than a column drop) is easy to add later if it proves too noisy, but starting uniform avoids guessing at a risk model with no data yet |
-| No special-case detection for column/table renames | A rename already ships as add-then-drop across separate deploys (see "Renaming or retiring a column" in `.claude/rules/backend.md`); the contract step of that pattern **is** a `drop_column` call, so it's already covered without extra logic |
-| Diff `main` vs the PR branch for *new* migration files only, not a full-history rescan | Mirrors `oasdiff`'s main-vs-PR diff; a migration merged in an earlier PR was already gated when it was added, so re-flagging it on every later PR would be noise |
-| No permanent dummy destructive migration fixture (unlike the API gate's permanent dummy endpoints) | The API gate could afford two permanent, flag-gated no-op endpoints because they cost nothing sitting in the served app. A destructive Alembic migration is a real, one-way step in a real linear chain — there's no equivalent "disposable but permanent" fixture, so verification is a one-off manual walkthrough on a throwaway branch instead |
+- **Detection ignores the `allow-destructive` marker entirely** — The whole
+  point is a check the marker's own text can't satisfy — mirrors the API
+  gate's rejection of a code comment as proof of a human decision. The
+  existing static check (marker required) is left in place unchanged, purely
+  as a separate, faster nudge
+- **Reuse the existing reviewer and Slack channel rather than create new
+  ones** — No reason to diffuse accountability further or fragment
+  notifications; the same rationale that put a single named,
+  non-self-review-exempt reviewer on `api-breaking-change-review` applies
+  unchanged here
+- **Gate covers `drop_column` / `drop_table` / `drop_constraint` uniformly,
+  no per-op risk tiering** — Matches `check_migrations.py`'s existing
+  `DESTRUCTIVE_OPS` set; splitting risk tiers (e.g. treating a constraint
+  drop as lower-risk than a column drop) is easy to add later if it proves
+  too noisy, but starting uniform avoids guessing at a risk model with no
+  data yet
+- **No special-case detection for column/table renames** — A rename already
+  ships as add-then-drop across separate deploys (see "Renaming or retiring
+  a column" in `.claude/rules/backend.md`); the contract step of that
+  pattern **is** a `drop_column` call, so it's already covered without extra
+  logic
+- **Diff `main` vs the PR branch for _new_ migration files only, not a
+  full-history rescan** — Mirrors `oasdiff`'s main-vs-PR diff; a migration
+  merged in an earlier PR was already gated when it was added, so
+  re-flagging it on every later PR would be noise
+- **No permanent dummy destructive migration fixture (unlike the API gate's
+  permanent dummy endpoints)** — The API gate could afford two permanent,
+  flag-gated no-op endpoints because they cost nothing sitting in the served
+  app. A destructive Alembic migration is a real, one-way step in a real
+  linear chain — there's no equivalent "disposable but permanent" fixture,
+  so verification is a one-off manual walkthrough on a throwaway branch
+  instead
+- **Slack dedup built in from the start, rather than shipping a noisy notify
+  job and retrofitting it** — The API gate needed a follow-up plan to fix
+  exactly this noise; the `pull_request`/`synchronize` trigger behaves
+  identically here, so the noise is a known certainty, not a risk to
+  discover in production
+- **Generalise the existing dedup script to a marker key rather than copy
+  it** — Two near-identical scripts would drift; the only genuinely
+  gate-specific parts are the marker key and the blurb, so both become
+  parameters. The API caller's marker string stays byte-identical so
+  in-flight PRs' existing comments keep matching
+- **Dedup key = hash of the flagged migration/op set, not the boolean
+  `destructive` flag** — Same reasoning as the API gate: a boolean can't
+  tell "same destructive migration, new commit" from "a second destructive
+  migration was added". In practice the set only moves when a migration file
+  is added, so this is usually one ping per PR
+- **Approval gate left ungated by `should_notify`** — Mirrors the API gate:
+  environment approval is SHA-scoped and deliberately re-required on every
+  push. Dedup is a notification-noise control only, never a safety control
+- **A destructive migration removed and then re-added identically stays
+  silent** — Accepted trade-off, inherited unchanged from the API dedup
+  plan: the stale marker hash genuinely still matches. The gate still blocks
+  and still needs a fresh approval, so this affects Slack noise only
