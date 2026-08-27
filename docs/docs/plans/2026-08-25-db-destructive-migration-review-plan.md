@@ -112,6 +112,14 @@ false`, and a comment carrying the same accountability rationale (a
       goal is one genuine, separate, deliberate approval action from
       whoever is accountable, not diffusing accountability across more
       people).
+- [x] Set `can_admins_bypass = false` on this environment **and** on the
+      existing `api_breaking_change_review`, so both gates are binding rather
+      than advisory. Today the sole admin and the sole reviewer are the same
+      person, making the setting look redundant — but the roles are expected
+      to diverge: a Clinical Safety Officer with coding experience is the
+      right approver for discarding clinical audit history, whereas a repo
+      admin may have minimal clinical experience. The default (`true`) would
+      let exactly the wrong role wave the change through.
 - [ ] Note in the PR description that `terraform apply` is a manual,
       separate step (as it was for `api-breaking-change-review`) — not run
       as part of this plan's implementation, and coordinate with the repo
