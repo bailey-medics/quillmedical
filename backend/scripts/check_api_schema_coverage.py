@@ -13,21 +13,26 @@ diff by field:
   non-null branch)
 - No schema, or an empty schema
 
-Two inline marker comments (mirroring ``DESTRUCTIVE_MARKER`` in
+One inline marker comment (mirroring ``DESTRUCTIVE_MARKER`` in
 ``check_migrations.py``), placed on the line immediately above a route's
 topmost decorator:
 
-    # api-schema-check: allow-opaque-grandfathered
     # api-schema-check: allow-opaque-permanent
 
-``allow-opaque-grandfathered`` marks a pre-existing opaque route awaiting
-retrofit (see docs/docs/plans/2026-08-25-api-schema-coverage-plan.md) —
-removed once the route is given a typed Pydantic response model.
-``allow-opaque-permanent`` marks a route that genuinely never returns
-JSON (e.g. a binary ``FileResponse``). It is not just trusted: the
-function's return annotation must actually be one of a small explicit
-set of non-JSON Starlette/FastAPI response classes, or the check fails
-even though the marker is present.
+Marks a route that genuinely never returns JSON (e.g. a binary
+``FileResponse``). It is not just trusted: the function's return
+annotation must actually be one of a small explicit set of non-JSON
+Starlette/FastAPI response classes, or the check fails even though the
+marker is present.
+
+A second marker, ``allow-opaque-grandfathered``, existed during the
+retrofit tracked by
+docs/docs/plans/2026-08-25-api-schema-coverage-plan.md and marked a
+pre-existing opaque route awaiting a typed Pydantic response model. Once
+that retrofit finished (zero routes left bearing it), recognition of the
+string was deleted from this checker entirely — not just left unused —
+so a route bearing that exact comment today fails the check like any
+other unmarked opaque route.
 
 Run with::
 
@@ -54,7 +59,6 @@ sys.path.insert(0, str(_BACKEND_DIR))
 
 from scripts.dump_openapi import import_app  # noqa: E402
 
-GRANDFATHERED_MARKER = "# api-schema-check: allow-opaque-grandfathered"
 PERMANENT_MARKER = "# api-schema-check: allow-opaque-permanent"
 
 HTTP_METHODS: frozenset[str] = frozenset(
@@ -207,8 +211,6 @@ def _marker_above(lines: list[str], lineno: int) -> str | None:
     if lineno < 2:
         return None
     above = lines[lineno - 2].strip()
-    if above == GRANDFATHERED_MARKER:
-        return GRANDFATHERED_MARKER
     if above == PERMANENT_MARKER:
         return PERMANENT_MARKER
     return None
@@ -356,16 +358,13 @@ def check_route_coverage(
     if not is_opaque_schema(schema, schemas):
         return []
 
-    if route.marker == GRANDFATHERED_MARKER:
-        return []
-
     return [
         Problem(
             SEVERITY_ERROR,
             f"{route.method.upper()} {route.path}: response schema has no "
             "field-level shape for oasdiff to diff; add a Pydantic "
-            f"response_model, or mark with '{GRANDFATHERED_MARKER}' "
-            f"(temporary) or '{PERMANENT_MARKER}' (genuinely non-JSON)",
+            f"response_model, or mark with '{PERMANENT_MARKER}' "
+            "(genuinely non-JSON)",
             route.file,
             route.line,
         )

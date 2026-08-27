@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "new-required-request-property POST /api/sites/{site_id}/staff added the new required request property `role`"
+reason: 'role was already runtime-required (route raised 422 with detail "user_id and role are required" if the key was missing from the body, and 422 "Invalid role" if present but not one of clinical_lead/staff/trainee). No behaviour change for any existing client.'

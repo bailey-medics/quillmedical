@@ -161,14 +161,15 @@ review and prompted
   response's top-level schema, matching what `oasdiff` can actually
   diff (whether a top-level field appeared or disappeared), not deep
   field-by-field structure.
-- Two inline markers, checked the same way `DESTRUCTIVE_MARKER` is
+- One inline marker, checked the same way `DESTRUCTIVE_MARKER` is
   above — a comment on the line immediately above the route decorator:
-  `# api-schema-check: allow-opaque-grandfathered` (temporary, a
-  pre-existing route awaiting retrofit) and
   `# api-schema-check: allow-opaque-permanent` (a route that genuinely
   never returns JSON, e.g. `FileResponse` — the checker verifies this
   against the function's actual return type rather than just trusting
-  the marker).
+  the marker). A second marker, `allow-opaque-grandfathered`, tracked
+  the retrofit of pre-existing opaque routes to typed responses; once
+  that retrofit finished, recognition of the string was deleted from
+  the checker entirely — not just left unused.
 
 ## API compatibility (expand-contract)
 
