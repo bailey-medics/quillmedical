@@ -207,3 +207,64 @@ class TestSiteStaffClinicalLeadConstraint:
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "added"
+
+
+class TestAddSiteStaffValidation:
+    """Request body validation for POST /api/sites/{site_id}/staff."""
+
+    def test_missing_user_id_rejected(
+        self, authenticated_admin_client, db_session
+    ):
+        site = Site(name="Validation Site", type="hospital")
+        db_session.add(site)
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"role": "staff"},
+        )
+        assert resp.status_code == 422
+
+    def test_missing_role_rejected(
+        self, authenticated_admin_client, db_session, test_admin: User
+    ):
+        site = Site(name="Validation Site", type="hospital")
+        db_session.add(site)
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": test_admin.id},
+        )
+        assert resp.status_code == 422
+
+    def test_invalid_role_rejected(
+        self, authenticated_admin_client, db_session, test_admin: User
+    ):
+        site = Site(name="Validation Site", type="hospital")
+        db_session.add(site)
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={"user_id": test_admin.id, "role": "not_a_role"},
+        )
+        assert resp.status_code == 422
+
+    def test_unknown_field_rejected(
+        self, authenticated_admin_client, db_session, test_admin: User
+    ):
+        """extra='forbid' on AddSiteStaffIn rejects unrecognised fields."""
+        site = Site(name="Validation Site", type="hospital")
+        db_session.add(site)
+        db_session.commit()
+
+        resp = authenticated_admin_client.post(
+            f"/api/sites/{site.id}/staff",
+            json={
+                "user_id": test_admin.id,
+                "role": "staff",
+                "extra_field": "unexpected",
+            },
+        )
+        assert resp.status_code == 422

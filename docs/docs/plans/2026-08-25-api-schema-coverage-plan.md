@@ -424,18 +424,46 @@ Rationale: Breaking Phase 6 by entity (organisations, then sites) and then by op
 
 **Status:** Commit pending. All 6 routes retrofitted with response models (SitesListOut, SiteOut, SiteDetailOut, StatusResponse). Changed toggle_site_active from dict[str, bool] to ToggleSiteActiveIn. Tests passing (10+ site tests).
 
-### Chunk 5: Site linking & staff (6 routes)
+### Chunk 5: Site linking & staff (4 routes) — ✅ COMPLETE
 
-- [ ] `link_site_to_org` — POST `/organisations/{org_id}/sites/{site_id}`
-- [ ] `unlink_site_from_org` — DELETE `/organisations/{org_id}/sites/{site_id}`
-- [ ] `add_site_staff` — POST `/sites/{site_id}/staff` (also takes a raw `dict[str, Any]` request body — type the request too)
-- [ ] `remove_site_staff` — DELETE `/sites/{site_id}/staff/{user_id}`
+(Corrected from "(6 routes)" in this section's original heading — the
+chunking-strategy overview above and the 4 items below always listed 4;
+the heading count was a typo.)
+
+- [x] `link_site_to_org` — POST `/organisations/{org_id}/sites/{site_id}`
+- [x] `unlink_site_from_org` — DELETE `/organisations/{org_id}/sites/{site_id}`
+- [x] `add_site_staff` — POST `/sites/{site_id}/staff` (also takes a raw `dict[str, Any]` request body — type the request too)
+- [x] `remove_site_staff` — DELETE `/sites/{site_id}/staff/{user_id}`
+
+**Status:** Commit pending. All 4 routes retrofitted with response models
+(`StatusResponse` for link/unlink/remove, `AddSiteStaffResponse` for
+add-staff — both already existed unused in `schemas/organisations.py`
+from Chunk 4). `add_site_staff`'s request body retyped from
+`dict[str, Any]` to the already-defined `AddSiteStaffIn`
+(`extra="forbid"`); the manual `not user_id or not role` presence check
+was removed as redundant with Pydantic's required-field validation, the
+role-membership check (`clinical_lead`/`staff`/`trainee`) stays since
+`AddSiteStaffIn.role` is a plain `str`. Added regression tests: request
+validation for `add_site_staff` (missing `user_id`, missing `role`,
+invalid role value, unknown field rejected under `extra="forbid"`) in
+`test_site_staff.py`, plus a new `test_site_org_linking.py` covering
+`link_site_to_org` (success, idempotent re-link, org/site not found),
+`unlink_site_from_org` (success, not-found), and `remove_site_staff`
+(success, not-found) — none of these three routes had any prior test
+coverage. Three oasdiff `new-required-request-property` findings
+(`is_active` on `PATCH /sites/{id}/active` from Chunk 4, `user_id` and
+`role` on `POST /sites/{id}/staff` from this chunk) each got a decision
+file under `api-compatibility/` — all three fields were already
+runtime-required (manual `dict` presence/membership checks) before
+typing, so `forces_reload: false` in each case; verified against a real
+`oasdiff breaking` run (installed locally via `brew install oasdiff`,
+diffed against a `main` worktree's spec) rather than guessed wording.
 
 ### Phase 6 completion checklist
 
-- [ ] Chunks 3-5 routes retrofitted and tested
-- [ ] `just ub -k "organisation or site"` — targeted rerun
-- [ ] `just ub` — full backend suite
+- [x] Chunks 3-5 routes retrofitted and tested
+- [x] `just ub -k "organisation or site"` — targeted rerun
+- [x] `just ub` — full backend suite
 
 ## Phase 7: Retrofit — remaining outliers (11 routes)
 

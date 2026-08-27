@@ -150,6 +150,8 @@ from app.schemas.messaging import (
 )
 from app.schemas.organisations import (
     AddPatientIn,
+    AddSiteStaffIn,
+    AddSiteStaffResponse,
     AddStaffIn,
     CreateOrganisationIn,
     CreateSiteIn,
@@ -4458,9 +4460,9 @@ def delete_site(
     return StatusResponse(status="deleted")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def link_site_to_org(
@@ -4468,7 +4470,7 @@ def link_site_to_org(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Link a site to an organisation. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4489,19 +4491,19 @@ def link_site_to_org(
         )
     ).first()
     if existing:
-        return {"status": "already_linked"}
+        return StatusResponse(status="already_linked")
 
     db.execute(
         organisation_site.insert().values(
             organisation_id=org_id, site_id=site_id
         )
     )
-    return {"status": "linked"}
+    return StatusResponse(status="linked")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def unlink_site_from_org(
@@ -4509,7 +4511,7 @@ def unlink_site_from_org(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Unlink a site from an organisation. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4524,23 +4526,22 @@ def unlink_site_from_org(
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Link not found")
 
-    return {"status": "unlinked"}
+    return StatusResponse(status="unlinked")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/sites/{site_id}/staff",
+    response_model=AddSiteStaffResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def add_site_staff(
     site_id: int,
-    body: dict[str, Any],
+    body: AddSiteStaffIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> AddSiteStaffResponse:
     """Add a staff member to a site. Admin/superadmin only.
 
-    Body: {user_id: int, role: str}
     Role must be one of: clinical_lead, staff, trainee.
     """
     if current_user.system_permissions not in ("admin", "superadmin"):
@@ -4550,13 +4551,8 @@ def add_site_staff(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    user_id = body.get("user_id")
-    role = body.get("role")
-
-    if not user_id or not role:
-        raise HTTPException(
-            status_code=422, detail="user_id and role are required"
-        )
+    user_id = body.user_id
+    role = body.role
 
     valid_roles = {"clinical_lead", "staff", "trainee"}
     if role not in valid_roles:
@@ -4602,19 +4598,19 @@ def add_site_staff(
             )
             .values(role=role)
         )
-        return {"status": "updated"}
+        return AddSiteStaffResponse(status="updated")
 
     db.execute(
         site_staff_member.insert().values(
             site_id=site_id, user_id=user_id, role=role
         )
     )
-    return {"status": "added"}
+    return AddSiteStaffResponse(status="added")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def remove_site_staff(
@@ -4622,7 +4618,7 @@ def remove_site_staff(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Remove a staff member from a site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4637,7 +4633,7 @@ def remove_site_staff(
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Staff member not found")
 
-    return {"status": "removed"}
+    return StatusResponse(status="removed")
 
 
 @router.patch(
