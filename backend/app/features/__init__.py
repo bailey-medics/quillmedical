@@ -32,7 +32,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         )
         def list_items(...): ...
 
-    Returns 403 if the user has no primary org or the feature is not enabled.
+    Returns 403 if the user has no organisation or the feature is not enabled.
     """
 
     def _check(

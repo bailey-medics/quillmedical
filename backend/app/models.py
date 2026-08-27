@@ -193,7 +193,6 @@ organisation_staff_member = Table(
         "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("user_id", ForeignKey("users.id"), primary_key=True),
-    Column("is_primary", Boolean, default=False, nullable=False),
 )
 """Association table for many-to-many relationship between organisations and staff."""
 
@@ -205,7 +204,6 @@ organisation_patient_member = Table(
         "organisation_id", ForeignKey("organisations.id"), primary_key=True
     ),
     Column("patient_id", String(255), primary_key=True),
-    Column("is_primary", Boolean, default=False, nullable=False),
 )
 """Association table for many-to-many relationship between organisations and patients."""
 

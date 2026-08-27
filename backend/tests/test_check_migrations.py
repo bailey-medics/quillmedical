@@ -1,8 +1,7 @@
 """Tests for the Alembic migration safety checker.
 
 Covers each static check with a passing and a failing fixture, plus the
-end-to-end behaviour against the squashed single-baseline history (the
-allow-list is now empty).
+end-to-end behaviour against the squashed single-baseline history.
 """
 
 from __future__ import annotations
@@ -10,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from scripts.check_migrations import (
-    ALLOWLISTED_REVISIONS,
     DEFAULT_VERSIONS_DIR,
     SEVERITY_ERROR,
     Migration,
@@ -243,12 +241,6 @@ def test_destructive_fails_without_marker(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # End-to-end via main + baseline history
 # ---------------------------------------------------------------------------
-
-
-def test_allowlist_is_empty() -> None:
-    # The pre-launch history was squashed into a single compliant baseline,
-    # so nothing needs grandfathering any more.
-    assert ALLOWLISTED_REVISIONS == frozenset()
 
 
 def test_current_history_passes(tmp_path: Path) -> None:

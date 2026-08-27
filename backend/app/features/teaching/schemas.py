@@ -307,6 +307,34 @@ class SyncAllResultOut(BaseModel):
     errors: list[dict[str, str]]
 
 
+class CiSyncBankResult(BaseModel):
+    """One bank successfully synced by the CI sync endpoint."""
+
+    bank_id: str
+    version: str
+
+
+class CiSyncErrorItem(BaseModel):
+    """One bank that failed to sync via the CI sync endpoint."""
+
+    bank_id: str
+    error: str
+
+
+class CiTeachingSyncOut(BaseModel):
+    """Result of the CI/CD teaching content sync trigger.
+
+    Attributes:
+        synced: Banks successfully synced.
+        errors: Banks that failed to sync.
+        message: Set only when no banks were found to sync.
+    """
+
+    synced: list[CiSyncBankResult]
+    errors: list[CiSyncErrorItem]
+    message: str | None = None
+
+
 # ------------------------------------------------------------------
 # Teaching org settings
 # ------------------------------------------------------------------

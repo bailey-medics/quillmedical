@@ -39,3 +39,7 @@
 - [Alembic Review and Migration Safety](2026-08-09-alembic-review-plan.md)
 - [Alembic Migrations Squash](2026-08-11-migrations-squash-plan.md)
 - [Core DB Auto-Commit](2026-08-25-core-db-auto-commit-plan.md)
+- [Remove is_primary Flag](2026-08-25-remove-is-primary-flag-plan.md)
+- [API Schema Coverage](2026-08-25-api-schema-coverage-plan.md)
+- [API Breaking Change Notification Dedup](2026-08-27-api-breaking-change-notify-dedup-plan.md)
+- [Reduce Renovate CI Reruns](2026-08-27-renovate-reduce-ci-reruns.md)

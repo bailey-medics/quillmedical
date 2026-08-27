@@ -1,4 +1,5 @@
 ---
+name: fix-vs-code-problems
 description: Fix problems reported by the editor and the project linters
 disable-model-invocation: true
 ---

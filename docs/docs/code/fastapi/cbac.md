@@ -12,6 +12,5 @@
 
 ::: app.cbac.competencies
 
-## Decorators
-
-::: app.cbac.decorators
+`has_competency()` and `requires_any_competency()` were moved into
+`app.deps` — see [Dependencies](deps.md).
