@@ -553,12 +553,12 @@ still present are the already-decided Chunk 5 ones, not yet merged to
 
 ## Phase 8: Final verification
 
-- [ ] Zero `# api-schema-check: allow-opaque-grandfathered` markers
+- [x] Zero `# api-schema-check: allow-opaque-grandfathered` markers
       remain anywhere in `backend/app/` (only
       `# api-schema-check: allow-opaque-permanent` markers remain, on
       the binary `FileResponse` routes and any routes Phase 7 decided
       belong there)
-- [ ] Delete `allow-opaque-grandfathered` recognition from
+- [x] Delete `allow-opaque-grandfathered` recognition from
       `check_api_schema_coverage.py` entirely — not just leave the
       marker unused. This applies the same lesson that led to actually
       removing `check_migrations.py`'s `ALLOWLISTED_REVISIONS` outright
@@ -571,21 +571,68 @@ still present are the already-decided Chunk 5 ones, not yet merged to
       whole migration revision — so leave nothing in the checker that
       would recognise the string as valid again. Only
       `allow-opaque-permanent` recognition remains
-- [ ] Update the Phase 1 regression test that asserted "an opaque route
+- [x] Update the Phase 1 regression test that asserted "an opaque route
       with the grandfathered marker passes" — flip it to assert that a
       route bearing that (now-unrecognised) comment still fails the
       check, proving the escape hatch is actually closed rather than
       just unused
-- [ ] `python backend/scripts/check_api_schema_coverage.py --all` passes
+- [x] `python backend/scripts/check_api_schema_coverage.py --all` passes
       with zero unexpected findings
-- [ ] `just ub` — full backend unit suite (including the flipped
+- [x] `just ub` — full backend unit suite (including the flipped
       regression test)
 - [ ] Push and confirm the `pre-commit` CI job runs the new hook cleanly
-- [ ] Manually verify `oasdiff` now has real schema to diff: temporarily
+- [x] Manually verify `oasdiff` now has real schema to diff: temporarily
       remove a field from one retyped response locally, confirm
       `oasdiff breaking` (per `backend/scripts/dump_openapi.py`) flags it,
       then revert — proves the fix actually closes the detection gap
       that started this plan
+
+**Phase 8 summary** — Deleted `GRANDFATHERED_MARKER` and all recognition
+of it from `check_api_schema_coverage.py`: `_marker_above` now only
+matches `PERMANENT_MARKER`, and `check_route_coverage`'s
+grandfathered-marker pass-through branch is gone entirely (a route
+bearing that exact comment string today falls through to the ordinary
+"no field-level shape" failure like any unmarked route). The module
+docstring and both synced copies of the backend conventions doc
+(`.github/instructions/backend.instructions.md`, source of truth, and
+`.claude/rules/backend.md`, its synced copy) updated to describe one
+marker, with a short historical note on what the deleted marker was for.
+
+Two Phase 1 tests referencing the now-undefined `GRANDFATHERED_MARKER`
+import were flipped rather than deleted, per the plan's own instruction
+— they now use a local `FORMER_GRANDFATHERED_MARKER` string literal
+(the checker no longer exports the name) and assert the opposite of
+what they asserted before: `_index_file` no longer recognises the
+literal marker comment (`marker is None`, not
+`marker == GRANDFATHERED_MARKER`), and `check_route_coverage` now fails
+an opaque route bearing it (matching the "no field-level shape" error a
+completely unmarked route gets), rather than passing it. This proves
+the escape hatch is structurally closed, not just unreferenced.
+
+Capstone verification of the original bug, done manually and reverted
+immediately after: temporarily removed `staff_count` from
+`OrganisationDetailOut` in `backend/app/schemas/organisations.py` — the
+exact model backing `GET /organisations/{org_id}`, the route whose
+silently-undetected field removal (`is_primary`) started this whole
+plan. Generated the OpenAPI spec before and after the removal
+(`dump_openapi.py --dev`) and ran the same local `oasdiff breaking`
+(installed via `brew`, as in Chunks 5 and Phase 7) between them:
+
+```
+error [response-required-property-removed] ... in API GET /api/organisations/{org_id}
+    removed the required property `staff_count` from the response with the `200` status
+```
+
+Confirms the fix actually closes the detection gap — the identical
+removal that produced zero breaking-change findings before this plan
+now produces exactly one, naming the right route and the right field.
+Reverted the field immediately (`git diff` on the file came back empty)
+and re-ran the organisation test suite (71 passed) to confirm the
+revert was clean.
+
+Not yet done: pushing this phase's commit and confirming the
+`pre-commit` CI job runs the updated hook cleanly — deferred to the
+commit/push step, per this skill's human-review-before-commit gate.
 
 ## Decisions
 
