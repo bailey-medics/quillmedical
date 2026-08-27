@@ -630,12 +630,7 @@ jobs:
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
     secrets: inherit
 
-  # ---------- Slack notification on api-compatibility validation failure ----------
-  # Fires when the "API breaking-change check" job fails - in practice this
-  # is almost always validate-compat-files.sh rejecting the PR (e.g. a
-  # breaking change with no covering decision file, or an invalid decision
-  # file). `always()` is required because a failed `needs:` job otherwise
-  # skips its dependents by default.
+
   heavy_api_compat_notify:
     name: Notify Slack of api-compatibility validation failure
     needs: heavy_api_schema_diff
@@ -659,3 +654,30 @@ jobs:
         ${{ needs.heavy_api_schema_diff.outputs.compat_validation_error }}
         ```
     secrets: inherit
+
+  heavy_db_destructive_migration_check:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    name: DB destructive migration check
+    timeout-minutes: 10
+    outputs:
+      destructive: ${{ steps.detect.outputs.destructive }}
+      report: ${{ steps.detect.outputs.report }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for the added-migrations diff)
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Detect destructive operations in added migrations
+        id: detect
+        run: bash .github/scripts/ci/detect-destructive-migrations.sh origin/main
+
+      - name: Write destructive migration summary
+        if: steps.detect.outputs.destructive == 'true'
+        run: |
+          bash .github/scripts/ci/write-destructive-migrations-summary.sh \
+            "${{ steps.detect.outputs.report }}"

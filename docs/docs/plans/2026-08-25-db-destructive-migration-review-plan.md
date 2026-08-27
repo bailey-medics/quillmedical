@@ -70,26 +70,34 @@ written for.
 
 ## Phase 2: CI detection job
 
-- [ ] Add `heavy_db_destructive_migration_check` to `.github/workflows/ci.yml`,
+- [x] Add `heavy_db_destructive_migration_check` to `.github/workflows/ci.yml`,
       heavy tier (`if: github.event_name == 'pull_request' &&
 github.event.pull_request.draft == false`), mirroring
       `heavy_api_schema_diff`'s two-checkout structure (PR branch + main
       branch, `fetch-depth: 0`).
-- [ ] Diff `backend/alembic/versions/*.py` between `origin/main` and the PR
+      **Deviation, agreed during implementation:** a *single* checkout is
+      used, not two. `heavy_api_schema_diff` needs `main/` because it runs
+      `dump_openapi.py` against main's code to produce a spec to diff; this
+      job only needs the *filenames* added on the PR (`git diff
+      --diff-filter=A origin/main...HEAD`), and those files exist in the PR
+      checkout already, so a second working tree would be unused. The job
+      also needs no Poetry install — `check_migrations.py` is pure stdlib,
+      so bare `python3` on the runner is enough.
+- [x] Diff `backend/alembic/versions/*.py` between `origin/main` and the PR
       branch (`git diff --name-only --diff-filter=A
 origin/main...HEAD -- backend/alembic/versions/*.py`) to get the set
       of migration files **newly added on this PR** — mirroring how
       `oasdiff` diffs `main` against the PR branch rather than re-scanning
       the whole history each time. A migration merged in an earlier PR was
       already gated when it was added.
-- [ ] Run the new `--report-destructive` mode against that file set; set a
+- [x] Run the new `--report-destructive` mode against that file set; set a
       `destructive` job output (`true`/`false`) and capture the per-file
       op summary for the notification/job-summary steps.
-- [ ] Write a job summary (mirroring
+- [x] Write a job summary (mirroring
       `.github/scripts/ci/write-breaking-changes-summary.sh`) listing each
       flagged migration, its revision id, and which destructive ops were
       found, when `destructive == 'true'`.
-- [ ] Add `.github/scripts/ci/*.bats` coverage for any new shell glue,
+- [x] Add `.github/scripts/ci/*.bats` coverage for any new shell glue,
       matching the existing pattern (`check-api-breaking-changes.bats`).
 
 ## Phase 3: Human gate job
@@ -224,6 +232,79 @@ walkthrough is captured, since a real Alembic chain can't carry a
 disposable fixture revision the way a pair of flag-gated dummy API
 endpoints can.
 
+## Phase 8: Make migration immutability real
+
+Migrations are described everywhere as "write once, reviewed once, never
+revisited" — `docs/docs/backend/api-compatibility.md` leans on exactly that
+property to justify a comment being an acceptable home for the
+`allow-destructive` marker. Nothing enforces it. `check_migrations.py` runs
+five checks (chain integrity, description, reversibility, NOT NULL trap,
+destructive marker) and none of them is an immutability check, and nothing
+in CI or pre-commit guards `backend/alembic/versions/` against modification.
+
+This matters to the gate built above: Phase 2 deliberately diffs with
+`--diff-filter=A`, so a `drop_column` *added to a migration already on main*
+is invisible to it. Alembic will not re-run an applied revision, so such an
+edit would not drop anything on an already-migrated environment — but it
+would on any database built from scratch afterwards, and nothing currently
+stops the edit being made. Mirrors `validate_no_deletions` in
+`.github/scripts/ci/validate-compat-files.sh`, which enforces the same
+property for API decision files.
+
+**Scope: the whole file, including the marker and its rationale.** An
+earlier draft proposed comparing `ast.dump()` so comment-only edits stayed
+legal. That is the wrong rule here: the `allow-destructive` marker and its
+rationale *are* comments, and they are the record of a decision a human
+reviewed and approved at the gate. Editing them afterwards makes the original
+approval meaningless — the same reasoning that freezes `change` and
+`forces_reload` on API decision files. Since the body, the marker, and the
+rationale must all be immutable, almost nothing meaningful in a migration is
+left editable, so AST comparison buys complexity for a vanishing exception.
+The rule is therefore the simple one: **a merged migration file does not
+change, at all.**
+
+**Sequencing constraint.** Any planned retrofit of existing migrations must
+land *before* this phase. Specifically, the marker-hardening work (adding
+per-op rationales to `fa4401ce1b92`) edits a merged migration by design; once
+Phase 8 is in place that edit is impossible without a documented bypass.
+Order: retrofit first, immutability second.
+
+- [ ] Add `.github/scripts/ci/check-migrations-unmodified.sh`, following the
+      conventions in `.claude/rules/workflows.md` (header block,
+      `set -euo pipefail`, `shared/logging.sh`, args validated first). Diff
+      `backend/alembic/versions/*.py` between `<main-ref>` and `HEAD` with
+      `--diff-filter=MDR` to catch modifications, deletions, and renames.
+      Unlike `detect-destructive-migrations.sh` this script **fails the build
+      directly** (exit 1) rather than routing to a human gate: there is no
+      legitimate case to approve, so an approval step would only add a
+      rubber-stamp.
+- [ ] Add `heavy_db_migration_immutability_check` to `.github/workflows/ci.yml`,
+      heavy tier, single checkout with `fetch-depth: 0` (same shape as
+      `heavy_db_destructive_migration_check`, and for the same reason — only
+      the diff is needed, not a second working tree).
+- [ ] Add the job name as a required status check in
+      `infra/github/branch_rules.tf`, alongside the Phase 3 entries.
+- [ ] Add `.github/scripts/ci/check-migrations-unmodified.bats` covering:
+      a PR that adds a new migration passes; a PR that modifies a merged
+      migration fails; a PR that deletes one fails; a PR that renames one
+      fails; a PR touching no migrations passes; and — importantly — a
+      **comment-only** edit still fails, since the marker and its rationale
+      are comments and must not be rewritten after approval.
+- [ ] Document the rule in `.github/instructions/backend.instructions.md`
+      under "Creating migrations" (source of truth), then run
+      `/sync-copilot-config`. State what to do instead: a migration that
+      turns out to be wrong is corrected by a **new** migration, never by
+      editing the old one — the same "supersede, never amend" rule the API
+      decision files already follow. Say explicitly that this covers the
+      `allow-destructive` marker and its rationale: they record an approval
+      that already happened, so a later rewrite would misrepresent what was
+      approved. A rationale that turns out to be wrong is corrected in the
+      superseding migration, not by amending the original.
+- [ ] Add a "Layer 4 — migration immutability" section to
+      `docs/docs/backend/alembic-migration-safety.md`, and note there that
+      this is what makes the "write once, never revisited" claim in
+      `api-compatibility.md` true rather than aspirational.
+
 ## Decisions
 
 - **Detection ignores the `allow-destructive` marker entirely** — The whole
@@ -276,6 +357,12 @@ endpoints can.
 - **Approval gate left ungated by `should_notify`** — Mirrors the API gate:
   environment approval is SHA-scoped and deliberately re-required on every
   push. Dedup is a notification-noise control only, never a safety control
+- **Migration immutability is enforced separately (Phase 8), not folded into
+  the destructive gate** — The gate answers "should this drop be approved?";
+  immutability answers "should this file have changed at all?". The second has
+  no legitimate yes, so it fails the build outright rather than routing to a
+  reviewer — bolting it onto the gate would mean asking a human to approve
+  something that is never acceptable
 - **A destructive migration removed and then re-added identically stays
   silent** — Accepted trade-off, inherited unchanged from the API dedup
   plan: the stale marker hash genuinely still matches. The gate still blocks
