@@ -1,7 +1,5 @@
 # GitHub
 
-**Last updated:** 25 May 2026
-
 This page documents the GitHub configuration, branch protection rules, and operational learnings for the `bailey-medics` organisation.
 
 ## Organisation

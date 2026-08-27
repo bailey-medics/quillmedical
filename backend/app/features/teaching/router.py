@@ -17,8 +17,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.decorators import has_competency
 from app.db import get_core_db
+from app.deps import has_competency
 from app.features import requires_feature
 from app.features.teaching.models import (
     Assessment,
@@ -632,7 +632,7 @@ def start_assessment(
                 display_order=idx,
             )
         )
-    db.commit()
+    db.flush()
     db.refresh(assessment)
 
     # Build first item
@@ -923,8 +923,6 @@ def submit_answer(
     if next_answer:
         next_item = _build_candidate_item(next_answer, config, config_row.type)
 
-    db.commit()
-
     return {
         "answered": True,
         "next_item": next_item,
@@ -1004,7 +1002,6 @@ def update_answer(
     answer.is_correct = is_correct
     answer.resolved_tags = resolved_tags
     answer.answered_at = now
-    db.commit()
 
     return _build_candidate_item(answer, config, config_row.type)
 
@@ -1315,6 +1312,7 @@ def complete_assessment(
 # ------------------------------------------------------------------
 
 
+# api-schema-check: allow-opaque-grandfathered
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
 )
@@ -2127,7 +2125,7 @@ def update_settings(
         )
         db.add(settings_row)
 
-    db.commit()
+    db.flush()
     db.refresh(settings_row)
     return settings_row
 
@@ -2254,7 +2252,7 @@ def list_bank_organisations(
     db: Session = _DEP_SESSION,
 ) -> list[BankOrgRow]:
     """List all organisations with teaching enabled and their status for this bank."""
-    # Verify caller has a primary org (i.e. is an educator)
+    # Verify caller has an organisation (i.e. is an educator)
     _get_user_org_id(user, db)
 
     # All orgs that have the "teaching" feature enabled
@@ -2358,7 +2356,7 @@ def update_bank_org_settings(
         )
         db.add(status_row)
 
-    db.commit()
+    db.flush()
     db.refresh(status_row)
     return QuestionBankOrgSettingsOut(
         question_bank_id=bank_id,

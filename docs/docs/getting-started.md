@@ -6,6 +6,8 @@
 - [just](https://github.com/casey/just) command runner
 - [GitHub CLI](https://cli.github.com/) (`gh`) — authenticated with `gh auth login`
 - Node.js (for pre-commit hooks)
+- [ShellCheck](https://www.shellcheck.net/) (optional) — only needed to lint the GitHub Actions shell scripts locally; `brew install shellcheck`
+- [bats](https://github.com/bats-core/bats-core) (optional) — only needed to run the GitHub Actions shell script tests locally (`just test-scripts`); `brew install bats-core`
 
 ## Initial setup
 

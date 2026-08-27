@@ -38,6 +38,9 @@ nav:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
       - Avatar Gradient Migration: backend/avatar-gradient-migration.md
+      - Alembic Migration Safety: backend/alembic-migration-safety.md
+      - API Compatibility (Expand-Contract): backend/api-compatibility.md
+      - API Compatibility Testing: backend/api-compatibility-testing.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:
@@ -75,41 +78,45 @@ nav:
       - Managing Renovate PRs: dependencies/managing-renovate-prs.md
   - Plans:
       - Overview: plans/index.md
-      - Organisations, Messaging & External Access: plans/2026-03-15-orgs-and-messaging-and-external-access.md
-      - GCP Launch-Ready: plans/2026-03-16-gcp-launch-ready.md
-      - Teaching Module: plans/2026-03-18-teaching-project.md
-      - Public Pages Separation: plans/2026-03-19-public-pages.md
-      - Branch Protection Rules: plans/2026-03-20-branching-rules.md
       - To-Do List: plans/todo.md
-      - Email Subscriptions: plans/2026-03-21-subscriptions.md
-      - Human Code Review: plans/2026-03-23-human-code-review.md
-      - Renovate: plans/2026-03-24-renovate.md
-      - Hardening Teaching: plans/2026-03-28-hardening-teaching.md
-      - Emailing Certificates: plans/2026-03-29-emailing-certificates.md
-      - Code Scrutiny Prep: plans/2026-04-01-code-scrutiny-and-human-review-prep.md
-      - End-to-End Testing: plans/2026-04-04-e2e.md
-      - Security Review: plans/2026-04-04-security-review.md
-      - Design System: plans/2026-04-21-design-system.md
-      - Dark/Light Mode: plans/2026-05-03-dark-light-mode-plan.md
-      - Design System Update: plans/2026-05-04-design-system-update-plan.md
-      - Hardening Plan v2: plans/2026-05-04-hardening-plan-v2.md
-      - Penetration Testing: plans/2026-05-05-pentesting-plan.md
-      - Colour-to-Design-System Update: plans/2026-05-07-colour-to-design-system-update.md
-      - Form Submission Patterns: plans/2026-05-07-form-submission-patterns.md
-      - Offline Detection: plans/2026-05-08-offline-plan.md
-      - Learning Section: plans/2026-05-15-learning-section-plan.md
-      - Email Verification: plans/2026-05-20-email-verification-plan.md
-      - Organisation and Site: plans/2026-05-20-organisation-site-plan.md
-      - CI/CD Branching Overhaul: plans/2026-05-25-github-branching-plan.md
-      - E2E CI/CD Optimisation: plans/2026-05-26-E2E-cicd-optimisation.md
-      - Database Rename: plans/2026-05-26-db-rename-plan.md
-      - Version Locking Teaching: plans/2026-05-27-version-lock-teaching-plan.md
-      - Page Messages Centralisation: plans/2026-05-28-page-messages-centralisation-plan.md
-      - Assessment Image Clean-Up: plans/2026-05-29-assessment-cleanup-plan.md
-      - Teaching Separation of Concerns: plans/2026-05-29-teaching-separation-of-concerns-plan.md
-      - Account Update: plans/2026-05-30-account-update-plan.md
-      - CBAC Frontend Implementation: plans/2026-05-31-cbac-implementation-plan.md
-      - Base Profession Update: plans/2026-06-02-base-profession-update-plan.md
+      - Plans:
+          - Organisations, Messaging & External Access: plans/2026-03-15-orgs-and-messaging-and-external-access.md
+          - GCP Launch-Ready: plans/2026-03-16-gcp-launch-ready.md
+          - Teaching Module: plans/2026-03-18-teaching-project.md
+          - Public Pages Separation: plans/2026-03-19-public-pages.md
+          - Branch Protection Rules: plans/2026-03-20-branching-rules.md
+          - Email Subscriptions: plans/2026-03-21-subscriptions.md
+          - Human Code Review: plans/2026-03-23-human-code-review.md
+          - Renovate: plans/2026-03-24-renovate.md
+          - Hardening Teaching: plans/2026-03-28-hardening-teaching.md
+          - Emailing Certificates: plans/2026-03-29-emailing-certificates.md
+          - Code Scrutiny Prep: plans/2026-04-01-code-scrutiny-and-human-review-prep.md
+          - End-to-End Testing: plans/2026-04-04-e2e.md
+          - Security Review: plans/2026-04-04-security-review.md
+          - Design System: plans/2026-04-21-design-system.md
+          - Dark/Light Mode: plans/2026-05-03-dark-light-mode-plan.md
+          - Design System Update: plans/2026-05-04-design-system-update-plan.md
+          - Hardening Plan v2: plans/2026-05-04-hardening-plan-v2.md
+          - Penetration Testing: plans/2026-05-05-pentesting-plan.md
+          - Colour-to-Design-System Update: plans/2026-05-07-colour-to-design-system-update.md
+          - Form Submission Patterns: plans/2026-05-07-form-submission-patterns.md
+          - Offline Detection: plans/2026-05-08-offline-plan.md
+          - Learning Section: plans/2026-05-15-learning-section-plan.md
+          - Email Verification: plans/2026-05-20-email-verification-plan.md
+          - Organisation and Site: plans/2026-05-20-organisation-site-plan.md
+          - CI/CD Branching Overhaul: plans/2026-05-25-github-branching-plan.md
+          - E2E CI/CD Optimisation: plans/2026-05-26-E2E-cicd-optimisation.md
+          - Database Rename: plans/2026-05-26-db-rename-plan.md
+          - Version Locking Teaching: plans/2026-05-27-version-lock-teaching-plan.md
+          - Page Messages Centralisation: plans/2026-05-28-page-messages-centralisation-plan.md
+          - Assessment Image Clean-Up: plans/2026-05-29-assessment-cleanup-plan.md
+          - Teaching Separation of Concerns: plans/2026-05-29-teaching-separation-of-concerns-plan.md
+          - Account Update: plans/2026-05-30-account-update-plan.md
+          - CBAC Frontend Implementation: plans/2026-05-31-cbac-implementation-plan.md
+          - Base Profession Update: plans/2026-06-02-base-profession-update-plan.md
+          - Image on GCP Check: plans/2026-06-14-image-on-gcp-check-plan.md
+          - Teaching Env Scoping: plans/2026-08-05-teaching-env-scoping-plan.md
+          - Alembic Review & Migration Safety: plans/2026-08-09-alembic-review-plan.md
   - Teaching:
       - Overview: teaching/index.md
   - Learnings:
@@ -218,7 +225,6 @@ nav:
           - Update Docs: llm/prompts/update-docs-docs.prompt.md
           - Update Nav: llm/prompts/update-nav.prompt.md
           - Write a Plan: llm/prompts/write-a-plan.prompt.md
-
 
 plugins:
   - search

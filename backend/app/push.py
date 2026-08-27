@@ -49,6 +49,7 @@ class PushSubscriptionIn(BaseModel):
     keys: PushKeys
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/subscribe")
 def subscribe(
     sub: PushSubscriptionIn,
@@ -93,7 +94,7 @@ def subscribe(
             )
         )
 
-    db.commit()
+    db.flush()
 
     count = db.scalar(
         select(func.count(PushSubscriptionModel.id)).where(

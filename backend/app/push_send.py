@@ -30,6 +30,7 @@ VAPID_PRIVATE = os.environ["VAPID_PRIVATE"]
 VAPID_CLAIM = os.environ.get("COMPANY_EMAIL") or "mailto:admin@example.com"
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/send-test")
 def send_test(
     _u: User = DEP_REQUIRE_ADMIN,
@@ -77,5 +78,4 @@ def send_test(
             removed.append(sub.endpoint)
             db.delete(sub)
 
-    db.commit()
     return {"sent": True, "removed": removed}

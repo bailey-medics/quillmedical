@@ -1,4 +1,3 @@
-# alembic/env.py
 from __future__ import annotations
 
 # --- Make 'app' importable when running from alembic/ ---
@@ -6,7 +5,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 # Import teaching models so Alembic detects them for autogenerate
 import app.features.teaching.models  # noqa: F401
@@ -42,6 +41,8 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,  # notice type changes too
+        # compare_server_default deliberately left off: recurring false
+        # positives outweigh the benefit at this scale (see backend.instructions.md)
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -57,10 +58,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        connection.execute(text("SET lock_timeout = '3s'"))
+        connection.execute(text("SET statement_timeout = '30s'"))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,  # notice type changes too
+            # compare_server_default deliberately left off: recurring false
+            # positives outweigh the benefit at this scale (see backend.instructions.md)
         )
         with context.begin_transaction():
             context.run_migrations()

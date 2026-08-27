@@ -2,6 +2,7 @@
 agent: "agent"
 name: update-docs-docs
 description: Review and update documentation to match the codebase
+model: "Claude Haiku 4.5 (copilot)"
 ---
 
 # Review and update documentation to match the codebase

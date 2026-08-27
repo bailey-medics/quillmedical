@@ -1,7 +1,5 @@
 # CI/CD pipeline
 
-**Last updated:** 25 May 2026
-
 Quill Medical uses a trunk-based branching strategy with a single protected branch (`main`). GitHub Actions workflows validate, test, and deploy code changes. Feature branches open PRs to `main`, which auto-deploys to teaching on merge. Production deploys the same image via a GitHub Environment approval gate.
 
 ## Branching strategy
@@ -63,6 +61,17 @@ Runs when a PR is marked ready for review or updated. Takes ~5–10 minutes.
 | Semgrep                     | `Semgrep (frontend SAST)`               | Static application security testing            |
 | E2E                         | `E2E (Playwright)`                      | Full-stack end-to-end tests via Docker Compose |
 
+### Shell script tests
+
+Shell scripts that back the GitHub Actions workflows live under `.github/scripts/<workflow-name>/`. Any script with non-trivial logic has a [bats](https://github.com/bats-core/bats-core) (Bash Automated Testing System) test file alongside it — e.g. `deploy/resolve-commit.bats` sits next to `deploy/resolve-commit.sh`.
+
+- **Install bats locally:** `brew install bats-core`
+- **Run locally:** `just test-scripts` (alias `ts`) — runs `bats --recursive .github/scripts`
+- **Lint:** `find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR` (needs `brew install shellcheck`)
+- **CI:** the `Shell script lint and test` job runs ShellCheck then the full bats suite on every push, using the pinned `bats-core/bats-action`
+
+When adding or changing a workflow script, add or update its `.bats` file in the same directory so the logic stays covered.
+
 ### Draft PR mechanism
 
 The fast tier's `open-pr` job auto-creates a **draft** PR for `feature/*` and `copilot/*` branches. Heavy checks only fire when the PR is marked "Ready for review" (via `pull_request.ready_for_review` event). This means:
@@ -87,11 +96,11 @@ The fast tier's `open-pr` job auto-creates a **draft** PR for `feature/*` and `c
 **Triggers:**
 
 - Push to `main` (auto-deploy to teaching)
-- `workflow_dispatch` with optional `ref` input (for hotfix deploys)
+- `workflow_dispatch` with optional `manual_commit` input — accepts a commit, branch, or tag (for hotfix deploys)
 
 **Jobs:**
 
-1. **Prepare** — resolve build ref, detect changed services
+1. **Prepare** — resolve the input ref to a full commit SHA, detect changed services
 2. **Build** — build Docker images tagged with commit SHA, push to Artifact Registry (GHA layer cache)
 3. **Deploy teaching** — update Cloud Run services, smoke test `/api/health`
 4. **Create tag** — annotated CalVer tag after successful deploy
@@ -169,7 +178,13 @@ cd backend && poetry run pytest -m "not integration and not e2e"
 
 # TypeScript
 cd frontend && yarn eslint && yarn prettier:check && yarn typecheck:all && yarn unit-test:run
+
+# Shell scripts (GitHub Actions) — lint and test
+find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
+just test-scripts   # bats --recursive .github/scripts
 ```
+
+The shell-script checks need [ShellCheck](https://www.shellcheck.net/) (`brew install shellcheck`) and [bats](https://github.com/bats-core/bats-core) (`brew install bats-core`) installed locally. Both are optional for everyday work — CI always runs them — but handy when editing anything under `.github/scripts/`. See [Shell script tests](#shell-script-tests) for the testing convention.
 
 ### PR not created automatically
 

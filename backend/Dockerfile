@@ -27,6 +27,8 @@ RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" \
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
+# TODO: use `--only main` here — the dev group isn't marked optional, so this
+# currently installs dev deps (mypy, pytest, etc.) into the production image.
 RUN poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi
 
@@ -37,6 +39,9 @@ COPY backend/alembic.ini ./
 
 # Shared YAML config (CBAC competencies, base professions)
 COPY shared/ /shared/
+
+# API compatibility decision files (Compat-Generation header source)
+COPY api-compatibility/ /api-compatibility/
 
 # Create an unprivileged user and fix ownership
 RUN useradd --uid 10001 --create-home appuser \
@@ -57,15 +62,11 @@ COPY --chown=appuser:appuser backend/scripts ./scripts
 # Caddy will forward X-Forwarded-*; trust them so URLs and client IPs are correct
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--proxy-headers", "--forwarded-allow-ips", "*"]
 
-# ---------- Prod target (no reload, optional migrations) ----------
+# ---------- Prod target (no reload) ----------
 FROM base AS prod
 # Teaching-tooling validator scripts (clinical safety — second layer)
 COPY --chown=appuser:appuser teaching-tooling/scripts /teaching-tooling-scripts
 ENV TEACHING_TOOLING_SCRIPTS_PATH=/teaching-tooling-scripts
-# Optional entrypoint to run Alembic before serving
-COPY --chown=appuser:appuser backend/docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
 

@@ -2,10 +2,16 @@
   "recommendations": [
     "ms-python.python",
     "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "ms-python.mypy-type-checker",
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
+    "ms-playwright.playwright",
     "streetsidesoftware.code-spell-checker",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions",
+    "ms-azuretools.vscode-docker",
     "zamerick.vscode-caddyfile-syntax",
-    "be5invis.toml"
+    "tamasfe.even-better-toml"
   ]
 }

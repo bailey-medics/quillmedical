@@ -155,7 +155,7 @@ The service accounts have the following IAM roles:
 
 #### quillmedical repository
 
-Nine repository secrets set via `gh secret set`:
+GCP credentials are set via `gh secret set`, one trio per environment:
 
 | Secret                      | Value pattern                                                                                    |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -164,6 +164,25 @@ Nine repository secrets set via `gh secret set`:
 | `GCP_{ENV}_PROJECT_ID`      | `quill-medical-{env}`                                                                            |
 
 Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
+
+Scoping:
+
+- `GCP_PROD_*` and `GCP_STAGING_*` are **repository-level** secrets.
+- `GCP_TEACHING_*` exist at **both** scopes:
+  - **Environment-scoped** to the `teaching` environment (set with
+    `gh secret set --env teaching`). Jobs that declare `environment: teaching`
+    (`deploy.yml` build + deploy-teaching, `public-site.yml` deploy-teaching,
+    `terraform.yml` apply) read these env-scoped values, which take precedence.
+  - **Repository-level** copies are **retained** because the `plan` job in
+    `terraform.yml` runs on pull requests with no `environment:` and therefore
+    cannot use the (now main-only) `teaching` environment. Removing the
+    repo-level copies would break Terraform planning on PRs.
+- The teaching environment enforces a **main-only** deployment branch policy
+  (see `infra/github/environments.tf`).
+- The `promote-to-production` job (currently disabled, `if: false`) will read
+  the teaching source registry via a cross-project Artifact Registry IAM grant
+  on the production service account, not via teaching secrets — so no teaching
+  secrets live in the `production` environment.
 
 Additional secret:
 
@@ -351,21 +370,27 @@ Workflow: `.github/workflows/deploy.yml`
 
 1. Detect what changed (backend, frontend, shared)
 2. Build and push container images to Artifact Registry, tagged `{sha}`
-3. Deploy to teaching Cloud Run
-4. Smoke test: `GET /api/health` (5 retries, 10s intervals)
-5. Slack notification
+3. Run database migrations as a pre-deploy Cloud Run Job
+4. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
+   URL, then promoted to receive traffic; deploy frontend directly
+5. Smoke test the public edge: `GET /api/health` (5 retries, 10s intervals)
+6. Slack notification
 
-Note: Alembic migrations run automatically via the backend container's entrypoint script on startup, not as a separate CI step.
+See [Alembic migration safety](../backend/alembic-migration-safety.md) for
+why migrations run as a separate pre-deploy job and why the backend deploy
+is tagged/no-traffic rather than direct.
 
 ### Production deployment (promotion)
 
 Workflow: `.github/workflows/deploy.yml` (same workflow, gated by GitHub Environment approval)
 
 1. Copy exact image bytes from teaching AR to production AR via `gcrane`
-2. Deploy to production Cloud Run
-3. Smoke test: `GET /api/health`
-4. Create annotated CalVer git tag
-5. Slack notification
+2. Run database migrations as a pre-deploy Cloud Run Job
+3. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
+   URL, then promoted to receive traffic; deploy frontend directly
+4. Smoke test the public edge: `GET /api/health`
+5. Create annotated CalVer git tag
+6. Slack notification
 
 Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted — no rebuild.
 
@@ -430,9 +455,9 @@ Key mappings:
 
 | Terraform env var | Config field      | Default (Docker Compose)      |
 | ----------------- | ----------------- | ----------------------------- |
-| `AUTH_DB_HOST`    | `AUTH_DB_HOST`    | `postgres-auth`               |
-| `AUTH_DB_NAME`    | `AUTH_DB_NAME`    | `quill_core`                  |
-| `AUTH_DB_USER`    | `AUTH_DB_USER`    | `auth_user`                   |
+| `CORE_DB_HOST`    | `CORE_DB_HOST`    | `postgres-core`               |
+| `CORE_DB_NAME`    | `CORE_DB_NAME`    | `quill_core`                  |
+| `CORE_DB_USER`    | `CORE_DB_USER`    | `core_user`                   |
 | `FHIR_SERVER_URL` | `FHIR_SERVER_URL` | `http://fhir:8080/fhir`       |
 | `EHRBASE_URL`     | `EHRBASE_URL`     | `http://ehrbase:8080/ehrbase` |
 
@@ -534,13 +559,17 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 3. Deploy to staging and teaching Cloud Run
 4. Smoke test the health endpoint
 
-### ~~Create Alembic migration Cloud Run job~~ (solved)
+### Alembic migrations run as a pre-deploy Cloud Run Job (done)
 
-Database migrations are handled by the backend's `entrypoint.sh`, which runs `alembic upgrade head` before starting the uvicorn server. This runs automatically on every Cloud Run revision deployment — no separate migration job is needed.
+Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** — a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job — before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
+
+### Backend deploys via a tagged, smoke-tested revision (done)
+
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one — including its migration — has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
 ### Admin Cloud Run Job (done)
 
-Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles). See the [admin tasks documentation](admin.md) for usage.
+Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
 
 The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool — it does **not** run an HTTP server.
 

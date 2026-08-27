@@ -47,7 +47,7 @@ def _make_teaching_org(db: Session) -> Organisation:
 
 
 def _make_educator(db: Session, org: Organisation) -> User:
-    """Create an educator user linked as primary staff."""
+    """Create an educator user linked as staff."""
     user = User(
         username="testeducator",
         email="educator@test.local",
@@ -61,7 +61,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
     db.flush()
     db.execute(
         organisation_staff_member.insert().values(
-            organisation_id=org.id, user_id=user.id, is_primary=True
+            organisation_id=org.id, user_id=user.id
         )
     )
     db.flush()
@@ -69,7 +69,7 @@ def _make_educator(db: Session, org: Organisation) -> User:
 
 
 def _make_learner(db: Session, org: Organisation) -> User:
-    """Create a learner user linked as primary staff."""
+    """Create a learner user linked as staff."""
     user = User(
         username="testlearner",
         email="learner@test.local",
@@ -83,7 +83,7 @@ def _make_learner(db: Session, org: Organisation) -> User:
     db.flush()
     db.execute(
         organisation_staff_member.insert().values(
-            organisation_id=org.id, user_id=user.id, is_primary=True
+            organisation_id=org.id, user_id=user.id
         )
     )
     db.flush()
@@ -241,7 +241,6 @@ class TestFeatureGating:
             organisation_staff_member.insert().values(
                 organisation_id=org.id,
                 user_id=user.id,
-                is_primary=True,
             )
         )
         db_session.commit()

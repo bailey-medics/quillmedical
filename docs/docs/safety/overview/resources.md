@@ -65,4 +65,4 @@ Training portal: [NHS Digital Clinical Safety Training](https://digital.nhs.uk/s
 
 ---
 
-*Last updated: February 2026. Standards are under active review — monitor NHS Digital for Version 2 publications.*
+*Standards are under active review — monitor NHS Digital for Version 2 publications.*

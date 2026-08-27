@@ -274,6 +274,40 @@ class TestAddRole:
         assert result == 1
 
 
+class TestRunMigrations:
+    """Tests for the run-migrations action."""
+
+    def test_runs_upgrade_head(self) -> None:
+        env = {"ADMIN_ACTION": "run-migrations"}
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch("alembic.command.upgrade") as mock_upgrade,
+        ):
+            from scripts.admin_cli import run_migrations
+
+            result = run_migrations()
+
+        assert result == 0
+        mock_upgrade.assert_called_once()
+        # Second positional arg is the target revision.
+        assert mock_upgrade.call_args[0][1] == "head"
+
+    def test_upgrade_failure_returns_error(self) -> None:
+        env = {"ADMIN_ACTION": "run-migrations"}
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "alembic.command.upgrade",
+                side_effect=RuntimeError("lock timeout"),
+            ),
+        ):
+            from scripts.admin_cli import run_migrations
+
+            result = run_migrations()
+
+        assert result == 1
+
+
 class TestMain:
     """Tests for the main dispatcher."""
 

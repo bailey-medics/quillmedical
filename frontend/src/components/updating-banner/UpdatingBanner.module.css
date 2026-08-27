@@ -1,0 +1,20 @@
+/**
+ * UpdatingBanner Styles
+ *
+ * Full-screen blocking overlay.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme="dark"] .overlay {
+  background-color: var(--mantine-color-primary-9);
+}

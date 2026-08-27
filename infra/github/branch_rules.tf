@@ -100,6 +100,9 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "Python unit"
       }
+      required_check {
+        context = "Alembic autogenerate drift check"
+      }
 
       # TypeScript (matrix: all tasks)
       required_check {
@@ -132,6 +135,14 @@ resource "github_repository_ruleset" "protected_branches" {
       # E2E
       required_check {
         context = "E2E (Playwright)"
+      }
+
+      # API compatibility (item 15 — see docs/docs/backend/api-compatibility.md)
+      required_check {
+        context = "API breaking-change check"
+      }
+      required_check {
+        context = "API breaking-change review gate"
       }
     }
 

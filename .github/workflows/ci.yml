@@ -39,14 +39,14 @@ jobs:
 
     env:
       PRE_COMMIT_HOME: ${{ github.workspace }}/.pre-commit-cache
-      PIP_CACHE_DIR:   ${{ github.workspace }}/.pip-cache
     steps:
       - uses: actions/checkout@v7.0.1
         with: { fetch-depth: 0 }
 
-      - uses: actions/setup-python@v7.0.0
+      - name: Set up Python + backend deps
+        uses: ./.github/actions/setup-python
         with:
-          python-version-file: .python-version
+          install-backend-deps: ${{ matrix.task == 'unit' || matrix.task == 'pre-commit' }}
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python
@@ -57,7 +57,7 @@ jobs:
         with:
           path: |
             ${{ env.PRE_COMMIT_HOME }}
-            ${{ env.PIP_CACHE_DIR }}
+            ~/.cache/pip
           key: pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
             pc-pre-commit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
@@ -80,37 +80,7 @@ jobs:
           . .venv/bin/activate
           pre-commit run --all-files --show-diff-on-failure --color=always
 
-      # ---- Cache for unit tests ----
-      # backend/.venv is intentionally NOT cached: it symlinks into the ephemeral
-      # Python toolcache, and a restored copy segfaults when that interpreter is
-      # rebuilt. Cache Poetry's download cache so `poetry install` stays fast.
-      - name: Cache Poetry & pip (unit)
-        if: matrix.task == 'unit'
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ${{ env.PIP_CACHE_DIR }}
-          key: pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
-          restore-keys: |
-            pc-unit-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
-            pc-unit-${{ runner.os }}-
-
       # ---- Unit test steps ----
-      - name: Install Poetry (unit)
-        if: matrix.task == 'unit'
-        run: |
-          python -m pip install -U pip poetry
-          # Tells Poetry to use .venv/ inside the project root; working-directory: backend below makes that backend/.venv
-          poetry config virtualenvs.in-project true
-
-
-      - name: Install backend deps (unit)
-        if: matrix.task == 'unit'
-        working-directory: backend
-        run: |
-          poetry install --with dev --no-interaction --no-ansi
-
       - name: Checkout teaching-tooling (unit)
         if: matrix.task == 'unit'
         uses: actions/checkout@v7.0.1
@@ -126,6 +96,57 @@ jobs:
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
+  # ---------- Alembic autogenerate-drift check ----------
+  # Catches "model changed but migration forgotten": runs the migrations
+  # against a fresh Postgres, then fails if autogenerate would still produce
+  # any new operations. Needs a real Postgres (SQLite unit tests can't
+  # exercise Alembic's autogenerate comparison), so it gets its own small
+  # job rather than joining the DB-less `unit` matrix task above.
+  alembic_drift_check:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    name: Alembic autogenerate drift check
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
+        env:
+          POSTGRES_DB: quill_core
+          POSTGRES_USER: core_user
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U core_user -d quill_core"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      JWT_SECRET: ci_test_jwt_secret_at_least_32_characters_long
+      CORE_DB_HOST: localhost
+      CORE_DB_PORT: 5432
+      CORE_DB_NAME: quill_core
+      CORE_DB_USER: core_user
+      CORE_DB_PASSWORD: ci_test_password
+      CLINICAL_SERVICES_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python + backend deps
+        uses: ./.github/actions/setup-python
+
+      - name: Migrate to head
+        working-directory: backend
+        run: poetry run alembic upgrade head
+
+      - name: Check for autogenerate drift
+        working-directory: backend
+        run: poetry run alembic check
+
+      - name: Run drift-check regression tests
+        working-directory: backend
+        run: poetry run pytest -q -m integration tests/test_alembic_check.py
+
 
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
@@ -140,33 +161,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Storybook build artifacts
         if: matrix.task == 'storybook:build'
@@ -205,12 +201,30 @@ jobs:
   shell_checks:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
-    name: Shell script lint
+    name: Shell and workflow lint
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
+        run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
+      # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
+      - name: Set up bats
+        uses: bats-core/bats-action@4.0.0
+        with:
+          # Only bats core is needed; the tests use no helper libraries.
+          support-install: false
+          assert-install: false
+          detik-install: false
+          file-install: false
+          # 4.0.0 no longer authenticates the download automatically; pass the
+          # token to avoid GitHub API rate limits.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run shell script tests
+        run: bats --recursive .github/scripts
 
 
   # ---------- Version consistency ----------
@@ -238,33 +252,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Playwright browsers
         id: cache_playwright
@@ -313,17 +302,18 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Cache Semgrep
-        id: cache_semgrep
+      # The pipx venv is intentionally NOT cached: it symlinks into the ephemeral
+      # Python toolcache, and a restored copy segfaults when that interpreter is
+      # rebuilt. Cache pip's download cache so the reinstall stays fast.
+      - name: Cache pip (Semgrep)
         uses: actions/cache@v6.1.0
         with:
-          path: |
-            ~/.local/share/pipx/venvs/semgrep
-            ~/.local/bin/semgrep
-          key: ${{ runner.os }}-semgrep-1.172.0-py${{ steps.setup_python.outputs.python-version }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-semgrep-pip-1.172.0-py${{ steps.setup_python.outputs.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-semgrep-pip-
 
       - name: Install Semgrep
-        if: steps.cache_semgrep.outputs.cache-hit != 'true'
         run: pipx install semgrep==1.172.0 --python '${{ steps.setup_python.outputs.python-path }}'
 
       # The folder holding the semgrep command isn't searched by default, so we add it here.
@@ -421,37 +411,18 @@ jobs:
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
 
+      # The prod image no longer runs migrations on startup (see item 12 of
+      # docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md), so
+      # this ephemeral CI database needs them applied explicitly before seeding.
+      - name: Run database migrations
+        run: docker exec ci_backend alembic upgrade head
+
       - name: Seed test data
         # TODO: will need to change this if/when we use factories to seed data instead of a script.
         run: docker exec ci_backend python scripts/seed_ci.py
 
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: '24'
-
-      - name: Enable Corepack
-        # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
-        working-directory: frontend
-        run: |
-          corepack enable
-          corepack install
-
-      - name: Cache Yarn
-        id: cache_yarn
-        uses: actions/cache@v6.1.0
-        with:
-          path: |
-            frontend/.yarn/cache
-            frontend/.yarn/install-state.gz
-            frontend/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Install dependencies
-        if: steps.cache_yarn.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: yarn install --immutable
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
 
       - name: Cache Playwright browsers
         id: cache_playwright
@@ -478,7 +449,7 @@ jobs:
 
       - name: Upload test results
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: playwright-report
           path: frontend/playwright-report/
@@ -487,3 +458,204 @@ jobs:
       - name: Dump container logs on failure
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
+
+  # ---------- API breaking-change check (oasdiff) ----------
+  # Detects an undeclared breaking change to the API contract by diffing the
+  # OpenAPI spec generated from `main` against the spec generated from this
+  # PR branch. See docs/docs/backend/api-compatibility.md for the full
+  # reasoning. Detecting a breaking change itself never fails this job (the
+  # downstream notify/gate jobs act on its `breaking` output) - but the
+  # api-compatibility decision-file validation step below does fail the job
+  # when coverage/schema rules are violated; see heavy_api_compat_notify.
+  heavy_api_schema_diff:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    name: API breaking-change check
+    timeout-minutes: 15
+    outputs:
+      breaking: ${{ steps.diff.outputs.breaking }}
+      breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
+      compat_validation_error: ${{ steps.validate.outputs.error_output }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for api-compatibility diff)
+        working-directory: pr
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Checkout main branch
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          path: main
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: pr/.python-version
+
+      - name: Cache Poetry & pip
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-${{ hashFiles('pr/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-
+            poetry-${{ runner.os }}-
+
+      - name: Install Poetry
+        run: |
+          python -m pip install -U pip poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Install PR branch backend deps
+        working-directory: pr/backend
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Dump PR branch OpenAPI spec
+        working-directory: pr/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Install main branch backend deps
+        working-directory: main/backend
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Dump main branch OpenAPI spec
+        working-directory: main/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Install oasdiff
+        run: bash pr/.github/scripts/ci/install-oasdiff.sh
+
+      - name: Check for undeclared breaking API changes
+        id: diff
+        run: |
+          bash pr/.github/scripts/ci/check-api-breaking-changes.sh \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json
+
+      - name: Generate oasdiff JSON report (for api-compatibility validation)
+        run: |
+          oasdiff breaking --format json \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json \
+            > oasdiff-report.json || true
+
+      - name: Compute breaking-change hash (for Slack notification dedup)
+        id: hash
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
+
+      - name: Validate api-compatibility decision files
+        id: validate
+        working-directory: pr
+        run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
+
+      - name: Write breaking changes summary to job summary
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
+
+
+  # ---------- Human gate: required-reviewer approval for the breaking change ----------
+  # Only runs when heavy_api_schema_diff found a breaking change - otherwise
+  # skipped, which counts as passing for the required status check below.
+  # The `api-breaking-change-review` GitHub Actions environment requires the
+  # repo owner's approval, scoped to this exact commit SHA; see
+  # docs/docs/backend/api-compatibility.md for why a code comment, commit
+  # trailer, or PR label were rejected as insufficient.
+  heavy_api_breaking_change_gate:
+    name: API breaking-change review gate
+    needs: heavy_api_schema_diff
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    runs-on: ubuntu-24.04
+    environment: api-breaking-change-review
+    timeout-minutes: 30
+    steps:
+      - name: Breaking change approved
+        run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.sha }}."
+
+  # ---------- Dedup: only notify Slack when the breaking-change set changed ----------
+  # Compares heavy_api_schema_diff's breaking_hash against the hash recorded
+  # on a sticky PR comment from the last time Slack was notified. Silent on
+  # a re-run with the same break(s); signals should_notify=true only for the
+  # first breaking change ever, or when the set of breaking changes changed.
+  # See docs/docs/backend/api-compatibility.md for the known trade-off (a
+  # fixed-then-reintroduced identical breaking change won't re-notify).
+  heavy_api_breaking_change_dedup:
+    name: Dedupe breaking-change Slack notification
+    needs: heavy_api_schema_diff
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      should_notify: ${{ steps.dedup.outputs.should_notify }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check whether this breaking-change set was already notified
+        id: dedup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/dedup-breaking-change-notify.sh \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}"
+
+  # ---------- Slack notification on breaking API change ----------
+  heavy_api_breaking_change_notify:
+    name: Notify Slack of API breaking change
+    needs: [heavy_api_schema_diff, heavy_api_breaking_change_dedup]
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_breaking_change_dedup.outputs.should_notify == 'true'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *⚠️ Breaking API change requires approval*
+
+        This PR contains a breaking API change. Review the summary below to
+        confirm the change is intentional and staged (expand-then-contract).
+        Click *Review pending deployments* to approve the `api-breaking-change-review`
+        environment and allow the PR to proceed.
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
+    secrets: inherit
+
+  # ---------- Slack notification on api-compatibility validation failure ----------
+  # Fires when the "API breaking-change check" job fails - in practice this
+  # is almost always validate-compat-files.sh rejecting the PR (e.g. a
+  # breaking change with no covering decision file, or an invalid decision
+  # file). `always()` is required because a failed `needs:` job otherwise
+  # skips its dependents by default.
+  heavy_api_compat_notify:
+    name: Notify Slack of api-compatibility validation failure
+    needs: heavy_api_schema_diff
+    if: always() && needs.heavy_api_schema_diff.result == 'failure'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *🚨 api-compatibility validation failed*
+
+        The "API breaking-change check" job failed on this PR - most likely
+        `validate-compat-files.sh` rejected a breaking API change because it
+        isn't covered by a valid decision file. Open the run below to fix it
+        (see docs/docs/backend/api-compatibility.md for a walk through).
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
+        ```
+        ${{ needs.heavy_api_schema_diff.outputs.compat_validation_error }}
+        ```
+    secrets: inherit

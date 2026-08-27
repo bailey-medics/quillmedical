@@ -1,6 +1,8 @@
 # Unified build-once-promote deployment pipeline.
 # Teaching: auto-deploys on merge to main.
 # Production: promotes the SAME image via GitHub Environment approval gate.
+#            Currently OFFLINE to save GCP costs (promote-to-production has
+#            `if: false`). Remove that guard to re-enable production.
 name: Deploy
 
 on:
@@ -13,21 +15,19 @@ on:
       - ".github/prompts/**"
   workflow_dispatch:
     inputs:
-      ref:
-        description: "Git ref to build and deploy (for hotfixes from a tag/branch)"
-        required: false
-        default: ""
-      deploy_tag:
-        description: "Cloud Run traffic tag for isolated smoke testing (e.g. 'hotfix')"
+      manual_commit:
+        description: "Commit to build and deploy (also accepts a branch or tag — for hotfixes)"
         required: false
         default: ""
 
 permissions:
   contents: write  # Needed for annotated tag creation
-  id-token: write  # Workload Identity Federation
+  id-token: write  # Workload Identity Federation for Google Cloud Platform
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  # Fixed group (not keyed on github.ref) so a workflow_dispatch from a tag/hotfix
+  # branch still serialises against a push-triggered deploy from main.
+  group: deploy
   cancel-in-progress: false  # Never cancel a deploy in progress
 
 env:
@@ -36,32 +36,29 @@ env:
   VITE_VAPID_PUBLIC: BC0B26JO27tGc5qkbt2-QzY8M7_0u3gt5hmFj1RGWvZp9Vr9fDQ3-lpQ6YxqNlU0fFKlIUzCnb-baAE0rzIL-Ys
 
 jobs:
-  # ---------- Resolve the ref to build ----------
+  # ---------- Work out which commit to build ----------
   prepare:
     name: Prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
-      short_sha: ${{ steps.resolve.outputs.short_sha }}
-      backend_changed: ${{ steps.changes.outputs.backend }}
-      frontend_changed: ${{ steps.changes.outputs.frontend }}
+      backend_changed: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      frontend_changed: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
+      services: ${{ github.event_name == 'workflow_dispatch' && '["backend","frontend"]' || steps.filter.outputs.changes }}
     steps:
-      - name: Resolve build ref
-        id: resolve
-        run: |
-          if [ -n "${{ inputs.ref }}" ]; then
-            echo "sha=${{ inputs.ref }}" >> "$GITHUB_OUTPUT"
-            echo "short_sha=$(echo '${{ inputs.ref }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
-          else
-            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-            echo "short_sha=$(echo '${{ github.sha }}' | cut -c1-7)" >> "$GITHUB_OUTPUT"
-          fi
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/checkout@v6
+      - name: Work out which commit to build
+        id: resolve
+        env:
+          MANUAL_COMMIT: ${{ inputs.manual_commit }}
+        run: bash .github/scripts/deploy/resolve-commit.sh
+
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ steps.resolve.outputs.sha }}
 
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@v4.0.2
         id: filter
         with:
           filters: |
@@ -72,72 +69,47 @@ jobs:
               - "frontend/**"
               - "shared/**"
 
-      # workflow_dispatch always builds everything
-      - name: Resolve change outputs
-        id: changes
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            echo "frontend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
-            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
-          fi
-
-  # ---------- Build and push Docker images (to teaching AR) ----------
+  # ---------- Build and push Docker images ----------
   build:
     name: Build ${{ matrix.service }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: prepare
-    if: ${{ needs.prepare.outputs.backend_changed == 'true' || needs.prepare.outputs.frontend_changed == 'true' }}
+    if: ${{ needs.prepare.outputs.services != '[]' }}
+    environment: teaching
     strategy:
       matrix:
-        include:
-          - service: backend
-            context: .
-            dockerfile: ./backend/Dockerfile
-            changed: ${{ needs.prepare.outputs.backend_changed }}
-            target: prod
-          - service: frontend
-            context: .
-            dockerfile: ./frontend/Dockerfile
-            changed: ${{ needs.prepare.outputs.frontend_changed }}
-            target: prod
+        # One leg per changed service (JSON array from the prepare job).
+        service: ${{ fromJSON(needs.prepare.outputs.services) }}
     steps:
-      - uses: actions/checkout@v6
-        if: ${{ matrix.changed == 'true' }}
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
       - name: Checkout teaching-tooling
-        if: ${{ matrix.changed == 'true' && matrix.service == 'backend' }}
-        uses: actions/checkout@v6
+        if: ${{ matrix.service == 'backend' }}
+        uses: actions/checkout@v7.0.1
         with:
           repository: bailey-medics/teaching-tooling
           path: teaching-tooling
 
       - name: Authenticate to GCP (teaching)
-        if: ${{ matrix.changed == 'true' }}
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
 
       - name: Configure Docker for Artifact Registry
-        if: ${{ matrix.changed == 'true' }}
         run: gcloud auth configure-docker ${{ env.AR_REGISTRY }} --quiet
 
       - name: Set up Docker Buildx
-        if: ${{ matrix.changed == 'true' }}
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v4.2.0
 
       - name: Build and push
-        if: ${{ matrix.changed == 'true' }}
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v7.3.0
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          target: ${{ matrix.target }}
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          target: prod
           push: true
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/${{ matrix.service }}:${{ needs.prepare.outputs.sha }}
@@ -148,16 +120,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push admin image
+        if: ${{ matrix.service == 'backend' }}
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          target: admin
+          push: true
+          tags: |
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # ---------- Deploy to teaching ----------
   deploy-teaching:
     name: Deploy to teaching
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [prepare, build]
     if: always() && !failure() && !cancelled()
     environment: teaching
     steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      # actions/checkout must run before auth — it cleans $GITHUB_WORKSPACE,
+      # which would otherwise wipe the credential file auth just wrote there.
       - name: Authenticate to GCP (teaching)
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
@@ -165,13 +157,32 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
+      # Runs once against the shared core DB, before the new backend revision
+      # is created — removes the multi-instance migration race and gives a
+      # clean pass/fail signal separate from app boot (see
+      # docs/docs/backend/alembic-migration-safety.md).
+      - name: Run database migrations
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          bash .github/scripts/deploy/run-migrations.sh \
+            quill-admin-teaching \
+            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
+
       - name: Deploy backend
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-teaching \
-            --project=${{ secrets.GCP_TEACHING_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          SHA="${{ needs.prepare.outputs.sha }}"
+          # Cloud Run caps combined tag + service name at 46 chars, so a
+          # full 40-char SHA won't fit alongside the service name.
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-teaching \
+            ${{ secrets.GCP_TEACHING_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/backend:${SHA} \
+            "rev-${SHA:0:12}" \
+            /api/health
 
       - name: Deploy frontend
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
@@ -181,37 +192,32 @@ jobs:
             --region=${{ env.GCP_REGION }} \
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_TEACHING_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
+      # Public-edge check, complementing (not replacing) the tagged-revision
+      # smoke test above — confirms the live edge is serving correctly too.
       - name: Smoke test
-        run: |
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://teaching.quill-medical.com/api/health" || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Teaching health check passed"
-              exit 0
-            fi
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
-            sleep 10
-          done
-          echo "Teaching health check failed after 5 attempts"
-          exit 1
+        run: bash .github/scripts/deploy/smoke-test.sh "https://teaching.quill-medical.com/api/health"
 
   # ---------- Promote to production ----------
   # NOTE: Production (clinical) environment is currently offline to save GCP costs.
-  # Remove `if: false` when production is re-enabled.
+  # Set the repository variable ENABLE_PRODUCTION_DEPLOY to 'true' to re-enable.
+  # TODO: Decouple production promotion from the per-push flow before re-enabling.
+  # Chaining it onto `deploy-teaching` treats promotion as an automatic consequence
+  # of every merge to main (= staging). Production should be a deliberate,
+  # CSO-signed event — make it manual (workflow_dispatch choosing a commit/tag) or
+  # tag-triggered, not automatic per push. See todo.md.
+  # TODO: human review of prompt-to-production job
   promote-to-production:
-    if: false
+    if: ${{ vars.ENABLE_PRODUCTION_DEPLOY == 'true' }}
     name: Promote to production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [prepare, deploy-teaching]
     # Only runs after teaching succeeds; requires manual approval via environment
     environment: production
     steps:
-      - uses: actions/checkout@v6
-
+      - uses: actions/checkout@v7.0.1
       - name: Authenticate to GCP (teaching — source registry)
         id: auth-teaching
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
@@ -219,7 +225,7 @@ jobs:
 
       - name: Authenticate to GCP (production — target registry)
         id: auth-prod
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_PROD_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
@@ -254,16 +260,39 @@ jobs:
             gcrane copy "${SRC_REGISTRY}/frontend:${SHA}" "${DST_REGISTRY}/frontend:latest"
           fi
 
+          if [ "${{ needs.prepare.outputs.backend_changed }}" = "true" ]; then
+            echo "Copying admin image..."
+            gcrane copy "${SRC_REGISTRY}/admin:${SHA}" "${DST_REGISTRY}/admin:${SHA}"
+            gcrane copy "${SRC_REGISTRY}/admin:${SHA}" "${DST_REGISTRY}/admin:latest"
+          fi
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
+
+      # Runs once against the shared core DB, before the new backend revision
+      # is created (see docs/docs/backend/alembic-migration-safety.md).
+      - name: Run database migrations
+        if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
+        run: |
+          bash .github/scripts/deploy/run-migrations.sh \
+            quill-admin-prod \
+            ${{ secrets.GCP_PROD_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
 
       - name: Deploy backend to production
         if: ${{ needs.prepare.outputs.backend_changed == 'true' }}
         run: |
-          gcloud run services update quill-backend-prod \
-            --project=${{ secrets.GCP_PROD_PROJECT_ID }} \
-            --region=${{ env.GCP_REGION }} \
-            --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${{ needs.prepare.outputs.sha }}
+          SHA="${{ needs.prepare.outputs.sha }}"
+          # Cloud Run caps combined tag + service name at 46 chars, so a
+          # full 40-char SHA won't fit alongside the service name.
+          bash .github/scripts/deploy/deploy-tagged.sh \
+            quill-backend-prod \
+            ${{ secrets.GCP_PROD_PROJECT_ID }} \
+            ${{ env.GCP_REGION }} \
+            ${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/backend:${SHA} \
+            "rev-${SHA:0:12}" \
+            /api/health
 
       - name: Deploy frontend to production
         if: ${{ needs.prepare.outputs.frontend_changed == 'true' }}
@@ -274,19 +303,7 @@ jobs:
             --image=${{ env.AR_REGISTRY }}/${{ secrets.GCP_PROD_PROJECT_ID }}/quill/frontend:${{ needs.prepare.outputs.sha }}
 
       - name: Smoke test production
-        run: |
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "https://app.quill-medical.com/api/health" || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Production health check passed"
-              exit 0
-            fi
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
-            sleep 10
-          done
-          echo "Production health check failed after 5 attempts"
-          exit 1
+        run: bash .github/scripts/deploy/smoke-test.sh "https://app.quill-medical.com/api/health"
 
       - name: Create CalVer tag
         run: |
@@ -307,88 +324,32 @@ jobs:
           git push origin "$NEXT_TAG"
 
   # ---------- Slack notifications ----------
-  notify:
-    name: Slack notification
-    runs-on: ubuntu-latest
-    needs: [deploy-teaching, promote-to-production]
-    if: always()
-    steps:
-      - name: Notify teaching deploy success
-        if: ${{ needs.deploy-teaching.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "✅ Deployed to teaching",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Deployed to teaching*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+  notify-teaching-failure:
+    name: Notify teaching deploy failure
+    needs: [prepare, build, deploy-teaching]
+    if: ${{ always() && (needs.prepare.result == 'failure' || needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Teaching deploy failed*
 
-      - name: Notify teaching deploy failure
-        if: ${{ needs.deploy-teaching.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Teaching deploy failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Teaching deploy failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
 
-      - name: Notify production promotion success
-        if: ${{ needs.promote-to-production.result == 'success' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "🚀 Promoted to production",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*🚀 Promoted to production*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+  notify-production-failure:
+    name: Notify production promotion failure
+    needs: promote-to-production
+    if: ${{ always() && needs.promote-to-production.result == 'failure' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Production promotion failed*
 
-      - name: Notify production promotion failure
-        if: ${{ needs.promote-to-production.result == 'failure' }}
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Production promotion failed",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*❌ Production promotion failed*\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

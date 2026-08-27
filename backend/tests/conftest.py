@@ -65,10 +65,16 @@ def test_client(db_session: Session) -> TestClient:
     """Create a test client with database session override."""
 
     def override_get_core_db():
+        # Mirrors get_core_db()'s auto-commit-on-success /
+        # rollback-on-exception behaviour (app/db/core_db.py), minus the
+        # close() — db_session's own fixture owns that lifecycle since
+        # it's shared across every request within a test.
         try:
             yield db_session
-        finally:
-            pass
+            db_session.commit()
+        except Exception:
+            db_session.rollback()
+            raise
 
     app.dependency_overrides[get_core_db] = override_get_core_db
     # Allow clinical endpoints in tests (CLINICAL_SERVICES_ENABLED=false

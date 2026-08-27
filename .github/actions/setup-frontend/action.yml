@@ -1,0 +1,35 @@
+name: Set up frontend
+description: Node + Corepack + Yarn install with cache for the frontend workspace.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7.0.0
+      with:
+        node-version: '24'
+
+    - name: Enable Corepack
+      # working-directory: frontend so `corepack install` reads the Yarn version from frontend/package.json
+      working-directory: frontend
+      shell: bash
+      run: |
+        corepack enable
+        corepack install
+
+    - name: Cache Yarn
+      id: cache_yarn
+      uses: actions/cache@v6.1.0
+      with:
+        path: |
+          frontend/.yarn/cache
+          frontend/.yarn/install-state.gz
+          frontend/node_modules
+        key: ${{ runner.os }}-yarn-${{ hashFiles('frontend/yarn.lock', 'frontend/.yarnrc.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
+
+    - name: Install dependencies
+      if: steps.cache_yarn.outputs.cache-hit != 'true'
+      working-directory: frontend
+      shell: bash
+      run: yarn install --immutable

@@ -17,7 +17,7 @@ services:
     expose:
       - "8000"
     depends_on:
-      postgres-auth:
+      postgres-core:
         condition: service_healthy
     networks:
       - public
@@ -25,6 +25,7 @@ services:
     volumes:
       - ./backend:/app
       - ./shared:/shared
+      - ./api-compatibility:/api-compatibility
       - ./teaching-repos:/teaching-repos
       - ./teaching-tooling/scripts:/teaching-tooling-scripts
 
@@ -55,17 +56,17 @@ services:
     networks:
       - public
 
-  postgres-auth:
+  postgres-core:
     image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
-    container_name: quill_postgres_auth
+    container_name: quill_postgres_core
     environment:
       POSTGRES_DB: quill_core
-      POSTGRES_USER: auth_user
+      POSTGRES_USER: core_user
       POSTGRES_PASSWORD: vspct8I2iLUkfC3JsXxefy
     volumes:
-      - postgres_auth_data:/var/lib/postgresql
+      - postgres_core_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_user -d quill_core"]
+      test: ["CMD-SHELL", "pg_isready -U core_user -d quill_core"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -214,7 +215,7 @@ services:
       - public
 
 volumes:
-  postgres_auth_data:
+  postgres_core_data:
   postgres_fhir_data:
   postgres_ehrbase_data:
   caddy_data:

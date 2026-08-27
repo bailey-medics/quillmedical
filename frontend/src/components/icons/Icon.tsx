@@ -14,13 +14,13 @@ import { useMediaQuery } from "@mantine/hooks";
 
 /**
  * Icon size variants mapped to pixel values
- * Desktop (≥768px):
+ * Desktop (≥640px):
  * - sm: 20px (inputs, small buttons, inline text)
  * - md: 28px (default size, general UI elements)
  * - lg: 48px (action cards, prominent features)
  * - xl: 72px (hero sections, landing page features)
  *
- * Mobile (<768px):
+ * Mobile (<640px):
  * - sm: 16px
  * - md: 20px
  * - lg: 32px
@@ -43,7 +43,7 @@ interface IconProps {
   containerVariant?: "light" | "filled" | "outline";
 }
 
-/** Desktop size map (≥768px) */
+/** Desktop size map (≥640px) */
 const desktopSizeMap: Record<IconSize, number> = {
   sm: 20,
   md: 28,
@@ -51,7 +51,7 @@ const desktopSizeMap: Record<IconSize, number> = {
   xl: 72,
 };
 
-/** Mobile size map (<768px) */
+/** Mobile size map (<640px) */
 const mobileSizeMap: Record<IconSize, number> = {
   sm: 16,
   md: 20,

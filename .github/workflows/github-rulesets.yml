@@ -1,4 +1,4 @@
-# GitHub rulesets — change detection and Slack notification
+# GitHub rulesets — change trigger and Slack notification
 #
 # This workflow fires when infra/github/** files change. It alerts via Slack
 # that a manual `terraform apply` is needed to sync the rulesets to GitHub.
@@ -34,24 +34,20 @@ jobs:
   # ---------- Notify that manual apply is needed ----------
   notify:
     name: Notify
-    runs-on: ubuntu-latest
-    steps:
-      - name: Warn via Slack that manual apply is required
-        uses: slackapi/slack-github-action@v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          errors: true
-          payload: |
-            {
-              "text": "⚠️ GitHub rulesets changed — manual terraform apply required",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*⚠️ GITHUB RULESETS CHANGED — MANUAL TERRAFORM APPLY REQUIRED*\n\nFiles under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.\n\n*Action required:*\n```\njust terraform-github\n```\n\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
-            }
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *⚠️ GitHub rulesets changed — manual terraform apply required*
+
+        Files under `infra/github/` were merged to main. Branch protection rulesets will not update automatically until a remote Terraform backend is configured.
+
+        *Action required:*
+        ```
+        just terraform-github
+        ```
+
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

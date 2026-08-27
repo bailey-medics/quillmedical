@@ -18,8 +18,11 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import TopRibbon from "@/components/ribbon/TopRibbon";
 import Footer from "@/components/footer/Footer";
+import StatusStrip from "@/components/status-strip/StatusStrip";
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
 import { useAuth } from "@/auth/AuthContext";
+import { useConnectivity } from "@lib/connectivity";
+import { useForcedReload } from "@lib/compat-generation";
 import {
   LAYOUT_RIBBON_Z_INDEX,
   LAYOUT_PADDING_BOTTOM,
@@ -51,6 +54,8 @@ export default function TeachingLayout({
   const { state } = useAuth();
   const mainRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { isOnline, isReconnected, lastSyncedAt } = useConnectivity();
+  const { phase } = useForcedReload();
 
   useEffect(() => {
     mainRef.current?.scrollTo?.(0, 0);
@@ -65,6 +70,16 @@ export default function TeachingLayout({
 
   const drawerBody = drawerContent ?? sidebar;
   const hasSidebar = !!sidebar;
+
+  const showOfflineStrip = !isOnline && !!lastSyncedAt;
+  const showReconnectedStrip = isReconnected && !!lastSyncedAt;
+  const showFallbackStrip = phase === "fallback";
+  const activeStripCount = [
+    showOfflineStrip,
+    showReconnectedStrip,
+    showFallbackStrip,
+  ].filter(Boolean).length;
+  const multipleStrips = activeStripCount > 1;
 
   return (
     <Flex
@@ -94,6 +109,20 @@ export default function TeachingLayout({
           showSearch={false}
         />
       </Box>
+
+      {showOfflineStrip && (
+        <StatusStrip
+          variant="offline"
+          lastSyncedAt={lastSyncedAt ?? undefined}
+          multiple={multipleStrips}
+        />
+      )}
+      {showReconnectedStrip && (
+        <StatusStrip variant="reconnected" multiple={multipleStrips} />
+      )}
+      {showFallbackStrip && (
+        <StatusStrip variant="fallback" multiple={multipleStrips} />
+      )}
 
       <Flex flex={1} style={{ overflow: "hidden", position: "relative" }}>
         {hasSidebar && drawerBody && (

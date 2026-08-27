@@ -93,28 +93,63 @@ vi.mock("@components/footer/Footer", () => ({
   ),
 }));
 
-vi.mock("@components/offline-strip/OfflineStrip", () => ({
-  default: () => <div data-testid="offline-strip" />,
+vi.mock("@components/status-strip/StatusStrip", () => ({
+  default: ({ variant, multiple }: { variant: string; multiple?: boolean }) => (
+    <div
+      data-testid="status-strip"
+      data-variant={variant}
+      data-multiple={multiple}
+    />
+  ),
 }));
 
 vi.mock("@components/offline-modal/OfflineModal", () => ({
   default: () => null,
 }));
 
+const mockLocation: { pathname: string } = { pathname: "/" };
+
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/" }),
+  useLocation: () => mockLocation,
 }));
 
+const mockIsSm: { value: boolean } = { value: false };
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return {
+    ...actual,
+    useMediaQuery: () => mockIsSm.value,
+  };
+});
+
+const mockConnectivity: {
+  isOnline: boolean;
+  isReconnected: boolean;
+  lastSyncedAt: Date | null;
+  showOfflineModal: boolean;
+  dismissOfflineModal: ReturnType<typeof vi.fn>;
+  clearReconnected: ReturnType<typeof vi.fn>;
+} = {
+  isOnline: true,
+  isReconnected: false,
+  lastSyncedAt: null,
+  showOfflineModal: false,
+  dismissOfflineModal: vi.fn(),
+  clearReconnected: vi.fn(),
+};
+
 vi.mock("@lib/connectivity", () => ({
-  useConnectivity: () => ({
-    isOnline: true,
-    isReconnected: false,
-    lastSyncedAt: null,
-    showOfflineModal: false,
-    dismissOfflineModal: vi.fn(),
-    clearReconnected: vi.fn(),
-  }),
+  useConnectivity: () => mockConnectivity,
+}));
+
+const mockForcedReload: { phase: "idle" | "blocking" | "fallback" } = {
+  phase: "idle",
+};
+
+vi.mock("@lib/compat-generation", () => ({
+  useForcedReload: () => mockForcedReload,
 }));
 
 const mockPatient: Patient = {
@@ -164,6 +199,12 @@ vi.mock("@/auth/AuthContext", async () => {
 describe("MainLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockConnectivity.isOnline = true;
+    mockConnectivity.isReconnected = false;
+    mockConnectivity.lastSyncedAt = null;
+    mockForcedReload.phase = "idle";
+    mockLocation.pathname = "/";
+    mockIsSm.value = false;
   });
 
   describe("Basic rendering", () => {
@@ -392,6 +433,35 @@ describe("MainLayout", () => {
       );
       expect(hasDesktopNav).toBe(true);
     });
+
+    it("shows mobile nav search on ordinary pages", () => {
+      mockIsSm.value = true;
+      mockLocation.pathname = "/messages";
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const sideNav = screen.getByTestId("side-nav");
+      expect(sideNav).toHaveAttribute("data-show-search", "true");
+    });
+
+    it.each(["/settings", "/settings/account", "/admin", "/admin/users"])(
+      "hides mobile nav search on %s (not yet wired up)",
+      (pathname) => {
+        mockIsSm.value = true;
+        mockLocation.pathname = pathname;
+        renderWithMantine(
+          <MainLayout patient={null}>
+            <div>Content</div>
+          </MainLayout>,
+        );
+
+        const sideNav = screen.getByTestId("side-nav");
+        expect(sideNav).toHaveAttribute("data-show-search", "false");
+      },
+    );
   });
 
   describe("Content rendering", () => {
@@ -417,6 +487,79 @@ describe("MainLayout", () => {
       expect(screen.getByText("First Element")).toBeInTheDocument();
       expect(screen.getByText("Second Element")).toBeInTheDocument();
       expect(screen.getByText("Third Element")).toBeInTheDocument();
+    });
+  });
+
+  describe("Status strips", () => {
+    it("renders no strip when online and no forced-reload mismatch", () => {
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      expect(screen.queryByTestId("status-strip")).not.toBeInTheDocument();
+    });
+
+    it("renders an offline strip when offline with a last-synced time", () => {
+      mockConnectivity.isOnline = false;
+      mockConnectivity.lastSyncedAt = new Date();
+
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "offline");
+      expect(strip).toHaveAttribute("data-multiple", "false");
+    });
+
+    it("renders a reconnected strip when reconnected with a last-synced time", () => {
+      mockConnectivity.isReconnected = true;
+      mockConnectivity.lastSyncedAt = new Date();
+
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "reconnected");
+    });
+
+    it("renders a fallback strip when the forced-reload phase is fallback", () => {
+      mockForcedReload.phase = "fallback";
+
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const strip = screen.getByTestId("status-strip");
+      expect(strip).toHaveAttribute("data-variant", "fallback");
+      expect(strip).toHaveAttribute("data-multiple", "false");
+    });
+
+    it("stacks both strips and marks them multiple when offline and fallback are both active", () => {
+      mockConnectivity.isOnline = false;
+      mockConnectivity.lastSyncedAt = new Date();
+      mockForcedReload.phase = "fallback";
+
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      const strips = screen.getAllByTestId("status-strip");
+      expect(strips).toHaveLength(2);
+      strips.forEach((strip) => {
+        expect(strip).toHaveAttribute("data-multiple", "true");
+      });
     });
   });
 });

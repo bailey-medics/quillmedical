@@ -17,12 +17,12 @@ import { VariantRow, VariantStack, StoryNote } from "@/stories/variants";
 /**
  * Icon component provides consistent sizing for Tabler icons.
  *
- * **Size Variants (Desktop ≥768px):**
+ * **Size Variants (Desktop ≥640px):**
  * - `sm` (20px): Inputs, small buttons, inline text
  * - `md` (28px): Default size, general UI elements
  * - `lg` (48px): Action cards, prominent features
  *
- * **Size Variants (Mobile <768px):**
+ * **Size Variants (Mobile <640px):**
  * - `sm` (16px): Inputs, small buttons, inline text
  * - `md` (20px): Default size, general UI elements
  * - `lg` (32px): Action cards, prominent features

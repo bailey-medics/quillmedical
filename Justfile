@@ -111,7 +111,7 @@ docs:
     {{initialise}} "docs"
     # Copy prompts to docs for inclusion in MkDocs build
     mkdir -p docs/docs/llm/prompts
-    cp -r prompts/* docs/docs/llm/prompts/
+    cp -r .github/prompts/* docs/docs/llm/prompts/
     cd frontend
     yarn docs:build
     yarn storybook:build
@@ -133,14 +133,6 @@ docker-daemon-start:
         sleep 1
     done
     echo "Docker is running."
-
-
-alias du := db-users
-# Show the database users
-db-users:
-    #!/usr/bin/env bash
-    {{initialise}} "db-users"
-    docker compose -f compose.dev.yml exec database psql -U quill -d quill -c "\d users"
 
 
 alias eb := enter-backend
@@ -290,12 +282,12 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
-    docker exec quill_backend sh -lc '
+    docker exec -e AL_MSG='{{message}}' quill_backend sh -lc '
         set -e
         alembic upgrade head &&
         alembic revision --autogenerate -m "$AL_MSG" &&
         alembic upgrade head
-    ' AL_MSG='{{message}}'
+    '
 
 
 alias pc := pre-commit
@@ -307,16 +299,35 @@ pre-commit:
 
 
 alias pb := prune-branches
-# Remove local branches whose remote tracking branch is gone
+# Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main
 prune-branches:
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
     git fetch --prune
     GONE=$(git branch -vv | grep ': gone]' | awk '{print $1}' || true)
     if [ -z "$GONE" ]; then
-        echo "No stale branches to remove."
+        echo "No stale tracked branches to remove."
     else
         echo "$GONE" | xargs git branch -D
+    fi
+
+    CURRENT=$(git branch --show-current)
+    MERGED_UNTRACKED=""
+    for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
+        if [ "$branch" = "main" ] || [ "$branch" = "$CURRENT" ]; then
+            continue
+        fi
+        if git config --get "branch.$branch.remote" > /dev/null 2>&1; then
+            continue
+        fi
+        if git merge-base --is-ancestor "$branch" origin/main 2>/dev/null; then
+            MERGED_UNTRACKED="$MERGED_UNTRACKED $branch"
+        fi
+    done
+    if [ -z "$MERGED_UNTRACKED" ]; then
+        echo "No merged untracked branches to remove."
+    else
+        echo $MERGED_UNTRACKED | xargs git branch -d
     fi
 
 
@@ -533,6 +544,14 @@ unit-tests-frontend *ARGS:
     docker exec quill_frontend sh -lc "yarn unit-test:run {{ARGS}}"
 
 
+alias ts := test-scripts
+# Run the shell script tests (bats)
+test-scripts *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "test-scripts"
+    bats --recursive .github/scripts {{ARGS}}
+
+
 alias ee := e2e
 # Run the end-to-end tests
 e2e:
@@ -615,7 +634,7 @@ build-admin env:
     # Deploy the Cloud Run Job (creates if new, updates if existing)
     # Look up the Cloud SQL core database private IP
     echo "Looking up database connection..."
-    CORE_DB_HOST=$(gcloud sql instances describe "quill-auth-{{env}}" \
+    CORE_DB_HOST=$(gcloud sql instances describe "quill-core-{{env}}" \
         --project="$PROJECT" \
         --format='value(ipAddresses[0].ipAddress)')
 
@@ -629,7 +648,7 @@ build-admin env:
         --max-retries=0 \
         --task-timeout=300s \
         --set-env-vars "CORE_DB_HOST=${CORE_DB_HOST},CORE_DB_NAME=quill_core,CORE_DB_USER=quill" \
-        --set-secrets "CORE_DB_PASSWORD=auth-db-password:latest,JWT_SECRET=jwt-secret:latest" \
+        --set-secrets "CORE_DB_PASSWORD=core-db-password:latest,JWT_SECRET=jwt-secret:latest" \
         --quiet
     echo "✓ Cloud Run Job deployed"
 
@@ -702,4 +721,24 @@ add-role-remote env:
         --project="$PROJECT" \
         --region="$REGION" \
         --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
+        --wait
+
+
+alias mr := migrate-remote
+# Run pending Alembic migrations on a remote environment (teaching/prod do this automatically pre-deploy; use for staging or manual re-runs)
+migrate-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate-remote ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Run migrations on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=run-migrations" \
         --wait
