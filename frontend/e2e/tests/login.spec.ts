@@ -8,7 +8,7 @@ async function submitLogin(
   password: string,
 ): Promise<number | null> {
   const usernameInput = page.getByLabel("Username");
-  const passwordInput = page.getByLabel("Password");
+  const passwordInput = page.getByRole("textbox", { name: "Password" });
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     await usernameInput.fill(username);
@@ -148,7 +148,7 @@ test.describe("Login page", () => {
       page.getByRole("heading", { name: "Sign in to Quill" }),
     ).toBeVisible();
     await expect(page.getByLabel("Username")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Password" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
 
