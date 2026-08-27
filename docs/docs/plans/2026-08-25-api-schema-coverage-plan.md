@@ -580,7 +580,9 @@ still present are the already-decided Chunk 5 ones, not yet merged to
       with zero unexpected findings
 - [x] `just ub` — full backend unit suite (including the flipped
       regression test)
-- [ ] Push and confirm the `pre-commit` CI job runs the new hook cleanly
+- [x] Push and confirm the `pre-commit` CI job runs the new hook cleanly
+      (pushed as commit `461a1213` to `feature/api-schema-coverage-ci-update`,
+      rebased onto latest main, forced-pushed to remote)
 - [x] Manually verify `oasdiff` now has real schema to diff: temporarily
       remove a field from one retyped response locally, confirm
       `oasdiff breaking` (per `backend/scripts/dump_openapi.py`) flags it,
