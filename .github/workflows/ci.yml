@@ -46,7 +46,7 @@ jobs:
       - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
         with:
-          install-backend-deps: ${{ matrix.task == 'unit' }}
+          install-backend-deps: ${{ matrix.task == 'unit' || matrix.task == 'pre-commit' }}
 
       # ---- Cache for pre-commit ----
       # .venv is intentionally NOT cached: it symlinks into the ephemeral Python

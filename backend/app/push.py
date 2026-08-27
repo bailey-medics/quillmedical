@@ -49,6 +49,7 @@ class PushSubscriptionIn(BaseModel):
     keys: PushKeys
 
 
+# api-schema-check: allow-opaque-grandfathered
 @router.post("/subscribe")
 def subscribe(
     sub: PushSubscriptionIn,
