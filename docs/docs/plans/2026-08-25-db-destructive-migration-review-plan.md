@@ -22,7 +22,7 @@ The outcome of this plan is a second instance of the same pattern already
 proven for API changes — automated detection plus a required-reviewer
 GitHub Actions environment gate, Slack-notified — applied to destructive DB
 migrations. It reuses the existing reviewer, the existing Slack channel, the
-existing notification-dedup mechanism (see Phase 4), and the existing
+existing notification-dedup mechanism (see Phase 5), and the existing
 accountability rationale (a set author is the approver, by design — see
 below) rather than inventing new mechanics. The static marker
 check stays as-is (note location change below); it's still a useful fast,
@@ -100,19 +100,53 @@ origin/main...HEAD -- backend/alembic/versions/*.py`) to get the set
 - [x] Add `.github/scripts/ci/*.bats` coverage for any new shell glue,
       matching the existing pattern (`check-api-breaking-changes.bats`).
 
-## Phase 3: Human gate job
+## Phase 3: Terraform — the approval environment
 
-- [ ] Add `heavy_db_destructive_migration_gate` to `ci.yml`: `needs:
+- [x] Add a `db_destructive_migration_review` block to
+      `infra/github/environments.tf`, directly mirroring
+      `api_breaking_change_review`: same reviewer
+      (`data.github_user.api_breaking_change_reviewer` — reuse rather than
+      look up `Cotswoldsmaker` a second time), `prevent_self_review =
+false`, and a comment carrying the same accountability rationale (a
+      second reviewer isn't inherently more careful than the author; the
+      goal is one genuine, separate, deliberate approval action from
+      whoever is accountable, not diffusing accountability across more
+      people).
+- [ ] Note in the PR description that `terraform apply` is a manual,
+      separate step (as it was for `api-breaking-change-review`) — not run
+      as part of this plan's implementation, and coordinate with the repo
+      owner before applying.
+- [ ] **Apply this phase before Phase 4 merges** — see the sequencing hazard
+      recorded under Phase 4. Until the environment exists with its required
+      reviewer, the gate job passes without approving anything.
+
+## Phase 4: Human gate job
+
+**Sequencing hazard, found during implementation — Phase 3 must be applied
+before this phase merges.** The gate's entire blocking power comes from the
+`db-destructive-migration-review` environment having a required reviewer. That
+environment is created by Phase 3's Terraform, and `terraform apply` is a
+manual step. If this phase merges first, the environment does not yet exist
+with its protection rule, and a workflow referencing a missing environment
+gets one created implicitly, with **no** protection rules attached. The gate
+job would then pass instantly, with no human approving anything, while
+appearing green and being listed as a required check — a gate that looks
+enforced and enforces nothing, which is worse than no gate at all because it
+manufactures false confidence. Order: apply Phase 3's Terraform first, confirm
+the reviewer is attached to the environment in the GitHub UI, and only then
+merge this phase.
+
+- [x] Add `heavy_db_destructive_migration_gate` to `ci.yml`: `needs:
 heavy_db_destructive_migration_check`, `if:
 needs.heavy_db_destructive_migration_check.outputs.destructive ==
 'true'`, `environment: db-destructive-migration-review` — directly
       mirroring `heavy_api_breaking_change_gate`.
-- [ ] Add both job names (`DB destructive migration check`, `DB
+- [x] Add both job names (`DB destructive migration check`, `DB
 destructive migration review gate`) as required status checks in
       `infra/github/branch_rules.tf`, alongside the existing "API
       compatibility" required-check block.
 
-## Phase 4: Slack notification, deduplicated
+## Phase 5: Slack notification, deduplicated
 
 The API gate's Slack job originally re-pinged on every push to a non-draft
 PR, because the `pull_request` trigger fires on `synchronize` and not just
@@ -160,23 +194,6 @@ teaching` (same webhook, no new secret), gated on **both**
 - [ ] Leave `heavy_db_destructive_migration_gate` (Phase 3) untouched by
       the dedup output — as with the API gate, approval is SHA-scoped and
       stays required on every push; only Slack noise is deduplicated.
-
-## Phase 5: Terraform — new environment
-
-- [ ] Add a `db_destructive_migration_review` block to
-      `infra/github/environments.tf`, directly mirroring
-      `api_breaking_change_review`: same reviewer
-      (`data.github_user.api_breaking_change_reviewer` — reuse rather than
-      look up `Cotswoldsmaker` a second time), `prevent_self_review =
-false`, and a comment carrying the same accountability rationale (a
-      second reviewer isn't inherently more careful than the author; the
-      goal is one genuine, separate, deliberate approval action from
-      whoever is accountable, not diffusing accountability across more
-      people).
-- [ ] Note in the PR description that `terraform apply` is a manual,
-      separate step (as it was for `api-breaking-change-review`) — not run
-      as part of this plan's implementation, and coordinate with the repo
-      owner before applying.
 
 ## Phase 6: Documentation
 

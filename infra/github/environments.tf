@@ -73,3 +73,40 @@ resource "github_repository_environment" "api_breaking_change_review" {
     users = [data.github_user.api_breaking_change_reviewer.id]
   }
 }
+
+# ---------------------------------------------------------------------------
+# Destructive DB migration review environment — required-reviewer approval gate
+# ---------------------------------------------------------------------------
+#
+# Destructive migration context (see
+# docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md):
+#   Gates a newly-added migration that drops a column, table, or constraint
+#   (detected by check_migrations.py --report-destructive in CI) behind one
+#   deliberate approval action. The existing
+#   `# migration-check: allow-destructive` marker is self-attested — whoever
+#   writes the migration adds the comment themself, so it proves the comment
+#   exists, not that anyone weighed the cost of discarding clinical audit
+#   history. This environment supplies the part the marker cannot: an action
+#   nothing in the diff can produce.
+#
+#   `prevent_self_review = false` is intentional, matching
+#   api_breaking_change_review above — a second reviewer is not inherently
+#   more careful than the person who wrote the migration, so the goal is
+#   forcing one genuine, separate, deliberate action out of whoever is
+#   accountable, not diffusing accountability across more people.
+#
+#   The reviewer is reused from api_breaking_change_review rather than looked
+#   up a second time: same person, same accountability, one data source.
+#
+# No deployment_branch_policy: this environment gates a CI job that runs on
+# pull requests, not a deployment, so it is not restricted to a branch.
+
+resource "github_repository_environment" "db_destructive_migration_review" {
+  repository          = var.github_repository
+  environment         = "db-destructive-migration-review"
+  prevent_self_review = false
+
+  reviewers {
+    users = [data.github_user.api_breaking_change_reviewer.id]
+  }
+}
