@@ -36,7 +36,7 @@ triggers the rebase.
 
 ## Phase 1: Stop Renovate from auto-rebasing
 
-- [ ] Change `rebaseWhen` in [`renovate.json`](../../../renovate.json) from
+- [x] Change `rebaseWhen` in [`renovate.json`](../../../renovate.json) from
       `"conflicted"` to `"never"`. Renovate will then never auto-rebase or
       force-push an open PR for any reason — updating a stale/conflicted PR
       becomes an entirely manual action via GitHub's "Update branch" button.
@@ -46,7 +46,7 @@ triggers the rebase.
   +  "rebaseWhen": "never",
   ```
 
-- [ ] Flag the automerge trade-off before merging: Tier 3 packages in
+- [x] Flag the automerge trade-off before merging: Tier 3 packages in
       `renovate.json` have `automerge: true` (devDependencies minor/patch,
       `@types/*`, GitHub Actions, pre-commit hooks). With `rebaseWhen:
       "never"`, if one of those PRs falls behind/conflicts with `main`,
