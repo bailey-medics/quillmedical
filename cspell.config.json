@@ -178,6 +178,7 @@
     "bypassable",
     "canceling",
     "caplog",
+    "capsys",
     "catthehacker",
     "cbac",
     "celerybeat",

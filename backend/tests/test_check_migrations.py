@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.check_migrations import (
     DEFAULT_VERSIONS_DIR,
     SEVERITY_ERROR,
@@ -19,6 +21,7 @@ from scripts.check_migrations import (
     check_reversibility,
     collect_migrations,
     main,
+    report_destructive,
 )
 
 
@@ -263,3 +266,135 @@ def test_new_migration_violation_exits_non_zero(tmp_path: Path) -> None:
 def test_missing_versions_dir_returns_two(tmp_path: Path) -> None:
     missing = tmp_path / "does-not-exist"
     assert main(["--versions-dir", str(missing)]) == 2
+
+
+# ---------------------------------------------------------------------------
+# Destructive-op reporting (--report-destructive)
+# ---------------------------------------------------------------------------
+
+
+_MARKED_DROP = (
+    "    # migration-check: allow-destructive\n"
+    "    op.drop_column('users', 'flag')"
+)
+
+
+def test_report_ignores_non_destructive_migration(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "a.py",
+        revision="a",
+        down_revision=None,
+        upgrade_body="    op.add_column('users', sa.Column('x', sa.Text()))",
+    )
+    assert report_destructive([tmp_path / "a.py"]) == []
+
+
+def test_report_ignores_alter_column_only(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "a.py",
+        revision="a",
+        down_revision=None,
+        upgrade_body="    op.alter_column('users', 'x', nullable=True)",
+    )
+    assert report_destructive([tmp_path / "a.py"]) == []
+
+
+def test_report_includes_marked_migration(tmp_path: Path) -> None:
+    """The marker must never suppress detection — that is the point."""
+    _write(
+        tmp_path,
+        "a.py",
+        revision="abc123",
+        down_revision=None,
+        upgrade_body=_MARKED_DROP,
+    )
+    assert report_destructive([tmp_path / "a.py"]) == [
+        "a.py abc123 drop_column"
+    ]
+
+
+def test_report_includes_unmarked_migration(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "a.py",
+        revision="abc123",
+        down_revision=None,
+        upgrade_body="    op.drop_table('legacy')",
+    )
+    assert report_destructive([tmp_path / "a.py"]) == [
+        "a.py abc123 drop_table"
+    ]
+
+
+def test_report_is_identical_with_and_without_marker(
+    tmp_path: Path,
+) -> None:
+    """The gate must see the same thing either way."""
+    _write(
+        tmp_path,
+        "marked.py",
+        revision="r",
+        down_revision=None,
+        upgrade_body=_MARKED_DROP,
+    )
+    _write(
+        tmp_path,
+        "bare.py",
+        revision="r",
+        down_revision=None,
+        upgrade_body="    op.drop_column('users', 'flag')",
+    )
+    marked = report_destructive([tmp_path / "marked.py"])
+    bare = report_destructive([tmp_path / "bare.py"])
+    assert [line.split(" ", 1)[1] for line in marked] == [
+        line.split(" ", 1)[1] for line in bare
+    ]
+
+
+def test_report_sorts_files_and_ops(tmp_path: Path) -> None:
+    """Stable output: the CI job hashes these lines."""
+    body = (
+        "    op.drop_table('b')\n"
+        "    op.drop_constraint('uq_a', 'a')\n"
+        "    op.drop_column('a', 'c')"
+    )
+    _write(
+        tmp_path,
+        "b.py",
+        revision="second",
+        down_revision=None,
+        upgrade_body="    op.drop_table('x')",
+    )
+    _write(
+        tmp_path,
+        "a.py",
+        revision="first",
+        down_revision=None,
+        upgrade_body=body,
+    )
+    assert report_destructive([tmp_path / "b.py", tmp_path / "a.py"]) == [
+        "a.py first drop_column,drop_constraint,drop_table",
+        "b.py second drop_table",
+    ]
+
+
+def test_report_mode_via_main_exits_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Reporting never fails the build, marker present or not."""
+    _write(
+        tmp_path,
+        "a.py",
+        revision="abc123",
+        down_revision=None,
+        upgrade_body="    op.drop_table('legacy')",
+    )
+    assert main(["--report-destructive", str(tmp_path / "a.py")]) == 0
+    assert capsys.readouterr().out == "a.py abc123 drop_table\n"
+
+
+def test_report_mode_missing_file_returns_two(tmp_path: Path) -> None:
+    missing = tmp_path / "does-not-exist.py"
+    assert main(["--report-destructive", str(missing)]) == 2

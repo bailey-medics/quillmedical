@@ -25,6 +25,16 @@ must be fixed, not exempted.
 Run with::
 
     python backend/scripts/check_migrations.py --all
+
+A separate, non-failing reporting mode lists the destructive operations
+in the given migration files, **regardless of whether the marker is
+present**, for the CI human-review gate to act on::
+
+    python backend/scripts/check_migrations.py --report-destructive FILE...
+
+Detection there is deliberately blind to the marker, so the gate cannot
+be satisfied by the same comment that satisfies check 5 above. See
+``docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md``.
 """
 
 from __future__ import annotations
@@ -128,26 +138,28 @@ def _keyword_is_false(call: ast.Call, name: str) -> bool:
     return False
 
 
+def parse_migration(path: Path) -> Migration:
+    """Parse a single migration module."""
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=str(path))
+    return Migration(
+        path=path,
+        revision=_assigned_value(tree, "revision"),
+        down_revision=_assigned_value(tree, "down_revision"),
+        docstring=ast.get_docstring(tree, clean=False),
+        upgrade=_function(tree, "upgrade"),
+        downgrade=_function(tree, "downgrade"),
+        source=source,
+    )
+
+
 def collect_migrations(versions_dir: Path) -> list[Migration]:
     """Parse every migration module in ``versions_dir``."""
-    migrations: list[Migration] = []
-    for path in sorted(versions_dir.glob("*.py")):
-        if path.name == "__init__.py":
-            continue
-        source = path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(path))
-        migrations.append(
-            Migration(
-                path=path,
-                revision=_assigned_value(tree, "revision"),
-                down_revision=_assigned_value(tree, "down_revision"),
-                docstring=ast.get_docstring(tree, clean=False),
-                upgrade=_function(tree, "upgrade"),
-                downgrade=_function(tree, "downgrade"),
-                source=source,
-            )
-        )
-    return migrations
+    return [
+        parse_migration(path)
+        for path in sorted(versions_dir.glob("*.py"))
+        if path.name != "__init__.py"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +408,50 @@ def check_all(migrations: list[Migration]) -> list[Problem]:
 
 
 # ---------------------------------------------------------------------------
+# Destructive-op reporting (informational; feeds the CI review gate)
+# ---------------------------------------------------------------------------
+
+
+def destructive_ops(migration: Migration) -> list[str]:
+    """Return the sorted destructive ops ``upgrade()`` performs.
+
+    Deliberately blind to ``DESTRUCTIVE_MARKER``: the CI review gate this
+    feeds must fire on what the migration *does*, never on what its own
+    comments claim, so the same text that satisfies ``check_destructive``
+    cannot also satisfy the gate. ``check_destructive`` remains the
+    separate, faster pre-commit nudge and is unaffected by this function.
+    """
+    if migration.upgrade is None:
+        return []
+    found: set[str] = set()
+    for node in ast.walk(migration.upgrade):
+        if isinstance(node, ast.Call):
+            name = _call_name(node)
+            if name in DESTRUCTIVE_OPS:
+                found.add(str(name))
+    return sorted(found)
+
+
+def report_destructive(paths: list[Path]) -> list[str]:
+    """Return one line per given migration performing destructive ops.
+
+    Each line is ``<filename> <revision> <op>[,<op>...]``, with files and
+    ops both sorted, so the report is stable across unrelated edits — the
+    CI job hashes these lines to decide whether the destructive-change set
+    actually changed since the last notification. Files performing no
+    destructive operation produce no line at all.
+    """
+    lines: list[str] = []
+    for path in sorted(paths):
+        migration = parse_migration(path)
+        ops = destructive_ops(migration)
+        if ops:
+            revision = migration.revision or "unknown"
+            lines.append(f"{path.name} {revision} {','.join(ops)}")
+    return lines
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -420,7 +476,29 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_VERSIONS_DIR,
         help="Path to the Alembic versions directory.",
     )
+    parser.add_argument(
+        "--report-destructive",
+        nargs="+",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "Report the destructive operations in the given migration "
+            "files on stdout and exit 0, without running any check. "
+            "Reports regardless of the allow-destructive marker."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    report_paths: list[Path] | None = args.report_destructive
+    if report_paths:
+        missing = [p for p in report_paths if not p.is_file()]
+        if missing:
+            names = ", ".join(str(p) for p in missing)
+            print(f"error: migration file not found: {names}", file=sys.stderr)
+            return 2
+        for line in report_destructive(report_paths):
+            print(line)
+        return 0
 
     versions_dir: Path = args.versions_dir
     if not versions_dir.is_dir():

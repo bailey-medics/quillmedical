@@ -49,7 +49,7 @@ written for.
 
 ## Phase 1: Detection — report destructive ops independent of the marker
 
-- [ ] Add a non-failing, informational mode to
+- [x] Add a non-failing, informational mode to
       `backend/scripts/check_migrations.py` (e.g. `--report-destructive
 <file> [<file> ...]`) that parses the given migration file paths and
       prints one line per file listing any `drop_column` / `drop_table` /
@@ -60,7 +60,7 @@ written for.
       not raise `Problem`s or set an exit code — the existing `check_all`
       path is unchanged and keeps failing on a missing marker independently
       of this gate.
-- [ ] Add `backend/tests/test_check_migrations.py` (or extend it if it
+- [x] Add `backend/tests/test_check_migrations.py` (or extend it if it
       already covers other modes) coverage for the new mode: a fixture
       migration with a non-destructive `add_column` is not reported; a
       fixture with `drop_column` and the marker is still reported (the
