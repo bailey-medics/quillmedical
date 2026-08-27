@@ -157,6 +157,12 @@ class ConversationListOut(BaseModel):
     conversations: list[ConversationOut]
 
 
+class MarkReadOut(BaseModel):
+    """Result of marking a conversation as read."""
+
+    ok: bool
+
+
 class ConversationDetailOut(BaseModel):
     """Full conversation with all messages."""
 

@@ -57,7 +57,7 @@ services:
       - public
 
   postgres-core:
-    image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     container_name: quill_postgres_core
     environment:
       POSTGRES_DB: quill_core
@@ -80,7 +80,7 @@ services:
 
   postgres-fhir:
     profiles: ["clinical"]
-    image: postgres:18-alpine@sha256:96d56f7f57c6aacd1fcb908bc83b345ec5f83231ee486dd66a1baadce274db88
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     container_name: quill_postgres_fhir
     environment:
       POSTGRES_DB: hapi
@@ -126,7 +126,7 @@ services:
 
   fhir:
     profiles: ["clinical"]
-    image: hapiproject/hapi:v8.8.0-1
+    image: hapiproject/hapi:v8.10.0-1
     container_name: quill_fhir
     env_file: backend/.env
     environment:
@@ -166,7 +166,7 @@ services:
 
   ehrbase:
     profiles: ["clinical"]
-    image: ehrbase/ehrbase:2.30.0
+    image: ehrbase/ehrbase:2.30.1
     container_name: quill_ehrbase
     env_file: backend/.env
     environment:
@@ -199,7 +199,7 @@ services:
       start_period: 60s
 
   caddy:
-    image: caddy:2-alpine@sha256:86deaf5e3d3408a6ccec08fbb79989783dd26e206ae10bcf78a801dc8c9ab794
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     container_name: quill_caddy
     ports:
       - "80:80"

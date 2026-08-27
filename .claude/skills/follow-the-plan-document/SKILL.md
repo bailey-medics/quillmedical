@@ -1,4 +1,5 @@
 ---
+name: follow-the-plan-document
 description: Follow the plan document
 argument-hint: "[path/to/plan.md]"
 disable-model-invocation: true

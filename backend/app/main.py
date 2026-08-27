@@ -58,6 +58,11 @@ from app.ehrbase_client import (
     list_letters_for_patient,
 )
 from app.email_send import send_email
+from app.features.teaching.schemas import (
+    CiSyncBankResult,
+    CiSyncErrorItem,
+    CiTeachingSyncOut,
+)
 from app.fhir_client import (
     FhirClientError,
     FhirCommunicationError,
@@ -130,6 +135,7 @@ from app.schemas.auth import (
 )
 from app.schemas.cbac import (
     PrescriptionRequest,
+    PrescriptionResponse,
     UpdateCompetenciesRequest,
     UserCompetenciesResponse,
 )
@@ -144,12 +150,15 @@ from app.schemas.messaging import (
     ConversationOut,
     ConversationStatusUpdateIn,
     InviteExternalIn,
+    MarkReadOut,
     MessageCreateIn,
     MessageOut,
     ParticipantOut,
 )
 from app.schemas.organisations import (
     AddPatientIn,
+    AddSiteStaffIn,
+    AddSiteStaffResponse,
     AddStaffIn,
     CreateOrganisationIn,
     CreateSiteIn,
@@ -160,7 +169,11 @@ from app.schemas.organisations import (
     OrganisationsListOut,
     OrgPatientAddResponse,
     OrgStaffAddResponse,
+    SiteDetailOut,
+    SiteOut,
+    SitesListOut,
     StatusResponse,
+    ToggleSiteActiveIn,
     UpdateOrganisationIn,
     UpdateSiteIn,
 )
@@ -3341,9 +3354,9 @@ async def get_my_competencies(
     )
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/prescriptions/controlled",
+    response_model=PrescriptionResponse,
     tags=["cbac", "prescriptions"],
     status_code=201,
 )
@@ -3351,7 +3364,7 @@ async def prescribe_controlled(
     prescription: PrescriptionRequest,
     user: User = Depends(has_competency("prescribe_controlled_schedule_2")),
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> PrescriptionResponse:
     """Prescribe controlled substance (Schedule 2).
 
     Example endpoint demonstrating CBAC protection. Only users with
@@ -3367,21 +3380,21 @@ async def prescribe_controlled(
         db: Database session
 
     Returns:
-        dict: Prescription confirmation
+        PrescriptionResponse: Prescription confirmation
 
     Raises:
         HTTPException: 403 if user lacks competency
     """
     # In real implementation, this would create prescription in database
-    return {
-        "status": "success",
-        "prescription_id": "RX001",
-        "prescriber": user.username,
-        "patient_id": prescription.patient_id,
-        "medication": prescription.medication,
-        "dose": prescription.dose,
-        "duration_days": prescription.duration_days,
-    }
+    return PrescriptionResponse(
+        status="success",
+        prescription_id="RX001",
+        prescriber=user.username,
+        patient_id=prescription.patient_id,
+        medication=prescription.medication,
+        dose=prescription.dose,
+        duration_days=prescription.duration_days,
+    )
 
 
 @router.patch(
@@ -3444,7 +3457,7 @@ async def update_my_competencies(
 @router.get("/organisations", response_model=OrganisationsListOut)
 def list_organisations(
     current_user: User = DEP_CURRENT_USER, db: Session = DEP_GET_SESSION
-) -> dict[str, Any]:
+) -> OrganisationsListOut:
     """List all organisations.
 
     Retrieves all organisations from the database. Returns basic information
@@ -3486,8 +3499,8 @@ def list_organisations(
                 .scalars()
                 .all()
             )
-        return {
-            "organisations": [
+        return OrganisationsListOut(
+            organisations=[
                 {
                     "id": org.id,
                     "name": org.name,
@@ -3498,7 +3511,7 @@ def list_organisations(
                 }
                 for org in organisations
             ]
-        }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -3508,7 +3521,7 @@ def get_organisation(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationDetailOut:
     """Get Organisation Details.
 
     Retrieves detailed information about a specific organisation including
@@ -3607,16 +3620,16 @@ def get_organisation(
         for row in db.execute(cl_query).all():
             clinical_leads[row.site_id] = row.full_name or row.username
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-        "staff_count": len(staff_members),
-        "patient_count": len(patient_members),
-        "staff_members": [
+    return OrganisationDetailOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+        staff_count=len(staff_members),
+        patient_count=len(patient_members),
+        staff_members=[
             {
                 "id": sm.id,
                 "username": sm.username,
@@ -3625,13 +3638,13 @@ def get_organisation(
             }
             for sm in staff_members
         ],
-        "patient_members": [
+        patient_members=[
             {
                 "patient_id": pm.patient_id,
             }
             for pm in patient_members
         ],
-        "sites": [
+        sites=[
             {
                 "id": s.id,
                 "name": s.name,
@@ -3642,7 +3655,7 @@ def get_organisation(
             }
             for s in sites
         ],
-    }
+    )
 
 
 @router.put("/organisations/{org_id}", response_model=OrganisationOut)
@@ -3651,7 +3664,7 @@ def update_organisation(
     body: UpdateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationOut:
     """Update Organisation.
 
     Updates an existing organisation's details.
@@ -3711,14 +3724,14 @@ def update_organisation(
     db.flush()
     db.refresh(org)
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-    }
+    return OrganisationOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+    )
 
 
 @router.post("/organisations", response_model=OrganisationOut)
@@ -3726,7 +3739,7 @@ def create_organisation(
     body: CreateOrganisationIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrganisationOut:
     """Create Organisation.
 
     Creates a new organisation in the database.
@@ -3773,14 +3786,14 @@ def create_organisation(
     db.flush()
     db.refresh(org)
 
-    return {
-        "id": org.id,
-        "name": org.name,
-        "type": org.type,
-        "location": org.location,
-        "created_at": org.created_at.isoformat(),
-        "updated_at": org.updated_at.isoformat(),
-    }
+    return OrganisationOut(
+        id=org.id,
+        name=org.name,
+        type=org.type,
+        location=org.location,
+        created_at=org.created_at.isoformat(),
+        updated_at=org.updated_at.isoformat(),
+    )
 
 
 @router.delete("/organisations/{org_id}", response_model=DetailResponse)
@@ -3788,7 +3801,7 @@ def delete_organisation(
     org_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Delete Organisation.
 
     Permanently removes an organisation and all associated memberships.
@@ -3818,7 +3831,7 @@ def delete_organisation(
         raise HTTPException(status_code=404, detail="Organisation not found")
 
     db.delete(org)
-    return {"detail": "Organisation deleted"}
+    return DetailResponse(detail="Organisation deleted")
 
 
 @router.post(
@@ -3829,7 +3842,7 @@ def add_staff_to_organisation(
     body: AddStaffIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrgStaffAddResponse:
     """Add Staff Member to Organisation.
 
     Adds an existing user as a staff member of an organisation.
@@ -3897,11 +3910,11 @@ def add_staff_to_organisation(
         )
     )
 
-    return {
-        "organisation_id": org_id,
-        "user_id": body.user_id,
-        "username": user.username,
-    }
+    return OrgStaffAddResponse(
+        organisation_id=org_id,
+        user_id=body.user_id,
+        username=user.username,
+    )
 
 
 @router.post(
@@ -3914,7 +3927,7 @@ def add_patient_to_organisation(
     body: AddPatientIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> OrgPatientAddResponse:
     """Add Patient to Organisation.
 
     Adds a patient to an organisation by their FHIR patient ID.
@@ -3972,10 +3985,10 @@ def add_patient_to_organisation(
         )
     )
 
-    return {
-        "organisation_id": org_id,
-        "patient_id": body.patient_id,
-    }
+    return OrgPatientAddResponse(
+        organisation_id=org_id,
+        patient_id=body.patient_id,
+    )
 
 
 @router.delete(
@@ -3988,7 +4001,7 @@ def remove_staff_from_organisation(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Remove a staff member from an organisation.
 
     Admin/superadmin only.
@@ -4027,7 +4040,7 @@ def remove_staff_from_organisation(
             organisation_staff_member.c.user_id == user_id,
         )
     )
-    return {"status": "removed"}
+    return StatusResponse(status="removed")
 
 
 @router.delete(
@@ -4040,7 +4053,7 @@ def remove_patient_from_organisation(
     patient_id: str,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Remove a patient from an organisation.
 
     Admin/superadmin only.
@@ -4079,7 +4092,7 @@ def remove_patient_from_organisation(
             organisation_patient_member.c.patient_id == patient_id,
         )
     )
-    return {"status": "removed"}
+    return StatusResponse(status="removed")
 
 
 # ==========================================================================
@@ -4092,7 +4105,7 @@ def list_org_features(
     org_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> FeaturesListOut:
     """List enabled features for an organisation.
 
     Admin/superadmin only.
@@ -4111,8 +4124,8 @@ def list_org_features(
                 status_code=404, detail="Organisation not found"
             )
 
-    return {
-        "features": [
+    return FeaturesListOut(
+        features=[
             {
                 "feature_key": f.feature_key,
                 "enabled_at": (
@@ -4122,7 +4135,7 @@ def list_org_features(
             }
             for f in org.features
         ]
-    }
+    )
 
 
 @router.put(
@@ -4136,7 +4149,7 @@ def toggle_org_feature(
     body: FeatureToggleIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> FeatureToggleResponse:
     """Enable or disable a feature on an organisation.
 
     Admin/superadmin only.  When ``enabled=true`` a row is created;
@@ -4165,19 +4178,19 @@ def toggle_org_feature(
 
     if body.enabled:
         if existing:
-            return {"status": "already_enabled"}
+            return FeatureToggleResponse(status="already_enabled")
         feature = OrganisationFeature(
             organisation_id=org_id,
             feature_key=feature_key,
             enabled_by=current_user.id,
         )
         db.add(feature)
-        return {"status": "enabled"}
+        return FeatureToggleResponse(status="enabled")
     else:
         if not existing:
-            return {"status": "already_disabled"}
+            return FeatureToggleResponse(status="already_disabled")
         db.delete(existing)
-        return {"status": "disabled"}
+        return FeatureToggleResponse(status="disabled")
 
 
 # ==========================================================================
@@ -4196,20 +4209,19 @@ VALID_SITE_TYPES = {
 }
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/sites")
+@router.get("/sites", response_model=SitesListOut)
 def list_sites(
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, list[dict[str, Any]]]:
+) -> SitesListOut:
     """List all sites. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
 
     rows = db.execute(select(Site).order_by(Site.name)).scalars().all()
 
-    return {
-        "sites": [
+    return SitesListOut(
+        sites=[
             {
                 "id": s.id,
                 "name": s.name,
@@ -4222,16 +4234,15 @@ def list_sites(
             }
             for s in rows
         ]
-    }
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/sites", dependencies=[DEP_REQUIRE_CSRF])
+@router.post("/sites", response_model=SiteOut, dependencies=[DEP_REQUIRE_CSRF])
 def create_site(
     body: CreateSiteIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SiteOut:
     """Create a new site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4260,25 +4271,24 @@ def create_site(
     db.flush()
     db.refresh(site)
 
-    return {
-        "id": site.id,
-        "name": site.name,
-        "type": site.type,
-        "parent_id": site.parent_id,
-        "location": site.location or "",
-        "is_active": site.is_active,
-        "created_at": site.created_at.isoformat(),
-        "updated_at": site.updated_at.isoformat(),
-    }
+    return SiteOut(
+        id=site.id,
+        name=site.name,
+        type=site.type,
+        parent_id=site.parent_id,
+        location=site.location or "",
+        is_active=site.is_active,
+        created_at=site.created_at.isoformat(),
+        updated_at=site.updated_at.isoformat(),
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.get("/sites/{site_id}")
+@router.get("/sites/{site_id}", response_model=SiteDetailOut)
 def get_site(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SiteDetailOut:
     """Get site details including staff. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4319,16 +4329,16 @@ def get_site(
     )
     orgs = db.execute(org_query).all()
 
-    return {
-        "id": site.id,
-        "name": site.name,
-        "type": site.type,
-        "parent_id": site.parent_id,
-        "location": site.location or "",
-        "is_active": site.is_active,
-        "created_at": site.created_at.isoformat(),
-        "updated_at": site.updated_at.isoformat(),
-        "staff": [
+    return SiteDetailOut(
+        id=site.id,
+        name=site.name,
+        type=site.type,
+        parent_id=site.parent_id,
+        location=site.location or "",
+        is_active=site.is_active,
+        created_at=site.created_at.isoformat(),
+        updated_at=site.updated_at.isoformat(),
+        staff=[
             {
                 "id": s.id,
                 "username": s.username,
@@ -4338,18 +4348,19 @@ def get_site(
             }
             for s in staff
         ],
-        "organisations": [{"id": o.id, "name": o.name} for o in orgs],
-    }
+        organisations=[{"id": o.id, "name": o.name} for o in orgs],
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.put("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
+@router.put(
+    "/sites/{site_id}", response_model=SiteOut, dependencies=[DEP_REQUIRE_CSRF]
+)
 def update_site(
     site_id: int,
     body: UpdateSiteIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SiteOut:
     """Update a site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4387,26 +4398,29 @@ def update_site(
     db.flush()
     db.refresh(site)
 
-    return {
-        "id": site.id,
-        "name": site.name,
-        "type": site.type,
-        "parent_id": site.parent_id,
-        "location": site.location or "",
-        "is_active": site.is_active,
-        "created_at": site.created_at.isoformat(),
-        "updated_at": site.updated_at.isoformat(),
-    }
+    return SiteOut(
+        id=site.id,
+        name=site.name,
+        type=site.type,
+        parent_id=site.parent_id,
+        location=site.location or "",
+        is_active=site.is_active,
+        created_at=site.created_at.isoformat(),
+        updated_at=site.updated_at.isoformat(),
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.patch("/sites/{site_id}/active", dependencies=[DEP_REQUIRE_CSRF])
+@router.patch(
+    "/sites/{site_id}/active",
+    response_model=SiteOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
 def toggle_site_active(
     site_id: int,
-    body: dict[str, bool],
+    body: ToggleSiteActiveIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, Any]:
+) -> SiteOut:
     """Toggle a site's active status. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4415,32 +4429,32 @@ def toggle_site_active(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    if "is_active" not in body:
-        raise HTTPException(status_code=422, detail="is_active field required")
-
-    site.is_active = body["is_active"]
+    site.is_active = body.is_active
     db.flush()
     db.refresh(site)
 
-    return {
-        "id": site.id,
-        "name": site.name,
-        "type": site.type,
-        "parent_id": site.parent_id,
-        "location": site.location or "",
-        "is_active": site.is_active,
-        "created_at": site.created_at.isoformat(),
-        "updated_at": site.updated_at.isoformat(),
-    }
+    return SiteOut(
+        id=site.id,
+        name=site.name,
+        type=site.type,
+        parent_id=site.parent_id,
+        location=site.location or "",
+        is_active=site.is_active,
+        created_at=site.created_at.isoformat(),
+        updated_at=site.updated_at.isoformat(),
+    )
 
 
-# api-schema-check: allow-opaque-grandfathered
-@router.delete("/sites/{site_id}", dependencies=[DEP_REQUIRE_CSRF])
+@router.delete(
+    "/sites/{site_id}",
+    response_model=StatusResponse,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
 def delete_site(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Delete a site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4450,12 +4464,12 @@ def delete_site(
         raise HTTPException(status_code=404, detail="Site not found")
 
     db.delete(site)
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/organisations/{org_id}/sites/{site_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def link_site_to_org(
@@ -4463,7 +4477,7 @@ def link_site_to_org(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Link a site to an organisation. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4484,19 +4498,19 @@ def link_site_to_org(
         )
     ).first()
     if existing:
-        return {"status": "already_linked"}
+        return StatusResponse(status="already_linked")
 
     db.execute(
         organisation_site.insert().values(
             organisation_id=org_id, site_id=site_id
         )
     )
-    return {"status": "linked"}
+    return StatusResponse(status="linked")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/organisations/{org_id}/sites/{site_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def unlink_site_from_org(
@@ -4504,7 +4518,7 @@ def unlink_site_from_org(
     site_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Unlink a site from an organisation. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4519,23 +4533,22 @@ def unlink_site_from_org(
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Link not found")
 
-    return {"status": "unlinked"}
+    return StatusResponse(status="unlinked")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/sites/{site_id}/staff",
+    response_model=AddSiteStaffResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def add_site_staff(
     site_id: int,
-    body: dict[str, Any],
+    body: AddSiteStaffIn,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> AddSiteStaffResponse:
     """Add a staff member to a site. Admin/superadmin only.
 
-    Body: {user_id: int, role: str}
     Role must be one of: clinical_lead, staff, trainee.
     """
     if current_user.system_permissions not in ("admin", "superadmin"):
@@ -4545,13 +4558,8 @@ def add_site_staff(
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    user_id = body.get("user_id")
-    role = body.get("role")
-
-    if not user_id or not role:
-        raise HTTPException(
-            status_code=422, detail="user_id and role are required"
-        )
+    user_id = body.user_id
+    role = body.role
 
     valid_roles = {"clinical_lead", "staff", "trainee"}
     if role not in valid_roles:
@@ -4597,19 +4605,19 @@ def add_site_staff(
             )
             .values(role=role)
         )
-        return {"status": "updated"}
+        return AddSiteStaffResponse(status="updated")
 
     db.execute(
         site_staff_member.insert().values(
             site_id=site_id, user_id=user_id, role=role
         )
     )
-    return {"status": "added"}
+    return AddSiteStaffResponse(status="added")
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.delete(
     "/sites/{site_id}/staff/{user_id}",
+    response_model=StatusResponse,
     dependencies=[DEP_REQUIRE_CSRF],
 )
 def remove_site_staff(
@@ -4617,7 +4625,7 @@ def remove_site_staff(
     user_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> StatusResponse:
     """Remove a staff member from a site. Admin/superadmin only."""
     if current_user.system_permissions not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Admin only")
@@ -4632,7 +4640,7 @@ def remove_site_staff(
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Staff member not found")
 
-    return {"status": "removed"}
+    return StatusResponse(status="removed")
 
 
 @router.patch(
@@ -5347,16 +5355,16 @@ def join_conversation_endpoint(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
-# api-schema-check: allow-opaque-grandfathered
 @router.post(
     "/conversations/{conversation_id}/read",
+    response_model=MarkReadOut,
     dependencies=[DEP_REQUIRE_CLINICAL, DEP_REQUIRE_CSRF],
 )
 def mark_read_endpoint(
     conversation_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, bool]:
+) -> MarkReadOut:
     """Mark a conversation as read for the current user.
 
     Args:
@@ -5365,7 +5373,7 @@ def mark_read_endpoint(
         db: Database session.
 
     Returns:
-        dict: Success status.
+        MarkReadOut: Success status.
 
     Raises:
         HTTPException: 404 if not found or user is not a participant.
@@ -5375,7 +5383,7 @@ def mark_read_endpoint(
     )
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return {"ok": True}
+    return MarkReadOut(ok=True)
 
 
 from app.features.teaching.router import teaching_router  # noqa: E402
@@ -5384,12 +5392,11 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
-# api-schema-check: allow-opaque-grandfathered
-@router.post("/ci/teaching/sync")
+@router.post("/ci/teaching/sync", response_model=CiTeachingSyncOut)
 def ci_teaching_sync(
     request: Request,
     db: Session = Depends(get_core_db),
-) -> dict[str, Any]:
+) -> CiTeachingSyncOut:
     """Trigger teaching content sync from CI/CD pipeline.
 
     Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
@@ -5435,7 +5442,9 @@ def ci_teaching_sync(
         bank_ids = discover_local_banks(base_path)
 
     if not bank_ids:
-        return {"synced": [], "errors": [], "message": "No banks found"}
+        return CiTeachingSyncOut(
+            synced=[], errors=[], message="No banks found"
+        )
 
     # Resolve the organisation — use the first org that has
     # a teaching bank configured, or the first org in the system
@@ -5446,8 +5455,8 @@ def ci_teaching_sync(
     ).scalar_one_or_none()
     org_id = existing_config.organisation_id if existing_config else 1
 
-    synced: list[dict[str, str]] = []
-    errors: list[dict[str, str]] = []
+    synced: list[CiSyncBankResult] = []
+    errors: list[CiSyncErrorItem] = []
 
     for bank_id in bank_ids:
         bank_path: Path | None = None
@@ -5479,17 +5488,17 @@ def ci_teaching_sync(
                 tooling_errors = run_tooling_validation(tooling_module_dir)
                 if tooling_errors:
                     msg = "; ".join(e["message"] for e in tooling_errors[:5])
-                    errors.append({"bank_id": bank_id, "error": msg})
+                    errors.append(CiSyncErrorItem(bank_id=bank_id, error=msg))
                     continue
             else:
                 errors.append(
-                    {
-                        "bank_id": bank_id,
-                        "error": (
+                    CiSyncErrorItem(
+                        bank_id=bank_id,
+                        error=(
                             "module directory not found — "
                             "cannot run tooling validation"
                         ),
-                    }
+                    )
                 )
                 continue
 
@@ -5511,18 +5520,20 @@ def ci_teaching_sync(
             )
             if sync_record:
                 synced.append(
-                    {"bank_id": bank_id, "version": str(sync_record.version)}
+                    CiSyncBankResult(
+                        bank_id=bank_id, version=str(sync_record.version)
+                    )
                 )
         except Exception as exc:
             logger.exception("CI sync: failed to sync bank '%s'", bank_id)
-            errors.append({"bank_id": bank_id, "error": str(exc)})
+            errors.append(CiSyncErrorItem(bank_id=bank_id, error=str(exc)))
         finally:
             if is_temp and bank_path:
                 shutil.rmtree(bank_path.parent, ignore_errors=True)
             if tooling_is_temp and tooling_module_dir:
                 shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
 
-    return {"synced": synced, "errors": errors}
+    return CiTeachingSyncOut(synced=synced, errors=errors)
 
 
 app.include_router(router)

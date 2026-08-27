@@ -1,4 +1,5 @@
 ---
+name: update-docs-docs
 description: Review and update documentation to match the codebase
 model: haiku
 disable-model-invocation: true

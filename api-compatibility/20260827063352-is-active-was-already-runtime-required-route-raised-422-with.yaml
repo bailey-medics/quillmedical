@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "new-required-request-property PATCH /api/sites/{site_id}/active added the new required request property `is_active`"
+reason: 'is_active was already runtime-required (route raised 422 with detail "is_active field required" if the key was missing from the body). No behaviour change for any existing client.'
