@@ -22,7 +22,7 @@ The outcome of this plan is a second instance of the same pattern already
 proven for API changes — automated detection plus a required-reviewer
 GitHub Actions environment gate, Slack-notified — applied to destructive DB
 migrations. It reuses the existing reviewer, the existing Slack channel, the
-existing notification-dedup mechanism (see Phase 5), and the existing
+existing notify-once-per-change-set mechanism (see Phase 5), and the existing
 accountability rationale (a set author is the approver, by design — see
 below) rather than inventing new mechanics. The static marker
 check stays as-is (note location change below); it's still a useful fast,
@@ -157,7 +157,7 @@ destructive migration review gate`) as required status checks in
       `infra/github/branch_rules.tf`, alongside the existing "API
       compatibility" required-check block.
 
-## Phase 5: Slack notification, deduplicated
+## Phase 5: Slack notification, once per change-set — ✅ COMPLETE
 
 The API gate's Slack job originally re-pinged on every push to a non-draft
 PR, because the `pull_request` trigger fires on `synchronize` and not just
@@ -165,11 +165,11 @@ on PR open; the
 [API breaking change notification dedup plan](2026-08-27-api-breaking-change-notify-dedup-plan.md)
 closed that by hashing the current change-set and recording the hash on a
 sticky PR comment, notifying only when the hash moves. The same trigger
-applies to this gate, so dedup is built in from the start here rather than
+applies to this gate, so notify-once is built in from the start here rather than
 shipping a noisy job and retrofitting it.
 
-- [ ] Generalise `.github/scripts/ci/dedup-breaking-change-notify.sh` into
-      a marker-key-parameterised `.github/scripts/ci/dedup-notify.sh`
+- [x] Generalise `.github/scripts/ci/dedup-breaking-change-notify.sh` into
+      a marker-key-parameterised `.github/scripts/ci/gate-notify.sh`
       (`<marker-key> <pr-number> <hash> <title>`): the marker becomes
       `<!-- <marker-key>: <hash> -->` and `build_body`'s blurb takes the
       title, leaving `find_marker_comment`'s matching/capture logic
@@ -177,33 +177,55 @@ shipping a noisy job and retrofitting it.
       caller to pass `breaking-api-change-hash`, keeping its marker string
       byte-identical so marker comments already sitting on in-flight PRs
       still match.
-- [ ] Carry `dedup-breaking-change-notify.bats` over to the renamed script
+      **Note:** `dedup-breaking-change-notify.sh` was deleted rather than
+      kept as a wrapper — a wrapper would have left two entry points to the
+      same logic and a stale bats suite testing functions that no longer
+      lived there. The generalised script is named `gate-notify.sh`, not
+      `dedup-notify.sh`: sending one message per distinct finding is what a
+      notification should do anyway, so naming the artefacts after
+      "deduplication" describes a past fix rather than the responsibility.
+- [x] Carry `dedup-breaking-change-notify.bats` over to the renamed script
       and extend it with a second, distinct marker key, proving the two
       gates' marker comments don't collide on a PR that trips both.
-- [ ] Extract `compute-breaking-change-hash.sh`'s `hash_change_lines`
+      **Addition:** `count_marker_comments` was added alongside (defence in
+      depth) — this gate only ever updates a marker in place, so a second
+      marker for the same key means one was created outside the gate (a
+      copy-paste, a hand-edit). It logs a warning and continues on the first
+      marker rather than failing, since the first is still the one the gate
+      wrote.
+- [x] ~~Extract `compute-breaking-change-hash.sh`'s `hash_change_lines`
       (`sort | sha256sum`) into a shared helper both callers source, so the
       "sorted identity lines in, stable hash out" contract lives in one
-      place. Hash the Phase 1 `--report-destructive` output lines — one per
+      place.~~ **Not done, deliberately.** A shared module was written and
+      then removed: the function is a single line, it has two consumers, and
+      the two hashes are independent — nothing ever compares the API gate's
+      hash against the migration gate's, so there is no contract between them
+      to centralise. The extraction cost a new file in `shared/` (which
+      otherwise holds only `logging.sh`, sourced by every script), a
+      `# shellcheck source=` directive in each consumer, and an indirection
+      for anyone reading either script — to save one line. The part actually
+      worth preserving is *why* the input is sorted; that is now a comment in
+      both scripts. Hash the Phase 1 `--report-destructive` output lines — one per
       flagged migration, each carrying its revision id and the ops found —
       to get the destructive-change-set hash, and set it as a
       `heavy_db_destructive_migration_check` job output alongside
       `destructive`.
-- [ ] Add `heavy_db_destructive_migration_dedup` to `ci.yml`, mirroring
-      `heavy_api_breaking_change_dedup`: `needs:
+- [x] Add `heavy_db_destructive_migration_gate_notify` to `ci.yml`,
+      mirroring `heavy_api_breaking_change_gate_notify`: `needs:
 heavy_db_destructive_migration_check`, same `if:` condition as the
       gate job, marker key `db-destructive-migration-hash`, output
       `should_notify`.
-- [ ] Add `heavy_db_destructive_migration_notify` to `ci.yml`, using the
+- [x] Add `heavy_db_destructive_migration_notify` to `ci.yml`, using the
       existing reusable `.github/workflows/slack-notify.yml`, `channel:
 teaching` (same webhook, no new secret), gated on **both**
       `...check.outputs.destructive == 'true'` and
-      `...dedup.outputs.should_notify == 'true'`. Message includes the
+      `...should_notify.outputs.should_notify == 'true'`. Message includes the
       flagged migration(s), the ops found, the PR link, and a link to
       "Review pending deployments" for the
       `db-destructive-migration-review` environment, mirroring the API
       breaking-change Slack message.
-- [ ] Leave `heavy_db_destructive_migration_gate` (Phase 3) untouched by
-      the dedup output — as with the API gate, approval is SHA-scoped and
+- [x] Leave `heavy_db_destructive_migration_gate` (Phase 3) untouched by
+      the `should_notify` output — as with the API gate, approval is SHA-scoped and
       stays required on every push; only Slack noise is deduplicated.
 
 ## Phase 6: Documentation — ✅ COMPLETE
@@ -219,12 +241,12 @@ teaching` (same webhook, no new secret), gated on **both**
 - [x] Add a "Layer 3 — human review gate for destructive migrations"
       section to `docs/docs/backend/alembic-migration-safety.md`,
       following the existing Layer 1 / Layer 2 structure, covering the
-      Slack dedup mechanism and its trade-off (as
+      notify-once-per-change-set mechanism and its trade-off (as
       `docs/docs/backend/api-compatibility.md` does for the API gate), and
       add this plan to its "Related" list.
 - [x] Update `docs/docs/backend/api-compatibility.md` where it names
       `dedup-breaking-change-notify.sh` to reflect the Phase 4 rename to
-      the shared `dedup-notify.sh`.
+      the shared `gate-notify.sh`.
 - [x] Run `/sync-copilot-config` to propagate the instructions edit into
       `.claude/rules/backend.md` and report any other drift it finds.
 - [x] Register this plan in `docs/docs/plans/index.md`.
@@ -235,33 +257,39 @@ teaching` (same webhook, no new secret), gated on **both**
 
 **This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
 
-**Critical sequencing discovery:** Terraform must be applied to GitHub
-BEFORE pushing the test PR. The infrastructure (Slack webhook configuration,
-GitHub Actions environment setup with required reviewer, branch protection
-rules) must be live before the CI job runs, or Slack notifications won't
-fire and the dedup marker won't be created. Apply Phase 3's `terraform apply`
-first, verify the environment exists with the required reviewer in the GitHub
-UI, then push the test migration PR.
+**Sequencing note: verification cannot start before Phase 5 is merged.** The
+first walkthrough attempt ran with Phases 1–4 merged but Phase 5 not yet
+written. The gate blocked correctly, but no Slack message and no record
+comment appeared — because
+`heavy_db_destructive_migration_gate_notify` and
+`heavy_db_destructive_migration_notify` did not exist in `ci.yml` at all.
+Confirmed by listing the run's jobs: the check and gate jobs were present, the
+decision and notify jobs were absent. The missing notification was not a
+Terraform/webhook problem (a `terraform apply` run at the time changed nothing
+relevant) — the phase simply had not shipped. Do not re-diagnose this as
+infrastructure: check the workflow contains the jobs first.
 
 Test migration created on branch `feature/phase-7-verification` (PR #420).
 Migration `2026_08_28_1200-aabbccdd1111_phase_7_test_destructive.py` adds
 and drops a test column on the `users` table:
+
 - ✅ Passes `check_migrations.py` validation
 - ✅ Executes successfully (add then drop, no permanent change)
 - ✅ Still triggers `heavy_db_destructive_migration_check` (contains `drop_column`)
 
-Gate status after initial push (before Terraform applied):
+Gate status on the first attempt (Phase 5 not yet merged):
+
 - ✅ CI detected the destructive op
 - ✅ Gate correctly blocks at `waiting` (required approval from `db-destructive-migration-review` env)
-- ❌ Slack notification did NOT fire (infrastructure not yet in place)
-- ❌ Dedup marker comment NOT created (notification never fired to create it)
+- ❌ No Slack notification — the notify job did not exist yet
+- ❌ No record comment — the notification-decision job did not exist yet
 
-Workaround: re-push a small commit to the same PR to re-trigger CI after Terraform
-is applied, so notifications and dedup work.
-
-- [ ] Terraform Phase 3 applied and verified live (`can_admins_bypass: false`, reviewer set)
-- [ ] Re-push a small commit to PR #420 to trigger fresh CI with infrastructure ready
-- [ ] Verify Slack notification fires to `#teaching` with migration details and dedup marker
+- [ ] Re-run the walkthrough with Phase 5 merged, and confirm the run now
+      contains `heavy_db_destructive_migration_gate_notify` and
+      `heavy_db_destructive_migration_notify`
+- [ ] Verify Slack notification fires to `#teaching` with migration details,
+      and the `<!-- db-destructive-migration-hash: ... -->` marker comment
+      appears on the PR
 - [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`), and
       the Phase 4 `.bats` suites pass for both marker keys.
 - [ ] One-off manual GitHub walkthrough on a throwaway branch/PR (not
@@ -274,7 +302,7 @@ is applied, so notifications and dedup work.
       is approved or rejected.
 - [ ] On the same throwaway PR, push a second,
       unrelated commit and confirm Slack stays silent while the gate still
-      re-blocks (dedup by hash)
+      re-blocks (silent because the change-set hash is unchanged)
 - [ ] add a second destructive migration and confirm the
       hash moves, the marker comment is edited in place (not appended to),
       and one fresh Slack message lands.
@@ -400,24 +428,24 @@ Order: retrofit first, immutability second.
   linear chain — there's no equivalent "disposable but permanent" fixture,
   so verification is a one-off manual walkthrough on a throwaway branch
   instead
-- **Slack dedup built in from the start, rather than shipping a noisy notify
+- **Notify-once built in from the start, rather than shipping a noisy notify
   job and retrofitting it** — The API gate needed a follow-up plan to fix
   exactly this noise; the `pull_request`/`synchronize` trigger behaves
   identically here, so the noise is a known certainty, not a risk to
   discover in production
-- **Generalise the existing dedup script to a marker key rather than copy
+- **Generalise the existing notification-decision script to a marker key rather than copy
   it** — Two near-identical scripts would drift; the only genuinely
   gate-specific parts are the marker key and the blurb, so both become
   parameters. The API caller's marker string stays byte-identical so
   in-flight PRs' existing comments keep matching
-- **Dedup key = hash of the flagged migration/op set, not the boolean
+- **Notification key = hash of the flagged migration/op set, not the boolean
   `destructive` flag** — Same reasoning as the API gate: a boolean can't
   tell "same destructive migration, new commit" from "a second destructive
   migration was added". In practice the set only moves when a migration file
   is added, so this is usually one ping per PR
 - **Approval gate left ungated by `should_notify`** — Mirrors the API gate:
   environment approval is SHA-scoped and deliberately re-required on every
-  push. Dedup is a notification-noise control only, never a safety control
+  push. How often Slack is told is a notification concern only, never a safety control
 - **Migration immutability is enforced separately (Phase 8), not folded into
   the destructive gate** — The gate answers "should this drop be approved?";
   immutability answers "should this file have changed at all?". The second has
@@ -425,6 +453,6 @@ Order: retrofit first, immutability second.
   reviewer — bolting it onto the gate would mean asking a human to approve
   something that is never acceptable
 - **A destructive migration removed and then re-added identically stays
-  silent** — Accepted trade-off, inherited unchanged from the API dedup
+  silent** — Accepted trade-off, inherited unchanged from the API notification
   plan: the stale marker hash genuinely still matches. The gate still blocks
   and still needs a fresh approval, so this affects Slack noise only

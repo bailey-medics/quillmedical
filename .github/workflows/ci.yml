@@ -550,7 +550,7 @@ jobs:
             pr/docs/docs/code/swagger/openapi.json \
             > oasdiff-report.json || true
 
-      - name: Compute breaking-change hash (for Slack notification dedup)
+      - name: Compute breaking-change hash (identifies this set of breaks)
         id: hash
         if: steps.diff.outputs.breaking == 'true'
         run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
@@ -583,37 +583,41 @@ jobs:
       - name: Breaking change approved
         run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.sha }}."
 
-  # ---------- Dedup: only notify Slack when the breaking-change set changed ----------
+  # ---------- Does this PR still need telling about its breaking changes? ----------
+  # Gates the Slack message, NOT the merge - despite the adjacent name, this
+  # blocks nothing. heavy_api_breaking_change_gate above is the approval gate.
   # Compares heavy_api_schema_diff's breaking_hash against the hash recorded
-  # on a sticky PR comment from the last time Slack was notified. Silent on
-  # a re-run with the same break(s); signals should_notify=true only for the
+  # on a sticky PR comment from the last time Slack was told. Silent on a
+  # re-run with the same break(s); signals should_notify=true only for the
   # first breaking change ever, or when the set of breaking changes changed.
   # See docs/docs/backend/api-compatibility.md for the known trade-off (a
-  # fixed-then-reintroduced identical breaking change won't re-notify).
-  heavy_api_breaking_change_dedup:
-    name: Dedupe breaking-change Slack notification
+  # fixed-then-reintroduced identical breaking change won't re-announce).
+  heavy_api_breaking_change_gate_notify:
+    name: Breaking-change Slack notification decision
     needs: heavy_api_schema_diff
     if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      should_notify: ${{ steps.dedup.outputs.should_notify }}
+      should_notify: ${{ steps.decide.outputs.should_notify }}
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Check whether this breaking-change set was already notified
-        id: dedup
+      - name: Decide whether this breaking-change set has already been announced
+        id: decide
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bash .github/scripts/ci/dedup-breaking-change-notify.sh \
+          bash .github/scripts/ci/gate-notify.sh \
+            "breaking-api-change-hash" \
             "${{ github.event.pull_request.number }}" \
-            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}"
+            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}" \
+            "Breaking API change"
 
   # ---------- Slack notification on breaking API change ----------
   heavy_api_breaking_change_notify:
     name: Notify Slack of API breaking change
-    needs: [heavy_api_schema_diff, heavy_api_breaking_change_dedup]
-    if: needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_breaking_change_dedup.outputs.should_notify == 'true'
+    needs: [heavy_api_schema_diff, heavy_api_breaking_change_gate_notify]
+    if: needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_breaking_change_gate_notify.outputs.should_notify == 'true'
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
@@ -663,6 +667,7 @@ jobs:
     outputs:
       destructive: ${{ steps.detect.outputs.destructive }}
       report: ${{ steps.detect.outputs.report }}
+      destructive_hash: ${{ steps.hash.outputs.destructive_hash }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
@@ -680,6 +685,16 @@ jobs:
         if: steps.detect.outputs.destructive == 'true'
         run: |
           bash .github/scripts/ci/write-destructive-migrations-summary.sh \
+            "${{ steps.detect.outputs.report }}"
+
+      # Hashed here rather than downstream so the change-set identity is
+      # produced by the job that owns the detection, mirroring how
+      # heavy_api_schema_diff emits breaking_hash alongside breaking.
+      - name: Compute destructive change-set hash
+        id: hash
+        if: steps.detect.outputs.destructive == 'true'
+        run: |
+          bash .github/scripts/ci/compute-destructive-migration-hash.sh \
             "${{ steps.detect.outputs.report }}"
 
   # ---------- Human gate: destructive DB migration requires approval ----------
@@ -704,3 +719,65 @@ jobs:
           cat <<'REPORT'
           ${{ needs.heavy_db_destructive_migration_check.outputs.report }}
           REPORT
+
+  # ---------- Does this PR still need telling about its destructive migrations? ----------
+  # Gates the Slack message, NOT the merge - despite the adjacent name, this
+  # blocks nothing. heavy_db_destructive_migration_gate above is the approval
+  # gate, and it is unaffected by this job: it re-blocks on every push
+  # regardless of whether Slack was told again.
+  # Compares the detection job's destructive_hash against the hash recorded on
+  # a sticky PR comment from the last time Slack was told. Silent on a re-run
+  # with the same migration(s); signals should_notify=true only for the first
+  # destructive migration on the PR, or when that set changes.
+  heavy_db_destructive_migration_gate_notify:
+    name: Destructive-migration Slack notification decision
+    needs: heavy_db_destructive_migration_check
+    if: needs.heavy_db_destructive_migration_check.outputs.destructive == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      should_notify: ${{ steps.decide.outputs.should_notify }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Decide whether this destructive change-set has already been announced
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/gate-notify.sh \
+            "db-destructive-migration-hash" \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.heavy_db_destructive_migration_check.outputs.destructive_hash }}" \
+            "Destructive database migration"
+
+  # ---------- Slack notification on destructive DB migration ----------
+  # Posts to #teaching with the flagged migration(s), the ops found, the PR
+  # link, and a link to "Review pending deployments" so the reviewer can jump
+  # straight to the approval environment.
+  heavy_db_destructive_migration_notify:
+    name: Notify Slack of destructive DB migration
+    needs:
+      - heavy_db_destructive_migration_check
+      - heavy_db_destructive_migration_gate_notify
+    if: |
+      needs.heavy_db_destructive_migration_check.outputs.destructive == 'true' &&
+      needs.heavy_db_destructive_migration_gate_notify.outputs.should_notify == 'true'
+    uses: ./.github/workflows/slack-notify.yml
+    secrets: inherit
+    with:
+      channel: teaching
+      text: |
+        🚨 *Destructive database migration pending review*
+
+        This PR adds a migration that drops a column, table, or constraint.
+        Click *Review pending deployments* to approve the
+        `db-destructive-migration-review` environment and allow the PR to proceed.
+
+        *Migrations:*
+        ```
+        ${{ needs.heavy_db_destructive_migration_check.outputs.report }}
+        ```
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
