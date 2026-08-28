@@ -8,7 +8,7 @@ async function loginWithRateLimitRetry(
 ): Promise<void> {
   const submitLoginFromUi = async (): Promise<number | null> => {
     const usernameInput = page.getByLabel("Username");
-    const passwordInput = page.getByLabel("Password");
+    const passwordInput = page.getByRole("textbox", { name: "Password" });
 
     await expect(usernameInput).toBeVisible();
     await expect(passwordInput).toBeVisible();
