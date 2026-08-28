@@ -319,24 +319,33 @@ Terraform/webhook problem (a `terraform apply` run at the time changed nothing
 relevant) — the phase simply had not shipped. Do not re-diagnose this as
 infrastructure: check the workflow contains the jobs first.
 
-Test migration created on branch `feature/phase-7-verification` (PR #420).
-Migration `2026_08_28_1200-aabbccdd1111_phase_7_test_destructive.py` adds
-and drops a test column on the `users` table:
+**Do the walkthrough on its own throwaway PR.** The first attempt used
+`feature/phase-7-verification` (PR #420), adding
+`2026_08_28_1200-aabbccdd1111_phase_7_test_destructive.py` — a migration that
+adds then drops a test column on the `users` table. That branch then grew to
+carry Phases 5, 5b and 5c, and a deliberately destructive migration cannot
+merge: the gate blocks it, as designed. The test migration was therefore
+**removed** from that branch so the gate work itself could merge, leaving
+`fa4401ce1b92` as the chain head again.
 
-- ✅ Passes `check_migrations.py` validation
-- ✅ Executes successfully (add then drop, no permanent change)
-- ✅ Still triggers `heavy_db_destructive_migration_check` (contains `drop_column`)
+The migration is worth recreating verbatim when the walkthrough runs, since it
+was verified to:
 
-Gate status on the first attempt (Phase 5 not yet merged):
+- ✅ Pass `check_migrations.py` validation
+- ✅ Execute successfully (add then drop, no permanent change)
+- ✅ Trigger `heavy_db_destructive_migration_check` (contains `drop_column`)
+
+Gate status on that first attempt (with Phase 5 not yet merged):
 
 - ✅ CI detected the destructive op
 - ✅ Gate correctly blocks at `waiting` (required approval from `db-destructive-migration-review` env)
 - ❌ No Slack notification — the notify job did not exist yet
 - ❌ No record comment — the notification-decision job did not exist yet
 
-- [ ] Re-run the walkthrough with Phase 5 merged, and confirm the run now
-      contains `heavy_db_destructive_migration_gate_notify` and
-      `heavy_db_destructive_migration_notify`
+- [ ] Open a **fresh** throwaway branch/PR off a `main` that has Phases 5, 5b
+      and 5c merged, and recreate the test migration there. Do not merge it.
+- [ ] Confirm the run contains `heavy_db_destructive_migration_gate_notify`
+      and `heavy_db_destructive_migration_notify`
 - [ ] Verify Slack notification fires to `#teaching` with migration details,
       and the `<!-- db-destructive-migration-hash: ... -->` marker comment
       appears on the PR
@@ -354,8 +363,15 @@ Gate status on the first attempt (Phase 5 not yet merged):
       unrelated commit and confirm Slack stays silent while the gate still
       re-blocks (silent because the change-set hash is unchanged)
 - [ ] add a second destructive migration and confirm the
-      hash moves, the marker comment is edited in place (not appended to),
-      and one fresh Slack message lands.
+      hash moves, a **new** comment is appended (the first is left in place,
+      not edited — Phase 5b), and one fresh Slack message lands.
+- [ ] remove that second migration again and confirm the hash returns to the
+      first value, a **third** comment is added rather than the PR falling
+      silent because a matching comment already exists further up (Phase 5b's
+      newest-comment-wins rule).
+- [ ] remove **every** destructive migration and confirm an all-clear comment
+      lands (✅, "no longer present") with **no** Slack message, and that the
+      gate stops blocking (Phase 5c).
 - [ ] Review and reject the gate
 - [ ] Submit another unrelated PR
 - [ ] Review and accept the gate
