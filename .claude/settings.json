@@ -3,8 +3,7 @@
     "allow": [
       "Bash(poetry run *)",
       "Bash(poetry env *)",
-      "Bash(git worktree *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git worktree *)"
     ]
   },
   "hooks": {
