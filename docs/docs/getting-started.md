@@ -41,6 +41,38 @@
    just create-super-user
    ```
 
+## Claude Code on the web
+
+Web sessions start from a fresh, empty container: `.env` files are git-ignored so
+they're not part of the clone, and the dev Docker stack isn't running yet.
+`.claude/hooks/session-start.sh` handles this automatically on every session —
+it materialises `.env`, `backend/.env` and `frontend/.env` from the committed
+`.env-sample` files (skipping any that already exist) and runs
+`docker compose -f compose.dev.yml up -d --wait`. There's nothing to configure
+for this to work.
+
+To make that hook fast, pair it with an environment **Setup script** (set in
+the environment dialog at [claude.ai/code](https://claude.ai/code)) that
+pre-builds/pulls the images so the session-start hook only has to start
+already-built containers:
+
+```bash
+#!/bin/bash
+cd "$CLAUDE_PROJECT_DIR"
+(cd backend && poetry install --with dev --no-interaction --no-ansi) || true
+(cd frontend && corepack enable && corepack install && yarn install --immutable) || true
+docker compose -f compose.dev.yml build backend frontend || true
+docker compose -f compose.dev.yml pull postgres-core caddy || true
+```
+
+Don't add `.env-sample` copying to the Setup script — the session-start hook
+already does it, and the Setup script runs before it, when the checkout it
+would be copying from isn't guaranteed to be in place yet (that's what caused
+`cp: .env-sample: No such file or directory` failures). Setup scripts must
+also exit zero or the session fails to start, hence the `|| true` guards — see
+[Setup scripts](https://code.claude.com/docs/en/cloud-environments#setup-scripts)
+in the Claude Code docs.
+
 ## Teaching repos
 
 Teaching content (MCQ question banks and learning modules) lives in separate repos, one per organisation:
