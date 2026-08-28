@@ -83,9 +83,11 @@ the baseline included — is held to the full standard below.
   `db-destructive-migration-review` environment — a required-reviewer GitHub
   Actions environment with `can_admins_bypass: false`. The environment's
   sole reviewer is accountable for approving destructive database changes.
-- A Slack notification (deduplicated per changeset) lands in `#teaching`,
-  summarising the migration(s) and the operations detected, and linking to
-  "Review pending deployments" for the environment approval.
+- A Slack notification lands in `#teaching`, summarising the migration(s) and
+  the operations detected, and linking to "Review pending deployments" for the
+  environment approval. It is raised once per distinct set of destructive
+  migrations, not once per push — a later commit that leaves the same
+  migration(s) in place stays silent, while the approval gate still re-blocks.
 - **This approval is the only way a destructive migration proceeds.** The
   `allow-destructive` marker does not gate the PR; it is only a static-checker
   nod. Human approval is mandatory and not substitutable by code comments or

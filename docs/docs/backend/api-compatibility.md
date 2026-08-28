@@ -87,25 +87,36 @@ who could each be equally lazy.
   reusable `.github/workflows/slack-notify.yml`, `channel: teaching`) with
   `oasdiff`'s changelog summary of what changed, so the approval prompt
   shows _what_ is being confirmed rather than a bare "approve?".
-- **Notification dedup**: `heavy_api_breaking_change_gate` re-requires
-  approval on every commit — deliberately, see above — but re-sending an
-  identical Slack ping on every one of those commits is just noise, not a
-  safety property. `heavy_api_breaking_change_dedup` hashes the set of
-  breaking changes (`compute-breaking-change-hash.sh`, sorted so ordering
-  doesn't affect the hash) and compares it against the hash recorded on a
-  sticky PR comment from the last time Slack fired
-  (`dedup-notify.sh` with marker key `breaking-api-change-hash`, found/edited in place via a hidden
-  `<!-- breaking-api-change-hash: ... -->` marker). Slack only fires again
-  when that hash changes — the first breaking change on a PR, or a later
-  commit that alters which changes are breaking — never on a re-push that
-  leaves the same break(s) in place. State lives in a PR comment rather
-  than `actions/cache` because cache entries are branch/key-scoped, evict
-  after inactivity, and can't be overwritten in place, whereas a comment is
-  simple, persists indefinitely, and doubles as a visible audit trail.
-  Known trade-off: if a breaking change is fixed and later reintroduced
-  identically, the stale marker still matches and Slack stays silent —
-  accepted because the ask was "once per distinct breaking-change set",
-  and the gate's fresh-approval requirement is unaffected either way.
+- **One message per distinct set of breaks**:
+  `heavy_api_breaking_change_gate` re-requires approval on every commit —
+  deliberately, see above — but re-sending an identical Slack ping on every
+  one of those commits is just noise, not a safety property.
+  `heavy_api_breaking_change_gate_notify` hashes the set of breaking
+  changes (`compute-breaking-change-hash.sh`, sorted so ordering doesn't
+  affect the hash) and asks whether any comment on the PR already carries
+  that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
+  matched on a hidden `<!-- breaking-api-change-hash: <hash> -->` first
+  line). Slack only fires when the answer is no — the first breaking change
+  on a PR, or a later commit that alters which changes are breaking — never
+  on a re-push that leaves the same break(s) in place. State lives in a PR
+  comment rather than `actions/cache` because cache entries are
+  branch/key-scoped and evict after inactivity, whereas a comment persists
+  indefinitely and doubles as a visible audit trail.
+- **A comment per change-set, never edited**: each distinct set of breaking
+  changes gets its **own** comment, added at the point in the PR timeline
+  where it appeared, so the conversation reads as a chronological record of
+  what was found and when. Only the gate's **newest** comment is consulted
+  when deciding whether to announce (`max_by(.id)`, so the answer doesn't
+  depend on API ordering), which means moving back to a set the PR held
+  earlier is announced again rather than swallowed — each comment records a
+  transition, not a standing claim.
+- **A return to clean is recorded too**: when the last breaking change is
+  removed the gate posts an all-clear comment (✅, "no longer present"), so the
+  timeline shows the break arriving *and* going. Slack is not told — the notify
+  job is gated on `oasdiff` having found something as well as on
+  `should_notify` — and a PR that never had a break stays silent. The gate's
+  fresh-approval requirement is unaffected throughout: it re-blocks on every
+  push for as long as a break is present.
 
 ## Decision files: `api-compatibility/` folder
 
