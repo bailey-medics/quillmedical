@@ -206,9 +206,9 @@ teaching` (same webhook, no new secret), gated on **both**
       the dedup output — as with the API gate, approval is SHA-scoped and
       stays required on every push; only Slack noise is deduplicated.
 
-## Phase 6: Documentation
+## Phase 6: Documentation — ✅ COMPLETE
 
-- [ ] Extend the "Destructive changes" section of
+- [x] Extend the "Destructive changes" section of
       `.github/instructions/backend.instructions.md` (source of truth —
       `.claude/rules/backend.md` is synced from it) with an "Enforcement:
       CI detection + required-reviewer environment gate" subsection,
@@ -216,20 +216,24 @@ teaching` (same webhook, no new secret), gated on **both**
       what's detected, why detection ignores the marker, and that the
       `db-destructive-migration-review` environment approval is the only
       way a destructive migration proceeds.
-- [ ] Add a "Layer 3 — human review gate for destructive migrations"
+- [x] Add a "Layer 3 — human review gate for destructive migrations"
       section to `docs/docs/backend/alembic-migration-safety.md`,
       following the existing Layer 1 / Layer 2 structure, covering the
       Slack dedup mechanism and its trade-off (as
       `docs/docs/backend/api-compatibility.md` does for the API gate), and
       add this plan to its "Related" list.
-- [ ] Update `docs/docs/backend/api-compatibility.md` where it names
+- [x] Update `docs/docs/backend/api-compatibility.md` where it names
       `dedup-breaking-change-notify.sh` to reflect the Phase 4 rename to
       the shared `dedup-notify.sh`.
-- [ ] Run `/sync-copilot-config` to propagate the instructions edit into
+- [x] Run `/sync-copilot-config` to propagate the instructions edit into
       `.claude/rules/backend.md` and report any other drift it finds.
-- [ ] Register this plan in `docs/docs/plans/index.md`.
+- [x] Register this plan in `docs/docs/plans/index.md`.
 
-## Phase 7: Verification
+**Status:** Commit 87615617. All documentation sections added and published. Awaiting manual verification (Phase 7) before implementing immutability checks (Phase 8).
+
+## Phase 7: Verification — ⏳ PENDING (Manual human task)
+
+**This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
 
 - [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`), and
       the Phase 4 `.bats` suites pass for both marker keys.
@@ -260,7 +264,9 @@ walkthrough is captured, since a real Alembic chain can't carry a
 disposable fixture revision the way a pair of flag-gated dummy API
 endpoints can.
 
-## Phase 8: Make migration immutability real
+## Phase 8: Make migration immutability real — ⏳ NOT STARTED
+
+**Start after Phase 7 verification completes. This phase adds enforced immutability checks to prevent edits to merged migrations.**
 
 Migrations are described everywhere as "write once, reviewed once, never
 revisited" — `docs/docs/backend/api-compatibility.md` leans on exactly that
