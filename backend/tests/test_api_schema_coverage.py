@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from scripts.check_api_schema_coverage import (
-    GRANDFATHERED_MARKER,
     PERMANENT_ALLOWED_RETURN_TYPES,
     PERMANENT_MARKER,
     RouteInfo,
@@ -20,6 +19,14 @@ from scripts.check_api_schema_coverage import (
     check_route_coverage,
     is_opaque_schema,
 )
+
+# The retrofit-tracking marker this checker used to recognise (see
+# docs/docs/plans/2026-08-25-api-schema-coverage-plan.md, Phase 8) —
+# no longer importable from the checker itself, since recognition of
+# the string was deleted entirely once the retrofit finished. Kept here,
+# as a literal, only to prove the escape hatch is actually closed rather
+# than just unused.
+FORMER_GRANDFATHERED_MARKER = "# api-schema-check: allow-opaque-grandfathered"
 
 # ---------------------------------------------------------------------------
 # is_opaque_schema
@@ -169,12 +176,17 @@ def test_index_file_finds_route_with_no_marker(tmp_path: Path) -> None:
     assert index["foo"].marker is None
 
 
-def test_index_file_finds_grandfathered_marker(tmp_path: Path) -> None:
+def test_index_file_no_longer_recognises_former_grandfathered_marker(
+    tmp_path: Path,
+) -> None:
+    """The grandfathered marker's recognition was deleted in Phase 8 — a
+    route bearing that exact comment today is indistinguishable from an
+    unmarked route, not silently grandfathered back in."""
     path = _write_route_file(
-        tmp_path, marker=GRANDFATHERED_MARKER, func_name="foo"
+        tmp_path, marker=FORMER_GRANDFATHERED_MARKER, func_name="foo"
     )
     index = _index_file(path)
-    assert index["foo"].marker == GRANDFATHERED_MARKER
+    assert index["foo"].marker is None
 
 
 def test_index_file_finds_permanent_marker(tmp_path: Path) -> None:
@@ -277,11 +289,17 @@ def test_opaque_route_with_no_marker_fails() -> None:
     assert "no field-level shape" in problems[0].message
 
 
-def test_opaque_route_with_grandfathered_marker_passes() -> None:
+def test_opaque_route_with_former_grandfathered_marker_still_fails() -> None:
+    """Proves the escape hatch is actually closed, not just unused: this
+    marker used to make `check_route_coverage` pass an opaque route
+    (Phase 2-7 of the retrofit); Phase 8 deleted that recognition, so the
+    same route with the same comment must now fail like any unmarked
+    opaque route."""
     schema = {"type": "object"}
-    route = _route(marker=GRANDFATHERED_MARKER)
+    route = _route(marker=FORMER_GRANDFATHERED_MARKER)
     problems = check_route_coverage(route, _spec(schema=schema))
-    assert problems == []
+    assert len(problems) == 1
+    assert "no field-level shape" in problems[0].message
 
 
 def test_permanent_marker_passes_for_each_recognised_response_class() -> None:

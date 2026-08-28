@@ -30,7 +30,7 @@ describe("SelectField", () => {
     const user = userEvent.setup();
     renderWithMantine(<SelectField label="Patient" data={options} />);
 
-    await user.click(screen.getByRole("textbox"));
+    await user.click(screen.getByRole("combobox"));
     expect(screen.getByText("James Green")).toBeInTheDocument();
     expect(screen.getByText("Sarah Mitchell")).toBeInTheDocument();
   });
@@ -51,7 +51,7 @@ describe("SelectField", () => {
       <SelectField label="Patient" placeholder="Select" data={options} />,
     );
 
-    const input = screen.getByRole("textbox");
+    const input = screen.getByRole("combobox");
     expect(input).toHaveStyle({
       fontSize: "var(--mantine-font-size-md)",
     });
@@ -59,6 +59,6 @@ describe("SelectField", () => {
 
   it("renders as disabled when disabled prop is set", () => {
     renderWithMantine(<SelectField label="Patient" data={options} disabled />);
-    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByRole("combobox")).toBeDisabled();
   });
 });

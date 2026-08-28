@@ -36,7 +36,7 @@ describe("FilterModal", () => {
         placeholder="Select items\u2026"
       />,
     );
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
   it("shows reset link when filters are active", () => {

@@ -71,7 +71,7 @@ describe("UserInfoUpdatePage", () => {
       expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/initial password/i)).toBeInTheDocument();
       expect(
-        screen.getByRole("textbox", { name: /base profession/i }),
+        screen.getByRole("combobox", { name: /base profession/i }),
       ).toBeInTheDocument();
     });
 
@@ -139,7 +139,7 @@ describe("UserInfoUpdatePage", () => {
       );
 
       // Select base profession
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
@@ -171,7 +171,7 @@ describe("UserInfoUpdatePage", () => {
         "password123",
       );
 
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
@@ -276,7 +276,7 @@ describe("UserInfoUpdatePage", () => {
         "password123",
       );
 
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
@@ -360,7 +360,7 @@ describe("UserInfoUpdatePage", () => {
         "password123",
       );
 
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
@@ -431,7 +431,7 @@ describe("UserInfoUpdatePage", () => {
         "password123",
       );
 
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
@@ -499,7 +499,7 @@ describe("UserInfoUpdatePage", () => {
         "password123",
       );
 
-      const professionSelect = screen.getByRole("textbox", {
+      const professionSelect = screen.getByRole("combobox", {
         name: /base profession/i,
       });
       await user.click(professionSelect);
