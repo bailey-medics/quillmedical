@@ -140,14 +140,25 @@ That judgement is a human decision that must be recorded and auditable.
 When a migration containing `drop_column`, `drop_table`, or `drop_constraint`
 is added to a PR, the `heavy_db_destructive_migration_check` CI job detects it
 (see [Destructive changes](../plans/2026-08-25-db-destructive-migration-review-plan.md))
-and gates the PR on the `db-destructive-migration-review` environment — a
-required-reviewer GitHub Actions environment. The sole reviewer is accountable
-for approving the destructive change. The environment approval is the **only**
-way the PR can proceed; the `# migration-check: allow-destructive` marker
-inside the migration file itself does not gate anything and cannot substitute
-for human approval.
+and sends the PR to `waiting` on the `db-destructive-migration-review`
+environment — a required-reviewer GitHub Actions environment with
+`can_admins_bypass: false`, so the gate is binding rather than advisory. The
+sole reviewer is accountable for approving the destructive change. The
+environment approval is the **only** way the PR can proceed; the
+`# migration-check: allow-destructive` marker inside the migration file itself
+does not gate anything and cannot substitute for human approval.
 
-### Slack notification with dedup
+### Detection is independent of the marker
+
+The static `allow-destructive` marker (enforced by Layer 1's
+`check_migrations.py`) is a pre-commit nudge, forcing an author to be
+deliberate about writing a destructive migration. The CI detection runs
+**regardless of whether the marker is present**, so the same text that
+satisfies the static check cannot also satisfy the gate — proving a separate,
+human decision happened outside the code itself, mirroring the API gate's
+rejection of code comments as proof of a human approval.
+
+### Slack notification
 
 When destructive migrations are detected, a Slack notification lands in
 `#teaching` (the same channel used for API breaking-change warnings) with:
@@ -159,15 +170,30 @@ When destructive migrations are detected, a Slack notification lands in
 - A link to "Review pending deployments" for the `db-destructive-migration-review`
   environment
 
-The notification is **deduplicated** per changeset (a hash of the detected
-migrations and operations). If the PR receives a new commit that doesn't change
-the set of destructive migrations, Slack stays silent while the gate still
-blocks — this prevents re-pinging every time a developer pushes a formatting
-fix or rebases onto new main. If a new destructive migration is added, the hash
-moves, and a fresh Slack message lands.
+A pull request is told **once per distinct set of destructive migrations**,
+not once per push. `heavy_db_destructive_migration_gate_notify` hashes the
+detected migrations and operations, then asks whether any comment on the PR
+already carries that hash (`gate-notify.sh`, marker key
+`db-destructive-migration-hash`). A later commit that leaves the same
+migration(s) in place stays silent — a formatting fix or a rebase onto new
+main shouldn't re-announce a finding nobody has acted on. Add a second
+destructive migration and the hash moves, so a fresh message lands.
 
-The approval itself is **not** deduplicated — it is SHA-scoped and stays
-required on every push. Dedup is a notification-noise control only, not a
+Each distinct change-set gets its **own** comment, added where it appeared in
+the PR timeline and never edited afterwards, so the conversation reads as a
+chronological record of what was found and when. Only the gate's **newest**
+comment is consulted when deciding whether to announce, so moving back to a
+change-set the PR held earlier counts as a change like any other and is
+announced again — each comment records a transition, not a standing claim.
+
+A return to clean is recorded too. When the last destructive migration is
+removed the gate posts an all-clear comment (✅, "no longer present"), so the
+timeline shows the risk arriving *and* going. Slack is not told — nobody needs
+paging to say a risk went away — and a PR that never had a destructive
+migration stays silent, since there is nothing to report the disappearance of.
+
+The approval is unaffected by any of this: it is SHA-scoped and stays required
+on every push. How often Slack is told is a notification concern, never a
 safety control.
 
 ## `compare_server_default` is deliberately off
@@ -236,41 +262,6 @@ that runs afterwards (`https://teaching.quill-medical.com/api/health`) —
 that one continues to confirm the live edge (DNS/load balancer/Caddy) is
 routing correctly post-promotion, a different failure domain from the
 revision's own health.
-
-## Layer 3 — human review gate for destructive migrations
-
-Layers 1 and 2 above verify that a migration is well-formed and consistent
-with the data model — they cannot tell you whether it's _safe_ to run. A
-well-formed migration might drop a column that's still used by the live,
-serving application revision, or a table that's relied upon by a backup
-process. In a healthcare system, that decision — whether to discard
-clinical audit history, or drop a table holding months of records — must be
-a deliberate human choice, accountable to someone, with a clear audit trail.
-
-**The gate.** When a new migration with `drop_column`, `drop_table`, or
-`drop_constraint` is added to a PR, the `heavy_db_destructive_migration_check`
-CI job detects it and sets the PR to `waiting` on the
-`db-destructive-migration-review` GitHub Actions environment — a required-reviewer
-environment with `can_admins_bypass: false`. The environment's sole reviewer
-is accountable for approving any destructive database changes.
-
-**Detection is independent of the marker.** The static `allow-destructive`
-marker (enforced by Layer 1's `check_migrations.py`) is a pre-commit nudge,
-forcing an author to be deliberate about writing a destructive migration.
-The CI detection runs **regardless of whether the marker is present**,
-proving that a separate, human decision happened outside the code itself —
-mirroring the API gate's rejection of code comments as proof of a human
-approval. The marker does not gate the PR; only the environment approval does.
-
-**Deduplication and notification.** A Slack notification lands in `#teaching`
-summarising which migration(s) were detected and what operations they contain,
-with a link to "Review pending deployments" for the environment. The notification
-is deduplicated by the changeset hash — repeated pushes to a PR with the same
-destructive migration(s) do not re-ping, but adding a second destructive
-migration to the same PR, or editing an existing one, moves the hash and sends
-a fresh notification. The approval gate, by contrast, re-blocks on every push
-regardless of dedup state — a SHA-scoped decision, not a noise-control
-mechanism.
 
 ## Related
 
