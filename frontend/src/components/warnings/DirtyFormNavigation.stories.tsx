@@ -17,7 +17,6 @@ const mockLocation: Location = {
   hash: "",
   state: null,
   key: "default",
-  unstable_mask: undefined,
 };
 
 const meta = {
