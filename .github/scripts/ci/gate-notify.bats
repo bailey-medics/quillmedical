@@ -8,6 +8,11 @@
 # the pure functions in the order main() reaches them. Every guard exits
 # before the first `gh` call, so they are tested against the real main() with
 # no mocking; the `gh` side effects after those guards are not exercised here.
+#
+# latest_announcement_matches is where the "one comment per distinct
+# change-set" behaviour lives. It consults only the newest marker comment, so
+# its tests cover both a changed finding and a return to an earlier one - the
+# second is the case that a whole-history search would wrongly swallow.
 
 # shellcheck disable=SC2329,SC2030,SC2031
 
@@ -84,109 +89,159 @@ VALID_TITLE="Destructive database migration"
   [[ "$output" == *"GITHUB_REPOSITORY not set"* ]]
 }
 
-@test "count_marker_comments returns 0 for an empty comment stream" {
-  run count_marker_comments "" "breaking-api-change-hash"
+@test "latest_announcement_matches is false for an empty comment stream" {
+  run latest_announcement_matches "" "breaking-api-change-hash" "aaa111"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "0" ]
+  [ "$output" = "false" ]
 }
 
-@test "count_marker_comments returns 0 when no comment carries the marker" {
-  local comments='{"id":1,"body":"just a regular review comment"}'
-
-  run count_marker_comments "$comments" "breaking-api-change-hash"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "0" ]
-}
-
-@test "count_marker_comments counts only markers for the requested key" {
-  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nAPI"}
-{"id":7,"body":"<!-- db-destructive-migration-hash: 1b2b3b -->\nDB"}'
-
-  run count_marker_comments "$comments" "breaking-api-change-hash"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "1" ]
-
-  run count_marker_comments "$comments" "db-destructive-migration-hash"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "1" ]
-}
-
-@test "count_marker_comments detects duplicate markers for the same key" {
-  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\noriginal"}
-{"id":9,"body":"<!-- breaking-api-change-hash: aaa111 -->\ncopy-pasted"}'
-
-  run count_marker_comments "$comments" "breaking-api-change-hash"
-  [ "$status" -eq 0 ]
-  [ "$output" = "2" ]
-}
-
-@test "find_marker_comment returns nothing when there is no marker comment" {
+@test "latest_announcement_matches is false when no comment carries the marker" {
   local comments='{"id":1,"body":"just a regular review comment"}
 {"id":2,"body":"another comment"}'
 
-  run find_marker_comment "$comments" "breaking-api-change-hash"
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "aaa111"
 
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [ "$output" = "false" ]
 }
 
-@test "find_marker_comment returns nothing for an empty comment stream" {
-  run find_marker_comment "" "breaking-api-change-hash"
-
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "find_marker_comment extracts id and hash from the breaking-api-change marker comment" {
+@test "latest_announcement_matches is true when the newest announcement is this change-set" {
   local comments='{"id":1,"body":"unrelated comment"}
-{"id":2,"body":"<!-- breaking-api-change-hash: deadbeef -->\nsome explanation"}'
+{"id":2,"body":"<!-- breaking-api-change-hash: aaa111 -->\nsome explanation"}'
 
-  run find_marker_comment "$comments" "breaking-api-change-hash"
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "aaa111"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'2\tdeadbeef' ]
+  [ "$output" = "true" ]
 }
 
-@test "find_marker_comment extracts id and hash from the db-destructive-migration marker comment" {
-  local comments='{"id":1,"body":"unrelated comment"}
-{"id":3,"body":"<!-- db-destructive-migration-hash: cafebabe -->\nmigration explanation"}'
+@test "latest_announcement_matches is false when the finding has changed" {
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}'
 
-  run find_marker_comment "$comments" "db-destructive-migration-hash"
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "1b2b3b"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'3\tcafebabe' ]
+  [ "$output" = "false" ]
 }
 
-@test "find_marker_comment ignores non-matching marker keys on the same PR" {
-  # PR has both API breaking-change and destructive migration marker comments;
-  # each finder should only find its own.
-  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nAPI changes"}
-{"id":7,"body":"<!-- db-destructive-migration-hash: 1b2b3b -->\nMigrations"}'
+@test "latest_announcement_matches is false when the PR moves back to an earlier change-set" {
+  # aaa111 was announced, then 1b2b3b. Going back to aaa111 is a change from
+  # the latest state, so it must be announced again rather than swallowed
+  # because a matching comment exists further up the PR.
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}
+{"id":9,"body":"<!-- breaking-api-change-hash: 1b2b3b -->\nlater"}'
 
-  run find_marker_comment "$comments" "breaking-api-change-hash"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = $'5\taaa111' ]
-
-  run find_marker_comment "$comments" "db-destructive-migration-hash"
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "aaa111"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'7\t1b2b3b' ]
+  [ "$output" = "false" ]
 }
 
-# This needs updating with the new work we will do in the second next commit
-@test "find_marker_comment picks the first marker comment when several exist for the same key" {
-  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nold"}
-{"id":9,"body":"<!-- breaking-api-change-hash: 1b2b3b -->\nnewer"}'
+@test "latest_announcement_matches uses the newest comment, not the input order" {
+  # Same two comments as above, fed newest-first. max_by(.id) must still pick
+  # 1b2b3b, so the answer cannot depend on how the API ordered its response.
+  local comments='{"id":9,"body":"<!-- breaking-api-change-hash: 1b2b3b -->\nlater"}
+{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}'
 
-  run find_marker_comment "$comments" "breaking-api-change-hash"
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "1b2b3b"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'5\taaa111' ]
+  [ "$output" = "true" ]
+
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "aaa111"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "latest_announcement_matches ignores the other gate's marker key" {
+  # A PR tripping both gates: each must read only its own newest comment, even
+  # when the other gate spoke more recently.
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nAPI"}
+{"id":7,"body":"<!-- db-destructive-migration-hash: 1b2b3b -->\nDB"}'
+
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "aaa111"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run latest_announcement_matches "$comments" "db-destructive-migration-hash" "1b2b3b"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "latest_announcement_matches works for any marker key" {
+  local comments='{"id":42,"body":"<!-- my-custom-gate-hash: 1f2e3d4c -->\nexplanation"}'
+
+  run latest_announcement_matches "$comments" "my-custom-gate-hash" "1f2e3d4c"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "latest_announcement_matches is false when the findings have gone" {
+  # The PR announced aaa111 and now has nothing. "none" differs from the last
+  # announcement, so the disappearance gets recorded like any other change.
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}'
+
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "none"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "latest_announcement_matches is true when the findings are still gone" {
+  # Already recorded as clean, so later pushes do not re-record it.
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}
+{"id":9,"body":"<!-- breaking-api-change-hash: none -->\nall clear"}'
+
+  run latest_announcement_matches "$comments" "breaking-api-change-hash" "none"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "gate_has_commented is false on a PR this gate has never commented on" {
+  # Keeps a clean PR clean: with no prior comment there is no finding to
+  # report the disappearance of.
+  local comments='{"id":1,"body":"just a regular review comment"}
+{"id":2,"body":"<!-- db-destructive-migration-hash: aaa111 -->\nother gate"}'
+
+  run gate_has_commented "$comments" "breaking-api-change-hash"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "gate_has_commented is false for an empty comment stream" {
+  run gate_has_commented "" "breaking-api-change-hash"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "gate_has_commented is true once this gate has commented, whatever the hash" {
+  local comments='{"id":5,"body":"<!-- breaking-api-change-hash: aaa111 -->\nearlier"}'
+
+  run gate_has_commented "$comments" "breaking-api-change-hash"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "build_body renders an all-clear when there are no findings" {
+  run build_body "breaking-api-change-hash" "none" "https://github.com/o/r/actions/runs/42" "Breaking API change"
+
+  [ "$status" -eq 0 ]
+
+  local first_line
+  first_line="$(head -1 <<<"$output")"
+
+  [ "$first_line" = "<!-- breaking-api-change-hash: none -->" ]
+  [[ "$output" == *'no longer present'* ]]
+  [[ "$output" != *'⚠️'* ]]
 }
 
 @test "build_body with breaking-api-change-hash marker key embeds the marker on its own first line" {

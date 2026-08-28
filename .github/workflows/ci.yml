@@ -592,10 +592,12 @@ jobs:
   # first breaking change ever, or when the set of breaking changes changed.
   # See docs/docs/backend/api-compatibility.md for the known trade-off (a
   # fixed-then-reintroduced identical breaking change won't re-announce).
+  # Runs whether or not breaking changes were found: "none" is a state like any
+  # other, so a PR that had breaks and no longer does records that on its
+  # timeline too. Slack is not told about that - see the notify job's `if:`.
   heavy_api_breaking_change_gate_notify:
     name: Breaking-change Slack notification decision
     needs: heavy_api_schema_diff
-    if: needs.heavy_api_schema_diff.outputs.breaking == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -610,7 +612,7 @@ jobs:
           bash .github/scripts/ci/gate-notify.sh \
             "breaking-api-change-hash" \
             "${{ github.event.pull_request.number }}" \
-            "${{ needs.heavy_api_schema_diff.outputs.breaking_hash }}" \
+            "${{ needs.heavy_api_schema_diff.outputs.breaking == 'true' && needs.heavy_api_schema_diff.outputs.breaking_hash || 'none' }}" \
             "Breaking API change"
 
   # ---------- Slack notification on breaking API change ----------
@@ -725,14 +727,14 @@ jobs:
   # blocks nothing. heavy_db_destructive_migration_gate above is the approval
   # gate, and it is unaffected by this job: it re-blocks on every push
   # regardless of whether Slack was told again.
-  # Compares the detection job's destructive_hash against the hash recorded on
-  # a sticky PR comment from the last time Slack was told. Silent on a re-run
-  # with the same migration(s); signals should_notify=true only for the first
-  # destructive migration on the PR, or when that set changes.
+  # Compares the detection job's destructive_hash against this gate's newest
+  # comment on the PR, adding one whenever they differ. Runs whether or not
+  # migrations were found: "none" is a state like any other, so a PR that had
+  # destructive migrations and no longer does records that on its timeline too.
+  # Slack is not told about that - see the notify job's `if:`.
   heavy_db_destructive_migration_gate_notify:
     name: Destructive-migration Slack notification decision
     needs: heavy_db_destructive_migration_check
-    if: needs.heavy_db_destructive_migration_check.outputs.destructive == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -747,7 +749,7 @@ jobs:
           bash .github/scripts/ci/gate-notify.sh \
             "db-destructive-migration-hash" \
             "${{ github.event.pull_request.number }}" \
-            "${{ needs.heavy_db_destructive_migration_check.outputs.destructive_hash }}" \
+            "${{ needs.heavy_db_destructive_migration_check.outputs.destructive == 'true' && needs.heavy_db_destructive_migration_check.outputs.destructive_hash || 'none' }}" \
             "Destructive database migration"
 
   # ---------- Slack notification on destructive DB migration ----------

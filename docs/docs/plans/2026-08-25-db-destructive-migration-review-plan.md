@@ -173,7 +173,7 @@ shipping a noisy job and retrofitting it.
       (`<marker-key> <pr-number> <hash> <title>`): the marker becomes
       `<!-- <marker-key>: <hash> -->` and `build_body`'s blurb takes the
       title, leaving `find_marker_comment`'s matching/capture logic
-      otherwise as-is. Update the existing `heavy_api_breaking_change_dedup`
+      otherwise as-is. **Superseded during review — see Phase 5b.** Update the existing `heavy_api_breaking_change_dedup`
       caller to pass `breaking-api-change-hash`, keeping its marker string
       byte-identical so marker comments already sitting on in-flight PRs
       still match.
@@ -227,6 +227,56 @@ teaching` (same webhook, no new secret), gated on **both**
 - [x] Leave `heavy_db_destructive_migration_gate` (Phase 3) untouched by
       the `should_notify` output — as with the API gate, approval is SHA-scoped and
       stays required on every push; only Slack noise is deduplicated.
+
+## Phase 5b: A comment per change-set, newest wins — ✅ COMPLETE
+
+Phase 5 shipped a single sticky comment per gate, edited in place as the
+change-set moved. Reviewed and changed: the comment's *content* was current
+but its *position* was historical, so on a PR that added `drop_column` early
+and `drop_table` twenty commits later, the comment sat beside the first commit
+while describing the latest finding. Both gates now add a comment per distinct
+change-set, and consult only the newest one, so the PR conversation reads as a
+chronological record of what was found and when.
+
+- [x] Replace `find_marker_comment` (first marker for the key, capturing its
+      hash via regex) with `latest_announcement_matches <comments>
+<marker-key> <hash>`. The question is no longer "what does the marker
+      say?" but "is this gate's newest comment already for this exact
+      change-set?", which collapses the capture regex into a `startswith` on
+      the full `<!-- <marker-key>: <hash> -->` line.
+- [x] Select that newest comment with `max_by(.id)` rather than taking the
+      last element. GitHub does return issue comments oldest-first, but ids
+      are monotonic, so this is a stronger guarantee for free and the result
+      cannot depend on how the API happened to order its response. Covered by
+      a test that feeds the comments newest-first.
+- [x] Drop the `gh api -X PATCH` branch from `main` entirely; comments are
+      only ever created, never edited.
+- [x] Drop the duplicate-comment warning. Two comments carrying the same hash
+      is now legitimate (A → B → A leaves two A comments), so "expected at
+      most one" no longer holds. Accepted loss: it had been catching
+      hand-created or copy-pasted markers.
+- [x] Applies to **both** gates - `gate-notify.sh` is shared, and the ask was
+      for identical behaviour on API and migration breaks.
+
+**Why newest-wins rather than searching the whole history.** An earlier
+revision of this phase asked "does *any* comment carry this hash?", which made
+returning to a previously-announced change-set silent - a blind spot wider
+than the one Phase 5 had. Consulting only the newest comment removes it: A → B
+→ A announces three times, because each step differs from the state before it.
+A comment is a record of a transition, not a claim about the whole PR.
+
+**A return to clean is recorded too.** "No findings" is passed as the literal
+hash `none`, so it is a state like any other: a PR that had destructive
+migrations and no longer does differs from its last announcement, and gets a
+comment saying so. Two things keep that from being noise. A PR this gate has
+never commented on stays silent - there is no finding to report the
+disappearance of - and Slack is not told, because the notify job is gated on
+the detection job having found something *as well as* `should_notify`. So an
+all-clear lands on the PR timeline without paging anyone.
+
+The gate-notify jobs therefore run whenever their detection job ran, rather
+than only when it found something. The approval gate is untouched by all of
+this and still re-blocks on every push for as long as a migration is present.
 
 ## Phase 6: Documentation — ✅ COMPLETE
 

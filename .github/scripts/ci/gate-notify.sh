@@ -9,20 +9,40 @@
 #                "db-destructive-migration-hash"), so several gates can each keep
 #                their own record on the same PR without colliding.
 #   pr-number    Pull request number.
-#   hash         Hash identifying the current change-set (from compute-*-hash.sh).
+#   hash         Hash identifying the current change-set (from compute-*-hash.sh),
+#                or the literal "none" when the caller found nothing. "No
+#                findings" is a state like any other, so a PR that had findings
+#                and no longer does records that too.
 #   title        Human-readable subject for the record comment (e.g. "Breaking API
 #                change", "Destructive database migration").
 #
-# The PR carries a sticky comment recording what was last announced for this
-# gate, marked "<!-- <marker-key>: <hash> -->" on its own first line. If that
-# record already names <hash>, this change-set has been announced:
-# should_notify=false is written and nothing is mutated. Otherwise (no record
-# yet, or a different hash) the record is created or updated in place with the
-# new hash and should_notify=true is written, so the caller sends the message.
+# Every change-set announced to Slack leaves a comment on the PR, marked
+# "<!-- <marker-key>: <hash> -->" on its own first line. If this gate's
+# *newest* comment already carries this exact marker, nothing has changed
+# since it was written: should_notify=false and nothing is mutated. Otherwise
+# a new comment is added and should_notify=true, so the caller sends the
+# message.
+#
+# Comments are added, never edited, and only the newest is consulted, so the
+# conversation reads as a timeline: each comment sits among the commits that
+# produced that change-set, and moving back to an earlier change-set counts as
+# a change like any other rather than being silently swallowed.
+#
+# A PR that had findings and now has none gets a comment too: "none" is just
+# another state, so the transition to it differs from the last announcement
+# like any other. The one case that stays silent is a PR where this gate has
+# never spoken - a clean PR should not collect an all-clear for a finding it
+# never had.
+#
+# Whether Slack is also told is the caller's decision, not this script's. The
+# workflow gates its notify job on "the caller found something" as well as
+# should_notify, so a return to clean records itself on the PR without paging
+# anyone. The approval gate is unaffected throughout; it re-blocks on every
+# push for as long as a finding is present.
 #
 # The record is a PR comment rather than actions/cache because cache entries are
-# branch/key-scoped, evict after inactivity, and cannot be overwritten in place,
-# whereas a comment persists indefinitely and doubles as a visible audit trail.
+# branch/key-scoped and evict after inactivity, whereas a comment persists
+# indefinitely and doubles as a visible audit trail.
 #
 # Environment:
 #   GH_TOKEN             Token used by `gh` to authenticate. Set by the workflow.
@@ -35,8 +55,12 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "gate-notify"
 
-# Build the sticky record-comment body from the marker key, hash, run URL,
-# and title. Pure (no I/O) so it can be tested.
+# The hash a caller passes when it found nothing. A real hash is 64 hex
+# characters, so this cannot collide with one.
+readonly NO_FINDINGS="none"
+
+# Build the announcement comment body from the marker key, hash, run URL, and
+# title. Pure (no I/O) so it can be tested.
 build_body() {
   local marker_key="$1"
   local hash="$2"
@@ -44,45 +68,69 @@ build_body() {
   local title="$4"
 
   # The output of this function is captured in main.
+  if [ "$hash" = "$NO_FINDINGS" ]; then
+    cat <<EOF
+<!-- ${marker_key}: ${hash} -->
+**✅ ${title} — no longer present**
+
+The finding recorded above this comment has gone from the pull request. This
+marks where that happened; the earlier comments are left in place as the
+record of what was there before.
+
+*Added by:* ${run_url}
+EOF
+    return 0
+  fi
+
   cat <<EOF
 <!-- ${marker_key}: ${hash} -->
 **⚠️ ${title}**
 
-This comment records what was last announced to Slack for this pull request,
-so the same finding is raised once rather than on every push. It is updated
-in place — never appended to — whenever the finding changes.
+This comment marks the point in this pull request where this finding appeared.
+A new comment is added whenever it changes, so the conversation reads as a
+timeline of what was found and when. Pushes that leave it unchanged are not
+announced again.
 
-*Last updated by:* ${run_url}
+*Added by:* ${run_url}
 EOF
 }
 
-# Count the record comments for ($2) in a newline-delimited stream of PR
-# comment JSON objects ($1). Normally 0 or 1 - anything higher means a record
-# was created outside this script. Pure (no gh calls) so it can be tested.
-count_marker_comments() {
+# Whether this gate has ever commented on the PR, given a newline-delimited
+# stream of PR comment JSON objects ($1). Prints "true" or "false". Used only
+# to keep a clean PR clean: with no prior comment there is no finding to
+# report the disappearance of. Pure (no gh calls) so it can be tested.
+gate_has_commented() {
   local comments_jsonl="$1"
   local marker_key="$2"
 
-  jq -rs --arg prefix "<!-- ${marker_key}:" \
-    '[.[] | select(.body | startswith($prefix))] | length' <<<"$comments_jsonl"
+  jq -rs --arg prefix "<!-- ${marker_key}: " \
+    '[.[] | select(.body | startswith($prefix))] | length > 0' <<<"$comments_jsonl"
 }
 
-# Find the existing marker comment (if any) in a newline-delimited stream of
-# PR comment JSON objects ($1, e.g. from `gh api ... --jq '.[]'`). The marker
-# key is passed in $2. Prints "<id><TAB><hash>" for the first marker comment
-# found, or nothing if none exists. Pure (no gh calls) so it can be tested.
-find_marker_comment() {
+# Whether this gate's most recent announcement on the PR is for this exact
+# change-set, given a newline-delimited stream of PR comment JSON objects
+# ($1). Prints "true" or "false" - "false" when the gate has never spoken on
+# this PR. Pure (no gh calls) so it can be tested.
+#
+# Only the newest marker comment is consulted, never the whole set. A
+# change-set the PR held earlier but has since moved away from is therefore
+# not "already announced": going back to it is a change like any other and
+# gets its own comment, so the conversation reads as a true timeline.
+#
+# max_by(.id) rather than the last element of the list, so the answer does not
+# depend on the order the API happened to return the comments in. GitHub does
+# sort them oldest-first, but comment ids are monotonic, which is a stronger
+# guarantee for free.
+latest_announcement_matches() {
   local comments_jsonl="$1"
   local marker_key="$2"
+  local hash="$3"
 
-  if [ -z "$comments_jsonl" ]; then
-    return 0
-  fi
-
-  jq -rs --arg prefix "<!-- ${marker_key}:" --arg key "$marker_key" '
-    [.[] | select(.body | startswith($prefix))] | first
-    | select(. != null)
-    | "\(.id)\t\(((.body | capture("^<!-- " + $key + ": (?<h>[0-9a-f]+) -->")) // {h: ""}) | .h)"
+  jq -rs \
+    --arg prefix "<!-- ${marker_key}: " \
+    --arg marker "<!-- ${marker_key}: ${hash} -->" '
+    [.[] | select(.body | startswith($prefix))]
+    | if length == 0 then false else (max_by(.id).body | startswith($marker)) end
   ' <<<"$comments_jsonl"
 }
 
@@ -130,30 +178,19 @@ main() {
   local comments_jsonl
   comments_jsonl="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" --paginate --jq '.[]')"
 
-  # Defence in depth: this script only ever updates a marker in place, so a
-  # second marker for the same key means something outside it created one
-  # (a copy-pasted comment, a hand-edit).
-  local duplicate_count
-  duplicate_count="$(count_marker_comments "$comments_jsonl" "$marker_key")"
-
-  if [ "$duplicate_count" -gt 1 ]; then
-    log "WARNING: found $duplicate_count '$marker_key' marker comments on PR #$pr_number; expected at most one."
-    log "WARNING: markers are updated in place, so duplicates were not created by this gate - clean them up by hand."
-    log "WARNING: continuing with the first marker found."
+  # A clean PR this gate has never commented on has nothing to report the
+  # disappearance of, so it stays clean.
+  if [ "$hash" = "$NO_FINDINGS" ] && [ "$(gate_has_commented "$comments_jsonl" "$marker_key")" = "false" ]; then
+    log "Nothing found and '$marker_key' has never commented on PR #$pr_number — nothing to record."
+    echo "should_notify=false" >>"$GITHUB_OUTPUT"
+    return 0
   fi
 
-  local marker
-  local existing_id=""
-  local existing_hash=""
-  marker="$(find_marker_comment "$comments_jsonl" "$marker_key")"
+  local unchanged
+  unchanged="$(latest_announcement_matches "$comments_jsonl" "$marker_key" "$hash")"
 
-  if [ -n "$marker" ]; then
-    existing_id="$(cut -f1 <<<"$marker")"
-    existing_hash="$(cut -f2 <<<"$marker")"
-  fi
-
-  if [ -n "$existing_id" ] && [ "$existing_hash" = "$hash" ]; then
-    log "Change-set unchanged (hash $hash already notified on comment #$existing_id) — skipping Slack notification."
+  if [ "$unchanged" = "true" ]; then
+    log "State $hash is already the latest announcement on PR #$pr_number — nothing to record."
     echo "should_notify=false" >>"$GITHUB_OUTPUT"
     return 0
   fi
@@ -162,14 +199,16 @@ main() {
   local body
   body="$(build_body "$marker_key" "$hash" "$run_url" "$title")"
 
-  if [ -n "$existing_id" ]; then
-    log "Change-set changed (was $existing_hash, now $hash) — updating marker comment #$existing_id."
-    printf '%s' "$body" | gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${existing_id}" -f body=@-
+  if [ "$hash" = "$NO_FINDINGS" ]; then
+    log "Findings have gone from PR #$pr_number — recording that on the PR."
   else
-    log "No existing marker comment — creating one on PR #$pr_number for hash $hash."
-    printf '%s' "$body" | gh pr comment "$pr_number" --body-file -
+    log "New change-set $hash — adding a comment to PR #$pr_number."
   fi
 
+  printf '%s' "$body" | gh pr comment "$pr_number" --body-file -
+
+  # Whether this also reaches Slack is the caller's call: the notify job is
+  # gated on the caller having found something, so an all-clear stays on the PR.
   echo "should_notify=true" >>"$GITHUB_OUTPUT"
 }
 

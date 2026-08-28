@@ -171,13 +171,26 @@ When destructive migrations are detected, a Slack notification lands in
   environment
 
 A pull request is told **once per distinct set of destructive migrations**,
-not once per push. `heavy_db_destructive_migration_gate_notify` compares a
-hash of the detected migrations and operations against the hash recorded on a
-sticky PR comment (`gate-notify.sh`, marker key
+not once per push. `heavy_db_destructive_migration_gate_notify` hashes the
+detected migrations and operations, then asks whether any comment on the PR
+already carries that hash (`gate-notify.sh`, marker key
 `db-destructive-migration-hash`). A later commit that leaves the same
 migration(s) in place stays silent — a formatting fix or a rebase onto new
 main shouldn't re-announce a finding nobody has acted on. Add a second
 destructive migration and the hash moves, so a fresh message lands.
+
+Each distinct change-set gets its **own** comment, added where it appeared in
+the PR timeline and never edited afterwards, so the conversation reads as a
+chronological record of what was found and when. Only the gate's **newest**
+comment is consulted when deciding whether to announce, so moving back to a
+change-set the PR held earlier counts as a change like any other and is
+announced again — each comment records a transition, not a standing claim.
+
+A return to clean is recorded too. When the last destructive migration is
+removed the gate posts an all-clear comment (✅, "no longer present"), so the
+timeline shows the risk arriving *and* going. Slack is not told — nobody needs
+paging to say a risk went away — and a PR that never had a destructive
+migration stays silent, since there is nothing to report the disappearance of.
 
 The approval is unaffected by any of this: it is SHA-scoped and stays required
 on every push. How often Slack is told is a notification concern, never a
