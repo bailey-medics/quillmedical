@@ -11,9 +11,9 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.13.7"
-fastapi = "0.119.1"
-uvicorn = {extras = ["standard"], version = "0.46.0"}
-pydantic = "2.13.0"
+fastapi = "0.120.0"
+uvicorn = {extras = ["standard"], version = "0.47.0"}
+pydantic = "2.13.1"
 sqlalchemy = "2.0.52"
 psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
 python-dotenv = "1.2.3"
