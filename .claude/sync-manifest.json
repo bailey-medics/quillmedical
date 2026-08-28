@@ -1,13 +1,14 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-08-26T19:00:07Z",
+  "lastRun": "2026-08-28T05:26:59Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
     "Corrected 2026-08-26: disable-model-invocation:true does NOT remove a skill/command from the registry - it only stops Claude auto-invoking it; /name still works. A previous version of this note claimed otherwise; that was wrong. The skill now sets disable-model-invocation:true on crp specifically, because it commits/pushes and must only ever run when explicitly typed as /crp, per CLAUDE.md's 'NEVER auto-commit/push' rule.",
     "The .claude/commands/ directory has been retired in favour of .claude/skills/ (migrated 2026-08-26). Do not recreate .claude/commands/*.md for these sources.",
-    "Do not re-create the pre-rename directory names on a future sync run; that would register duplicate skills."
+    "Do not re-create the pre-rename directory names on a future sync run; that would register duplicate skills.",
+    "2026-08-28: .github/instructions/backend.instructions.md changed (added an 'Enforcement: CI detection + required-reviewer environment gate' subsection under Destructive changes) but its target, .claude/rules/backend.md, was left un-synced deliberately — the target has diverged (hand-edited directly in commits 181c57cc and 66e30754, adding the 'API response typing' and oasdiff-enforcement sections without going through this skill), so its recorded sourceSha256/targetSha256 entry was NOT updated this run. Do not treat that entry as reflecting current state; resolve the divergence (merge by hand, or explicitly instruct this skill how to proceed) before the next apply run can sync it."
   ],
   "files": [
     {
