@@ -32,7 +32,8 @@ setup() {
 VALID_KEY="db-destructive-migration-hash"
 VALID_PR="42"
 VALID_HASH="abc123"
-VALID_TITLE="Destructive database migration"
+VALID_MESSAGE="**🚨 Destructive database migration pending review**"
+VALID_ALL_CLEAR="**✅ All destructive migrations have been reverted**"
 
 @test "errors when no marker key is given" {
   run main
@@ -55,17 +56,24 @@ VALID_TITLE="Destructive database migration"
   [[ "$output" == *"No hash provided"* ]]
 }
 
-@test "errors when no title is given" {
+@test "errors when no message is given" {
   run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"No title provided"* ]]
+  [[ "$output" == *"No message provided"* ]]
+}
+
+@test "errors when no all-clear message is given" {
+  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_MESSAGE"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No all-clear message provided"* ]]
 }
 
 @test "errors when GH_TOKEN is not set" {
   unset GH_TOKEN
 
-  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_TITLE"
+  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_MESSAGE" "$VALID_ALL_CLEAR"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"GH_TOKEN is not set"* ]]
@@ -74,7 +82,7 @@ VALID_TITLE="Destructive database migration"
 @test "errors when GITHUB_OUTPUT is not set" {
   unset GITHUB_OUTPUT
 
-  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_TITLE"
+  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_MESSAGE" "$VALID_ALL_CLEAR"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"GITHUB_OUTPUT not set"* ]]
@@ -83,7 +91,7 @@ VALID_TITLE="Destructive database migration"
 @test "errors when GITHUB_REPOSITORY is not set" {
   unset GITHUB_REPOSITORY
 
-  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_TITLE"
+  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_MESSAGE" "$VALID_ALL_CLEAR"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"GITHUB_REPOSITORY not set"* ]]
@@ -231,8 +239,12 @@ VALID_TITLE="Destructive database migration"
   [ "$output" = "true" ]
 }
 
-@test "build_body renders an all-clear when there are no findings" {
-  run build_body "breaking-api-change-hash" "none" "https://github.com/o/r/actions/runs/42" "Breaking API change"
+@test "build_body uses the all-clear message when there are no findings" {
+  # The caller supplies both, and the hash alone decides which is used - the
+  # message describing a finding must not leak into an all-clear.
+  run build_body "breaking-api-change-hash" "none" "https://github.com/o/r/actions/runs/42" \
+    "**⚠️ Breaking API change requires approval**" \
+    "**✅ All API breaking changes have been reverted**"
 
   [ "$status" -eq 0 ]
 
@@ -240,12 +252,15 @@ VALID_TITLE="Destructive database migration"
   first_line="$(head -1 <<<"$output")"
 
   [ "$first_line" = "<!-- breaking-api-change-hash: none -->" ]
-  [[ "$output" == *'no longer present'* ]]
+  [[ "$output" == *'All API breaking changes have been reverted'* ]]
+  [[ "$output" != *'requires approval'* ]]
   [[ "$output" != *'⚠️'* ]]
 }
 
 @test "build_body with breaking-api-change-hash marker key embeds the marker on its own first line" {
-  run build_body "breaking-api-change-hash" "abc123" "https://github.com/o/r/actions/runs/42" "Breaking API change"
+  run build_body "breaking-api-change-hash" "abc123" "https://github.com/o/r/actions/runs/42" \
+    "**⚠️ Breaking API change requires approval**" \
+    "**✅ All API breaking changes have been reverted**"
 
   [ "$status" -eq 0 ]
 
@@ -254,11 +269,22 @@ VALID_TITLE="Destructive database migration"
 
   [ "$first_line" = "<!-- breaking-api-change-hash: abc123 -->" ]
   [[ "$output" == *'https://github.com/o/r/actions/runs/42'* ]]
-  [[ "$output" == *'Breaking API change'* ]]
+  [[ "$output" == *'Breaking API change requires approval'* ]]
 }
 
-@test "build_body with db-destructive-migration-hash marker key embeds the correct marker" {
-  run build_body "db-destructive-migration-hash" "def456" "https://github.com/o/r/actions/runs/99" "Destructive migration"
+@test "build_body passes the caller's message through unchanged" {
+  # The message carries the finding itself, so the script must not reword it:
+  # it is kept in step with the gate's Slack message.
+  local message='**🚨 Destructive database migration pending review**
+
+**Migrations:**
+```
+2026_08_28_1200-aabbccdd1111_test.py aabbccdd1111 drop_column
+```'
+
+  run build_body "db-destructive-migration-hash" "def456" "https://github.com/o/r/actions/runs/99" \
+    "$message" \
+    "**✅ All destructive migrations have been reverted**"
 
   [ "$status" -eq 0 ]
 
@@ -266,6 +292,8 @@ VALID_TITLE="Destructive database migration"
   first_line="$(head -1 <<<"$output")"
 
   [ "$first_line" = "<!-- db-destructive-migration-hash: def456 -->" ]
+  [[ "$output" == *'Destructive database migration pending review'* ]]
+  [[ "$output" == *'aabbccdd1111 drop_column'* ]]
   [[ "$output" == *'https://github.com/o/r/actions/runs/99'* ]]
-  [[ "$output" == *'Destructive migration'* ]]
+  [[ "$output" != *'have been reverted'* ]]
 }

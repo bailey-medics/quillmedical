@@ -2,7 +2,7 @@
 # Decides whether a PR still needs a Slack message about its current
 # change-set: one message per pull request per distinct set of findings.
 #
-# Usage: GH_TOKEN=<token> gate-notify.sh <marker-key> <pr-number> <hash> <title>
+# Usage: GH_TOKEN=<token> gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>
 #
 # Arguments:
 #   marker-key   Identifies which gate is asking (e.g. "breaking-api-change-hash",
@@ -13,8 +13,14 @@
 #                or the literal "none" when the caller found nothing. "No
 #                findings" is a state like any other, so a PR that had findings
 #                and no longer does records that too.
-#   title        Human-readable subject for the record comment (e.g. "Breaking API
-#                change", "Destructive database migration").
+#   message      The comment body when there is a finding, supplied by the
+#                caller so this script stays gate-agnostic. Written in GitHub
+#                markdown; see to-slack-mrkdwn.sh for how the same text reaches
+#                Slack.
+#   all-clear-message
+#                The comment body when the findings have gone. A separate
+#                string rather than something derived from the first, so each
+#                gate can name what went away in its own words.
 #
 # Every change-set announced to Slack leaves a comment on the PR, marked
 # "<!-- <marker-key>: <hash> -->" on its own first line. If this gate's
@@ -59,37 +65,25 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "gate-notify"
 # characters, so this cannot collide with one.
 readonly NO_FINDINGS="none"
 
-# Build the announcement comment body from the marker key, hash, run URL, and
-# title. Pure (no I/O) so it can be tested.
+# Build the announcement comment body. The caller's message carries the
+# finding itself; the marker line and run link are added around it. Pure (no
+# I/O) so it can be tested.
 build_body() {
   local marker_key="$1"
   local hash="$2"
   local run_url="$3"
-  local title="$4"
+  local message="$4"
+  local all_clear_message="$5"
 
-  # The output of this function is captured in main.
+  local body="$message"
   if [ "$hash" = "$NO_FINDINGS" ]; then
-    cat <<EOF
-<!-- ${marker_key}: ${hash} -->
-**✅ ${title} — no longer present**
-
-The finding recorded above this comment has gone from the pull request. This
-marks where that happened; the earlier comments are left in place as the
-record of what was there before.
-
-*Added by:* ${run_url}
-EOF
-    return 0
+    body="$all_clear_message"
   fi
 
+  # The output of this function is captured in main.
   cat <<EOF
 <!-- ${marker_key}: ${hash} -->
-**⚠️ ${title}**
-
-This comment marks the point in this pull request where this finding appeared.
-A new comment is added whenever it changes, so the conversation reads as a
-timeline of what was found and when. Pushes that leave it unchanged are not
-announced again.
+${body}
 
 *Added by:* ${run_url}
 EOF
@@ -138,25 +132,31 @@ main() {
   local marker_key="${1:-}"
   local pr_number="${2:-}"
   local hash="${3:-}"
-  local title="${4:-}"
+  local message="${4:-}"
+  local all_clear_message="${5:-}"
 
   if [ -z "$marker_key" ]; then
-    error "No marker key provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <title>"
+    error "No marker key provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>"
     exit 1
   fi
 
   if [ -z "$pr_number" ]; then
-    error "No pull request number provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <title>"
+    error "No pull request number provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>"
     exit 1
   fi
 
   if [ -z "$hash" ]; then
-    error "No hash provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <title>"
+    error "No hash provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>"
     exit 1
   fi
 
-  if [ -z "$title" ]; then
-    error "No title provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <title>"
+  if [ -z "$message" ]; then
+    error "No message provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>"
+    exit 1
+  fi
+
+  if [ -z "$all_clear_message" ]; then
+    error "No all-clear message provided. Usage: gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>"
     exit 1
   fi
 
@@ -197,7 +197,7 @@ main() {
 
   local run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
   local body
-  body="$(build_body "$marker_key" "$hash" "$run_url" "$title")"
+  body="$(build_body "$marker_key" "$hash" "$run_url" "$message" "$all_clear_message")"
 
   if [ "$hash" = "$NO_FINDINGS" ]; then
     log "Findings have gone from PR #$pr_number — recording that on the PR."
