@@ -144,6 +144,15 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "API breaking-change review gate"
       }
+
+      # Destructive DB migrations (see
+      # docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md)
+      required_check {
+        context = "DB destructive migration check"
+      }
+      required_check {
+        context = "DB destructive migration review gate"
+      }
     }
 
     # Block force pushes (rewriting history on protected branches)

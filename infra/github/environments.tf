@@ -57,6 +57,11 @@ resource "github_repository_environment_deployment_policy" "teaching_main" {
 #   wrote the change, so the goal is forcing one genuine action out of
 #   whoever is accountable, not diffusing accountability across more people.
 #
+#   `can_admins_bypass = false` for the same reason as
+#   db_destructive_migration_review below: an admin is not necessarily the
+#   role that should be able to wave a breaking change through, and the two
+#   gates should not differ in how binding they are.
+#
 # No deployment_branch_policy: this environment gates a CI job that runs on
 # pull requests, not a deployment, so it is not restricted to a branch.
 
@@ -68,6 +73,54 @@ resource "github_repository_environment" "api_breaking_change_review" {
   repository          = var.github_repository
   environment         = "api-breaking-change-review"
   prevent_self_review = false
+  can_admins_bypass   = false
+
+  reviewers {
+    users = [data.github_user.api_breaking_change_reviewer.id]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Destructive DB migration review environment — required-reviewer approval gate
+# ---------------------------------------------------------------------------
+#
+# Destructive migration context (see
+# docs/docs/plans/2026-08-25-db-destructive-migration-review-plan.md):
+#   Gates a newly-added migration that drops a column, table, or constraint
+#   (detected by check_migrations.py --report-destructive in CI) behind one
+#   deliberate approval action. The existing
+#   `# migration-check: allow-destructive` marker is self-attested — whoever
+#   writes the migration adds the comment themself, so it proves the comment
+#   exists, not that anyone weighed the cost of discarding clinical audit
+#   history. This environment supplies the part the marker cannot: an action
+#   nothing in the diff can produce.
+#
+#   `prevent_self_review = false` is intentional, matching
+#   api_breaking_change_review above — a second reviewer is not inherently
+#   more careful than the person who wrote the migration, so the goal is
+#   forcing one genuine, separate, deliberate action out of whoever is
+#   accountable, not diffusing accountability across more people.
+#
+#   The reviewer is reused from api_breaking_change_review rather than looked
+#   up a second time: same person, same accountability, one data source.
+#
+#   `can_admins_bypass = false` is deliberate and is what makes this gate
+#   binding rather than advisory. Today the sole admin and the sole reviewer
+#   are the same person, so the setting looks redundant - but the roles are
+#   expected to diverge: a Clinical Safety Officer with coding experience is
+#   the right approver for discarding clinical audit history, whereas a repo
+#   admin may have minimal clinical experience. Leaving the default (`true`)
+#   would let exactly the wrong role wave the change through. Set now, while
+#   it costs nothing, rather than after the roles have split.
+#
+# No deployment_branch_policy: this environment gates a CI job that runs on
+# pull requests, not a deployment, so it is not restricted to a branch.
+
+resource "github_repository_environment" "db_destructive_migration_review" {
+  repository          = var.github_repository
+  environment         = "db-destructive-migration-review"
+  prevent_self_review = false
+  can_admins_bypass   = false
 
   reviewers {
     users = [data.github_user.api_breaking_change_reviewer.id]
