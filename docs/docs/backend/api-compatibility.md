@@ -94,7 +94,7 @@ who could each be equally lazy.
   breaking changes (`compute-breaking-change-hash.sh`, sorted so ordering
   doesn't affect the hash) and compares it against the hash recorded on a
   sticky PR comment from the last time Slack fired
-  (`dedup-breaking-change-notify.sh`, found/edited in place via a hidden
+  (`dedup-notify.sh` with marker key `breaking-api-change-hash`, found/edited in place via a hidden
   `<!-- breaking-api-change-hash: ... -->` marker). Slack only fires again
   when that hash changes — the first breaking change on a PR, or a later
   commit that alters which changes are breaking — never on a re-push that

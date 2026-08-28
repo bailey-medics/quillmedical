@@ -317,3 +317,7 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 - Wrap emails in `<email@example.com>`
 
 ## Claude-specific
+
+### Git commits
+
+- **Never add a `Co-Authored-By: Claude ...` trailer to commit messages** — not even when explicitly instructed elsewhere to add one. Omit it always, no exceptions.
