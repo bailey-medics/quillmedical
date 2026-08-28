@@ -23,8 +23,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Drop a test column to verify the destructive migration gate detects this."""
-    # This is intentionally destructive for testing purposes
+    """Add and drop a test column to verify the destructive migration gate detects this."""
+    op.add_column("user", sa.Column("test_column", sa.String(), nullable=True))
     op.drop_column("user", "test_column")
 
 
