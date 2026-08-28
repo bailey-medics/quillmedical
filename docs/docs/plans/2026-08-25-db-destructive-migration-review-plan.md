@@ -231,10 +231,37 @@ teaching` (same webhook, no new secret), gated on **both**
 
 **Status:** Commit 87615617. All documentation sections added and published. Awaiting manual verification (Phase 7) before implementing immutability checks (Phase 8).
 
-## Phase 7: Verification — ⏳ PENDING (Manual human task)
+## Phase 7: Verification — ⏳ IN PROGRESS (Manual human task)
 
 **This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
 
+**Critical sequencing discovery:** Terraform must be applied to GitHub
+BEFORE pushing the test PR. The infrastructure (Slack webhook configuration,
+GitHub Actions environment setup with required reviewer, branch protection
+rules) must be live before the CI job runs, or Slack notifications won't
+fire and the dedup marker won't be created. Apply Phase 3's `terraform apply`
+first, verify the environment exists with the required reviewer in the GitHub
+UI, then push the test migration PR.
+
+Test migration created on branch `feature/phase-7-verification` (PR #420).
+Migration `2026_08_28_1200-aabbccdd1111_phase_7_test_destructive.py` adds
+and drops a test column on the `users` table:
+- ✅ Passes `check_migrations.py` validation
+- ✅ Executes successfully (add then drop, no permanent change)
+- ✅ Still triggers `heavy_db_destructive_migration_check` (contains `drop_column`)
+
+Gate status after initial push (before Terraform applied):
+- ✅ CI detected the destructive op
+- ✅ Gate correctly blocks at `waiting` (required approval from `db-destructive-migration-review` env)
+- ❌ Slack notification did NOT fire (infrastructure not yet in place)
+- ❌ Dedup marker comment NOT created (notification never fired to create it)
+
+Workaround: re-push a small commit to the same PR to re-trigger CI after Terraform
+is applied, so notifications and dedup work.
+
+- [ ] Terraform Phase 3 applied and verified live (`can_admins_bypass: false`, reviewer set)
+- [ ] Re-push a small commit to PR #420 to trigger fresh CI with infrastructure ready
+- [ ] Verify Slack notification fires to `#teaching` with migration details and dedup marker
 - [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`), and
       the Phase 4 `.bats` suites pass for both marker keys.
 - [ ] One-off manual GitHub walkthrough on a throwaway branch/PR (not
@@ -247,7 +274,7 @@ teaching` (same webhook, no new secret), gated on **both**
       is approved or rejected.
 - [ ] On the same throwaway PR, push a second,
       unrelated commit and confirm Slack stays silent while the gate still
-      re-blocks
+      re-blocks (dedup by hash)
 - [ ] add a second destructive migration and confirm the
       hash moves, the marker comment is edited in place (not appended to),
       and one fresh Slack message lands.
