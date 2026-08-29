@@ -386,6 +386,12 @@ jobs:
         `db-destructive-migration-review` environment and allow the PR to
         proceed.
 
+        **Check the PR's other checks are green first.** A migration still
+        failing `check_migrations.py` - a missing
+        `# migration-check: allow-destructive` marker, say - is not ready to
+        approve, and approving now is wasted anyway: approval is scoped to the
+        commit, so the next push re-requires it.
+
         **Migrations:**
         ```
         ${{ needs.db_destructive_migration_check.outputs.report }}

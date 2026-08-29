@@ -411,8 +411,10 @@ Each step gives the command to run, then what to look for.
       `op.drop_column("users", "test_column")` in `upgrade()`, then
       `git commit --no-verify` (pre-commit will refuse it otherwise — that is
       the point) and push.
-      → `ci.yml`'s **pre-commit job fails** on the missing marker. Separately
-      and independently, `gate-breaking.yml` still detects the migration:
+      → **two** `ci.yml` jobs fail on the missing marker: `pre-commit` (the
+      `check-migrations` hook) and `unit` (`test_current_history_passes`,
+      which asserts the real migrations directory is clean). Separately and
+      independently, `gate-breaking.yml` still detects the migration:
       comment, Slack, gate at `waiting`. Detection ignoring the marker is the
       whole design, and the two workflows failing/firing independently is what
       proves it.
@@ -492,6 +494,42 @@ fast as you can, without waiting for CI.
 - [ ] Confirm no approval sat unapproved while a later commit's comment was
       blocked behind it — the reason the wait keys on the decide *job* rather
       than the whole run.
+
+### Found during the walkthrough
+
+Recorded as the run turned them up, since each changes something.
+
+- [x] **The approval prompt now tells the reviewer to check CI first.** A
+      migration missing its marker still trips the gate — detection ignores
+      the marker by design — so a reviewer can be asked to approve something
+      whose static checks are red. The message now says to check the other
+      checks are green first, and that approving early is wasted anyway since
+      approval is commit-scoped. Deliberately phrased as "checks are green"
+      with the marker as the example, rather than "check the markers": a
+      reviewer can see check status at a glance but would have to open files
+      to audit markers, and making the marker the approval criterion would
+      blur the rule that it must never substitute for the decision.
+      **Migration gate only** — the API gate cannot reach a reviewer in that
+      state, because a missing decision file fails `api_schema_diff`, which
+      skips the gate that `needs` it.
+- [ ] **`check_destructive` matches the marker anywhere in the file.** It is a
+      plain substring search over the whole source, so the marker satisfies
+      the check from inside a docstring, a comment far from the destructive
+      call, or prose explaining that the marker is *absent* — which is exactly
+      how the first walkthrough fixture passed when it should have failed.
+      Worth tightening to require the marker near the destructive call, or at
+      least outside docstrings. Not urgent: the gate does not consult the
+      marker, so a false pass here costs the nudge, not the enforcement.
+- [x] **`auto-pr.yml` opens PRs as drafts**, and both detection jobs carry
+      `draft == false`, so nothing gate-related runs until the PR is marked
+      ready for review. Anyone repeating this walkthrough will hit it and may
+      conclude the gates are broken. Noted in the setup steps above.
+- [x] **A missing marker fails CI twice**, not once: the `pre-commit` job via
+      the `check-migrations` hook, and the `unit` job via
+      `test_current_history_passes`, which asserts the real migrations
+      directory passes. The second is the stronger of the two — it catches a
+      bad migration arriving by any route, including a `--no-verify` commit or
+      the web UI, where the local hook never runs.
 
 ### DO NOT MERGE TO MAIN
 
