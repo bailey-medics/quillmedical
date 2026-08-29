@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status"
+reason: "Phase 7 walkthrough fixture. MUTATE_REMOVE_MESSAGE_1 on a flag-gated dummy endpoint that no client calls; the flag and this file are both deleted before the branch is closed. No reload needed - nothing consumes this endpoint."
