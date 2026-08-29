@@ -436,10 +436,11 @@ Each step gives the command to run, then what to look for.
 - [ ] **5.** Flip `MUTATE_REMOVE_MESSAGE_1` to `True` in
       `backend/app/test_api_endpoints.py`, *without* a decision file; push.
       → **`api_schema_diff` fails** at `validate-compat-files.sh`, and the
-      "api-compatibility validation failed" Slack message fires. Note what
-      does **not** happen: no gate comment at all, because the decide job
-      `needs: api_schema_diff` and is skipped when it fails. A break with no
-      decision file therefore leaves no record on the PR — worth knowing.
+      "api-compatibility validation failed" Slack message fires. The break is
+      **still recorded**: comment, Slack and a pending approval, exactly as a
+      marker-less migration is at step 1. The failing check keeps the PR
+      blocked either way; the record is about *when the break appeared*, not
+      whether its paperwork arrived with it.
 - [ ] **6.** Add the decision file
       (`python backend/scripts/new_compat_decision.py`, pasting the oasdiff
       change string verbatim from the failed run's log); push.
@@ -512,6 +513,22 @@ Recorded as the run turned them up, since each changes something.
       **Migration gate only** — the API gate cannot reach a reviewer in that
       state, because a missing decision file fails `api_schema_diff`, which
       skips the gate that `needs` it.
+- [x] **The two gates recorded findings differently, and now do not.** A
+      migration missing its marker was still detected, recorded and gated; an
+      API break missing its decision file was not, because
+      `validate-compat-files.sh` runs inside `api_schema_diff` and its failure
+      skipped every job that `needs` it. So a break could fail CI and leave no
+      trace on the PR timeline. Fixed by gating the API decide, notify and
+      approval jobs on `!cancelled()` rather than implicit success: the break
+      is detected before validation runs, so the finding is recorded either
+      way. The failing check still blocks the PR. **Verify on the next run
+      that a failed job's outputs (`breaking`, `breaking_hash`) still reach
+      the dependent jobs** — that is the assumption the fix rests on.
+- [ ] **`validate-compat-files.sh` breaks under bash 3.2.** Expanding the
+      empty `covered_changes` array under `set -u` errors on macOS's bash 3.2
+      (`unbound variable`) while working on CI's bash 5. Only affects running
+      the script locally, but that is exactly when someone is debugging a
+      decision file.
 - [ ] **`check_destructive` matches the marker anywhere in the file.** It is a
       plain substring search over the whole source, so the marker satisfies
       the check from inside a docstring, a comment far from the destructive
