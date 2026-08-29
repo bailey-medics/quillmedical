@@ -1,11 +1,9 @@
 """Phase 7 walkthrough: test destructive migration A.
 
-Exists only to exercise the destructive-migration review gate. Deliberately
-ships without the allow-destructive marker at first, to prove the marker gates
-the static check and not the CI detection. The marker string is not spelled out
-here on purpose: check_destructive searches the whole file for it, so naming it
-even in prose would satisfy the check. Delete this file before the walkthrough
-branch is closed - it must never reach main.
+Exists only to exercise the destructive-migration review gate. Shipped first
+without the allow-destructive marker (step 1) to prove the marker gates the
+static check and not the CI detection; the marker is added in step 2. Delete
+this file before the walkthrough branch is closed - it must never reach main.
 
 Revision ID: a1a1a1a1a1a1
 Revises: fa4401ce1b92
@@ -19,6 +17,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
+# migration-check: allow-destructive
 revision: str = "a1a1a1a1a1a1"
 down_revision: str | None = "fa4401ce1b92"
 branch_labels: str | Sequence[str] | None = None
