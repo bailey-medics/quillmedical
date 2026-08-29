@@ -644,18 +644,20 @@ together, so nobody noticed.
 The resulting rule holds for both gates with no exceptions: **Slack tells you a
 break needs approval; everything else is on the PR.**
 
-- [ ] Add the breaking-change summary to the API `GATE_MESSAGE`, mirroring the
+- [x] Add the breaking-change summary to the API `GATE_MESSAGE`, mirroring the
       migration gate's `**Migrations:**` block. Note
       `compat_validation_error` is **not** the source — it greps `ERROR:`
       lines, so it is empty when validation passes. Extract the
       `<id> <operation> <path> <text>` lines from `oasdiff-report.json`
       instead, reusing the jq already in `compute-breaking-change-hash.sh`,
       in a step that runs before validation so both paths have it.
-- [ ] Delete `api_compat_notify` from `gate-breaking.yml`, and check nothing
+      **Done** via `.github/scripts/ci/extract-breaking-summary.sh` (10 tests),
+      which also updates `api-compatibility-testing.md`'s step 8.
+- [x] Delete `api_compat_notify` from `gate-breaking.yml`, and check nothing
       references it.
-- [ ] Update `api-compatibility.md` and `alembic-migration-safety.md` with the
+- [x] Update `api-compatibility.md` and `alembic-migration-safety.md` with the
       one-message rule, stated as holding for both.
-- [ ] **Accepted loss:** if `api_schema_diff` fails for a reason other than a
+- [x] **Accepted loss:** if `api_schema_diff` fails for a reason other than a
       missing decision file — `oasdiff` crashing, the schema-coverage check —
       there will be a red check and no Slack. Already true of every migration
       static failure, so the behaviour becomes consistent rather than newly

@@ -86,8 +86,16 @@ who could each be equally lazy.
   nothing left over from an earlier commit can satisfy it.
 - **Notification**: a breaking-change finding posts to Slack (via the
   reusable `.github/workflows/slack-notify.yml`, `channel: teaching`) with
-  `oasdiff`'s changelog summary of what changed, so the approval prompt
-  shows _what_ is being confirmed rather than a bare "approve?".
+  the `oasdiff` change lines under **Breaking changes:**, so the approval
+  prompt shows _what_ is being confirmed rather than a bare "approve?". Each
+  line is the string `backend/scripts/new_compat_decision.py` asks to be
+  pasted in, so the message doubles as the source for writing a decision file.
+- **One Slack message per gate**: sent when a break needs approval, and only
+  then. All-clears and static-check failures show on the PR and nowhere else.
+  The destructive-migration gate follows exactly the same rule, so knowing one
+  tells you how the other behaves. A validation failure with no decision file
+  therefore produces a red check plus the ordinary gate message — not a
+  second, separate alert.
 - **One message per distinct set of breaks**:
   `api_breaking_change_gate` re-requires approval on every commit —
   deliberately, see above — but re-sending an identical Slack ping on every
