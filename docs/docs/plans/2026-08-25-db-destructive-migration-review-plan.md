@@ -584,14 +584,27 @@ Recorded as the run turned them up, since each changes something.
       reach a reviewer while validation was failing. The `!cancelled()` fix
       changes that, so the API message now carries the warning too. A caveat
       that was accurate before the fix would have been quietly wrong after it.
-- [ ] **`check_destructive` matches the marker anywhere in the file.** It is a
-      plain substring search over the whole source, so the marker satisfies
-      the check from inside a docstring, a comment far from the destructive
-      call, or prose explaining that the marker is *absent* — which is exactly
-      how the first walkthrough fixture passed when it should have failed.
-      Worth tightening to require the marker near the destructive call, or at
-      least outside docstrings. Not urgent: the gate does not consult the
-      marker, so a false pass here costs the nudge, not the enforcement.
+- [x] **`check_destructive` matched the marker anywhere in the file.** It was
+      a plain substring search over the whole source, so the marker satisfied
+      the check from inside a docstring, from a comment far from the call, or
+      from prose explaining that the marker was *absent* — exactly how the
+      first walkthrough fixture passed when it should have failed. One marker
+      also vouched for every destructive call in the file.
+
+      Now checked **per call**: the marker must sit on the call's own line, or
+      in the run of comments and blank lines immediately above it. Scanning
+      stops at the first statement, so a marker cannot reach past one call to
+      cover another. The rationale a marker carries (see Phase 8) lives in that
+      same run, so marker + reason + call still passes. Errors name the line
+      and the operation, and every unmarked call is reported rather than just
+      the first.
+
+      Both existing migrations pass unchanged. `fa4401ce1b92` already writes
+      the marker twice, once per drop — redundant under the old rule, required
+      under the new one, and the more honest reading: two drops are two
+      decisions. The squashed baseline is unaffected, its `drop_table` calls
+      all being in `downgrade()`, which the checker does not walk. Seven tests
+      cover the cases that used to slip through.
 - [x] **`auto-pr.yml` opens PRs as drafts**, and both detection jobs carry
       `draft == false`, so nothing gate-related runs until the PR is marked
       ready for review. Anyone repeating this walkthrough will hit it and may
