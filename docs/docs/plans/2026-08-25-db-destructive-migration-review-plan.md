@@ -573,11 +573,17 @@ Recorded as the run turned them up, since each changes something.
       way. The failing check still blocks the PR. **Verify on the next run
       that a failed job's outputs (`breaking`, `breaking_hash`) still reach
       the dependent jobs** — that is the assumption the fix rests on.
-- [ ] **`validate-compat-files.sh` breaks under bash 3.2.** Expanding the
-      empty `covered_changes` array under `set -u` errors on macOS's bash 3.2
-      (`unbound variable`) while working on CI's bash 5. Only affects running
-      the script locally, but that is exactly when someone is debugging a
-      decision file.
+- [x] **`validate-compat-files.sh` broke under bash 3.2.** Expanding the
+      empty `covered_changes` array under `set -u` errored on macOS's bash 3.2
+      (`unbound variable`) while working on CI's bash 5 — and empty is the
+      normal case when a change has no decision file yet, which is exactly
+      when someone runs it locally to find out why CI failed. Fixed with
+      `${arr[@]+"${arr[@]}"}`; it now reports the uncovered change instead.
+- [x] **The API approval prompt gained the same CI-green caveat as the
+      migration one.** It was migration-only because the API gate could not
+      reach a reviewer while validation was failing. The `!cancelled()` fix
+      changes that, so the API message now carries the warning too. A caveat
+      that was accurate before the fix would have been quietly wrong after it.
 - [ ] **`check_destructive` matches the marker anywhere in the file.** It is a
       plain substring search over the whole source, so the marker satisfies
       the check from inside a docstring, a comment far from the destructive

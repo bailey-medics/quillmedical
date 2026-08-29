@@ -211,6 +211,13 @@ jobs:
         Click **Review pending deployments** to approve the
         `api-breaking-change-review` environment and allow the PR to proceed.
 
+        **Check the PR's other checks are green first.** This gate now fires
+        even when the break has no `api-compatibility/` decision file, so the
+        record shows when the break appeared rather than when its paperwork
+        caught up - which means you can be asked to approve a PR that is still
+        failing validation. Approving then is wasted anyway: approval is
+        scoped to the commit, so the next push re-requires it.
+
         Found in commit ${{ github.event.pull_request.head.sha }}
       # Slack never sees this one - a risk going away does not warrant a page -
       # so it needs no mrkdwn copy.

@@ -239,7 +239,11 @@ validate_coverage() {
   for oasdiff_change in "${OASDIFF_CHANGES[@]}"; do
     local found=0
 
-    for covered_change in "${covered_changes[@]}"; do
+    # ${arr[@]+"${arr[@]}"} rather than "${arr[@]}": bash 3.2 (which macOS
+    # still ships) treats an empty array as unset under `set -u` and aborts.
+    # Empty is the normal case when a PR flags a change with no decision file
+    # yet - exactly when someone runs this locally to find out why CI failed.
+    for covered_change in ${covered_changes[@]+"${covered_changes[@]}"}; do
       if [ "$oasdiff_change" = "$covered_change" ]; then
         found=1
         break
