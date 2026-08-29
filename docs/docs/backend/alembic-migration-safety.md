@@ -138,7 +138,8 @@ column that stores clinical audit history, for example — is worth the cost.
 That judgement is a human decision that must be recorded and auditable.
 
 When a migration containing `drop_column`, `drop_table`, or `drop_constraint`
-is added to a PR, the `heavy_db_destructive_migration_check` CI job detects it
+is added to a PR, the `db_destructive_migration_check` job in
+`.github/workflows/gate-breaking.yml` detects it
 (see [Destructive changes](../plans/2026-08-25-db-destructive-migration-review-plan.md))
 and sends the PR to `waiting` on the `db-destructive-migration-review`
 environment — a required-reviewer GitHub Actions environment with
@@ -171,7 +172,7 @@ When destructive migrations are detected, a Slack notification lands in
   environment
 
 A pull request is told **once per distinct set of destructive migrations**,
-not once per push. `heavy_db_destructive_migration_gate_notify` hashes the
+not once per push. `db_destructive_migration_gate_notify` hashes the
 detected migrations and operations, then asks whether any comment on the PR
 already carries that hash (`gate-notify.sh`, marker key
 `db-destructive-migration-hash`). A later commit that leaves the same
@@ -195,6 +196,35 @@ migration stays silent, since there is nothing to report the disappearance of.
 The approval is unaffected by any of this: it is SHA-scoped and stays required
 on every push. How often Slack is told is a notification concern, never a
 safety control.
+
+### Why this lives outside `ci.yml`
+
+Detection, the PR record, the Slack message and the approval all sit in
+`.github/workflows/gate-breaking.yml` rather than `ci.yml`, because `ci.yml`
+cancels its runs when a newer commit arrives. That is right for expensive
+tests and wrong here: two commits pushed in quick succession, one adding a
+destructive migration and one reverting it, could leave no record the
+migration ever existed. A job cannot opt out of its own run being cancelled,
+so the gates needed a workflow whose runs are never cancelled.
+
+`gate-breaking.yml` therefore sets no workflow-level concurrency, and every
+commit's decision runs. Two jobs then set their own *job-level* concurrency,
+which governs something different — whether two instances of that one job may
+overlap, not whether the run is killed:
+
+- The **approval gate** supersedes its older self, so a run of pushes never
+  leaves a reviewer facing a queue of pending approvals. Only the newest
+  commit's approval is ever outstanding.
+- The **decision job** does the opposite, and does not use a concurrency group
+  at all: a group holds one running plus one pending instance, so a third push
+  would cancel the queued second and lose that commit's comment. It calls
+  `wait-for-ancestor-decisions.sh` instead, which waits for every ancestor
+  commit still deciding. That has no queue for GitHub to cap, so every commit
+  is recorded — and because a run only posts once its ancestors have, the
+  comments land in commit order without needing a lock.
+
+See [Gate notification workflow](../plans/2026-08-29-gate-notification-workflow-plan.md)
+for the alternatives considered and rejected.
 
 ## `compare_server_default` is deliberately off
 

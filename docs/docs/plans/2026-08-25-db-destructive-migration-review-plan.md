@@ -278,6 +278,14 @@ The gate-notify jobs therefore run whenever their detection job ran, rather
 than only when it found something. The approval gate is untouched by all of
 this and still re-blocks on every push for as long as a migration is present.
 
+**Superseded in part by
+[Gate notification workflow](2026-08-29-gate-notification-workflow-plan.md).**
+All of this moved out of `ci.yml` into `gate-breaking.yml`, because `ci.yml`
+cancels superseded runs and so could lose a commit's record entirely. The
+comment behaviour described above is unchanged; what changed is which workflow
+runs it, and that every commit's decision now runs, in commit order. Job ids
+lost their `heavy_` prefix in the move.
+
 ## Phase 6: Documentation — ✅ COMPLETE
 
 - [x] Extend the "Destructive changes" section of
@@ -323,7 +331,7 @@ infrastructure: check the workflow contains the jobs first.
 `feature/phase-7-verification` (PR #420), adding
 `2026_08_28_1200-aabbccdd1111_phase_7_test_destructive.py` — a migration that
 adds then drops a test column on the `users` table. That branch then grew to
-carry Phases 5, 5b and 5c, and a deliberately destructive migration cannot
+carry Phases 5 and 5b, and a deliberately destructive migration cannot
 merge: the gate blocks it, as designed. The test migration was therefore
 **removed** from that branch so the gate work itself could merge, leaving
 `fa4401ce1b92` as the chain head again.
@@ -342,10 +350,13 @@ Gate status on that first attempt (with Phase 5 not yet merged):
 - ❌ No Slack notification — the notify job did not exist yet
 - ❌ No record comment — the notification-decision job did not exist yet
 
-- [ ] Open a **fresh** throwaway branch/PR off a `main` that has Phases 5, 5b
-      and 5c merged, and recreate the test migration there. Do not merge it.
-- [ ] Confirm the run contains `heavy_db_destructive_migration_gate_notify`
-      and `heavy_db_destructive_migration_notify`
+- [ ] Open a **fresh** throwaway branch/PR off a `main` that has Phases 5 and
+      5b merged, plus the
+      [gate notification workflow](2026-08-29-gate-notification-workflow-plan.md),
+      and recreate the test migration there. Do not merge it.
+- [ ] Confirm the run contains `db_destructive_migration_gate_notify` and
+      `db_destructive_migration_notify` - note these now live in
+      `gate-breaking.yml`, not `ci.yml`, and have lost the `heavy_` prefix
 - [ ] Verify Slack notification fires to `#teaching` with migration details,
       and the `<!-- db-destructive-migration-hash: ... -->` marker comment
       appears on the PR
@@ -371,7 +382,7 @@ Gate status on that first attempt (with Phase 5 not yet merged):
       newest-comment-wins rule).
 - [ ] remove **every** destructive migration and confirm an all-clear comment
       lands (✅, "no longer present") with **no** Slack message, and that the
-      gate stops blocking (Phase 5c).
+      gate stops blocking.
 - [ ] Review and reject the gate
 - [ ] Submit another unrelated PR
 - [ ] Review and accept the gate

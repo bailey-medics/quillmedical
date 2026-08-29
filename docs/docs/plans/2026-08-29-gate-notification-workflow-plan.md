@@ -178,28 +178,30 @@ position cannot say which of them introduced the finding.
 
 ## Phase 3: Documentation
 
-- [ ] Update the notification sections of
+- [x] Update the notification sections of
       `docs/docs/backend/alembic-migration-safety.md` and
       `docs/docs/backend/api-compatibility.md`: detection, the decision, the
       Slack message and the approval now live in `gate-breaking.yml`; the
       decision runs per commit and is never cancelled; the approval is still
       one at a time.
-- [ ] Cross-reference this plan from Phase 5c of the
+- [x] Cross-reference this plan from Phase 5b of the
       [destructive migration review plan](2026-08-25-db-destructive-migration-review-plan.md).
-- [ ] Note in `.github/scripts/ci/gate-notify.sh`'s header that its
+- [x] Note in `.github/scripts/ci/gate-notify.sh`'s header that its
       read-then-write against the PR's comments is not atomic and depends on
-      the caller serialising it — now provided by the `decide` job's
-      concurrency group.
+      the caller serialising it — provided by `wait-for-ancestor-decisions.sh`
+      (Phase 5), which replaced the concurrency group this item originally
+      referred to.
 
 ## Phase 4: Verification
 
-- [ ] `docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:1.7.8 -color`
-- [ ] `bats --recursive .github/scripts` — stays at 151 passing. No script
-      changes, so any movement is a regression.
-- [ ] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
-- [ ] `pre-commit run --files <changed files>`
-- [ ] `grep -n "gate_notify\|schema_diff\|destructive_migration" .github/workflows/ci.yml`
-      should return nothing.
+- [x] `docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:1.7.8 -color`
+- [x] `bats --recursive .github/scripts` — 173 passing. Was 151 before this
+      plan; the 22 added are `wait-for-ancestor-decisions.bats` (Phase 5),
+      which did not exist when this line was written.
+- [x] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
+- [x] `pre-commit run --files <changed files>`
+- [x] `grep -n "gate_notify\|schema_diff\|destructive_migration" .github/workflows/ci.yml`
+      should return nothing. Confirmed: no orphaned references remain.
 - [ ] **Required checks**: on the first PR, confirm all four contexts still
       appear and are satisfiable. This gates everything else.
 - [ ] **One approval only**: push two commits each carrying a destructive
