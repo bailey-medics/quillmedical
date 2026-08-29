@@ -22,3 +22,9 @@ Delete with the rest of this branch. It must never reach main.
 Both leave the PR blocked, so neither is unsafe. But the API path leaves no
 record of what the break was - a reader months later sees no trace. Worth
 carrying into the plan as a deliberate decision or a thing to change.
+
+## Step 8
+
+A second commit touching neither gate, now that both are active. Step 4 proved
+one gate stays silent on an unrelated commit; this proves both do, and that
+neither is woken by the other's activity.
