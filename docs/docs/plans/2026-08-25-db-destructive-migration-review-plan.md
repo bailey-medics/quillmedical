@@ -695,11 +695,33 @@ decide job has no `if:` at all, so a skipped dependency skips it correctly.
       notify jobs were already safe via their `breaking == 'true'` test, but
       relying on a second condition for safety is precisely how this happened,
       so all three read alike.
-- [x] `opened` **kept** in the trigger list. It always produces a skipped run
-      here, since `auto-pr.yml` opens drafts — but it is the only trigger that
-      catches a break on a PR opened manually as non-draft, and the condition
-      fix makes the skipped run inert. Removing it would trade a real case for
-      a cosmetic tidy.
+- [x] `opened` **removed** from the trigger list. It was first kept, on the
+      reasoning that it caught a break on a PR opened manually as non-draft
+      and cost only one no-op run. That was wrong on the facts, and the
+      walkthrough showed why.
+
+      `auto-pr.yml` creates every PR with `gh pr create --draft`, so the
+      `opened` run is attributed to `github-actions[bot]`. GitHub parks
+      bot-triggered runs behind **"Approve workflows to run"** — the prompts
+      that started this. And the run's event payload permanently records
+      `draft: true`, so approving it makes the detection jobs skip on
+      `draft == false` and write `SKIPPED` check runs **newer than the real
+      ones**, on the very contexts branch protection reads. Observed on PR
+      #441: `API breaking-change check` held both `FAILURE` (21:35:59) and
+      `SKIPPED` (21:36:45) for one commit.
+
+      So the run could never do the job it was added for — every PR here is
+      opened as a draft — while actively degrading check status the moment
+      anyone pressed the button GitHub was showing them. `ready_for_review`
+      covers the case instead. `reopened` stays: it is human-triggered, and
+      its payload carries the PR's real draft state.
+
+      **Not proven:** whether branch protection genuinely treats that later
+      `SKIPPED` as satisfying a required check. PR #442 could not settle it —
+      the bot run was left unapproved, so nothing was written. Proving it
+      would mean deliberately approving the bot run on a PR whose only
+      outstanding item is the gate. The fix is the same either way, so it was
+      not pursued.
 - [ ] Re-run the step A push on a fresh branch: two finding comments, **no**
       all-clear anywhere, two Slack messages, both gates blocking.
 

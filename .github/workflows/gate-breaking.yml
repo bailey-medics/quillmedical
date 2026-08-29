@@ -9,9 +9,20 @@ name: Breaking-change gates
 
 on:
   pull_request:
-    # opened/reopened as well as ci.yml's set: a PR raised with a break already
-    # present must be recorded, not just one that gains a break later.
-    types: [opened, reopened, ready_for_review, synchronize]
+    # `reopened` as well as ci.yml's set, so a PR that gets reopened is
+    # re-checked rather than trusting whatever it last reported.
+    #
+    # `opened` is deliberately absent. auto-pr.yml creates every PR with
+    # `gh pr create --draft`, so an `opened` run is attributed to
+    # github-actions[bot], which GitHub parks behind "Approve workflows to
+    # run". Worse, its event payload permanently records draft: true, so if it
+    # is ever approved the detection jobs skip on `draft == false` and write
+    # SKIPPED check runs *newer* than the real ones - overwriting a genuine
+    # failure or a pending gate on the contexts branch protection reads. It
+    # was added so a PR opened with a break already present would be recorded,
+    # but on this repo every PR is opened as a draft, so it could never do
+    # that job. `ready_for_review` covers the case instead.
+    types: [reopened, ready_for_review, synchronize]
     branches: [main]
 
 permissions:
