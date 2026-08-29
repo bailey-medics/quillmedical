@@ -616,6 +616,54 @@ Recorded as the run turned them up, since each changes something.
       bad migration arriving by any route, including a `--no-verify` commit or
       the web UI, where the local hook never runs.
 
+### One Slack message per gate
+
+The second walkthrough (PR #437) pushed a marker-less migration and a
+decision-file-less API break together, and produced **three** Slack messages —
+two of them about the same API break. The gates are meant to mirror each other,
+so knowing how one behaves tells you how the other does, and they did not:
+
+| | Migration | API |
+| --- | --- | --- |
+| Break found | 🚨 Slack + comment | ⚠️ Slack + comment |
+| All clear | comment only | comment only |
+| Static check failed | *nothing* | 🚨 Slack (`api_compat_notify`) |
+
+**Remove the extra rather than add a twin.** A migration equivalent would be a
+"check_migrations.py failed" message, but that check lives in `ci.yml` and
+pre-commit catches it locally, so the job would almost never fire — symmetry in
+shape, not behaviour.
+
+Nothing useful is lost, because the only real content in the extra message is
+the `oasdiff` change string, which is what `new_compat_decision.py` wants
+pasted in. Moving it into the gate message also repairs a defect the split was
+hiding: the API gate message says *"Review the summary below"* and carries no
+summary. Before the `!cancelled()` fix the two messages could never fire
+together, so nobody noticed.
+
+The resulting rule holds for both gates with no exceptions: **Slack tells you a
+break needs approval; everything else is on the PR.**
+
+- [ ] Add the breaking-change summary to the API `GATE_MESSAGE`, mirroring the
+      migration gate's `**Migrations:**` block. Note
+      `compat_validation_error` is **not** the source — it greps `ERROR:`
+      lines, so it is empty when validation passes. Extract the
+      `<id> <operation> <path> <text>` lines from `oasdiff-report.json`
+      instead, reusing the jq already in `compute-breaking-change-hash.sh`,
+      in a step that runs before validation so both paths have it.
+- [ ] Delete `api_compat_notify` from `gate-breaking.yml`, and check nothing
+      references it.
+- [ ] Update `api-compatibility.md` and `alembic-migration-safety.md` with the
+      one-message rule, stated as holding for both.
+- [ ] **Accepted loss:** if `api_schema_diff` fails for a reason other than a
+      missing decision file — `oasdiff` crashing, the schema-coverage check —
+      there will be a red check and no Slack. Already true of every migration
+      static failure, so the behaviour becomes consistent rather than newly
+      weak.
+- [ ] Re-run the Step A push and confirm **exactly two** Slack messages, and
+      that the API one carries a string complete enough to paste straight into
+      `new_compat_decision.py`.
+
 ### DO NOT MERGE TO MAIN
 
 Unlike the API gate's permanent dummy
