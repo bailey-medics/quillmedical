@@ -149,7 +149,12 @@ jobs:
   api_breaking_change_gate:
     name: API breaking-change review gate
     needs: api_schema_diff
-    if: needs.api_schema_diff.outputs.breaking == 'true'
+    # !cancelled() rather than success(): api_schema_diff also validates the
+    # decision files and fails the run when one is missing, but the break has
+    # still been detected by then. Skipping on that failure would mean a break
+    # shipped without its paperwork was never recorded and never gated - the
+    # migration gate has no such hole, and the two must behave alike.
+    if: ${{ !cancelled() && needs.api_schema_diff.outputs.breaking == 'true' }}
     runs-on: ubuntu-24.04
     environment: api-breaking-change-review
     timeout-minutes: 30
@@ -177,6 +182,10 @@ jobs:
   api_breaking_change_gate_notify:
     name: Breaking-change Slack notification decision
     needs: api_schema_diff
+    # See api_breaking_change_gate: record the finding even when the decision
+    # files are missing, so the PR timeline shows when the break appeared
+    # rather than when its paperwork caught up.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     # Generous, because this job now waits for every ancestor commit's decide
     # job before posting (see the wait step below).
@@ -251,7 +260,7 @@ jobs:
   api_breaking_change_notify:
     name: Notify Slack of API breaking change
     needs: [api_schema_diff, api_breaking_change_gate_notify]
-    if: needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true'
+    if: ${{ !cancelled() && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching

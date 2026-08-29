@@ -311,7 +311,7 @@ lost their `heavy_` prefix in the move.
 
 **Status:** Commit 87615617. All documentation sections added and published. Awaiting manual verification (Phase 7) before implementing immutability checks (Phase 8).
 
-## Phase 7: Verification — ⏳ IN PROGRESS (Manual human task)
+## Phase 7: Verification — ✅ WALKTHROUGH COMPLETE (approval + race checks outstanding)
 
 **This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
 
@@ -496,6 +496,47 @@ fast as you can, without waiting for CI.
       blocked behind it — the reason the wait keys on the decide *job* rather
       than the whole run.
 
+### Walkthrough result — PR #435, 2026-08-29
+
+All twelve steps ran on `feature/phase-7-gate-walkthrough`. Eight comments,
+both gates released cleanly at the end:
+
+| Time | Comment |
+| --- | --- |
+| 18:54 | 🚨 migration — A only (no marker yet) |
+| 19:12 | 🚨 migration — A + B |
+| 19:31 | ⚠️ API — first break |
+| 19:43 | ⚠️ API — both breaks |
+| 19:48 | 🚨 migration — back to A only |
+| 19:49 | ✅ migration all-clear |
+| 20:10 | ⚠️ API — back to one break |
+| 20:17 | ✅ API all-clear |
+
+What each step proved, all confirmed live rather than by unit test:
+
+- **Silence is correct twice over.** Adding the marker (step 2) and an
+  unrelated commit (steps 4, 8) both produced no comment and no Slack, because
+  neither changes the hash — while the gate still re-blocked, approval being
+  commit-scoped.
+- **Returning to an earlier state is announced** (steps 9, 11). The hash went
+  back to a value already on the PR, and a fresh comment landed anyway. A
+  "have we ever seen this hash?" check would have gone silent and left the
+  newest comment claiming two findings when one remained. This is the single
+  assertion that justifies newest-comment-wins.
+- **Both gates blocked at once** (step 6) without cancelling each other,
+  proving the per-gate concurrency groups are genuinely independent. A shared
+  group would have let one approval silently cancel the other.
+- **Only ever one approval pending per gate.** Eleven commits, and every
+  superseded gate showed `cancelled`.
+- **All-clear is comment-only** (steps 10, 12): ✅ comment, no Slack, gate
+  released.
+- **A missing marker fails CI twice** — `pre-commit` and `unit`
+  (`test_current_history_passes`) — while the gate fires regardless.
+
+Still outstanding: the approval behaviour checks (reject, then approve) and
+the rapid-push ordering checks. Both need a **fresh** throwaway PR, since this
+one is being closed.
+
 ### Found during the walkthrough
 
 Recorded as the run turned them up, since each changes something.
@@ -513,6 +554,14 @@ Recorded as the run turned them up, since each changes something.
       **Migration gate only** — the API gate cannot reach a reviewer in that
       state, because a missing decision file fails `api_schema_diff`, which
       skips the gate that `needs` it.
+- [ ] **Re-test on a fresh throwaway PR: a break with no paperwork must still
+      be announced, on both sides.** Push a destructive migration with **no**
+      `allow-destructive` marker, and an API break with **no** decision file,
+      and confirm each produces a PR comment *and* a Slack message. The
+      migration half already behaves this way — step 1 proved it — so this is
+      really a test of the API half, which needs the fix below to land first.
+      Without it the API break is silent, and the timeline cannot show when a
+      break appeared unless its paperwork happened to arrive at the same time.
 - [x] **The two gates recorded findings differently, and now do not.** A
       migration missing its marker was still detected, recorded and gated; an
       API break missing its decision file was not, because
