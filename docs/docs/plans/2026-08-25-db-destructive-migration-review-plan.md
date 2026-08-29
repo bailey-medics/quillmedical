@@ -666,6 +666,47 @@ break needs approval; everything else is on the PR.**
       that the API one carries a string complete enough to paste straight into
       `new_compat_decision.py`.
 
+### Walkthrough 3: the false all-clear
+
+Walkthrough 3 (PR #439) found this on its **first push**, and it is the best
+argument for running the walkthrough at all: it was not derivable from reading
+the workflow, and no unit test could reach it.
+
+The API gate posted **"✅ All API breaking changes have been reverted"** on a PR
+whose break was still present. The PR misstated its own state.
+
+**Cause.** `auto-pr.yml` opens every PR as a draft, so marking it ready fires a
+second `pull_request` run on the same commit. In the first, the PR was still a
+draft and both detection jobs were skipped by `draft == false`. But
+`api_breaking_change_gate_notify` carried `if: ${{ !cancelled() }}`, and
+**`!cancelled()` is true when a dependency is _skipped_ as well as when it
+fails**. So the decide job ran with no detection behind it, read `breaking` as
+empty, resolved that to the `none` change-set, and announced an all-clear.
+
+The condition came from the fix that records a break even when its decision
+file is missing. The intent was "run when detection **failed**"; what was
+written also meant "run when detection **never happened**".
+
+Only the API side broke, and the asymmetry is what exposed it: the migration
+decide job has no `if:` at all, so a skipped dependency skips it correctly.
+
+- [x] All three API jobs now carry
+      `!cancelled() && needs.api_schema_diff.result != 'skipped'`. The gate and
+      notify jobs were already safe via their `breaking == 'true'` test, but
+      relying on a second condition for safety is precisely how this happened,
+      so all three read alike.
+- [x] `opened` **kept** in the trigger list. It always produces a skipped run
+      here, since `auto-pr.yml` opens drafts — but it is the only trigger that
+      catches a break on a PR opened manually as non-draft, and the condition
+      fix makes the skipped run inert. Removing it would trade a real case for
+      a cosmetic tidy.
+- [ ] Re-run the step A push on a fresh branch: two finding comments, **no**
+      all-clear anywhere, two Slack messages, both gates blocking.
+
+**For anyone reaching for `!cancelled()` again:** it means *"not cancelled"*,
+which includes *skipped*. If you want "ran and produced a result, pass or
+fail", you need `result != 'skipped'` alongside it.
+
 ### DO NOT MERGE TO MAIN
 
 Unlike the API gate's permanent dummy

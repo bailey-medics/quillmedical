@@ -160,12 +160,21 @@ jobs:
   api_breaking_change_gate:
     name: API breaking-change review gate
     needs: api_schema_diff
+    # Two conditions, for two different reasons.
+    #
     # !cancelled() rather than success(): api_schema_diff also validates the
     # decision files and fails the run when one is missing, but the break has
     # still been detected by then. Skipping on that failure would mean a break
     # shipped without its paperwork was never recorded and never gated - the
     # migration gate has no such hole, and the two must behave alike.
-    if: ${{ !cancelled() && needs.api_schema_diff.outputs.breaking == 'true' }}
+    #
+    # result != 'skipped' because !cancelled() alone is true when the
+    # dependency was SKIPPED as well as when it failed. api_schema_diff skips
+    # on a draft PR, and auto-pr.yml opens every PR as a draft, so without this
+    # the job ran with no detection behind it, read `breaking` as empty and
+    # posted an all-clear on a PR whose break was still present. Found on
+    # walkthrough 3's first push.
+    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' }}
     runs-on: ubuntu-24.04
     environment: api-breaking-change-review
     timeout-minutes: 30
@@ -193,10 +202,11 @@ jobs:
   api_breaking_change_gate_notify:
     name: Breaking-change Slack notification decision
     needs: api_schema_diff
-    # See api_breaking_change_gate: record the finding even when the decision
-    # files are missing, so the PR timeline shows when the break appeared
-    # rather than when its paperwork caught up.
-    if: ${{ !cancelled() }}
+    # See api_breaking_change_gate for both halves. This job has no
+    # `breaking == 'true'` test of its own - a clean PR is a state it must
+    # record too - so result != 'skipped' is the only thing stopping it
+    # posting an all-clear when detection never ran.
+    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' }}
     runs-on: ubuntu-24.04
     # Generous, because this job now waits for every ancestor commit's decide
     # job before posting (see the wait step below).
@@ -286,7 +296,10 @@ jobs:
   api_breaking_change_notify:
     name: Notify Slack of API breaking change
     needs: [api_schema_diff, api_breaking_change_gate_notify]
-    if: ${{ !cancelled() && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true' }}
+    # See api_breaking_change_gate. Safe via `breaking == 'true'` alone, but
+    # stated explicitly so all three API jobs read alike - relying on a second
+    # condition for safety is how the all-clear bug happened.
+    if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
