@@ -41,7 +41,9 @@ jobs:
   # reasoning. Detecting a breaking change itself never fails this job (the
   # downstream notify/gate jobs act on its `breaking` output) - but the
   # api-compatibility decision-file validation step below does fail the job
-  # when coverage/schema rules are violated; see api_compat_notify.
+  # when coverage/schema rules are violated. That failure shows as a red check
+  # and nothing more: there is one Slack message per gate, sent when a break
+  # needs approval, matching the migration gate exactly.
   api_schema_diff:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
@@ -50,7 +52,7 @@ jobs:
     outputs:
       breaking: ${{ steps.diff.outputs.breaking }}
       breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
-      compat_validation_error: ${{ steps.validate.outputs.error_output }}
+      breaking_summary: ${{ steps.summary.outputs.breaking_summary }}
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.1
@@ -129,6 +131,15 @@ jobs:
         id: hash
         if: steps.diff.outputs.breaking == 'true'
         run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
+
+      # Before the validation step on purpose: validation fails when a break
+      # has no decision file, and the gate message still needs the summary to
+      # quote in that case - it is the string the author must paste into
+      # new_compat_decision.py to fix it.
+      - name: Extract the breaking-change summary for the gate message
+        id: summary
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/extract-breaking-summary.sh oasdiff-report.json
 
       - name: Validate api-compatibility decision files
         id: validate
@@ -211,6 +222,14 @@ jobs:
         Click **Review pending deployments** to approve the
         `api-breaking-change-review` environment and allow the PR to proceed.
 
+        **Breaking changes:**
+        ```
+        ${{ needs.api_schema_diff.outputs.breaking_summary }}
+        ```
+
+        Each line above is what `backend/scripts/new_compat_decision.py` asks
+        you to paste in, if a decision file is still needed.
+
         **Check the PR's other checks are green first.** This gate now fires
         even when the break has no `api-compatibility/` decision file, so the
         record shows when the break appeared rather than when its paperwork
@@ -285,30 +304,6 @@ jobs:
   # Follows api_schema_diff because it reports that job failing, and `needs`
   # cannot cross workflows. No job-level concurrency: it fires on a broken run,
   # and a broken run that gets superseded has nothing left to report.
-  api_compat_notify:
-    name: Notify Slack of api-compatibility validation failure
-    needs: api_schema_diff
-    if: always() && needs.api_schema_diff.result == 'failure'
-    uses: ./.github/workflows/slack-notify.yml
-    with:
-      channel: teaching
-      text: |
-        *🚨 api-compatibility validation failed*
-
-        The "API breaking-change check" job failed on this PR - most likely
-        `validate-compat-files.sh` rejected a breaking API change because it
-        isn't covered by a valid decision file. Open the run below to fix it
-        (see docs/docs/backend/api-compatibility.md for a walk through).
-
-        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
-        *Author:* ${{ github.actor }}
-        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
-
-        ```
-        ${{ needs.api_schema_diff.outputs.compat_validation_error }}
-        ```
-    secrets: inherit
-
   # ---------- Destructive DB migration check ----------
   db_destructive_migration_check:
     if: github.event.pull_request.draft == false

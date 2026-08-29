@@ -197,6 +197,11 @@ The approval is unaffected by any of this: it is SHA-scoped and stays required
 on every push. How often Slack is told is a notification concern, never a
 safety control.
 
+**One Slack message per gate**, sent when a break needs approval and only then.
+All-clears and static-check failures — a missing `allow-destructive` marker,
+say — show on the PR and nowhere else. The API breaking-change gate follows the
+same rule, so knowing one gate tells you how the other behaves.
+
 ### Why this lives outside `ci.yml`
 
 Detection, the PR record, the Slack message and the approval all sit in
