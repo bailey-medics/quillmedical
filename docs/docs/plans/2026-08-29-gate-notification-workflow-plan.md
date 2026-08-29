@@ -163,18 +163,12 @@ position cannot say which of them introduced the finding.
       the job it watches — a cross-workflow `needs` does not exist. It takes no
       job-level `concurrency`: it fires on a broken run, and a broken run that
       gets superseded genuinely has nothing left to report.
-- [ ] **Verify the four required status checks still report on the PR.**
-      `infra/github/branch_rules.tf` pins them by context name — "API
-      breaking-change check", "API breaking-change review gate", "DB
-      destructive migration check", "DB destructive migration review gate". For
-      GitHub Actions the context _is_ the job's `name:`, so moving a job
-      between workflows while keeping its `name:` identical should leave the
-      context unchanged and need no Terraform change. **This is the single
-      highest-risk assumption in the plan** — if it is wrong, branch protection
-      blocks every merge on checks that no longer report. Confirm on the first
-      run of the new workflow, before merging, and be ready to update
-      `branch_rules.tf` in the same PR if the context string turns out to be
-      qualified by workflow name.
+- [ ] **Verify the four required status checks still report on the PR** —
+      the single highest-risk assumption in this plan, since a context that
+      does not survive the move blocks every merge. Needs a live PR, so it is
+      tracked with the rest of this plan's verification in
+      Phase 7 of the
+      [destructive migration review plan](2026-08-25-db-destructive-migration-review-plan.md).
 
 ## Phase 3: Documentation
 
@@ -202,18 +196,15 @@ position cannot say which of them introduced the finding.
 - [x] `pre-commit run --files <changed files>`
 - [x] `grep -n "gate_notify\|schema_diff\|destructive_migration" .github/workflows/ci.yml`
       should return nothing. Confirmed: no orphaned references remain.
-- [ ] **Required checks**: on the first PR, confirm all four contexts still
-      appear and are satisfiable. This gates everything else.
-- [ ] **One approval only**: push two commits each carrying a destructive
-      migration; confirm the first commit's pending approval is cancelled and
-      only one "Review pending deployments" remains.
-- [ ] **No lost notification**: push a commit adding a destructive migration
-      and, before CI settles, a second removing it. Expected — both `decide`
-      jobs complete in order, leaving a break comment followed by an all-clear
-      comment, with one Slack message for the break and none for the all-clear.
-- [ ] **Link correctness**: confirm the Slack message's "Review pending
-      deployments" link reaches a real pending deployment, now that the gate
-      shares the run.
+The remaining checks — required contexts reporting, one approval only, no
+lost notification, and link correctness — all need a live PR, and the
+destructive migration plan already calls for exactly that throwaway PR. They
+are therefore tracked in one place rather than two:
+
+- [ ] **Live-PR verification** —
+      Phase 7 of the
+      [destructive migration review plan](2026-08-25-db-destructive-migration-review-plan.md),
+      under "Also verify here: the gate notification workflow".
 
 ## Phase 5: Wait for ancestors — every commit recorded, in commit order
 
@@ -338,15 +329,11 @@ and nothing is lost.
       skip-the-straggler guard, which this replaces: nothing is skipped, so
       nothing needs detecting. The `Found in commit <sha>` line from Phase 1
       stays as the backstop.
-- [ ] Verification, on top of Phase 4's: on the live PR, make three
-      **separate pushes** in quick succession — A (break), B (second break),
-      C (revert all). They must be separate `git push` invocations: one push
-      of three commits fires a single synchronize event and produces one run,
-      which would not exercise the ordering at all. Then
-      confirm the comments read A, B, C in that order with none missing;
-      check the wait step's log shows later commits actually waiting; and
-      confirm no approval sat unapproved while a later commit's comment was
-      blocked behind it.
+- [ ] **Ordering verification** — three separate pushes, comments landing in
+      commit order, and the wait step's log showing later commits actually
+      waiting. Needs a live PR; tracked with the rest in
+      Phase 7 of the
+      [destructive migration review plan](2026-08-25-db-destructive-migration-review-plan.md).
 
 ## Decisions
 

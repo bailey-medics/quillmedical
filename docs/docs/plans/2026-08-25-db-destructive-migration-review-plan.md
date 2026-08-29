@@ -315,6 +315,11 @@ lost their `heavy_` prefix in the move.
 
 **This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
 
+It now covers two plans: this one, and the
+[gate notification workflow](2026-08-29-gate-notification-workflow-plan.md)
+that moved these jobs into `gate-breaking.yml`. Both need the same throwaway
+PR, so both are verified in one pass — see the second checklist below.
+
 **Sequencing note: verification cannot start before Phase 5 is merged.** The
 first walkthrough attempt ran with Phases 1–4 merged but Phase 5 not yet
 written. The gate blocked correctly, but no Slack message and no record
@@ -386,6 +391,47 @@ Gate status on that first attempt (with Phase 5 not yet merged):
 - [ ] Review and reject the gate
 - [ ] Submit another unrelated PR
 - [ ] Review and accept the gate
+
+### Also verify here: the gate notification workflow
+
+[Gate notification workflow](2026-08-29-gate-notification-workflow-plan.md)
+moved detection, the record, the Slack message and the approval out of
+`ci.yml` into `.github/workflows/gate-breaking.yml`. Everything it still needs
+proving requires a live throwaway PR — the same one this phase already calls
+for — so it is tracked here rather than in a second place. That plan's own
+checklists now point at this section.
+
+- [ ] **Required checks still report.** `infra/github/branch_rules.tf` pins
+      four contexts by name: "API breaking-change check", "API breaking-change
+      review gate", "DB destructive migration check", "DB destructive migration
+      review gate". For Actions the context *is* the job's `name:`, so moving a
+      job between workflow files while keeping its name identical should leave
+      the context unchanged and need no Terraform change. **This is the highest
+      -risk assumption in that plan** — if it is wrong, branch protection blocks
+      every merge on checks that no longer report. Confirm this **first**: it
+      gates everything below, and the fix (updating `branch_rules.tf`) belongs
+      in the same PR.
+- [ ] **One approval only.** Two separate pushes, each carrying a destructive
+      migration. The first commit's pending approval should be cancelled,
+      leaving exactly one "Review pending deployments" outstanding — the
+      `gate` job's `cancel-in-progress: true`.
+- [ ] **No lost notification.** Push a commit adding a destructive migration
+      and, before CI settles, a second removing it. Both `decide` jobs should
+      complete, leaving a finding comment followed by an all-clear, with one
+      Slack message for the finding and none for the all-clear. This is the
+      failure the whole workflow split exists to prevent.
+- [ ] **Comments in commit order.** Three **separate** `git push` invocations
+      in quick succession — A (break), B (second break), C (revert all). They
+      must be separate pushes: one push of three commits fires a single
+      `synchronize` event and produces one run, which would not exercise the
+      ordering at all. Confirm the comments read A, B, C with none missing, and
+      that the wait step's log shows later commits actually waiting.
+- [ ] **Link correctness.** The Slack message's "Review pending deployments"
+      link should reach a real pending deployment, now that the gate shares the
+      run with the notification.
+- [ ] Confirm no approval sat unapproved while a later commit's comment was
+      blocked behind it — the reason the wait keys on the decide *job* rather
+      than the run.
 
 ### DO NOT MERGE TO MAIN
 
