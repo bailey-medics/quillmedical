@@ -471,8 +471,24 @@ Each step gives the command to run, then what to look for.
 
 ### Approval behaviour
 
-- [ ] Re-add one destructive migration, then **reject** the environment
+- [x] Re-add one destructive migration, then **reject** the environment
       approval; confirm the required check fails and the PR stays blocked.
+      Done on PR #444, on a branch deliberately clean of everything else so
+      "blocked" could only mean the gate. Rejecting turns the gate job to
+      `failure`, the required check red, and the PR `BLOCKED`. The safety
+      behaviour is correct.
+
+      **But a rejection leaves no record.** The PR's only comment still reads
+      "🚨 Destructive database migration pending review" — the migration was
+      actively refused, and nothing on the timeline says so. No comment, no
+      Slack. A reader months later sees an unresolved finding rather than a
+      declined one.
+
+      That is arguably worse than the missing-record cases already fixed on
+      this plan, because a rejection is the *more* consequential decision: it
+      is someone saying this should not happen. Worth deciding whether the
+      gate should announce a rejection the way it announces a finding — see
+      the open question below.
 - [ ] Push again and **approve**; confirm the check passes.
 - [ ] Confirm the Slack message's "Review pending deployments" link reaches a
       real pending deployment — the gate now shares the run with the
@@ -728,6 +744,34 @@ decide job has no `if:` at all, so a skipped dependency skips it correctly.
 **For anyone reaching for `!cancelled()` again:** it means *"not cancelled"*,
 which includes *skipped*. If you want "ran and produced a result, pass or
 fail", you need `result != 'skipped'` alongside it.
+
+### Open question: should a rejection be recorded?
+
+Found on PR #444. Rejecting an environment approval blocks the PR correctly,
+but leaves nothing on its timeline — the finding comment still says "pending
+review" and Slack is never told.
+
+Arguments for recording it:
+
+- A rejection is a decision, and this plan's whole premise is that decisions
+  about destructive changes must be recorded and auditable.
+- The comment is now actively misleading: it describes a state that is no
+  longer true.
+- Approvals are equally unrecorded, but an approval at least leaves the PR
+  green and merged, which is its own evidence. A rejection leaves a PR that
+  looks merely unfinished.
+
+Arguments against:
+
+- The rejection is visible in the run's own history and in the check's red
+  status, so it is not *lost*, only absent from the timeline.
+- Wiring a job to a rejected gate is awkward: the gate job's failure is what
+  a rejection produces, and that is indistinguishable from the job failing
+  for another reason.
+
+Not attempted yet. If pursued, the mechanism would likely be a job with
+`if: failure()` on the gate, posting a "review declined" comment — with the
+caveat that it would also fire if the gate job broke for an unrelated reason.
 
 ### DO NOT MERGE TO MAIN
 
