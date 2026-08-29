@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status"
+reason: "Isolating test for whether a bot-triggered skipped run masks a pending gate. Flag-gated dummy endpoint that no client calls; flag and file both deleted when the test is done. No reload needed."
