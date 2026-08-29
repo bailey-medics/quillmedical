@@ -67,7 +67,8 @@ who could each be equally lazy.
 
 - **Schema diff**: `oasdiff breaking` compares the OpenAPI spec generated
   from `main` (`backend/scripts/dump_openapi.py`) against the spec
-  generated from the PR branch, in the `api_breaking_change_check` CI job.
+  generated from the PR branch, in the `api_schema_diff` job of
+  `.github/workflows/gate-breaking.yml`.
   Chosen over hand-written contract tests because it needs no test
   authoring per endpoint — it diffs the full spec on every PR
   automatically. `oasdiff`'s source-location tracking only maps a change
@@ -88,10 +89,10 @@ who could each be equally lazy.
   `oasdiff`'s changelog summary of what changed, so the approval prompt
   shows _what_ is being confirmed rather than a bare "approve?".
 - **One message per distinct set of breaks**:
-  `heavy_api_breaking_change_gate` re-requires approval on every commit —
+  `api_breaking_change_gate` re-requires approval on every commit —
   deliberately, see above — but re-sending an identical Slack ping on every
   one of those commits is just noise, not a safety property.
-  `heavy_api_breaking_change_gate_notify` hashes the set of breaking
+  `api_breaking_change_gate_notify` hashes the set of breaking
   changes (`compute-breaking-change-hash.sh`, sorted so ordering doesn't
   affect the hash) and asks whether any comment on the PR already carries
   that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
@@ -117,6 +118,22 @@ who could each be equally lazy.
   `should_notify` — and a PR that never had a break stays silent. The gate's
   fresh-approval requirement is unaffected throughout: it re-blocks on every
   push for as long as a break is present.
+- **Outside `ci.yml`, deliberately**: all of the above lives in
+  `.github/workflows/gate-breaking.yml`, because `ci.yml` cancels its runs when
+  a newer commit arrives. Right for expensive tests, wrong here — two commits
+  pushed in quick succession, one adding a break and one reverting it, could
+  leave no record the break existed, and a job cannot opt out of its own run
+  being cancelled. `gate-breaking.yml` sets no workflow-level concurrency, so
+  every commit's decision runs. The **approval gate** then uses job-level
+  concurrency to supersede its older self, so a reviewer never faces a queue of
+  pending approvals; the **decision job** deliberately uses none, because a
+  concurrency group holds one running plus one pending instance and a third
+  push would cancel the queued second, losing that commit's comment. It calls
+  `wait-for-ancestor-decisions.sh` instead, which waits for every ancestor
+  commit still deciding — no queue to cap, so every commit is recorded, and the
+  comments land in commit order without a lock. See
+  [Gate notification workflow](../plans/2026-08-29-gate-notification-workflow-plan.md)
+  for the alternatives rejected.
 
 ## Decision files: `api-compatibility/` folder
 

@@ -1,0 +1,462 @@
+# Breaking-change gates: detection, the PR record, Slack, and the approval.
+#
+# Split out of ci.yml so a notification is never lost. ci.yml cancels its runs
+# when a newer commit arrives - correct for expensive tests, fatal here: two
+# commits pushed in quick succession, one introducing a break and one reverting
+# it, would leave no record the break existed.
+
+name: Breaking-change gates
+
+on:
+  pull_request:
+    # opened/reopened as well as ci.yml's set: a PR raised with a break already
+    # present must be recorded, not just one that gains a break later.
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  # Listing this workflow's runs and their jobs, for the ancestor wait in the
+  # decide jobs. Deliberately read-only: the branch-mutex design considered
+  # first would have needed `contents: write` to create lock refs.
+  actions: read
+
+# There is deliberately NO workflow-level `concurrency` block here.
+#
+# A job cannot opt out of its own run being cancelled, so anything that must
+# survive a newer push has to live in a workflow whose runs are never cancelled
+# at all. That is this workflow's entire reason for existing.
+#
+# Individual jobs below set their own job-level concurrency: it governs whether
+# two instances of *that job* may overlap across runs, not whether the run is
+# killed. That is what lets the approval gate supersede its older self while the
+# record-keeping jobs do not.
+
+jobs:
+  # ---------- API breaking-change check (oasdiff) ----------
+  # Detects an undeclared breaking change to the API contract by diffing the
+  # OpenAPI spec generated from `main` against the spec generated from this
+  # PR branch. See docs/docs/backend/api-compatibility.md for the full
+  # reasoning. Detecting a breaking change itself never fails this job (the
+  # downstream notify/gate jobs act on its `breaking` output) - but the
+  # api-compatibility decision-file validation step below does fail the job
+  # when coverage/schema rules are violated; see api_compat_notify.
+  api_schema_diff:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    name: API breaking-change check
+    timeout-minutes: 15
+    outputs:
+      breaking: ${{ steps.diff.outputs.breaking }}
+      breaking_hash: ${{ steps.hash.outputs.breaking_hash }}
+      compat_validation_error: ${{ steps.validate.outputs.error_output }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for api-compatibility diff)
+        working-directory: pr
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Checkout main branch
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          path: main
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: pr/.python-version
+
+      - name: Cache Poetry & pip
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-${{ hashFiles('pr/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-
+            poetry-${{ runner.os }}-
+
+      - name: Install Poetry
+        run: |
+          python -m pip install -U pip poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Install PR branch backend deps
+        working-directory: pr/backend
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Dump PR branch OpenAPI spec
+        working-directory: pr/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Install main branch backend deps
+        working-directory: main/backend
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Dump main branch OpenAPI spec
+        working-directory: main/backend
+        env:
+          TEST_API_ENDPOINTS_ENABLED: "true"
+        run: poetry run python scripts/dump_openapi.py --dev
+
+      - name: Install oasdiff
+        run: bash pr/.github/scripts/ci/install-oasdiff.sh
+
+      - name: Check for undeclared breaking API changes
+        id: diff
+        run: |
+          bash pr/.github/scripts/ci/check-api-breaking-changes.sh \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json
+
+      - name: Generate oasdiff JSON report (for api-compatibility validation)
+        run: |
+          oasdiff breaking --format json \
+            main/docs/docs/code/swagger/openapi.json \
+            pr/docs/docs/code/swagger/openapi.json \
+            > oasdiff-report.json || true
+
+      - name: Compute breaking-change hash (identifies this set of breaks)
+        id: hash
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/compute-breaking-change-hash.sh oasdiff-report.json
+
+      - name: Validate api-compatibility decision files
+        id: validate
+        working-directory: pr
+        run: bash .github/scripts/ci/run-compat-validation.sh ../oasdiff-report.json api-compatibility
+
+      - name: Write breaking changes summary to job summary
+        if: steps.diff.outputs.breaking == 'true'
+        run: bash pr/.github/scripts/ci/write-breaking-changes-summary.sh oasdiff-report.json
+
+  # ---------- Human gate: required-reviewer approval for the breaking change ----------
+  # Only runs when api_schema_diff found a breaking change - otherwise
+  # skipped, which counts as passing for the required status check.
+  # The `api-breaking-change-review` GitHub Actions environment requires the
+  # repo owner's approval, scoped to this exact commit SHA; see
+  # docs/docs/backend/api-compatibility.md for why a code comment, commit
+  # trailer, or PR label were rejected as insufficient.
+  api_breaking_change_gate:
+    name: API breaking-change review gate
+    needs: api_schema_diff
+    if: needs.api_schema_diff.outputs.breaking == 'true'
+    runs-on: ubuntu-24.04
+    environment: api-breaking-change-review
+    timeout-minutes: 30
+    # A newer commit supersedes an older pending approval rather than adding to
+    # it. Without this, a run of pushes would leave a reviewer facing a queue of
+    # "Review pending deployments" entries, only the newest of which matters -
+    # the fastest way to make people stop engaging with the gate at all.
+    # Keyed per gate, so approving an API break is never cancelled by a
+    # migration break arriving on the same PR.
+    concurrency:
+      group: gate-breaking-approval-api-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Breaking change approved
+        run: echo "Breaking API change approved by ${{ github.actor }} for commit ${{ github.event.pull_request.head.sha }}."
+
+  # ---------- Does this PR still need telling about its breaking changes? ----------
+  # Records the finding on the PR, and decides whether Slack should also be
+  # told. Blocks nothing - api_breaking_change_gate above is the approval.
+  # Compares api_schema_diff's breaking_hash against this gate's newest comment
+  # on the PR, adding one whenever they differ. Runs whether or not breaking
+  # changes were found: "none" is a state like any other, so a PR that had
+  # breaks and no longer does records that too. Slack is not told about that -
+  # see the notify job's `if:`.
+  api_breaking_change_gate_notify:
+    name: Breaking-change Slack notification decision
+    needs: api_schema_diff
+    runs-on: ubuntu-24.04
+    # Generous, because this job now waits for every ancestor commit's decide
+    # job before posting (see the wait step below).
+    timeout-minutes: 15
+    outputs:
+      should_notify: ${{ steps.decide.outputs.should_notify }}
+      slack_message: ${{ steps.slack.outputs.slack_message }}
+    # The one definition of what this gate says. The PR comment uses it as-is
+    # and the Slack notification uses the converted copy below, so the two are
+    # the same text by construction rather than by remembering to edit both.
+    #
+    # The SHA is written bare rather than in backticks on purpose: GitHub turns
+    # a full commit hash into a link and renders it abbreviated, so the comment
+    # shows a short clickable ref. It is head.sha, never github.sha - the
+    # latter is the synthetic merge commit, which is not on the branch and
+    # would match nothing in `git log`.
+    env:
+      GATE_MESSAGE: |
+        **⚠️ Breaking API change requires approval**
+
+        This PR contains a breaking API change. Review the summary below to
+        confirm the change is intentional and staged (expand-then-contract).
+        Click **Review pending deployments** to approve the
+        `api-breaking-change-review` environment and allow the PR to proceed.
+
+        Found in commit ${{ github.event.pull_request.head.sha }}
+      # Slack never sees this one - a risk going away does not warrant a page -
+      # so it needs no mrkdwn copy.
+      GATE_ALL_CLEAR_MESSAGE: |
+        **✅ All API breaking changes have been reverted**
+
+        The breaking changes recorded above this comment are no longer in this
+        pull request. The earlier comments stay put as the record of what was
+        there before.
+
+        Reverted as of commit ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Republish the message in Slack's markup
+        id: slack
+        run: bash .github/scripts/ci/to-slack-mrkdwn.sh "$GATE_MESSAGE"
+
+
+      # Hold off until every ancestor commit has finished deciding, so the PR's
+      # comments land in commit order and no two runs post at once. This
+      # replaces a GitHub `concurrency` group, which serialises but holds only
+      # one pending instance - a third push would cancel the queued second and
+      # lose that commit's decision entirely.
+      - name: Wait for ancestor commits to finish deciding
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/wait-for-ancestor-decisions.sh \
+            "Breaking-change Slack notification decision" \
+            "${{ github.event.pull_request.head.sha }}" \
+            "${{ github.run_id }}"
+
+      - name: Decide whether this breaking-change set has already been announced
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/gate-notify.sh \
+            "breaking-api-change-hash" \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.api_schema_diff.outputs.breaking == 'true' && needs.api_schema_diff.outputs.breaking_hash || 'none' }}" \
+            "$GATE_MESSAGE" \
+            "$GATE_ALL_CLEAR_MESSAGE"
+
+  # ---------- Slack notification on breaking API change ----------
+  api_breaking_change_notify:
+    name: Notify Slack of API breaking change
+    needs: [api_schema_diff, api_breaking_change_gate_notify]
+    if: needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      # Body comes from api_breaking_change_gate_notify, the same text the
+      # PR comment carries. Only this footer is Slack-only.
+      text: |
+        ${{ needs.api_breaking_change_gate_notify.outputs.slack_message }}
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
+    secrets: inherit
+
+  # ---------- Slack notification when the check itself failed ----------
+  # Follows api_schema_diff because it reports that job failing, and `needs`
+  # cannot cross workflows. No job-level concurrency: it fires on a broken run,
+  # and a broken run that gets superseded has nothing left to report.
+  api_compat_notify:
+    name: Notify Slack of api-compatibility validation failure
+    needs: api_schema_diff
+    if: always() && needs.api_schema_diff.result == 'failure'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *🚨 api-compatibility validation failed*
+
+        The "API breaking-change check" job failed on this PR - most likely
+        `validate-compat-files.sh` rejected a breaking API change because it
+        isn't covered by a valid decision file. Open the run below to fix it
+        (see docs/docs/backend/api-compatibility.md for a walk through).
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+
+        ```
+        ${{ needs.api_schema_diff.outputs.compat_validation_error }}
+        ```
+    secrets: inherit
+
+  # ---------- Destructive DB migration check ----------
+  db_destructive_migration_check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    name: DB destructive migration check
+    timeout-minutes: 10
+    outputs:
+      destructive: ${{ steps.detect.outputs.destructive }}
+      report: ${{ steps.detect.outputs.report }}
+      destructive_hash: ${{ steps.hash.outputs.destructive_hash }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for the added-migrations diff)
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Detect destructive operations in added migrations
+        id: detect
+        run: bash .github/scripts/ci/detect-destructive-migrations.sh origin/main
+
+      - name: Write destructive migration summary
+        if: steps.detect.outputs.destructive == 'true'
+        run: |
+          bash .github/scripts/ci/write-destructive-migrations-summary.sh \
+            "${{ steps.detect.outputs.report }}"
+
+      # Hashed here rather than downstream so the change-set identity is
+      # produced by the job that owns the detection, mirroring how
+      # api_schema_diff emits breaking_hash alongside breaking.
+      - name: Compute destructive change-set hash
+        id: hash
+        if: steps.detect.outputs.destructive == 'true'
+        run: |
+          bash .github/scripts/ci/compute-destructive-migration-hash.sh \
+            "${{ steps.detect.outputs.report }}"
+
+  # ---------- Human gate: destructive DB migration requires approval ----------
+  # Sits downstream of the detection job and runs only when a newly-added
+  # migration drops a column, table, or constraint. The `environment:` key is
+  # what blocks the run: db-destructive-migration-review has a required
+  # reviewer, so the job waits on a human clicking "Review deployments". That
+  # approval is the accountable decision the marker comment cannot provide -
+  # nothing in the diff can satisfy it.
+  db_destructive_migration_gate:
+    name: DB destructive migration review gate
+    needs: db_destructive_migration_check
+    if: needs.db_destructive_migration_check.outputs.destructive == 'true'
+    runs-on: ubuntu-24.04
+    environment: db-destructive-migration-review
+    timeout-minutes: 30
+    # See api_breaking_change_gate: a newer commit supersedes an older pending
+    # approval, and the group is per gate so the two gates never cancel each
+    # other on a PR that trips both.
+    concurrency:
+      group: gate-breaking-approval-db-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Destructive migration approved
+        run: |
+          echo "Destructive DB migration approved by ${{ github.actor }} for commit ${{ github.event.pull_request.head.sha }}."
+          echo "Approved migrations:"
+          cat <<'REPORT'
+          ${{ needs.db_destructive_migration_check.outputs.report }}
+          REPORT
+
+  # ---------- Does this PR still need telling about its destructive migrations? ----------
+  # Records the finding on the PR, and decides whether Slack should also be
+  # told. Blocks nothing - db_destructive_migration_gate above is the approval,
+  # and it re-blocks on every push regardless of whether Slack was told again.
+  db_destructive_migration_gate_notify:
+    name: Destructive-migration Slack notification decision
+    needs: db_destructive_migration_check
+    runs-on: ubuntu-24.04
+    # See api_breaking_change_gate_notify.
+    timeout-minutes: 15
+    outputs:
+      should_notify: ${{ steps.decide.outputs.should_notify }}
+      slack_message: ${{ steps.slack.outputs.slack_message }}
+    # The one definition of what this gate says. The PR comment uses it as-is
+    # and the Slack notification uses the converted copy below, so the two are
+    # the same text by construction rather than by remembering to edit both.
+    env:
+      GATE_MESSAGE: |
+        **🚨 Destructive database migration pending review**
+
+        This PR adds a migration that drops a column, table, or constraint.
+        Click **Review pending deployments** to approve the
+        `db-destructive-migration-review` environment and allow the PR to
+        proceed.
+
+        **Migrations:**
+        ```
+        ${{ needs.db_destructive_migration_check.outputs.report }}
+        ```
+
+        Found in commit ${{ github.event.pull_request.head.sha }}
+      # Slack never sees this one - a risk going away does not warrant a page -
+      # so it needs no mrkdwn copy.
+      GATE_ALL_CLEAR_MESSAGE: |
+        **✅ All destructive migrations have been reverted**
+
+        The migrations recorded above this comment are no longer in this pull
+        request. The earlier comments stay put as the record of what was there
+        before.
+
+        Reverted as of commit ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Republish the message in Slack's markup
+        id: slack
+        run: bash .github/scripts/ci/to-slack-mrkdwn.sh "$GATE_MESSAGE"
+
+
+      # Hold off until every ancestor commit has finished deciding, so the PR's
+      # comments land in commit order and no two runs post at once. This
+      # replaces a GitHub `concurrency` group, which serialises but holds only
+      # one pending instance - a third push would cancel the queued second and
+      # lose that commit's decision entirely.
+      - name: Wait for ancestor commits to finish deciding
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/wait-for-ancestor-decisions.sh \
+            "Destructive-migration Slack notification decision" \
+            "${{ github.event.pull_request.head.sha }}" \
+            "${{ github.run_id }}"
+
+      - name: Decide whether this destructive change-set has already been announced
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/ci/gate-notify.sh \
+            "db-destructive-migration-hash" \
+            "${{ github.event.pull_request.number }}" \
+            "${{ needs.db_destructive_migration_check.outputs.destructive == 'true' && needs.db_destructive_migration_check.outputs.destructive_hash || 'none' }}" \
+            "$GATE_MESSAGE" \
+            "$GATE_ALL_CLEAR_MESSAGE"
+
+  # ---------- Slack notification on destructive DB migration ----------
+  # Posts to #teaching with the flagged migration(s), the ops found, the PR
+  # link, and a link to "Review pending deployments" so the reviewer can jump
+  # straight to the approval environment.
+  db_destructive_migration_notify:
+    name: Notify Slack of destructive DB migration
+    needs:
+      - db_destructive_migration_check
+      - db_destructive_migration_gate_notify
+    if: |
+      needs.db_destructive_migration_check.outputs.destructive == 'true' &&
+      needs.db_destructive_migration_gate_notify.outputs.should_notify == 'true'
+    uses: ./.github/workflows/slack-notify.yml
+    secrets: inherit
+    with:
+      channel: teaching
+      # Body comes from db_destructive_migration_gate_notify, the same
+      # text the PR comment carries. Only this footer is Slack-only.
+      text: |
+        ${{ needs.db_destructive_migration_gate_notify.outputs.slack_message }}
+
+        *PR:* <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
