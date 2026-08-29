@@ -372,28 +372,75 @@ def check_not_null_trap(migration: Migration) -> list[Problem]:
     return problems
 
 
+def _marker_attached_to(lines: list[str], call_lineno: int) -> bool:
+    """Whether a destructive call at ``call_lineno`` carries the marker.
+
+    The marker counts when it sits on the call's own line, or anywhere in the
+    run of comments and blank lines immediately above it. That run is where a
+    rationale belongs, so both of these are accepted::
+
+        # migration-check: allow-destructive
+        # Superseded by the new audit table; no history is lost.
+        op.drop_column("users", "old_col")
+
+        op.drop_column("users", "old_col")  # migration-check: allow-destructive
+
+    Scanning stops at the first line that is neither a comment nor blank, so a
+    marker cannot reach past an intervening statement and vouch for a call it
+    was never written for. ``lines`` is 0-indexed; ``call_lineno`` is 1-based,
+    as ``ast`` reports it.
+    """
+    index = call_lineno - 1
+    if index < 0 or index >= len(lines):
+        return False
+    if DESTRUCTIVE_MARKER in lines[index]:
+        return True
+
+    for line in reversed(lines[:index]):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not stripped.startswith("#"):
+            return False
+        if DESTRUCTIVE_MARKER in line:
+            return True
+    return False
+
+
 def check_destructive(migration: Migration) -> list[Problem]:
-    """Check destructive ops carry the explicit allow marker."""
+    """Check each destructive op carries the allow marker beside it.
+
+    Deliberately per-call rather than per-file. A whole-file substring search
+    let the marker be satisfied from anywhere - a docstring, a comment far from
+    the call, even prose explaining that the marker was absent - and let one
+    marker vouch for every destructive op in the file. Two drops are two
+    decisions, so each needs its own.
+    """
     if migration.upgrade is None:
         return []
-    found: set[str] = set()
+
+    lines = migration.source.splitlines()
+    unmarked: list[tuple[int, str]] = []
     for node in ast.walk(migration.upgrade):
-        if isinstance(node, ast.Call):
-            name = _call_name(node)
-            if name in DESTRUCTIVE_OPS:
-                found.add(name)
-    if found and DESTRUCTIVE_MARKER not in migration.source:
-        ops = ", ".join(sorted(found))
-        return [
-            Problem(
-                SEVERITY_ERROR,
-                f"upgrade() performs destructive operations ({ops}) without "
-                f"the '{DESTRUCTIVE_MARKER}' marker; use expand-contract or "
-                "add the marker to confirm intent",
-                migration.path,
-            )
-        ]
-    return []
+        if not isinstance(node, ast.Call):
+            continue
+        name = _call_name(node)
+        if name not in DESTRUCTIVE_OPS:
+            continue
+        if not _marker_attached_to(lines, node.lineno):
+            unmarked.append((node.lineno, name))
+
+    return [
+        Problem(
+            SEVERITY_ERROR,
+            f"line {lineno}: upgrade() calls {name}() without the "
+            f"'{DESTRUCTIVE_MARKER}' marker on or directly above it; use "
+            "expand-contract, or add the marker beside this call to confirm "
+            "intent",
+            migration.path,
+        )
+        for lineno, name in sorted(unmarked)
+    ]
 
 
 def check_all(migrations: list[Migration]) -> list[Problem]:
