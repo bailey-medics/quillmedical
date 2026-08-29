@@ -355,83 +355,143 @@ Gate status on that first attempt (with Phase 5 not yet merged):
 - ❌ No Slack notification — the notify job did not exist yet
 - ❌ No record comment — the notification-decision job did not exist yet
 
-- [ ] Open a **fresh** throwaway branch/PR off a `main` that has Phases 5 and
-      5b merged, plus the
-      [gate notification workflow](2026-08-29-gate-notification-workflow-plan.md),
-      and recreate the test migration there. Do not merge it.
+### Setup
+
+- [ ] Open a **fresh** throwaway branch/PR off a `main` carrying Phases 5 and
+      5b plus the
+      [gate notification workflow](2026-08-29-gate-notification-workflow-plan.md).
+      Title it **DO NOT MERGE**.
+- [x] Unit tests from Phase 1 pass (`just ub -k check_migrations`) — 26
+      tests green, and the full backend unit suite passes at 751. The Phase 4
+      `.bats` suites pass for both marker keys, at 173 across
+      `.github/scripts` (up from 151: the gate notification workflow added
+      `wait-for-ancestor-decisions.bats`).
+- [ ] **Required checks report.** `infra/github/branch_rules.tf` pins four
+      contexts by name — "API breaking-change check", "API breaking-change
+      review gate", "DB destructive migration check", "DB destructive
+      migration review gate". They moved from `ci.yml` to `gate-breaking.yml`;
+      for Actions the context *is* the job's `name:`, so identical names
+      should mean no Terraform change. **Confirm this before anything else:**
+      if a context no longer reports, branch protection blocks every merge,
+      and the fix belongs in the same PR.
 - [ ] Confirm the run contains `db_destructive_migration_gate_notify` and
-      `db_destructive_migration_notify` - note these now live in
-      `gate-breaking.yml`, not `ci.yml`, and have lost the `heavy_` prefix
-- [ ] Verify Slack notification fires to `#teaching` with migration details,
-      and the `<!-- db-destructive-migration-hash: ... -->` marker comment
-      appears on the PR
-- [ ] Unit tests from Phase 1 pass (`just ub -k check_migrations`), and
-      the Phase 4 `.bats` suites pass for both marker keys.
-- [ ] One-off manual GitHub walkthrough on a throwaway branch/PR (not
-      merged):
-- [ ] a migration with no destructive ops leaves the gate
-      skipped
-- [ ] a migration with a `drop_column` (marker present or not —
-      prove the marker doesn't suppress the gate) sends it to `waiting`,
-      posts to Slack, and blocks the required check until the environment
-      is approved or rejected.
-- [ ] On the same throwaway PR, push a second,
-      unrelated commit and confirm Slack stays silent while the gate still
-      re-blocks (silent because the change-set hash is unchanged)
-- [ ] add a second destructive migration and confirm the
-      hash moves, a **new** comment is appended (the first is left in place,
-      not edited — Phase 5b), and one fresh Slack message lands.
-- [ ] remove that second migration again and confirm the hash returns to the
-      first value, a **third** comment is added rather than the PR falling
-      silent because a matching comment already exists further up (Phase 5b's
-      newest-comment-wins rule).
-- [ ] remove **every** destructive migration and confirm an all-clear comment
-      lands (✅, "no longer present") with **no** Slack message, and that the
-      gate stops blocking.
-- [ ] Review and reject the gate
-- [ ] Submit another unrelated PR
-- [ ] Review and accept the gate
+      `db_destructive_migration_notify` — now in `gate-breaking.yml`, without
+      the `heavy_` prefix.
+- [ ] With no destructive migration and no API break yet, confirm both gates
+      are **skipped**, which counts as passing.
 
-### Also verify here: the gate notification workflow
+### Making each kind of break
 
-[Gate notification workflow](2026-08-29-gate-notification-workflow-plan.md)
-moved detection, the record, the Slack message and the approval out of
-`ci.yml` into `.github/workflows/gate-breaking.yml`. Everything it still needs
-proving requires a live throwaway PR — the same one this phase already calls
-for — so it is tracked here rather than in a second place. That plan's own
-checklists now point at this section.
+- **Destructive migration** — `just migrate "phase 7 test"`, then edit the
+  generated file to `op.drop_column(...)` on a throwaway column. It needs the
+  `# migration-check: allow-destructive` marker or pre-commit rejects the
+  commit locally. Detection ignores the marker; the marker only satisfies the
+  static check.
+- **API break** — flip one of the three flags in
+  `backend/app/test_api_endpoints.py` (`MUTATE_REMOVE_MESSAGE_1`,
+  `MUTATE_REMOVE_DETAIL_1`, `MUTATE_REMOVE_SUMMARY_2`) from `False` to `True`.
+  These exist for exactly this. **Each flip also needs a decision file**
+  (`python backend/scripts/new_compat_decision.py`) — without one,
+  `validate-compat-files.sh` fails `api_schema_diff`, the decide job is
+  skipped as a result, and you get a validation-failure Slack message rather
+  than the gate behaviour you meant to test.
 
-- [ ] **Required checks still report.** `infra/github/branch_rules.tf` pins
-      four contexts by name: "API breaking-change check", "API breaking-change
-      review gate", "DB destructive migration check", "DB destructive migration
-      review gate". For Actions the context *is* the job's `name:`, so moving a
-      job between workflow files while keeping its name identical should leave
-      the context unchanged and need no Terraform change. **This is the highest
-      -risk assumption in that plan** — if it is wrong, branch protection blocks
-      every merge on checks that no longer report. Confirm this **first**: it
-      gates everything below, and the fix (updating `branch_rules.tf`) belongs
-      in the same PR.
-- [ ] **One approval only.** Two separate pushes, each carrying a destructive
-      migration. The first commit's pending approval should be cancelled,
-      leaving exactly one "Review pending deployments" outstanding — the
-      `gate` job's `cancel-in-progress: true`.
-- [ ] **No lost notification.** Push a commit adding a destructive migration
-      and, before CI settles, a second removing it. Both `decide` jobs should
-      complete, leaving a finding comment followed by an all-clear, with one
-      Slack message for the finding and none for the all-clear. This is the
-      failure the whole workflow split exists to prevent.
-- [ ] **Comments in commit order.** Three **separate** `git push` invocations
-      in quick succession — A (break), B (second break), C (revert all). They
-      must be separate pushes: one push of three commits fires a single
-      `synchronize` event and produces one run, which would not exercise the
-      ordering at all. Confirm the comments read A, B, C with none missing, and
-      that the wait step's log shows later commits actually waiting.
-- [ ] **Link correctness.** The Slack message's "Review pending deployments"
-      link should reach a real pending deployment, now that the gate shares the
-      run with the notification.
+### The walkthrough
+
+**Every numbered step is one separate `git push`.** Batching commits into a
+single push fires one `synchronize` event and produces one run, which tests
+nothing about ordering. Wait for CI to settle between steps.
+
+Each step gives the command to run, then what to look for.
+
+**Migrations — the marker must not suppress the gate**
+
+- [ ] **1.** Add destructive migration **A** *without* the marker.
+      `just migrate "phase 7 test a"`, edit the generated file to
+      `op.drop_column("users", "test_column")` in `upgrade()`, then
+      `git commit --no-verify` (pre-commit will refuse it otherwise — that is
+      the point) and push.
+      → `ci.yml`'s **pre-commit job fails** on the missing marker. Separately
+      and independently, `gate-breaking.yml` still detects the migration:
+      comment, Slack, gate at `waiting`. Detection ignoring the marker is the
+      whole design, and the two workflows failing/firing independently is what
+      proves it.
+- [ ] **2.** Add the `# migration-check: allow-destructive` marker; commit
+      normally; push.
+      → pre-commit now passes. **No new comment and no Slack** — the hash is
+      built from the file name, revision and ops, none of which a comment
+      changes. Confirms the marker has no bearing on change-set identity.
+- [ ] **3.** Add destructive migration **B** (with its marker); push.
+      → hash moves, so a **second** comment appears and the first is left
+      untouched; one fresh Slack message; still exactly **one** pending
+      approval — A's should have been cancelled.
+- [ ] **4.** Commit something trivial (a comment or whitespace); push.
+      → **no** comment, **no** Slack — the change-set is unchanged — but the
+      gate re-blocks, since approval is SHA-scoped.
+
+**API — the decision file must exist**
+
+- [ ] **5.** Flip `MUTATE_REMOVE_MESSAGE_1` to `True` in
+      `backend/app/test_api_endpoints.py`, *without* a decision file; push.
+      → **`api_schema_diff` fails** at `validate-compat-files.sh`, and the
+      "api-compatibility validation failed" Slack message fires. Note what
+      does **not** happen: no gate comment at all, because the decide job
+      `needs: api_schema_diff` and is skipped when it fails. A break with no
+      decision file therefore leaves no record on the PR — worth knowing.
+- [ ] **6.** Add the decision file
+      (`python backend/scripts/new_compat_decision.py`, pasting the oasdiff
+      change string verbatim from the failed run's log); push.
+      → `api_schema_diff` passes, and the API gate fires properly: comment and
+      Slack. The migration gate stays silent, its hash unchanged.
+- [ ] **7.** Flip a second flag (`MUTATE_REMOVE_DETAIL_1` or
+      `MUTATE_REMOVE_SUMMARY_2`) and add its decision file; push.
+      → second API comment and Slack.
+- [ ] **8.** Commit something trivial; push.
+      → both gates silent, both still blocking.
+
+**Tearing down — migrations first**
+
+- [ ] **9.** Remove migration **B**; push.
+      → the hash returns to A-only, which is *not* what the newest comment
+      says, so a **third** migration comment appears with a Slack message.
+      This is the newest-comment-wins rule: returning to an earlier state is a
+      change like any other, not a reason to stay silent.
+- [ ] **10.** Remove migration **A**; push.
+      → all-clear comment (✅), **no** Slack — nobody needs paging that a risk
+      went away — and the migration gate stops blocking. The API gate still
+      blocks.
+- [ ] **11.** Flip the second API flag back to `False`; push.
+      → API comment and Slack. Migration side stays silent, already clean.
+- [ ] **12.** Flip the first flag back and delete both decision files; push.
+      → API all-clear comment, no Slack, API gate stops blocking. No gate is
+      blocking now.
+
+### Approval behaviour
+
+- [ ] Re-add one destructive migration, then **reject** the environment
+      approval; confirm the required check fails and the PR stays blocked.
+- [ ] Push again and **approve**; confirm the check passes.
+- [ ] Confirm the Slack message's "Review pending deployments" link reaches a
+      real pending deployment — the gate now shares the run with the
+      notification, so `github.run_id` points at something live.
+
+### Ordering under rapid pushes
+
+Unlike the walkthrough above, these are deliberately **not** paced. Push as
+fast as you can, without waiting for CI.
+
+- [ ] Three separate pushes in quick succession — A (break), B (second
+      break), C (revert both). Confirm the comments read A, B, C in that
+      order with none missing, and that the wait step's log shows later
+      commits actually waiting on earlier ones.
+- [ ] A push adding a destructive migration followed immediately by one
+      removing it. Both decide jobs should complete, leaving a finding
+      comment then an all-clear — one Slack message for the finding, none for
+      the all-clear. This is the failure the whole workflow split exists to
+      prevent, so it is the most important check here.
 - [ ] Confirm no approval sat unapproved while a later commit's comment was
       blocked behind it — the reason the wait keys on the decide *job* rather
-      than the run.
+      than the whole run.
 
 ### DO NOT MERGE TO MAIN
 
