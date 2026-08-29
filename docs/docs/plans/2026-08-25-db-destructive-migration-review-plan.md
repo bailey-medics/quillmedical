@@ -489,7 +489,18 @@ Each step gives the command to run, then what to look for.
       is someone saying this should not happen. Worth deciding whether the
       gate should announce a rejection the way it announces a finding — see
       the open question below.
-- [ ] Push again and **approve**; confirm the check passes.
+- [x] Push again and **approve**; confirm the check passes. Done on PR #444.
+      A trivial commit re-requested the approval — the change-set hash was
+      unchanged, so no new comment and no Slack, only a fresh `waiting`.
+      Approving turned the gate job to `success`, the required check green,
+      and the PR to `CLEAN` and mergeable. The gate releases properly; it does
+      not leave a PR stuck once the decision is made.
+
+      Worth noting in passing: **a rejection binds to the commit, not the PR.**
+      The new commit got a clean approval request with no memory that the
+      previous one was refused. Correct in itself — the new commit has not been
+      judged — but combined with the missing record it means a rejection can be
+      washed away by a trivial push, with nothing anywhere saying it happened.
 - [ ] Confirm the Slack message's "Review pending deployments" link reaches a
       real pending deployment — the gate now shares the run with the
       notification, so `github.run_id` points at something live.
@@ -745,11 +756,29 @@ decide job has no `if:` at all, so a skipped dependency skips it correctly.
 which includes *skipped*. If you want "ran and produced a result, pass or
 fail", you need `result != 'skipped'` alongside it.
 
-### Open question: should a rejection be recorded?
+### Open question: should the human's decision be recorded?
 
-Found on PR #444. Rejecting an environment approval blocks the PR correctly,
-but leaves nothing on its timeline — the finding comment still says "pending
-review" and Slack is never told.
+Found on PR #444, testing both halves. **Neither an approval nor a rejection
+leaves any record on the PR.** The timeline shows only that a finding was
+raised; whether a human approved it, refused it, or has not looked yet is
+invisible from the PR itself and lives entirely in GitHub's run history.
+
+| | Rejection | Approval |
+| --- | --- | --- |
+| Gate job | failure | success |
+| Required check | red | green |
+| PR state | BLOCKED | CLEAN |
+| Comment | **none** | **none** |
+| Slack | **none** | **none** |
+
+Enforcement is sound either way — this is about what the PR communicates, not
+what it permits. But the plan's stated purpose is that these decisions are
+"recorded and auditable", and on the PR they are neither.
+
+The two are not equally bad. An **approval** is self-evidencing: the PR goes
+green and merges, so something clearly happened. A **rejection** leaves a PR
+that looks merely unfinished, and the finding comment still says "pending
+review" when it was actively refused.
 
 Arguments for recording it:
 
@@ -757,9 +786,9 @@ Arguments for recording it:
   about destructive changes must be recorded and auditable.
 - The comment is now actively misleading: it describes a state that is no
   longer true.
-- Approvals are equally unrecorded, but an approval at least leaves the PR
-  green and merged, which is its own evidence. A rejection leaves a PR that
-  looks merely unfinished.
+- A rejection can be erased by a trivial push, since approval binds to the
+  commit rather than the PR — observed on #444, where a new commit got a clean
+  request with no trace of the refusal.
 
 Arguments against:
 
