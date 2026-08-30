@@ -85,7 +85,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
             raise HTTPException(
                 status_code=403,
                 detail=f"Feature '{feature_key}' is not enabled "
-                f"for this organisation",
+                f"for any of your organisations",
             )
 
         return user
