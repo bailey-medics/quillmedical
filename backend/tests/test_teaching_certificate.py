@@ -4,15 +4,15 @@ Covers: PDF generation, find_certificate_background, style parsing,
 and the download_certificate endpoint.
 """
 
-# cspell:words pdfgen
-
 from __future__ import annotations
 
 import io
+import logging
 from pathlib import Path
 
 import pytest
 from PIL import Image
+from pydantic import ValidationError
 from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
 from app.features.teaching.certificate import (
@@ -288,3 +288,172 @@ class TestWrapText:
             "High confidence rate: 78%",
             "Accuracy: 91%",
         ]
+
+
+# ------------------------------------------------------------------
+# parse_certificate_style — validation and recovery
+# ------------------------------------------------------------------
+
+
+class TestParseCertificateStyleValidation:
+    """Invalid config must degrade to defaults, never raise."""
+
+    def test_non_mapping_returns_defaults(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING):
+            style = parse_certificate_style("not a mapping")
+        assert style == CertificateStyle()
+        assert "not a mapping" in caplog.text
+
+    def test_non_mapping_text_field_falls_back(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING):
+            style = parse_certificate_style({"title": "big"})
+        assert style.title == CertificateStyle().title
+        assert "certificate.title" in caplog.text
+
+    def test_unknown_font_rejected(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING):
+            style = parse_certificate_style({"title": {"font": "Comic Sans"}})
+        assert style.title == CertificateStyle().title
+        assert "title" in caplog.text
+
+    def test_colour_without_hash_rejected(self) -> None:
+        style = parse_certificate_style({"title": {"colour": "FF0000"}})
+        assert style.title.colour == CertificateStyle().title.colour
+
+    def test_malformed_colour_rejected(self) -> None:
+        style = parse_certificate_style({"date": {"colour": "#12345"}})
+        assert style.date.colour == CertificateStyle().date.colour
+
+    def test_non_string_text_rejected(self) -> None:
+        """The ``text`` override must be a string, not any YAML value."""
+        style = parse_certificate_style({"subtitle": {"text": 123}})
+        assert style.subtitle.text == "This certifies that"
+
+    @pytest.mark.parametrize("size", [0, 5, 73, 1000, "large", True])
+    def test_out_of_range_size_rejected(self, size: object) -> None:
+        style = parse_certificate_style({"title": {"size": size}})
+        assert style.title.size == CertificateStyle().title.size
+
+    @pytest.mark.parametrize("y", [-0.1, 1.5, "middle", True])
+    def test_out_of_range_y_rejected(self, y: object) -> None:
+        style = parse_certificate_style({"title": {"y": y}})
+        assert style.title.y == CertificateStyle().title.y
+
+    def test_unknown_key_in_text_field_rejected(self) -> None:
+        style = parse_certificate_style({"title": {"colours": "#FF0000"}})
+        assert style.title == CertificateStyle().title
+
+    def test_invalid_orientation_rejected(self) -> None:
+        style = parse_certificate_style({"orientation": "sideways"})
+        assert style.orientation == "portrait"
+
+    @pytest.mark.parametrize("margin", [-1, 201, "wide", True])
+    def test_invalid_margin_rejected(self, margin: object) -> None:
+        style = parse_certificate_style({"margin": margin})
+        assert style.margin == 30
+
+    def test_unknown_top_level_key_rejected(self) -> None:
+        style = parse_certificate_style({"logo": "logo.png"})
+        assert style == CertificateStyle()
+
+    def test_one_bad_field_does_not_discard_the_rest(self) -> None:
+        """A single invalid block must not blank the whole certificate."""
+        style = parse_certificate_style(
+            {
+                "orientation": "landscape",
+                "title": {"font": "NotAFont"},
+                "candidate_name": {"size": 40, "colour": "#111111"},
+                "margin": 50,
+            }
+        )
+        # Bad block falls back...
+        assert style.title == CertificateStyle().title
+        # ...everything else is honoured.
+        assert style.orientation == "landscape"
+        assert style.candidate_name.size == 40
+        assert style.candidate_name.colour == "#111111"
+        assert style.margin == 50
+
+    def test_partial_field_keeps_remaining_defaults(self) -> None:
+        style = parse_certificate_style({"title": {"size": 40}})
+        defaults = CertificateStyle().title
+        assert style.title.size == 40
+        assert style.title.colour == defaults.colour
+        assert style.title.y == defaults.y
+        assert style.title.bold == defaults.bold
+
+    def test_null_field_uses_defaults(self) -> None:
+        style = parse_certificate_style({"title": None})
+        assert style.title == CertificateStyle().title
+
+    def test_non_string_keys_are_coerced(self) -> None:
+        style = parse_certificate_style({1: "ignored"})
+        assert style == CertificateStyle()
+
+    def test_valid_config_parses_fully(self) -> None:
+        style = parse_certificate_style(
+            {
+                "orientation": "landscape",
+                "margin": 45,
+                "title": {
+                    "font": "Courier",
+                    "size": 20,
+                    "bold": True,
+                    "colour": "#0000FF",
+                    "y": 0.8,
+                },
+            }
+        )
+        assert style.orientation == "landscape"
+        assert style.margin == 45
+        assert style.title.font == "Courier"
+        assert style.title.resolved_font == "Courier-Bold"
+        assert style.title.y == 0.8
+
+
+class TestStyleModelsAreImmutable:
+    def test_text_field_style_is_frozen(self) -> None:
+        fs = TextFieldStyle()
+        with pytest.raises(ValidationError):
+            fs.size = 20
+
+    def test_certificate_style_is_frozen(self) -> None:
+        style = CertificateStyle()
+        with pytest.raises(ValidationError):
+            style.margin = 99
+
+    def test_defaults_are_not_shared_between_instances(self) -> None:
+        a = CertificateStyle()
+        b = parse_certificate_style({"title": {"size": 40}})
+        assert a.title.size == 22
+        assert b.title.size == 40
+
+
+class TestResolvedFont:
+    @pytest.mark.parametrize(
+        ("font", "expected"),
+        [
+            ("Helvetica", "Helvetica-Bold"),
+            ("Helvetica-Bold", "Helvetica-Bold"),
+            ("Times-Roman", "Times-Bold"),
+            ("Times-Bold", "Times-Bold"),
+            ("Courier", "Courier-Bold"),
+            ("Courier-Bold", "Courier-Bold"),
+        ],
+    )
+    def test_bold_maps_to_a_real_reportlab_font(
+        self, font: str, expected: str
+    ) -> None:
+        fs = TextFieldStyle(font=font, bold=True)  # type: ignore[arg-type]
+        assert fs.resolved_font == expected
+
+    def test_invalid_font_raises_on_direct_construction(self) -> None:
+        """Direct construction is strict; only parsing is forgiving."""
+        with pytest.raises(ValidationError):
+            TextFieldStyle(font="NotAFont")  # type: ignore[arg-type]
