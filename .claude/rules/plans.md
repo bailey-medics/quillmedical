@@ -23,10 +23,18 @@ paths:
   Check items off (`- [x]`) as work completes — a plan file is a living
   record of progress, not a one-time proposal. Do not delete completed
   phases; leave them checked for history.
-- **Decisions table** (optional, include when there are non-obvious
-  trade-offs): a `## Decisions` section with a two-column
-  `| Decision | Rationale |` table. One row per decision, rationale
-  explains *why*, not just what.
+- **No tables.** Markdown tables are unreadable in raw form — the cells
+  wrap, the columns stop lining up, and the plan can only be scanned in
+  a rendered preview. Use bullets for anything a table would hold:
+  ```markdown
+  - **The thing** — what it is, and why it matters.
+  - **The other thing** — same shape, one bullet each.
+  ```
+  Put the label in bold, then an em dash, then the prose. Separate
+  bullets with a blank line when each runs to more than a line or two.
+- **Decisions** (optional, include when there are non-obvious
+  trade-offs): a `## Decisions` section, one bullet per decision in the
+  form above. The rationale explains *why*, not just what.
 - **Register new plans** in `docs/docs/plans/index.md` — add a link in
   the same list, roughly in date order.
 - Prefer reusing patterns/utilities already documented in nearby plans
