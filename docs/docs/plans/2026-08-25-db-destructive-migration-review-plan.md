@@ -311,9 +311,18 @@ lost their `heavy_` prefix in the move.
 
 **Status:** Commit 87615617. All documentation sections added and published. Awaiting manual verification (Phase 7) before implementing immutability checks (Phase 8).
 
-## Phase 7: Verification — ✅ WALKTHROUGH COMPLETE (approval + race checks outstanding)
+## Phase 7: Verification — ✅ COMPLETE (3 ordering assertions untestable)
 
 **This phase is a manual walkthrough on a throwaway branch/PR — not automated. Do not merge the throwaway PR.**
+
+**Status.** 39 of 42 assertions verified across six throwaway PRs (#435, #437,
+#441, #444, #446, #448). The three left open are the rapid-push ordering
+checks, and they are **untestable rather than undone**: GitHub coalesces
+pushes landing within about a second into a single `synchronize` event, so the
+scenario cannot be produced by pushing. Attempted twice; both times the burst
+yielded fewer runs than pushes, leaving nothing to order. The mechanism they
+would have exercised is still in place and still reasoned about below — see
+"Why the delay stays, despite the coalescing".
 
 It now covers two plans: this one, and the
 [gate notification workflow](2026-08-29-gate-notification-workflow-plan.md)
@@ -357,7 +366,8 @@ Gate status on that first attempt (with Phase 5 not yet merged):
 
 ### Setup
 
-- [ ] Open a **fresh** throwaway branch/PR off a `main` carrying Phases 5 and
+- [x] Open a **fresh** throwaway branch/PR off a `main` carrying Phases 5 and
+      **Verified:** PR #435, and again on #437/#441/#444/#446/#448.
       5b plus the
       [gate notification workflow](2026-08-29-gate-notification-workflow-plan.md).
       Title it **DO NOT MERGE**.
@@ -366,7 +376,8 @@ Gate status on that first attempt (with Phase 5 not yet merged):
       `.bats` suites pass for both marker keys, at 173 across
       `.github/scripts` (up from 151: the gate notification workflow added
       `wait-for-ancestor-decisions.bats`).
-- [ ] **Required checks report.** `infra/github/branch_rules.tf` pins four
+- [x] **Required checks report.** `infra/github/branch_rules.tf` pins four
+      **Verified:** PR #433 - all four contexts reported from gate-breaking.yml, mergeStateStatus CLEAN.
       contexts by name — "API breaking-change check", "API breaking-change
       review gate", "DB destructive migration check", "DB destructive
       migration review gate". They moved from `ci.yml` to `gate-breaking.yml`;
@@ -374,10 +385,12 @@ Gate status on that first attempt (with Phase 5 not yet merged):
       should mean no Terraform change. **Confirm this before anything else:**
       if a context no longer reports, branch protection blocks every merge,
       and the fix belongs in the same PR.
-- [ ] Confirm the run contains `db_destructive_migration_gate_notify` and
+- [x] Confirm the run contains `db_destructive_migration_gate_notify` and
+      **Verified:** PR #435.
       `db_destructive_migration_notify` — now in `gate-breaking.yml`, without
       the `heavy_` prefix.
-- [ ] With no destructive migration and no API break yet, confirm both gates
+- [x] With no destructive migration and no API break yet, confirm both gates
+      **Verified:** PR #446/#448 baseline - both gates skipped.
       are **skipped**, which counts as passing.
 
 ### Making each kind of break
@@ -406,7 +419,8 @@ Each step gives the command to run, then what to look for.
 
 **Migrations — the marker must not suppress the gate**
 
-- [ ] **1.** Add destructive migration **A** *without* the marker.
+- [x] **1.** Add destructive migration **A** *without* the marker.
+      **Verified:** PR #435; re-proven on #441 with the tightened proximity rule.
       `just migrate "phase 7 test a"`, edit the generated file to
       `op.drop_column("users", "test_column")` in `upgrade()`, then
       `git commit --no-verify` (pre-commit will refuse it otherwise — that is
@@ -418,22 +432,26 @@ Each step gives the command to run, then what to look for.
       comment, Slack, gate at `waiting`. Detection ignoring the marker is the
       whole design, and the two workflows failing/firing independently is what
       proves it.
-- [ ] **2.** Add the `# migration-check: allow-destructive` marker; commit
+- [x] **2.** Add the `# migration-check: allow-destructive` marker; commit
+      **Verified:** PR #435 - no comment, no Slack, hash unchanged.
       normally; push.
       → pre-commit now passes. **No new comment and no Slack** — the hash is
       built from the file name, revision and ops, none of which a comment
       changes. Confirms the marker has no bearing on change-set identity.
-- [ ] **3.** Add destructive migration **B** (with its marker); push.
+- [x] **3.** Add destructive migration **B** (with its marker); push.
+      **Verified:** PR #435 - second comment, first left intact, one Slack.
       → hash moves, so a **second** comment appears and the first is left
       untouched; one fresh Slack message; still exactly **one** pending
       approval — A's should have been cancelled.
-- [ ] **4.** Commit something trivial (a comment or whitespace); push.
+- [x] **4.** Commit something trivial (a comment or whitespace); push.
+      **Verified:** PR #435 - silent, still blocking.
       → **no** comment, **no** Slack — the change-set is unchanged — but the
       gate re-blocks, since approval is SHA-scoped.
 
 **API — the decision file must exist**
 
-- [ ] **5.** Flip `MUTATE_REMOVE_MESSAGE_1` to `True` in
+- [x] **5.** Flip `MUTATE_REMOVE_MESSAGE_1` to `True` in
+      **Verified:** PR #435 recorded the old behaviour; #441 re-ran it after the !cancelled() fix.
       `backend/app/test_api_endpoints.py`, *without* a decision file; push.
       → **`api_schema_diff` fails** at `validate-compat-files.sh`, and the
       "api-compatibility validation failed" Slack message fires. The break is
@@ -441,40 +459,50 @@ Each step gives the command to run, then what to look for.
       marker-less migration is at step 1. The failing check keeps the PR
       blocked either way; the record is about *when the break appeared*, not
       whether its paperwork arrived with it.
-- [ ] **6.** Add the decision file
+- [x] **6.** Add the decision file
+      **Verified:** PR #435 - API gate fired, both gates blocked independently.
       (`python backend/scripts/new_compat_decision.py`, pasting the oasdiff
       change string verbatim from the failed run's log); push.
       → `api_schema_diff` passes, and the API gate fires properly: comment and
       Slack. The migration gate stays silent, its hash unchanged.
-- [ ] **7.** Flip a second flag (`MUTATE_REMOVE_DETAIL_1` or
+- [x] **7.** Flip a second flag (`MUTATE_REMOVE_DETAIL_1` or
+      **Verified:** PR #435 - second API comment and Slack.
       `MUTATE_REMOVE_SUMMARY_2`) and add its decision file; push.
       → second API comment and Slack.
-- [ ] **8.** Commit something trivial; push.
+- [x] **8.** Commit something trivial; push.
+      **Verified:** PR #435 - both gates silent, both blocking.
       → both gates silent, both still blocking.
 
 **Tearing down — migrations first**
 
-- [ ] **9.** Remove migration **B**; push.
+- [x] **9.** Remove migration **B**; push.
+      **Verified:** PR #435 - third comment, proving newest-comment-wins.
       → the hash returns to A-only, which is *not* what the newest comment
       says, so a **third** migration comment appears with a Slack message.
       This is the newest-comment-wins rule: returning to an earlier state is a
       change like any other, not a reason to stay silent.
-- [ ] **10.** Remove migration **A**; push.
+- [x] **10.** Remove migration **A**; push.
+      **Verified:** PR #435 - all-clear, no Slack, gate released.
       → all-clear comment (✅), **no** Slack — nobody needs paging that a risk
       went away — and the migration gate stops blocking. The API gate still
       blocks.
-- [ ] **11.** Flip the second API flag back to `False`; push.
+- [x] **11.** Flip the second API flag back to `False`; push.
+      **Verified:** PR #435.
       → API comment and Slack. Migration side stays silent, already clean.
-- [ ] **12.** Flip the first flag back and delete both decision files; push.
+- [x] **12.** Flip the first flag back and delete both decision files; push.
+      **Verified:** PR #435 - API all-clear, no gate blocking.
       → API all-clear comment, no Slack, API gate stops blocking. No gate is
       blocking now.
 
 ### Approval behaviour
 
-- [ ] Re-add one destructive migration, then **reject** the environment
+- [x] Re-add one destructive migration, then **reject** the environment
+      **Verified:** PR #444 - gate failed, PR BLOCKED, no record left.
       approval; confirm the required check fails and the PR stays blocked.
-- [ ] Push again and **approve**; confirm the check passes.
-- [ ] Confirm the Slack message's "Review pending deployments" link reaches a
+- [x] Push again and **approve**; confirm the check passes.
+      **Verified:** PR #444 - gate success, check green, PR CLEAN.
+- [x] Confirm the Slack message's "Review pending deployments" link reaches a
+      **Verified:** PR #444.
       real pending deployment — the gate now shares the run with the
       notification, so `github.run_id` points at something live.
 
@@ -484,15 +512,18 @@ Unlike the walkthrough above, these are deliberately **not** paced. Push as
 fast as you can, without waiting for CI.
 
 - [ ] Three separate pushes in quick succession — A (break), B (second
+      **Not observed.** Attempted twice (#446, #448). GitHub coalesced the burst into fewer runs both times, so the ordering never had two decide jobs to order. Untestable by pushing rather than undone - see "How much coalescing there is".
       break), C (revert both). Confirm the comments read A, B, C in that
       order with none missing, and that the wait step's log shows later
       commits actually waiting on earlier ones.
 - [ ] A push adding a destructive migration followed immediately by one
+      **Not observed**, same cause: the pair coalesced into one event.
       removing it. Both decide jobs should complete, leaving a finding
       comment then an all-clear — one Slack message for the finding, none for
       the all-clear. This is the failure the whole workflow split exists to
       prevent, so it is the most important check here.
 - [ ] Confirm no approval sat unapproved while a later commit's comment was
+      **Not observed** - required the ordering scenario above.
       blocked behind it — the reason the wait keys on the decide *job* rather
       than the whole run.
 
@@ -554,7 +585,8 @@ Recorded as the run turned them up, since each changes something.
       **Migration gate only** — the API gate cannot reach a reviewer in that
       state, because a missing decision file fails `api_schema_diff`, which
       skips the gate that `needs` it.
-- [ ] **Re-test on a fresh throwaway PR: a break with no paperwork must still
+- [x] **Re-test on a fresh throwaway PR: a break with no paperwork must still
+      **Verified:** PR #441 - both gates commented and notified with neither marker nor decision file.
       be announced, on both sides.** Push a destructive migration with **no**
       `allow-destructive` marker, and an API break with **no** decision file,
       and confirm each produces a PR comment *and* a Slack message. The
@@ -662,7 +694,8 @@ break needs approval; everything else is on the PR.**
       there will be a red check and no Slack. Already true of every migration
       static failure, so the behaviour becomes consistent rather than newly
       weak.
-- [ ] Re-run the Step A push and confirm **exactly two** Slack messages, and
+- [x] Re-run the Step A push and confirm **exactly two** Slack messages, and
+      **Verified:** PR #441 - two messages, API one carrying the paste-able change string.
       that the API one carries a string complete enough to paste straight into
       `new_compat_decision.py`.
 
@@ -722,7 +755,8 @@ decide job has no `if:` at all, so a skipped dependency skips it correctly.
       would mean deliberately approving the bot run on a PR whose only
       outstanding item is the gate. The fix is the same either way, so it was
       not pursued.
-- [ ] Re-run the step A push on a fresh branch: two finding comments, **no**
+- [x] Re-run the step A push on a fresh branch: two finding comments, **no**
+      **Verified:** PR #441 - two finding comments, no all-clear.
       all-clear anywhere, two Slack messages, both gates blocking.
 
 **For anyone reaching for `!cancelled()` again:** it means *"not cancelled"*,
@@ -781,13 +815,78 @@ would have caught this.
       runs or listed none, and that difference is precisely what went
       unnoticed. Diagnostic only; worth removing once enough real runs have
       been observed.
-- [ ] **Re-run the three-push test** and confirm comments land in commit
-      order, with the wait log showing later commits actually waiting.
+- [x] **Re-run the three-push test.** Done on PR #448. The settle fired, and
+      the new diagnostics answered what the old log could not:
+
+      ```
+      [wait-for-ancestor-decisions] Letting sibling runs register (20s)...
+      [wait-for-ancestor-decisions] No ancestor still deciding after 0s
+        (2 run(s) listed, 0 ancestor(s) of ours) - proceeding.
+      ```
+
+      It looked and found nothing, rather than failing to look — previously
+      those two cases printed the same line. **0 comments, 0 migrations on the
+      branch**: silent, and silent was accurate. On #446 the same test left the
+      PR claiming two migrations it did not have.
+
+      The ordering itself was never exercised, because GitHub coalesced harder
+      this time — see below.
 
 **Standing caveat:** even with the delay, a commit whose push is coalesced by
 GitHub never gets a run. The `Found in commit <sha>` line is what keeps that
 honest — each comment states which commit it describes, so a gap is visible
 rather than misleading.
+
+### How much coalescing there is, measured twice
+
+| | PR #446 | PR #448 |
+| --- | --- | --- |
+| Rapid pushes | 3 | 3 |
+| Gate runs created | 2 | **1** |
+| Commits never detected | 1 | **2** |
+
+Both bursts spanned five seconds. GitHub's `synchronize` reflects the branch
+state when it processes the event, so pushes landing inside that window
+collapse into one. It is not a rate limit or a queue — the run is simply never
+created, so there is nothing for the ancestor wait, or anything else here, to
+act on.
+
+**Why this matters less than it first appears.** The gate always evaluates the
+branch's *final* state, and that is what merges. A break present at merge time
+is always caught. What is lost is the *history* of a break that appeared and
+vanished inside one burst — a timeline gap, not a safety one. Reversing
+direction inside five seconds is not how anyone works; code generally moves one
+way.
+
+### Why the delay stays, despite the coalescing
+
+The obvious reading of the above is that the settle delay guards a case GitHub
+already prevents. It does not, and the distinction is worth keeping:
+
+- **Under ~1 second apart** — GitHub coalesces. One run. Nothing to order, and
+  the delay is irrelevant.
+- **Roughly 1–5 seconds apart** — two runs *are* created and their decide jobs
+  overlap, because a decide job starts ~14s after its run and takes ~5s. This
+  is the band the delay exists for, and PR #446 hit it: pushes 2 and 3 were 2
+  seconds apart, got separate runs, and raced.
+- **Beyond ~5 seconds** — the earlier decide job has finished before the later
+  one starts. No contention.
+
+That middle band does **not** require anyone to reverse direction. Push A adds
+migration 1; push B, three seconds later, adds migration 2. If B posts first,
+the newest comment reads "1 migration" while the branch has two — and the
+newest comment is what `latest_announcement_matches` reads, so the
+understatement persists until something else is pushed. Ordinary forward work.
+
+**Cost:** 20 seconds on the migration gate's decide job alone. Not detection,
+not the approval gate, not the API side.
+
+**When to revisit:** the 20 was chosen against a 14-second measurement, with
+margin — a guess with evidence behind it, but a guess. The new
+`(N run(s) listed, M ancestor(s))` diagnostics will show over time whether
+ancestors are found reliably, at which point the number can be trimmed on data
+rather than re-estimated. Guessing this figure is what caused the bug in the
+first place.
 
 ### DO NOT MERGE TO MAIN
 
