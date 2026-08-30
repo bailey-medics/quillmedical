@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_core_db
 from app.deps import has_competency
-from app.features import requires_feature
+from app.features.gating import requires_feature
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,

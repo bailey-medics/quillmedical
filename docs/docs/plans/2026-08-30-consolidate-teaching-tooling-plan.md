@@ -251,7 +251,7 @@ Resolution in Phase 2: give `mdx_parser.py` a validating mode and run *that* at 
 
 Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
-- [ ] Move `requires_feature` from `backend/app/features/__init__.py` into a new
+- [x] Move `requires_feature` from `backend/app/features/__init__.py` into a new
       `backend/app/features/gating.py`, leaving `__init__.py` as a docstring. Update the
       three import sites (`features/teaching/router.py:23` and two inside
       `backend/tests/test_clinical_services.py`). This is what makes the target location
@@ -271,9 +271,12 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `python -m app.features.teaching.content.cli <modules_dir>` from `backend/`.
 - [ ] Convert the ported code to Quill's typed style — `Literal` types, bounded `Field`
       constraints, no `Any` — matching what `certificate.py` now does.
-- [ ] Add a unit test asserting that importing `app.features.teaching.content` leaves
-      `fastapi`, `sqlalchemy`, `app.models`, `app.db` and `app.config` absent from
-      `sys.modules` — this is the guard that keeps the location viable.
+- [x] Add a unit test asserting the import boundary holds — done as
+      `backend/tests/test_features_import_boundary.py`, covering `app.features` and
+      `app.features.teaching`. It runs the import in a subprocess with `JWT_SECRET` and
+      `CORE_DB_PASSWORD` deliberately absent, so a regression fails loudly instead of
+      passing on the test runner's own environment. Extend the parametrised list to
+      `app.features.teaching.content` when that package lands.
 
 ## Phase 2: Merge the duplicate validators onto one schema
 
