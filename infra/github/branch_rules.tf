@@ -153,6 +153,14 @@ resource "github_repository_ruleset" "protected_branches" {
       required_check {
         context = "DB destructive migration review gate"
       }
+      # A merged migration's code does not change (comments may). The
+      # destructive gate above only inspects migrations ADDED on a PR, so a
+      # drop_column edited into a file already on main would be invisible to
+      # it. Unlike the gates this has no approval path - there is no
+      # legitimate case to approve.
+      required_check {
+        context = "DB migration immutability check"
+      }
     }
 
     # Block force pushes (rewriting history on protected branches)

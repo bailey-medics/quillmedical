@@ -897,7 +897,7 @@ walkthrough is captured, since a real Alembic chain can't carry a
 disposable fixture revision the way a pair of flag-gated dummy API
 endpoints can.
 
-## Phase 8: Make migration immutability real — ⏳ NOT STARTED
+## Phase 8: Make migration immutability real — ✅ COMPLETE
 
 **Start after Phase 7 verification completes. This phase adds enforced immutability checks to prevent edits to merged migrations.**
 
@@ -914,29 +914,54 @@ This matters to the gate built above: Phase 2 deliberately diffs with
 is invisible to it. Alembic will not re-run an applied revision, so such an
 edit would not drop anything on an already-migrated environment — but it
 would on any database built from scratch afterwards, and nothing currently
-stops the edit being made. Mirrors `validate_no_deletions` in
-`.github/scripts/ci/validate-compat-files.sh`, which enforces the same
-property for API decision files.
+stops the edit being made. The API decision files already have the same
+protection in `.github/scripts/ci/validate-compat-files.sh` — field-level
+immutability (rule 5) plus `validate_no_deletions`.
 
-**Scope: the whole file, including the marker and its rationale.** An
-earlier draft proposed comparing `ast.dump()` so comment-only edits stayed
-legal. That is the wrong rule here: the `allow-destructive` marker and its
-rationale *are* comments, and they are the record of a decision a human
-reviewed and approved at the gate. Editing them afterwards makes the original
-approval meaningless — the same reasoning that freezes `change` and
-`forces_reload` on API decision files. Since the body, the marker, and the
-rationale must all be immutable, almost nothing meaningful in a migration is
-left editable, so AST comparison buys complexity for a vanishing exception.
-The rule is therefore the simple one: **a merged migration file does not
-change, at all.**
+**Scope: the code, not the prose — matching the API decision files.** An
+earlier draft went further and froze the whole file, on the grounds that the
+`allow-destructive` marker and its rationale *are* comments and record a
+decision a human approved. That over-shot. The decision files draw the line
+more carefully: `generation`, `forces_reload` and `change` are frozen because
+they *are* the decision, while `reason` stays editable because prose explains
+a decision and cannot alter one. The same split applies here.
 
-**Sequencing constraint.** Any planned retrofit of existing migrations must
-land *before* this phase. Specifically, the marker-hardening work (adding
-per-op rationales to `fa4401ce1b92`) edits a merged migration by design; once
-Phase 8 is in place that edit is impossible without a documented bypass.
-Order: retrofit first, immutability second.
+Frozen: the DDL calls, `revision`/`down_revision`, the docstring, the
+filename, and **whether each destructive call carries its marker**. Editable:
+every other comment, the rationale beside a marker included.
 
-- [ ] Add `.github/scripts/ci/check-migrations-unmodified.sh`, following the
+That last frozen item is what makes the rest safe. Without it, a
+comment-only diff could strip a marker from an approved migration. With it,
+the marker's *presence* is protected while its *explanation* is not — so a
+rationale that reads badly can be fixed in place instead of needing a no-op
+migration to correct a sentence.
+
+Implemented as an `ast.dump()` comparison (line numbers omitted by default, so
+comment edits shift statements without tripping it) plus a per-call marker
+vector, in `backend/scripts/compare_migration_code.py`. The bash script keeps
+the git plumbing.
+
+**No gate, and that matches too.** A `reason`-only edit to a decision file
+also passes ungated — the `api-breaking-change-review` gate fires on an
+`oasdiff` finding, which prose cannot produce.
+
+**Sequencing constraint — dissolved.** The constraint was that any retrofit of
+existing migrations had to land before this phase, since afterwards it would be
+impossible. The candidate was adding per-op rationales to `fa4401ce1b92`, whose
+markers are bare. Because the rule as built freezes code and not prose, adding
+a rationale to a merged migration stays permanently legal — there is no window
+to beat.
+
+**Still deliberately not done.** The sequencing argument is gone but the
+substantive one is not: `fa4401ce1b92` went through the gate exactly as it
+stands, so a rationale added now would be someone reconstructing intent weeks
+later and presenting it as the original reasoning. A bare marker honestly
+records what was approved; a plausible-sounding rationale written after the
+fact does not. A rationale was never required either — the proximity rule
+permits one, nothing mandates it — so this is optional polish, not a
+correctness gap. Future migrations carry rationales by convention.
+
+- [x] Add `.github/scripts/ci/check-migrations-unmodified.sh`, following the
       conventions in `.claude/rules/workflows.md` (header block,
       `set -euo pipefail`, `shared/logging.sh`, args validated first). Diff
       `backend/alembic/versions/*.py` between `<main-ref>` and `HEAD` with
@@ -945,29 +970,28 @@ Order: retrofit first, immutability second.
       directly** (exit 1) rather than routing to a human gate: there is no
       legitimate case to approve, so an approval step would only add a
       rubber-stamp.
-- [ ] Add `heavy_db_migration_immutability_check` to `.github/workflows/ci.yml`,
+- [x] Add `heavy_db_migration_immutability_check` to `.github/workflows/ci.yml`,
       heavy tier, single checkout with `fetch-depth: 0` (same shape as
       `heavy_db_destructive_migration_check`, and for the same reason — only
       the diff is needed, not a second working tree).
-- [ ] Add the job name as a required status check in
+- [x] Add the job name as a required status check in
       `infra/github/branch_rules.tf`, alongside the Phase 3 entries.
-- [ ] Add `.github/scripts/ci/check-migrations-unmodified.bats` covering:
+- [x] Add `.github/scripts/ci/check-migrations-unmodified.bats` covering:
       a PR that adds a new migration passes; a PR that modifies a merged
       migration fails; a PR that deletes one fails; a PR that renames one
-      fails; a PR touching no migrations passes; and — importantly — a
-      **comment-only** edit still fails, since the marker and its rationale
-      are comments and must not be rewritten after approval.
-- [ ] Document the rule in `.github/instructions/backend.instructions.md`
+      fails; a PR touching no migrations passes; a **comment-only** edit
+      passes; and — importantly — removing or shortening a marker fails, since
+      that is the one way a comment-only diff can change what was approved.
+- [x] Document the rule in `.github/instructions/backend.instructions.md`
       under "Creating migrations" (source of truth), then run
       `/sync-copilot-config`. State what to do instead: a migration that
       turns out to be wrong is corrected by a **new** migration, never by
       editing the old one — the same "supersede, never amend" rule the API
-      decision files already follow. Say explicitly that this covers the
-      `allow-destructive` marker and its rationale: they record an approval
-      that already happened, so a later rewrite would misrepresent what was
-      approved. A rationale that turns out to be wrong is corrected in the
-      superseding migration, not by amending the original.
-- [ ] Add a "Layer 4 — migration immutability" section to
+      decision files already follow. Say explicitly which side of the line the
+      `allow-destructive` marker falls on: its presence is frozen because it
+      records an approval that already happened, while the rationale beside it
+      is ordinary prose and may be clarified in place.
+- [x] Add a "Layer 4 — migration immutability" section to
       `docs/docs/backend/alembic-migration-safety.md`, and note there that
       this is what makes the "write once, never revisited" claim in
       `api-compatibility.md` true rather than aspirational.
@@ -1034,3 +1058,35 @@ Order: retrofit first, immutability second.
   silent** — Accepted trade-off, inherited unchanged from the API notification
   plan: the stale marker hash genuinely still matches. The gate still blocks
   and still needs a fresh approval, so this affects Slack noise only
+
+**Built as specified, with three notes.**
+
+The job lives in `ci.yml`, not `gate-breaking.yml`. That workflow exists for
+jobs that **record** something and so must never be cancelled; this records
+nothing, it just fails, and a cancelled run is simply re-checked by the next
+one.
+
+Split across two files rather than one. `check-migrations-unmodified.sh` does
+the git plumbing — which files were touched, and how — while
+`backend/scripts/compare_migration_code.py` decides whether a modification
+crossed the line. The judgement needs Python's `ast` and the marker rules
+already in `check_migrations.py`, so it belongs beside them; the alternative
+was inlining a Python heredoc in bash.
+
+Sixteen bats tests plus nineteen pytest ones. Unusually for this repo the bats
+suite builds a real throwaway git repo per case rather than stubbing the git
+call: the behaviour *is* what git reports for a given kind of change, so a stub
+would test the stub. The pytest suite covers the frozen/editable judgement,
+which is pure and needs no repo at all.
+
+One test premise turned out to be wrong and became its own assertion. A blank
+line inserted between a marker and its call looks like it should detach the
+marker — it does not, because `_marker_attached_to` skips blank lines when
+walking back from the call. Worth pinning, since the opposite would be a
+plausible-looking bug.
+
+**Terraform apply is a manual step**, as it was for Phase 3. The
+`DB migration immutability check` context is now required by
+`infra/github/branch_rules.tf`, but branch protection will not enforce it until
+someone applies. Until then the job runs and can fail the PR, but is not
+required.

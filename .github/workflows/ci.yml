@@ -458,3 +458,32 @@ jobs:
       - name: Dump container logs on failure
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
+
+  # ---------- Migration immutability ----------
+  # A merged migration does not change, at all. The destructive-migration gate
+  # only inspects migrations ADDED on a PR, so a drop_column edited into a file
+  # already on main is invisible to it - and the allow-destructive marker and
+  # its rationale record a decision a human approved, so rewriting them
+  # misrepresents what was approved.
+  #
+  # Deliberately NOT in gate-breaking.yml: that workflow exists for jobs that
+  # RECORD something and so must never be cancelled. This records nothing, it
+  # just fails, and a cancelled run is simply re-checked by the next one.
+  heavy_db_migration_immutability_check:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    name: DB migration immutability check
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch ref (for the changed-migrations diff)
+        run: git fetch origin main:refs/remotes/origin/main
+
+      # No setup-python step: the comparer this calls is stdlib-only, and
+      # ubuntu-24.04 ships python3.
+      - name: Check no merged migration was rewritten, deleted or renamed
+        run: bash .github/scripts/ci/check-migrations-unmodified.sh origin/main
