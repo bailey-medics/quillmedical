@@ -421,6 +421,7 @@
     "primarytest",
     "priv",
     "protanopia",
+    "psfontname",
     "psql",
     "psycopg",
     "pybuilder",
