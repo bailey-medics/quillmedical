@@ -231,6 +231,71 @@ overlap, not whether the run is killed:
 See [Gate notification workflow](../plans/2026-08-29-gate-notification-workflow-plan.md)
 for the alternatives considered and rejected.
 
+## Layer 4 — migration immutability
+
+Layers 1–3 govern what a migration may contain and who must approve it. None
+of them stops a migration changing *after* it has been approved and merged.
+
+That gap matters to Layer 3 specifically. The destructive-migration gate
+inspects only migrations **added** on a pull request (`--diff-filter=A`), so a
+`drop_column` edited into a file already on `main` never reaches it. Alembic
+will not re-run an applied revision, so an already-migrated environment is
+unharmed — but any database built from scratch afterwards runs the edited
+version, and nothing announced the change.
+
+It also matters to the marker. `api-compatibility.md` justifies a code comment
+being an acceptable home for `# migration-check: allow-destructive` on the
+grounds that a migration is "write once, reviewed once, never revisited" —
+unlike application source, which is edited forever. That was an assertion
+about convention until this layer made it true.
+
+**The rule: a merged migration's code does not change; its prose may.** This
+is the same line the `api-compatibility/` decision files draw, where
+`generation`, `forces_reload` and `change` are frozen once merged because they
+*are* the decision, while `reason` stays editable because it only explains the
+decision and cannot alter it.
+
+Frozen once merged:
+
+- the DDL calls
+- `revision` and `down_revision`
+- the docstring
+- whether each destructive call carries its marker
+- the filename
+
+Editable:
+
+- every other comment, including a marker's rationale
+
+So a rationale that reads badly, or turns out to be wrong, is corrected in
+place — no no-op migration needed to fix a sentence. The operation it vouches
+for cannot change, and the marker cannot quietly disappear beside it.
+
+Three consequences worth stating, because each looks like an over-reach until
+you see why:
+
+- **The docstring is code, not prose.** It sits in the AST, and Layer 1
+  validates it as the migration's description, so it is frozen with the rest.
+- **Renames and deletions fail.** The filename carries the revision id and the
+  chain's ordering, so renaming rewrites the record as surely as editing does.
+  Neither is compared — both are refused outright.
+- **There is no approval path.** Unlike the destructive gate, this fails the
+  build directly. There is no legitimate case to approve, so an approval step
+  would add a rubber stamp and nothing else. This matches the decision files,
+  where a `reason`-only edit likewise passes without a gate — the gate there
+  fires on an `oasdiff` finding, which prose cannot produce.
+
+A migration whose *code* turns out to be wrong is corrected by a **new**
+migration that supersedes it — the same "supersede, never amend" rule the
+decision files follow.
+
+Enforced by `.github/scripts/ci/check-migrations-unmodified.sh`, which handles
+the git plumbing and delegates the frozen/editable judgement to
+`backend/scripts/compare_migration_code.py` (`ast.dump()` comparison, plus a
+per-call marker vector so a marker cannot be stripped under cover of a comment
+edit). Run by the `DB migration immutability check` job and required by branch
+protection.
+
 ## `compare_server_default` is deliberately off
 
 `env.py` enables `compare_type=True` (autogenerate notices column type
