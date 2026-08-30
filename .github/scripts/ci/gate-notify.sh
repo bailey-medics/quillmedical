@@ -50,6 +50,13 @@
 # branch/key-scoped and evict after inactivity, whereas a comment persists
 # indefinitely and doubles as a visible audit trail.
 #
+# Reading the comments and then writing one is NOT atomic - the GitHub API has
+# no compare-and-swap - so two runs doing it at once would both read "nothing
+# recorded yet" and both post. This script does not defend itself against that;
+# the caller must ensure only one run reaches it at a time. In gate-breaking.yml
+# that is wait-for-ancestor-decisions.sh, which also makes the comments land in
+# commit order.
+#
 # Environment:
 #   GH_TOKEN             Token used by `gh` to authenticate. Set by the workflow.
 #   GITHUB_OUTPUT        Destination file for `should_notify=<bool>` (set by the runner).

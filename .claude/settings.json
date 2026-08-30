@@ -1,13 +1,19 @@
 {
-  "model": "opus",
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Bash(poetry run *)",
       "Bash(poetry env *)",
-      "Bash(git worktree *)"
-    ]
+      "Bash(git worktree *)",
+      "Bash(python3 -)",
+      "Bash(grep -vE \"Skipped$|no files to check\")",
+      "Bash(grep -n \"queue without limit\\\\|contents: write\\\\`\\\\b\\\\|newest_recorded_commit\\\\|compare-API\\\\|skip.*straggler\" docs/docs/plans/2026-08-29-gate-notification-workflow-plan.md)",
+      "Bash(shellcheck --source-path=SCRIPTDIR .github/scripts/ci/wait-for-ancestor-decisions.sh)",
+      "Bash(bats .github/scripts/ci/wait-for-ancestor-decisions.bats)",
+      "Bash(python3 -c ' *)"
+    ],
+    "defaultMode": "auto"
   },
+  "model": "opus",
   "hooks": {
     "SessionStart": [
       {

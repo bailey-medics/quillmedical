@@ -241,6 +241,116 @@ def test_destructive_fails_without_marker(tmp_path: Path) -> None:
     assert problems[0].severity == SEVERITY_ERROR
 
 
+def test_destructive_passes_with_marker_on_the_line_above(
+    tmp_path: Path,
+) -> None:
+    body = (
+        "    # migration-check: allow-destructive\n"
+        "    op.drop_column('users', 'flag')"
+    )
+    migration = _one(
+        tmp_path, revision="x", down_revision=None, upgrade_body=body
+    )
+    assert check_destructive(migration) == []
+
+
+def test_destructive_passes_with_a_rationale_between(tmp_path: Path) -> None:
+    """A rationale under the marker must not detach it from the call.
+
+    Phase 8 expects the marker to carry a rationale, so the whole run of
+    comments above a call counts, not just the single line above it.
+    """
+    body = (
+        "    # migration-check: allow-destructive\n"
+        "    # Superseded by the audit table; no history is lost.\n"
+        "\n"
+        "    op.drop_column('users', 'flag')"
+    )
+    migration = _one(
+        tmp_path, revision="x", down_revision=None, upgrade_body=body
+    )
+    assert check_destructive(migration) == []
+
+
+def test_destructive_fails_when_marker_is_only_in_the_docstring(
+    tmp_path: Path,
+) -> None:
+    """Prose mentioning the marker must not satisfy the check.
+
+    The old whole-file substring search accepted this, so a docstring saying
+    the marker was *absent* made the check pass. Found in the Phase 7
+    walkthrough, where a test fixture passed when it should have failed.
+    """
+    migration = _one(
+        tmp_path,
+        revision="x",
+        down_revision=None,
+        description="Ships without the # migration-check: allow-destructive marker",
+        upgrade_body="    op.drop_column('users', 'flag')",
+    )
+    problems = check_destructive(migration)
+    assert len(problems) == 1
+    assert problems[0].severity == SEVERITY_ERROR
+
+
+def test_destructive_fails_when_marker_sits_above_another_statement(
+    tmp_path: Path,
+) -> None:
+    """A marker cannot reach past an intervening statement.
+
+    Here it belongs to the add_column, not the drop_column below it.
+    """
+    body = (
+        "    # migration-check: allow-destructive\n"
+        "    op.add_column('users', sa.Column('new', sa.String()))\n"
+        "    op.drop_column('users', 'flag')"
+    )
+    migration = _one(
+        tmp_path, revision="x", down_revision=None, upgrade_body=body
+    )
+    problems = check_destructive(migration)
+    assert len(problems) == 1
+    assert "drop_column" in problems[0].message
+
+
+def test_destructive_requires_a_marker_for_every_call(tmp_path: Path) -> None:
+    """Two drops are two decisions, so one marker cannot cover both."""
+    body = (
+        "    # migration-check: allow-destructive\n"
+        "    op.drop_column('users', 'a')\n"
+        "    op.drop_column('users', 'b')"
+    )
+    migration = _one(
+        tmp_path, revision="x", down_revision=None, upgrade_body=body
+    )
+    problems = check_destructive(migration)
+    assert len(problems) == 1
+    assert "drop_column" in problems[0].message
+
+    marked_both = (
+        "    # migration-check: allow-destructive\n"
+        "    op.drop_column('users', 'a')\n"
+        "    # migration-check: allow-destructive\n"
+        "    op.drop_column('users', 'b')"
+    )
+    migration = _one(
+        tmp_path, revision="y", down_revision=None, upgrade_body=marked_both
+    )
+    assert check_destructive(migration) == []
+
+
+def test_destructive_reports_each_unmarked_call(tmp_path: Path) -> None:
+    """Every unmarked call is named, so one run fixes them all."""
+    body = "    op.drop_column('users', 'a')\n" "    op.drop_table('legacy')"
+    migration = _one(
+        tmp_path, revision="x", down_revision=None, upgrade_body=body
+    )
+    problems = check_destructive(migration)
+    assert len(problems) == 2
+    assert any("drop_column" in p.message for p in problems)
+    assert any("drop_table" in p.message for p in problems)
+
+
 # ---------------------------------------------------------------------------
 # End-to-end via main + baseline history
 # ---------------------------------------------------------------------------

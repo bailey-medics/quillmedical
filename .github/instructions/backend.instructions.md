@@ -18,6 +18,26 @@ the baseline included — is held to the full standard below.
 - Always create migrations with `just migrate "description"` — never run
   `alembic revision` by hand. The recipe upgrades to head, autogenerates
   against the models, then upgrades again so the new revision is applied.
+- **A merged migration's code does not change.** Once a migration is on
+  `main`, its DDL, its `revision`/`down_revision` identifiers and its docstring
+  are frozen, and it must not be deleted or renamed. Correct code that turns
+  out to be wrong by adding a **new** migration that supersedes it — the same
+  "supersede, never amend" rule the `api-compatibility/` decision files follow.
+  Enforced by the `DB migration immutability check` CI job, which fails the
+  build outright: there is no approval path, because there is no legitimate
+  case to approve.
+- **Comments may still be edited, so a rationale can be clarified in place.**
+  This mirrors the decision files, where `change` and `forces_reload` are
+  frozen after merge but `reason` stays editable — prose explains a decision,
+  it cannot alter one. Fixing a badly worded rationale should not require a
+  no-op migration.
+- **The `# migration-check: allow-destructive` marker is the exception.** It
+  is a comment, but it records an approval that already happened, so it is
+  frozen with the code: the check compares which destructive calls carry a
+  marker, and fails if that changes. The rationale beside it is free.
+- Renames and deletions are refused outright rather than compared: the
+  filename carries the revision id and the chain's ordering, so renaming
+  rewrites the record as surely as editing the body does.
 - Every migration needs a real docstring summary and a meaningful slug.
   Bare `<rev>_.py` files (no description) are rejected.
 - Keep the chain linear: exactly one base and one head, with no branches

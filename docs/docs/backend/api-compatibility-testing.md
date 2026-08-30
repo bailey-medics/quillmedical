@@ -238,43 +238,37 @@ git push origin feature/test-api-compat
 
 Push to the PR. CI re-runs:
 
-- `heavy_api_schema_diff` still detects the breaking change (`breaking=true`)
-- `heavy_api_breaking_change_gate` still waits for approval (or auto-skips if you already approved)
-- **NEW**: `heavy_api_compat_notify` **does NOT fire** (because validation passed, job succeeds)
+- `api_schema_diff` still detects the breaking change (`breaking=true`)
+- `api_breaking_change_gate` still waits for approval (or auto-skips if you already approved)
 - The workflow completes green
 
-## Step 8: Observe Slack notification on validation failure (optional)
+## Step 8: Observe what happens with no decision file (optional)
 
-To test the **failure path** (Slack alert when validation fails), temporarily remove or corrupt your decision file:
+To test the **failure path**, temporarily remove your decision file:
 
 ```bash
 rm api-compatibility/20260821120345-breaking-api-message-removal.yaml
 git add api-compatibility/
-git commit -m "test: remove decision file to trigger Slack alert"
+git commit -m "test: remove decision file"
 git push origin feature/test-api-compat
 ```
 
 CI runs and validation fails. You'll see:
 
-- `heavy_api_schema_diff` job **fails** (validation step returns non-zero exit code)
-- `heavy_api_compat_notify` **fires** and posts to Slack #teaching channel:
+- `api_schema_diff` job **fails** (the validation step exits non-zero)
+- the gate **still** comments, still posts to Slack and still asks for
+  approval — the break is recorded when it appears, not when its paperwork
+  catches up
+- that Slack message carries the `oasdiff` change string under **Breaking
+  changes:**, which is exactly what you paste back into
+  `new_compat_decision.py` to fix it
+- the failing check keeps the PR blocked regardless of the approval
 
-```
-🚨 api-compatibility validation failed
+There is **one** Slack message per gate, sent when a break needs approval —
+the same rule as the destructive-migration gate. A validation failure on its
+own shows as a red check and nothing more.
 
-The "API breaking-change check" job failed on this PR - most likely
-validate-compat-files.sh rejected a breaking API change because it
-isn't covered by a valid decision file. Open the run below to fix it
-(see docs/docs/backend/api-compatibility.md).
-
-PR: #<number>
-Author: @<your-username>
-Action: View Run
-
-[error output in backticks]
-```
-
-Restore your decision file and push again to verify it clears.
+Restore your decision file and push again to verify the check clears.
 
 ## Step 9: Clean up
 

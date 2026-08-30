@@ -138,7 +138,8 @@ column that stores clinical audit history, for example — is worth the cost.
 That judgement is a human decision that must be recorded and auditable.
 
 When a migration containing `drop_column`, `drop_table`, or `drop_constraint`
-is added to a PR, the `heavy_db_destructive_migration_check` CI job detects it
+is added to a PR, the `db_destructive_migration_check` job in
+`.github/workflows/gate-breaking.yml` detects it
 (see [Destructive changes](../plans/2026-08-25-db-destructive-migration-review-plan.md))
 and sends the PR to `waiting` on the `db-destructive-migration-review`
 environment — a required-reviewer GitHub Actions environment with
@@ -171,7 +172,7 @@ When destructive migrations are detected, a Slack notification lands in
   environment
 
 A pull request is told **once per distinct set of destructive migrations**,
-not once per push. `heavy_db_destructive_migration_gate_notify` hashes the
+not once per push. `db_destructive_migration_gate_notify` hashes the
 detected migrations and operations, then asks whether any comment on the PR
 already carries that hash (`gate-notify.sh`, marker key
 `db-destructive-migration-hash`). A later commit that leaves the same
@@ -195,6 +196,105 @@ migration stays silent, since there is nothing to report the disappearance of.
 The approval is unaffected by any of this: it is SHA-scoped and stays required
 on every push. How often Slack is told is a notification concern, never a
 safety control.
+
+**One Slack message per gate**, sent when a break needs approval and only then.
+All-clears and static-check failures — a missing `allow-destructive` marker,
+say — show on the PR and nowhere else. The API breaking-change gate follows the
+same rule, so knowing one gate tells you how the other behaves.
+
+### Why this lives outside `ci.yml`
+
+Detection, the PR record, the Slack message and the approval all sit in
+`.github/workflows/gate-breaking.yml` rather than `ci.yml`, because `ci.yml`
+cancels its runs when a newer commit arrives. That is right for expensive
+tests and wrong here: two commits pushed in quick succession, one adding a
+destructive migration and one reverting it, could leave no record the
+migration ever existed. A job cannot opt out of its own run being cancelled,
+so the gates needed a workflow whose runs are never cancelled.
+
+`gate-breaking.yml` therefore sets no workflow-level concurrency, and every
+commit's decision runs. Two jobs then set their own *job-level* concurrency,
+which governs something different — whether two instances of that one job may
+overlap, not whether the run is killed:
+
+- The **approval gate** supersedes its older self, so a run of pushes never
+  leaves a reviewer facing a queue of pending approvals. Only the newest
+  commit's approval is ever outstanding.
+- The **decision job** does the opposite, and does not use a concurrency group
+  at all: a group holds one running plus one pending instance, so a third push
+  would cancel the queued second and lose that commit's comment. It calls
+  `wait-for-ancestor-decisions.sh` instead, which waits for every ancestor
+  commit still deciding. That has no queue for GitHub to cap, so every commit
+  is recorded — and because a run only posts once its ancestors have, the
+  comments land in commit order without needing a lock.
+
+See [Gate notification workflow](../plans/2026-08-29-gate-notification-workflow-plan.md)
+for the alternatives considered and rejected.
+
+## Layer 4 — migration immutability
+
+Layers 1–3 govern what a migration may contain and who must approve it. None
+of them stops a migration changing *after* it has been approved and merged.
+
+That gap matters to Layer 3 specifically. The destructive-migration gate
+inspects only migrations **added** on a pull request (`--diff-filter=A`), so a
+`drop_column` edited into a file already on `main` never reaches it. Alembic
+will not re-run an applied revision, so an already-migrated environment is
+unharmed — but any database built from scratch afterwards runs the edited
+version, and nothing announced the change.
+
+It also matters to the marker. `api-compatibility.md` justifies a code comment
+being an acceptable home for `# migration-check: allow-destructive` on the
+grounds that a migration is "write once, reviewed once, never revisited" —
+unlike application source, which is edited forever. That was an assertion
+about convention until this layer made it true.
+
+**The rule: a merged migration's code does not change; its prose may.** This
+is the same line the `api-compatibility/` decision files draw, where
+`generation`, `forces_reload` and `change` are frozen once merged because they
+*are* the decision, while `reason` stays editable because it only explains the
+decision and cannot alter it.
+
+Frozen once merged:
+
+- the DDL calls
+- `revision` and `down_revision`
+- the docstring
+- whether each destructive call carries its marker
+- the filename
+
+Editable:
+
+- every other comment, including a marker's rationale
+
+So a rationale that reads badly, or turns out to be wrong, is corrected in
+place — no no-op migration needed to fix a sentence. The operation it vouches
+for cannot change, and the marker cannot quietly disappear beside it.
+
+Three consequences worth stating, because each looks like an over-reach until
+you see why:
+
+- **The docstring is code, not prose.** It sits in the AST, and Layer 1
+  validates it as the migration's description, so it is frozen with the rest.
+- **Renames and deletions fail.** The filename carries the revision id and the
+  chain's ordering, so renaming rewrites the record as surely as editing does.
+  Neither is compared — both are refused outright.
+- **There is no approval path.** Unlike the destructive gate, this fails the
+  build directly. There is no legitimate case to approve, so an approval step
+  would add a rubber stamp and nothing else. This matches the decision files,
+  where a `reason`-only edit likewise passes without a gate — the gate there
+  fires on an `oasdiff` finding, which prose cannot produce.
+
+A migration whose *code* turns out to be wrong is corrected by a **new**
+migration that supersedes it — the same "supersede, never amend" rule the
+decision files follow.
+
+Enforced by `.github/scripts/ci/check-migrations-unmodified.sh`, which handles
+the git plumbing and delegates the frozen/editable judgement to
+`backend/scripts/compare_migration_code.py` (`ast.dump()` comparison, plus a
+per-call marker vector so a marker cannot be stripped under cover of a comment
+edit). Run by the `DB migration immutability check` job and required by branch
+protection.
 
 ## `compare_server_default` is deliberately off
 

@@ -44,3 +44,4 @@
 - [Database Destructive Migration Review](2026-08-25-db-destructive-migration-review-plan.md)
 - [API Breaking Change Notification Dedup](2026-08-27-api-breaking-change-notify-dedup-plan.md)
 - [Reduce Renovate CI Reruns](2026-08-27-renovate-reduce-ci-reruns.md)
+- [Gate Notification Workflow](2026-08-29-gate-notification-workflow-plan.md)
