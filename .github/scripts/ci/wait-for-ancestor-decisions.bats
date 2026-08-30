@@ -264,3 +264,30 @@ RUNS_JSON='{"workflow_runs":[
 
   [ "$status" -ne 0 ]
 }
+
+
+# ---- the settle delay ----
+
+@test "settle defaults to 0, so a slow-detection gate pays nothing" {
+    # The API gate leaves WAIT_SETTLE_SECONDS unset: its detection takes
+    # minutes, so sibling runs have long registered by the time it polls.
+    run bash -c "
+      source '${BATS_TEST_DIRNAME}/wait-for-ancestor-decisions.sh'
+      echo \"\$SETTLE_SECONDS\"
+    "
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "0" ]
+}
+
+@test "settle is env-overridable, for a fast-detection gate" {
+    # The migration gate sets 20: its detection is ~9s, so it can poll before a
+    # sibling pushed moments earlier is listed. PR #446 showed the consequence.
+    run bash -c "
+      WAIT_SETTLE_SECONDS=20 source '${BATS_TEST_DIRNAME}/wait-for-ancestor-decisions.sh'
+      echo \"\$SETTLE_SECONDS\"
+    "
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "20" ]
+}

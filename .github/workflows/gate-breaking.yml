@@ -459,6 +459,13 @@ jobs:
       - name: Wait for ancestor commits to finish deciding
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This gate's detection takes ~9s, so this job can start ~14s after
+          # the push - early enough that a sibling run pushed moments before
+          # may not be listed yet. The API gate needs no such pause: its
+          # detection takes minutes, by which time everything has registered.
+          # Measured on PR #446, where three pushes 5s apart left a comment
+          # describing migrations the branch no longer had.
+          WAIT_SETTLE_SECONDS: 20
         run: |
           bash .github/scripts/ci/wait-for-ancestor-decisions.sh \
             "Destructive-migration Slack notification decision" \
