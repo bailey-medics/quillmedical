@@ -7,6 +7,8 @@ description: Follow the plan document
 # Follow the plan document
 
 A plan document has been attached to this prompt. Follow it to complete the task.
+If none is attached, ask the user which plan document to follow rather than
+guessing.
 
 ## Working through the plan
 
