@@ -729,6 +729,66 @@ decide job has no `if:` at all, so a skipped dependency skips it correctly.
 which includes *skipped*. If you want "ran and produced a result, pass or
 fail", you need `result != 'skipped'` alongside it.
 
+### Rapid-push ordering: what three pushes in five seconds found
+
+Run on PR #446 — setup push, then three pushes 1–2 seconds apart: add
+migration A, add migration B, remove both. Expected three comments in commit
+order. **Got one comment, describing migrations the branch no longer had.**
+
+Two independent failures, neither visible from reading the workflow.
+
+**1. GitHub coalesced two pushes into one event.** Pushes 1 and 2 were a second
+apart. Push 1 got a `CI` run and an `auto-pr` run but **no `gate-breaking.yml`
+run at all** — no `synchronize` was emitted for it. Migration A's arrival was
+never detected.
+
+This sits upstream of everything designed here. The ancestor wait defeats
+GitHub's concurrency *queue* dropping a run; here no run is created, so there
+is nothing to queue, wait for, or order. Accepted as outside our control, and
+not only a rapid-fire concern: **a developer committing twenty times locally
+and pushing once produces exactly one event**, so intermediate commits never
+get their own run either. Working style, not misuse.
+
+**2. The settle delay was load-bearing, and had been removed.** Measured
+timeline:
+
+| Time | Event |
+| --- | --- |
+| 22:28:34 | push 3's decide job starts |
+| 22:28:35 | push 2's decide job starts |
+| 22:28:36.87 | push 3's wait begins |
+| 22:28:37.32 | "No ancestor still deciding" — **0.45s later** |
+| 22:28:39 | push 2 posts its comment |
+
+Push 3 checked in the one-second window before push 2's decide job existed to
+be found, saw nothing, and proceeded. It then correctly stayed silent (hash
+`none`, gate had never commented). Push 2 posted afterwards, leaving a stale
+finding as the newest word on the PR.
+
+The delay was removed on the reasoning that the decide job runs ~90 seconds
+after a push, so registration is long finished. **The real figure is 14
+seconds** — detection took 9s, not the minute-plus assumed. An estimate stood
+in for a measurement, and the safeguard it justified removing was the one that
+would have caught this.
+
+- [x] **Settle restored, per gate rather than globally.** Default 0; the
+      migration gate sets `WAIT_SETTLE_SECONDS: 20`. The split is the point:
+      migration detection is ~9s so its decide job lands inside the race
+      window, while API detection takes minutes and needs no pause. A blanket
+      delay would have charged the API gate 20s per push for nothing.
+- [x] **The wait now logs what it saw** — run count and ancestor count.
+      "No ancestor still deciding" read identically whether it checked three
+      runs or listed none, and that difference is precisely what went
+      unnoticed. Diagnostic only; worth removing once enough real runs have
+      been observed.
+- [ ] **Re-run the three-push test** and confirm comments land in commit
+      order, with the wait log showing later commits actually waiting.
+
+**Standing caveat:** even with the delay, a commit whose push is coalesced by
+GitHub never gets a run. The `Found in commit <sha>` line is what keeps that
+honest — each comment states which commit it describes, so a gap is visible
+rather than misleading.
+
 ### DO NOT MERGE TO MAIN
 
 Unlike the API gate's permanent dummy

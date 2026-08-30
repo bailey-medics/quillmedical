@@ -21,6 +21,10 @@
 #   GITHUB_REPOSITORY   "owner/repo" (set by the runner).
 #   GITHUB_HEAD_REF     The PR's source branch, to scope the run listing (set by the runner).
 #   GITHUB_WORKFLOW_REF Used to derive the workflow file to query (set by the runner).
+#   WAIT_SETTLE_SECONDS      Pause before the first poll (default 0). Needed
+#                            only where detection is fast enough that this job
+#                            can start before a sibling run has registered -
+#                            see the note below.
 #   WAIT_POLL_SECONDS        Pause between polls (default 10).
 #   WAIT_DEADLINE_SECONDS    Give up and proceed after this (default 600).
 set -euo pipefail
@@ -28,9 +32,10 @@ set -euo pipefail
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "wait-for-ancestor-decisions"
 
+SETTLE_SECONDS="${WAIT_SETTLE_SECONDS:-0}"
 POLL_SECONDS="${WAIT_POLL_SECONDS:-10}"
 DEADLINE_SECONDS="${WAIT_DEADLINE_SECONDS:-600}"
-readonly POLL_SECONDS DEADLINE_SECONDS
+readonly SETTLE_SECONDS POLL_SECONDS DEADLINE_SECONDS
 
 # Did this commit come before ours on the branch?
 #
@@ -150,6 +155,23 @@ main() {
     exit 1
   fi
 
+  # A sibling run needs a moment to appear in the runs listing. Whether that
+  # matters depends on how fast this gate's detection job is, which is why the
+  # default is 0 and the caller sets it:
+  #
+  #   migration gate - detection ~9s, so this job starts ~14s after the push,
+  #                    inside the window where a sibling may not be listed yet.
+  #   API gate       - detection takes minutes, so everything has long
+  #                    registered by the time this runs.
+  #
+  # Measured on PR #446: three pushes 5s apart, and this job proceeded 0.45s
+  # after starting, having seen none of its ancestors. The comment left
+  # standing then described migrations the branch no longer had.
+  if [ "$SETTLE_SECONDS" -gt 0 ]; then
+    log "Letting sibling runs register (${SETTLE_SECONDS}s)..."
+    sleep "$SETTLE_SECONDS"
+  fi
+
   log "Waiting for ancestors of ${head_sha} to finish '${job_name}'..."
 
   # SECONDS is automatically incremented by bash, so we can use it to track
@@ -170,13 +192,21 @@ main() {
       "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs" \
       -f "branch=${GITHUB_HEAD_REF}" -f "per_page=20" 2>/dev/null || echo '{}')"
 
+    # Counted for the log line below: "no ancestor still deciding" reads the
+    # same whether we checked three runs or listed none at all, and that
+    # difference is exactly what went unnoticed on PR #446.
+    local considered
+    considered="$(jq '[.workflow_runs[]?] | length' <<<"$runs_json" 2>/dev/null || echo 0)"
+
     local pending=0
+    local ancestors=0
     local id
     local sha
     local jobs_json
 
     while read -r id sha; do
       [ -n "$id" ] || continue
+      ancestors=$((ancestors + 1))
       jobs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${id}/jobs" 2>/dev/null || echo '{}')"
       if ! decide_job_finished "$jobs_json" "$job_name"; then
         log "  still waiting on run ${id} (commit ${sha})"
@@ -185,7 +215,7 @@ main() {
     done < <(ancestor_run_ids "$runs_json" "$head_sha" "$own_run_id")
 
     if [ "$pending" -eq 0 ]; then
-      log "No ancestor still deciding - proceeding after ${SECONDS}s."
+      log "No ancestor still deciding after ${SECONDS}s (${considered} run(s) listed, ${ancestors} ancestor(s) of ours) - proceeding."
       return 0
     fi
 
