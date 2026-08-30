@@ -8,8 +8,6 @@ of each bank's ``config.yaml``.  When no style config is provided the
 built-in defaults are used.
 """
 
-# cspell:words pagesizes pdfgen pagesize fontname fontsize
-
 from __future__ import annotations
 
 import io
