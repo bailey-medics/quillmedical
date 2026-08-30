@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-08-30T06:35:29Z",
+  "lastRun": "2026-08-30T07:01:57Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -11,7 +11,8 @@
     "2026-08-30: reconciled the phantom drift from commit 2f18a2cb (2026-08-27, 'add name field to skill frontmatter'), which hand-edited every skill's frontmatter after its last sync. Those targets' BODIES are byte-identical to their sources, so their recorded hashes were refreshed to current state - no target content was written. Note the name: field is cosmetic here: a skill's invocable /name comes from its directory.",
     "2026-08-30: CLAUDE.md target drift is structural, not a problem - it is a merge target carrying a hand-written '## Claude-specific' section this skill never writes into. Its hash is refreshed to mean 'last state reconciled'. Verified this run: all 21 source headings are present in CLAUDE.md, nothing to merge.",
     "2026-08-30: five entries now carry divergentByDesign:true with a divergenceReason. Their targets will always differ from their sources, because each difference is a platform feature with no counterpart on the other side - not drift, and not work outstanding. Report them as expected rather than actionable, and NEVER sync over them in either direction. The flag records intent, not state: the recorded hashes still move when either side genuinely changes, so a real edit is still detectable. Anything these entries do NOT name as platform-specific is ordinary drift and should be reconciled as usual.",
-    "2026-08-30: the substantive half of that divergence was back-ported to .github/ on branch feature/backport-skill-improvements - crp's three-way pre-commit failure rule, and 'ask rather than guess' in explain-to-me and follow-the-plan-document. Only the platform-specific remainder is left."
+    "2026-08-30: the substantive half of that divergence was back-ported to .github/ on branch feature/backport-skill-improvements - crp's three-way pre-commit failure rule, and 'ask rather than guess' in explain-to-me and follow-the-plan-document. Only the platform-specific remainder is left.",
+    "2026-08-30: back-filled the 'Enforcement: CI detection + required-reviewer environment gate' subsection into .claude/rules/backend.md. The 2026-08-28 note warning it was missing was dropped earlier that day as resolved, but only the newer immutability bullets had actually been synced - this subsection was still absent, so Claude sessions were missing the rule that human environment approval, not the allow-destructive marker, is what gates a destructive migration. Bodies now match exactly."
   ],
   "files": [
     {
@@ -25,8 +26,8 @@
       "source": ".github/instructions/backend.instructions.md",
       "target": ".claude/rules/backend.md",
       "sourceSha256": "153f80eefb5048c31f9ffeae58e890c0d8b82cbd30f51aead9ffb8bd560dc18b",
-      "targetSha256": "9289532971b092e78db0b795b7c09bfb52fdfb4836c3297a7495f0bce94d9011",
-      "syncedAt": "2026-08-30T05:57:23Z"
+      "targetSha256": "fefd82b0dbc955b1b07f7bdedb98f380033070a44ba816434058c8e0a79cbe19",
+      "syncedAt": "2026-08-30T07:01:57Z"
     },
     {
       "source": ".github/instructions/ci.instructions.md",
@@ -54,7 +55,9 @@
       "target": ".claude/rules/pages.md",
       "sourceSha256": "d7f4f1a0b6ef4ac34155e4ca4675fca657637cdbf5d399fbf58b8a326f9b6cfe",
       "targetSha256": "cf24f533492a8733417b63005764364c6f3b612b58ff464fd2ed8d5f77e3ed51",
-      "syncedAt": "2026-08-22T20:32:02Z"
+      "syncedAt": "2026-08-22T20:32:02Z",
+      "divergentByDesign": true,
+      "divergenceReason": "One cross-reference only: the source points at `.github/instructions/components.instructions.md`, the target at `.claude/rules/components.md`. That rewrite is this skill's own permitted edit - a Copilot path pointed at its Claude equivalent - so the sync reproduces it every run. Expected output, not drift."
     },
     {
       "source": ".github/instructions/workflows.instructions.md",
