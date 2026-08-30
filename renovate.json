@@ -46,7 +46,7 @@
   ],
   "extends": ["config:recommended"],
   "timezone": "Europe/London",
-  "schedule": ["every wednesday"],
+  "schedule": ["on wednesday"],
   "rebaseWhen": "never",
   "minimumReleaseAge": "3 days",
   "labels": ["dependencies"],
@@ -219,7 +219,7 @@
       "description": "Tier 3 — Tooling vulnerability alerts: weekly schedule, target main",
       "matchDepTypes": ["devDependencies", "dev"],
       "isVulnerabilityAlert": true,
-      "schedule": ["every wednesday"],
+      "schedule": ["on wednesday"],
       "prCreation": "not-pending",
       "labels": ["dependencies", "security"],
       "automerge": false
@@ -228,7 +228,7 @@
       "description": "Tier 3 — GitHub Actions and pre-commit vulnerability alerts: weekly schedule, target main",
       "matchManagers": ["github-actions", "pre-commit"],
       "isVulnerabilityAlert": true,
-      "schedule": ["every wednesday"],
+      "schedule": ["on wednesday"],
       "prCreation": "not-pending",
       "labels": ["dependencies", "security"],
       "automerge": false
