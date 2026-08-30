@@ -91,6 +91,29 @@ the baseline included — is held to the full standard below.
   marker in any migration whose `upgrade()` performs a destructive
   operation, to force expand-contract deliberateness.
 
+#### Enforcement: CI detection + required-reviewer environment gate
+
+- Any migration with `drop_column`, `drop_table`, or `drop_constraint` calls
+  in its `upgrade()` is detected by `backend/scripts/check_migrations.py`
+  (run in CI with `--report-destructive`) **regardless of whether the
+  `allow-destructive` marker is present**. The marker is a pre-commit nudge
+  to make the author deliberate; the CI detection is independent of it,
+  proving that a human decision happened separately.
+- When a destructive migration is added to a PR, the `heavy_db_destructive_migration_check`
+  CI job detects it and sets the PR to `waiting` on the
+  `db-destructive-migration-review` environment — a required-reviewer GitHub
+  Actions environment with `can_admins_bypass: false`. The environment's
+  sole reviewer is accountable for approving destructive database changes.
+- A Slack notification lands in `#teaching`, summarising the migration(s) and
+  the operations detected, and linking to "Review pending deployments" for the
+  environment approval. It is raised once per distinct set of destructive
+  migrations, not once per push — a later commit that leaves the same
+  migration(s) in place stays silent, while the approval gate still re-blocks.
+- **This approval is the only way a destructive migration proceeds.** The
+  `allow-destructive` marker does not gate the PR; it is only a static-checker
+  nod. Human approval is mandatory and not substitutable by code comments or
+  CI markers.
+
 ### Autogenerate-drift CI check
 
 - The `alembic_drift_check` CI job (`.github/workflows/ci.yml`, fast tier)
