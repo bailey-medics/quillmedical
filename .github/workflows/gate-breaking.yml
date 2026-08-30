@@ -324,10 +324,6 @@ jobs:
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run & Review Deployments>
     secrets: inherit
 
-  # ---------- Slack notification when the check itself failed ----------
-  # Follows api_schema_diff because it reports that job failing, and `needs`
-  # cannot cross workflows. No job-level concurrency: it fires on a broken run,
-  # and a broken run that gets superseded has nothing left to report.
   # ---------- Destructive DB migration check ----------
   db_destructive_migration_check:
     if: github.event.pull_request.draft == false
