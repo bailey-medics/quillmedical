@@ -57,6 +57,7 @@ clinical/NHS go-live.
 
 - [ ] Refactor `AddPatientToOrgPage.tsx` to use `Form<T>`, `FormStatus`, `SubmitButton` — still uses raw form and ButtonPair (lines 128, 145); `NewMessageModal` already migrated to Form pattern
 - [ ] Deduplicate push notification subscription logic into a shared `usePushSubscription` hook — duplicate base64 helper in `Settings.tsx` (line 25) and `EnableNotificationsButton.tsx` (line 4); consolidate permission request, SW readiness, subscribe call, and backend registration
+- [ ] Remove `from __future__ import annotations` across the backend once we upgrade to Python 3.14+ — the line is a legacy bridge (PEP 563, postponed evaluation of annotations) that never became the default as originally planned. Python 3.14 supersedes it with PEP 649/749 lazy annotations built into the language, making the import inert. On the current pin (3.13.7, `backend/pyproject.toml` line 13) it still does something small — forward references and a marginal startup saving — so leave it for now. It is also applied inconsistently: 13 of 48 files under `backend/app/` carry it, which looks like habit rather than a rule. On the 3.14 upgrade, delete all occurrences in one sweep and add a Ruff rule (`FA`/`UP010`) to stop it creeping back
 - [ ] Use `api` client in push notification code (currently raw `fetch()`, bypasses CSRF and auth cookies) — `Settings.tsx` already uses api client (line 71); `EnableNotificationsButton.tsx` still uses raw fetch (line 40)
 
 ## Testing
