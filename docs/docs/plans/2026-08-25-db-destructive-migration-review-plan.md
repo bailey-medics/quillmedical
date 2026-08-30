@@ -120,11 +120,11 @@ false`, and a comment carrying the same accountability rationale (a
       right approver for discarding clinical audit history, whereas a repo
       admin may have minimal clinical experience. The default (`true`) would
       let exactly the wrong role wave the change through.
-- [ ] Note in the PR description that `terraform apply` is a manual,
+- [x] Note in the PR description that `terraform apply` is a manual,
       separate step (as it was for `api-breaking-change-review`) — not run
       as part of this plan's implementation, and coordinate with the repo
       owner before applying.
-- [ ] **Apply this phase before Phase 4 merges** — see the sequencing hazard
+- [x] **Apply this phase before Phase 4 merges** — see the sequencing hazard
       recorded under Phase 4. Until the environment exists with its required
       reviewer, the gate job passes without approving anything.
 
@@ -1085,8 +1085,9 @@ marker — it does not, because `_marker_attached_to` skips blank lines when
 walking back from the call. Worth pinning, since the opposite would be a
 plausible-looking bug.
 
-**Terraform apply is a manual step**, as it was for Phase 3. The
-`DB migration immutability check` context is now required by
-`infra/github/branch_rules.tf`, but branch protection will not enforce it until
-someone applies. Until then the job runs and can fail the PR, but is not
-required.
+**Terraform applied.** `just terraform-github` was run after #450 merged, so
+`DB migration immutability check` is now in the enforced ruleset on `main`
+rather than only declared in `infra/github/branch_rules.tf`. Applying after the
+merge rather than before was deliberate: the context has to exist in `main`'s
+`ci.yml` first, or every open PR would be waiting on a check none of them could
+produce. Any branch cut before #450 still needs a rebase to pick the job up.
