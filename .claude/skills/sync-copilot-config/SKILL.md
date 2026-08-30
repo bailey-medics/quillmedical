@@ -73,6 +73,16 @@ Maintain `.claude/sync-manifest.json`. For each synced source file record: the s
 
 Never delete an orphaned or diverged target. Report it and let me decide.
 
+A manifest entry may carry `divergentByDesign: true` with a `divergenceReason`.
+That target will always differ from its source, because the difference is a
+platform feature with no counterpart on the other side (Copilot's `get_errors`
+tool, Claude's `$ARGUMENTS` and `ide_selection`, the different instruction files
+each platform reads). Report those separately as **by design**, not under
+Diverged, and never sync over them in either direction. The flag records intent,
+not state — recorded hashes still move when either side genuinely changes, so if
+a diverged file differs in a way the `divergenceReason` does not cover, that part
+is ordinary drift and should be raised as usual.
+
 ## Safety constraints
 
 - Do not touch anything under `.github/`. It is read-only for this command.

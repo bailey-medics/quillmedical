@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-08-30T06:05:05Z",
+  "lastRun": "2026-08-30T06:35:29Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -9,8 +9,9 @@
     "The .claude/commands/ directory has been retired in favour of .claude/skills/ (migrated 2026-08-26). Do not recreate .claude/commands/*.md for these sources.",
     "Do not re-create the pre-rename directory names on a future sync run; that would register duplicate skills.",
     "2026-08-30: reconciled the phantom drift from commit 2f18a2cb (2026-08-27, 'add name field to skill frontmatter'), which hand-edited every skill's frontmatter after its last sync. Those targets' BODIES are byte-identical to their sources, so their recorded hashes were refreshed to current state - no target content was written. Note the name: field is cosmetic here: a skill's invocable /name comes from its directory.",
-    "2026-08-30: five skill targets are AHEAD of their .github/ sources, not behind - crp, e, fix-vs-code-problems, follow-the-plan-document and read-project-instructions. Their entries were deliberately NOT refreshed, so they keep reporting as diverged. Do not apply over them: .github/ is the source of truth, so a sync would DISCARD the Claude-side improvements. Back-port each to .github/prompts/ first, then sync. crp is the highest-risk of the set (it governs commit/push behaviour).",
-    "2026-08-30: CLAUDE.md target drift is structural, not a problem - it is a merge target carrying a hand-written '## Claude-specific' section this skill never writes into. Its hash is refreshed to mean 'last state reconciled'. Verified this run: all 21 source headings are present in CLAUDE.md, nothing to merge."
+    "2026-08-30: CLAUDE.md target drift is structural, not a problem - it is a merge target carrying a hand-written '## Claude-specific' section this skill never writes into. Its hash is refreshed to mean 'last state reconciled'. Verified this run: all 21 source headings are present in CLAUDE.md, nothing to merge.",
+    "2026-08-30: five entries now carry divergentByDesign:true with a divergenceReason. Their targets will always differ from their sources, because each difference is a platform feature with no counterpart on the other side - not drift, and not work outstanding. Report them as expected rather than actionable, and NEVER sync over them in either direction. The flag records intent, not state: the recorded hashes still move when either side genuinely changes, so a real edit is still detectable. Anything these entries do NOT name as platform-specific is ordinary drift and should be reconciled as usual.",
+    "2026-08-30: the substantive half of that divergence was back-ported to .github/ on branch feature/backport-skill-improvements - crp's three-way pre-commit failure rule, and 'ask rather than guess' in explain-to-me and follow-the-plan-document. Only the platform-specific remainder is left."
   ],
   "files": [
     {
@@ -68,7 +69,9 @@
       "sourceSha256": "d98f4cecb4d6cb848063127f0c80c973c5b31a22d314c48b5b537e47e5823c6b",
       "targetSha256": "235286ebf7a73fefde660c15b63b90ce03e353cddb36764572083538e54fc6a2",
       "syncedAt": "2026-08-26T15:35:13Z",
-      "targetRenamed": true
+      "targetRenamed": true,
+      "divergentByDesign": true,
+      "divergenceReason": "Argument passing: the Claude copy uses `$ARGUMENTS`, which has no Copilot equivalent, and says '(Claude)' where the Copilot copy says 'you'. Markdown table whitespace also differs because Prettier formats the Claude side. The substantive instructions are identical - do not sync either way."
     },
     {
       "source": ".github/prompts/explain-to-me.prompt.md",
@@ -76,7 +79,9 @@
       "sourceSha256": "6633ee69fc753dbe060ebeabb33450cec6c72e6f0897fd1b804878dc0073f75f",
       "targetSha256": "cfe442cd94430ae067f38ef9774a03127d847c9ff900e09b719b0a362385e407",
       "syncedAt": "2026-08-22T20:32:02Z",
-      "targetRenamed": true
+      "targetRenamed": true,
+      "divergentByDesign": true,
+      "divergenceReason": "The Claude copy names `ide_selection` tags, which is how a selection reaches Claude Code and has no Copilot equivalent. Everything else is identical."
     },
     {
       "source": ".github/prompts/fast-api-docs.prompt.md",
@@ -90,14 +95,18 @@
       "target": ".claude/skills/fix-vs-code-problems/SKILL.md",
       "sourceSha256": "dd7ec939ae5293d03e018743d82f66895c7d5e8fc05b3d4612af02d642533344",
       "targetSha256": "a0a9137bd4790489e5e391cf56cc646640ba015793d170b36ba3599aa40d9e9a",
-      "syncedAt": "2026-08-22T20:32:02Z"
+      "syncedAt": "2026-08-22T20:32:02Z",
+      "divergentByDesign": true,
+      "divergenceReason": "Copilot has a `get_errors` tool; Claude does not, so the Claude copy falls back to the project's own linters. Syncing either direction would replace a working tool call with a workaround, or vice versa."
     },
     {
       "source": ".github/prompts/follow-the-plan-document.prompt.md",
       "target": ".claude/skills/follow-the-plan-document/SKILL.md",
       "sourceSha256": "317b50268896fafea4e419dd081b0cbca8130a2962c495c44a5134e113788ed7",
       "targetSha256": "c02a3417ce64d92c37498cf5b1949bfc78900bab57dc7aad55e3214e10e81575",
-      "syncedAt": "2026-08-22T20:32:02Z"
+      "syncedAt": "2026-08-22T20:32:02Z",
+      "divergentByDesign": true,
+      "divergenceReason": "How the plan document arrives: Copilot attaches it to the prompt, Claude takes a path via `$ARGUMENTS`. Both say to ask rather than guess when it is absent."
     },
     {
       "source": ".github/prompts/in-code-documentation.prompt.md",
@@ -119,7 +128,9 @@
       "sourceSha256": "9749fe70a0f63bc1af200cb77513bd5d5352a2919d3549516df5d23f07f8218e",
       "targetSha256": "2e891c9358e87083285ed9ee39a9354fdc2e0e030e360b68e6e9fbe6d43d7589",
       "syncedAt": "2026-08-22T20:32:02Z",
-      "targetRenamed": true
+      "targetRenamed": true,
+      "divergentByDesign": true,
+      "divergenceReason": "Reads different files by design: copilot-instructions.md and instructions/ on the Copilot side, CLAUDE.md and .claude/rules/ on the Claude side. The Claude copy also notes that those load automatically at session start."
     },
     {
       "source": ".github/prompts/run-all-tests.prompt.md",
