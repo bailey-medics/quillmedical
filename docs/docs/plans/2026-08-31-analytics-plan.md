@@ -61,6 +61,27 @@ that recur are collected in the glossary at the foot of this document.
   through. A small ping on route change is unavoidable. It sends a **page name
   from a fixed allow-list**, never a URL.
 
+## Where the answers get looked at
+
+Collecting the data is half the job; the other half is where somebody sees it.
+These split by purpose, and the split is a rule rather than a preference.
+
+- **Incident views live outside the app.** If Quill is down, an in-app
+  dashboard is down with it. Anything consulted *while something is broken* —
+  error rates, uptime, the 5xx dashboard — belongs in Cloud Monitoring, which
+  is already in the project, costs nothing, and needs no build. This is not a
+  compromise pending a nicer version later; it is the correct home for it
+  permanently.
+
+- **Usage views live in the app.** Page views and public-site visits are not
+  incident-critical: if the app is down, nobody needs yesterday's counts. So
+  they can go where they are pleasant to look at and easy to show someone,
+  behind the existing permission guards.
+
+- **The alarm that says "wake up" lives outside Google Cloud entirely.** An
+  alarm hosted inside the system it watches shares that system's failure modes.
+  The tiers below therefore end with an independent external monitor.
+
 ## What the constraints rule out
 
 - **No third-party analytics processor, on any surface.** Including the public
@@ -227,6 +248,38 @@ Client side, new work:
 - [ ] Storybook story and test for any fallback UI change, per the component
       rules
 
+### Escalation
+
+A single dramatic channel is worse than tiers: either it fires for things that
+would have resolved themselves and gets ignored, or it is set late enough to be
+useless. Thirty minutes is a reasonable threshold for a phone call and far too
+long for a first signal in a clinical product, so the severity climbs with the
+duration. Google Cloud supports `email`, `slack` and `sms` notification
+channels natively; it has no voice channel at all, which is why the last rung
+sits elsewhere.
+
+- [ ] Tier one, roughly 5–10 minutes — Slack and email, through the channels
+      already configured. Cheap, ignorable, and often self-resolving
+- [ ] Tier two, roughly 15 minutes — an `sms` notification channel plus Google
+      Cloud mobile app push. Note that Google's own documentation warns SMS
+      "isn't a fully reliable notification channel type" and may be
+      unavailable in some regions, so it must never be the only rung
+- [ ] Tier three, roughly 30 minutes — a phone call, from a monitor outside
+      Google Cloud. Better Stack's free tier gives 10 monitors, 3-minute
+      checks and one phone-call alert, and being external is the point rather
+      than a bonus
+- [ ] Verify whether PagerDuty's free tier actually includes voice before
+      considering it — sources conflict, and its escalation policy is otherwise
+      a good fit
+- [ ] Raise the uptime check frequency, or accept it: the current 300-second
+      period means up to five minutes of detection lag before tier one even
+      starts counting
+- [ ] Test the whole escalation end to end, including the phone call, and
+      re-test it quarterly — an untested pager is not a pager
+- [ ] Fold the result into the incident response plan and runbook items already
+      open in `todo.md`, and replace the `webhook_token_auth` Slack channel
+      with the native integration while in there
+
 ## Phase 2: how many people visit the public site
 
 No application code. This is infrastructure and a dashboard.
@@ -266,6 +319,37 @@ The only phase needing new client code, and the one carrying the real risk.
 - [ ] Extend the Looker Studio dashboard with page views per page over time
 - [ ] Tests: allow-list rejection, clinical-route guard, opt-out honoured
 
+## Phase 4: the in-app usage page
+
+Optional, and last, because Phases 1 to 3 answer all three questions without
+it — Looker Studio will already be showing the numbers. This phase is about
+where they are pleasant to read, and about having something to show a customer
+or an investor without handing over a Google Cloud login.
+
+Only usage goes here. Error and uptime views stay in Cloud Monitoring for the
+reason given above.
+
+- [ ] Add `@mantine/charts` (v9 requires `recharts` 3+ as a peer). It maps the
+      existing theme tokens onto charts, so there is no separate visual
+      language to maintain, and its charts are keyboard-navigable by default
+- [ ] Add a nightly rollup job using the existing `infra/modules/cloud-run-job`
+      module, aggregating BigQuery into a small daily-totals table in the core
+      database
+- [ ] Serve the page from that table, not from BigQuery. Keeping the warehouse
+      out of the request path means no query-cost exposure, no BigQuery
+      credentials in the serving path, and a page that still renders when
+      BigQuery is unhappy
+- [ ] Return pre-aggregated counts from the API, never event rows — the
+      endpoint should be incapable of emitting a single user's activity
+- [ ] Add a `view_platform_analytics` competency to `shared/competencies.yaml`,
+      mirroring the existing `view_teaching_analytics` entry, and gate the
+      endpoint with `Depends(has_competency("view_platform_analytics"))`
+- [ ] Gate the route with `RequirePermission level="admin"` plus the new
+      competency, so an admin without it sees nothing
+- [ ] Build the chart components in `frontend/src/components/`, each with
+      `.stories.tsx` and `.test.tsx`, per the component reuse rules — the page
+      consumes them and contains no reusable UI itself
+
 ## Prerequisites
 
 Blocking, before any of this ships:
@@ -291,6 +375,26 @@ Blocking, before any of this ships:
   it earns its keep when there is a budget to reallocate, and there is not one
   yet. Nothing is foreclosed by waiting, since load-balancer logs retain
   referrer and user-agent regardless of whether a dashboard reads them.
+
+- **Incident views outside the app, usage views inside it** — the thing you
+  consult while something is broken cannot live inside the thing that broke.
+  That rules out an in-app error dashboard permanently, not just for now, and
+  it is why the phone-call rung of the escalation sits outside Google Cloud
+  too.
+
+- **Escalate by tiers rather than one dramatic alert** — a channel that fires
+  for self-resolving blips gets muted, and a channel set late enough to avoid
+  that is too late to be useful. Severity climbs with duration instead: Slack,
+  then SMS and push, then a call.
+
+- **Charts from `@mantine/charts`, not a dashboard framework** — it is the
+  design system already in use, so charts inherit the theme rather than
+  introducing a second visual language, and they are keyboard-navigable
+  without extra work.
+
+- **Keep the warehouse out of the request path** — a nightly rollup into the
+  core database means the in-app page cannot become slow, expensive, or
+  dependent on BigQuery credentials at serving time.
 
 - **Accept that counting is not retroactive** — the one real cost of this
   minimalism. A question asked in six months about a change made today can only
