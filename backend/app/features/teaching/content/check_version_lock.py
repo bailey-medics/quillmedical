@@ -23,12 +23,10 @@ import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 import yaml
 
-#: Lifecycle states a module may declare in ``module.yaml``.
-ModuleStatus = Literal["draft", "live", "retired"]
+from app.features.teaching.content.module_schema import ModuleStatus
 
 #: Status progression — only forward transitions are allowed.
 STATUS_ORDER: dict[ModuleStatus, int] = {

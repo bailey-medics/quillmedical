@@ -264,7 +264,12 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       - [x] `check_version_lock.py` — ported with `ModuleStatus` as a `Literal`, YAML
             narrowed through `dict[str, object]` rather than `Any`, and a boolean guard on
             `version` so a YAML `version: yes` no longer reads as `1`.
-      - [ ] `validate.py` and `module_schema.py`.
+      - [x] `validate.py` and `module_schema.py` — `ModuleYaml.status` is now a `Literal`
+            shared with `check_version_lock`, `moduleId` uses a `pattern` constraint, and
+            `renewalMonths`/`order` reject YAML booleans. Verified equivalent: run over the
+            fixture tree, old and new flag **the same 7 errors on the same 7 paths**; only
+            the invalid-status message wording differs, which is the `Literal` conversion
+            doing its job.
 - [ ] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
       `fixtures/`) as `backend/tests/test_teaching_content*.py`.
       - [x] The 616 version-lock lines, as `test_teaching_content_version_lock.py` and
@@ -272,15 +277,22 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             out to git, which the backend image lacked — `git` is now installed in the
             **dev** stage only (CI already has it on the runner), with a `skipif` guard so
             a missing binary skips rather than errors.
-      - [ ] `test_validate.py` and the `fixtures/` tree.
+      - [x] `test_validate.py` as `test_teaching_content_validate.py`, and the 34-file
+            `fixtures/` tree under `backend/tests/fixtures/teaching_content/`. Ruff (which
+            teaching-tooling never ran) flagged `B017` blind `Exception` asserts; these now
+            assert `ValidationError` and `CalledProcessError` instead.
 - [ ] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
       so no Node project, lockfile or Corepack step is needed. The content CI job installs
       two pinned dependencies inline (`pip install "pydantic>=2" "pyyaml>=6"`) rather than
       carrying a requirements file.
-- [ ] Add `cli.py` so CI can run
-      `python -m app.features.teaching.content.cli <modules_dir>` from `backend/`.
-- [ ] Convert the ported code to Quill's typed style — `Literal` types, bounded `Field`
-      constraints, no `Any` — matching what `certificate.py` now does.
+- [x] Add `cli.py` so CI can run
+      `python -m app.features.teaching.content.cli <modules_dir>` from `backend/`. Runs
+      validation and version lock in one invocation. Carries `--skip-version-lock` for
+      content with no git history — the GCS-download case the Phase 7 sweep needs — and
+      `--ref` to override the comparison branch.
+- [x] Convert the ported code to Quill's typed style — `Literal` types, bounded `Field`
+      constraints, no `Any` — matching what `certificate.py` now does. `Any` is gone from
+      every ported module; YAML input is narrowed through `dict[str, object]`.
 - [x] Add a unit test asserting the import boundary holds — done as
       `backend/tests/test_features_import_boundary.py`, covering `app.features` and
       `app.features.teaching`. It runs the import in a subprocess with `JWT_SECRET` and
@@ -418,6 +430,25 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       turn a rejected bank into a red build.
 - [ ] Confirm the certificate block is validated at pull-request time, before anything
       reaches GCS.
+- [ ] Check that image files are actually images, by magic bytes. The validator only ever
+      matches filenames and extensions — it never opens an image — so anything with the
+      right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
+      pointer** is not: both content repos' `.gitattributes` declare
+      `*.png filter=lfs`, and `actions/checkout` does not fetch LFS unless told to
+      (`lfs: true` appears nowhere in `pipeline.yml`). A pointer is a ~132-byte text file
+      carrying the right name and extension, so it would pass validation and be synced to
+      GCS in place of the image. Candidates would then see a broken image in an assessment,
+      where for a visual-diagnosis bank the image *is* the question. Note this is a **size
+      check's blind spot** — a pointer is 132 bytes, not 0 — so test the PNG/JPEG magic
+      bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
+      transitively via `reportlab`, and must not become a dependency of the `content`
+      package, which stays pydantic + pyyaml only.
+- [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
+      both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
+      plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
+      but only by accident: the first person to install git-lfs and commit an image creates
+      a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
+      drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
 - [ ] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
