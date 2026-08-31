@@ -5,6 +5,10 @@
 # is which prefixes each module's sections are sent to and which sections
 # are skipped when absent — not that gsutil itself works.
 
+# `run !` needs this declared, or bats runs in a compatibility mode where
+# flags on `run` are not honoured and the negation silently passes.
+bats_require_minimum_version 1.5.0
+
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/sync-to-gcs.sh"
   MODULES="${BATS_TEST_TMPDIR}/modules"
