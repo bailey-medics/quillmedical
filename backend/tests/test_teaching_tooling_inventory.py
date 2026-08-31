@@ -1,15 +1,12 @@
 """Validating content whose images are not on disk.
 
-Second unit of collapsing the two validators. When a bank is sourced from
-GCS, ``download_bank_from_gcs`` fetches **only YAML** — images stay in the
-bucket, because downloading them just to check a filename would mean paying
-for the bytes twice. A plain directory listing therefore reports every
-declared image as missing.
+``download_bank_from_gcs`` fetches only YAML — images stay in the bucket,
+so a directory listing reports every declared image as missing. The
+inventory supplies the filenames instead: item directory name to the files
+present, with ``"."`` for the assessment root.
 
-The inventory closes that: a mapping of item directory name to the
-filenames present, with ``"."`` for the assessment root. These tests build
-banks with the images genuinely absent from disk, which is the situation
-sync is actually in.
+These tests build banks with the images genuinely absent from disk, which
+is the situation sync is in.
 """
 
 from __future__ import annotations

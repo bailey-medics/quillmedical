@@ -1,7 +1,6 @@
 """Schema for a teaching module's ``module.yaml``, plus shared constants.
 
-Ported from ``teaching-tooling/scripts/validate.py``.  The Pydantic model
-lives here rather than beside the validators so that
+The Pydantic model lives here rather than beside the validators so that
 :mod:`check_version_lock` can share ``ModuleStatus`` without importing the
 whole validation module.
 

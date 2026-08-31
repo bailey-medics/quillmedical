@@ -1,13 +1,7 @@
 """Per-item and cross-item validation.
 
-Third unit of collapsing the two validators. These checks previously lived
-only in the sync-side validator, so the merge gate never saw them: a bank
-could reach GCS with a missing ``question_type``, a ``correct_option_id``
-naming no option, or an image count that did not match the assessment.
-
-Ported into the tooling validator here, which means they now run at both
-gates. The variable per-item check subsumes the old assessment-level image
-pass, so that pass was removed rather than left to double-report.
+The variable per-item check subsumes the assessment-level image pass, so
+only one of them runs — otherwise a missing file is reported twice.
 """
 
 from __future__ import annotations

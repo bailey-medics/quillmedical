@@ -1,10 +1,7 @@
 """The validation result type shared by both gates.
 
-First unit of collapsing the two validators into one. The sync and CI
-validators each had their own result class: sync's carried warnings,
-``item_count``, a ``bank_id``/``version`` header and a ``to_dict()`` the
-API and ``QuestionBankSync`` rows depend on; CI's had errors only. This is
-the merged shape, and these tests pin the behaviour each side relied on.
+``to_dict()`` feeds the sync API and ``QuestionBankSync`` rows; the two
+summary styles serve the bank-level and directory-level callers.
 """
 
 from __future__ import annotations

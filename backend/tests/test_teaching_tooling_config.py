@@ -1,12 +1,7 @@
 """Assessment config and email template validation.
 
-Fourth unit of collapsing the two validators. These checks previously ran
-only at sync, so the merge gate never saw a bank missing its ``assessment:``
-block, a uniform bank without ``options``, or an email template with no
-subject on a bank configured to send email.
-
-The email checks are conditional by design: a bank is only required to
-carry a template for the emails it actually sends.
+The email checks are conditional by design: a bank need only carry a
+template for the emails it actually sends.
 """
 
 from __future__ import annotations

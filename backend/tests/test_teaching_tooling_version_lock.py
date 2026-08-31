@@ -1,9 +1,4 @@
-"""Version lock enforcement for live teaching modules.
-
-Ported from ``teaching-tooling/tests/test_check_version_lock.py`` as part
-of the teaching-tooling consolidation.  Behaviour is unchanged; only the
-import path moves.
-"""
+"""Version lock enforcement for live teaching modules."""
 
 from pathlib import Path
 from types import SimpleNamespace

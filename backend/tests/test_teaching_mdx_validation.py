@@ -1,14 +1,11 @@
 """MDX validation, checked against what the parser can actually render.
 
-Replaces ``teaching-tooling/scripts/validate_mdx.js``. That validator
-compiled with ``@mdx-js/mdx`` and asked "is this valid MDX?" — a question
-nothing in Quill needs answered, since the frontend has no MDX compiler and
-receives slides already parsed by ``mdx_parser``.
+Validation checks what ``mdx_parser`` can render, not whether the file is
+valid MDX — nothing in Quill compiles MDX, and anything the extractors miss
+vanishes from the slide with no error.
 
-The question that matters is "will the parser find this?", because anything
-its extractors miss vanishes from the slide with no error. Each test in
-``TestSilentlyDroppedContent`` pairs a validation failure with proof that
-the parser really would have dropped it.
+``TestSilentlyDroppedContent`` pairs each validation failure with proof
+that the parser really would have dropped it.
 """
 
 from __future__ import annotations

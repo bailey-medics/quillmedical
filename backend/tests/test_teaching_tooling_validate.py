@@ -1,8 +1,6 @@
 """Module metadata and assessment validation.
 
-Ported from ``teaching-tooling/tests/test_validate.py`` as part of the
-teaching-tooling consolidation.  Behaviour is unchanged; the import path
-moves and the fixtures live under ``tests/fixtures/teaching_tooling/``.
+Fixtures live under ``tests/fixtures/teaching_tooling/``.
 """
 
 from pathlib import Path

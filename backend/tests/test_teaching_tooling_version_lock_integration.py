@@ -1,8 +1,4 @@
-"""Version lock checks against real git repositories.
-
-Ported from ``teaching-tooling/tests/test_check_version_lock_integration.py``
-as part of the teaching-tooling consolidation.
-"""
+"""Version lock checks against real git repositories."""
 
 import shutil
 import subprocess

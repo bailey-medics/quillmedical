@@ -1,7 +1,7 @@
 # Teaching content validation fixtures
 
 Golden module directories used by `test_teaching_tooling_validate.py` and
-`test_teaching_tooling_cli.py`. Ported from `teaching-tooling/tests/fixtures/`.
+`test_teaching_tooling_cli.py`.
 
 ## Why the image files are empty
 
