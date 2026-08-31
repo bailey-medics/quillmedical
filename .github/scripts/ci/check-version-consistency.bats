@@ -130,6 +130,22 @@ run_check() {
   [[ "$output" == *"renovate.json pins '2.3.3'"* ]]
 }
 
+@test "finds the pin whatever order the constraints are listed in" {
+  # A line-window grep missed it as soon as another constraint came first,
+  # and called a correct config a missing one.
+  cat > "${REPO}/renovate.json" <<'EOF'
+{
+  "constraints": {
+    "python": "3.13.7",
+    "npm": "10",
+    "poetry": "2.4.2"
+  }
+}
+EOF
+  run run_check
+  [ "$status" -eq 0 ]
+}
+
 @test "fails when renovate.json pins no Poetry at all" {
   echo '{ "extends": ["config:recommended"] }' > "${REPO}/renovate.json"
   run run_check

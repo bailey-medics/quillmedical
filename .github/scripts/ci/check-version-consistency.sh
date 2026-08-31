@@ -101,9 +101,17 @@ check_poetry() {
   # is pinned by value in renovate.json and checked here instead. Without this
   # the bot relocks with whatever Poetry it happens to carry — it used 2.3.3
   # against a 2.4.2 pin — which is the drift the pin exists to prevent.
+  # Parsed as JSON rather than grepped: a line-window grep missed the pin as
+  # soon as another constraint was listed before it, and reported the pin as
+  # absent when it was there. Guarded, so a missing jq is not mistaken for a
+  # missing constraint.
+  if ! command -v jq >/dev/null 2>&1; then
+    error "jq is required to read renovate.json"
+    return 1
+  fi
+
   local renovate_pin
-  renovate_pin="$(grep -A2 '"constraints"' renovate.json 2>/dev/null \
-    | grep -oE '"poetry": *"[^"]+"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+  renovate_pin="$(jq -r '.constraints.poetry // empty' renovate.json 2>/dev/null || true)"
   if [ -z "$renovate_pin" ]; then
     error "No constraints.poetry in renovate.json; the bot would relock with its own Poetry"
     fail=1
