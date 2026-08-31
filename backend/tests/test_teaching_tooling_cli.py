@@ -52,7 +52,19 @@ def _write_module(
         )
     )
     (assessment / "assessment.yaml").write_text(
-        yaml.dump({"version": version, "title": "Test", "type": "variable"})
+        yaml.dump(
+            {
+                "version": version,
+                "title": "Test",
+                "description": "A bank",
+                "type": "variable",
+                "assessment": {
+                    "items_per_attempt": 1,
+                    "time_limit_minutes": 10,
+                    "min_pool_size": 1,
+                },
+            }
+        )
     )
     (assessment / "question_001" / "question.yaml").write_text(
         yaml.dump(_VALID_VARIABLE_QUESTION)

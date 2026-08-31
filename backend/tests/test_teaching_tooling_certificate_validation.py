@@ -174,6 +174,12 @@ class TestMergeGate:
                 {
                     "version": 1,
                     "title": "My bank",
+                    "description": "A bank",
+                    "assessment": {
+                        "items_per_attempt": 1,
+                        "time_limit_minutes": 10,
+                        "min_pool_size": 1,
+                    },
                     "type": "variable",
                     "results": {"certificate_download": True},
                     "certificate": cert,
@@ -230,6 +236,12 @@ class TestMergeGate:
                 {
                     "version": 1,
                     "title": "My bank",
+                    "description": "A bank",
+                    "assessment": {
+                        "items_per_attempt": 1,
+                        "time_limit_minutes": 10,
+                        "min_pool_size": 1,
+                    },
                     "type": "variable",
                     "certificate": {"title": {"font": "NotAFont"}},
                 }

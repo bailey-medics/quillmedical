@@ -32,7 +32,16 @@ def _assessment(
     """Build an assessment directory from literal config and questions."""
     assessment = tmp_path / "bank" / "assessment"
     assessment.mkdir(parents=True)
-    base: dict[str, object] = {"version": 1, "title": "B"}
+    base: dict[str, object] = {
+        "version": 1,
+        "title": "B",
+        "description": "A bank",
+        "assessment": {
+            "items_per_attempt": len(questions) or 1,
+            "time_limit_minutes": 10,
+            "min_pool_size": len(questions) or 1,
+        },
+    }
     base.update(config)
     (assessment / "assessment.yaml").write_text(yaml.dump(base))
 
@@ -57,8 +66,9 @@ def _warnings(assessment: Path) -> list[str]:
     return [w.message for w in result.warnings]
 
 
-UNIFORM = {
+UNIFORM: dict[str, object] = {
     "type": "uniform",
+    "options": ["Option A", "Option B"],
     "images_per_item": 1,
     "images": [{"key": "wli.png"}],
     "correct_answer_field": "diagnosis",

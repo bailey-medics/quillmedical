@@ -1,11 +1,11 @@
 version: 1
-title: "Valid Test Assessment"
-description: "A test assessment"
+title: Valid Test Assessment
+description: A test assessment
 type: uniform
 options:
-  - "Option A"
-  - "Option B"
-  - "Option C"
+- Option A
+- Option B
+- Option C
 images_per_item: 0
 assessment:
   items_per_attempt: 1

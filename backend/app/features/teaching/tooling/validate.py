@@ -31,9 +31,11 @@ from app.features.teaching.tooling.certificate_schema import (
 from app.features.teaching.tooling.module_schema import (
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_QUESTION_TYPES,
+    EMAIL_REQUIRED_FIELDS,
     IMAGE_FILENAME_PATTERN,
     QUESTION_DIR_RE,
-    REQUIRED_ASSESSMENT_FIELDS,
+    REQUIRED_ASSESSMENT_SECTION_FIELDS,
+    REQUIRED_CONFIG_FIELDS,
     VALID_ASSESSMENT_TYPES,
     ModuleYaml,
 )
@@ -244,6 +246,87 @@ def _readable(loc: str, err: ErrorDetails) -> str:
     if err["type"] == "string_pattern_mismatch" and loc.endswith("colour"):
         return "must be a hex colour (e.g. #404040)"
     return str(err["msg"])
+
+
+# ------------------------------------------------------------------
+# Assessment config and email sections
+# ------------------------------------------------------------------
+
+
+def _validate_config(
+    config: Mapping[str, object],
+    rel_config: str,
+    result: ValidationResult,
+) -> None:
+    """Validate the top-level shape of an assessment config."""
+    for field_name in sorted(REQUIRED_CONFIG_FIELDS):
+        if field_name not in config:
+            result.add_error(
+                rel_config, f"missing required field '{field_name}'"
+            )
+
+    bank_type = config.get("type")
+    if bank_type and bank_type not in VALID_ASSESSMENT_TYPES:
+        result.add_error(
+            rel_config,
+            f"invalid type '{bank_type}' — must be one of "
+            f"{sorted(VALID_ASSESSMENT_TYPES)}",
+        )
+
+    assessment = config.get("assessment")
+    if isinstance(assessment, dict):
+        for field_name in sorted(REQUIRED_ASSESSMENT_SECTION_FIELDS):
+            if field_name not in assessment:
+                result.add_error(
+                    rel_config, f"assessment section missing '{field_name}'"
+                )
+    else:
+        result.add_error(rel_config, "assessment must be a mapping")
+
+    if bank_type == "uniform":
+        for field_name in ("options", "images_per_item"):
+            if field_name not in config:
+                result.add_error(
+                    rel_config, f"uniform type requires '{field_name}'"
+                )
+
+
+def _validate_email_section(
+    config: Mapping[str, object],
+    section_name: str,
+    rel_config: str,
+    result: ValidationResult,
+) -> None:
+    """Validate one email template section."""
+    data = config.get(section_name)
+    if not isinstance(data, dict):
+        result.add_error(rel_config, f"'{section_name}' section is missing")
+        return
+
+    for field_name in sorted(EMAIL_REQUIRED_FIELDS):
+        if not data.get(field_name):
+            result.add_error(
+                rel_config,
+                f"{section_name} missing required field '{field_name}'",
+            )
+
+
+def _validate_email_sections(
+    config: Mapping[str, object],
+    rel_config: str,
+    result: ValidationResult,
+) -> None:
+    """Validate email templates, but only for the emails a bank sends."""
+    results = config.get("results")
+    if not isinstance(results, dict):
+        return
+
+    if results.get("email_coordinator_on_pass"):
+        _validate_email_section(
+            config, "coordinator_email", rel_config, result
+        )
+    if results.get("email_student_on_pass"):
+        _validate_email_section(config, "student_email", rel_config, result)
 
 
 # ------------------------------------------------------------------
@@ -613,19 +696,10 @@ def _validate_assessment_dir(
         result.add_error(rel_config, "must be a YAML mapping")
         return
 
-    for field_name in REQUIRED_ASSESSMENT_FIELDS:
-        if field_name not in config:
-            result.add_error(
-                rel_config, f"missing required field '{field_name}'"
-            )
+    _validate_config(config, rel_config, result)
+    _validate_email_sections(config, rel_config, result)
 
     bank_type = config.get("type")
-    if bank_type and bank_type not in VALID_ASSESSMENT_TYPES:
-        result.add_error(
-            rel_config,
-            f"invalid type '{bank_type}' — must be one of "
-            f"{VALID_ASSESSMENT_TYPES}",
-        )
 
     question_dirs = sorted(
         d

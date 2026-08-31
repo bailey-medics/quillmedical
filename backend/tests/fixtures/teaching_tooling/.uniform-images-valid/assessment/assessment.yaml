@@ -1,9 +1,17 @@
 version: 1
-title: "Uniform with images"
+title: Uniform with images
 type: uniform
 images_per_item: 2
 images:
-  - key: "wli.png"
-    label: "White light"
-  - key: "nbi.png"
-    label: "Narrow band imaging"
+- key: wli.png
+  label: White light
+- key: nbi.png
+  label: Narrow band imaging
+description: Fixture assessment for validator tests
+assessment:
+  items_per_attempt: 2
+  time_limit_minutes: 10
+  min_pool_size: 2
+options:
+- Option A
+- Option B

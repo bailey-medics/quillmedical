@@ -53,7 +53,14 @@ def _bank(
             {
                 "version": 1,
                 "title": "My bank",
+                "description": "A bank",
                 "type": "uniform",
+                "options": ["A", "B"],
+                "assessment": {
+                    "items_per_attempt": 1,
+                    "time_limit_minutes": 10,
+                    "min_pool_size": 1,
+                },
                 "images_per_item": len(declared),
                 "images": [{"key": k} for k in declared],
             }
@@ -143,7 +150,19 @@ class TestVariableBanksUseTheInventoryToo:
         question = assessment / "question_001"
         question.mkdir(parents=True)
         (assessment / "assessment.yaml").write_text(
-            yaml.dump({"version": 1, "title": "B", "type": "variable"})
+            yaml.dump(
+                {
+                    "version": 1,
+                    "title": "B",
+                    "description": "A bank",
+                    "type": "variable",
+                    "assessment": {
+                        "items_per_attempt": 1,
+                        "time_limit_minutes": 10,
+                        "min_pool_size": 1,
+                    },
+                }
+            )
         )
         (question / "question.yaml").write_text(
             yaml.dump(

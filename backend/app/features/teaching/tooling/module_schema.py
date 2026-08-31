@@ -34,8 +34,19 @@ QUESTION_DIR_RE = re.compile(r"^question_(\d+)$")
 #: Image extensions recognised when looking for undeclared files.
 ALLOWED_IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".webp"})
 
-#: Fields every assessment config must carry.
-REQUIRED_ASSESSMENT_FIELDS = frozenset({"version", "title", "type"})
+#: Top-level fields every assessment config must carry.
+#: Named for the file, not the ``assessment:`` block inside it — the two
+#: were both called REQUIRED_ASSESSMENT_FIELDS before the merge, meaning
+#: different things in each validator.
+REQUIRED_CONFIG_FIELDS = frozenset({"version", "title", "description", "type"})
+
+#: Fields the nested ``assessment:`` block must carry.
+REQUIRED_ASSESSMENT_SECTION_FIELDS = frozenset(
+    {"items_per_attempt", "time_limit_minutes", "min_pool_size"}
+)
+
+#: Fields an email template section must carry when emails are enabled.
+EMAIL_REQUIRED_FIELDS = frozenset({"subject", "body"})
 
 #: Accepted values for an assessment's ``type``.
 VALID_ASSESSMENT_TYPES = frozenset({"uniform", "variable"})

@@ -422,8 +422,19 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             are corrected to match real content. Several test helpers written in earlier
             units had the same problem and were fixed the same way — the validator was
             right, the scaffolding was wrong.
-      - [ ] **Port the config and email checks** — `_validate_config` (48 lines) and
-            `_validate_email_section`/`_validate_email_sections` (45).
+      - [x] **Port the config and email checks** — `_validate_config` (48 lines) and
+            `_validate_email_section`/`_validate_email_sections` (45). Resolved a name
+            collision on the way: both validators had a `REQUIRED_ASSESSMENT_FIELDS`
+            meaning different things — the tooling one was the *top-level* required fields,
+            the sync one the fields inside the nested `assessment:` block. They are now
+            `REQUIRED_CONFIG_FIELDS` and `REQUIRED_ASSESSMENT_SECTION_FIELDS`. The email
+            checks stay conditional: a bank must carry a template only for the emails it is
+            configured to send.
+            **Six of the seven fixtures were missing `description` and the whole
+            `assessment:` block**, and three uniform ones lacked `options` — the same story
+            as the last unit, and again fixed rather than worked around. Both real content
+            repos already carry everything the ported checks require, verified before
+            porting.
       - [ ] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`
             sites call one validator. `validate_question_bank` becomes a thin adapter or
             goes entirely, with `test_teaching_validate.py` repointed rather than rewritten
