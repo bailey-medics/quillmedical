@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.features.teaching.content.validate import (
+from app.features.teaching.tooling.validate import (
     CERTIFICATE_BACKGROUND,
     certificate_enabled,
     validate_certificate_config,

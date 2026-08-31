@@ -11,7 +11,7 @@ Rules by module status on main:
 
 Usage::
 
-    python -m app.features.teaching.content.check_version_lock <modules-dir>
+    python -m app.features.teaching.tooling.check_version_lock <modules-dir>
 
 Exit codes: 0 when every module passes, 1 when any violation is found.
 """
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import yaml
 
-from app.features.teaching.content.module_schema import ModuleStatus
+from app.features.teaching.tooling.module_schema import ModuleStatus
 
 #: Status progression — only forward transitions are allowed.
 STATUS_ORDER: dict[ModuleStatus, int] = {
@@ -397,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args:
         print(
-            "Usage: python -m app.features.teaching.content."
+            "Usage: python -m app.features.teaching.tooling."
             "check_version_lock <modules-directory>"
         )
         return 1

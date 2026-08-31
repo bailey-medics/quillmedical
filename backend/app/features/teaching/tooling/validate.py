@@ -9,7 +9,7 @@ Validates the structure of an organisation teaching repo:
 
 Usage::
 
-    python -m app.features.teaching.content.validate /path/to/modules/
+    python -m app.features.teaching.tooling.validate /path/to/modules/
 
 Exit codes: 0 when every module is valid, 1 when any error is found.
 """
@@ -25,10 +25,10 @@ import pydantic
 import yaml
 from pydantic_core import ErrorDetails
 
-from app.features.teaching.content.certificate_schema import (
+from app.features.teaching.tooling.certificate_schema import (
     CertificateStyle,
 )
-from app.features.teaching.content.module_schema import (
+from app.features.teaching.tooling.module_schema import (
     ALLOWED_IMAGE_EXTENSIONS,
     QUESTION_DIR_RE,
     REQUIRED_ASSESSMENT_FIELDS,
@@ -587,7 +587,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args:
         print(
-            "Usage: python -m app.features.teaching.content.validate "
+            "Usage: python -m app.features.teaching.tooling.validate "
             "<modules-directory>"
         )
         return 1

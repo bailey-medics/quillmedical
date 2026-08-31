@@ -5,7 +5,7 @@ Generates a PDF certificate by compositing text over a
 
 Layout, fonts, and colours are driven by the ``certificate`` section of
 each bank's ``config.yaml``.  The schema for that section lives in
-``app.features.teaching.content.certificate_schema``, shared with the
+``app.features.teaching.tooling.certificate_schema``, shared with the
 content validator so the two gates cannot disagree about what is valid.
 
 What lives here is the *rendering* half, and its opposite failure policy.
@@ -31,7 +31,7 @@ from reportlab.lib.pagesizes import (  # type: ignore[import-untyped]
 )
 from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
-from app.features.teaching.content.certificate_schema import (
+from app.features.teaching.tooling.certificate_schema import (
     CertificateStyle,
     TextFieldStyle,
 )

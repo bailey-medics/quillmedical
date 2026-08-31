@@ -16,7 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.features.teaching.content.annotations import Whole
+from app.features.teaching.tooling.annotations import Whole
 
 #: Lifecycle states a module may declare.
 ModuleStatus = Literal["draft", "live", "retired"]

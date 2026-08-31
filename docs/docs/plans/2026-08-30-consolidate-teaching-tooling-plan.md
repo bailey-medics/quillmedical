@@ -173,6 +173,20 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   `QuestionBankItem.images` stores only `{"key": filename}`, and URLs are built per request
   by `storage.get_image_url` (`router.py:169`).
 
+- **Name the package `tooling/`, not `content/`** — the first name implied the question
+  bank content itself, which is misleading twice over: the real content lives in the
+  `teaching-repos/*/modules/` trees and in GCS, and serving it is `storage.py`'s job. There
+  was even a `frontend/src/features/teaching/content/` at one point, so the path was
+  ambiguous across the stack. `tooling/` keeps the migration legible — the repo was
+  `teaching-tooling`, every commit on this branch says tooling, and landing it at
+  `teaching/tooling/` makes the history read as one continuous thing. It reads without
+  stutter (`tooling/validate.py`, `python -m app.features.teaching.tooling.cli`) and is
+  honest about scope: this is the *code* half of what that repo held, with the workflows
+  going to `.github/` and the terraform to `infra/github/`. The one weakness is that
+  "tooling" is a soft word that invites unrelated scripts into a package with a hard
+  dependency constraint — mitigated by the constraint being stated in the package docstring
+  and enforced by `test_features_import_boundary.py`, not by the name.
+
 - **Delete `teaching-tooling` once both content repos are cut over** — Quill is not live
   yet, so there is no production history worth preserving and nothing to point a future
   investigation at. Delete rather than archive, and remove the local clone and every
@@ -270,14 +284,14 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             the invalid-status message wording differs, which is the `Literal` conversion
             doing its job.
 - [ ] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
-      `fixtures/`) as `backend/tests/test_teaching_content*.py`.
-      - [x] The 616 version-lock lines, as `test_teaching_content_version_lock.py` and
+      `fixtures/`) as `backend/tests/test_teaching_tooling*.py`.
+      - [x] The 616 version-lock lines, as `test_teaching_tooling_version_lock.py` and
             `..._integration.py`. The integration ones build real repositories and shell
             out to git, which the backend image lacked — `git` is now installed in the
             **dev** stage only (CI already has it on the runner), with a `skipif` guard so
             a missing binary skips rather than errors.
-      - [x] `test_validate.py` as `test_teaching_content_validate.py`, and the 34-file
-            `fixtures/` tree under `backend/tests/fixtures/teaching_content/`. Ruff (which
+      - [x] `test_validate.py` as `test_teaching_tooling_validate.py`, and the 34-file
+            `fixtures/` tree under `backend/tests/fixtures/teaching_tooling/`. Ruff (which
             teaching-tooling never ran) flagged `B017` blind `Exception` asserts; these now
             assert `ValidationError` and `CalledProcessError` instead.
 - [ ] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,

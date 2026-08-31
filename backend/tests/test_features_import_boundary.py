@@ -59,13 +59,13 @@ def _import_in_clean_subprocess(
     [
         "app.features",
         "app.features.teaching",
-        "app.features.teaching.content",
-        "app.features.teaching.content.annotations",
-        "app.features.teaching.content.certificate_schema",
-        "app.features.teaching.content.check_version_lock",
-        "app.features.teaching.content.module_schema",
-        "app.features.teaching.content.validate",
-        "app.features.teaching.content.cli",
+        "app.features.teaching.tooling",
+        "app.features.teaching.tooling.annotations",
+        "app.features.teaching.tooling.certificate_schema",
+        "app.features.teaching.tooling.check_version_lock",
+        "app.features.teaching.tooling.module_schema",
+        "app.features.teaching.tooling.validate",
+        "app.features.teaching.tooling.cli",
     ],
 )
 def test_import_needs_no_secrets(module: str) -> None:
@@ -82,13 +82,13 @@ def test_import_needs_no_secrets(module: str) -> None:
     [
         "app.features",
         "app.features.teaching",
-        "app.features.teaching.content",
-        "app.features.teaching.content.annotations",
-        "app.features.teaching.content.certificate_schema",
-        "app.features.teaching.content.check_version_lock",
-        "app.features.teaching.content.module_schema",
-        "app.features.teaching.content.validate",
-        "app.features.teaching.content.cli",
+        "app.features.teaching.tooling",
+        "app.features.teaching.tooling.annotations",
+        "app.features.teaching.tooling.certificate_schema",
+        "app.features.teaching.tooling.check_version_lock",
+        "app.features.teaching.tooling.module_schema",
+        "app.features.teaching.tooling.validate",
+        "app.features.teaching.tooling.cli",
     ],
 )
 def test_import_pulls_in_nothing_heavy(module: str) -> None:

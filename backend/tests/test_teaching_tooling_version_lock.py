@@ -13,13 +13,13 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from app.features.teaching.content.check_version_lock import (
+from app.features.teaching.tooling.check_version_lock import (
     LockResult,
     check_module,
     check_version_lock,
 )
 
-_MOD = "app.features.teaching.content.check_version_lock"
+_MOD = "app.features.teaching.tooling.check_version_lock"
 
 
 @pytest.fixture

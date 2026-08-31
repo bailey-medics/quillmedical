@@ -9,7 +9,7 @@ the merged shape, and these tests pin the behaviour each side relied on.
 
 from __future__ import annotations
 
-from app.features.teaching.content.validate import (
+from app.features.teaching.tooling.validate import (
     ValidationError,
     ValidationMessage,
     ValidationResult,

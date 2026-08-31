@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.features.teaching.content.check_version_lock import (
+from app.features.teaching.tooling.check_version_lock import (
     LockResult,
     check_module,
 )

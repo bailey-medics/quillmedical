@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.features.teaching.content.cli import main
+from app.features.teaching.tooling.cli import main
 
-FIXTURES = Path(__file__).parent / "fixtures" / "teaching_content"
+FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
 
 
 def _write_module(

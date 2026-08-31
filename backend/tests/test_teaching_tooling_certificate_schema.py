@@ -17,8 +17,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.features.teaching import certificate
-from app.features.teaching.content import certificate_schema
-from app.features.teaching.content.certificate_schema import (
+from app.features.teaching.tooling import certificate_schema
+from app.features.teaching.tooling.certificate_schema import (
     BOLD_FONT,
     CERTIFICATE_TEXT_FIELDS,
     CertificateStyle,

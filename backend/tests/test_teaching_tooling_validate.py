@@ -2,7 +2,7 @@
 
 Ported from ``teaching-tooling/tests/test_validate.py`` as part of the
 teaching-tooling consolidation.  Behaviour is unchanged; the import path
-moves and the fixtures live under ``tests/fixtures/teaching_content/``.
+moves and the fixtures live under ``tests/fixtures/teaching_tooling/``.
 """
 
 from pathlib import Path
@@ -10,14 +10,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.features.teaching.content.module_schema import ModuleYaml
-from app.features.teaching.content.validate import (
+from app.features.teaching.tooling.module_schema import ModuleYaml
+from app.features.teaching.tooling.validate import (
     ValidationResult,
     _validate_assessment_dir,
     validate_modules_dir,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures" / "teaching_content"
+FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
 
 
 class TestModuleYamlSchema:
@@ -89,7 +89,7 @@ class TestValidateModulesDir:
         # We test the validation function directly with the fixture path
         valid_module = FIXTURES / ".valid-module"
         # Validate individual module components
-        from app.features.teaching.content.validate import (
+        from app.features.teaching.tooling.validate import (
             ValidationResult,
             _validate_module_yaml,
         )
@@ -102,7 +102,7 @@ class TestValidateModulesDir:
         assert module.title == "Valid Test Module"
 
     def test_invalid_fixture(self) -> None:
-        from app.features.teaching.content.validate import (
+        from app.features.teaching.tooling.validate import (
             ValidationResult,
             _validate_module_yaml,
         )

@@ -22,7 +22,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.features.teaching.content.annotations import Number, Whole
+from app.features.teaching.tooling.annotations import Number, Whole
 
 #: Strict pattern enforced on config input (leading "#" required).
 HEX_COLOUR_PATTERN = r"^#[0-9a-fA-F]{6}$"

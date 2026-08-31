@@ -17,7 +17,7 @@ from typing import Any
 
 import yaml
 
-from app.features.teaching.content.validate import (
+from app.features.teaching.tooling.validate import (
     CERTIFICATE_BACKGROUND,
     ValidationResult,
     certificate_enabled,
@@ -107,7 +107,7 @@ def _validate_certificate_section(
     """Validate the certificate section and required files.
 
     The block itself is checked by
-    :func:`app.features.teaching.content.validate.validate_certificate_config`,
+    :func:`app.features.teaching.tooling.validate.validate_certificate_config`,
     the same function the merge gate runs, so sync and CI cannot disagree
     about what a valid certificate looks like.  Only the background-image
     lookup stays here, because it differs by source: sync may be reading a

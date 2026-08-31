@@ -2,7 +2,7 @@
 
 Runs every check a content repo's CI needs, in one invocation::
 
-    python -m app.features.teaching.content.cli <modules-directory>
+    python -m app.features.teaching.tooling.cli <modules-directory>
 
 Pass ``--skip-version-lock`` where there is no git history to compare
 against — validating a tree downloaded from GCS, for instance, rather than
@@ -20,15 +20,15 @@ import argparse
 import sys
 from pathlib import Path
 
-from app.features.teaching.content.check_version_lock import (
+from app.features.teaching.tooling.check_version_lock import (
     check_version_lock,
 )
-from app.features.teaching.content.validate import validate_modules_dir
+from app.features.teaching.tooling.validate import validate_modules_dir
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="python -m app.features.teaching.content.cli",
+        prog="python -m app.features.teaching.tooling.cli",
         description="Validate teaching content in a modules/ directory.",
     )
     parser.add_argument(
