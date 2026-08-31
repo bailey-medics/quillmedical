@@ -94,6 +94,83 @@ from the edge on the origin the app already runs on.
   listing GCS. So no Alembic migration is required for any phase here. Resume
   position is item 18 of the parent plan and stays there.
 
+- **Blocked until the teaching refactor lands** — Every phase below is on hold
+  until the in-flight rework of `backend/app/features/teaching/` is finished and
+  the work is explicitly released. See the section below for why the sequencing
+  matters rather than being mere politeness about merge conflicts.
+
+## Sequencing and human code review
+
+Quill was built quickly as a proof of concept, with coding plans written
+alongside LLMs and executed with little oversight of the resulting code. A
+line-by-line human code review (HCR) of the whole repository is now under way,
+walking the folder and file structure A–Z from the top. Anything above the
+current position has been read properly; anything below has only been skimmed
+and will be read in the coming two to three months. That moving frontier, and
+not the technical design, is what governs when this work can start.
+
+**Status: on hold.** At the time of writing the HCR frontier sits at
+`backend/app/features/`, which contains only `__init__.py` and `teaching/` — and
+`teaching/` is simultaneously being refactored by hand. That is exactly where
+every backend phase of this plan writes. Building into it now would mean
+reviewing a moving file and rebasing under a live refactor, so no phase starts
+until the refactor is finished and this work is explicitly released.
+
+### Where this plan falls relative to the frontier
+
+Classifying every file the plan touches against an A–Z depth-first walk:
+
+- **Above the frontier — already reviewed, so changes need fresh human
+  attention** — `backend/app/config.py` alone, and only additively: the new
+  settings in the existing `--- Teaching / GCS ---` block, around twenty lines
+  with no logic. Nothing else in the plan touches reviewed code.
+  `backend/app/deps.py` and `backend/app/db/` also sit above the frontier, but
+  this plan only imports `has_competency` and `get_core_db` from them and does
+  not modify either.
+
+- **At the frontier — not yet reached, so the sweep reviews it naturally** —
+  everything under `backend/app/features/teaching/`: `router.py`, `schemas.py`,
+  `mdx_parser.py` and the new `video_access.py`.
+
+- **Below the frontier — the sweep catches it later** — `backend/app/main.py`
+  (which sorts after `features/` and this plan does not touch anyway),
+  `backend/tests/`, `docs/`, `frontend/`, `infra/` and `cspell.config.json`.
+
+The useful consequence is that if the backend phases are built *before* the
+sweep reaches `teaching/`, the new code is reviewed at full line-by-line depth
+as part of the sweep, at no extra cost. Building *after* the sweep has passed
+would leave freshly unreviewed code behind the frontier — the outcome worth
+avoiding. So the ordering to aim for is: finish the hand refactor, then build
+this, then let the sweep review both together.
+
+### Working agreement for this plan
+
+- **One pull request per phase**, small enough to read in a sitting, rather than
+  one long-lived branch. Review happens in the GitHub web UI, which supplies the
+  line-by-line diff, file tree and inline comments that the Claude Code web
+  session does not.
+
+- **Every pull request description carries an "Above the HCR frontier"
+  section**, listing already-reviewed files touched with line counts, and stating
+  "none" when there are none. That tells the reviewer immediately whether a pull
+  request needs attention now or can wait for the sweep.
+
+- **Above-frontier changes go in their own isolated commit**, separate from
+  everything else, so the small reviewed-code delta can be read without hunting
+  through the rest of the diff. For this plan that is the one `config.py` commit.
+
+- **New code goes in new files wherever possible**, leaving already-reviewed
+  files untouched. `video_access.py` is a new module rather than an extension of
+  `storage.py` partly for this reason, alongside the review-isolation argument in
+  Phase 2.
+
+- **The frontier is recorded in the repository, not in conversation** — a
+  progress file that the reviewer advances, read at the start of each session so
+  every change can be classified against it without relying on recall. Worth
+  adding before this plan resumes; a small checker that classifies
+  `git diff --name-only` against the frontier could then label pull requests
+  automatically in CI.
+
 ## Phase 0: Spike — private bucket behind a backend bucket
 
 The one unknown that could invalidate the design. The existing backend bucket in
