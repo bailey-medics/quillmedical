@@ -40,6 +40,13 @@ REQUIRED_ASSESSMENT_FIELDS = frozenset({"version", "title", "type"})
 #: Accepted values for an assessment's ``type``.
 VALID_ASSESSMENT_TYPES = frozenset({"uniform", "variable"})
 
+#: Question shapes a variable bank may declare.
+QuestionType = Literal["single", "multiple"]
+ALLOWED_QUESTION_TYPES = frozenset({"single", "multiple"})
+
+#: Image filenames must be safe to put in a URL path.
+IMAGE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+
 
 class ModuleYaml(BaseModel):
     """Schema for ``module.yaml``.

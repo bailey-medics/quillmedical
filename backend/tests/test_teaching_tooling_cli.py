@@ -17,6 +17,18 @@ from app.features.teaching.tooling.cli import main
 FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
 
 
+#: A variable question the merged validator accepts.
+_VALID_VARIABLE_QUESTION: dict[str, object] = {
+    "question_type": "single",
+    "options": [
+        {"id": "a", "label": "A", "tags": ["correct"]},
+        {"id": "b", "label": "B", "tags": ["incorrect"]},
+    ],
+    "correct_option_id": "a",
+    "images": [],
+}
+
+
 def _write_module(
     modules_dir: Path,
     module_id: str,
@@ -43,7 +55,7 @@ def _write_module(
         yaml.dump({"version": version, "title": "Test", "type": "variable"})
     )
     (assessment / "question_001" / "question.yaml").write_text(
-        yaml.dump({"diagnosis": "adenoma"})
+        yaml.dump(_VALID_VARIABLE_QUESTION)
     )
     return module_dir
 

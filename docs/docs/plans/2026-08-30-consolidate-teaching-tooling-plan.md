@@ -405,10 +405,23 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             scanning stays correct for structure; only the *file listing* comes from the
             inventory, via `_files_in`. Added `validate_module_dir` as the single-bank entry
             point sync will call.
-      - [ ] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
+      - [x] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
             `_validate_variable_item` (149), `_get_image_files`, `_check_image_naming` and
             `_cross_item_checks`. The largest chunk, ~280 lines, and where the detailed
-            question-level validation lives.
+            question-level validation lives. The variable per-item pass *subsumes* the
+            assessment-level image pass, so that one was removed rather than left to
+            double-report a missing or undeclared file; the uniform pair is complementary
+            (assessment level names *which* key is missing, item level checks the count)
+            and both were kept. Question directories are now parsed once and the data
+            reused, which is also what `_cross_item_checks` needs for `item_count`.
+            **Finding: three of the ported fixtures were never valid content.** The
+            `.variable-*` fixtures used plain-string options with no `question_type` or
+            `correct_option_id`, a shape no real bank uses; `.valid-module` declared
+            `images_per_item: 2` with no images present and `min_pool_size: 4` with one
+            question. They passed only because the tooling validator never looked. All four
+            are corrected to match real content. Several test helpers written in earlier
+            units had the same problem and were fixed the same way — the validator was
+            right, the scaffolding was wrong.
       - [ ] **Port the config and email checks** — `_validate_config` (48 lines) and
             `_validate_email_section`/`_validate_email_sections` (45).
       - [ ] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`

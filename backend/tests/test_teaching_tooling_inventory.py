@@ -146,7 +146,17 @@ class TestVariableBanksUseTheInventoryToo:
             yaml.dump({"version": 1, "title": "B", "type": "variable"})
         )
         (question / "question.yaml").write_text(
-            yaml.dump({"images": [{"key": "chest.png"}]})
+            yaml.dump(
+                {
+                    "question_type": "single",
+                    "options": [
+                        {"id": "a", "label": "A", "tags": ["correct"]},
+                        {"id": "b", "label": "B", "tags": ["incorrect"]},
+                    ],
+                    "correct_option_id": "a",
+                    "images": [{"key": "chest.png"}],
+                }
+            )
         )
         return assessment
 

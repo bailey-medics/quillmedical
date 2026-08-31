@@ -30,6 +30,8 @@ from app.features.teaching.tooling.certificate_schema import (
 )
 from app.features.teaching.tooling.module_schema import (
     ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_QUESTION_TYPES,
+    IMAGE_FILENAME_PATTERN,
     QUESTION_DIR_RE,
     REQUIRED_ASSESSMENT_FIELDS,
     VALID_ASSESSMENT_TYPES,
@@ -245,6 +247,283 @@ def _readable(loc: str, err: ErrorDetails) -> str:
 
 
 # ------------------------------------------------------------------
+# Per-item checks
+# ------------------------------------------------------------------
+
+
+def _image_files_in(
+    question_dir: Path,
+    inventory: ImageInventory | None,
+) -> list[str]:
+    """Image filenames in *question_dir*, sorted."""
+    return sorted(
+        name
+        for name in _files_in(question_dir, inventory)
+        if Path(name).suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
+
+
+def _check_image_naming(
+    question_dir: Path,
+    rel_q: str,
+    result: ValidationResult,
+    inventory: ImageInventory | None,
+) -> None:
+    """Image filenames must be safe to place in a URL path."""
+    for name in _image_files_in(question_dir, inventory):
+        if not IMAGE_FILENAME_PATTERN.match(Path(name).stem):
+            result.add_error(
+                rel_q,
+                f"image '{name}' has invalid name — use only letters, "
+                f"digits, hyphens, and underscores",
+            )
+
+
+def _validate_uniform_item(
+    question_dir: Path,
+    question_data: Mapping[str, object],
+    config: Mapping[str, object],
+    rel_q: str,
+    result: ValidationResult,
+    inventory: ImageInventory | None = None,
+) -> None:
+    """Validate one item of a uniform bank.
+
+    Complements the assessment-level image check, which reports *which*
+    declared key is missing; this reports the count and the answer fields.
+    """
+    _check_image_naming(question_dir, rel_q, result, inventory)
+
+    expected_images = config.get("images_per_item", 0)
+    actual = _image_files_in(question_dir, inventory)
+    if isinstance(expected_images, int) and len(actual) != expected_images:
+        result.add_error(
+            rel_q,
+            f"expected {expected_images} images, found {len(actual)}",
+        )
+
+    answer_field = config.get("correct_answer_field")
+    if isinstance(answer_field, str) and answer_field:
+        if answer_field not in question_data:
+            result.add_error(
+                f"{rel_q}/question.yaml",
+                f"missing required field '{answer_field}'",
+            )
+        else:
+            valid_values = config.get("correct_answer_values")
+            value = question_data[answer_field]
+            if isinstance(valid_values, list) and valid_values:
+                if value not in valid_values:
+                    result.add_error(
+                        f"{rel_q}/question.yaml",
+                        f"'{answer_field}' value '{value}' "
+                        f"not in {valid_values}",
+                    )
+
+    _check_item_text(question_data, config, rel_q, result)
+
+
+def _check_item_text(
+    question_data: Mapping[str, object],
+    config: Mapping[str, object],
+    rel_q: str,
+    result: ValidationResult,
+) -> None:
+    """Enforce ``item_text.required`` when the bank asks for it."""
+    item_text_cfg = config.get("item_text")
+    if not isinstance(item_text_cfg, dict):
+        return
+    if not item_text_cfg.get("required"):
+        return
+    if not question_data.get("text"):
+        result.add_error(
+            f"{rel_q}/question.yaml", "missing required 'text' field"
+        )
+
+
+def _option_ids(options: Sequence[object]) -> list[object]:
+    """Ids declared by *options*, skipping malformed entries."""
+    return [o.get("id") for o in options if isinstance(o, dict)]
+
+
+def _validate_variable_options(
+    question_data: Mapping[str, object],
+    rel_q: str,
+    result: ValidationResult,
+) -> list[object] | None:
+    """Validate the options list. Returns the ids, or None if unusable."""
+    options = question_data.get("options")
+    if not isinstance(options, list) or not options:
+        result.add_error(
+            f"{rel_q}/question.yaml",
+            "variable item must have an 'options' list",
+        )
+        return None
+
+    ids = _option_ids(options)
+    if len(ids) != len(set(ids)):
+        result.add_error(
+            f"{rel_q}/question.yaml", "duplicate option IDs found"
+        )
+
+    for opt in options:
+        if not isinstance(opt, dict):
+            result.add_error(
+                f"{rel_q}/question.yaml",
+                "each option must be a mapping with id, label, tags",
+            )
+            continue
+        for required in ("id", "label", "tags"):
+            if required not in opt:
+                result.add_error(
+                    f"{rel_q}/question.yaml", f"option missing '{required}'"
+                )
+
+    return ids
+
+
+def _validate_variable_images_declared(
+    question_dir: Path,
+    question_data: Mapping[str, object],
+    rel_q: str,
+    result: ValidationResult,
+    inventory: ImageInventory | None,
+) -> None:
+    """Every declared image must exist, and every file must be declared."""
+    images = question_data.get("images")
+    if images is None:
+        result.add_error(
+            f"{rel_q}/question.yaml",
+            "variable item must have an 'images' list "
+            "(use [] for no images)",
+        )
+        return
+    if not isinstance(images, list):
+        result.add_error(f"{rel_q}/question.yaml", "'images' must be a list")
+        return
+
+    _check_image_naming(question_dir, rel_q, result, inventory)
+
+    present = _files_in(question_dir, inventory)
+    source = "GCS" if inventory is not None else "disk"
+
+    for img in images:
+        key = _image_key(img)
+        if key is None:
+            result.add_error(
+                f"{rel_q}/question.yaml",
+                "each image must be a mapping with 'key' "
+                "(and optional 'label')",
+            )
+            continue
+        if not IMAGE_FILENAME_PATTERN.match(Path(key).stem):
+            result.add_error(
+                f"{rel_q}/question.yaml",
+                f"image key '{key}' has invalid name — use only letters, "
+                f"digits, hyphens, and underscores",
+            )
+        if key not in present:
+            result.add_error(
+                rel_q, f"declared image '{key}' not found in {source}"
+            )
+
+    declared = {k for k in (_image_key(i) for i in images) if k is not None}
+    for name in _image_files_in(question_dir, inventory):
+        if name not in declared:
+            result.add_error(
+                rel_q,
+                f"undeclared image file '{name}' (found on {source} but "
+                f"not listed in question.yaml images)",
+            )
+
+
+def _validate_variable_item(
+    question_dir: Path,
+    question_data: Mapping[str, object],
+    config: Mapping[str, object],
+    rel_q: str,
+    result: ValidationResult,
+    inventory: ImageInventory | None = None,
+) -> None:
+    """Validate one item of a variable bank."""
+    question_type = question_data.get("question_type")
+    if not question_type:
+        result.add_error(
+            f"{rel_q}/question.yaml",
+            "missing required 'question_type' field",
+        )
+    elif question_type not in ALLOWED_QUESTION_TYPES:
+        result.add_error(
+            f"{rel_q}/question.yaml",
+            f"question_type '{question_type}' not in allowed types "
+            f"{sorted(ALLOWED_QUESTION_TYPES)}",
+        )
+
+    ids = _validate_variable_options(question_data, rel_q, result)
+    if ids is None:
+        return
+
+    correct_id = question_data.get("correct_option_id")
+    if not correct_id:
+        result.add_error(
+            f"{rel_q}/question.yaml", "missing 'correct_option_id'"
+        )
+    elif correct_id not in ids:
+        result.add_error(
+            f"{rel_q}/question.yaml",
+            f"correct_option_id '{correct_id}' not in item options {ids}",
+        )
+
+    _validate_variable_images_declared(
+        question_dir, question_data, rel_q, result, inventory
+    )
+    _check_item_text(question_data, config, rel_q, result)
+
+
+def _cross_item_checks(
+    config: Mapping[str, object],
+    items: Sequence[Mapping[str, object]],
+    rel_base: str,
+    result: ValidationResult,
+) -> None:
+    """Checks that only make sense across the whole bank."""
+    assessment = config.get("assessment")
+    min_pool = 0
+    if isinstance(assessment, dict):
+        raw = assessment.get("min_pool_size", 0)
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            min_pool = raw
+
+    if result.item_count < min_pool:
+        result.add_error(
+            rel_base,
+            f"only {result.item_count} items but min_pool_size requires "
+            f"{min_pool}",
+        )
+
+    if config.get("type") != "uniform":
+        return
+
+    answer_field = config.get("correct_answer_field")
+    if not isinstance(answer_field, str) or not items:
+        return
+
+    counts: dict[object, int] = {}
+    for item in items:
+        value = item.get(answer_field, "")
+        counts[value] = counts.get(value, 0) + 1
+
+    total = len(items)
+    for value, count in counts.items():
+        if count / total > 0.80:
+            result.add_warning(
+                rel_base,
+                f"{count / total:.0%} of items have {answer_field} "
+                f"'{value}' (distribution skew)",
+            )
+
+
+# ------------------------------------------------------------------
 # Validators
 # ------------------------------------------------------------------
 
@@ -358,6 +637,7 @@ def _validate_assessment_dir(
         return
 
     if bank_type == "uniform":
+        # Assessment-level: reports *which* declared key is missing.
         _validate_uniform_images(
             config,
             question_dirs,
@@ -366,14 +646,81 @@ def _validate_assessment_dir(
             result,
             image_inventory,
         )
-    elif bank_type == "variable":
-        _validate_variable_images(
-            question_dirs, rel_base, result, image_inventory
-        )
+
+    _validate_items(
+        config,
+        bank_type,
+        question_dirs,
+        rel_base,
+        result,
+        image_inventory,
+    )
 
     _validate_certificate(
         config, assessment_dir, rel_config, result, image_inventory
     )
+
+
+def _validate_items(
+    config: Mapping[str, object],
+    bank_type: object,
+    question_dirs: Sequence[Path],
+    rel_base: str,
+    result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
+) -> None:
+    """Validate every question directory, then the bank as a whole.
+
+    Variable banks are handled entirely here: the per-item checks subsume
+    the assessment-level image pass, so running both would double-report a
+    missing or undeclared file.
+    """
+    items: list[Mapping[str, object]] = []
+
+    for question_dir in question_dirs:
+        rel_q = f"{rel_base}/{question_dir.name}"
+        question_yaml = question_dir / "question.yaml"
+
+        if not question_yaml.is_file():
+            result.add_error(rel_q, "missing question.yaml")
+            continue
+
+        try:
+            with open(question_yaml, encoding="utf-8") as f:
+                question_data = _as_mapping(yaml.safe_load(f))
+        except yaml.YAMLError as exc:
+            result.add_error(f"{rel_q}/question.yaml", f"invalid YAML: {exc}")
+            continue
+
+        if question_data is None:
+            result.add_error(
+                f"{rel_q}/question.yaml", "must be a YAML mapping"
+            )
+            continue
+
+        result.item_count += 1
+        items.append(question_data)
+
+        if bank_type == "uniform":
+            _validate_uniform_item(
+                question_dir,
+                question_data,
+                config,
+                rel_q,
+                result,
+                image_inventory,
+            )
+        elif bank_type == "variable":
+            _validate_variable_item(
+                question_dir,
+                question_data,
+                config,
+                rel_q,
+                result,
+                image_inventory,
+            )
+
+    _cross_item_checks(config, items, rel_base, result)
 
 
 def _validate_certificate(
@@ -461,59 +808,6 @@ def _validate_uniform_images(
             result.add_error(
                 rel_q,
                 f"undeclared image '{name}' not in assessment.yaml images[]",
-            )
-
-
-def _validate_variable_images(
-    question_dirs: Sequence[Path],
-    rel_base: str,
-    result: ValidationResult,
-    image_inventory: ImageInventory | None = None,
-) -> None:
-    """Validate image files in variable assessment question directories.
-
-    Variable assessments define images per question.  Each referenced key
-    must exist as a file in the question directory.
-    """
-    for question_dir in question_dirs:
-        rel_q = f"{rel_base}/{question_dir.name}"
-        question_yaml = question_dir / "question.yaml"
-        if not question_yaml.is_file():
-            result.add_error(rel_q, "missing question.yaml")
-            continue
-
-        try:
-            with open(question_yaml, encoding="utf-8") as f:
-                question_data = _as_mapping(yaml.safe_load(f))
-        except yaml.YAMLError:
-            continue  # YAML errors caught elsewhere
-
-        if question_data is None:
-            continue
-
-        images = question_data.get("images")
-        if not images or not isinstance(images, list):
-            continue
-
-        existing_files = _files_in(question_dir, image_inventory)
-        declared_keys: set[str] = set()
-        for i, img in enumerate(images):
-            key = _image_key(img)
-            if key is None:
-                result.add_error(rel_q, f"images[{i}] must have a 'key' field")
-                continue
-            declared_keys.add(key)
-            if key not in existing_files:
-                result.add_error(
-                    rel_q,
-                    f"missing image '{key}' "
-                    f"(referenced in question.yaml images[{i}])",
-                )
-        undeclared = _image_files(existing_files) - declared_keys
-        for name in sorted(undeclared):
-            result.add_error(
-                rel_q,
-                f"undeclared image '{name}' not in question.yaml images[]",
             )
 
 

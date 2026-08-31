@@ -27,6 +27,18 @@ from app.features.teaching.tooling.validate import (
     validate_modules_dir,
 )
 
+#: A variable question the merged validator accepts. The per-item checks
+#: require question_type, mapping options and correct_option_id.
+_VALID_VARIABLE_QUESTION: dict[str, object] = {
+    "question_type": "single",
+    "options": [
+        {"id": "a", "label": "A", "tags": ["correct"]},
+        {"id": "b", "label": "B", "tags": ["incorrect"]},
+    ],
+    "correct_option_id": "a",
+    "images": [],
+}
+
 
 def _style(**overrides: object) -> dict[str, object]:
     """A minimal certificate block that validates cleanly."""
@@ -169,7 +181,7 @@ class TestMergeGate:
             )
         )
         (assessment / "question_001" / "question.yaml").write_text(
-            yaml.dump({"diagnosis": "adenoma"})
+            yaml.dump(_VALID_VARIABLE_QUESTION)
         )
         if background:
             (assessment / CERTIFICATE_BACKGROUND).write_bytes(b"fake-png")
@@ -224,7 +236,7 @@ class TestMergeGate:
             )
         )
         (assessment / "question_001" / "question.yaml").write_text(
-            yaml.dump({"diagnosis": "adenoma"})
+            yaml.dump(_VALID_VARIABLE_QUESTION)
         )
 
         assert validate_modules_dir(modules).is_valid
