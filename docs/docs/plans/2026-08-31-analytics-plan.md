@@ -92,9 +92,10 @@ These split by purpose, and the split is a rule rather than a preference.
   — so it is worth keeping even though nothing routinely looks at it. One place
   to look; one cheap archive nobody looks at until they need it.
 
-- **The alarm that says "wake up" lives outside Google Cloud entirely.** An
+- **When a "wake up" alarm is bought, it lives outside Google Cloud.** An
   alarm hosted inside the system it watches shares that system's failure modes.
-  The tiers below therefore end with an independent external monitor.
+  Voice paging is the one part of this plan that costs real money, so it is
+  deferred rather than built cheaply in-house — see the escalation tiers.
 
 ## What the constraints rule out
 
@@ -280,7 +281,15 @@ useless. Thirty minutes is a reasonable threshold for a phone call and far too
 long for a first signal in a clinical product, so the severity climbs with the
 duration. Google Cloud supports `email`, `slack` and `sms` notification
 channels natively; it has no voice channel at all, which is why the last rung
-sits elsewhere.
+would have to sit elsewhere.
+
+Voice is where the cost caveat finally bites. Every other part of this plan
+runs at £0; a phone call does not, on any provider, at any free tier. So the
+first two tiers ship now and the third waits for a reason to buy it. That is
+not a compromise on safety: SMS and a push notification both reach a phone
+within seconds, and the gap between them and a ringing phone matters when
+somebody is asleep — which is a real concern for a clinical service and a
+theoretical one for a teaching product with no patient data in it.
 
 - [ ] Tier one, roughly 5–10 minutes — Slack and email, through the channels
       already configured. Cheap, ignorable, and often self-resolving
@@ -288,20 +297,28 @@ sits elsewhere.
       Cloud mobile app push. Note that Google's own documentation warns SMS
       "isn't a fully reliable notification channel type" and may be
       unavailable in some regions, so it must never be the only rung
-- [ ] Tier three, roughly 30 minutes — a phone call, from a monitor outside
-      Google Cloud. Better Stack's free tier gives 10 monitors, 3-minute
-      checks and one phone-call alert, and being external is the point rather
-      than a bonus
-- [ ] Verify whether PagerDuty's free tier actually includes voice before
-      considering it — sources conflict, and its escalation policy is otherwise
-      a good fit
+- [ ] Tier three, roughly 30 minutes — a phone call, **deferred**. No free
+      tier anywhere provides one: Better Stack's free plan is email and Slack
+      only, with phone and SMS starting at $29 per responder per month billed
+      yearly; PagerDuty's free plan gives 5 users, an escalation policy and 100
+      SMS a month, but explicitly no voice, which starts at $21 per user per
+      month. Buy one when clinical users exist — at that point the cost is
+      trivial against the risk, and it is exactly the "circumstances have
+      genuinely changed" trigger. Until then tiers one and two are the
+      escalation
+- [ ] Do **not** build the phone call from Twilio and a Cloud Function to save
+      the subscription. It is by far the cheapest option — roughly £1 a month
+      for a number plus pennies a call — but it would put the pager inside the
+      Google Cloud project it exists to page about, with no tests and nobody to
+      notice when it silently stops working. An untested pager is worse than no
+      pager, because it is trusted
 - [x] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
       from `300s` to `60s`, so detection lags by at most a minute rather than
       five. The comment marking 300s as the free tier is out of date: at two
       hostnames this stays comfortably inside the 1 million free executions a
       month, as costed above
-- [ ] Test the whole escalation end to end, including the phone call, and
-      re-test it quarterly — an untested pager is not a pager
+- [ ] Test every rung that exists end to end, and re-test quarterly — an
+      untested pager is not a pager. Include the phone call once it is bought
 - [ ] Fold the result into the incident response plan and runbook items already
       open in `todo.md`, and replace the `webhook_token_auth` Slack channel
       with the native integration while in there
@@ -396,6 +413,14 @@ Blocking, before any of this ships:
   for self-resolving blips gets muted, and a channel set late enough to avoid
   that is too late to be useful. Severity climbs with duration instead: Slack,
   then SMS and push, then a call.
+
+- **Defer the phone call until clinical users exist** — it is the only part of
+  this plan that is not free, on any provider at any tier, and buying an
+  on-call subscription to page one person about a teaching product is the
+  "expensive, so wait for circumstances to change" case. Building it from
+  Twilio instead would be cheap and wrong: it would put the pager inside the
+  project it pages about, untested, and a pager nobody tests is worse than
+  none, because it gets trusted.
 
 - **Check health every minute, not every five** — five minutes of detection
   lag before the first tier even starts counting is too much for a clinical
