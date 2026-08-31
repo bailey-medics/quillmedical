@@ -502,6 +502,20 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       itself — but do not import `download_module_from_gcs` to do it, because `storage.py`
       imports `app.config`, whose `Settings` require `JWT_SECRET` and `CORE_DB_PASSWORD`.
 
+### Learned while building
+
+- **Version lock reports rather than raises when there is no repository to compare
+  against.** The ported code called `git rev-parse` for the repository root with
+  `check=True` and
+  then `Path.relative_to`, so a modules directory outside a git repository produced a
+  traceback rather than a violation. That has two distinct failure shapes and *which one
+  occurs depends on where the process was started*: from inside a checkout, `git rev-parse`
+  succeeds and `relative_to` raises `ValueError`; with no repository at all, `git rev-parse`
+  raises `CalledProcessError`. A test written against the second shape passed locally and
+  broke CI on the first. Both now return the same violation, pointing at
+  `--skip-version-lock`, and both are pinned by tests. Worth remembering when the
+  pull-request sweep validates a tree downloaded from GCS — that is exactly this case.
+
 ## Verification
 
 - [ ] `just ub` stays green, including the ported tooling tests, the new import-boundary

@@ -6,6 +6,8 @@ import path moves.
 """
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +16,7 @@ import yaml
 from app.features.teaching.content.check_version_lock import (
     LockResult,
     check_module,
+    check_version_lock,
 )
 
 _MOD = "app.features.teaching.content.check_version_lock"
@@ -435,3 +438,56 @@ class TestStatusRegression:
             check_module(tmp_module, "modules", "origin/main", result)
 
         assert result.passed
+
+
+class TestOutsideAGitRepository:
+    """Both ways of being outside a repo must report, not raise.
+
+    Which one occurs depends on where the process was started: a CI runner
+    invokes pytest from inside the checkout, so ``git rev-parse`` succeeds
+    and ``relative_to`` fails; a container without the repository mounted
+    fails at ``git rev-parse`` instead. A test asserting one exception
+    passed locally and broke CI, so both are pinned here.
+    """
+
+    def test_no_git_repository_at_all(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        modules = tmp_path / "modules"
+        (modules / "bank").mkdir(parents=True)
+        monkeypatch.setattr(f"{_MOD}._repo_relative_path", lambda _: None)
+
+        result = check_version_lock(modules)
+
+        assert not result.passed
+        assert "not inside a git repository" in result.violations[0].message
+
+    def test_modules_dir_outside_the_reported_repo(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """git reports a root that does not contain the modules directory."""
+        modules = tmp_path / "modules"
+        (modules / "bank").mkdir(parents=True)
+
+        elsewhere = tmp_path / "some-other-repo"
+        elsewhere.mkdir()
+
+        def fake_run(*_args: object, **_kwargs: object) -> Any:
+            return SimpleNamespace(stdout=f"{elsewhere}\n", returncode=0)
+
+        monkeypatch.setattr(f"{_MOD}.subprocess.run", fake_run)
+
+        result = check_version_lock(modules)
+
+        assert not result.passed
+        assert "not inside a git repository" in result.violations[0].message
+
+    def test_the_message_points_at_the_escape_hatch(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        modules = tmp_path / "modules"
+        (modules / "bank").mkdir(parents=True)
+        monkeypatch.setattr(f"{_MOD}._repo_relative_path", lambda _: None)
+
+        message = check_version_lock(modules).violations[0].message
+        assert "--skip-version-lock" in message

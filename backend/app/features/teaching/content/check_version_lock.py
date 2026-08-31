@@ -321,6 +321,31 @@ def check_module(
     result.modules_skipped += 1
 
 
+def _repo_relative_path(modules_dir: Path) -> str | None:
+    """Path of *modules_dir* relative to its git repository root.
+
+    Returns None when there is no repository, or when the directory sits
+    outside the one git reports — validating a tree downloaded from GCS, for
+    instance.  Callers report that rather than letting it raise: a traceback
+    is a poor way to tell someone they wanted ``--skip-version-lock``.
+    """
+    try:
+        completed = subprocess.run(  # noqa: S603
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+    repo_root = Path(completed.stdout.strip())
+    try:
+        return str(modules_dir.resolve().relative_to(repo_root))
+    except ValueError:
+        return None
+
+
 def check_version_lock(
     modules_dir: Path, ref: str = "origin/main"
 ) -> LockResult:
@@ -344,14 +369,15 @@ def check_version_lock(
         return result
 
     # git show/diff need paths relative to the repository root.
-    repo_root_result = subprocess.run(  # noqa: S603
-        ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    repo_root = Path(repo_root_result.stdout.strip())
-    modules_rel_path = str(modules_dir.resolve().relative_to(repo_root))
+    modules_rel_path = _repo_relative_path(modules_dir)
+    if modules_rel_path is None:
+        result.add_violation(
+            "(root)",
+            f"{modules_dir} is not inside a git repository, so version lock "
+            "cannot compare against a ref — pass --skip-version-lock when "
+            "validating content that has no git history",
+        )
+        return result
 
     module_dirs = sorted(
         d

@@ -7,7 +7,6 @@ validating content that has no git history (a tree pulled from GCS).
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -123,16 +122,24 @@ class TestVersionLockToggle:
     ) -> None:
         """Without the flag the version lock check is attempted.
 
-        There is no git repository here, so the check raises rather than
-        reporting — which is exactly why CI validating a GCS download must
-        pass ``--skip-version-lock``.
+        ``tmp_path`` is outside any git repository, which is the same
+        situation as validating a tree downloaded from GCS.  That must be
+        reported as a violation pointing at ``--skip-version-lock``, not
+        raised as a traceback — and the two ways it can fail (no repository
+        at all, or a directory outside the one git reports) must behave the
+        same, since which one occurs depends on where pytest was invoked.
         """
         modules = tmp_path / "modules"
         modules.mkdir()
         _write_module(modules, "good-bank")
 
-        with pytest.raises(subprocess.CalledProcessError):
-            main([str(modules)])
+        exit_code = main([str(modules)])
+        out = capsys.readouterr().out
+
+        assert exit_code == 1
+        assert "Version lock" in out
+        assert "not inside a git repository" in out
+        assert "--skip-version-lock" in out
 
 
 class TestAgainstFixtures:
