@@ -31,16 +31,20 @@ runs:
         path: |
           ~/.cache/pypoetry
           ~/.cache/pip
-        key: poetry-${{ runner.os }}-py${{ hashFiles('.python-version') }}-${{ hashFiles('backend/poetry.lock') }}
+        key: poetry-${{ runner.os }}-py${{ hashFiles('.python-version') }}-pt${{ hashFiles('.poetry-version') }}-${{ hashFiles('backend/poetry.lock') }}
         restore-keys: |
-          poetry-${{ runner.os }}-py${{ hashFiles('.python-version') }}-
+          poetry-${{ runner.os }}-py${{ hashFiles('.python-version') }}-pt${{ hashFiles('.poetry-version') }}-
           poetry-${{ runner.os }}-
 
+    # Pinned from .poetry-version, the same file backend/Dockerfile reads, so
+    # CI and the image cannot install different Poetry versions and write
+    # differently formatted locks.
     - name: Install Poetry
       if: inputs.install-backend-deps == 'true'
       shell: bash
       run: |
-        python -m pip install -U pip poetry
+        python -m pip install -U pip
+        python -m pip install "poetry==$(cat .poetry-version)"
         poetry config virtualenvs.in-project true
 
     - name: Install backend deps

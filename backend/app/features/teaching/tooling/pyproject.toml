@@ -15,10 +15,10 @@ requires-python = ">=3.13"
 [tool.poetry]
 package-mode = false
 
-# CI installs from the lock, and a Poetry that cannot read this lock
-# format would resolve freely instead. Failing here says so plainly,
-# rather than the workflow quietly installing something else.
-requires-poetry = ">=2.1,<3"
+# Kept in step with .poetry-version and backend/pyproject.toml by
+# check-version-consistency.sh. CI installs from the lock, and a Poetry that
+# cannot read this lock format would resolve freely instead.
+requires-poetry = ">=2.4,<3"
 
 # Deliberately Poetry syntax rather than PEP 621 [project.dependencies]:
 # the backend declares these the same way, so the drift test can compare

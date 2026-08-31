@@ -3,6 +3,11 @@ requires = ["poetry-core>=2.1.1,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
+# Kept in step with .poetry-version by check-version-consistency.sh. The
+# pin selects which Poetry CI and the image install; this rejects one that
+# cannot read the lock — including on a developer's machine, where no
+# repository file can install anything.
+requires-poetry = ">=2.4,<3"
 name = "backend"
 version = "0.1.0"
 description = "Backend fastAPI and git services"

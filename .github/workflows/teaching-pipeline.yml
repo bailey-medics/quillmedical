@@ -101,14 +101,16 @@ jobs:
       # backend's stack. Straight into the runner's Python, so the CLI runs
       # without a venv indirection.
       #
-      # Poetry is unpinned to match .github/actions/setup-python. The
-      # package's own requires-poetry constraint is what rejects a Poetry
-      # that cannot read its lock, so the acceptable range is declared once,
-      # next to the lock it governs, rather than as a number here.
+      # Poetry is pinned from Quill's .poetry-version, which the cone-mode
+      # sparse checkout brings along with the root .python-version above.
+      # The package's requires-poetry constraint is the second half: the pin
+      # selects a version, the constraint rejects one that cannot read the
+      # lock.
       - name: Install validator dependencies
         working-directory: tooling/backend/app/features/teaching/tooling
         run: |
-          python -m pip install -U pip poetry
+          python -m pip install -U pip
+          python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/tooling/.poetry-version")"
           poetry config virtualenvs.create false
           poetry install --no-interaction --no-ansi
 
