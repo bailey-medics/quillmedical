@@ -72,9 +72,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 
 # ---------- Prod target (no reload) ----------
 FROM base AS prod
-# Teaching-tooling validator scripts (clinical safety — second layer)
-COPY --chown=appuser:appuser teaching-tooling/scripts /teaching-tooling-scripts
-ENV TEACHING_TOOLING_SCRIPTS_PATH=/teaching-tooling-scripts
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
 

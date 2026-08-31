@@ -454,10 +454,12 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       sites into the merged call. Its "tooling unavailable — sync blocked for safety" branch
       went with it: the validator now ships inside the backend package, so it cannot be
       missing and the fail-safe is satisfied by construction rather than at runtime.
-- [ ] Remove the cross-repo plumbing: `COPY`/`ENV` at `backend/Dockerfile:67-69`,
-      `TEACHING_TOOLING_SCRIPTS_PATH` at `backend/app/config.py:196`, the env var and bind
-      mount at `compose.dev.yml:13` and `:30`, and the checkout steps at
-      `.github/workflows/ci.yml:84-89` and `.github/workflows/deploy.yml:88-93`.
+- [x] Remove the cross-repo plumbing: the Dockerfile `COPY`/`ENV`,
+      `TEACHING_TOOLING_SCRIPTS_PATH` in `config.py`, the `compose.dev.yml` env var and bind
+      mount, and the checkout steps in `ci.yml` and `deploy.yml` — including a **third**
+      checkout in the E2E image-build job that existed only to satisfy the Dockerfile
+      `COPY`, and which the plan had not listed. Image rebuilt and verified: the backend
+      starts with no `/teaching-tooling-scripts` present and the setting gone.
 
 ## Phase 3: Reusable workflow in Quill
 

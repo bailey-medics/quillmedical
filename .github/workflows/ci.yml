@@ -81,18 +81,9 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure --color=always
 
       # ---- Unit test steps ----
-      - name: Checkout teaching-tooling (unit)
-        if: matrix.task == 'unit'
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: bailey-medics/teaching-tooling
-          path: teaching-tooling
-
       - name: Pytest (unit)
         if: matrix.task == 'unit'
         working-directory: backend
-        env:
-          TEACHING_TOOLING_SCRIPTS_PATH: ${{ github.workspace }}/teaching-tooling/scripts
         run: |
           poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
@@ -339,12 +330,6 @@ jobs:
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
-
-      - name: Checkout teaching-tooling
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: bailey-medics/teaching-tooling
-          path: teaching-tooling
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.3.0
