@@ -189,9 +189,12 @@ jobs:
           bash tooling/.github/scripts/teaching-pipeline/sync-to-gcs.sh \
             question_bank_content/modules "${{ secrets.GCP_TEACHING_GCS_BUCKET }}"
 
+      # --fail-with-body, not -f: the endpoint returns 422 with the
+      # rejected banks listed in the body, and plain -f discards it. The
+      # build should say which bank failed and why, not just go red.
       - name: Trigger backend sync
         run: |
-          curl -sf -X POST \
+          curl -sS --fail-with-body -X POST \
             "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
             -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
             -H "Content-Type: application/json"

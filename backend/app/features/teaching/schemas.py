@@ -324,9 +324,13 @@ class CiSyncErrorItem(BaseModel):
 class CiTeachingSyncOut(BaseModel):
     """Result of the CI/CD teaching content sync trigger.
 
+    Carried on a 200 when every bank synced and on a 422 when any was
+    rejected, so a partial sync can still report both halves.
+
     Attributes:
         synced: Banks successfully synced.
-        errors: Banks that failed to sync.
+        errors: Banks that failed to sync. Non-empty means the response
+            status is 422.
         message: Set only when no banks were found to sync.
     """
 
