@@ -66,17 +66,27 @@ that recur are collected in the glossary at the foot of this document.
 Collecting the data is half the job; the other half is where somebody sees it.
 These split by purpose, and the split is a rule rather than a preference.
 
-- **Incident views live outside the app.** If Quill is down, an in-app
-  dashboard is down with it. Anything consulted *while something is broken* —
-  error rates, uptime, the 5xx dashboard — belongs in Cloud Monitoring, which
-  is already in the project, costs nothing, and needs no build. This is not a
-  compromise pending a nicer version later; it is the correct home for it
-  permanently.
+- **Everything is looked at outside the app, in one place.** If Quill is down,
+  an in-app dashboard is down with it, so anything consulted while something is
+  broken cannot live there. Rather than splitting incident views out and
+  keeping usage views in, all four things — uptime, error rates, public-site
+  visits and app page views — go onto a **single Cloud Monitoring dashboard**.
+  It is already in the project, it costs nothing, it needs no build, and it
+  means one bookmark rather than a habit of checking three places.
 
-- **Usage views live in the app.** Page views and public-site visits are not
-  incident-critical: if the app is down, nobody needs yesterday's counts. So
-  they can go where they are pleasant to look at and easy to show someone,
-  behind the existing permission guards.
+- **All three questions become log-based metrics.** Every input is already, or
+  becomes, a structured log line: load-balancer request logs, backend errors,
+  client error reports, page-view pings. A log-based counter metric over each
+  turns them into something Cloud Monitoring can chart next to uptime, with no
+  second tool in the loop. Page name is a metric label; at 63 routes that is 63
+  time series against a 30,000 ceiling, so cardinality is a non-issue.
+
+- **BigQuery stays, but as an archive rather than a dashboard source.** Metrics
+  are aggregates: they answer the question you thought to ask when you defined
+  them, and cannot be re-sliced afterwards. The raw sink costs pennies and is
+  what lets a new question be asked of old data — "which referrer, last March"
+  — so it is worth keeping even though nothing routinely looks at it. One place
+  to look; one cheap archive nobody looks at until they need it.
 
 - **The alarm that says "wake up" lives outside Google Cloud entirely.** An
   alarm hosted inside the system it watches shares that system's failure modes.
@@ -187,7 +197,15 @@ These split by purpose, and the split is a rule rather than a preference.
 - **Log sink export to BigQuery** — free; the sink itself carries no charge.
 - **BigQuery** — 10 GB of storage and 1 tebibyte of query processing free per
   month, then $0.02 per gigabyte per month. These rows are tiny.
-- **Looker Studio** — free, and connects to BigQuery natively.
+- **Uptime checks** — $0.30 per 1,000 executions, with 1 million free each
+  month. Executions multiply by frequency, by target and by region, so moving
+  from a 300-second to a 60-second period is a fivefold increase: two hostnames
+  checked every minute from all regions comes to roughly 518,000 executions a
+  month, about half the free allowance. A third hostname still fits; a fourth
+  would tip over, and the lever if that happens is to pin `selected_regions`
+  rather than to slow the checks back down.
+- **Log-based metrics** — user-defined ones are chargeable custom metrics, but
+  at the handful of series described here the cost is immaterial.
 - **Cloud Error Reporting** — included with the operations suite; the reports
   arrive as structured log entries under the same free tier.
 
@@ -271,9 +289,11 @@ sits elsewhere.
 - [ ] Verify whether PagerDuty's free tier actually includes voice before
       considering it — sources conflict, and its escalation policy is otherwise
       a good fit
-- [ ] Raise the uptime check frequency, or accept it: the current 300-second
-      period means up to five minutes of detection lag before tier one even
-      starts counting
+- [ ] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
+      from `300s` to `60s`, so detection lags by at most a minute rather than
+      five. The comment marking 300s as the free tier is out of date: at two
+      hostnames this stays comfortably inside the 1 million free executions a
+      month, as costed above
 - [ ] Test the whole escalation end to end, including the phone call, and
       re-test it quarterly — an untested pager is not a pager
 - [ ] Fold the result into the incident response plan and runbook items already
@@ -292,11 +312,15 @@ No application code. This is infrastructure and a dashboard.
       the numbers correctly
 - [ ] Truncate or drop the client IP address at ingest; it is personal data and
       is not needed to count visits
+- [ ] Add a log-based counter metric over the load-balancer request logs,
+      excluding bot and uptime-check traffic at the filter rather than in the
+      chart
+- [ ] Add visits over time to the single Cloud Monitoring dashboard, beside
+      uptime and error rate
 - [ ] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
-      and a log sink, so history outlives the log bucket's retention window —
-      30 days is too short to see a trend
-- [ ] Build a Looker Studio dashboard: visits over time, pages, referrers,
-      with bot and uptime-check traffic filtered out
+      and a log sink, as the archive that allows new questions of old data —
+      metrics cannot be re-sliced after the fact, and 30 days of log bucket
+      retention is too short to see a trend
 - [ ] Set and apply a table expiration matching the retention decision
 
 ## Phase 3: which pages get used in the app
@@ -316,39 +340,10 @@ The only phase needing new client code, and the one carrying the real risk.
       with tests proving it
 - [ ] Add an opt-out toggle in `Settings.tsx`, honoured before any ping is
       sent, with `.stories.tsx` and `.test.tsx` per the component rules
-- [ ] Extend the Looker Studio dashboard with page views per page over time
+- [ ] Add a log-based counter metric over the accepted pings, labelled by page
+      name, and chart page views per page on the same Cloud Monitoring
+      dashboard as everything else
 - [ ] Tests: allow-list rejection, clinical-route guard, opt-out honoured
-
-## Phase 4: the in-app usage page
-
-Optional, and last, because Phases 1 to 3 answer all three questions without
-it — Looker Studio will already be showing the numbers. This phase is about
-where they are pleasant to read, and about having something to show a customer
-or an investor without handing over a Google Cloud login.
-
-Only usage goes here. Error and uptime views stay in Cloud Monitoring for the
-reason given above.
-
-- [ ] Add `@mantine/charts` (v9 requires `recharts` 3+ as a peer). It maps the
-      existing theme tokens onto charts, so there is no separate visual
-      language to maintain, and its charts are keyboard-navigable by default
-- [ ] Add a nightly rollup job using the existing `infra/modules/cloud-run-job`
-      module, aggregating BigQuery into a small daily-totals table in the core
-      database
-- [ ] Serve the page from that table, not from BigQuery. Keeping the warehouse
-      out of the request path means no query-cost exposure, no BigQuery
-      credentials in the serving path, and a page that still renders when
-      BigQuery is unhappy
-- [ ] Return pre-aggregated counts from the API, never event rows — the
-      endpoint should be incapable of emitting a single user's activity
-- [ ] Add a `view_platform_analytics` competency to `shared/competencies.yaml`,
-      mirroring the existing `view_teaching_analytics` entry, and gate the
-      endpoint with `Depends(has_competency("view_platform_analytics"))`
-- [ ] Gate the route with `RequirePermission level="admin"` plus the new
-      competency, so an admin without it sees nothing
-- [ ] Build the chart components in `frontend/src/components/`, each with
-      `.stories.tsx` and `.test.tsx`, per the component reuse rules — the page
-      consumes them and contains no reusable UI itself
 
 ## Prerequisites
 
@@ -376,25 +371,28 @@ Blocking, before any of this ships:
   yet. Nothing is foreclosed by waiting, since load-balancer logs retain
   referrer and user-agent regardless of whether a dashboard reads them.
 
-- **Incident views outside the app, usage views inside it** — the thing you
-  consult while something is broken cannot live inside the thing that broke.
-  That rules out an in-app error dashboard permanently, not just for now, and
-  it is why the phone-call rung of the escalation sits outside Google Cloud
-  too.
+- **One dashboard, outside the app, for all four things** — the thing you
+  consult while something is broken cannot live inside the thing that broke, so
+  incident views must be external. Rather than splitting usage views back into
+  the app, everything goes on one Cloud Monitoring dashboard: a single bookmark
+  beats a habit of checking several places, and it removes an entire build.
+  It is also why the phone-call rung sits outside Google Cloud altogether.
+
+- **Log-based metrics as the dashboard source, BigQuery as the archive** —
+  metrics chart cheaply next to uptime with no second tool, but they are
+  aggregates fixed at definition time and cannot be re-sliced later. The raw
+  sink is the insurance against a question nobody has thought of yet, and it
+  costs pennies to keep even though nothing routinely reads it.
 
 - **Escalate by tiers rather than one dramatic alert** — a channel that fires
   for self-resolving blips gets muted, and a channel set late enough to avoid
   that is too late to be useful. Severity climbs with duration instead: Slack,
   then SMS and push, then a call.
 
-- **Charts from `@mantine/charts`, not a dashboard framework** — it is the
-  design system already in use, so charts inherit the theme rather than
-  introducing a second visual language, and they are keyboard-navigable
-  without extra work.
-
-- **Keep the warehouse out of the request path** — a nightly rollup into the
-  core database means the in-app page cannot become slow, expensive, or
-  dependent on BigQuery credentials at serving time.
+- **Check health every minute, not every five** — five minutes of detection
+  lag before the first tier even starts counting is too much for a clinical
+  product, and at two hostnames the fivefold increase in executions still sits
+  at about half the free monthly allowance.
 
 - **Accept that counting is not retroactive** — the one real cost of this
   minimalism. A question asked in six months about a change made today can only
@@ -437,6 +435,15 @@ from the reasoning rather than from scratch:
   are wanted, the data will already be in BigQuery and they become SQL
   queries — more work than clicking a product analytics interface, but not a
   rebuild.
+
+- **An in-app analytics page for superadmins.** Drafted and then dropped. It
+  would have used `@mantine/charts`, a nightly rollup into the core database
+  and a new `view_platform_analytics` competency, and it remains a perfectly
+  good idea — but it duplicates a dashboard that already exists for free, and
+  splits the answers across two places for the sake of presentation. Revisit it
+  when there is someone other than the operator who needs to see the numbers
+  and should not be given a Google Cloud login: a customer, an investor, or a
+  clinical lead. Until then it is a build with no reader.
 
 - **A typed event catalogue in `shared/`.** The earlier draft proposed one
   mirroring `competencies.yaml`, generated into TypeScript and read by PyYAML.
