@@ -49,10 +49,14 @@ that recur are collected in the glossary at the foot of this document.
   already written.
 
 - **Public site visitor numbers** — the load balancer already logs every
-  request. `infra/modules/load-balancer/main.tf` sets `log_config { enable =
-  true }` on both backend services, and those logs already flow to Cloud
-  Logging today. This question needs no application code at all: it is a
-  querying and dashboard problem, not a collection problem.
+  request, and the public site is logged by a different mechanism from the
+  app. `infra/modules/load-balancer/main.tf` sets `log_config { enable = true }`
+  on the two backend *services*, but the marketing site is served by
+  `google_compute_backend_bucket.landing`, which has no such block. It does not
+  need one: logging for backend buckets on an external Application Load
+  Balancer is switched on automatically and cannot be disabled. Either way the
+  logs are already flowing, so this question needs no application code at all —
+  it is a querying and dashboard problem, not a collection problem.
 
 - **App page views** — this is the only one needing new client code. The app
   is a single-page application using `createBrowserRouter`, so navigating
@@ -235,11 +239,13 @@ somewhere to look.
 
 Server side, already collected:
 
-- [ ] Add an alert policy on the backend 5xx rate to
+- [x] Add an alert policy on the backend 5xx rate to
       `infra/modules/monitoring/main.tf`, firing through the existing email and
-      Slack notification channels
-- [ ] Add a dashboard for error rate by endpoint and status code, so a spike
-      can be attributed rather than just noticed
+      Slack notification channels — threshold is `var.server_error_threshold`,
+      counting 5xx responses in a five-minute window rather than a per-second
+      rate, which is easier to reason about at low traffic
+- [x] Add a dashboard for error rate by service, so a spike can be attributed
+      rather than just noticed
 - [ ] Confirm the alert fires on a deliberately broken endpoint in a
       non-production environment, rather than assuming the filter is right
 
@@ -289,7 +295,7 @@ sits elsewhere.
 - [ ] Verify whether PagerDuty's free tier actually includes voice before
       considering it — sources conflict, and its escalation policy is otherwise
       a good fit
-- [ ] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
+- [x] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
       from `300s` to `60s`, so detection lags by at most a minute rather than
       five. The comment marking 300s as the free tier is out of date: at two
       hostnames this stays comfortably inside the 1 million free executions a
@@ -307,21 +313,23 @@ No application code. This is infrastructure and a dashboard.
 - [ ] Enable Log Analytics on the log bucket so the existing load-balancer logs
       can be queried with SQL immediately, at no additional Cloud Logging
       charge
-- [ ] Check `var.log_sample_rate` on the frontend backend service — a sampled
-      stream is fine for trends, but the sample rate has to be known to read
-      the numbers correctly
+- [x] Check `var.log_sample_rate` on the frontend backend service — it defaults
+      to `1.0`, so nothing is sampled and the counts need no correction factor
 - [ ] Truncate or drop the client IP address at ingest; it is personal data and
       is not needed to count visits
-- [ ] Add a log-based counter metric over the load-balancer request logs,
+- [x] Add a log-based counter metric over the load-balancer request logs,
       excluding bot and uptime-check traffic at the filter rather than in the
-      chart
-- [ ] Add visits over time to the single Cloud Monitoring dashboard, beside
+      chart — `google_logging_metric.public_site_visits` in the new analytics
+      module, scoped to the landing domain so app traffic is not double-counted
+- [x] Add visits over time to the single Cloud Monitoring dashboard, beside
       uptime and error rate
-- [ ] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
+- [x] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
       and a log sink, as the archive that allows new questions of old data —
       metrics cannot be re-sliced after the fact, and 30 days of log bucket
       retention is too short to see a trend
-- [ ] Set and apply a table expiration matching the retention decision
+- [x] Set and apply a table expiration matching the retention decision —
+      `var.retention_days`, defaulting to 400 so a year-on-year comparison is
+      possible; confirm the number against the wider retention decision
 
 ## Phase 3: which pages get used in the app
 

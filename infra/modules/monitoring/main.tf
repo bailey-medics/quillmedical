@@ -42,7 +42,12 @@ resource "google_monitoring_uptime_check_config" "health" {
   project      = var.project_id
   display_name = "Health — ${each.key}"
   timeout      = "10s"
-  period       = "300s" # 5 minutes (free tier)
+
+  # 1 minute. Executions bill at frequency x target x region against a free
+  # allowance of 1M/month; two hostnames from all regions is ~518k, about
+  # half of it. If a fourth hostname is added, pin selected_regions rather
+  # than slowing the checks back down — detection lag matters more.
+  period = "60s"
 
   http_check {
     path         = "/api/health"
@@ -116,6 +121,61 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
         (textPayload =~ "failed the configured startup probe"
           OR textPayload =~ "Container called exit")
       EOT
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+    notification_rate_limit {
+      period = "300s" # At most one notification per 5 minutes
+    }
+  }
+}
+
+# ---------- Alert policy — backend 5xx responses ----------
+#
+# The uptime check above only proves that /api/health answers. A service
+# that starts cleanly, passes the health check, and then fails every real
+# endpoint raises nothing at all without this policy — and that is the
+# failure a clinician actually runs into.
+resource "google_monitoring_alert_policy" "server_errors" {
+  count = length(var.cloud_run_services) > 0 ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Server errors — 5xx (${var.environment})"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Run 5xx responses"
+
+    condition_threshold {
+      filter = join(" AND ", [
+        "resource.type = \"cloud_run_revision\"",
+        "metric.type = \"run.googleapis.com/request_count\"",
+        "metric.labels.response_code_class = \"5xx\"",
+        "(${join(" OR ", [for s in var.cloud_run_services : "resource.labels.service_name = \"${s}\""])})",
+      ])
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.server_error_threshold
+      duration        = "0s"
+
+      # request_count is a DELTA metric, so ALIGN_SUM over the alignment
+      # period reads as "this many 5xx responses in five minutes" rather
+      # than a rate per second, which is far easier to pick a threshold
+      # against at low traffic.
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["resource.label.service_name"]
+      }
+
+      trigger {
+        count = 1
+      }
     }
   }
 

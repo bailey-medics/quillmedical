@@ -32,3 +32,9 @@ variable "cloud_run_services" {
   type        = list(string)
   default     = []
 }
+
+variable "server_error_threshold" {
+  description = "5xx responses in a 5-minute window before the server error alert fires"
+  type        = number
+  default     = 5
+}

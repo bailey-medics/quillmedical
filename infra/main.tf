@@ -348,3 +348,14 @@ module "monitoring" {
   slack_webhook_url   = var.slack_webhook_url
   cloud_run_services  = var.cloud_run_services
 }
+
+# ---------- Analytics: usage metrics, archive, and the shared dashboard ----------
+module "analytics" {
+  count  = var.landing_domain != null ? 1 : 0
+  source = "./modules/analytics"
+
+  project_id  = var.project_id
+  environment = var.environment
+
+  landing_domain = var.landing_domain
+}

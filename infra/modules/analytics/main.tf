@@ -1,0 +1,174 @@
+# modules/analytics/main.tf — Usage metrics, archive, and the one dashboard
+#
+# Answers three questions from data Google Cloud already holds, with no
+# third-party analytics processor anywhere and nothing stored on a user's
+# device:
+#
+#   1. Where are things going wrong  — alert policies live in the monitoring
+#      module; the charts live here so there is a single dashboard to open.
+#   2. How many people visit the public site — load-balancer request logs.
+#      Backend-bucket logging on an external load balancer is automatic and
+#      cannot be disabled, so the landing site is already logged.
+#   3. How many people visit each page of the app — a log-based metric over
+#      the page-view pings, added when that endpoint exists.
+#
+# See docs/docs/plans/2026-08-31-analytics-plan.md.
+
+locals {
+  # Escape dots for the log filter regex without backslash-in-HCL escaping:
+  # "quill-medical.com" becomes "quill-medical[.]com".
+  landing_domain_pattern = replace(var.landing_domain, ".", "[.]")
+
+  # Crawlers, and Google's own uptime and health-check agents, are traffic
+  # but they are not visitors. Excluded at the filter so no chart has to
+  # remember to exclude them.
+  non_visitor_agents = "(?i)(bot|crawler|spider|slurp|GoogleHC|GoogleStackdriverMonitoring)"
+}
+
+# ---------- Public site visits ----------
+resource "google_logging_metric" "public_site_visits" {
+  project = var.project_id
+  name    = "quill/public_site_visits_${var.environment}"
+
+  description = "Requests to the public marketing site, excluding bots and health checks"
+
+  filter = <<-EOT
+    resource.type="http_load_balancer"
+    httpRequest.requestUrl =~ "//(www[.])?${local.landing_domain_pattern}/"
+    NOT httpRequest.userAgent =~ "${local.non_visitor_agents}"
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+# ---------- Archive ----------
+#
+# The dashboard reads metrics, which are aggregates fixed at the moment they
+# are defined and cannot be re-sliced afterwards. This dataset keeps the raw
+# rows so a question nobody has thought of yet ("which referrer, last March")
+# is still answerable. Nothing routinely reads it.
+resource "google_bigquery_dataset" "analytics" {
+  project    = var.project_id
+  dataset_id = "quill_analytics_${var.environment}"
+  location   = var.dataset_location
+
+  description = "Raw request and event logs retained for analytics. No patient data."
+
+  default_table_expiration_ms = var.retention_days * 24 * 60 * 60 * 1000
+
+  labels = {
+    environment = var.environment
+    contains    = "no-phi"
+  }
+}
+
+resource "google_logging_project_sink" "analytics" {
+  project = var.project_id
+  name    = "quill-analytics-${var.environment}"
+
+  destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/${google_bigquery_dataset.analytics.dataset_id}"
+
+  # Load-balancer request logs only. Application logs are deliberately not
+  # routed here: they may carry context that analytics has no business
+  # retaining, and the analytics dataset has its own retention period.
+  filter = <<-EOT
+    resource.type="http_load_balancer"
+  EOT
+
+  unique_writer_identity = true
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
+}
+
+resource "google_bigquery_dataset_iam_member" "sink_writer" {
+  project    = var.project_id
+  dataset_id = google_bigquery_dataset.analytics.dataset_id
+  role       = "roles/bigquery.dataEditor"
+  member     = google_logging_project_sink.analytics.writer_identity
+}
+
+# ---------- The dashboard ----------
+#
+# One place to look. Deliberately outside the application: a dashboard inside
+# Quill would be unavailable during exactly the incident it exists to report.
+resource "google_monitoring_dashboard" "quill" {
+  project = var.project_id
+
+  dashboard_json = jsonencode({
+    displayName = "Quill — health and usage (${var.environment})"
+    gridLayout = {
+      columns = 2
+      widgets = [
+        {
+          title = "Uptime check passing"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"uptime_url\"",
+                    "metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_FRACTION_TRUE"
+                    crossSeriesReducer = "REDUCE_MEAN"
+                    groupByFields      = ["resource.label.host"]
+                  }
+                }
+              }
+              plotType = "LINE"
+            }]
+          }
+        },
+        {
+          title = "Server errors (5xx)"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloud_run_revision\"",
+                    "metric.type = \"run.googleapis.com/request_count\"",
+                    "metric.labels.response_code_class = \"5xx\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["resource.label.service_name"]
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
+          title = "Public site visits"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = "metric.type = \"logging.googleapis.com/user/${google_logging_metric.public_site_visits.name}\""
+                  aggregation = {
+                    alignmentPeriod    = "3600s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+      ]
+    }
+  })
+}
