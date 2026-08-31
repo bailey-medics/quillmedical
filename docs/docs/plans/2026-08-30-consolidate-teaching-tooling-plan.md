@@ -311,12 +311,23 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `__all__` so the models stay importable from their old home. `text_fields()` is now
       a model method rather than the renderer's private mapping, ready for the validator
       to iterate in the next item.
-- [ ] Fold the certificate checks at `backend/app/features/teaching/validate.py:163` into
+- [x] Fold the certificate checks at `backend/app/features/teaching/validate.py:163` into
       the merged validator, driving them off `CertificateStyle.model_validate` rather than
-      hand-rolled conditionals.
-- [ ] Close the coverage gaps found during review: `exam_ref` and `margin` are not
+      hand-rolled conditionals. Now `validate_certificate_config` in `content/validate.py`,
+      called by both gates; the sync-side function keeps only the background-image lookup,
+      which differs by source (GCS inventory versus a directory on disk). Removed the four
+      now-dead constants (`VALID_FONTS`, `VALID_ORIENTATIONS`, `HEX_COLOUR_PATTERN`,
+      `CERTIFICATE_TEXT_FIELDS`) that duplicated the schema.
+- [x] Close the coverage gaps found during review: `exam_ref` and `margin` are not
       validated at all today, and unknown keys are not rejected, so a misspelled colour key
-      silently does nothing.
+      silently does nothing. All three close automatically once the model drives the check.
+      **The certificate block is now validated at merge time**, which is the original bug:
+      `_validate_certificate` runs inside `_validate_assessment_dir`, so a malformed block
+      fails a pull request instead of reaching GCS and failing quietly at sync. Note the
+      presence requirement for the five text fields was kept deliberately — the model has
+      defaults for all of them, so relying on it alone would have *weakened* the check.
+      Pydantic's raw pattern message is translated back to "must be a hex colour (e.g.
+      #404040)", which is what a clinician editing YAML can act on.
 - [ ] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
       slide, recognised components only (`Callout`, `YouTube`, `Figure`, `Video`),
       well-formed props, and an error for any component-shaped tag it would otherwise drop

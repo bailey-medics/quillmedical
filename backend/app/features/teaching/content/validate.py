@@ -23,7 +23,11 @@ from pathlib import Path
 
 import pydantic
 import yaml
+from pydantic_core import ErrorDetails
 
+from app.features.teaching.content.certificate_schema import (
+    CertificateStyle,
+)
 from app.features.teaching.content.module_schema import (
     ALLOWED_IMAGE_EXTENSIONS,
     QUESTION_DIR_RE,
@@ -34,6 +38,21 @@ from app.features.teaching.content.module_schema import (
 
 #: Accepted assessment config filenames, in preference order.
 _ASSESSMENT_FILENAMES = ("assessment.yaml", "config.yaml")
+
+#: Text fields a certificate must declare explicitly once enabled.
+#: The model supplies defaults for all of them, but a certificate whose
+#: title silently falls back to a default is almost certainly a mistake,
+#: so presence is required separately from validity.
+REQUIRED_CERTIFICATE_FIELDS = (
+    "title",
+    "subtitle",
+    "candidate_name",
+    "pass_summary",
+    "date",
+)
+
+#: The background image a certificate is composited onto.
+CERTIFICATE_BACKGROUND = "certificate-blank.png"
 
 
 # ------------------------------------------------------------------
@@ -104,6 +123,60 @@ def _image_files(names: set[str]) -> set[str]:
         for name in names
         if Path(name).suffix.lower() in ALLOWED_IMAGE_EXTENSIONS
     }
+
+
+# ------------------------------------------------------------------
+# Certificate block
+# ------------------------------------------------------------------
+
+
+def certificate_enabled(config: Mapping[str, object]) -> bool:
+    """Whether a bank's config turns certificate download on."""
+    results = config.get("results")
+    if not isinstance(results, dict):
+        return False
+    return bool(results.get("certificate_download", False))
+
+
+def validate_certificate_config(cert: object) -> list[str]:
+    """Validate a bank's ``certificate:`` block.
+
+    Driven off :class:`CertificateStyle` rather than hand-rolled checks, so
+    the merge gate and the PDF renderer agree by construction.  Returns
+    human-readable error strings; empty when the block is valid.
+    """
+    if not isinstance(cert, dict):
+        return ["'certificate' section must be a mapping"]
+
+    section = {str(key): value for key, value in cert.items()}
+    errors: list[str] = []
+
+    for name in REQUIRED_CERTIFICATE_FIELDS:
+        if not isinstance(section.get(name), dict):
+            errors.append(f"certificate section missing '{name}' field")
+
+    try:
+        CertificateStyle.model_validate(section)
+    except pydantic.ValidationError as exc:
+        for err in exc.errors():
+            loc = ".".join(str(part) for part in err["loc"])
+            where = f"certificate.{loc}" if loc else "certificate"
+            errors.append(f"{where}: {_readable(loc, err)}")
+
+    return errors
+
+
+def _readable(loc: str, err: ErrorDetails) -> str:
+    """Turn a Pydantic message into something a content author can act on.
+
+    Pydantic reports a colour mismatch as "String should match pattern
+    '^#[0-9a-fA-F]{6}$'", which is precise and useless to a clinician
+    editing YAML.  Everything else keeps Pydantic's wording, which is
+    already clear.
+    """
+    if err["type"] == "string_pattern_mismatch" and loc.endswith("colour"):
+        return "must be a hex colour (e.g. #404040)"
+    return str(err["msg"])
 
 
 # ------------------------------------------------------------------
@@ -223,6 +296,43 @@ def _validate_assessment_dir(
         )
     elif bank_type == "variable":
         _validate_variable_images(question_dirs, rel_base, result)
+
+    _validate_certificate(config, assessment_dir, rel_config, result)
+
+
+def _validate_certificate(
+    config: Mapping[str, object],
+    assessment_dir: Path,
+    rel_config: str,
+    result: ValidationResult,
+) -> None:
+    """Validate the certificate block and its background image.
+
+    Only applies when the bank turns certificate download on.  Until this
+    ran at merge time, a malformed certificate block reached GCS and failed
+    silently at sync — the gap this consolidation exists to close.
+    """
+    if not certificate_enabled(config):
+        return
+
+    if not (assessment_dir / CERTIFICATE_BACKGROUND).is_file():
+        result.add_error(
+            rel_config,
+            f"certificate_download is enabled but "
+            f"{CERTIFICATE_BACKGROUND} is missing",
+        )
+
+    cert = config.get("certificate")
+    if cert is None:
+        result.add_error(
+            rel_config,
+            "certificate_download is enabled but "
+            "'certificate' section is missing",
+        )
+        return
+
+    for message in validate_certificate_config(cert):
+        result.add_error(rel_config, message)
 
 
 def _validate_uniform_images(

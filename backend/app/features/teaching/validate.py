@@ -18,6 +18,12 @@ from typing import Any
 
 import yaml
 
+from app.features.teaching.content.validate import (
+    CERTIFICATE_BACKGROUND,
+    certificate_enabled,
+    validate_certificate_config,
+)
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -88,27 +94,6 @@ REQUIRED_ASSESSMENT_FIELDS = {
     "min_pool_size",
 }
 
-VALID_ORIENTATIONS = {"portrait", "landscape"}
-
-CERTIFICATE_TEXT_FIELDS = {
-    "title",
-    "subtitle",
-    "candidate_name",
-    "pass_summary",
-    "date",
-}
-
-VALID_FONTS = {
-    "Helvetica",
-    "Helvetica-Bold",
-    "Times-Roman",
-    "Times-Bold",
-    "Courier",
-    "Courier-Bold",
-}
-
-HEX_COLOUR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
-
 EMAIL_REQUIRED_FIELDS = {"subject", "body"}
 
 
@@ -168,34 +153,32 @@ def _validate_certificate_section(
     *,
     image_inventory: dict[str, set[str]] | None = None,
 ) -> None:
-    """Validate the certificate section and required files."""
-    results = config.get("results", {})
-    cert_enabled = results.get("certificate_download", False)
+    """Validate the certificate section and required files.
 
-    if not cert_enabled:
+    The block itself is checked by
+    :func:`app.features.teaching.content.validate.validate_certificate_config`,
+    the same function the merge gate runs, so sync and CI cannot disagree
+    about what a valid certificate looks like.  Only the background-image
+    lookup stays here, because it differs by source: sync may be reading a
+    GCS inventory rather than a directory on disk.
+    """
+    if not certificate_enabled(config):
         return
 
-    # certificate-blank.png must exist
     if image_inventory is not None:
-        root_files = image_inventory.get(".", set())
-        if "certificate-blank.png" not in root_files:
-            result.add_error(
-                config_path,
-                "certificate_download is enabled but "
-                "certificate-blank.png is missing",
-            )
+        present = CERTIFICATE_BACKGROUND in image_inventory.get(".", set())
     else:
-        bg_path = bank_dir / "certificate-blank.png"
-        if not bg_path.is_file():
-            result.add_error(
-                config_path,
-                "certificate_download is enabled but "
-                "certificate-blank.png is missing",
-            )
+        present = (bank_dir / CERTIFICATE_BACKGROUND).is_file()
 
-    # certificate section must exist
+    if not present:
+        result.add_error(
+            config_path,
+            f"certificate_download is enabled but "
+            f"{CERTIFICATE_BACKGROUND} is missing",
+        )
+
     cert = config.get("certificate")
-    if not isinstance(cert, dict):
+    if cert is None:
         result.add_error(
             config_path,
             "certificate_download is enabled but "
@@ -203,60 +186,8 @@ def _validate_certificate_section(
         )
         return
 
-    # orientation
-    orientation = cert.get("orientation", "portrait")
-    if orientation not in VALID_ORIENTATIONS:
-        result.add_error(
-            config_path,
-            f"certificate orientation '{orientation}' "
-            f"must be one of {VALID_ORIENTATIONS}",
-        )
-
-    # text fields
-    for field_name in CERTIFICATE_TEXT_FIELDS:
-        field_data = cert.get(field_name)
-        if not isinstance(field_data, dict):
-            result.add_error(
-                config_path,
-                f"certificate section missing '{field_name}' field",
-            )
-            continue
-
-        # font
-        font = field_data.get("font", "Helvetica")
-        if font not in VALID_FONTS:
-            result.add_error(
-                config_path,
-                f"certificate.{field_name}.font '{font}' "
-                f"not in allowed fonts {VALID_FONTS}",
-            )
-
-        # size
-        size = field_data.get("size")
-        if not isinstance(size, (int, float)) or size < 6 or size > 72:
-            result.add_error(
-                config_path,
-                f"certificate.{field_name}.size must be "
-                f"a number between 6 and 72",
-            )
-
-        # colour
-        colour = field_data.get("colour")
-        if colour and not HEX_COLOUR_PATTERN.match(str(colour)):
-            result.add_error(
-                config_path,
-                f"certificate.{field_name}.colour '{colour}' "
-                f"must be a hex colour (e.g. #404040)",
-            )
-
-        # y position
-        y = field_data.get("y")
-        if not isinstance(y, (int, float)) or y < 0 or y > 1:
-            result.add_error(
-                config_path,
-                f"certificate.{field_name}.y must be "
-                f"a number between 0 and 1",
-            )
+    for message in validate_certificate_config(cert):
+        result.add_error(config_path, message)
 
 
 def _validate_email_section(
