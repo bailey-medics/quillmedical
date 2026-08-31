@@ -79,11 +79,21 @@ resource "google_logging_project_sink" "analytics" {
 
   destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/${google_bigquery_dataset.analytics.dataset_id}"
 
-  # Load-balancer request logs only. Application logs are deliberately not
-  # routed here: they may carry context that analytics has no business
-  # retaining, and the analytics dataset has its own retention period.
+  # Public marketing site only — the same scoping as the metric above, and it
+  # matters far more here.
+  #
+  # An unscoped "resource.type=http_load_balancer" filter would archive every
+  # request to the authenticated app as well, and app request URLs carry
+  # identifiers in the path: /api/patients/{patient_id}/letters,
+  # /api/users/{user_id}. Storing those, next to client IP addresses, would
+  # break the plan's most important control — no raw URLs from the
+  # authenticated app — using the very pipeline built to honour it.
+  #
+  # Application logs are likewise not routed here: they may carry context
+  # analytics has no business retaining.
   filter = <<-EOT
     resource.type="http_load_balancer"
+    httpRequest.requestUrl =~ "//(www[.])?${local.landing_domain_pattern}/"
   EOT
 
   unique_writer_identity = true

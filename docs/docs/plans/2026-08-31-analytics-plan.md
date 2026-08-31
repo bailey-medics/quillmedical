@@ -95,6 +95,13 @@ These split by purpose, and the split is a rule rather than a preference.
   carries the long trend and no personal data, the archive carries the recent
   detail and expires.
 
+  Concretely, what the archive holds is one row per **public marketing site**
+  request: timestamp, request method and URL, response status and size, user
+  agent, referrer, latency, protocol, and the client IP. Nothing from the
+  authenticated app reaches it, and no cookie, session or account identifier
+  appears in a load-balancer log. The IP is the only element that makes a row
+  personal data, and it is the reason for the short window.
+
 - **When a "wake up" alarm is bought, it lives outside Google Cloud.** An
   alarm hosted inside the system it watches shares that system's failure modes.
   Voice paging is the one part of this plan that costs real money, so it is
@@ -120,6 +127,17 @@ These split by purpose, and the split is a rule rather than a preference.
   or is being treated for a condition. This is why page views are reported as
   allow-listed names rather than paths, and it is the single most important
   control in this plan.
+
+  This constraint binds the **archive** as much as the client, and the first
+  implementation got it wrong. The BigQuery sink was written with an unscoped
+  `resource.type="http_load_balancer"` filter, which archives every request the
+  load balancer sees — including the authenticated app, whose paths carry
+  identifiers directly: `/api/patients/{patient_id}/letters`,
+  `/api/users/{user_id}`. That would have stored exactly the URLs this rule
+  forbids, alongside client IP addresses, for the whole retention window, using
+  the pipeline built to honour the rule. The sink filter is now scoped to the
+  landing domain, matching the metric. Any future sink must be scoped the same
+  way: **route what you meant to keep, never a resource type.**
 
 - **No error text passed through unsanitised.** An error message is exactly as
   capable of carrying patient data as an analytics event, and rather more
@@ -288,11 +306,18 @@ would have to sit elsewhere.
 
 Voice is where the cost caveat finally bites. Every other part of this plan
 runs at £0; a phone call does not, on any provider, at any free tier. So the
-first two tiers ship now and the third waits for a reason to buy it. That is
-not a compromise on safety: SMS and a push notification both reach a phone
-within seconds, and the gap between them and a ringing phone matters when
-somebody is asleep — which is a real concern for a clinical service and a
-theoretical one for a teaching product with no patient data in it.
+first two tiers ship now and the third waits for a reason to buy it.
+
+Be clear-eyed about what is being deferred, though. Google's own documentation
+says SMS is "not a fully reliable notification channel type", and that Slack,
+PagerDuty, webhooks and the Cloud mobile app all share a single internal
+delivery service and therefore a single point of failure. Email or Pub/Sub is
+the only recommended redundant path. Taken together, **Google Cloud cannot
+provide a dependable wake-up alarm on its own** — not merely a less pleasant
+one. That, rather than the ergonomics of a ringing phone, is the real reason to
+buy an external pager once there are clinical users. For a teaching product
+holding no patient data, an escalation that usually works is proportionate; for
+a clinical one it is not.
 
 - [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
       already configured. Cheap, ignorable, and often self-resolving
@@ -306,8 +331,16 @@ theoretical one for a teaching product with no patient data in it.
 - [ ] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
       this is done by hand
-- [ ] Add Google Cloud mobile app push as a second tier-two channel, so the
-      escalation does not rest on SMS alone
+- [x] Do not let tier two rest on SMS alone — it is paired with email.
+      Google documents Slack, PagerDuty, webhooks and the Cloud mobile app as
+      sharing **one internal delivery service and therefore one point of
+      failure**, naming email or Pub/Sub as the redundant path. So tier one's
+      Slack rung is not independent cover, and mobile app push would not have
+      been either
+- [ ] Optionally add the Cloud mobile app channel by hand from the Google
+      Cloud app — it cannot be created through Terraform or the channels API,
+      and it shares Slack's failure domain, so it adds a device rather than
+      genuine redundancy
 - [ ] Tier three, roughly 30 minutes — a phone call, **deferred**. No free
       tier anywhere provides one: Better Stack's free plan is email and Slack
       only, with phone and SMS starting at $29 per responder per month billed

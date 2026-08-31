@@ -56,9 +56,19 @@ locals {
   )
 
   # Tier two: reserved for a failure that has persisted long enough to be
-  # real. Deliberately not combined with tier one — the point of escalating
-  # is that the louder channel stays rare enough to still mean something.
-  escalation_channels = [for ch in google_monitoring_notification_channel.sms : ch.id]
+  # real.
+  #
+  # SMS is paired with email rather than used alone, for two reasons. Google
+  # documents SMS as "not a fully reliable notification channel type", so an
+  # escalation resting on it alone can fail silently. And Google further
+  # documents that Slack, PagerDuty, webhooks and the Cloud mobile app are all
+  # delivered by one internal service and share a single point of failure,
+  # with email or Pub/Sub as the recommended redundant path — so tier one's
+  # Slack rung is not independent cover either. Email is the redundancy.
+  escalation_channels = concat(
+    [for ch in google_monitoring_notification_channel.sms : ch.id],
+    [google_monitoring_notification_channel.email.id],
+  )
 }
 
 # ---------- Uptime checks (one per hostname) ----------
