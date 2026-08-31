@@ -11,8 +11,7 @@ FROM python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589ca
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    POETRY_VERSION=2.1.3
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
@@ -20,9 +19,14 @@ WORKDIR /app
 # Most of our deps ship many linux wheels, so you can usually skip build-essential.
 # RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
+# Poetry's version comes from .poetry-version so this image and CI install
+# the same one. Copied separately from the rest so a dependency change does
+# not invalidate this layer.
+COPY .poetry-version ./
+
 # Install Poetry (pinned) and remove pre-installed charset-normalizer to avoid
 # attrs/pip conflict when Poetry manages system site-packages.
-RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" \
+RUN pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
  && pip uninstall -y charset-normalizer 2>/dev/null || true
 
 # Install Python deps into the system site-packages (no venv = simpler image)
