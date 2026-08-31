@@ -96,6 +96,28 @@ lanes A and B, and closes the frontend half of lane C along the way.
   and it is the reason the conservative route also removes the cookie banner
   question entirely.
 
+- **What PECR actually governs, and why Quill needs no banner.** PECR — the
+  Privacy and Electronic Communications (EC Directive) Regulations 2003 — is
+  the UK's implementation of the ePrivacy Directive, and it is the cookie law;
+  UK GDPR is not. The distinction matters: UK GDPR governs the processing of
+  personal data, whereas PECR governs **storing or reading anything on a user's
+  device**, whether or not that thing is personal data. It therefore catches
+  `localStorage`, fingerprinting and pixels exactly as it catches cookies.
+  Quill escapes the consent banner on two independent grounds. First, the
+  analytics described here store nothing on the device, so PECR does not engage
+  — that is the new part. Second, the cookies Quill *does* set (the JWT session
+  and CSRF cookies) are **strictly necessary** under PECR Reg 6(4): essential to
+  deliver a service the user explicitly requested. That exemption long predates
+  the DUAA. But strictly necessary means **tell, not ask** — users must still be
+  clearly informed about those cookies, which is why the cookie policy is a
+  blocking prerequisite even though no banner is.
+
+- **Banners have not gone away generally.** The DUAA carved out narrow
+  low-risk categories; it did not abolish the regime. Advertising and profiling
+  cookies still require opt-in consent, and the ICO has said its enforcement
+  focus is precisely there. Nothing in this plan should be read as a general
+  finding that UK sites no longer need consent banners.
+
 - **GA4 is excluded on every reading.** It fails the statistical purposes test
   three ways: Google is a joint controller rather than a processor; GA data
   feeds Google's advertising systems, machine-learning models and benchmarking
@@ -370,8 +392,9 @@ Closes the lane C gap that has no owner today.
 
 Blocking, before any analytics ships:
 
-- [ ] Cookie policy written, replacing the current stub — the policy is needed
-      whether or not a banner is, and the honest version is now short
+- [ ] Cookie policy written, replacing the current stub — no consent banner is
+      required, but the strictly necessary session and CSRF cookies must still
+      be clearly described, so the policy is needed either way
 - [ ] Privacy policy updated with the processing, purpose and retention period
 - [ ] DPIA covering the analytics processing, recording that no third-party
       processor is involved and that PECR does not engage
