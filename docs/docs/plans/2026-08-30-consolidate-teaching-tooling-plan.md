@@ -294,10 +294,20 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             `fixtures/` tree under `backend/tests/fixtures/teaching_tooling/`. Ruff (which
             teaching-tooling never ran) flagged `B017` blind `Exception` asserts; these now
             assert `ValidationError` and `CalledProcessError` instead.
-- [ ] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
-      so no Node project, lockfile or Corepack step is needed. The content CI job installs
-      two pinned dependencies inline (`pip install "pydantic>=2" "pyyaml>=6"`) rather than
-      carrying a requirements file.
+- [x] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
+      so no Node project, lockfile or Corepack step is needed.
+- [x] The tooling package carries its own `pyproject.toml` and `poetry.lock`, declaring
+      only `pydantic` and `pyyaml`. Content CI runs `poetry install` there, so it gets the
+      locked versions rather than a fresh resolve, and never the backend's stack.
+      `backend/pyproject.toml` is left untouched — adding a group to it would relock the
+      backend and churn the lock for a CI-only concern.
+      - The cost is that `pydantic` and `pyyaml` are declared twice.
+        `test_teaching_tooling_dependencies.py` is the guard: the shared constraints and
+        the `python` requirement must be identical in both files, and the tooling package
+        may declare nothing else.
+      - Poetry itself is installed unpinned, matching `.github/actions/setup-python`.
+        The acceptable range lives in the package's `requires-poetry` constraint, next to
+        the lock it governs, rather than as a version number in the workflow.
 - [x] Add `cli.py` so CI can run
       `python -m app.features.teaching.tooling.cli <modules_dir>` from `backend/`. Runs
       validation and version lock in one invocation. Carries `--skip-version-lock` for
@@ -463,18 +473,27 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 3: Reusable workflow in Quill
 
-- [ ] Port `teaching-tooling/.github/workflows/pipeline.yml` to
+- [x] Port `teaching-tooling/.github/workflows/pipeline.yml` to
       `.github/workflows/teaching-pipeline.yml`, keeping the job names `validate`,
-      `check-protection`, `auto-pr` and `deploy` exactly as they are.
-- [ ] Replace the tooling checkout in the `validate` job with the sparse checkout of Quill
-      shown below.
-- [ ] Strip validation from the `deploy` job — the tooling checkout, Python setup, pip
-      install, Node setup, npm install, and both validate steps. `deploy` becomes:
-      checkout content, authenticate to GCP, sync to GCS, trigger backend sync. Beyond
-      shortening it, this means `deploy` no longer executes any Quill code except the
-      workflow file itself, which shrinks what a Quill change can break there.
-- [ ] Fix the stale error message in `check-protection`, which still points at
-      `teaching-tooling/infra/main.tf`.
+      `check-protection`, `auto-pr` and `deploy` exactly as they are. Verified identical to
+      the original set, so the rulesets need no edit.
+- [x] Replace the tooling checkout in the `validate` job with the sparse checkout of Quill
+      shown below. Only the `tooling` directory needs listing: cone mode also brings the
+      files sitting directly in each parent directory, which is how `mdx_parser.py` and the
+      `app/` `__init__` chain arrive. Simulated the whole job locally — the checkout yields
+      37 Python files, and the CLI then runs to completion in a venv holding **only
+      pydantic and pyyaml**, confirming the dependency-light constraint holds outside the
+      backend container. Run from inside the content checkout so version lock can resolve
+      the repository root; `--ref origin/main` makes the comparison explicit.
+- [x] Strip validation from the `deploy` job — the tooling checkout, Python setup, pip
+      install, Node setup, npm install, and both validate steps. `deploy` is now: checkout
+      content, authenticate to GCP, sync to GCS, trigger backend sync. It executes no Quill
+      code beyond the workflow file itself. **The sync status-code fix must land before
+      Phase 4**, not before this port: the gap only opens when a content repo actually
+      starts using this deploy job.
+- [x] Fix the stale error message in `check-protection`, which pointed at
+      `teaching-tooling/infra/main.tf`; it now points at `quillmedical/infra/github/`,
+      where Phase 5 moves the rulesets.
 
 ```yaml
 - uses: actions/checkout@v7.0.1
@@ -639,6 +658,106 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
   broke CI on the first. Both now return the same violation, pointing at
   `--skip-version-lock`, and both are pinned by tests. Worth remembering when the
   pull-request sweep validates a tree downloaded from GCS — that is exactly this case.
+
+## Phase 8: Per-organisation active version pointers
+
+Not part of the consolidation — a design change that surfaced while reviewing what the
+sync path actually does, added here at the maintainer's request.
+
+**The asymmetry.** `QuestionBankOrgStatus.is_live` defaults to false, so a brand-new bank
+merging to `main` syncs into the database and stays invisible to candidates until an admin
+deliberately opens it. That human promotion step already exists. But `is_live` is per
+*bank*, not per *version*, and the candidate-facing queries take
+`order_by(version.desc()).first()` — so publishing **version N+1 of an already-live bank
+reaches candidates the moment sync completes**, with no human step at all.
+
+Standing up a new assessment needs sign-off; rewriting the questions inside a live one does
+not. The second is arguably the higher-risk operation, because it changes an exam
+candidates are already sitting. Two things soften it but neither closes it: in-flight
+candidates are pinned by `Assessment.bank_version` and finish on the version they started,
+and `check_version_lock` refuses any assessment change to a live module without an explicit
+version bump — so publishing a revision is deliberate, just not *separately* deliberate
+from merging.
+
+**The change.** Each organisation gains a pointer to the version its candidates receive.
+Sync imports new versions but never moves the pointer; a staff org admin advances it when
+they are ready. That also gives a rollback, which does not exist today.
+
+- [ ] **Model and migration.** Add `active_version: int | None` to
+      `QuestionBankOrgStatus`. Nullable, so no `server_default` is needed. Backfill every
+      existing row to the highest synced version for that organisation and bank, so no
+      live bank changes behaviour on deploy. Created with `just migrate`, with a real
+      `downgrade()`.
+- [ ] **Sync sets it once and never again.** Creating a status row for a bank's first
+      version sets the pointer to that version — harmless, since `is_live` still gates it.
+      Syncing a later version must leave the pointer untouched: that is the whole point.
+- [ ] **Candidate-facing queries follow the pointer**, not the highest version:
+      `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
+      (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means
+      the bank is not ready and serves nothing.
+- [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
+      `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
+      alongside the active one, so "version 3 active, version 4 available" is visible.
+- [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
+      Validates that the target version exists for that bank, and records who moved it and
+      when. Rolling back is the same operation pointing at an earlier version.
+- [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
+      admin teaching page, which already carries the live/closed toggle.
+
+## Follow-up: one Poetry version for the whole repository
+
+**A separate pull request, not part of this branch.** It touches the production image
+build and every CI job, so a failure there should not be tangled up with the teaching
+consolidation. Sequence: land this branch, then this, then resume at Phase 4.
+
+The teaching pipeline surfaced the problem but does not cause it. Poetry is currently
+pinned in one place and left floating everywhere else:
+
+- `backend/Dockerfile` pins `POETRY_VERSION=2.1.3`
+- `.github/actions/setup-python`, `gate-breaking.yml` and the teaching pipeline all run
+  `pip install -U pip poetry`, which resolves to 2.4.2 at the time of writing
+- Developer hosts run whatever each machine happens to have
+
+So the container that builds the production image runs a different Poetry from the one CI
+runs. This already cost us once during Phase 3: adding a dependency group to
+`backend/pyproject.toml` relocked with 2.1.3 against a lock generated by 2.3.3 and
+produced fifteen lines of pure formatting churn, which is why the tooling package ended up
+with its own `pyproject.toml` instead.
+
+### What is actually at risk
+
+Worth separating, because it determines the design:
+
+- **Relocking is version-sensitive.** A different Poetry writes a differently formatted
+  lock. This is the real hazard, and the one already encountered.
+- **Installing from an existing lock is not.** Verified during Phase 3: Poetry 2.1.3 and
+  2.4.2 install identical versions from the same lock file.
+
+The dangerous path is therefore a developer relocking on their host, which no CI-side pin
+can reach.
+
+### The change
+
+- [ ] Add `.poetry-version` at the repository root, mirroring the existing
+      `.python-version`. No Docker build argument is needed — the Dockerfile can `COPY` the
+      file and read it in the `RUN` that installs Poetry.
+- [ ] Read it from `backend/Dockerfile`, `.github/actions/setup-python` and
+      `gate-breaking.yml`. The teaching pipeline needs no extra sparse-checkout path:
+      cone mode already brings root-level files.
+- [ ] Add `requires-poetry` to `backend/pyproject.toml`, matching the constraint the
+      tooling package carries. This is the half that catches host drift, because Poetry
+      enforces it wherever it runs — including a laptop, where a repository file can
+      install nothing. It does not touch the lock: confirmed on the tooling package, where
+      `poetry check --lock` still exits 0 with the constraint in place.
+- [ ] A drift test asserting the two declarations agree, alongside
+      `test_teaching_tooling_dependencies.py`. Note the constraint on where such a test can
+      live: the container mounts only `backend/`, so a backend test cannot read
+      `.github/`. A root-level file is readable; a workflow is not.
+- [ ] Confirm CI is green before merging, since every Python job changes how it installs
+      Poetry.
+
+Either piece alone is half a fix: `.poetry-version` selects a version, `requires-poetry`
+rejects the wrong one.
 
 ## Verification
 
