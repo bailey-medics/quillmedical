@@ -47,3 +47,4 @@
 - [Gate Notification Workflow](2026-08-29-gate-notification-workflow-plan.md)
 - [Consolidate Teaching Tooling](2026-08-30-consolidate-teaching-tooling-plan.md)
 - [GCP Video Auth Gate](2026-08-31-gcp-video-auth-gate-plan.md)
+- [Analytics](2026-08-31-analytics-plan.md)
