@@ -39,11 +39,14 @@ that recur are collected in the glossary at the foot of this document.
 
 ## How each question gets answered
 
-- **Where are things going wrong** — the existing `ErrorBoundary` and a global
-  handler post sanitised reports to Quill's own backend, which logs them as
-  structured entries. Cloud Error Reporting groups them and the existing alert
-  channels in `infra/modules/monitoring` shout about them. No new service, and
-  the catching half is already written.
+- **Where are things going wrong** — two halves. Server-side errors are
+  already logged as structured JSON but nothing alerts on them, so that half is
+  a threshold and a dashboard over data Quill already holds. Client-side, the
+  existing `ErrorBoundary` and a global handler post sanitised reports to
+  Quill's own backend, which logs them the same way; Cloud Error Reporting
+  groups them and the existing channels in `infra/modules/monitoring` shout
+  about them. No new service either way, and the client-side catching is
+  already written.
 
 - **Public site visitor numbers** — the load balancer already logs every
   request. `infra/modules/load-balancer/main.tf` sets `log_config { enable =
@@ -181,6 +184,28 @@ good trade.
 The first question asked, and the cheapest to answer, because the catching is
 already built.
 
+"Going wrong" has two halves, and the server half matters more. A React crash
+inconveniences one user in one tab; a backend throwing errors reaches every
+clinician mid-task. Today neither is visible. `infra/modules/monitoring` alerts
+on exactly two things — an uptime check against `/api/health`, and Cloud Run
+container startup failure — so a backend that starts cleanly and answers the
+health check with a 200 while failing every real endpoint **triggers no alert
+at all**. The server half needs no new collection, since those errors are
+already logged as structured JSON with a `request_id`; it needs a threshold and
+somewhere to look.
+
+Server side, already collected:
+
+- [ ] Add an alert policy on the backend 5xx rate to
+      `infra/modules/monitoring/main.tf`, firing through the existing email and
+      Slack notification channels
+- [ ] Add a dashboard for error rate by endpoint and status code, so a spike
+      can be attributed rather than just noticed
+- [ ] Confirm the alert fires on a deliberately broken endpoint in a
+      non-production environment, rather than assuming the filter is right
+
+Client side, new work:
+
 - [ ] Extend `componentDidCatch` in
       `frontend/src/components/error-boundary/ErrorBoundary.tsx` to report the
       error as well as logging it
@@ -261,6 +286,17 @@ Blocking, before any of this ships:
 - **Scope is three questions, not a product analytics capability** — errors,
   public visits, app page views. Everything outside that is explicitly not
   being built, so the instrumentation stays small enough to audit by reading it.
+  The test applied was "what decision would this data change?", and anything
+  without an answer was dropped. Marketing analytics is the clearest example:
+  it earns its keep when there is a budget to reallocate, and there is not one
+  yet. Nothing is foreclosed by waiting, since load-balancer logs retain
+  referrer and user-agent regardless of whether a dashboard reads them.
+
+- **Accept that counting is not retroactive** — the one real cost of this
+  minimalism. A question asked in six months about a change made today can only
+  be answered if the counting had already started. That argues for starting the
+  counting now, which this plan does, rather than for collecting more kinds of
+  it.
 
 - **Assume patient data arrives tomorrow** — the governing instruction.
   Behavioural instrumentation creates the exposure before any clinical field is
