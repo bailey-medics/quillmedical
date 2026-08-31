@@ -60,6 +60,16 @@ Put the script's work in a `main()` function and call it behind a source guard. 
 - **Split `local` from a command substitution** — `local x=$(cmd)` swallows the exit status of `cmd`, so a failure slips past `set -e`. Write `local x` then `x=$(cmd)` on the next line.
 - **Libraries are exempt.** `shared/logging.sh` is only ever sourced and has no `main()`.
 
+## Testing scripts with bats
+
+Every script under `.github/scripts/` should have a `<name>.bats` beside it. The suite runs in CI via `.github/scripts/ci/run-shell-tests.sh`, which fails on warnings as well as on test failures — see below for why.
+
+- **Assert negatives with `run ! cmd`, never a bare `! cmd`.** A bare `!` only fails the test when it is the last command in the `@test` block; anywhere else `set -e` ignores it and the assertion passes whether or not it holds. `run !` works in any position.
+- **Declare `bats_require_minimum_version 1.5.0`** at the top of any file that puts flags on `run` (`run !`, `run -1`, `run --separate-stderr`). Without it bats runs in a compatibility mode where the flags are not honoured, so `run !` passes vacuously. Files using plain `run cmd` do not need it.
+- **Warnings are failures.** bats reports both of the above as `BW01`/`BW02` and still exits 0, so a vacuous assertion would otherwise show green. `run-shell-tests.sh` greps for the warning codes and fails the build, and its message says how to fix the test rather than how to silence it. Do not add a case to make a warning tolerated.
+- **Stub external commands** rather than invoking them — put a fake on `PATH` that records its arguments, and assert on what the script asked for. The `gsutil` stub in `teaching-pipeline/sync-to-gcs.bats` is the pattern.
+- **Prove an assertion can fail.** After writing a test that checks something does *not* happen, break the script deliberately and confirm the test goes red. A negative assertion that cannot fail is the most common way a green suite hides a regression.
+
 ## Shared helpers
 
 - `shared/logging.sh` — provides `log()` (standard output) and `error()` (standard error, red) functions
