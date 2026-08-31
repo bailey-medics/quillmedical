@@ -22,7 +22,7 @@ variable "dataset_location" {
 }
 
 variable "retention_days" {
-  description = "How long raw analytics rows are kept. Short, because load-balancer logs carry client IP addresses, which are personal data. Long-run trends come from the log-based metric instead, which holds no IP."
+  description = "How long raw request rows are kept. Deliberately short: these rows carry client IP addresses, and their purpose is recent investigation, not long-term trend. The per-page visit history lives in the log-based metric instead, which holds no IP and is retained for far longer."
   type        = number
-  default     = 90
+  default     = 30
 }

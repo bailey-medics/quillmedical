@@ -85,22 +85,34 @@ These split by purpose, and the split is a rule rather than a preference.
   second tool in the loop. Page name is a metric label; at 63 routes that is 63
   time series against a 30,000 ceiling, so cardinality is a non-issue.
 
-- **BigQuery stays, but as a short archive rather than a dashboard source.**
-  Metrics are aggregates: they answer the question you thought to ask when you
-  defined them, and cannot be re-sliced afterwards. The raw sink is what lets a
-  question nobody defined a metric for still be answered — "which referrer,
-  last month" — even though nothing routinely looks at it. It holds 90 days,
-  not years, because load-balancer logs carry client IP addresses and there is
-  no way to strip a field at ingest. So the division of labour is: the metric
-  carries the long trend and no personal data, the archive carries the recent
-  detail and expires.
+- **The long history lives in the metric, not the archive.** Wanting to keep
+  usage data for as long as possible and wanting to hold client IP addresses
+  are separable, and separating them is what makes long retention easy. The
+  log-based metric carries a **`page` label**, so per-page visit counts are
+  retained by Cloud Monitoring for years with no IP address and nothing else
+  personal in them. Nothing has to be deleted, because nothing sensitive was
+  stored.
 
-  Concretely, what the archive holds is one row per **public marketing site**
-  request: timestamp, request method and URL, response status and size, user
-  agent, referrer, latency, protocol, and the client IP. Nothing from the
-  authenticated app reaches it, and no cookie, session or account identifier
-  appears in a load-balancer log. The IP is the only element that makes a row
-  personal data, and it is the reason for the short window.
+  So the raw BigQuery table is not the long archive; it is a short
+  investigation window, defaulting to 30 days. What it holds is one row per
+  **public marketing site** request: timestamp, method and URL, response status
+  and size, user agent, referrer, latency, protocol, and client IP. Nothing
+  from the authenticated app reaches it, and no cookie, session or account
+  identifier appears in a load-balancer log. The IP is the only element making
+  a row personal data, and it earns its 30 days by being useful for abuse and
+  incident investigation — not for counting visitors.
+
+  What that trades away is per-referrer history beyond 30 days, since referrer
+  is not a metric label — an unbounded set of referring hosts would be a
+  cardinality problem where a bounded set of pages is not. If referrer trends
+  ever matter, the escalation is a scheduled BigQuery query rolling an
+  IP-stripped copy into a long-lived table before the raw partitions expire.
+  Worth building then; not worth building now.
+
+  Note also that expiry is set as **partition** expiry rather than table
+  expiry. The sink appends to one partitioned table, so a table expiration
+  would delete the whole thing — recent data included — on the anniversary of
+  its creation, instead of rolling old days off the back.
 
 - **When a "wake up" alarm is bought, it lives outside Google Cloud.** An
   alarm hosted inside the system it watches shares that system's failure modes.
@@ -331,6 +343,16 @@ a clinical one it is not.
 - [ ] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
       this is done by hand
+
+**For teaching specifically, this is already enough — buy nothing.** Teaching
+holds no patient data and supports no clinical decision; an outage means a
+learner cannot sit an assessment for a while. That warrants finding out
+promptly during waking hours, which Slack and email already do, and it does not
+warrant being woken at 03:00. SMS is worth verifying because it is free and
+occasionally useful, not because teaching needs it. The unreliability of
+Google's notification channels is a real problem for a clinical service and an
+acceptable one here. Revisit the whole escalation when clinical users arrive —
+not before.
 - [x] Do not let tier two rest on SMS alone — it is paired with email.
       Google documents Slack, PagerDuty, webhooks and the Cloud mobile app as
       sharing **one internal delivery service and therefore one point of
@@ -397,9 +419,12 @@ No application code. This is infrastructure and a dashboard.
       and a log sink, as the archive that allows new questions of old data —
       metrics cannot be re-sliced after the fact, and 30 days of log bucket
       retention is too short to see a trend
-- [x] Set and apply a table expiration matching the retention decision —
-      `var.retention_days`, defaulting to 90 because the rows carry client IP
-      addresses; confirm the number against the wider retention decision
+- [x] Set and apply an expiration matching the retention decision —
+      `var.retention_days`, defaulting to 30 and applied as **partition**
+      expiry, not table expiry, so old days roll off instead of the whole table
+      vanishing on its anniversary. The long per-page history lives in the
+      metric's `page` label instead, with no IP in it, so retention and privacy
+      stopped competing
 
 ## Phase 3: which pages get used in the app
 

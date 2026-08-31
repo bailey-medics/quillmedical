@@ -370,6 +370,28 @@ poetry-path:
     echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
 
+alias tf := terraform-infra
+# Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
+terraform-infra env="teaching":
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-infra"
+    set -euo pipefail
+    cd infra
+    VARS="environments/{{env}}/terraform.tfvars"
+    if [ ! -f "$VARS" ]; then
+        echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
+        exit 1
+    fi
+    terraform init -input=false
+    terraform plan -var-file="$VARS"
+    read -rp "Apply these changes to {{env}}? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file="$VARS" -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
 alias tf-gh := terraform-github
 # Apply GitHub rulesets via Terraform (branch naming, protection rules)
 terraform-github:

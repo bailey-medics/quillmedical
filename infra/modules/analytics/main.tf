@@ -32,9 +32,13 @@ resource "google_logging_metric" "public_site_visits" {
 
   description = "Requests to the public marketing site, excluding bots and health checks"
 
+  # Successful responses only. Besides being the right definition of a visit,
+  # this keeps scanner traffic out of the page label below: probes for
+  # /wp-admin and friends return 404, so they never become a time series.
   filter = <<-EOT
     resource.type="http_load_balancer"
     httpRequest.requestUrl =~ "//(www[.])?${local.landing_domain_pattern}/"
+    httpRequest.status = 200
     NOT httpRequest.userAgent =~ "${local.non_visitor_agents}"
   EOT
 
@@ -42,6 +46,19 @@ resource "google_logging_metric" "public_site_visits" {
     metric_kind = "DELTA"
     value_type  = "INT64"
     unit        = "1"
+
+    labels {
+      key         = "page"
+      value_type  = "STRING"
+      description = "Request path, without query string"
+    }
+  }
+
+  # The page label is what makes this metric worth keeping for years: it
+  # carries per-page visit counts with no IP address and no other personal
+  # data, so it can be retained far longer than the raw rows below.
+  label_extractors = {
+    "page" = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^https?://[^/]+(/[^?]*)\")"
   }
 }
 
@@ -63,9 +80,14 @@ resource "google_bigquery_dataset" "analytics" {
   dataset_id = "quill_analytics_${var.environment}"
   location   = var.dataset_location
 
-  description = "Raw request and event logs retained for analytics. No patient data."
+  description = "Raw public-site request logs, short-lived because they contain client IP addresses. No patient data."
 
-  default_table_expiration_ms = var.retention_days * 24 * 60 * 60 * 1000
+  # Partition expiry, not table expiry. The sink writes one partitioned table
+  # and keeps appending to it, so a *table* expiration would delete the whole
+  # thing — recent data included — on the anniversary of its creation, rather
+  # than rolling old days off the back. Partition expiry gives the rolling
+  # window that was actually intended.
+  default_partition_expiration_ms = var.retention_days * 24 * 60 * 60 * 1000
 
   labels = {
     environment = var.environment
