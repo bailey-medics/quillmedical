@@ -164,12 +164,15 @@ this, then let the sweep review both together.
   `storage.py` partly for this reason, alongside the review-isolation argument in
   Phase 2.
 
-- **The frontier is recorded in the repository, not in conversation** — a
-  progress file that the reviewer advances, read at the start of each session so
-  every change can be classified against it without relying on recall. Worth
-  adding before this plan resumes; a small checker that classifies
-  `git diff --name-only` against the frontier could then label pull requests
-  automatically in CI.
+- **No frontier-tracking file** — an earlier draft proposed recording the HCR
+  position in the repository, with a checker classifying `git diff --name-only`
+  against it. Rejected as overkill. The reviewer reads the work directly and
+  decides what needs deeper HCR; a tracked file would go stale the moment the
+  frontier moved, and asking where the frontier is costs less than maintaining
+  it. The obligation this leaves on the implementer is to make that judgement
+  easy — state plainly which files each pull request touches and which of them
+  were already reviewed, so the decision is about the code rather than about
+  working out what changed.
 
 ## Phase 0: Spike — private bucket behind a backend bucket
 
