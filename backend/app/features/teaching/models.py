@@ -256,11 +256,17 @@ class TeachingOrgSettings(Base):
 
 
 class QuestionBankOrgStatus(Base):
-    """Per-bank-per-org live/closed status.
+    """Per-bank-per-org live/closed status and active version.
 
     Banks default to closed until an admin explicitly sets them live.
     When ``email_coordinator_on_pass`` is enabled in the bank config, the
     coordinator email must be set before the bank can go live.
+
+    ``active_version`` is the version this organisation's candidates
+    receive.  Sync imports new versions but never moves it, so revising a
+    live bank does not put the revision in front of candidates until a
+    staff org admin advances the pointer — the same deliberate step a new
+    bank already requires through ``is_live``.
     """
 
     __tablename__ = "question_bank_org_status"
@@ -289,6 +295,9 @@ class QuestionBankOrgStatus(Base):
     coordinator_email: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    #: Version served to this organisation's candidates. Null means the
+    #: bank has nothing promoted yet and serves nothing.
+    active_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 # ------------------------------------------------------------------

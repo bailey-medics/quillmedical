@@ -88,7 +88,7 @@ class TestRequireFeatureDependency:
 
     def test_no_primary_org_returns_403(self, test_client, db_session):
         """User with no primary org → 403."""
-        from app.features import requires_feature
+        from app.features.gating import requires_feature
 
         user = User(
             username="noprimaryorg",
@@ -138,7 +138,7 @@ class TestRequireFeatureDependency:
         # We test via a quick mock-endpoint approach by calling the
         # dependency function directly
 
-        from app.features import requires_feature
+        from app.features.gating import requires_feature
 
         dep_fn = requires_feature("teaching")
 

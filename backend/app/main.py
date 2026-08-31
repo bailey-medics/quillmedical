@@ -5464,10 +5464,12 @@ def ci_teaching_sync(
         tooling_module_dir: Path | None = None
         tooling_is_temp = False
         try:
-            # Run teaching-tooling CI validation (second layer of
-            # defence — clinical safety requirement)
-            from app.features.teaching.tooling_validate import (
-                run_tooling_validation,
+            # Module metadata and learning content. The assessment is
+            # validated inside sync_question_bank against the GCS
+            # inventory, which a module directory cannot supply — together
+            # the two cover everything exactly once.
+            from app.features.teaching.tooling.validate import (
+                validate_module_metadata,
             )
 
             if base_path and not bucket:
@@ -5485,9 +5487,9 @@ def ci_teaching_sync(
                 tooling_is_temp = tooling_module_dir is not None
 
             if tooling_module_dir:
-                tooling_errors = run_tooling_validation(tooling_module_dir)
-                if tooling_errors:
-                    msg = "; ".join(e["message"] for e in tooling_errors[:5])
+                metadata = validate_module_metadata(tooling_module_dir)
+                if not metadata.is_valid:
+                    msg = "; ".join(e.message for e in metadata.errors[:5])
                     errors.append(CiSyncErrorItem(bank_id=bank_id, error=msg))
                     continue
             else:
@@ -5496,7 +5498,7 @@ def ci_teaching_sync(
                         bank_id=bank_id,
                         error=(
                             "module directory not found — "
-                            "cannot run tooling validation"
+                            "cannot validate module metadata"
                         ),
                     )
                 )

@@ -6,8 +6,10 @@ from pathlib import Path
 
 import yaml
 
-from app.features.teaching.validate import (
-    validate_question_bank,
+# Repointed at the merged validator rather than rewritten, so the coverage
+# these 30 tests give is demonstrably the same before and after the merge.
+from app.features.teaching.tooling.validate import (
+    validate_assessment_dir as validate_question_bank,
 )
 
 
@@ -290,8 +292,8 @@ class TestValidateQuestionBank:
     def test_finalise_summary(self, tmp_path: Path) -> None:
         bank = self._make_uniform_bank(tmp_path)
         result = validate_question_bank(bank)
-        assert "test-bank" in result.summary
-        assert "VALID" in result.summary
+        assert "test-bank" in result.summary()
+        assert "VALID" in result.summary()
 
     # --- Image inventory (GCS-sourced) checks ---
 

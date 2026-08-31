@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_core_db
 from app.deps import has_competency
-from app.features import requires_feature
+from app.features.gating import requires_feature
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -1597,7 +1597,7 @@ def validate_items(
             for w in result.warnings
         ],
         "item_count": result.item_count,
-        "summary": result.summary,
+        "summary": result.summary(),
     }
 
 
@@ -2001,8 +2001,8 @@ def sync_all_banks(
 
     from app.config import settings
     from app.features.teaching.sync import sync_question_bank
-    from app.features.teaching.tooling_validate import (
-        run_tooling_validation,
+    from app.features.teaching.tooling.validate import (
+        validate_module_metadata,
     )
 
     org_id = _get_user_org_id(user, db)
@@ -2030,8 +2030,10 @@ def sync_all_banks(
         tooling_module_dir: Path | None = None
         tooling_is_temp = False
         try:
-            # Run teaching-tooling CI validation (second layer of
-            # defence — clinical safety requirement)
+            # Module metadata and learning content. The assessment is
+            # validated inside sync_question_bank against the GCS
+            # inventory, which a module directory cannot supply — together
+            # the two cover everything exactly once.
             if base_path and not bucket:
                 from app.features.teaching.storage import (
                     resolve_module_dir,
@@ -2047,9 +2049,9 @@ def sync_all_banks(
                 tooling_is_temp = tooling_module_dir is not None
 
             if tooling_module_dir:
-                tooling_errors = run_tooling_validation(tooling_module_dir)
-                if tooling_errors:
-                    msg = "; ".join(e["message"] for e in tooling_errors[:5])
+                metadata = validate_module_metadata(tooling_module_dir)
+                if not metadata.is_valid:
+                    msg = "; ".join(e.message for e in metadata.errors[:5])
                     errors.append({"bank_id": bank_id, "error": msg})
                     continue
             else:
@@ -2059,7 +2061,7 @@ def sync_all_banks(
                         "bank_id": bank_id,
                         "error": (
                             "module directory not found — "
-                            "cannot run tooling validation"
+                            "cannot validate module metadata"
                         ),
                     }
                 )

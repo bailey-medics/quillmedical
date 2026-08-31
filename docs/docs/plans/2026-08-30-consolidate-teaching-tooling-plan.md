@@ -53,7 +53,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   biting: three schema copies, ~120 lines of untyped `importlib` plumbing, and a weaker
   quality gate on the shared contract than on the code consuming it.
 
-- **Place the package at `backend/app/features/teaching/content/`** — The content
+- **Place the package at `backend/app/features/teaching/tooling/`** — The content
   contract belongs with the teaching feature, next to `certificate.py`, `sync.py` and
   `storage.py`, rather than in a second top-level location. One thing blocks it today:
   `app/features/__init__.py` defines `requires_feature`, so importing anything under
@@ -168,11 +168,24 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   entirely, makes the pull-request sweep a plain prefix download, and reduces the deploy
   job to one sync per module. Crucially it costs the **same bucket migration** a bare
   rename would: every object moves either way, so the larger change is free. Do it
-  after
-  consolidation, when writer and readers are finally in one repo, and before building the
-  sweep so the sweep is written against the final layout. No database migration —
+  after consolidation, when writer and readers are finally in one repo, and before
+  building the sweep so it is written against the final layout. No database migration —
   `QuestionBankItem.images` stores only `{"key": filename}`, and URLs are built per request
   by `storage.get_image_url` (`router.py:169`).
+
+- **Name the package `tooling/`, not `content/`** — the first name implied the question
+  bank content itself, which is misleading twice over: the real content lives in the
+  `teaching-repos/*/modules/` trees and in GCS, and serving it is `storage.py`'s job. There
+  was even a `frontend/src/features/teaching/content/` at one point, so the path was
+  ambiguous across the stack. `tooling/` keeps the migration legible — the repo was
+  `teaching-tooling`, every commit on this branch says tooling, and landing it at
+  `teaching/tooling/` makes the history read as one continuous thing. It reads without
+  stutter (`tooling/validate.py`, `python -m app.features.teaching.tooling.cli`) and is
+  honest about scope: this is the *code* half of what that repo held, with the workflows
+  going to `.github/` and the terraform to `infra/github/`. The one weakness is that
+  "tooling" is a soft word that invites unrelated scripts into a package with a hard
+  dependency constraint — mitigated by the constraint being stated in the package docstring
+  and enforced by `test_features_import_boundary.py`, not by the name.
 
 - **Delete `teaching-tooling` once both content repos are cut over** — Quill is not live
   yet, so there is no production history worth preserving and nothing to point a future
@@ -186,7 +199,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
 ```text
 backend/app/features/gating.py       # MOVED — requires_feature, out of features/__init__.py
 
-backend/app/features/teaching/content/   # NEW — pure Python, no app.* imports
+backend/app/features/teaching/tooling/   # NEW — pure Python, no app.* imports
 ├── __init__.py
 ├── certificate_schema.py            # moved out of ../certificate.py
 ├── module_schema.py                 # ModuleYaml and friends, from tooling validate.py
@@ -197,7 +210,7 @@ backend/app/features/teaching/content/   # NEW — pure Python, no app.* imports
 .github/workflows/teaching-pipeline.yml   # NEW — reusable, ported from tooling
 ```
 
-**Hard constraint:** `features/teaching/content/` must never import `app.models`,
+**Hard constraint:** `features/teaching/tooling/` must never import `app.models`,
 `app.db`, `app.config`, FastAPI, or anything from its own parent package. The import chain
 above it (`app`, `app.features`, `app.features.teaching`) must stay docstring-only, so the
 package remains runnable with just `pydantic` and `pyyaml` and needs no environment
@@ -251,77 +264,236 @@ Resolution in Phase 2: give `mdx_parser.py` a validating mode and run *that* at 
 
 Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
-- [ ] Move `requires_feature` from `backend/app/features/__init__.py` into a new
+- [x] Move `requires_feature` from `backend/app/features/__init__.py` into a new
       `backend/app/features/gating.py`, leaving `__init__.py` as a docstring. Update the
       three import sites (`features/teaching/router.py:23` and two inside
       `backend/tests/test_clinical_services.py`). This is what makes the target location
       importable without the FastAPI/SQLAlchemy stack, and it removes an executable
       FastAPI dependency from a package `__init__.py`, which is worth doing regardless.
 - [ ] Port `teaching-tooling/scripts/validate.py` and `check_version_lock.py` into
-      `backend/app/features/teaching/content/`, splitting the Pydantic models into
+      `backend/app/features/teaching/tooling/`, splitting the Pydantic models into
       `module_schema.py`. Both already import only the standard library, `yaml` and
       `pydantic`, so nothing needs restructuring to move.
+      - [x] `check_version_lock.py` — ported with `ModuleStatus` as a `Literal`, YAML
+            narrowed through `dict[str, object]` rather than `Any`, and a boolean guard on
+            `version` so a YAML `version: yes` no longer reads as `1`.
+      - [x] `validate.py` and `module_schema.py` — `ModuleYaml.status` is now a `Literal`
+            shared with `check_version_lock`, `moduleId` uses a `pattern` constraint, and
+            `renewalMonths`/`order` reject YAML booleans. Verified equivalent: run over the
+            fixture tree, old and new flag **the same 7 errors on the same 7 paths**; only
+            the invalid-status message wording differs, which is the `Literal` conversion
+            doing its job.
 - [ ] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
-      `fixtures/`) as `backend/tests/test_teaching_content*.py`.
-- [ ] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
-      so no Node project, lockfile or Corepack step is needed. The content CI job installs
-      two pinned dependencies inline (`pip install "pydantic>=2" "pyyaml>=6"`) rather than
-      carrying a requirements file.
-- [ ] Add `cli.py` so CI can run
-      `python -m app.features.teaching.content.cli <modules_dir>` from `backend/`.
-- [ ] Convert the ported code to Quill's typed style — `Literal` types, bounded `Field`
-      constraints, no `Any` — matching what `certificate.py` now does.
-- [ ] Add a unit test asserting that importing `app.features.teaching.content` leaves
-      `fastapi`, `sqlalchemy`, `app.models`, `app.db` and `app.config` absent from
-      `sys.modules` — this is the guard that keeps the location viable.
+      `fixtures/`) as `backend/tests/test_teaching_tooling*.py`.
+      - [x] The 616 version-lock lines, as `test_teaching_tooling_version_lock.py` and
+            `..._integration.py`. The integration ones build real repositories and shell
+            out to git, which the backend image lacked — `git` is now installed in the
+            **dev** stage only (CI already has it on the runner), with a `skipif` guard so
+            a missing binary skips rather than errors.
+      - [x] `test_validate.py` as `test_teaching_tooling_validate.py`, and the 34-file
+            `fixtures/` tree under `backend/tests/fixtures/teaching_tooling/`. Ruff (which
+            teaching-tooling never ran) flagged `B017` blind `Exception` asserts; these now
+            assert `ValidationError` and `CalledProcessError` instead.
+- [x] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
+      so no Node project, lockfile or Corepack step is needed.
+- [x] The tooling package carries its own `pyproject.toml` and `poetry.lock`, declaring
+      only `pydantic` and `pyyaml`. Content CI runs `poetry install` there, so it gets the
+      locked versions rather than a fresh resolve, and never the backend's stack.
+      `backend/pyproject.toml` is left untouched — adding a group to it would relock the
+      backend and churn the lock for a CI-only concern.
+      - The cost is that `pydantic` and `pyyaml` are declared twice.
+        `test_teaching_tooling_dependencies.py` is the guard: the shared constraints and
+        the `python` requirement must be identical in both files, and the tooling package
+        may declare nothing else.
+      - Poetry itself is installed unpinned, matching `.github/actions/setup-python`.
+        The acceptable range lives in the package's `requires-poetry` constraint, next to
+        the lock it governs, rather than as a version number in the workflow.
+- [x] Add `cli.py` so CI can run
+      `python -m app.features.teaching.tooling.cli <modules_dir>` from `backend/`. Runs
+      validation and version lock in one invocation. Carries `--skip-version-lock` for
+      content with no git history — the GCS-download case the Phase 7 sweep needs — and
+      `--ref` to override the comparison branch.
+- [x] Convert the ported code to Quill's typed style — `Literal` types, bounded `Field`
+      constraints, no `Any` — matching what `certificate.py` now does. `Any` is gone from
+      every ported module; YAML input is narrowed through `dict[str, object]`.
+- [x] Add a unit test asserting the import boundary holds — done as
+      `backend/tests/test_features_import_boundary.py`, covering `app.features` and
+      `app.features.teaching`. It runs the import in a subprocess with `JWT_SECRET` and
+      `CORE_DB_PASSWORD` deliberately absent, so a regression fails loudly instead of
+      passing on the test runner's own environment. Extend the parametrised list to
+      `app.features.teaching.tooling` when that package lands.
 
 ## Phase 2: Merge the duplicate validators onto one schema
 
-- [ ] Move `TextFieldStyle`, `CertificateStyle`, `CertificateFont`, `Orientation` and the
+- [x] Move `TextFieldStyle`, `CertificateStyle`, `CertificateFont`, `Orientation` and the
       boolean-rejecting `Number`/`Whole` annotated types from
       `backend/app/features/teaching/certificate.py` into
-      `content/certificate_schema.py`; import them back into `certificate.py`.
-- [ ] Fold the certificate checks at `backend/app/features/teaching/validate.py:163` into
+      `content/certificate_schema.py`; import them back into `certificate.py`. The
+      annotated types went to `content/annotations.py`, shared with `module_schema` which
+      had grown its own copy. `certificate.py` keeps the recovery policy and declares
+      `__all__` so the models stay importable from their old home. `text_fields()` is now
+      a model method rather than the renderer's private mapping, ready for the validator
+      to iterate in the next item.
+- [x] Fold the certificate checks at `backend/app/features/teaching/validate.py:163` into
       the merged validator, driving them off `CertificateStyle.model_validate` rather than
-      hand-rolled conditionals.
-- [ ] Close the coverage gaps found during review: `exam_ref` and `margin` are not
+      hand-rolled conditionals. Now `validate_certificate_config` in `content/validate.py`,
+      called by both gates; the sync-side function keeps only the background-image lookup,
+      which differs by source (GCS inventory versus a directory on disk). Removed the four
+      now-dead constants (`VALID_FONTS`, `VALID_ORIENTATIONS`, `HEX_COLOUR_PATTERN`,
+      `CERTIFICATE_TEXT_FIELDS`) that duplicated the schema.
+- [x] Close the coverage gaps found during review: `exam_ref` and `margin` are not
       validated at all today, and unknown keys are not rejected, so a misspelled colour key
-      silently does nothing.
-- [ ] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
-      slide, recognised components only (`Callout`, `YouTube`, `Figure`, `Video`),
-      well-formed props, and an error for any component-shaped tag it would otherwise drop
-      silently. It has zero `raise`/`except` today, so malformed content is discarded
-      without a word. Use the assertions in `validate_mdx.js` as the specification, then
-      delete that file.
-- [ ] Call that validating mode from the merged validator, so learning content is checked
-      at both gates by the same code that renders it.
-- [ ] Point `sync.py` at the merged validator so that sync runs the _same_ checks as CI —
-      module metadata, assessment structure, images and the certificate block — replacing
-      today's split between `run_tooling_validation` and `validate_question_bank`.
-- [ ] Delete `backend/app/features/teaching/tooling_validate.py` and collapse its two call
-      sites (`backend/app/main.py:5488`, `backend/app/features/teaching/router.py:2050`)
-      into the single merged call. Its "tooling unavailable — sync blocked for safety"
-      branch can go with it: once the validator ships inside the backend package, it cannot
-      be missing, so the fail-safe is satisfied by construction rather than at runtime.
-- [ ] Remove the cross-repo plumbing: `COPY`/`ENV` at `backend/Dockerfile:67-69`,
-      `TEACHING_TOOLING_SCRIPTS_PATH` at `backend/app/config.py:196`, the env var and bind
-      mount at `compose.dev.yml:13` and `:30`, and the checkout steps at
-      `.github/workflows/ci.yml:84-89` and `.github/workflows/deploy.yml:88-93`.
+      silently does nothing. All three close automatically once the model drives the check.
+      **The certificate block is now validated at merge time**, which is the original bug:
+      `_validate_certificate` runs inside `_validate_assessment_dir`, so a malformed block
+      fails a pull request instead of reaching GCS and failing quietly at sync. Note the
+      presence requirement for the five text fields was kept deliberately — the model has
+      defaults for all of them, so relying on it alone would have *weakened* the check.
+      Pydantic's raw pattern message is translated back to "must be a hex colour (e.g.
+      #404040)", which is what a clinician editing YAML can act on.
+- [x] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
+      slide, recognised components only, well-formed props, and an error for any
+      component-shaped tag it would otherwise drop silently. Done as `validate_mdx`, driven
+      off the extractors' own patterns (hoisted to module constants) so validator and
+      renderer cannot drift.
+      **Correction to this plan: `Video` is not supported anywhere yet.** The Node
+      validator listed it and checked its props, but nothing in the stack reads it — no
+      `_extract_video`, no `ParsedSlide` field, no frontend mapping — so content following
+      that validator passed CI and rendered a blank slide. YouTube video *is* supported end
+      to end (`youtube_id` → `video-slide` layout → frontend `youtubeId`); hosted video is
+      not. `KNOWN_COMPONENTS` is now the three names that actually have extractors, with
+      `Video` listed in `NOT_YET_SUPPORTED` so authors get "hosted video is not implemented
+      yet — use `<YouTube>` until it lands" rather than "unknown component". No existing
+      content uses `<Video>`.
+- [ ] **Follow-up, not part of this consolidation: implement hosted `<Video>`.** Planned
+      shortly for GCP-hosted files. Four pieces must land together — an `_extract_video` in
+      `mdx_parser`, the source field(s) on `ParsedSlide`, the frontend mapping and slide
+      layout, and finally moving `Video` from `NOT_YET_SUPPORTED` into `KNOWN_COMPONENTS`.
+      `test_known_components_are_the_ones_with_extractors` enforces the last step: adding
+      the name without an extractor fails the suite, which is the guard that stops this
+      recurring.
+      **Deleting `validate_mdx.js` moves to Phase 4/5, not here.** It lives in the
+      teaching-tooling repo, whose `pipeline.yml` the content repos still call; removing it
+      now would break their CI before cut-over. It dies with the repo in Phase 5.
+- [x] Call that validating mode from the merged validator, so learning content is checked
+      at both gates by the same code that renders it. `_validate_learning_dir` now runs it,
+      importing `mdx_parser` lazily so the `content` package still loads with only
+      `pydantic` and `pyyaml`.
+- [ ] **Collapse the two validators into one.** Scoped out properly after investigation:
+      the plan originally read as though `run_tooling_validation` and
+      `validate_question_bank` did much the same job, so one could simply replace the
+      other. They barely overlap. `validate_question_bank` uniquely covers email sections,
+      per-item uniform and variable checks, image naming, cross-item consistency, warnings
+      as well as errors, and — the hard part — **23 places that accept an
+      `image_inventory`**, a mapping of directory name to filenames used when content sits
+      in GCS and there are no files on disk to look at. The content validator has none of
+      that and works only against a real directory; it uniquely covers `module.yaml` and
+      learning MDX. Both now check the certificate, so running both double-reports it.
+      Genuinely merging them is a rewrite of how live content is validated, so it is broken
+      into the units below rather than smuggled into a plumbing-removal step. The regression
+      net is the ~32 existing calls in `test_teaching_validate.py`, five of which exercise
+      the inventory path; they must keep passing throughout.
+      - [x] **Unify the result type.** `content/validate.py` has an errors-only
+            `ValidationResult`; the sync one adds `warnings`, `item_count`, `finalise()`
+            and `ValidationMessage.to_dict()`, which the sync API and `QuestionBankSync`
+            rows depend on. Adopt the richer shape in `content/` first, since everything
+            else builds on it. Three conflicts had to be resolved: `is_valid` was a stored
+            field on one side and a property on the other (now derived, so it cannot drift
+            from the error list); `summary` was an attribute set by `finalise()` on one and
+            a method on the other (now a method, so there is no stale state and `finalise()`
+            is gone); and `bank_id`/`version` were required on the sync side but absent on
+            the CI side (now optional, and their presence selects which summary style to
+            print). `ValidationError` is kept as an alias of `ValidationMessage`.
+      - [x] **Add the inventory model.** Thread an optional `image_inventory` through the
+            content validator so it can check against a list of filenames instead of a
+            directory. This is the enabling piece: without it the merged validator cannot
+            validate anything in the bucket, which is most of what sync does. Confirmed
+            *why* it exists while porting: `download_bank_from_gcs` fetches **only YAML**
+            — images are deliberately left in the bucket, since downloading them just to
+            check a filename would mean paying for the bytes twice. Question directories do
+            exist on disk in that mode (they are created for the YAML), so directory
+            scanning stays correct for structure; only the *file listing* comes from the
+            inventory, via `_files_in`. Added `validate_module_dir` as the single-bank entry
+            point sync will call.
+      - [x] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
+            `_validate_variable_item` (149), `_get_image_files`, `_check_image_naming` and
+            `_cross_item_checks`. The largest chunk, ~280 lines, and where the detailed
+            question-level validation lives. The variable per-item pass *subsumes* the
+            assessment-level image pass, so that one was removed rather than left to
+            double-report a missing or undeclared file; the uniform pair is complementary
+            (assessment level names *which* key is missing, item level checks the count)
+            and both were kept. Question directories are now parsed once and the data
+            reused, which is also what `_cross_item_checks` needs for `item_count`.
+            **Finding: three of the ported fixtures were never valid content.** The
+            `.variable-*` fixtures used plain-string options with no `question_type` or
+            `correct_option_id`, a shape no real bank uses; `.valid-module` declared
+            `images_per_item: 2` with no images present and `min_pool_size: 4` with one
+            question. They passed only because the tooling validator never looked. All four
+            are corrected to match real content. Several test helpers written in earlier
+            units had the same problem and were fixed the same way — the validator was
+            right, the scaffolding was wrong.
+      - [x] **Port the config and email checks** — `_validate_config` (48 lines) and
+            `_validate_email_section`/`_validate_email_sections` (45). Resolved a name
+            collision on the way: both validators had a `REQUIRED_ASSESSMENT_FIELDS`
+            meaning different things — the tooling one was the *top-level* required fields,
+            the sync one the fields inside the nested `assessment:` block. They are now
+            `REQUIRED_CONFIG_FIELDS` and `REQUIRED_ASSESSMENT_SECTION_FIELDS`. The email
+            checks stay conditional: a bank must carry a template only for the emails it is
+            configured to send.
+            **Six of the seven fixtures were missing `description` and the whole
+            `assessment:` block**, and three uniform ones lacked `options` — the same story
+            as the last unit, and again fixed rather than worked around. Both real content
+            repos already carry everything the ported checks require, verified before
+            porting.
+      - [x] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`
+            sites call one validator. `validate_question_bank` is gone entirely (594 lines)
+            and `test_teaching_validate.py` was repointed rather than rewritten — which
+            immediately earned its keep by catching three behaviours the earlier units had
+            missed, because they lived inside `validate_question_bank` itself rather than in
+            the helper functions the plan listed: the "config.yaml not found" wording, the
+            stray file and directory warnings, and populating `bank_id`/`version` so the
+            bank-style summary works.
+            **Two entry points, not one, because only two of the four callers have a module
+            directory.** `validate_assessment_dir` covers config, email, items, images and
+            the certificate, and is what sync calls with its GCS inventory;
+            `validate_module_metadata` covers `module.yaml` and learning content, and runs
+            at the two sites that resolved a module directory. Together they cover
+            everything exactly once — a single call could not, since sync reaches a bank
+            through its `assessment/` directory and never sees the module above it.
+- [x] Delete `backend/app/features/teaching/tooling_validate.py` and collapse its two call
+      sites into the merged call. Its "tooling unavailable — sync blocked for safety" branch
+      went with it: the validator now ships inside the backend package, so it cannot be
+      missing and the fail-safe is satisfied by construction rather than at runtime.
+- [x] Remove the cross-repo plumbing: the Dockerfile `COPY`/`ENV`,
+      `TEACHING_TOOLING_SCRIPTS_PATH` in `config.py`, the `compose.dev.yml` env var and bind
+      mount, and the checkout steps in `ci.yml` and `deploy.yml` — including a **third**
+      checkout in the E2E image-build job that existed only to satisfy the Dockerfile
+      `COPY`, and which the plan had not listed. Image rebuilt and verified: the backend
+      starts with no `/teaching-tooling-scripts` present and the setting gone.
 
 ## Phase 3: Reusable workflow in Quill
 
-- [ ] Port `teaching-tooling/.github/workflows/pipeline.yml` to
+- [x] Port `teaching-tooling/.github/workflows/pipeline.yml` to
       `.github/workflows/teaching-pipeline.yml`, keeping the job names `validate`,
-      `check-protection`, `auto-pr` and `deploy` exactly as they are.
-- [ ] Replace the tooling checkout in the `validate` job with the sparse checkout of Quill
-      shown below.
-- [ ] Strip validation from the `deploy` job — the tooling checkout, Python setup, pip
-      install, Node setup, npm install, and both validate steps. `deploy` becomes:
-      checkout content, authenticate to GCP, sync to GCS, trigger backend sync. Beyond
-      shortening it, this means `deploy` no longer executes any Quill code except the
-      workflow file itself, which shrinks what a Quill change can break there.
-- [ ] Fix the stale error message in `check-protection`, which still points at
-      `teaching-tooling/infra/main.tf`.
+      `check-protection`, `auto-pr` and `deploy` exactly as they are. Verified identical to
+      the original set, so the rulesets need no edit.
+- [x] Replace the tooling checkout in the `validate` job with the sparse checkout of Quill
+      shown below. Only the `tooling` directory needs listing: cone mode also brings the
+      files sitting directly in each parent directory, which is how `mdx_parser.py` and the
+      `app/` `__init__` chain arrive. Simulated the whole job locally — the checkout yields
+      37 Python files, and the CLI then runs to completion in a venv holding **only
+      pydantic and pyyaml**, confirming the dependency-light constraint holds outside the
+      backend container. Run from inside the content checkout so version lock can resolve
+      the repository root; `--ref origin/main` makes the comparison explicit.
+- [x] Strip validation from the `deploy` job — the tooling checkout, Python setup, pip
+      install, Node setup, npm install, and both validate steps. `deploy` is now: checkout
+      content, authenticate to GCP, sync to GCS, trigger backend sync. It executes no Quill
+      code beyond the workflow file itself. **The sync status-code fix must land before
+      Phase 4**, not before this port: the gap only opens when a content repo actually
+      starts using this deploy job.
+- [x] Fix the stale error message in `check-protection`, which pointed at
+      `teaching-tooling/infra/main.tf`; it now points at `quillmedical/infra/github/`,
+      where Phase 5 moves the rulesets.
 
 ```yaml
 - uses: actions/checkout@v7.0.1
@@ -329,7 +501,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
     repository: bailey-medics/quillmedical
     path: tooling
     sparse-checkout: |
-      backend/app/features/teaching/content
+      backend/app/features/teaching/tooling
       backend/app/features/teaching/mdx_parser.py
 ```
 
@@ -354,8 +526,12 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       - `.gitignore:26` — the `teaching-tooling/` entry
       - `Justfile:41,71-80` — the clone/pull block in `initial-install`, and its closing
         "tooling in ./teaching-tooling/" message
-      - `Justfile:243-252` — rewrite `validate-teaching` to call the new CLI directly
-        instead of shelling into the `teaching-tooling` checkout
+      - [x] `Justfile` — `validate-teaching` rewritten to run the merged CLI in
+        `quill_backend`, matching how `just ub` works, rather than shelling into the
+        `teaching-tooling` checkout with its own venv and npm install. Pulled forward from
+        this phase because it is the command a developer actually reaches for, and it was
+        silently running the *old* validators. Version lock is skipped locally: it compares
+        a branch against `origin/main`, which is a pull-request concern
       - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping
       - `backend/app/features/teaching/storage.py:575` — a docstring still describing the
         layout as "the teaching-tooling module directory"
@@ -405,6 +581,25 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       turn a rejected bank into a red build.
 - [ ] Confirm the certificate block is validated at pull-request time, before anything
       reaches GCS.
+- [ ] Check that image files are actually images, by magic bytes. The validator only ever
+      matches filenames and extensions — it never opens an image — so anything with the
+      right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
+      pointer** is not: both content repos' `.gitattributes` declare
+      `*.png filter=lfs`, and `actions/checkout` does not fetch LFS unless told to
+      (`lfs: true` appears nowhere in `pipeline.yml`). A pointer is a ~132-byte text file
+      carrying the right name and extension, so it would pass validation and be synced to
+      GCS in place of the image. Candidates would then see a broken image in an assessment,
+      where for a visual-diagnosis bank the image *is* the question. Note this is a **size
+      check's blind spot** — a pointer is 132 bytes, not 0 — so test the PNG/JPEG magic
+      bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
+      transitively via `reportlab`, and must not become a dependency of the `content`
+      package, which stays pydantic + pyyaml only.
+- [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
+      both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
+      plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
+      but only by accident: the first person to install git-lfs and commit an image creates
+      a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
+      drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
 - [ ] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
@@ -428,7 +623,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 - [ ] **Run the same sweep in Quill's pull-request CI**, so whoever changes the tooling
       sees which live banks they would break before merging rather than after deploying.
       Add a job to `ci.yml` (already triggered on `pull_request` to main), gated on paths
-      that can change validation behaviour — `backend/app/features/teaching/content/**`,
+      that can change validation behaviour — `backend/app/features/teaching/tooling/**`,
       `backend/app/features/teaching/mdx_parser.py`,
       `.github/workflows/teaching-pipeline.yml`. Authenticate with
       `google-github-actions/auth` and `GCP_TEACHING_WIF_PROVIDER`, following the existing
@@ -441,6 +636,128 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       on it directly. If Phase 6 slips, the sweep must reshuffle the three old prefixes
       itself — but do not import `download_module_from_gcs` to do it, because `storage.py`
       imports `app.config`, whose `Settings` require `JWT_SECRET` and `CORE_DB_PASSWORD`.
+
+### Learned while building
+
+- **`download_module_from_gcs` writes zero-byte placeholder files for images**, so that
+  existence checks pass without paying to download the bytes. That is what let the module
+  path validate without an inventory. It also means the Phase 7 follow-up to check image
+  *magic bytes* would break this path: every image there is legitimately empty. Whichever
+  way that check is built, it must either run only where real bytes exist, or the
+  placeholders must carry a real header.
+
+
+- **Version lock reports rather than raises when there is no repository to compare
+  against.** The ported code called `git rev-parse` for the repository root with
+  `check=True` and
+  then `Path.relative_to`, so a modules directory outside a git repository produced a
+  traceback rather than a violation. That has two distinct failure shapes and *which one
+  occurs depends on where the process was started*: from inside a checkout, `git rev-parse`
+  succeeds and `relative_to` raises `ValueError`; with no repository at all, `git rev-parse`
+  raises `CalledProcessError`. A test written against the second shape passed locally and
+  broke CI on the first. Both now return the same violation, pointing at
+  `--skip-version-lock`, and both are pinned by tests. Worth remembering when the
+  pull-request sweep validates a tree downloaded from GCS — that is exactly this case.
+
+## Phase 8: Per-organisation active version pointers
+
+Not part of the consolidation — a design change that surfaced while reviewing what the
+sync path actually does, added here at the maintainer's request.
+
+**The asymmetry.** `QuestionBankOrgStatus.is_live` defaults to false, so a brand-new bank
+merging to `main` syncs into the database and stays invisible to candidates until an admin
+deliberately opens it. That human promotion step already exists. But `is_live` is per
+*bank*, not per *version*, and the candidate-facing queries take
+`order_by(version.desc()).first()` — so publishing **version N+1 of an already-live bank
+reaches candidates the moment sync completes**, with no human step at all.
+
+Standing up a new assessment needs sign-off; rewriting the questions inside a live one does
+not. The second is arguably the higher-risk operation, because it changes an exam
+candidates are already sitting. Two things soften it but neither closes it: in-flight
+candidates are pinned by `Assessment.bank_version` and finish on the version they started,
+and `check_version_lock` refuses any assessment change to a live module without an explicit
+version bump — so publishing a revision is deliberate, just not *separately* deliberate
+from merging.
+
+**The change.** Each organisation gains a pointer to the version its candidates receive.
+Sync imports new versions but never moves the pointer; a staff org admin advances it when
+they are ready. That also gives a rollback, which does not exist today.
+
+- [ ] **Model and migration.** Add `active_version: int | None` to
+      `QuestionBankOrgStatus`. Nullable, so no `server_default` is needed. Backfill every
+      existing row to the highest synced version for that organisation and bank, so no
+      live bank changes behaviour on deploy. Created with `just migrate`, with a real
+      `downgrade()`.
+- [ ] **Sync sets it once and never again.** Creating a status row for a bank's first
+      version sets the pointer to that version — harmless, since `is_live` still gates it.
+      Syncing a later version must leave the pointer untouched: that is the whole point.
+- [ ] **Candidate-facing queries follow the pointer**, not the highest version:
+      `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
+      (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means
+      the bank is not ready and serves nothing.
+- [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
+      `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
+      alongside the active one, so "version 3 active, version 4 available" is visible.
+- [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
+      Validates that the target version exists for that bank, and records who moved it and
+      when. Rolling back is the same operation pointing at an earlier version.
+- [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
+      admin teaching page, which already carries the live/closed toggle.
+
+## Follow-up: one Poetry version for the whole repository
+
+**A separate pull request, not part of this branch.** It touches the production image
+build and every CI job, so a failure there should not be tangled up with the teaching
+consolidation. Sequence: land this branch, then this, then resume at Phase 4.
+
+The teaching pipeline surfaced the problem but does not cause it. Poetry is currently
+pinned in one place and left floating everywhere else:
+
+- `backend/Dockerfile` pins `POETRY_VERSION=2.1.3`
+- `.github/actions/setup-python`, `gate-breaking.yml` and the teaching pipeline all run
+  `pip install -U pip poetry`, which resolves to 2.4.2 at the time of writing
+- Developer hosts run whatever each machine happens to have
+
+So the container that builds the production image runs a different Poetry from the one CI
+runs. This already cost us once during Phase 3: adding a dependency group to
+`backend/pyproject.toml` relocked with 2.1.3 against a lock generated by 2.3.3 and
+produced fifteen lines of pure formatting churn, which is why the tooling package ended up
+with its own `pyproject.toml` instead.
+
+### What is actually at risk
+
+Worth separating, because it determines the design:
+
+- **Relocking is version-sensitive.** A different Poetry writes a differently formatted
+  lock. This is the real hazard, and the one already encountered.
+- **Installing from an existing lock is not.** Verified during Phase 3: Poetry 2.1.3 and
+  2.4.2 install identical versions from the same lock file.
+
+The dangerous path is therefore a developer relocking on their host, which no CI-side pin
+can reach.
+
+### The change
+
+- [ ] Add `.poetry-version` at the repository root, mirroring the existing
+      `.python-version`. No Docker build argument is needed — the Dockerfile can `COPY` the
+      file and read it in the `RUN` that installs Poetry.
+- [ ] Read it from `backend/Dockerfile`, `.github/actions/setup-python` and
+      `gate-breaking.yml`. The teaching pipeline needs no extra sparse-checkout path:
+      cone mode already brings root-level files.
+- [ ] Add `requires-poetry` to `backend/pyproject.toml`, matching the constraint the
+      tooling package carries. This is the half that catches host drift, because Poetry
+      enforces it wherever it runs — including a laptop, where a repository file can
+      install nothing. It does not touch the lock: confirmed on the tooling package, where
+      `poetry check --lock` still exits 0 with the constraint in place.
+- [ ] A drift test asserting the two declarations agree, alongside
+      `test_teaching_tooling_dependencies.py`. Note the constraint on where such a test can
+      live: the container mounts only `backend/`, so a backend test cannot read
+      `.github/`. A root-level file is readable; a workflow is not.
+- [ ] Confirm CI is green before merging, since every Python job changes how it installs
+      Poetry.
+
+Either piece alone is half a fix: `.poetry-version` selects a version, `requires-poetry`
+rejects the wrong one.
 
 ## Verification
 
