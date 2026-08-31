@@ -261,8 +261,18 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `backend/app/features/teaching/content/`, splitting the Pydantic models into
       `module_schema.py`. Both already import only the standard library, `yaml` and
       `pydantic`, so nothing needs restructuring to move.
+      - [x] `check_version_lock.py` — ported with `ModuleStatus` as a `Literal`, YAML
+            narrowed through `dict[str, object]` rather than `Any`, and a boolean guard on
+            `version` so a YAML `version: yes` no longer reads as `1`.
+      - [ ] `validate.py` and `module_schema.py`.
 - [ ] Bring across the 937 lines of tests from `teaching-tooling/tests/` (including
       `fixtures/`) as `backend/tests/test_teaching_content*.py`.
+      - [x] The 616 version-lock lines, as `test_teaching_content_version_lock.py` and
+            `..._integration.py`. The integration ones build real repositories and shell
+            out to git, which the backend image lacked — `git` is now installed in the
+            **dev** stage only (CI already has it on the runner), with a `skipif` guard so
+            a missing binary skips rather than errors.
+      - [ ] `test_validate.py` and the `fixtures/` tree.
 - [ ] Do not port `validate_mdx.js` — MDX validation moves to `mdx_parser.py` in Phase 2,
       so no Node project, lockfile or Corepack step is needed. The content CI job installs
       two pinned dependencies inline (`pip install "pydantic>=2" "pyyaml>=6"`) rather than

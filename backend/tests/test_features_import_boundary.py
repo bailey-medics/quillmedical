@@ -54,7 +54,15 @@ def _import_in_clean_subprocess(
     )
 
 
-@pytest.mark.parametrize("module", ["app.features", "app.features.teaching"])
+@pytest.mark.parametrize(
+    "module",
+    [
+        "app.features",
+        "app.features.teaching",
+        "app.features.teaching.content",
+        "app.features.teaching.content.check_version_lock",
+    ],
+)
 def test_import_needs_no_secrets(module: str) -> None:
     """The import must succeed without JWT_SECRET or CORE_DB_PASSWORD."""
     result = _import_in_clean_subprocess(module)
@@ -64,7 +72,15 @@ def test_import_needs_no_secrets(module: str) -> None:
     )
 
 
-@pytest.mark.parametrize("module", ["app.features", "app.features.teaching"])
+@pytest.mark.parametrize(
+    "module",
+    [
+        "app.features",
+        "app.features.teaching",
+        "app.features.teaching.content",
+        "app.features.teaching.content.check_version_lock",
+    ],
+)
 def test_import_pulls_in_nothing_heavy(module: str) -> None:
     """The import must not drag in FastAPI, SQLAlchemy or app internals."""
     result = _import_in_clean_subprocess(module)

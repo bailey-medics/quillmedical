@@ -57,6 +57,14 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # ---------- Dev target (hot-reload) ----------
 FROM base AS dev
 # Dev-only utilities (do not copy these into the `prod` stage)
+# git: the teaching content version-lock tests build real repositories and shell
+# out to git. CI runs pytest on the runner where git already exists; without it
+# here, `just ub` could not run them at all. Dev stage only — never in `prod`.
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+USER appuser
 # Copy the scripts directory into the dev image and set ownership to the unprivileged user.
 COPY --chown=appuser:appuser backend/scripts ./scripts
 # Caddy will forward X-Forwarded-*; trust them so URLs and client IPs are correct
