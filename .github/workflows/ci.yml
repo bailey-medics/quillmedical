@@ -215,7 +215,7 @@ jobs:
           # token to avoid GitHub API rate limits.
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run shell script tests
-        run: bats --recursive .github/scripts
+        run: bash .github/scripts/ci/run-shell-tests.sh .github/scripts
 
 
   # ---------- Version consistency ----------
