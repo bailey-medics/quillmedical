@@ -9,16 +9,22 @@ commercially: who arrives at the marketing site and whether they convert, and
 what signed-in users actually do once they are inside the teaching product.
 
 This is a decision that is easy to get wrong in a way that is expensive to
-reverse. Analytics touches the CSP, the cookie and privacy policies, the DPIA,
-the sub-processor list, and — once clinical data lands — the DSPT and DTAC
-assurance record. Bolting on the obvious free tool now would create a
+reverse. Analytics touches the Content Security Policy, the cookie and privacy
+policies, the data protection impact assessment, the sub-processor list, and —
+once clinical data lands — the NHS Data Security and Protection Toolkit and
+Digital Technology Assessment Criteria assurance record. Bolting on the
+obvious free tool now would create a
 compliance liability that has to be unpicked later, at exactly the point when
 unpicking it is hardest. The UK legal position also changed materially this
-year: the Data (Use and Access) Act 2025 amendments to PECR came into force on
-5 February 2026 and created a statistical purposes exception that removes the
-cookie banner for qualifying first-party analytics — while simultaneously
-raising PECR penalties to UK GDPR levels. Advice written before 2026 is out of
+year: the Data (Use and Access) Act 2025 amendments to the Privacy and
+Electronic Communications Regulations came into force on 5 February 2026 and
+created a statistical purposes exception that removes the cookie banner for
+qualifying first-party analytics — while simultaneously raising the penalties
+under those regulations to UK GDPR levels. Advice written before 2026 is out of
 date on both halves of that.
+
+Terms are spelled out on first use, and the abbreviations that recur are
+collected in the glossary at the foot of this document.
 
 The first draft of this plan turned on one open question: whether Quill would
 hold real patient data within twelve months. **That question has been answered
@@ -41,7 +47,8 @@ profiles, different owners, and different answers, so they are separated
 throughout this plan:
 
 - **Lane A — web analytics.** Who visits the marketing site, from where, and
-  whether they reach the contact form. Low risk: no authentication, no PHI.
+  whether they reach the contact form. Low risk: no authentication, and no
+  protected health information (PHI).
   Nothing today.
 
 - **Lane B — product analytics.** What signed-in users do, and where they drop
@@ -451,6 +458,61 @@ Blocking, before any analytics ships:
       differ from application log retention?
 - [ ] Is a sampled load-balancer log stream representative enough for marketing
       decisions, or does `log_sample_rate` need raising on the frontend service?
+
+## Glossary
+
+- **BAA** — business associate agreement. The contract a United States
+  healthcare provider signs with a supplier that handles patient data under
+  HIPAA. Not a UK instrument, but its availability signals a vendor's maturity
+  on health data.
+
+- **CAF** — Cyber Assessment Framework. The National Cyber Security Centre's
+  outcome-based security framework, to which the NHS Data Security and
+  Protection Toolkit is now aligned.
+
+- **CBAC** — competency-based access control. Quill's own model, where access
+  follows from a user's clinical competencies rather than a job title.
+
+- **CSP** — Content Security Policy. A browser security header declaring which
+  origins a page may load scripts from and send requests to. Quill's is set in
+  `caddy/prod/Caddyfile`.
+
+- **DPIA** — data protection impact assessment. The written risk assessment UK
+  GDPR requires before starting higher-risk processing.
+
+- **DSPT** — Data Security and Protection Toolkit. NHS England's annual
+  self-assessment of an organisation's data security, now aligned to the CAF.
+
+- **DTAC** — Digital Technology Assessment Criteria. The NHS baseline
+  assessment of a digital health product's safety, security, interoperability
+  and usability. DSPT assesses the organisation; DTAC assesses the product.
+
+- **DUAA** — Data (Use and Access) Act 2025. The UK Act that amended UK GDPR
+  and PECR. Royal Assent 19 June 2025; main provisions in force 5 February
+  2026; penalty and complaints provisions from 19 June 2026. It created the new
+  cookie consent exceptions and raised PECR penalties to UK GDPR levels.
+
+- **GDPR** — General Data Protection Regulation. "UK GDPR" is the retained UK
+  version. It governs the processing of personal data.
+
+- **ICO** — Information Commissioner's Office. The UK data protection
+  regulator, which issues the guidance and levies the fines.
+
+- **NCSC** — National Cyber Security Centre. The UK government body that
+  authors the CAF.
+
+- **PECR** — Privacy and Electronic Communications (EC Directive) Regulations
+  2003. The UK's actual cookie law. It governs storing or reading anything on a
+  user's device, whether or not that thing is personal data — a different
+  question from UK GDPR's, which is about processing personal data.
+
+- **PHI** — protected health information. Any data revealing a person's health
+  status, including behavioural data that discloses it indirectly.
+
+- **PII** — personally identifiable information. Data that identifies a
+  specific person.
+
+- **SOC 2** — an independent audit report on a vendor's security controls.
 
 ## Sources
 
