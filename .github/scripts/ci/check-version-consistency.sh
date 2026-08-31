@@ -74,7 +74,7 @@ check_poetry() {
 
   source="$(cut -d. -f1,2 < .poetry-version)"
 
-  log "Poetry minor — .poetry-version: ${source}"
+  log "Poetry — .poetry-version: $(cat .poetry-version) (minor ${source})"
 
   # Each pyproject's requires-poetry lower bound must match the pinned version.
   # The pin selects; the constraint rejects a Poetry that cannot read the lock,
@@ -96,6 +96,21 @@ check_poetry() {
       fail=1
     fi
   done
+
+  # Renovate runs in its own container and cannot read .poetry-version, so it
+  # is pinned by value in renovate.json and checked here instead. Without this
+  # the bot relocks with whatever Poetry it happens to carry — it used 2.3.3
+  # against a 2.4.2 pin — which is the drift the pin exists to prevent.
+  local renovate_pin
+  renovate_pin="$(grep -A2 '"constraints"' renovate.json 2>/dev/null \
+    | grep -oE '"poetry": *"[^"]+"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+  if [ -z "$renovate_pin" ]; then
+    error "No constraints.poetry in renovate.json; the bot would relock with its own Poetry"
+    fail=1
+  elif [ "$renovate_pin" != "$(cat .poetry-version)" ]; then
+    error "Poetry mismatch: renovate.json pins '$renovate_pin' but .poetry-version is '$(cat .poetry-version)'"
+    fail=1
+  fi
 
   # Nothing may hardcode a version: every install site reads .poetry-version,
   # so a bump is one edit rather than a sweep that can be half-finished.

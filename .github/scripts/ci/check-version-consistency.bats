@@ -34,6 +34,10 @@ EOF
 requires-poetry = ">=2.4,<3"
 EOF
 
+  cat > "${REPO}/renovate.json" <<'EOF'
+{ "constraints": { "poetry": "2.4.2" } }
+EOF
+
   echo "FROM node:24-slim" > "${REPO}/frontend/Dockerfile"
   printf "runs:\n  steps:\n    - with:\n        node-version: '24'\n" \
     > "${REPO}/.github/actions/setup-frontend/action.yml"
@@ -115,6 +119,22 @@ run_check() {
   echo 'echo "poetry==2.1.3"' > "${REPO}/.github/scripts/ci/some-check.bats"
   run run_check
   [ "$status" -eq 0 ]
+}
+
+@test "fails when renovate.json pins a different Poetry" {
+  # Renovate runs in its own container and cannot read .poetry-version, so
+  # its pin is a second copy of the version and has to be kept in step.
+  echo '{ "constraints": { "poetry": "2.3.3" } }' > "${REPO}/renovate.json"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"renovate.json pins '2.3.3'"* ]]
+}
+
+@test "fails when renovate.json pins no Poetry at all" {
+  echo '{ "extends": ["config:recommended"] }' > "${REPO}/renovate.json"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No constraints.poetry"* ]]
 }
 
 @test "a hardcoded version in a real script is still flagged" {

@@ -757,6 +757,11 @@ can reach.
       hardcodes `poetry==<version>` instead of reading the pin, so a future bump cannot be
       half-applied. Refactored to `main()` with a source guard and given bats coverage,
       which closes part of the scripts to-do.
+- [x] Pin Renovate's Poetry too, via `constraints.poetry` in `renovate.json`. The bot runs
+      in its own container and cannot read `.poetry-version`, so it relocked with 2.3.3
+      against a 2.4.2 pin on the very next dependency PR. That value is a second copy of
+      the version, so `check-version-consistency.sh` asserts it matches. Note this one is
+      only provable on the next scheduled run: nothing local can exercise the hosted bot.
 - [ ] Confirm CI is green before merging, since every Python job changes how it installs
       Poetry.
 
