@@ -15,6 +15,40 @@ from typing import Any
 
 import yaml
 
+#: Components the parser can actually turn into slide metadata.
+#: Anything else is dropped, so the validator must reject it.
+KNOWN_COMPONENTS = ("Callout", "YouTube", "Figure")
+
+#: Callout styles the frontend renders.
+VALID_CALLOUT_TYPES = ("info", "warning", "success")
+
+#: Recognised names that cannot be rendered yet. Authors get a clearer
+#: error than "unknown component", and anything listed here is a reminder
+#: that the extractor, ``ParsedSlide`` and the frontend must all land
+#: together before the name moves into ``KNOWN_COMPONENTS``.
+NOT_YET_SUPPORTED = {
+    "Video": (
+        "hosted video is not implemented yet — nothing in the parser, "
+        'ParsedSlide or the frontend reads it. Use <YouTube id="..." /> '
+        "until it lands"
+    ),
+}
+
+#: The exact patterns the extractors below match. A component-shaped tag
+#: that fails its pattern is silently discarded at render time, which is
+#: precisely what ``validate_mdx`` exists to catch.
+CALLOUT_PATTERN = r'<Callout\s+type="(\w+)">\s*(.*?)\s*</Callout>'
+YOUTUBE_PATTERN = (
+    r'<YouTube\s+id="([^"]+)"' r"(?:\s+duration=\{(\d+)\})?" r"\s*/>"
+)
+FIGURE_PATTERN = r"<Figure\s+([^>]*)/>"
+
+#: Any JSX-style tag whose name starts with a capital letter.
+_COMPONENT_TAG_RE = re.compile(r"<([A-Z]\w*)(\s[^>]*)?/?>")
+
+#: Markdown headings that start a slide.
+_HEADING_RE = re.compile(r"^#{1,2}\s+.+", re.MULTILINE)
+
 
 @dataclass
 class ParsedSlide:
@@ -50,7 +84,7 @@ def _extract_callout(body: str) -> tuple[str, str | None, str | None]:
 
     Returns (remaining_body, callout_type, callout_body).
     """
-    pattern = r'<Callout\s+type="(\w+)">\s*(.*?)\s*</Callout>'
+    pattern = CALLOUT_PATTERN
     match = re.search(pattern, body, re.DOTALL)
     if not match:
         return body, None, None
@@ -73,7 +107,7 @@ def _extract_youtube(
 
     Returns (remaining_body, youtube_id, duration_seconds).
     """
-    pattern = r'<YouTube\s+id="([^"]+)"' r"(?:\s+duration=\{(\d+)\})?" r"\s*/>"
+    pattern = YOUTUBE_PATTERN
     match = re.search(pattern, body)
     if not match:
         return body, None, None
@@ -96,7 +130,7 @@ def _extract_figure(
     Returns (remaining_body, src, alt, caption, position).
     Position is "above" if figure appears before body text, "below" otherwise.
     """
-    pattern = r"<Figure\s+([^>]*)/>"
+    pattern = FIGURE_PATTERN
     match = re.search(pattern, body)
     if not match:
         return body, None, None, None, None
@@ -117,6 +151,101 @@ def _extract_figure(
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
     return remaining, src, alt, caption, position
+
+
+# ------------------------------------------------------------------
+# Validation
+# ------------------------------------------------------------------
+
+
+def _check_component(name: str, tag: str) -> str | None:
+    """Check one component tag, returning an error message or None.
+
+    The test is not "is this valid MDX?" but "will the extractors above
+    actually pick this up?".  A tag that looks right but misses its pattern
+    is dropped at render time without a word, so it must fail here.
+    """
+    if name in NOT_YET_SUPPORTED:
+        return f"<{name}>: {NOT_YET_SUPPORTED[name]}"
+
+    if name not in KNOWN_COMPONENTS:
+        known = ", ".join(KNOWN_COMPONENTS)
+        return f"unknown component <{name}> (known: {known})"
+
+    if name == "Callout":
+        type_match = re.search(r'type="(\w+)"', tag)
+        if not type_match:
+            valid = ", ".join(VALID_CALLOUT_TYPES)
+            return f"<Callout> needs a type prop ({valid})"
+        if type_match.group(1) not in VALID_CALLOUT_TYPES:
+            valid = ", ".join(VALID_CALLOUT_TYPES)
+            return (
+                f'<Callout type="{type_match.group(1)}"> is not a valid '
+                f"type (must be: {valid})"
+            )
+
+    if name == "YouTube":
+        if not re.search(r'id="[^"]+"', tag):
+            return "<YouTube> needs an id prop"
+        if not re.fullmatch(YOUTUBE_PATTERN, tag):
+            return (
+                "<YouTube> has props the renderer cannot read, so it would "
+                "be dropped — only id and duration are supported"
+            )
+
+    if name == "Figure":
+        if not re.search(r'src="[^"]+"', tag):
+            return "<Figure> needs a src prop"
+        if not re.search(r'alt="[^"]+"', tag):
+            return "<Figure> needs an alt prop (accessibility)"
+        if not re.fullmatch(FIGURE_PATTERN, tag):
+            return (
+                "<Figure> is not self-closing, so it would be dropped — "
+                "write it as <Figure ... />"
+            )
+
+    return None
+
+
+def validate_mdx(content: str) -> list[str]:
+    """Validate learning MDX against what this parser can render.
+
+    Returns human-readable error strings; empty when the content is sound.
+
+    This deliberately checks what will render, rather than MDX syntax.  The
+    frontend never compiles MDX — it receives slides parsed here — so
+    "valid MDX" is not the useful question.  What matters is whether these
+    extractors will find the components, because anything they miss
+    disappears from the slide silently.
+    """
+    errors: list[str] = []
+
+    stripped = _strip_frontmatter(content)
+    if not stripped.strip():
+        return ["file is empty"]
+
+    if not _HEADING_RE.search(stripped):
+        errors.append(
+            "no slides found — content needs at least one '#' or '##' heading"
+        )
+
+    for line_number, line in enumerate(stripped.split("\n"), start=1):
+        for match in _COMPONENT_TAG_RE.finditer(line):
+            problem = _check_component(match.group(1), match.group(0))
+            if problem:
+                errors.append(f"line {line_number}: {problem}")
+
+    # A Callout spans lines, so its close tag needs a whole-document check.
+    opens_callout = re.search(r"<Callout\b[^>]*>", stripped) is not None
+    completes_callout = (
+        re.search(CALLOUT_PATTERN, stripped, re.DOTALL) is not None
+    )
+    if opens_callout and not completes_callout:
+        errors.append(
+            "<Callout> is not closed with </Callout>, so it would be dropped"
+        )
+
+    return errors
 
 
 def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:

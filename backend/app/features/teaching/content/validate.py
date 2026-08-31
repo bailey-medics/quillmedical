@@ -17,7 +17,7 @@ Exit codes: 0 when every module is valid, 1 when any error is found.
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -441,6 +441,20 @@ def _validate_variable_images(
             )
 
 
+def _mdx_validator() -> Callable[[str], list[str]]:
+    """Resolve the MDX validator lazily.
+
+    ``mdx_parser`` sits in the teaching feature rather than in ``content``
+    because it is the renderer, not part of the content contract.  Importing
+    it here at module scope would be harmless today, but the lazy import
+    keeps the boundary obvious: nothing in ``content`` depends on the
+    feature package to load.
+    """
+    from app.features.teaching.mdx_parser import validate_mdx
+
+    return validate_mdx
+
+
 def _validate_learning_dir(
     learning_dir: Path, result: ValidationResult
 ) -> None:
@@ -452,8 +466,19 @@ def _validate_learning_dir(
         result.add_error(rel_base, "learning/ exists but has no content.mdx")
         return
 
+    rel_content = f"{rel_base}/content.mdx"
     if content_path.stat().st_size == 0:
-        result.add_error(f"{rel_base}/content.mdx", "file is empty")
+        result.add_error(rel_content, "file is empty")
+        return
+
+    try:
+        text = content_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        result.add_error(rel_content, f"cannot read file: {exc}")
+        return
+
+    for message in _mdx_validator()(text):
+        result.add_error(rel_content, message)
 
 
 def _validate_module(module_dir: Path, result: ValidationResult) -> None:

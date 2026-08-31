@@ -168,9 +168,8 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   entirely, makes the pull-request sweep a plain prefix download, and reduces the deploy
   job to one sync per module. Crucially it costs the **same bucket migration** a bare
   rename would: every object moves either way, so the larger change is free. Do it
-  after
-  consolidation, when writer and readers are finally in one repo, and before building the
-  sweep so the sweep is written against the final layout. No database migration —
+  after consolidation, when writer and readers are finally in one repo, and before
+  building the sweep so it is written against the final layout. No database migration —
   `QuestionBankItem.images` stores only `{"key": filename}`, and URLs are built per request
   by `storage.get_image_url` (`router.py:169`).
 
@@ -328,14 +327,34 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       defaults for all of them, so relying on it alone would have *weakened* the check.
       Pydantic's raw pattern message is translated back to "must be a hex colour (e.g.
       #404040)", which is what a clinician editing YAML can act on.
-- [ ] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
-      slide, recognised components only (`Callout`, `YouTube`, `Figure`, `Video`),
-      well-formed props, and an error for any component-shaped tag it would otherwise drop
-      silently. It has zero `raise`/`except` today, so malformed content is discarded
-      without a word. Use the assertions in `validate_mdx.js` as the specification, then
-      delete that file.
-- [ ] Call that validating mode from the merged validator, so learning content is checked
-      at both gates by the same code that renders it.
+- [x] Give `backend/app/features/teaching/mdx_parser.py` a validating mode: at least one
+      slide, recognised components only, well-formed props, and an error for any
+      component-shaped tag it would otherwise drop silently. Done as `validate_mdx`, driven
+      off the extractors' own patterns (hoisted to module constants) so validator and
+      renderer cannot drift.
+      **Correction to this plan: `Video` is not supported anywhere yet.** The Node
+      validator listed it and checked its props, but nothing in the stack reads it — no
+      `_extract_video`, no `ParsedSlide` field, no frontend mapping — so content following
+      that validator passed CI and rendered a blank slide. YouTube video *is* supported end
+      to end (`youtube_id` → `video-slide` layout → frontend `youtubeId`); hosted video is
+      not. `KNOWN_COMPONENTS` is now the three names that actually have extractors, with
+      `Video` listed in `NOT_YET_SUPPORTED` so authors get "hosted video is not implemented
+      yet — use `<YouTube>` until it lands" rather than "unknown component". No existing
+      content uses `<Video>`.
+- [ ] **Follow-up, not part of this consolidation: implement hosted `<Video>`.** Planned
+      shortly for GCP-hosted files. Four pieces must land together — an `_extract_video` in
+      `mdx_parser`, the source field(s) on `ParsedSlide`, the frontend mapping and slide
+      layout, and finally moving `Video` from `NOT_YET_SUPPORTED` into `KNOWN_COMPONENTS`.
+      `test_known_components_are_the_ones_with_extractors` enforces the last step: adding
+      the name without an extractor fails the suite, which is the guard that stops this
+      recurring.
+      **Deleting `validate_mdx.js` moves to Phase 4/5, not here.** It lives in the
+      teaching-tooling repo, whose `pipeline.yml` the content repos still call; removing it
+      now would break their CI before cut-over. It dies with the repo in Phase 5.
+- [x] Call that validating mode from the merged validator, so learning content is checked
+      at both gates by the same code that renders it. `_validate_learning_dir` now runs it,
+      importing `mdx_parser` lazily so the `content` package still loads with only
+      `pydantic` and `pyyaml`.
 - [ ] Point `sync.py` at the merged validator so that sync runs the _same_ checks as CI —
       module metadata, assessment structure, images and the certificate block — replacing
       today's split between `run_tooling_validation` and `validate_question_bank`.
