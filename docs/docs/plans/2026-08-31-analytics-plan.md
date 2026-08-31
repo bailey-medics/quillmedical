@@ -4,9 +4,9 @@ Quill has no analytics of any kind. There is no web analytics on the public
 site, no product analytics in the app, and no frontend error tracking — the
 only telemetry that exists is structured JSON logging to Cloud Logging plus the
 uptime checks and alert policies in `infra/modules/monitoring`. So there is
-currently no way to answer either of the two questions that matter commercially:
-who arrives at the marketing site and whether they convert, and what signed-in
-users actually do once they are inside the teaching product.
+currently no way to answer either of the two questions that matter
+commercially: who arrives at the marketing site and whether they convert, and
+what signed-in users actually do once they are inside the teaching product.
 
 This is a decision that is easy to get wrong in a way that is expensive to
 reverse. Analytics touches the CSP, the cookie and privacy policies, the DPIA,
@@ -20,10 +20,19 @@ cookie banner for qualifying first-party analytics — while simultaneously
 raising PECR penalties to UK GDPR levels. Advice written before 2026 is out of
 date on both halves of that.
 
-This plan records the research, the options considered, and the recommended
-route: build a vendor-independent typed event catalogue first, adopt PostHog
-Cloud (EU) behind a first-party proxy for the low-risk surfaces, and keep a
-GCP-native BigQuery sink for anything clinical.
+The first draft of this plan turned on one open question: whether Quill would
+hold real patient data within twelve months. **That question has been answered
+— build as though patient data could arrive tomorrow.** The plan below is
+therefore the conservative shape: **no third-party analytics processor
+anywhere, on any surface.** Everything is first-party, inside the GCP boundary
+Quill already controls, keyed off a typed event catalogue that keeps the call
+sites stable if that stance is ever relaxed.
+
+The direction came with a cost caveat — hold off on the safest option if it is
+financially expensive, and revisit when circumstances genuinely change. That
+caveat turns out not to bind, and the costing below is the reason why: the
+zero-vendor route runs at effectively £0/month inside existing GCP free tiers.
+What it costs is engineering time and analytical convenience, not money.
 
 ## What "analytics" means here
 
@@ -52,15 +61,15 @@ throughout this plan:
 Lane D is listed only so it is not confused with lane B. Buying a
 product-analytics tool does not deliver the teaching dashboards, and building
 those dashboards does not tell you why users abandon signup. This plan covers
-lanes A and B, and notes where lane C rides along for free.
+lanes A and B, and closes the frontend half of lane C along the way.
 
 ## The 2026 UK regulatory position
 
-- **The statistical purposes exception is real, and Quill can use it.** The
-  DUAA received Royal Assent on 19 June 2025; its PECR amendments came into
-  force on 5 February 2026, creating five new exceptions to the cookie-consent
-  rule. Qualifying first-party analytics can now run **without a consent
-  banner**.
+- **The statistical purposes exception is real, and Quill could have used
+  it.** The DUAA received Royal Assent on 19 June 2025; its PECR amendments
+  came into force on 5 February 2026, creating five new exceptions to the
+  cookie-consent rule. Qualifying first-party analytics can now run **without a
+  consent banner**.
 
 - **The ICO reads it strictly.** To rely on it, all of the following must
   hold: the data produces aggregate statistics that cannot reasonably identify
@@ -69,9 +78,8 @@ lanes A and B, and notes where lane C rides along for free.
   **processor**, not a joint controller, with no contractual right to use the
   data for its own purposes (advertising, product development, model training,
   benchmarking); the data is not combined with other sources and involves no
-  profiling; you give clear and comprehensive information about what is
-  stored; and you offer a simple and free means to object, available at first
-  use.
+  profiling; you give clear and comprehensive information about what is stored;
+  and you offer a simple and free means to object, available at first use.
 
 - **The exception removes the banner, not the obligations.** The notice, the
   opt-out, the DPIA and UK GDPR duties on the data all survive it.
@@ -80,22 +88,30 @@ lanes A and B, and notes where lane C rides along for free.
   GDPR levels — up to £17.5m or 4% of global turnover — with the
   penalty-notice provisions applying from 19 June 2026.
 
-- **GA4 is excluded.** It fails the test three ways: Google is a joint
-  controller rather than a processor; GA data feeds Google's advertising
-  systems, machine-learning models and benchmarking products, breaking the
-  sole-purpose test; and the `_ga` cookie assigns a persistent Client ID that
-  identifies returning visitors, so the data is not aggregate-only. A heavily
-  stripped GA4 (advertising features, Google Signals and User-ID disabled) can
-  be argued into the exception, but the argument is fragile, the configuration
-  is one console click from being wrong, and it would have to be defended at
-  DSPT audit. A bad trade for a free tool.
+- **The plan does not rely on the exception anyway.** Server-side events tied
+  to an authenticated session, and request logs the load balancer already
+  writes, involve no storage on or access to the user's device. PECR does not
+  engage at all. This is a materially stronger position than qualifying for an
+  exception, because there is no qualification argument to defend at audit —
+  and it is the reason the conservative route also removes the cookie banner
+  question entirely.
+
+- **GA4 is excluded on every reading.** It fails the statistical purposes test
+  three ways: Google is a joint controller rather than a processor; GA data
+  feeds Google's advertising systems, machine-learning models and benchmarking
+  products, breaking the sole-purpose test; and the `_ga` cookie assigns a
+  persistent Client ID that identifies returning visitors, so the data is not
+  aggregate-only. A stripped-down GA4 can be argued into the exception, but the
+  argument is fragile and one console click from being wrong.
 
 - **Health data raises the bar inside the app.** Behavioural data can reveal
   health status without containing a single clinical field: a URL path, a
   feature name, a screen title, or the sequence and timing of actions can all
   disclose that a person has or is being treated for a condition. In a patient
   or clinician surface, "we only send page views" is not a safety argument —
-  the page view *is* the disclosure.
+  the page view *is* the disclosure. This is what makes "assume patient data
+  arrives tomorrow" decisive rather than cautious: the exposure would be
+  created by the instrumentation, before any clinical field is ever sent.
 
 - **Every vendor is a permanent assurance liability.** The DSPT is now aligned
   to the NCSC Cyber Assessment Framework — outcome-based, evidencing that
@@ -103,8 +119,7 @@ lanes A and B, and notes where lane C rides along for free.
   by 2026-27, with DTAC assessing the product. Each analytics sub-processor
   adds a declaration, a DPIA section, a residency claim to evidence, a
   retention policy to enforce, and an annual contract review. That recurring
-  cost never appears on the pricing page, and it is the strongest argument for
-  keeping the vendor count at one — or zero.
+  cost never appears on the pricing page.
 
 ## Codebase fit
 
@@ -112,14 +127,17 @@ Facts established by reading the repository, which constrain the choice:
 
 - **The CSP forbids third-party scripts.** `caddy/prod/Caddyfile` line 25 sets
   `script-src 'self'` and `connect-src 'self'`, so no vendor snippet can load
-  or send anything without loosening the policy. Weakening a good CSP to add
-  analytics would be a straight downgrade of the security posture and an
-  awkward line item at audit. The resolution is not to relax it: install the
-  vendor library from npm (bundled, so `'self'`) and proxy its ingest endpoint
-  through Caddy on Quill's own domain (so `connect-src 'self'` still holds).
-  This is what the vendors themselves now recommend anyway, for ad-blocker
-  resilience and first-party cookie lifetimes — the CSP is pushing the
-  architecture in the right direction.
+  or send anything without loosening the policy. Under the plan below **the CSP
+  never changes** — every request is same-origin. Had a vendor been adopted, it
+  would have needed a bundled library plus a first-party ingest proxy through
+  Caddy to avoid weakening it.
+
+- **The load balancer already logs every request.**
+  `infra/modules/load-balancer/main.tf` sets `log_config { enable = true }` on
+  both the backend and frontend backend services, at `var.log_sample_rate`.
+  Those logs already flow to Cloud Logging. Marketing-site traffic analysis is
+  therefore a routing and dashboard problem, not a data-collection problem —
+  the data is already being produced and paid for.
 
 - **There is already a shared-config-to-typed-code pipeline.**
   `shared/competencies.yaml` and `shared/base-professions.yaml` are read by the
@@ -132,8 +150,8 @@ Facts established by reading the repository, which constrain the choice:
 - **Structured logging is already in place.** `logging_config.py` emits JSON
   with a `RequestContextFilter` carrying `request_id` and `user_id`, and Cloud
   Run forwards it to Cloud Logging, which parses it natively. A dedicated
-  `analytics` logger plus a Cloud Logging sink to BigQuery is a small addition
-  to a pipeline that already exists and is already paid for.
+  `analytics` logger plus a sink to BigQuery is a small addition to a pipeline
+  that already exists.
 
 - **Two surfaces, one injection point each.**
   `frontend/public_pages/templates/page.html` is the single `<head>` for every
@@ -141,83 +159,124 @@ Facts established by reading the repository, which constrain the choice:
   defined in `main.tsx` and is the natural home for a route-to-event-name map
   that keeps raw URLs out of the payload.
 
-- **Three open `todo.md` items collapse into this work.** The feature-flag
+- **The client must not use raw `fetch`.** Per the project conventions the
+  frontend beacon posts through `frontend/src/lib/api.ts`, not a bespoke
+  transport.
+
+- **Three open `todo.md` items are touched by this work.** The feature-flag
   strategy item (implementation exists in `RequireFeature` and
   `featureFlags.ts`; strategy doc missing), the total absence of frontend error
   tracking, and the cookie and privacy policy pages — currently placeholder
-  stubs saying the content "is currently being finalised". The first two ship
-  in the box with a product-analytics platform; the third is a blocker for this
-  work whichever option is chosen.
+  stubs saying the content "is currently being finalised".
+
+## What this costs
+
+The cost caveat deserves a direct answer, because the intuition that "the safe
+option is the expensive one" does not hold here.
+
+- **Cloud Logging** — $0.50/GiB ingested, with 50 GiB per month free. Quill's
+  volumes are nowhere near that, and the load-balancer logs are already being
+  ingested today.
+- **Log sink export to BigQuery** — free. The sink itself carries no charge.
+- **BigQuery** — 10 GB of storage and 1 TiB of query processing free per
+  month; thereafter $0.02/GB/month for active storage and roughly $6.25/TiB
+  scanned. Analytics events are small rows; teaching-scale volumes will not
+  leave the free tier for years.
+- **Looker Studio** — free, and connects to BigQuery natively.
+- **Cloud Error Reporting** — included with the operations suite; frontend
+  errors arrive as structured log entries, which fall under the same 50 GiB
+  free tier.
+
+**Realistic running cost: £0/month**, on infrastructure already provisioned,
+inside a boundary already covered by the existing GCP data processing terms.
+
+For honesty, the rejected option was also £0: PostHog's free tier covers 1M
+events, 5,000 session recordings and 1M feature-flag requests per month, which
+Quill would not exceed. **Money is not the differentiator between these two
+routes.** What the conservative route actually costs is:
+
+- **Engineering time** — building the emitter, the sink, the beacon endpoint
+  and the dashboards, rather than installing a library. Modest, and mostly
+  mechanical.
+- **Analytical convenience** — funnels, retention curves and cohort analysis
+  become SQL you write against BigQuery instead of a UI you click. This is the
+  real trade, and it is a permanent one.
+- **Features not obtained** — no session replay (excluded on safety grounds
+  regardless), no hosted experimentation, and weaker frontend error grouping
+  and source-map handling than a dedicated tool.
+
+Since the financial cost of the safe route is nil, the caveat about holding
+off does not bind. Revisit only if the analytical convenience gap starts
+costing real product decisions.
 
 ## Options considered
 
-- **PostHog Cloud (EU) — recommended.** Product analytics, feature flags,
-  experiments, surveys, session replay and error tracking in one platform, with
-  EU hosting, a DPA, SOC 2, and a HIPAA BAA available on paid plans without an
-  enterprise contract. The free tier covers 1M analytics events, 5,000 session
-  recordings, 1M feature-flag requests and 100K exceptions per month — Quill's
-  teaching volumes are nowhere near this, so realistic cost is £0. Covers lanes
-  A, B and the missing half of C, and supplies the feature-flag infrastructure
-  `todo.md` wants a strategy for: one vendor, one DPIA, one sub-processor
-  entry. The risks are real and manageable: autocapture, GeoIP enrichment, URL
-  capture, session replay and backend event properties all carry PHI in a
-  default setup and must each be explicitly disabled or masked, and PostHog's
-  *managed* reverse proxy is excluded from BAA coverage, so the proxy must be
-  Quill's own — which the Caddy setup makes straightforward.
+- **First-party GCP-native pipeline — chosen.** Typed events from FastAPI and
+  from a same-origin frontend beacon, emitted as structured logs → Cloud
+  Logging sink → BigQuery → Looker Studio, with marketing traffic coming from
+  load-balancer request logs already being written. Zero new sub-processors,
+  nothing to declare at DSPT or DTAC, no PECR question, no CSP change, no
+  cookie banner. Costs pennies. The weakness is genuine: no funnel or retention
+  UI out of the box, and dashboards are work rather than a signup.
 
-- **A caveat on the PostHog escape hatch.** PostHog deprecated supported
-  self-hosting. What remains is an MIT-licensed "hobby" Docker Compose
-  deployment: one project, no commercial support, no Kubernetes, several
-  features missing. It is a credible bolt-hole for a small deployment, not an
-  enterprise fallback. Do not choose PostHog on the assumption that
-  self-hosting is a serious option later — choose it on the EU-cloud terms,
-  with BigQuery as the real exit.
+- **PostHog Cloud (EU) — rejected, given the decision to assume patient
+  data.** It was the recommendation in the first draft and remains the best
+  tool on the merits: product analytics, feature flags, experiments, surveys,
+  session replay and error tracking in one platform, EU hosting, DPA, SOC 2, a
+  HIPAA BAA available on paid plans, and a free tier Quill would not exceed. It
+  is recorded here rather than deleted because the analysis is the reason for
+  the rejection, not an argument against revisiting it. What excludes it is
+  not price and not capability, but that autocapture, GeoIP enrichment, URL
+  capture, session replay and backend event properties all carry PHI in a
+  default setup — every one of them a control that must be configured
+  correctly and stay correct — and that a processor holding behavioural data
+  from a clinical surface is a standing declaration on the assurance record.
+
+- **A note for anyone revisiting PostHog later.** Its self-hosting is now
+  hobby-only: an MIT-licensed Docker Compose deployment with one project, no
+  commercial support, no Kubernetes, several features missing. It is not an
+  enterprise fallback, so a future adoption would be on the EU-cloud terms.
 
 - **Matomo, self-hosted or Matomo Cloud EU.** Full data ownership, GPL,
-  on-premise, mature GDPR tooling, and genuinely strong for lane A. Weaker for
-  lane B — a web analytics product first, with thinner funnels, retention and
-  cohort analysis, partly behind paid plugins (heatmaps €199/yr, session
-  recording €149/yr, A/B testing €249/yr). Cloud starts at €29/month for 50,000
-  *hits* — every event, download and outbound click is a hit, so budgets go two
-  to three times faster than they look. Against it: self-hosting adds a fourth
-  stateful database service (MySQL/MariaDB) to a stack already running three
-  Postgres instances, on a team of one, with a permanent patching obligation.
-  An unpatched self-hosted analytics server is a worse DSPT finding than a
-  well-documented EU processor.
+  on-premise, mature GDPR tooling, genuinely strong for lane A. Weaker for lane
+  B — a web analytics product first, with funnels, retention and cohort
+  analysis partly behind paid plugins (heatmaps €199/yr, session recording
+  €149/yr, A/B testing €249/yr). Cloud starts at €29/month for 50,000 *hits*,
+  and every event, download and outbound click is a hit. Self-hosting adds a
+  fourth stateful database service (MySQL/MariaDB) to a stack already running
+  three Postgres instances, on a team of one, with a permanent patching
+  obligation. An unpatched self-hosted analytics server is a worse DSPT finding
+  than a well-documented EU processor, and this objection applies to every
+  self-hosting option below too.
 
-- **GCP-native first-party pipeline.** Typed events from FastAPI as structured
-  logs → Cloud Logging sink → BigQuery → Looker Studio. Pennies at Quill's
-  volume, on infrastructure already provisioned, and the strongest governance
-  answer available: **zero new sub-processors**, nothing to declare at DSPT or
-  DTAC, and no PECR question at all for server-side events tied to an
-  authenticated session, since nothing is stored on or read from the user's
-  device. Against it: no funnels, retention curves or cohort UI out of the box
-  — that is SQL you write and dashboards you build — no client-side events
-  without an ingest endpoint of your own, and no session replay, error tracking
-  or feature flags. It answers "what happened" well and "why did they leave"
-  poorly.
-
-- **Plausible or Umami for the marketing site only.** Cookie-free,
+- **Plausible or Umami on the marketing site only.** Cookie-free,
   aggregate-only, EU-hosted, roughly £9–19/month, and can be self-hosted.
   Comfortably inside the statistical purposes exception, and a single script
-  tag in `page.html`. But it solves lane A alone, so adopting it alongside a
-  product-analytics tool means two vendors and two DPIAs for one job. Its real
-  role is as the fallback if the decision is to keep the app entirely free of
-  third-party analytics.
+  tag in `page.html`. Still adds a sub-processor for something the
+  load-balancer logs largely already answer, so it is held as the **fallback
+  for lane A** rather than adopted: reach for it only if the log-derived
+  dashboards prove too coarse to guide marketing decisions.
 
 - **Warehouse-native (Mitzu, Kubit, Snowplow).** The genuine 2026 direction of
   travel: keep first-party behavioural data in the warehouse and point a
-  product-analytics UI at it, rather than copying events into a vendor's event
-  store. Given Quill is already on GCP with BigQuery available, this is the
-  natural end state at scale. Premature now — these are priced and scoped for
-  organisations with data teams. It is, however, the reason the BigQuery sink
-  is worth building even alongside PostHog: a first-party event stream in the
-  warehouse is the asset that makes the transition cheap later, and it is much
-  harder to reconstruct after the fact.
+  product-analytics UI at it. Premature now — priced and scoped for
+  organisations with data teams — but this plan lands Quill's data exactly
+  where those tools expect to find it, so adopting one later is a connection
+  rather than a migration. That is a further argument for the chosen route: it
+  is the same architecture, minus the UI, and the UI can be bought later.
+
+- **Error tracking: GCP-native first, GlitchTip as fallback.** Frontend errors
+  posted to Quill's own backend, logged as structured entries and surfaced via
+  Cloud Error Reporting, keeps the zero-vendor property. It is weaker than a
+  dedicated tool at grouping and source maps. GlitchTip is the strongest
+  fallback if that proves painful — Sentry SDK protocol, four containers rather
+  than forty, free to self-host, EU instance available — but it is another
+  stateful service to patch, so it is a considered second step, not a starting
+  point.
 
 ## Phase 0: event catalogue
 
-Vendor-independent, and worth doing whatever else is decided. This is what
+Vendor-independent, and the foundation for everything after it. This is what
 stops the taxonomy rotting, which is how analytics implementations actually
 fail — not through a bad tool choice, but through naming drift and untyped
 properties nobody enforces. Current practice is tracking-plan-as-code: the
@@ -230,116 +289,145 @@ rejects malformed or undeclared events.
       PHI-safety classification
 - [ ] Add `analytics-events.yaml` to `FILES_TO_GENERATE` in
       `frontend/scripts/generate-json-from-yaml.ts`
-- [ ] Add the generated event types to `frontend/src/types/` and a loader in
+- [ ] Add generated event types under `frontend/src/types/` and a loader in
       `backend/app/analytics/` reading the YAML via PyYAML
 - [ ] Seed 20–40 events using object-action naming (`assessment_started`,
       `assessment_completed`, `signup_form_submitted`); cap the catalogue at
       200 permanently
 - [ ] Add a CI check rejecting any capture call whose event or property is not
       in the catalogue, and any property name matching a PHI denylist
-- [ ] Backend tests for the loader and denylist (`just ub`)
+- [ ] Backend tests for the loader and the denylist (`just ub`)
 
-## Phase 1: marketing site
+## Phase 1: the sink
 
-The low-risk surface, and the right place to prove the plumbing.
+Build the destination before the producers, so the first real event has
+somewhere to land.
 
-- [ ] Add PostHog via npm to `frontend/public_pages`, initialised from
-      `templates/page.html` — no vendor CDN, so the CSP stays as it is
-- [ ] Add a Caddy reverse-proxy route so ingest is first-party on Quill's own
-      domain, in `caddy/prod/Caddyfile` and `caddy/dev/Caddyfile`
-- [ ] Configure aggregate-only capture: no advertising features, no
-      cross-source combination, EU region
-- [ ] Write the cookie policy page
-      (`frontend/public_pages/src/pages/cookie-policy.tsx`), including the
-      opt-out, replacing the current stub
-- [ ] Confirm no consent banner is required, and record the statistical
-      purposes qualification analysis in the DPIA
+- [ ] Add an `analytics` logger in `backend/app/analytics/`, emitting through
+      the existing `logging_config.py` JSON pipeline with a distinct log name
+      so it can be routed independently of application logs
+- [ ] Add an `infra/modules/analytics` Terraform module: a Cloud Logging sink
+      filtered to the analytics log name, a BigQuery dataset, and a table
+      expiration implementing the retention decision
+- [ ] Confirm the sink filter cannot match application logs, so no incidental
+      log line is ever routed into the analytics dataset
+- [ ] Build the first Looker Studio dashboard against the dataset
+- [ ] Document the query patterns for funnels and retention, since these are
+      SQL rather than UI from here on
 
-## Phase 2: teaching app
+## Phase 2: marketing site
 
-- [ ] Add `frontend/src/lib/analytics/` with a sink adapter, a
-      `useAnalytics` hook, and the generated event types
-- [ ] Initialise with `autocapture: false` and
-      `disable_session_recording: true` — manual, catalogue-checked events only
+Zero client-side JavaScript, zero cookies, zero consent question.
+
+- [ ] Route load-balancer request logs for the frontend backend service into
+      the analytics dataset, and check `var.log_sample_rate` is set so the
+      sample is representative
+- [ ] Truncate or drop client IP at ingest — IP is personal data, and it is
+      not needed for aggregate traffic analysis
+- [ ] Emit a server-side conversion event when a public form is submitted, so
+      conversion is measured where it actually happens rather than in the
+      browser
+- [ ] Build the traffic and conversion dashboard: sources, pages, conversion
+      rate, with bot traffic filtered
+- [ ] Reassess after a month of data — if the answers are too coarse to guide
+      marketing decisions, revisit Plausible for lane A only
+
+## Phase 3: teaching app
+
+- [ ] Add `frontend/src/lib/analytics/` with a `useAnalytics` hook posting
+      catalogue-checked events to a first-party backend endpoint via
+      `lib/api.ts` — same-origin, so the CSP is untouched
+- [ ] Add the receiving endpoint in the backend, validating every event
+      against the catalogue and rejecting anything undeclared, with rate
+      limiting via the existing `slowapi` setup
 - [ ] Add a route-to-event-name map in `RootLayout.tsx` so no raw URL or
       document title ever leaves the client
 - [ ] Use pseudonymous analytics-only identifiers — never email, NHS number,
       patient or subject IDs
 - [ ] Add a hard client-side guard that no-ops every capture on routes behind
       `RequireClinical`, with tests covering it
-- [ ] Add an analytics opt-out toggle to `Settings.tsx`, honoured before the
-      SDK initialises, with `.stories.tsx` and `.test.tsx` per the component
+- [ ] Add an analytics opt-out toggle to `Settings.tsx`, honoured before any
+      event is emitted, with `.stories.tsx` and `.test.tsx` per the component
       rules
-- [ ] Update the privacy policy to name the processor, purpose, residency and
-      retention period
-- [ ] Decide whether to adopt PostHog error tracking, closing the frontend
-      error-tracking gap
+- [ ] Update the privacy policy to describe the processing, the purpose and
+      the retention period
 
-## Phase 3: clinical surface
+## Phase 4: frontend error tracking
 
-Not yet — this phase starts when clinical data does. Server-side only: no
-third-party processor ever sees clinical behavioural data. The Phase 0
-catalogue means the call sites are identical to Phase 2; only the sink differs.
+Closes the lane C gap that has no owner today.
 
-- [ ] Add an `analytics` logger in `backend/app/analytics/` emitting through
-      the existing `logging_config.py` JSON pipeline
-- [ ] Add an `infra/modules/analytics` Terraform module with a Cloud Logging
-      sink to BigQuery, and a retention policy on the dataset
-- [ ] Build the funnel and retention queries plus Looker Studio dashboards
-- [ ] Extend the DPIA to cover clinical behavioural data
+- [ ] Add a React error boundary and a global handler posting sanitised error
+      reports to the backend via `lib/api.ts`
+- [ ] Strip URLs, form values and user-entered text from reports before they
+      leave the client — an error message is as capable of carrying PHI as an
+      analytics event
+- [ ] Surface the reports through Cloud Error Reporting, and alert on them via
+      the existing `infra/modules/monitoring` notification channels
+- [ ] Reassess after a month — if grouping and source-map handling prove too
+      weak to act on, evaluate self-hosted GlitchTip as a second step
 
 ## Prerequisites
 
 Blocking, before any analytics ships:
 
-- [ ] Cookie policy written — the page is a stub, and the exception requires
-      clear and comprehensive information plus a working opt-out
-- [ ] Privacy policy updated with processor, purpose, residency and retention
-- [ ] DPIA covering the analytics processing, recording the statistical
-      purposes qualification analysis
-- [ ] Retention period set, and folded into the outstanding UK GDPR
-      data-retention decision in `todo.md`
+- [ ] Cookie policy written, replacing the current stub — the policy is needed
+      whether or not a banner is, and the honest version is now short
+- [ ] Privacy policy updated with the processing, purpose and retention period
+- [ ] DPIA covering the analytics processing, recording that no third-party
+      processor is involved and that PECR does not engage
+- [ ] Retention period set for the analytics dataset, folded into the
+      outstanding UK GDPR data-retention decision in `todo.md`
 
 ## Decisions
 
-- **Tier by surface rather than picking one tool for everything** — the
-  free, feature-rich platform goes where the risk is low and the commercial
-  questions are urgent; the fully-owned pipeline goes where the risk is high.
-  A single tool across both surfaces would either over-expose clinical data or
-  under-serve the marketing questions.
+- **Assume patient data arrives tomorrow** — the explicit direction, and the
+  decision that determines everything else. Behavioural instrumentation creates
+  the exposure before any clinical field is sent, so the instrumentation has to
+  be safe from the first event, not retrofitted when clinical data lands.
 
-- **Build the catalogue before choosing the sink** — the catalogue is the
-  interface, so switching sinks, or moving wholesale to warehouse-native later,
-  becomes a configuration change rather than a rewrite of hundreds of call
-  sites.
+- **No third-party analytics processor on any surface** — including the
+  marketing site, where the PHI risk is nil but the sub-processor declaration
+  is not. Keeping the vendor count at zero means there is no residency claim to
+  evidence, no annual contract review, and no configuration that must stay
+  correct to remain safe.
 
-- **Proxy first-party rather than relaxing the CSP** — `script-src 'self'`
-  and `connect-src 'self'` are worth more than the convenience of a vendor
-  snippet, and proxying is what the vendors recommend regardless.
+- **The cost caveat does not bind** — both the chosen and the rejected route
+  run at £0/month. The conservative route is paid for in engineering time and
+  in funnels-as-SQL, not in money, so there is nothing to hold off for.
 
-- **No GA4, at any configuration** — it fails the statistical purposes test on
-  controller status, sole purpose and identifiability, and a defensible
-  stripped-down configuration is one console click from being wrong.
+- **Build the catalogue before the sink** — the catalogue is the interface, so
+  changing sinks, or connecting a warehouse-native UI later, is a configuration
+  change rather than a rewrite of hundreds of call sites. It is also what makes
+  the PHI denylist enforceable in CI rather than aspirational.
 
-- **Session replay off by default** — it is the highest-value and
-  highest-risk feature in the box. If it is ever enabled on teaching screens it
-  must be default-masked, and it must never run on a clinical screen.
+- **Server-side and same-origin by default** — no device storage means PECR
+  does not engage, which is a stronger position than qualifying for the
+  statistical purposes exception, because there is no argument to defend at
+  audit. It also leaves the CSP untouched.
 
-- **What would reverse this plan** — if Quill will hold real patient data
-  within twelve months, invert it: skip PostHog on the app entirely, run the
-  BigQuery pipeline from the start, and use Plausible on the marketing site
-  alone. The build cost is higher and the insight thinner, but the assurance
-  story is unimpeachable and there is nothing to unpick later. This is the one
-  input that decides the shape, and it needs a human answer before Phase 2.
+- **Session replay is excluded outright** — the highest-value and
+  highest-risk feature in the box, and not worth a category of risk that cannot
+  be fully controlled on a clinical surface.
+
+- **Plausible and GlitchTip are held as named fallbacks, not adopted** — each
+  addresses a specific weakness of the chosen route (coarse marketing data,
+  weak error grouping). Naming them now means a future decision starts from
+  evidence about which weakness actually bit, rather than from a fresh survey.
+
+- **What would revisit this plan** — a decision that patient data will *not*
+  arrive, or the analytical convenience gap demonstrably costing product
+  decisions. Both are reversals of an explicit stance, so both need a
+  deliberate human call rather than drift.
 
 ## Open questions
 
-- [ ] Timeline to real patient data — decides between this plan and its
-      inversion
-- [ ] Is session replay wanted on teaching screens at all?
-- [ ] Should the `todo.md` feature-flag strategy be answered by PostHog flags,
-      or stay in-code and in Terraform? Adopting PostHog flags is a deeper
-      coupling than adopting its analytics
+- [ ] Should the `todo.md` feature-flag strategy stay in-code and in Terraform?
+      With no analytics vendor adopted, the flag infrastructure that a platform
+      would have supplied has to be answered on its own terms
+- [ ] What retention period applies to the analytics dataset, and does it
+      differ from application log retention?
+- [ ] Is a sampled load-balancer log stream representative enough for marketing
+      decisions, or does `log_sample_rate` need raising on the frontend service?
 
 ## Sources
 
@@ -356,6 +444,12 @@ Regulatory:
 - [NHS England — CAF-aligned DSPT guidance](https://digital.nhs.uk/cyber-and-data-security/guidance-and-resources/caf-aligned-dspt-guidance/audit-guides/strengthening-assurance-independent-assessment-summary-of-guides/cyber-assessment-framework-caf-aligned-data-security-and-protection-toolkit-dspt//)
 - [EJN Labs — DSPT is now CAF-aligned, what NHS suppliers must do before 30 June 2026](https://ejnlabs.com/dspt-caf-aligned-nhs-suppliers/)
 
+Cost:
+
+- [Google Cloud — BigQuery pricing](https://cloud.google.com/bigquery/pricing)
+- [MonitoringCost — GCP Cloud Operations suite pricing 2026](https://monitoringcost.com/gcp-monitoring-cost)
+- [OneUptime — calculating and optimising Cloud Logging costs](https://oneuptime.com/blog/post/2026-02-17-how-to-calculate-and-optimize-cloud-logging-costs-by-analyzing-ingestion-volume/view)
+
 Tooling:
 
 - [PostHog — privacy controls for session replay](https://posthog.com/docs/session-replay/privacy)
@@ -366,6 +460,8 @@ Tooling:
 - [StackScored — Matomo pricing 2026](https://www.stackscored.com/pricing/analytics/matomo/)
 - [Analytics Alternatives — Matomo review, cloud pricing vs self-hosted](https://analytics-alternatives.com/matomo-review-2026/)
 - [OpenPanel — self-hosted web analytics 2026](https://openpanel.dev/articles/self-hosted-web-analytics)
+- [GlitchTip — hosted architecture](https://glitchtip.com/documentation/hosted-architecture/)
+- [DanubeData — self-hosting Sentry or GlitchTip in 2026](https://danubedata.ro/blog/self-host-sentry-glitchtip-error-tracking-2026)
 
 Practice:
 
