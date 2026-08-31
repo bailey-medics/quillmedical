@@ -54,6 +54,12 @@ REQUIRED_CERTIFICATE_FIELDS = (
 #: The background image a certificate is composited onto.
 CERTIFICATE_BACKGROUND = "certificate-blank.png"
 
+#: Item directory name to the filenames it contains, with "." for the
+#: assessment root. Supplied when content lives in GCS: only YAML is
+#: downloaded there, so images are never on disk and a directory listing
+#: would report every declared image as missing.
+ImageInventory = dict[str, set[str]]
+
 
 # ------------------------------------------------------------------
 # Result types
@@ -141,6 +147,23 @@ class ValidationResult:
 # ------------------------------------------------------------------
 # YAML reading — narrow untyped input at the boundary
 # ------------------------------------------------------------------
+
+
+def _files_in(
+    directory: Path,
+    inventory: ImageInventory | None,
+    *,
+    key: str | None = None,
+) -> set[str]:
+    """Filenames present in *directory*.
+
+    With an inventory the listing comes from it rather than the disk,
+    because in GCS mode the images were never downloaded — fetching them
+    just to check a name would mean paying for the bytes twice.
+    """
+    if inventory is not None:
+        return set(inventory.get(key or directory.name, set()))
+    return {f.name for f in directory.iterdir() if f.is_file()}
 
 
 def _as_mapping(data: object) -> dict[str, object] | None:
@@ -276,7 +299,9 @@ def _validate_module_yaml(
 
 
 def _validate_assessment_dir(
-    assessment_dir: Path, result: ValidationResult
+    assessment_dir: Path,
+    result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
 ) -> None:
     """Validate assessment directory structure."""
     rel_base = str(
@@ -334,12 +359,21 @@ def _validate_assessment_dir(
 
     if bank_type == "uniform":
         _validate_uniform_images(
-            config, question_dirs, rel_base, rel_config, result
+            config,
+            question_dirs,
+            rel_base,
+            rel_config,
+            result,
+            image_inventory,
         )
     elif bank_type == "variable":
-        _validate_variable_images(question_dirs, rel_base, result)
+        _validate_variable_images(
+            question_dirs, rel_base, result, image_inventory
+        )
 
-    _validate_certificate(config, assessment_dir, rel_config, result)
+    _validate_certificate(
+        config, assessment_dir, rel_config, result, image_inventory
+    )
 
 
 def _validate_certificate(
@@ -347,6 +381,7 @@ def _validate_certificate(
     assessment_dir: Path,
     rel_config: str,
     result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
 ) -> None:
     """Validate the certificate block and its background image.
 
@@ -357,7 +392,8 @@ def _validate_certificate(
     if not certificate_enabled(config):
         return
 
-    if not (assessment_dir / CERTIFICATE_BACKGROUND).is_file():
+    root_files = _files_in(assessment_dir, image_inventory, key=".")
+    if CERTIFICATE_BACKGROUND not in root_files:
         result.add_error(
             rel_config,
             f"certificate_download is enabled but "
@@ -383,6 +419,7 @@ def _validate_uniform_images(
     rel_base: str,
     rel_config: str,
     result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
 ) -> None:
     """Validate image files in uniform assessment question directories.
 
@@ -413,9 +450,7 @@ def _validate_uniform_images(
 
     for question_dir in question_dirs:
         rel_q = f"{rel_base}/{question_dir.name}"
-        existing_files = {
-            f.name for f in question_dir.iterdir() if f.is_file()
-        }
+        existing_files = _files_in(question_dir, image_inventory)
         for key in expected_keys:
             if key not in existing_files:
                 result.add_error(
@@ -433,6 +468,7 @@ def _validate_variable_images(
     question_dirs: Sequence[Path],
     rel_base: str,
     result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
 ) -> None:
     """Validate image files in variable assessment question directories.
 
@@ -459,9 +495,7 @@ def _validate_variable_images(
         if not images or not isinstance(images, list):
             continue
 
-        existing_files = {
-            f.name for f in question_dir.iterdir() if f.is_file()
-        }
+        existing_files = _files_in(question_dir, image_inventory)
         declared_keys: set[str] = set()
         for i, img in enumerate(images):
             key = _image_key(img)
@@ -523,7 +557,11 @@ def _validate_learning_dir(
         result.add_error(rel_content, message)
 
 
-def _validate_module(module_dir: Path, result: ValidationResult) -> None:
+def _validate_module(
+    module_dir: Path,
+    result: ValidationResult,
+    image_inventory: ImageInventory | None = None,
+) -> None:
     """Validate a single module directory."""
     result.modules_checked += 1
 
@@ -544,7 +582,22 @@ def _validate_module(module_dir: Path, result: ValidationResult) -> None:
         _validate_learning_dir(learning_dir, result)
 
     if assessment_dir.is_dir():
-        _validate_assessment_dir(assessment_dir, result)
+        _validate_assessment_dir(assessment_dir, result, image_inventory)
+
+
+def validate_module_dir(
+    module_dir: Path,
+    image_inventory: ImageInventory | None = None,
+) -> ValidationResult:
+    """Validate one module directory.
+
+    The entry point sync needs: it validates a single bank rather than a
+    whole ``modules/`` tree, and accepts an inventory for the GCS case where
+    images were never downloaded.
+    """
+    result = ValidationResult()
+    _validate_module(module_dir, result, image_inventory)
+    return result
 
 
 def validate_modules_dir(modules_dir: Path) -> ValidationResult:

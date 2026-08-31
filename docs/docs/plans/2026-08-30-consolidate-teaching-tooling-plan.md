@@ -53,7 +53,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
   biting: three schema copies, ~120 lines of untyped `importlib` plumbing, and a weaker
   quality gate on the shared contract than on the code consuming it.
 
-- **Place the package at `backend/app/features/teaching/content/`** — The content
+- **Place the package at `backend/app/features/teaching/tooling/`** — The content
   contract belongs with the teaching feature, next to `certificate.py`, `sync.py` and
   `storage.py`, rather than in a second top-level location. One thing blocks it today:
   `app/features/__init__.py` defines `requires_feature`, so importing anything under
@@ -199,7 +199,7 @@ and tooling that inherits Quill's `mypy --strict`, Ruff, Black and pre-commit ga
 ```text
 backend/app/features/gating.py       # MOVED — requires_feature, out of features/__init__.py
 
-backend/app/features/teaching/content/   # NEW — pure Python, no app.* imports
+backend/app/features/teaching/tooling/   # NEW — pure Python, no app.* imports
 ├── __init__.py
 ├── certificate_schema.py            # moved out of ../certificate.py
 ├── module_schema.py                 # ModuleYaml and friends, from tooling validate.py
@@ -210,7 +210,7 @@ backend/app/features/teaching/content/   # NEW — pure Python, no app.* imports
 .github/workflows/teaching-pipeline.yml   # NEW — reusable, ported from tooling
 ```
 
-**Hard constraint:** `features/teaching/content/` must never import `app.models`,
+**Hard constraint:** `features/teaching/tooling/` must never import `app.models`,
 `app.db`, `app.config`, FastAPI, or anything from its own parent package. The import chain
 above it (`app`, `app.features`, `app.features.teaching`) must stay docstring-only, so the
 package remains runnable with just `pydantic` and `pyyaml` and needs no environment
@@ -271,7 +271,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       importable without the FastAPI/SQLAlchemy stack, and it removes an executable
       FastAPI dependency from a package `__init__.py`, which is worth doing regardless.
 - [ ] Port `teaching-tooling/scripts/validate.py` and `check_version_lock.py` into
-      `backend/app/features/teaching/content/`, splitting the Pydantic models into
+      `backend/app/features/teaching/tooling/`, splitting the Pydantic models into
       `module_schema.py`. Both already import only the standard library, `yaml` and
       `pydantic`, so nothing needs restructuring to move.
       - [x] `check_version_lock.py` — ported with `ModuleStatus` as a `Literal`, YAML
@@ -299,7 +299,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       two pinned dependencies inline (`pip install "pydantic>=2" "pyyaml>=6"`) rather than
       carrying a requirements file.
 - [x] Add `cli.py` so CI can run
-      `python -m app.features.teaching.content.cli <modules_dir>` from `backend/`. Runs
+      `python -m app.features.teaching.tooling.cli <modules_dir>` from `backend/`. Runs
       validation and version lock in one invocation. Carries `--skip-version-lock` for
       content with no git history — the GCS-download case the Phase 7 sweep needs — and
       `--ref` to override the comparison branch.
@@ -311,7 +311,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       `app.features.teaching`. It runs the import in a subprocess with `JWT_SECRET` and
       `CORE_DB_PASSWORD` deliberately absent, so a regression fails loudly instead of
       passing on the test runner's own environment. Extend the parametrised list to
-      `app.features.teaching.content` when that package lands.
+      `app.features.teaching.tooling` when that package lands.
 
 ## Phase 2: Merge the duplicate validators onto one schema
 
@@ -394,10 +394,17 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             is gone); and `bank_id`/`version` were required on the sync side but absent on
             the CI side (now optional, and their presence selects which summary style to
             print). `ValidationError` is kept as an alias of `ValidationMessage`.
-      - [ ] **Add the inventory model.** Thread an optional `image_inventory` through the
+      - [x] **Add the inventory model.** Thread an optional `image_inventory` through the
             content validator so it can check against a list of filenames instead of a
             directory. This is the enabling piece: without it the merged validator cannot
-            validate anything in the bucket, which is most of what sync does.
+            validate anything in the bucket, which is most of what sync does. Confirmed
+            *why* it exists while porting: `download_bank_from_gcs` fetches **only YAML**
+            — images are deliberately left in the bucket, since downloading them just to
+            check a filename would mean paying for the bytes twice. Question directories do
+            exist on disk in that mode (they are created for the YAML), so directory
+            scanning stays correct for structure; only the *file listing* comes from the
+            inventory, via `_files_in`. Added `validate_module_dir` as the single-bank entry
+            point sync will call.
       - [ ] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
             `_validate_variable_item` (149), `_get_image_files`, `_check_image_naming` and
             `_cross_item_checks`. The largest chunk, ~280 lines, and where the detailed
@@ -439,7 +446,7 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
     repository: bailey-medics/quillmedical
     path: tooling
     sparse-checkout: |
-      backend/app/features/teaching/content
+      backend/app/features/teaching/tooling
       backend/app/features/teaching/mdx_parser.py
 ```
 
@@ -557,7 +564,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 - [ ] **Run the same sweep in Quill's pull-request CI**, so whoever changes the tooling
       sees which live banks they would break before merging rather than after deploying.
       Add a job to `ci.yml` (already triggered on `pull_request` to main), gated on paths
-      that can change validation behaviour — `backend/app/features/teaching/content/**`,
+      that can change validation behaviour — `backend/app/features/teaching/tooling/**`,
       `backend/app/features/teaching/mdx_parser.py`,
       `.github/workflows/teaching-pipeline.yml`. Authenticate with
       `google-github-actions/auth` and `GCP_TEACHING_WIF_PROVIDER`, following the existing
