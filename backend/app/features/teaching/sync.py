@@ -19,15 +19,13 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.features.teaching.content.validate import ValidationResult
 from app.features.teaching.models import (
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankSync,
 )
-from app.features.teaching.validate import (
-    ValidationResult,
-    validate_question_bank,
-)
+from app.features.teaching.validate import validate_question_bank
 
 logger = logging.getLogger(__name__)
 

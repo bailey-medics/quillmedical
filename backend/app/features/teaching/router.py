@@ -1597,7 +1597,7 @@ def validate_items(
             for w in result.warnings
         ],
         "item_count": result.item_count,
-        "summary": result.summary,
+        "summary": result.summary(),
     }
 
 

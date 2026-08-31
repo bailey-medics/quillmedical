@@ -355,9 +355,45 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       at both gates by the same code that renders it. `_validate_learning_dir` now runs it,
       importing `mdx_parser` lazily so the `content` package still loads with only
       `pydantic` and `pyyaml`.
-- [ ] Point `sync.py` at the merged validator so that sync runs the _same_ checks as CI —
-      module metadata, assessment structure, images and the certificate block — replacing
-      today's split between `run_tooling_validation` and `validate_question_bank`.
+- [ ] **Collapse the two validators into one.** Scoped out properly after investigation:
+      the plan originally read as though `run_tooling_validation` and
+      `validate_question_bank` did much the same job, so one could simply replace the
+      other. They barely overlap. `validate_question_bank` uniquely covers email sections,
+      per-item uniform and variable checks, image naming, cross-item consistency, warnings
+      as well as errors, and — the hard part — **23 places that accept an
+      `image_inventory`**, a mapping of directory name to filenames used when content sits
+      in GCS and there are no files on disk to look at. The content validator has none of
+      that and works only against a real directory; it uniquely covers `module.yaml` and
+      learning MDX. Both now check the certificate, so running both double-reports it.
+      Genuinely merging them is a rewrite of how live content is validated, so it is broken
+      into the units below rather than smuggled into a plumbing-removal step. The regression
+      net is the ~32 existing calls in `test_teaching_validate.py`, five of which exercise
+      the inventory path; they must keep passing throughout.
+      - [x] **Unify the result type.** `content/validate.py` has an errors-only
+            `ValidationResult`; the sync one adds `warnings`, `item_count`, `finalise()`
+            and `ValidationMessage.to_dict()`, which the sync API and `QuestionBankSync`
+            rows depend on. Adopt the richer shape in `content/` first, since everything
+            else builds on it. Three conflicts had to be resolved: `is_valid` was a stored
+            field on one side and a property on the other (now derived, so it cannot drift
+            from the error list); `summary` was an attribute set by `finalise()` on one and
+            a method on the other (now a method, so there is no stale state and `finalise()`
+            is gone); and `bank_id`/`version` were required on the sync side but absent on
+            the CI side (now optional, and their presence selects which summary style to
+            print). `ValidationError` is kept as an alias of `ValidationMessage`.
+      - [ ] **Add the inventory model.** Thread an optional `image_inventory` through the
+            content validator so it can check against a list of filenames instead of a
+            directory. This is the enabling piece: without it the merged validator cannot
+            validate anything in the bucket, which is most of what sync does.
+      - [ ] **Port the per-item checks** — `_validate_uniform_item` (54 lines),
+            `_validate_variable_item` (149), `_get_image_files`, `_check_image_naming` and
+            `_cross_item_checks`. The largest chunk, ~280 lines, and where the detailed
+            question-level validation lives.
+      - [ ] **Port the config and email checks** — `_validate_config` (48 lines) and
+            `_validate_email_section`/`_validate_email_sections` (45).
+      - [ ] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`
+            sites call one validator. `validate_question_bank` becomes a thin adapter or
+            goes entirely, with `test_teaching_validate.py` repointed rather than rewritten
+            so the coverage is demonstrably the same.
 - [ ] Delete `backend/app/features/teaching/tooling_validate.py` and collapse its two call
       sites (`backend/app/main.py:5488`, `backend/app/features/teaching/router.py:2050`)
       into the single merged call. Its "tooling unavailable — sync blocked for safety"

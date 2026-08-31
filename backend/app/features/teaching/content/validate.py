@@ -61,8 +61,8 @@ CERTIFICATE_BACKGROUND = "certificate-blank.png"
 
 
 @dataclass
-class ValidationError:
-    """A single validation error."""
+class ValidationMessage:
+    """A single validation error or warning."""
 
     path: str
     message: str
@@ -70,30 +70,72 @@ class ValidationError:
     def __str__(self) -> str:
         return f"  ERROR [{self.path}]: {self.message}"
 
+    def to_dict(self) -> dict[str, str]:
+        """Shape persisted on ``QuestionBankSync`` rows and returned by the
+        sync API."""
+        return {"path": self.path, "message": self.message}
+
+
+#: Retained so existing imports keep working; the two were always the
+#: same shape, and the sync name is the more accurate of the pair since
+#: the class carries warnings too.
+ValidationError = ValidationMessage
+
 
 @dataclass
 class ValidationResult:
-    """Aggregate validation result for a modules directory."""
+    """Aggregate result of validating content.
 
-    errors: list[ValidationError] = field(default_factory=list)
+    Shared by both gates.  ``bank_id``/``version`` are only set on the sync
+    path, where a result describes one question bank; a CI run over a
+    ``modules/`` tree leaves them empty and counts modules instead.
+    """
+
+    bank_id: str = ""
+    version: int = 0
+    errors: list[ValidationMessage] = field(default_factory=list)
+    warnings: list[ValidationMessage] = field(default_factory=list)
     modules_checked: int = 0
+    item_count: int = 0
 
     @property
     def is_valid(self) -> bool:
-        return len(self.errors) == 0
+        """Whether anything blocking was found.
+
+        Derived rather than stored: a flag that must be kept in step with
+        the error list is a flag that eventually is not.
+        """
+        return not self.errors
 
     def add_error(self, path: str, message: str) -> None:
-        self.errors.append(ValidationError(path=path, message=message))
+        self.errors.append(ValidationMessage(path=path, message=message))
+
+    def add_warning(self, path: str, message: str) -> None:
+        self.warnings.append(ValidationMessage(path=path, message=message))
 
     def summary(self) -> str:
-        lines = [f"Checked {self.modules_checked} module(s)."]
+        """Human-readable summary, in whichever style suits the caller."""
+        if self.bank_id:
+            parts = [f"Bank '{self.bank_id}' v{self.version}:"]
+            parts.append(f"  {self.item_count} items found")
+            if self.errors:
+                parts.append(f"  {len(self.errors)} error(s)")
+            if self.warnings:
+                parts.append(f"  {len(self.warnings)} warning(s)")
+            parts.append(
+                "  VALID" if self.is_valid else "  INVALID — sync blocked"
+            )
+            return "\n".join(parts)
+
+        parts = [f"Checked {self.modules_checked} module(s)."]
         if self.is_valid:
-            lines.append("All valid.")
+            parts.append("All valid.")
         else:
-            lines.append(f"{len(self.errors)} error(s) found:")
-            for err in self.errors:
-                lines.append(str(err))
-        return "\n".join(lines)
+            parts.append(f"{len(self.errors)} error(s) found:")
+            parts.extend(str(err) for err in self.errors)
+        if self.warnings:
+            parts.append(f"{len(self.warnings)} warning(s).")
+        return "\n".join(parts)
 
 
 # ------------------------------------------------------------------

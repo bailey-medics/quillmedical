@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +19,7 @@ import yaml
 
 from app.features.teaching.content.validate import (
     CERTIFICATE_BACKGROUND,
+    ValidationResult,
     certificate_enabled,
     validate_certificate_config,
 )
@@ -30,55 +30,6 @@ ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 QUESTION_DIR_PATTERN = re.compile(r"^question_(\d+)$")
 IMAGE_FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 ALLOWED_QUESTION_TYPES = {"single", "multiple"}
-
-
-# ------------------------------------------------------------------
-# Result types
-# ------------------------------------------------------------------
-
-
-@dataclass
-class ValidationMessage:
-    """A single validation error or warning."""
-
-    path: str
-    message: str
-
-    def to_dict(self) -> dict[str, str]:
-        return {"path": self.path, "message": self.message}
-
-
-@dataclass
-class ValidationResult:
-    """Aggregate result from validating a question bank."""
-
-    bank_id: str
-    version: int
-    is_valid: bool = True
-    errors: list[ValidationMessage] = field(default_factory=list)
-    warnings: list[ValidationMessage] = field(default_factory=list)
-    item_count: int = 0
-    summary: str = ""
-
-    def add_error(self, path: str, message: str) -> None:
-        self.errors.append(ValidationMessage(path=path, message=message))
-        self.is_valid = False
-
-    def add_warning(self, path: str, message: str) -> None:
-        self.warnings.append(ValidationMessage(path=path, message=message))
-
-    def finalise(self) -> None:
-        """Build the human-readable summary."""
-        parts = [f"Bank '{self.bank_id}' v{self.version}:"]
-        parts.append(f"  {self.item_count} items found")
-        if self.errors:
-            parts.append(f"  {len(self.errors)} error(s)")
-        if self.warnings:
-            parts.append(f"  {len(self.warnings)} warning(s)")
-        parts.append(
-            "  VALID" if self.is_valid else "  INVALID — sync blocked"
-        )
-        self.summary = "\n".join(parts)
 
 
 # ------------------------------------------------------------------
@@ -548,7 +499,6 @@ def validate_question_bank(
         result.add_error(
             str(bank_dir), "assessment.yaml or config.yaml not found"
         )
-        result.finalise()
         return result
 
     with open(config_path) as f:
@@ -563,7 +513,6 @@ def validate_question_bank(
 
     config_ok = _validate_config(config, str(config_path), result)
     if not config_ok:
-        result.finalise()
         return result
 
     # --- Certificate and email validation ---
@@ -642,5 +591,4 @@ def validate_question_bank(
     # --- Cross-item checks ---
     _cross_item_checks(config, all_item_data, str(bank_dir), result)
 
-    result.finalise()
     return result
