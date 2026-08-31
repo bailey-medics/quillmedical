@@ -106,6 +106,7 @@ class ValidationResult:
     errors: list[ValidationMessage] = field(default_factory=list)
     warnings: list[ValidationMessage] = field(default_factory=list)
     modules_checked: int = 0
+    modules_skipped: int = 0
     item_count: int = 0
 
     @property
@@ -137,7 +138,10 @@ class ValidationResult:
             )
             return "\n".join(parts)
 
-        parts = [f"Checked {self.modules_checked} module(s)."]
+        checked = f"Checked {self.modules_checked} module(s)"
+        if self.modules_skipped:
+            checked += f", skipped {self.modules_skipped} retired"
+        parts = [f"{checked}."]
         if self.is_valid:
             parts.append("All valid.")
         else:
@@ -960,12 +964,46 @@ def _validate_learning_dir(
         result.add_error(rel_content, message)
 
 
+def _is_retired(module_dir: Path) -> bool:
+    """Whether ``module.yaml`` declares this module retired.
+
+    Read tolerantly and on its own, because the answer decides whether the
+    stricter checks run at all. Anything unreadable is not retired, so it
+    is validated normally and reports its own error.
+    """
+    yaml_path = module_dir / "module.yaml"
+    if not yaml_path.is_file():
+        return False
+
+    try:
+        with open(yaml_path, encoding="utf-8") as f:
+            data = _as_mapping(yaml.safe_load(f))
+    except (yaml.YAMLError, OSError):
+        return False
+
+    if data is None:
+        return False
+
+    return data.get("status") == "retired"
+
+
 def _validate_module(
     module_dir: Path,
     result: ValidationResult,
     image_inventory: ImageInventory | None = None,
 ) -> None:
-    """Validate a single module directory."""
+    """Validate a single module directory.
+
+    Retired modules are skipped entirely. ``check_version_lock`` freezes
+    them permanently, so they can never be brought into line with a
+    stricter validator — and the deploy re-uploads every module regardless
+    of status, so one retired module would otherwise make every future
+    deploy fail with nothing anyone is allowed to fix.
+    """
+    if _is_retired(module_dir):
+        result.modules_skipped += 1
+        return
+
     result.modules_checked += 1
 
     _validate_module_yaml(module_dir, result)
@@ -1021,8 +1059,16 @@ def validate_module_metadata(module_dir: Path) -> ValidationResult:
     assessment against a GCS inventory, which a module directory cannot
     supply, so the two halves are checked from whichever source can see
     them — together covering everything exactly once.
+
+    Retired modules are skipped, for the reason given on
+    :func:`_validate_module`.
     """
     result = ValidationResult()
+
+    if _is_retired(module_dir):
+        result.modules_skipped += 1
+        return result
+
     result.modules_checked += 1
 
     _validate_module_yaml(module_dir, result)

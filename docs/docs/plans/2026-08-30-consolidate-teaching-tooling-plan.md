@@ -600,11 +600,23 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
-- [ ] Skip content validation for modules whose `module.yaml` status is `retired`. They are
+- [x] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
       — without this, one retired bank makes every future deploy red and the Phase 6
       signal worthless.
+      - The status is read on its own, tolerantly, before any other check: anything
+        unreadable is treated as not retired, so a module that cannot be parsed is
+        validated normally and reports its own error rather than skipping itself.
+      - Both entry points needed it, not just the merge gate. Sync re-imports every module
+        through `validate_module_metadata`, so a retired bank would have failed the sync
+        instead of the deploy.
+      - The skip is counted and printed (`skipped N retired`), mirroring
+        `check_version_lock`. A module that vanishes from validation without a word is a
+        module nobody remembers is unvalidated.
+      - Version lock still applies: retired modules stay frozen, so the two checks are
+        complementary — one refuses changes, the other stops re-validating what cannot
+        change.
 - [ ] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
       already recorded and exposed at `GET /api/teaching/syncs`; the gap is that nothing
       draws attention to it. A red deploy from the item above covers the common case, so
