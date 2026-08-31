@@ -49,8 +49,15 @@ resource "google_logging_metric" "public_site_visits" {
 #
 # The dashboard reads metrics, which are aggregates fixed at the moment they
 # are defined and cannot be re-sliced afterwards. This dataset keeps the raw
-# rows so a question nobody has thought of yet ("which referrer, last March")
-# is still answerable. Nothing routinely reads it.
+# rows so a recent question nobody thought to define a metric for is still
+# answerable. Nothing routinely reads it.
+#
+# Retention is deliberately short. Load-balancer request logs contain
+# httpRequest.remoteIp, and there is no way to strip a field from them at
+# ingest — Cloud Logging sinks route entries, they do not redact them. Keeping
+# client IP addresses for a year to count visits to a marketing site would be
+# disproportionate, so the raw rows expire quickly and the long-run trend comes
+# from the log-based metric above, which stores no IP at all.
 resource "google_bigquery_dataset" "analytics" {
   project    = var.project_id
   dataset_id = "quill_analytics_${var.environment}"

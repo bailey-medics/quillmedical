@@ -85,12 +85,15 @@ These split by purpose, and the split is a rule rather than a preference.
   second tool in the loop. Page name is a metric label; at 63 routes that is 63
   time series against a 30,000 ceiling, so cardinality is a non-issue.
 
-- **BigQuery stays, but as an archive rather than a dashboard source.** Metrics
-  are aggregates: they answer the question you thought to ask when you defined
-  them, and cannot be re-sliced afterwards. The raw sink costs pennies and is
-  what lets a new question be asked of old data — "which referrer, last March"
-  — so it is worth keeping even though nothing routinely looks at it. One place
-  to look; one cheap archive nobody looks at until they need it.
+- **BigQuery stays, but as a short archive rather than a dashboard source.**
+  Metrics are aggregates: they answer the question you thought to ask when you
+  defined them, and cannot be re-sliced afterwards. The raw sink is what lets a
+  question nobody defined a metric for still be answered — "which referrer,
+  last month" — even though nothing routinely looks at it. It holds 90 days,
+  not years, because load-balancer logs carry client IP addresses and there is
+  no way to strip a field at ingest. So the division of labour is: the metric
+  carries the long trend and no personal data, the archive carries the recent
+  detail and expires.
 
 - **When a "wake up" alarm is bought, it lives outside Google Cloud.** An
   alarm hosted inside the system it watches shares that system's failure modes.
@@ -291,12 +294,20 @@ within seconds, and the gap between them and a ringing phone matters when
 somebody is asleep — which is a real concern for a clinical service and a
 theoretical one for a teaching product with no patient data in it.
 
-- [ ] Tier one, roughly 5–10 minutes — Slack and email, through the channels
+- [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
       already configured. Cheap, ignorable, and often self-resolving
-- [ ] Tier two, roughly 15 minutes — an `sms` notification channel plus Google
-      Cloud mobile app push. Note that Google's own documentation warns SMS
-      "isn't a fully reliable notification channel type" and may be
-      unavailable in some regions, so it must never be the only rung
+- [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
+      second uptime policy, `uptime_escalation`, firing only after
+      `var.escalation_duration` and notifying SMS alone, so the louder channel
+      stays rare enough to still mean something. Google's own documentation
+      warns SMS "isn't a fully reliable notification channel type" and may be
+      unavailable in some regions, so it escalates tier one rather than
+      replacing it
+- [ ] Verify the SMS number by code in the Cloud console — Terraform can
+      create the channel but cannot verify it, so it delivers nothing until
+      this is done by hand
+- [ ] Add Google Cloud mobile app push as a second tier-two channel, so the
+      escalation does not rest on SMS alone
 - [ ] Tier three, roughly 30 minutes — a phone call, **deferred**. No free
       tier anywhere provides one: Better Stack's free plan is email and Slack
       only, with phone and SMS starting at $29 per responder per month billed
@@ -327,13 +338,22 @@ theoretical one for a teaching product with no patient data in it.
 
 No application code. This is infrastructure and a dashboard.
 
-- [ ] Enable Log Analytics on the log bucket so the existing load-balancer logs
-      can be queried with SQL immediately, at no additional Cloud Logging
-      charge
+- [x] ~~Enable Log Analytics on the log bucket~~ — dropped. The BigQuery
+      archive below already provides SQL over the same logs, and enabling
+      analytics on the `_Default` bucket through Terraform is known to be
+      unreliable (`_Required` is locked outright, and
+      `google_logging_project_bucket_config` has open issues with the
+      underscore-prefixed names). Not worth a manual console step for a
+      capability already covered
 - [x] Check `var.log_sample_rate` on the frontend backend service — it defaults
       to `1.0`, so nothing is sampled and the counts need no correction factor
-- [ ] Truncate or drop the client IP address at ingest; it is personal data and
-      is not needed to count visits
+- [x] Truncate or drop the client IP address at ingest — **not possible, so
+      handled by retention instead.** Cloud Logging sinks route entries, they do
+      not redact fields, and `httpRequest.remoteIp` cannot be omitted from
+      load-balancer logs at source. Keeping IP addresses for a year to count
+      visits to a marketing site would be disproportionate, so the raw archive
+      expires at 90 days and the long-run trend comes from the log-based
+      metric, which stores no IP at all
 - [x] Add a log-based counter metric over the load-balancer request logs,
       excluding bot and uptime-check traffic at the filter rather than in the
       chart — `google_logging_metric.public_site_visits` in the new analytics
@@ -345,8 +365,8 @@ No application code. This is infrastructure and a dashboard.
       metrics cannot be re-sliced after the fact, and 30 days of log bucket
       retention is too short to see a trend
 - [x] Set and apply a table expiration matching the retention decision —
-      `var.retention_days`, defaulting to 400 so a year-on-year comparison is
-      possible; confirm the number against the wider retention decision
+      `var.retention_days`, defaulting to 90 because the rows carry client IP
+      addresses; confirm the number against the wider retention decision
 
 ## Phase 3: which pages get used in the app
 
@@ -403,11 +423,14 @@ Blocking, before any of this ships:
   beats a habit of checking several places, and it removes an entire build.
   It is also why the phone-call rung sits outside Google Cloud altogether.
 
-- **Log-based metrics as the dashboard source, BigQuery as the archive** —
+- **Log-based metrics as the dashboard source, BigQuery as a short archive** —
   metrics chart cheaply next to uptime with no second tool, but they are
   aggregates fixed at definition time and cannot be re-sliced later. The raw
-  sink is the insurance against a question nobody has thought of yet, and it
-  costs pennies to keep even though nothing routinely reads it.
+  sink is the insurance against a question nobody has thought of yet. It is
+  kept short rather than long because load-balancer logs carry client IP
+  addresses and Cloud Logging sinks cannot redact fields: the metric holds the
+  long trend without personal data, the archive holds recent detail and
+  expires.
 
 - **Escalate by tiers rather than one dramatic alert** — a channel that fires
   for self-resolving blips gets muted, and a channel set late enough to avoid

@@ -92,6 +92,12 @@ variable "alert_email" {
   default     = ""
 }
 
+variable "alert_sms_number" {
+  description = "E.164 phone number for escalated alerts on a sustained outage (optional). Requires verification by code in the Cloud console before it delivers."
+  type        = string
+  default     = ""
+}
+
 variable "slack_webhook_url" {
   description = "Slack incoming webhook URL for monitoring alerts (optional)"
   type        = string

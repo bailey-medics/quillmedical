@@ -38,3 +38,15 @@ variable "server_error_threshold" {
   type        = number
   default     = 5
 }
+
+variable "alert_sms_number" {
+  description = "E.164 phone number for escalated alerts, e.g. +447700900000. Must be verified by code in the Cloud console before it delivers. Leave empty to disable the escalation tier."
+  type        = string
+  default     = ""
+}
+
+variable "escalation_duration" {
+  description = "How long an outage must persist before escalating past Slack and email"
+  type        = string
+  default     = "900s"
+}

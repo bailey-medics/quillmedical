@@ -28,11 +28,37 @@ resource "google_monitoring_notification_channel" "slack" {
   }
 }
 
+# ---------- Notification channel (SMS) ----------
+#
+# Tier two of the escalation. Google's own documentation warns that SMS
+# "isn't a fully reliable notification channel type" and may be unavailable
+# in some regions, so it escalates the first tier rather than replacing it.
+#
+# The number must be verified by code in the Cloud console before it will
+# deliver anything: Terraform can create the channel but cannot verify it.
+resource "google_monitoring_notification_channel" "sms" {
+  count = var.alert_sms_number != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Quill SMS alerts (${var.environment})"
+  type         = "sms"
+
+  labels = {
+    number = var.alert_sms_number
+  }
+}
+
 locals {
+  # Tier one: cheap, ignorable, often self-resolving.
   notification_channels = concat(
     [google_monitoring_notification_channel.email.id],
     [for ch in google_monitoring_notification_channel.slack : ch.id],
   )
+
+  # Tier two: reserved for a failure that has persisted long enough to be
+  # real. Deliberately not combined with tier one — the point of escalating
+  # is that the louder channel stays rare enough to still mean something.
+  escalation_channels = [for ch in google_monitoring_notification_channel.sms : ch.id]
 }
 
 # ---------- Uptime checks (one per hostname) ----------
@@ -97,6 +123,56 @@ resource "google_monitoring_alert_policy" "uptime" {
   }
 
   notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+  }
+}
+
+# ---------- Alert policy — sustained outage, escalated ----------
+#
+# Tier two. Same condition as the policy above, but it only fires once the
+# outage has lasted var.escalation_duration, and it notifies the louder
+# channel. A blip that resolves itself never reaches this.
+#
+# Tier three would be a phone call. No provider offers voice on a free plan
+# (Better Stack: email and Slack only, phone from $29 per responder per
+# month; PagerDuty: no voice on free, from $21 per user per month), so it is
+# deferred until there are clinical users to justify the subscription. See
+# docs/docs/plans/2026-08-31-analytics-plan.md.
+resource "google_monitoring_alert_policy" "uptime_escalation" {
+  count = var.alert_sms_number != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Uptime failure — sustained (${var.environment})"
+  combiner     = "OR"
+
+  dynamic "conditions" {
+    for_each = google_monitoring_uptime_check_config.health
+    content {
+      display_name = "Still failing: ${conditions.value.display_name}"
+
+      condition_threshold {
+        filter          = "resource.type = \"uptime_url\" AND metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.labels.check_id = \"${conditions.value.uptime_check_id}\""
+        comparison      = "COMPARISON_GT"
+        threshold_value = 1
+        duration        = var.escalation_duration
+
+        aggregations {
+          alignment_period     = "1200s"
+          per_series_aligner   = "ALIGN_NEXT_OLDER"
+          cross_series_reducer = "REDUCE_COUNT_FALSE"
+          group_by_fields      = ["resource.label.project_id", "resource.label.host"]
+        }
+
+        trigger {
+          count = 1
+        }
+      }
+    }
+  }
+
+  notification_channels = local.escalation_channels
 
   alert_strategy {
     auto_close = "1800s" # 30 minutes
