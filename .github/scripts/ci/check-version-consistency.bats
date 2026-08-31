@@ -108,6 +108,23 @@ run_check() {
   [ "$status" -eq 0 ]
 }
 
+@test "a hardcoded version inside a test file is not flagged" {
+  # A .bats file needs the literal string as a fixture and installs nothing,
+  # so this check must not trip over the tests that prove it works.
+  mkdir -p "${REPO}/.github/scripts/ci"
+  echo 'echo "poetry==2.1.3"' > "${REPO}/.github/scripts/ci/some-check.bats"
+  run run_check
+  [ "$status" -eq 0 ]
+}
+
+@test "a hardcoded version in a real script is still flagged" {
+  mkdir -p "${REPO}/.github/scripts/ci"
+  echo 'pip install "poetry==2.1.3"' > "${REPO}/.github/scripts/ci/some-check.sh"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"hardcoded instead of read"* ]]
+}
+
 @test "a Python mismatch still fails, alongside the Poetry checks" {
   echo "3.12.0" > "${REPO}/.python-version"
   run run_check

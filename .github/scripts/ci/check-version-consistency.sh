@@ -99,7 +99,10 @@ check_poetry() {
 
   # Nothing may hardcode a version: every install site reads .poetry-version,
   # so a bump is one edit rather than a sweep that can be half-finished.
-  hardcoded="$(grep -rlE 'poetry==[0-9]' backend/Dockerfile .github 2>/dev/null || true)"
+  # Test files are excluded because a hardcoded version is exactly the fixture
+  # they need to prove this check works, and a .bats file installs nothing.
+  hardcoded="$(grep -rlE 'poetry==[0-9]' --exclude='*.bats' \
+    backend/Dockerfile .github 2>/dev/null || true)"
   if [ -n "$hardcoded" ]; then
     error "Poetry version hardcoded instead of read from .poetry-version:"
     while IFS= read -r offender; do
