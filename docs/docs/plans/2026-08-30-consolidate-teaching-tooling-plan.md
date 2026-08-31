@@ -738,26 +738,34 @@ can reach.
 
 ### The change
 
-- [ ] Add `.poetry-version` at the repository root, mirroring the existing
-      `.python-version`. No Docker build argument is needed — the Dockerfile can `COPY` the
-      file and read it in the `RUN` that installs Poetry.
-- [ ] Read it from `backend/Dockerfile`, `.github/actions/setup-python` and
-      `gate-breaking.yml`. The teaching pipeline needs no extra sparse-checkout path:
-      cone mode already brings root-level files.
-- [ ] Add `requires-poetry` to `backend/pyproject.toml`, matching the constraint the
-      tooling package carries. This is the half that catches host drift, because Poetry
-      enforces it wherever it runs — including a laptop, where a repository file can
-      install nothing. It does not touch the lock: confirmed on the tooling package, where
-      `poetry check --lock` still exits 0 with the constraint in place.
-- [ ] A drift test asserting the two declarations agree, alongside
-      `test_teaching_tooling_dependencies.py`. Note the constraint on where such a test can
-      live: the container mounts only `backend/`, so a backend test cannot read
-      `.github/`. A root-level file is readable; a workflow is not.
+- [x] Add `.poetry-version` at the repository root, mirroring the existing
+      `.python-version`. No Docker build argument is needed — the Dockerfile `COPY`s the
+      file and reads it in the `RUN` that installs Poetry.
+- [x] Read it from all four install sites: `backend/Dockerfile`,
+      `.github/actions/setup-python`, `gate-breaking.yml` and the teaching pipeline. The
+      teaching pipeline needed no extra sparse-checkout path — it already reads the root
+      `.python-version` through cone mode, which is what proved root files arrive.
+- [x] Add `requires-poetry` to `backend/pyproject.toml` and align the tooling package's
+      to match. This is the half that catches host drift, because Poetry enforces it
+      wherever it runs — including a laptop, where a repository file can install nothing.
+- [x] Pin to 2.4.2 rather than the Dockerfile's old 2.1.3. Verified first that the newest
+      Poetry accepts the 2.3.3-generated `backend/poetry.lock` and that relocking with it
+      leaves the file byte-identical, so aligning forward costs no churn.
+- [x] Extend `check-version-consistency.sh`, which already guards Python and Node the same
+      way, rather than adding a backend test. A backend test cannot see a root-level file:
+      the container mounts only `backend/` at `/app`. The script also fails if any file
+      hardcodes `poetry==<version>` instead of reading the pin, so a future bump cannot be
+      half-applied. Refactored to `main()` with a source guard and given bats coverage,
+      which closes part of the scripts to-do.
 - [ ] Confirm CI is green before merging, since every Python job changes how it installs
       Poetry.
 
 Either piece alone is half a fix: `.poetry-version` selects a version, `requires-poetry`
 rejects the wrong one.
+
+**Everyone must rebuild their backend container after this lands.** An existing image has
+Poetry 2.1.3, which the new constraint refuses; `poetry` commands inside it will fail until
+the image is rebuilt. Running tests is unaffected, since pytest does not go through Poetry.
 
 ## Verification
 
