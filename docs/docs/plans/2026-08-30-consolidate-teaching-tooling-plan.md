@@ -507,8 +507,12 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
       - `.gitignore:26` — the `teaching-tooling/` entry
       - `Justfile:41,71-80` — the clone/pull block in `initial-install`, and its closing
         "tooling in ./teaching-tooling/" message
-      - `Justfile:243-252` — rewrite `validate-teaching` to call the new CLI directly
-        instead of shelling into the `teaching-tooling` checkout
+      - [x] `Justfile` — `validate-teaching` rewritten to run the merged CLI in
+        `quill_backend`, matching how `just ub` works, rather than shelling into the
+        `teaching-tooling` checkout with its own venv and npm install. Pulled forward from
+        this phase because it is the command a developer actually reaches for, and it was
+        silently running the *old* validators. Version lock is skipped locally: it compares
+        a branch against `origin/main`, which is a pull-request concern
       - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping
       - `backend/app/features/teaching/storage.py:575` — a docstring still describing the
         layout as "the teaching-tooling module directory"
