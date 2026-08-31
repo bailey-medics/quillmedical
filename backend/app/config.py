@@ -193,10 +193,6 @@ class Settings(BaseSettings):
         None,
         description="Service token for CI/CD teaching content sync",
     )
-    TEACHING_TOOLING_SCRIPTS_PATH: str | None = Field(
-        None,
-        description="Path to teaching-tooling/scripts for CI-level validation",
-    )
 
     # --- Email ---
     RESEND_API_KEY: SecretStr | None = Field(

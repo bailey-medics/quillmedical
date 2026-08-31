@@ -1,0 +1,18 @@
+question_type: "single"
+
+text: >
+  A test question used only by the validator fixtures.
+
+options:
+  - id: normal
+    label: "Normal"
+    tags: [incorrect]
+  - id: abnormal
+    label: "Abnormal"
+    tags: [correct]
+
+correct_option_id: abnormal
+
+images:
+  - key: "pa-chest-xray.png"
+    label: "PA chest X-ray"

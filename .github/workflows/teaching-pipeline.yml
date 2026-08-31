@@ -1,0 +1,195 @@
+# Unified teaching CI/CD pipeline.
+#
+# Called by content repos (e.g. eoeeta-teaching) via a single thin caller.
+# Dispatches to the appropriate job based on the triggering event:
+#
+#   push to feature/**  → auto-create PR
+#   pull_request        → validate content + check branch protection
+#   push to main        → deploy to GCS + trigger backend sync
+#
+# Do not rename the jobs. Content-repo rulesets require status checks
+# called "pipeline / validate" and "pipeline / check-protection", composed
+# from the caller's job name plus the job names here, so a rename leaves
+# the ruleset waiting for a check that never reports.
+name: Teaching pipeline
+
+on:
+  workflow_call:
+    inputs:
+      org_id:
+        description: "Organisation identifier (e.g. eoeeta, respiratory)"
+        required: true
+        type: string
+
+jobs:
+  # -------------------------------------------------------------------
+  # Auto-create a draft PR when a feature branch is first pushed
+  # -------------------------------------------------------------------
+  auto-pr:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check out question bank content
+        uses: actions/checkout@v7.0.1
+        with:
+          path: question_bank_content
+
+      - name: Check out the Quill scripts
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: bailey-medics/quillmedical
+          path: tooling
+          sparse-checkout: |
+            .github/scripts
+
+      # Quill's own script: handles the concurrent-run race, derives a
+      # title from the branch, and opens the PR as a draft.
+      - name: Create PR if none exists
+        working-directory: question_bank_content
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ../tooling/.github/scripts/auto-pr/create-pr.sh "${{ github.ref_name }}"
+
+  # -------------------------------------------------------------------
+  # Validate content on pull request
+  # -------------------------------------------------------------------
+  validate:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out question bank content
+        uses: actions/checkout@v7.0.1
+        with:
+          path: question_bank_content
+          fetch-depth: 0
+
+      - name: Fetch main branch
+        working-directory: question_bank_content
+        run: git fetch origin main
+
+      # Cone mode also brings the files sitting directly in each parent
+      # directory, which is how mdx_parser.py and the app/ __init__ chain
+      # arrive without being listed. Everything else in Quill stays out.
+      - name: Check out the Quill validator
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: bailey-medics/quillmedical
+          path: tooling
+          sparse-checkout: |
+            backend/app/features/teaching/tooling
+
+      # Quill's .github/actions/setup-python is not usable here: its paths
+      # assume Quill is the workspace root, which in a reusable workflow is
+      # the content repo, and its caching is tied to a full Poetry install
+      # of the backend that this deliberately does not need.
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: tooling/.python-version
+          cache: pip
+          cache-dependency-path: tooling/backend/app/features/teaching/tooling/poetry.lock
+
+      # The tooling package declares and locks its own dependencies, so
+      # this installs the six packages the validator needs rather than the
+      # backend's stack. Straight into the runner's Python, so the CLI runs
+      # without a venv indirection.
+      #
+      # Poetry is unpinned to match .github/actions/setup-python. The
+      # package's own requires-poetry constraint is what rejects a Poetry
+      # that cannot read its lock, so the acceptable range is declared once,
+      # next to the lock it governs, rather than as a number here.
+      - name: Install validator dependencies
+        working-directory: tooling/backend/app/features/teaching/tooling
+        run: |
+          python -m pip install -U pip poetry
+          poetry config virtualenvs.create false
+          poetry install --no-interaction --no-ansi
+
+      # Run from inside the question bank checkout so the version lock
+      # check can resolve its repository root and diff against origin/main.
+      - name: Validate teaching content
+        working-directory: question_bank_content
+        env:
+          PYTHONPATH: ${{ github.workspace }}/tooling/backend
+        run: |
+          python -m app.features.teaching.tooling.cli modules/ --ref origin/main
+
+  # -------------------------------------------------------------------
+  # Verify branch protection is configured (catches missing Terraform)
+  # -------------------------------------------------------------------
+  check-protection:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the Quill scripts
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: bailey-medics/quillmedical
+          path: tooling
+          sparse-checkout: |
+            .github/scripts
+
+      - name: Check for active rulesets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tooling/.github/scripts/teaching-pipeline/check-rulesets.sh "${{ github.repository }}"
+
+  # -------------------------------------------------------------------
+  # Deploy content to GCS and trigger backend sync
+  # -------------------------------------------------------------------
+  #
+  # Deliberately does not re-validate. The content ruleset is enforcement =
+  # active with zero bypass actors and strict required status checks, so the
+  # tree reaching main is byte-identical to the one "pipeline / validate"
+  # passed on — a second run could find nothing new.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out question bank content
+        uses: actions/checkout@v7.0.1
+        with:
+          path: question_bank_content
+
+      - name: Check out the Quill scripts
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: bailey-medics/quillmedical
+          path: tooling
+          sparse-checkout: |
+            .github/scripts
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Sync to GCS
+        run: |
+          bash tooling/.github/scripts/teaching-pipeline/sync-to-gcs.sh \
+            question_bank_content/modules "${{ secrets.GCP_TEACHING_GCS_BUCKET }}"
+
+      - name: Trigger backend sync
+        run: |
+          curl -sf -X POST \
+            "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
+            -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
+            -H "Content-Type: application/json"

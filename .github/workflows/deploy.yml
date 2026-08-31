@@ -85,13 +85,6 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
-      - name: Checkout teaching-tooling
-        if: ${{ matrix.service == 'backend' }}
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: bailey-medics/teaching-tooling
-          path: teaching-tooling
-
       - name: Authenticate to GCP (teaching)
         uses: google-github-actions/auth@v3.0.0
         with:
