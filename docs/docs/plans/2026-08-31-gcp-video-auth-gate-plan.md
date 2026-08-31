@@ -96,83 +96,41 @@ from the edge on the origin the app already runs on.
 
 - **Blocked until the teaching refactor lands** — Every phase below is on hold
   until the in-flight rework of `backend/app/features/teaching/` is finished and
-  the work is explicitly released. See the section below for why the sequencing
-  matters rather than being mere politeness about merge conflicts.
+  the work is explicitly released. See the sequencing section below.
 
-## Sequencing and human code review
+## Sequencing
 
 Quill was built quickly as a proof of concept, with coding plans written
 alongside LLMs and executed with little oversight of the resulting code. A
-line-by-line human code review (HCR) of the whole repository is now under way,
-walking the folder and file structure A–Z from the top. Anything above the
-current position has been read properly; anything below has only been skimmed
-and will be read in the coming two to three months. That moving frontier, and
-not the technical design, is what governs when this work can start.
+line-by-line human review of the whole repository is now under way, and
+`backend/app/features/teaching/` is being reworked by hand as part of it.
 
-**Status: on hold.** At the time of writing the HCR frontier sits at
-`backend/app/features/`, which contains only `__init__.py` and `teaching/` — and
-`teaching/` is simultaneously being refactored by hand. That is exactly where
-every backend phase of this plan writes. Building into it now would mean
-reviewing a moving file and rebasing under a live refactor, so no phase starts
-until the refactor is finished and this work is explicitly released.
-
-### Where this plan falls relative to the frontier
-
-Classifying every file the plan touches against an A–Z depth-first walk:
-
-- **Above the frontier — already reviewed, so changes need fresh human
-  attention** — `backend/app/config.py` alone, and only additively: the new
-  settings in the existing `--- Teaching / GCS ---` block, around twenty lines
-  with no logic. Nothing else in the plan touches reviewed code.
-  `backend/app/deps.py` and `backend/app/db/` also sit above the frontier, but
-  this plan only imports `has_competency` and `get_core_db` from them and does
-  not modify either.
-
-- **At the frontier — not yet reached, so the sweep reviews it naturally** —
-  everything under `backend/app/features/teaching/`: `router.py`, `schemas.py`,
-  `mdx_parser.py` and the new `video_access.py`.
-
-- **Below the frontier — the sweep catches it later** — `backend/app/main.py`
-  (which sorts after `features/` and this plan does not touch anyway),
-  `backend/tests/`, `docs/`, `frontend/`, `infra/` and `cspell.config.json`.
-
-The useful consequence is that if the backend phases are built *before* the
-sweep reaches `teaching/`, the new code is reviewed at full line-by-line depth
-as part of the sweep, at no extra cost. Building *after* the sweep has passed
-would leave freshly unreviewed code behind the frontier — the outcome worth
-avoiding. So the ordering to aim for is: finish the hand refactor, then build
-this, then let the sweep review both together.
+**Status: on hold.** Every backend phase of this plan writes into
+`features/teaching/` — the folder currently being reworked. Building into it now
+would mean rebasing under a live refactor and reviewing a moving target. No
+phase starts until that rework is finished and this work is explicitly released.
 
 ### Working agreement for this plan
 
 - **One pull request per phase**, small enough to read in a sitting, rather than
   one long-lived branch. Review happens in the GitHub web UI, which supplies the
-  line-by-line diff, file tree and inline comments that the Claude Code web
-  session does not.
+  line-by-line diff, file tree and inline comments that a Claude Code web session
+  does not.
 
-- **Every pull request description carries an "Above the HCR frontier"
-  section**, listing already-reviewed files touched with line counts, and stating
-  "none" when there are none. That tells the reviewer immediately whether a pull
-  request needs attention now or can wait for the sweep.
+- **Each pull request description lists the files it touches**, separating
+  pre-existing files it modifies from new files it adds, so the reviewer can see
+  the footprint without reconstructing it from the diff.
 
-- **Above-frontier changes go in their own isolated commit**, separate from
-  everything else, so the small reviewed-code delta can be read without hunting
-  through the rest of the diff. For this plan that is the one `config.py` commit.
+- **Changes to pre-existing files go in their own commit**, apart from new code,
+  so a small delta into existing code can be read without hunting through the
+  rest of the diff. Across this whole plan that is one file outside
+  `features/teaching/`: `backend/app/config.py`, taking the new settings in its
+  existing `--- Teaching / GCS ---` block — roughly twenty additive lines with no
+  logic.
 
-- **New code goes in new files wherever possible**, leaving already-reviewed
-  files untouched. `video_access.py` is a new module rather than an extension of
-  `storage.py` partly for this reason, alongside the review-isolation argument in
-  Phase 2.
-
-- **No frontier-tracking file** — an earlier draft proposed recording the HCR
-  position in the repository, with a checker classifying `git diff --name-only`
-  against it. Rejected as overkill. The reviewer reads the work directly and
-  decides what needs deeper HCR; a tracked file would go stale the moment the
-  frontier moved, and asking where the frontier is costs less than maintaining
-  it. The obligation this leaves on the implementer is to make that judgement
-  easy — state plainly which files each pull request touches and which of them
-  were already reviewed, so the decision is about the code rather than about
-  working out what changed.
+- **New code goes in new files wherever possible.** `video_access.py` is a new
+  module rather than an extension of `storage.py` partly for this reason,
+  alongside the review-isolation argument in Phase 2.
 
 ## Phase 0: Spike — private bucket behind a backend bucket
 
