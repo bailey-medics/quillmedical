@@ -6,8 +6,10 @@ from pathlib import Path
 
 import yaml
 
-from app.features.teaching.validate import (
-    validate_question_bank,
+# Repointed at the merged validator rather than rewritten, so the coverage
+# these 30 tests give is demonstrably the same before and after the merge.
+from app.features.teaching.tooling.validate import (
+    validate_assessment_dir as validate_question_bank,
 )
 
 

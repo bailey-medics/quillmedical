@@ -435,15 +435,25 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
             as the last unit, and again fixed rather than worked around. Both real content
             repos already carry everything the ported checks require, verified before
             porting.
-      - [ ] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`
-            sites call one validator. `validate_question_bank` becomes a thin adapter or
-            goes entirely, with `test_teaching_validate.py` repointed rather than rewritten
-            so the coverage is demonstrably the same.
-- [ ] Delete `backend/app/features/teaching/tooling_validate.py` and collapse its two call
-      sites (`backend/app/main.py:5488`, `backend/app/features/teaching/router.py:2050`)
-      into the single merged call. Its "tooling unavailable — sync blocked for safety"
-      branch can go with it: once the validator ships inside the backend package, it cannot
-      be missing, so the fail-safe is satisfied by construction rather than at runtime.
+      - [x] **Collapse the callers.** `sync.py:191` and the two `run_tooling_validation`
+            sites call one validator. `validate_question_bank` is gone entirely (594 lines)
+            and `test_teaching_validate.py` was repointed rather than rewritten — which
+            immediately earned its keep by catching three behaviours the earlier units had
+            missed, because they lived inside `validate_question_bank` itself rather than in
+            the helper functions the plan listed: the "config.yaml not found" wording, the
+            stray file and directory warnings, and populating `bank_id`/`version` so the
+            bank-style summary works.
+            **Two entry points, not one, because only two of the four callers have a module
+            directory.** `validate_assessment_dir` covers config, email, items, images and
+            the certificate, and is what sync calls with its GCS inventory;
+            `validate_module_metadata` covers `module.yaml` and learning content, and runs
+            at the two sites that resolved a module directory. Together they cover
+            everything exactly once — a single call could not, since sync reaches a bank
+            through its `assessment/` directory and never sees the module above it.
+- [x] Delete `backend/app/features/teaching/tooling_validate.py` and collapse its two call
+      sites into the merged call. Its "tooling unavailable — sync blocked for safety" branch
+      went with it: the validator now ships inside the backend package, so it cannot be
+      missing and the fail-safe is satisfied by construction rather than at runtime.
 - [ ] Remove the cross-repo plumbing: `COPY`/`ENV` at `backend/Dockerfile:67-69`,
       `TEACHING_TOOLING_SCRIPTS_PATH` at `backend/app/config.py:196`, the env var and bind
       mount at `compose.dev.yml:13` and `:30`, and the checkout steps at
@@ -603,6 +613,14 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       imports `app.config`, whose `Settings` require `JWT_SECRET` and `CORE_DB_PASSWORD`.
 
 ### Learned while building
+
+- **`download_module_from_gcs` writes zero-byte placeholder files for images**, so that
+  existence checks pass without paying to download the bytes. That is what let the module
+  path validate without an inventory. It also means the Phase 7 follow-up to check image
+  *magic bytes* would break this path: every image there is legitimately empty. Whichever
+  way that check is built, it must either run only where real bytes exist, or the
+  placeholders must carry a real header.
+
 
 - **Version lock reports rather than raises when there is no repository to compare
   against.** The ported code called `git rev-parse` for the repository root with

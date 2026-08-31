@@ -664,8 +664,12 @@ def _validate_assessment_dir(
     assessment_dir: Path,
     result: ValidationResult,
     image_inventory: ImageInventory | None = None,
-) -> None:
-    """Validate assessment directory structure."""
+) -> dict[str, object] | None:
+    """Validate assessment directory structure.
+
+    Returns the parsed config so a caller can label the result with the
+    bank it describes; None when the config could not be read.
+    """
     rel_base = str(
         assessment_dir.relative_to(assessment_dir.parent.parent.parent)
     )
@@ -678,10 +682,8 @@ def _validate_assessment_dir(
             break
 
     if config_path is None:
-        result.add_error(
-            rel_base, "assessment/ exists but has no assessment.yaml"
-        )
-        return
+        result.add_error(rel_base, "assessment.yaml or config.yaml not found")
+        return None
 
     rel_config = f"{rel_base}/{config_path.name}"
 
@@ -690,11 +692,11 @@ def _validate_assessment_dir(
             config = _as_mapping(yaml.safe_load(f))
     except yaml.YAMLError as e:
         result.add_error(rel_config, f"invalid YAML: {e}")
-        return
+        return None
 
     if config is None:
         result.add_error(rel_config, "must be a YAML mapping")
-        return
+        return None
 
     _validate_config(config, rel_config, result)
     _validate_email_sections(config, rel_config, result)
@@ -706,9 +708,11 @@ def _validate_assessment_dir(
         for d in assessment_dir.iterdir()
         if d.is_dir() and QUESTION_DIR_RE.match(d.name)
     )
+    _check_stray_entries(assessment_dir, rel_base, result)
+
     if not question_dirs:
         result.add_error(rel_base, "no question_NNN directories found")
-        return
+        return config
 
     if bank_type == "uniform":
         # Assessment-level: reports *which* declared key is missing.
@@ -733,6 +737,37 @@ def _validate_assessment_dir(
     _validate_certificate(
         config, assessment_dir, rel_config, result, image_inventory
     )
+    return config
+
+
+def _check_stray_entries(
+    assessment_dir: Path,
+    rel_base: str,
+    result: ValidationResult,
+) -> None:
+    """Warn about files and directories nobody expects to find.
+
+    Advisory only: an unexpected file is usually an editor artefact or a
+    leftover, not a reason to block a sync.
+    """
+    allowed_files = {
+        "assessment.yaml",
+        "config.yaml",
+        "config.yml",
+        CERTIFICATE_BACKGROUND,
+    }
+    for entry in sorted(assessment_dir.iterdir()):
+        rel = f"{rel_base}/{entry.name}"
+        if entry.is_file() and entry.name not in allowed_files:
+            result.add_warning(
+                rel, f"unexpected file '{entry.name}' in bank root"
+            )
+        elif entry.is_dir() and not QUESTION_DIR_RE.match(entry.name):
+            result.add_warning(
+                rel,
+                f"unexpected directory '{entry.name}' "
+                f"(expected question_NNN pattern)",
+            )
 
 
 def _validate_items(
@@ -951,6 +986,61 @@ def _validate_module(
 
     if assessment_dir.is_dir():
         _validate_assessment_dir(assessment_dir, result, image_inventory)
+
+
+def validate_assessment_dir(
+    assessment_dir: Path,
+    image_inventory: ImageInventory | None = None,
+) -> ValidationResult:
+    """Validate an assessment directory on its own.
+
+    The entry point sync uses. Sync resolves a bank to its ``assessment/``
+    directory and an image inventory, and never sees the module directory
+    above it, so module metadata and learning content are validated
+    separately by :func:`validate_module_metadata` where a module directory
+    is available.
+    """
+    result = ValidationResult()
+    config = _validate_assessment_dir(assessment_dir, result, image_inventory)
+
+    if config is not None:
+        bank_id = config.get("id") or assessment_dir.name
+        if bank_id == "assessment":
+            bank_id = assessment_dir.parent.name
+        result.bank_id = str(bank_id)
+        version = config.get("version")
+        result.version = version if isinstance(version, int) else 0
+
+    return result
+
+
+def validate_module_metadata(module_dir: Path) -> ValidationResult:
+    """Validate ``module.yaml`` and learning content, but not the assessment.
+
+    The complement of :func:`validate_assessment_dir`.  Sync validates the
+    assessment against a GCS inventory, which a module directory cannot
+    supply, so the two halves are checked from whichever source can see
+    them — together covering everything exactly once.
+    """
+    result = ValidationResult()
+    result.modules_checked += 1
+
+    _validate_module_yaml(module_dir, result)
+
+    learning_dir = module_dir / "learning"
+    assessment_dir = module_dir / "assessment"
+
+    if not learning_dir.is_dir() and not assessment_dir.is_dir():
+        rel = str(module_dir.relative_to(module_dir.parent.parent))
+        result.add_error(
+            rel, "module must have at least one of learning/ or assessment/"
+        )
+        return result
+
+    if learning_dir.is_dir():
+        _validate_learning_dir(learning_dir, result)
+
+    return result
 
 
 def validate_module_dir(

@@ -24,8 +24,10 @@ from app.features.teaching.models import (
     QuestionBankItem,
     QuestionBankSync,
 )
-from app.features.teaching.tooling.validate import ValidationResult
-from app.features.teaching.validate import validate_question_bank
+from app.features.teaching.tooling.validate import (
+    ValidationResult,
+    validate_assessment_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -185,10 +187,9 @@ def sync_question_bank(
     Tuple of (ValidationResult, QuestionBankSync or None).
     The sync record is None when validate_only is True.
     """
-    # Step 1: Validate
-    validation = validate_question_bank(
-        bank_dir, image_inventory=image_inventory
-    )
+    # Step 1: Validate. One validator, shared with the merge gate — see
+    # app.features.teaching.tooling.
+    validation = validate_assessment_dir(bank_dir, image_inventory)
 
     if validate_only:
         return validation, None
