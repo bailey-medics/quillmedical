@@ -12,9 +12,11 @@ Only the standard library, ``pydantic`` and ``pyyaml`` may be imported here
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, Field
+
+from app.features.teaching.content.annotations import Whole
 
 #: Lifecycle states a module may declare.
 ModuleStatus = Literal["draft", "live", "retired"]
@@ -37,21 +39,6 @@ REQUIRED_ASSESSMENT_FIELDS = frozenset({"version", "title", "type"})
 
 #: Accepted values for an assessment's ``type``.
 VALID_ASSESSMENT_TYPES = frozenset({"uniform", "variable"})
-
-
-def _reject_bool(value: object) -> object:
-    """Reject booleans where a number is expected.
-
-    ``bool`` subclasses ``int`` in Python, so without this a YAML
-    ``renewalMonths: yes`` would silently validate as ``1``.
-    """
-    if isinstance(value, bool):
-        raise ValueError("must be a number, not a boolean")
-    return value
-
-
-#: An int that will not silently accept a YAML boolean.
-Whole = Annotated[int, BeforeValidator(_reject_bool)]
 
 
 class ModuleYaml(BaseModel):

@@ -4,69 +4,52 @@ Generates a PDF certificate by compositing text over a
 ``certificate-blank.png`` background image in the question bank.
 
 Layout, fonts, and colours are driven by the ``certificate`` section of
-each bank's ``config.yaml``.  The Pydantic models below are the single
-source of truth for what that section may contain.  Bank configs are
-authored outside this repository, so parsing is defensive: every value
-is validated, and anything invalid is discarded with a warning and
-replaced by its default rather than raising.  Certificate generation
-must never fail because of a malformed style block.
+each bank's ``config.yaml``.  The schema for that section lives in
+``app.features.teaching.content.certificate_schema``, shared with the
+content validator so the two gates cannot disagree about what is valid.
+
+What lives here is the *rendering* half, and its opposite failure policy.
+Bank configs are authored outside this repository, so parsing is
+defensive: anything invalid is discarded with a warning and replaced by
+its default rather than raising.  A certificate download must never fail
+because of a malformed style block — where the validator, by contrast,
+raises and reports every problem it finds.
 """
 
 from __future__ import annotations
 
 import io
 import logging
-import re
 import tempfile
 from pathlib import Path
-from typing import Annotated, Literal, Protocol
+from typing import Protocol
 
-from pydantic import (
-    BaseModel,
-    BeforeValidator,
-    ConfigDict,
-    Field,
-    ValidationError,
-)
+from pydantic import ValidationError
 from reportlab.lib.pagesizes import (  # type: ignore[import-untyped]
     A4,
     landscape,
 )
 from reportlab.pdfgen import canvas  # type: ignore[import-untyped]
 
-logger = logging.getLogger(__name__)
+from app.features.teaching.content.certificate_schema import (
+    CertificateStyle,
+    TextFieldStyle,
+)
 
-# Tolerant pattern used when converting a stored colour to RGB.
-_HEX_RE = re.compile(r"^#?([0-9a-fA-F]{6})$")
-
-# Strict pattern enforced on config input (leading "#" required).
-_HEX_COLOUR_PATTERN = r"^#[0-9a-fA-F]{6}$"
-
-# Fallback colour (mid grey) for a colour string that cannot be parsed.
-_FALLBACK_RGB = (0.25, 0.25, 0.25)
-
-#: ReportLab base-14 fonts a bank may select.
-CertificateFont = Literal[
-    "Helvetica",
-    "Helvetica-Bold",
-    "Times-Roman",
-    "Times-Bold",
-    "Courier",
-    "Courier-Bold",
+# Re-exported: callers have always imported the models from here, and
+# they moved to content/certificate_schema.py without changing that.
+# The Literals are not re-exported — import them from the schema.
+__all__ = [
+    "Canvas",
+    "CertificateStyle",
+    "TextFieldStyle",
+    "download_certificate_background_from_gcs",
+    "find_certificate_background",
+    "generate_certificate_pdf",
+    "parse_certificate_style",
 ]
 
-#: Page orientations a bank may select.
-Orientation = Literal["portrait", "landscape"]
-
-#: Bold counterpart of each allowed font.
-_BOLD_FONT: dict[CertificateFont, CertificateFont] = {
-    "Helvetica": "Helvetica-Bold",
-    "Helvetica-Bold": "Helvetica-Bold",
-    "Times-Roman": "Times-Bold",
-    "Times-Bold": "Times-Bold",
-    "Courier": "Courier-Bold",
-    "Courier-Bold": "Courier-Bold",
-}
+logger = logging.getLogger(__name__)
 
 
 class Canvas(Protocol):
@@ -104,112 +87,9 @@ class Canvas(Protocol):
     def save(self) -> None: ...
 
 
-def _reject_bool(value: object) -> object:
-    """Reject booleans where a number is expected.
-
-    ``bool`` subclasses ``int`` in Python, so without this a YAML
-    ``size: yes`` would silently validate as ``1``.
-    """
-    if isinstance(value, bool):
-        raise ValueError("must be a number, not a boolean")
-    return value
-
-
-#: An int/float that will not silently accept a YAML boolean.
-Number = Annotated[float, BeforeValidator(_reject_bool)]
-Whole = Annotated[int, BeforeValidator(_reject_bool)]
-
-
-def _parse_hex_colour(value: str) -> tuple[float, float, float]:
-    """Convert a hex colour string like ``#404040`` to RGB floats."""
-    m = _HEX_RE.match(value)
-    if not m:
-        return _FALLBACK_RGB
-    h = m.group(1)
-    return (
-        int(h[0:2], 16) / 255,
-        int(h[2:4], 16) / 255,
-        int(h[4:6], 16) / 255,
-    )
-
-
-# ------------------------------------------------------------------
-# Style models
-# ------------------------------------------------------------------
-
-
-class TextFieldStyle(BaseModel):
-    """Style for a single text field on the certificate."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    font: CertificateFont = "Helvetica"
-    size: Whole = Field(default=14, ge=6, le=72)
-    bold: bool = False
-    colour: str = Field(default="#404040", pattern=_HEX_COLOUR_PATTERN)
-    y: Number = Field(default=0.5, ge=0.0, le=1.0)
-    # Static text override (e.g. the subtitle line).
-    text: str | None = None
-
-    @property
-    def resolved_font(self) -> CertificateFont:
-        """The font to pass to ReportLab, honouring ``bold``."""
-        return _BOLD_FONT[self.font] if self.bold else self.font
-
-    @property
-    def rgb(self) -> tuple[float, float, float]:
-        """``colour`` as ReportLab RGB floats."""
-        return _parse_hex_colour(self.colour)
-
-
-class CertificateStyle(BaseModel):
-    """Full certificate layout style parsed from config.yaml."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    orientation: Orientation = "portrait"
-    title: TextFieldStyle = TextFieldStyle(
-        size=22, bold=True, colour="#404040", y=0.62
-    )
-    subtitle: TextFieldStyle = TextFieldStyle(
-        size=13,
-        bold=False,
-        colour="#666666",
-        y=0.56,
-        text="This certifies that",
-    )
-    candidate_name: TextFieldStyle = TextFieldStyle(
-        size=26, bold=True, colour="#262626", y=0.50
-    )
-    pass_summary: TextFieldStyle = TextFieldStyle(
-        size=15, bold=False, colour="#338033", y=0.44
-    )
-    date: TextFieldStyle = TextFieldStyle(
-        size=12, bold=False, colour="#666666", y=0.39
-    )
-    exam_ref: TextFieldStyle = TextFieldStyle(
-        size=11, bold=False, colour="#888888", y=0.34
-    )
-    margin: Whole = Field(default=30, ge=0, le=200)
-
-
 # ------------------------------------------------------------------
 # Config parsing
 # ------------------------------------------------------------------
-
-
-def _text_field_defaults(
-    defaults: CertificateStyle,
-) -> dict[str, TextFieldStyle]:
-    """Map each text-field name to its default style."""
-    return {
-        "title": defaults.title,
-        "subtitle": defaults.subtitle,
-        "candidate_name": defaults.candidate_name,
-        "pass_summary": defaults.pass_summary,
-        "date": defaults.date,
-        "exam_ref": defaults.exam_ref,
-    }
 
 
 def _as_str_keyed(raw: dict[object, object]) -> dict[str, object]:
@@ -270,7 +150,7 @@ def parse_certificate_style(data: object) -> CertificateStyle:
         return defaults
 
     payload: dict[str, object] = dict(section)
-    for name, field_defaults in _text_field_defaults(defaults).items():
+    for name, field_defaults in defaults.text_fields().items():
         raw = section.get(name)
         if raw is None:
             payload.pop(name, None)

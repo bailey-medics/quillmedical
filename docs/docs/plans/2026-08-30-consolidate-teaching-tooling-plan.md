@@ -302,10 +302,15 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 2: Merge the duplicate validators onto one schema
 
-- [ ] Move `TextFieldStyle`, `CertificateStyle`, `CertificateFont`, `Orientation` and the
+- [x] Move `TextFieldStyle`, `CertificateStyle`, `CertificateFont`, `Orientation` and the
       boolean-rejecting `Number`/`Whole` annotated types from
       `backend/app/features/teaching/certificate.py` into
-      `content/certificate_schema.py`; import them back into `certificate.py`.
+      `content/certificate_schema.py`; import them back into `certificate.py`. The
+      annotated types went to `content/annotations.py`, shared with `module_schema` which
+      had grown its own copy. `certificate.py` keeps the recovery policy and declares
+      `__all__` so the models stay importable from their old home. `text_fields()` is now
+      a model method rather than the renderer's private mapping, ready for the validator
+      to iterate in the next item.
 - [ ] Fold the certificate checks at `backend/app/features/teaching/validate.py:163` into
       the merged validator, driving them off `CertificateStyle.model_validate` rather than
       hand-rolled conditionals.
