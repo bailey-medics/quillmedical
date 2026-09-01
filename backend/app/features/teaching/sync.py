@@ -20,6 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import (
+    SYNC_ACTOR_DEPLOY_BOT,
+    SYNC_ACTOR_USER,
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankSync,
@@ -150,10 +152,19 @@ def _load_module_metadata(
     }
 
 
+def _actor_for(user_id: int | None) -> str:
+    """What performed a sync, from who did.
+
+    Derived rather than passed alongside ``user_id``: two parameters that
+    must agree are two parameters that eventually do not.
+    """
+    return SYNC_ACTOR_USER if user_id is not None else SYNC_ACTOR_DEPLOY_BOT
+
+
 def sync_question_bank(
     bank_dir: Path,
     organisation_id: int,
-    user_id: int,
+    user_id: int | None,
     db: Session,
     *,
     validate_only: bool = False,
@@ -255,6 +266,7 @@ def sync_question_bank(
                 ]
                 existing_config.synced_at = datetime.now(UTC)
                 existing_config.synced_by = user_id
+                existing_config.synced_by_actor = _actor_for(user_id)
                 db.commit()
                 logger.info(
                     "Updated metadata only for live bank '%s' v%d "
@@ -310,6 +322,7 @@ def sync_question_bank(
         existing_config.config_yaml = config
         existing_config.synced_at = datetime.now(UTC)
         existing_config.synced_by = user_id
+        existing_config.synced_by_actor = _actor_for(user_id)
     else:
         db.add(
             QuestionBankConfig(
@@ -323,6 +336,7 @@ def sync_question_bank(
                 type=bank_type,
                 config_yaml=config,
                 synced_by=user_id,
+                synced_by_actor=_actor_for(user_id),
             )
         )
 

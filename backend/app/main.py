@@ -5530,7 +5530,11 @@ def ci_teaching_sync(
             _validation, sync_record = sync_question_bank(
                 bank_path,
                 org_id,
-                0,  # system user (no real user in CI)
+                # No user: the deploy pipeline did this. Recorded as
+                # synced_by_actor="deploy_bot" rather than a fabricated id —
+                # 0 was passed here and violated the users foreign key, so
+                # every CI sync failed while the endpoint still returned 200.
+                None,
                 db,
                 image_inventory=inventory,
                 module_status=status,

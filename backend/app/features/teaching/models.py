@@ -28,6 +28,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
 
+#: A sync performed by a signed-in person, through the admin UI.
+SYNC_ACTOR_USER = "user"
+
+#: A sync performed by the content deploy pipeline, which has no user.
+#: Recorded explicitly so a null ``synced_by`` reads as "the deploy bot"
+#: rather than "we did not record it".
+SYNC_ACTOR_DEPLOY_BOT = "deploy_bot"
+
+
 # ------------------------------------------------------------------
 # QuestionBankConfig
 # ------------------------------------------------------------------
@@ -75,10 +84,20 @@ class QuestionBankConfig(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
+    #: Who performed the sync. Null when it was not a person — see
+    #: ``synced_by_actor``, which says so explicitly rather than leaving a
+    #: null to be interpreted.
     synced_by: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    #: What performed the sync. Derived from ``synced_by`` so the two can
+    #: never disagree: a null user means the deploy pipeline did it.
+    synced_by_actor: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        server_default=SYNC_ACTOR_USER,
     )
 
 
