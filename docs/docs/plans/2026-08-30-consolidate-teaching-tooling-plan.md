@@ -507,35 +507,93 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 4: Cut the content repos over
 
-- [ ] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
+- [x] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
       `bailey-medics/quillmedical/.github/workflows/teaching-pipeline.yml@main`.
-- [ ] Confirm a green pull-request run and a real deploy on that repo before continuing.
-- [ ] Repeat for `eoeeta-teaching`.
+- [x] Confirm a green pull-request run and a real deploy on that repo before continuing.
+- [x] Repeat for `eoeeta-teaching`. Green on the first run, including the version lock that
+      failed on respiratory — because the `.gitattributes` fix and the pipeline switch went
+      on **one branch**, so the window where `lfs: true` met an untrue declaration never
+      existed. Sequence the two together on any future repo rather than ordering them.
+
+### What the cutover proved, and what it broke
+
+- **The required status checks composed unchanged**, which was the riskiest assumption in
+  the migration. The content ruleset requires `pipeline / validate` and
+  `pipeline / check-protection`; the caller's job is still `pipeline` and the called job
+  names were preserved, so no ruleset needed editing. Verified against the live rules
+  rather than reasoned about.
+- **Workload Identity Federation was unaffected.** The concern was that the provider might
+  be scoped on `job_workflow_ref`, which now points at Quill. It is scoped on the
+  repository, and a reusable workflow keeps the caller's identity, so `Authenticate to
+  Google Cloud` passed first time.
+- **`lfs: true` broke the first run**, and the fix was the other half of the LFS item
+  below: both repos declared `*.png filter=lfs` while storing plain blobs, so enabling LFS
+  made `git diff` rewrite every working-tree PNG to a pointer and version lock failed on a
+  branch that had changed no content. Recorded there in full.
+- **The first deploy exposed a bug CI sync had always had.** `/api/ci/teaching/sync` passed
+  `0` as the user id — no such user — so every pipeline sync violated the `users` foreign
+  key. It had failed silently since the endpoint was written, because it returned 200 with
+  the error in the body; the 422 above is what made it visible, on the first real deploy
+  after the cutover. Fixed by passing null and recording `synced_by_actor="deploy_bot"`.
+- **`synced: []` with no errors is a success, not a no-op**, and reads like one. Both banks
+  were already at their current version, so sync took the metadata-only path, which
+  refreshes the config and returns no sync record. That is exactly the path that used to
+  throw. It is also the reporting gap the "surface failed syncs" item below should close:
+  a deploy can be green while the response says nothing happened.
 
 ## Phase 5: Terraform and decommissioning
 
-- [ ] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
+- [x] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
       into Quill's `infra/github/`. No overlap today — Quill's state manages only the
       `quillmedical` repo — so this is additive to that state.
-- [ ] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
-- [ ] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies.
-- [ ] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
+      - Ported with `import` blocks, not plain resources: the rulesets already exist, so a
+        plain resource would try to create duplicates. `terraform plan` reports
+        **2 to import, 0 to add, 0 to change, 0 to destroy**, which also confirms the
+        transcription matches what is live.
+      - **Deleting the repository will not delete these rulesets** — they are
+        organisation-level and survive. What deletion destroys is teaching-tooling's local
+        state, currently the only thing managing them, so apply the import *before*
+        deleting or they become live but unmanaged.
+- [x] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
+      Not ported, deliberately: they protect only that repository and disappear with it.
+- [x] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies. 691 lines each,
+      untouched since 2026-05-23 and referenced by nothing in either repository — they were
+      the third divergent copy of the schema this plan set out to remove. `scripts/` held
+      nothing else, so both directories go with them.
+- [x] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
       and have had a green pull request and a real deploy on the new workflow. A `uses:`
       pointing at a deleted repo fails instantly, so this is the last irreversible step.
-- [ ] Remove every local reference in the same pass:
+      - Confirmed afterwards that the organisation rulesets survived, still `active` with
+        their check contexts intact, and that Terraform reports no differences. Deleting a
+        repository does not touch organisation-level rules.
+      - The local clone had already been removed, which destroyed the old local Terraform
+        state. That cost nothing: `import` blocks adopt a resource by its live ID, so the
+        move into Quill never needed the old state.
+- [x] Remove every local reference in the same pass:
       - `.gitignore:26` — the `teaching-tooling/` entry
       - `Justfile:41,71-80` — the clone/pull block in `initial-install`, and its closing
-        "tooling in ./teaching-tooling/" message
+        "tooling in ./teaching-tooling/" message. This one is load-bearing rather than
+        cosmetic: the clone runs under `set -euo pipefail`, so once the repository was gone
+        `just initial-install` would fail outright until this shipped.
       - [x] `Justfile` — `validate-teaching` rewritten to run the merged CLI in
         `quill_backend`, matching how `just ub` works, rather than shelling into the
         `teaching-tooling` checkout with its own venv and npm install. Pulled forward from
         this phase because it is the command a developer actually reaches for, and it was
         silently running the *old* validators. Version lock is skipped locally: it compares
         a branch against `origin/main`, which is a pull-request concern
-      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping
+      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping, and with
+        it the `argument-hint`. The skill is **generated**, so the row had to go from its
+        source, `.github/prompts/commit-rebase-push.prompt.md`, and from the docs copy at
+        `docs/docs/llm/prompts/`, or the next sync would restore it.
       - `backend/app/features/teaching/storage.py:575` — a docstring still describing the
         layout as "the teaching-tooling module directory"
       - the local `teaching-tooling/` working-tree clone itself
+      - **Three references the plan had not listed**, found by sweeping rather than working
+        from the list: `docs/docs/getting-started.md` in two places (the clone step and a
+        paragraph describing the repo as where shared tooling lives),
+        `docs/docs/github/index.md` (a whole `### teaching-tooling` section), and a
+        `TEACHING_TOOLING_SCRIPTS_PATH` row in `docs/docs/teaching/index.md` documenting an
+        environment variable already deleted from `config.py`.
 
 ## Phase 6: Make GCS mirror the repo layout
 
@@ -575,13 +633,20 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 
 ## Phase 7: Close the safety gaps that prompted this
 
-- [ ] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
+- [x] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
       `curl -sf` actually fails the content deploy. Land this together with the `deploy`
       trim in Phase 3 — once `deploy` no longer validates, this is the only thing that can
       turn a rejected bank into a red build.
-- [ ] Confirm the certificate block is validated at pull-request time, before anything
-      reaches GCS.
-- [ ] Check that image files are actually images, by magic bytes. The validator only ever
+- [x] Confirm the certificate block is validated at pull-request time, before anything
+      reaches GCS. Confirmed by running the merge-gate validator over a module carrying a
+      deliberately broken block: a font outside the allowed set, a coordinate above the
+      permitted range, and a misspelled key are all rejected, along with the missing
+      required text fields and the missing background image.
+      - Note the gate is conditional, and rightly so: the block is only validated when
+        `results.certificate_download` is true. A first attempt at this confirmation looked
+        like a failure because the fixture did not enable it, and the block was ignored —
+        correct behaviour, not a hole.
+- [x] Check that image files are actually images, by magic bytes. The validator only ever
       matches filenames and extensions — it never opens an image — so anything with the
       right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
       pointer** is not: both content repos' `.gitattributes` declare
@@ -594,21 +659,76 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
       transitively via `reportlab`, and must not become a dependency of the `content`
       package, which stays pydantic + pyyaml only.
-- [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
+      - **Merge gate only, and opt-in rather than inferred.** `validate_modules_dir` passes
+        `check_image_bytes=True`; nothing else does. Sync has no bytes to inspect —
+        `download_bank_from_gcs` fetches only YAML and `download_module_from_gcs` writes
+        zero-byte placeholders — so the same check there would reject content that is
+        perfectly fine in the bucket. Tests assert that placeholders, and even a pointer,
+        still pass the sync path, so the asymmetry cannot be "fixed" by accident.
+      - The LFS pointer gets its own message naming the checkout, because "not a valid png"
+        would send someone to re-export an image that is fine.
+      - Only the leading bytes are read, so no image library is needed and the package
+        stays on pydantic and pyyaml.
+      - `.valid-module/cover.png` gained a real 8-byte PNG signature. It is the only
+        fixture validated through the merge gate, so an empty file there became genuinely
+        invalid. The rest stay empty, and the fixture README now says which is which and
+        why.
+- [x] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
       both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
       plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
-- [ ] Skip content validation for modules whose `module.yaml` status is `retired`. They are
+      - **The two options were not interchangeable, and picking one was wrong.** `lfs: true`
+        went in first, on the argument that it "costs nothing today because there are no LFS
+        objects to fetch". It cost the first cutover run. Enabling LFS makes checkout
+        configure the clean filter, so `git diff` rewrote every working-tree PNG to a
+        pointer before comparing it to the stored real blob — every image looked modified,
+        and version lock failed on a branch that had changed no content. It did not
+        reproduce locally because git-lfs was not installed on the developer machine, which
+        is exactly why it surfaced only in CI.
+      - **Both were needed, in the other order.** The `.gitattributes` declaration was the
+        untrue half: it claimed `*.png filter=lfs` while every PNG was an ordinary blob.
+        Both content repos now declare only `*.png -text`, the part that was true, and the
+        file records why. `lfs: true` stays, correct for a repo that genuinely uses LFS, and
+        the workflow now states the precondition: a repo that declares LFS must use it.
+      - Added to `validate` and `deploy` only. `auto-pr` never reads the content, and the
+        workflow now says so, so the omission is not mistaken for an oversight.
+      - Verified `git lfs ls-files` reports zero files in both content repos while both
+        `.gitattributes` declare `*.png filter=lfs`, so the mismatch is real and this is
+        pre-emptive rather than a fix to something already broken.
+- [x] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
       — without this, one retired bank makes every future deploy red and the Phase 6
       signal worthless.
-- [ ] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
+      - The status is read on its own, tolerantly, before any other check: anything
+        unreadable is treated as not retired, so a module that cannot be parsed is
+        validated normally and reports its own error rather than skipping itself.
+      - Both entry points needed it, not just the merge gate. Sync re-imports every module
+        through `validate_module_metadata`, so a retired bank would have failed the sync
+        instead of the deploy.
+      - The skip is counted and printed (`skipped N retired`), mirroring
+        `check_version_lock`. A module that vanishes from validation without a word is a
+        module nobody remembers is unvalidated.
+      - Version lock still applies: retired modules stay frozen, so the two checks are
+        complementary — one refuses changes, the other stops re-validating what cannot
+        change.
+- [x] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
       already recorded and exposed at `GET /api/teaching/syncs`; the gap is that nothing
       draws attention to it. A red deploy from the item above covers the common case, so
       keep this small.
+      - A failed deploy now posts to Slack, quoting the backend's response so the message
+        names the bank that was rejected rather than sending the reader to the logs. It
+        goes through the shared `slack-notify.yml`, which had to stop relying on a bare
+        checkout: that takes whichever repository the run belongs to, which for a content
+        repo is the content repo, where the channel validation script does not exist.
+      - `SLACK_WEBHOOK_URL` is an organisation secret with visibility **all**. `private`
+        means "all private repositories", and `respiratory-teaching` is public, so the repo
+        that was cut over first was the one the secret could not reach.
+      - **Still open:** a green deploy reporting `"synced": []` says nothing about the
+        metadata-only updates it performed. Worth reporting what changed, not only what
+        failed.
 - [ ] **Re-validate live banks when the tooling changes, not only when content changes.**
       Today nothing does this: validation runs on a content pull request and on a content
       push to main, and a Quill-side tooling change triggers neither. Quill's `deploy.yml`
@@ -704,6 +824,36 @@ they are ready. That also gives a rollback, which does not exist today.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
 
+## Follow-up: split the pipeline by event
+
+**After Phase 4 is complete, not during it.** Every job in `teaching-pipeline.yml` carries
+an `if:` selecting the event that should run it, and the deploy path shares a file with the
+checks that gate it. Two files — one for feature branches and pull requests, one for main —
+would let each drop its conditions and would keep the deploy secrets away from the workflow
+that only validates.
+
+### Why it waits
+
+- Each content repo's caller becomes **two jobs** instead of one, so every content repo
+  changes in lockstep. That is the cross-repo coordination this consolidation exists to
+  reduce, so it should happen once, deliberately, not while repos are still being cut over.
+- The required status checks are composed from the caller's job name plus the called
+  workflow's job names. `pipeline / validate` and `pipeline / check-protection` are what the
+  content rulesets require, so **the caller's job must stay named `pipeline`** whatever else
+  moves. Getting this wrong leaves a pull request waiting on a check that never reports.
+- Changing the pipeline's shape while a cutover is still being proven muddles cause and
+  effect. `respiratory-teaching`'s first deploy already failed for an unrelated reason;
+  a second variable would have made that harder to read, not easier.
+
+### What it involves
+
+- [ ] `teaching-pipeline-feature.yml` — `auto-pr`, `validate`, `check-protection`.
+- [ ] `teaching-pipeline-main.yml` — `deploy` and `notify-deploy-failure`.
+- [ ] Each content repo's `teaching.yml` gains a second job, with the first still named
+      `pipeline` so the ruleset is untouched.
+- [ ] Confirm the check names are unchanged on a real pull request before merging, since a
+      ruleset waiting on a missing check blocks the repo rather than failing loudly.
+
 ## Follow-up: one Poetry version for the whole repository
 
 **A separate pull request, not part of this branch.** It touches the production image
@@ -757,6 +907,11 @@ can reach.
       hardcodes `poetry==<version>` instead of reading the pin, so a future bump cannot be
       half-applied. Refactored to `main()` with a source guard and given bats coverage,
       which closes part of the scripts to-do.
+- [x] Pin Renovate's Poetry too, via `constraints.poetry` in `renovate.json`. The bot runs
+      in its own container and cannot read `.poetry-version`, so it relocked with 2.3.3
+      against a 2.4.2 pin on the very next dependency PR. That value is a second copy of
+      the version, so `check-version-consistency.sh` asserts it matches. Note this one is
+      only provable on the next scheduled run: nothing local can exercise the hosted bot.
 - [ ] Confirm CI is green before merging, since every Python job changes how it installs
       Poetry.
 

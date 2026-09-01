@@ -5392,15 +5392,30 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
-@router.post("/ci/teaching/sync", response_model=CiTeachingSyncOut)
+@router.post(
+    "/ci/teaching/sync",
+    response_model=CiTeachingSyncOut,
+    responses={
+        422: {
+            "model": CiTeachingSyncOut,
+            "description": "At least one bank was rejected.",
+        }
+    },
+)
 def ci_teaching_sync(
     request: Request,
+    response: Response,
     db: Session = Depends(get_core_db),
 ) -> CiTeachingSyncOut:
     """Trigger teaching content sync from CI/CD pipeline.
 
     Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
     Syncs all banks found in GCS or local filesystem.
+
+    Returns 422 when any bank was rejected, so the content deploy that
+    calls this fails instead of reporting success. The body is the same
+    either way, because a partial sync still needs to say which banks
+    succeeded and which did not.
     """
     import shutil
 
@@ -5515,7 +5530,11 @@ def ci_teaching_sync(
             _validation, sync_record = sync_question_bank(
                 bank_path,
                 org_id,
-                0,  # system user (no real user in CI)
+                # No user: the deploy pipeline did this. Recorded as
+                # synced_by_actor="deploy_bot" rather than a fabricated id —
+                # 0 was passed here and violated the users foreign key, so
+                # every CI sync failed while the endpoint still returned 200.
+                None,
                 db,
                 image_inventory=inventory,
                 module_status=status,
@@ -5535,6 +5554,12 @@ def ci_teaching_sync(
             if tooling_is_temp and tooling_module_dir:
                 shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
 
+    if errors:
+        # Non-2xx so the caller's curl fails. Without this a rejected bank
+        # is indistinguishable from a clean sync, which is what let a
+        # malformed certificate block reach GCS unnoticed.
+        response.status_code = 422
+
     return CiTeachingSyncOut(synced=synced, errors=errors)
 
 
@@ -5550,7 +5575,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
     # api-schema-check: allow-opaque-permanent
     @app.get(
-        "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
+        "/api/teaching/images/modules/{bank_id}"
+        "/assessment/{item_folder}/{filename}"
     )
     async def _serve_teaching_image(
         bank_id: str,

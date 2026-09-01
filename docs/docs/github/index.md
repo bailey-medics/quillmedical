@@ -23,9 +23,12 @@ The main application repository containing backend, frontend, infrastructure, an
 
 Teaching question bank and learning content lives in per-organisation repos (e.g. `eoeeta-teaching`, `respiratory-teaching`). These are cloned into `teaching-repos/` by `just initial-install`.
 
-### teaching-tooling
+### Shared teaching pipeline
 
-Shared validation scripts, MDX compiler, and reusable GitHub Actions workflows for teaching content repos. Cloned alongside teaching repos by `just initial-install`.
+The validator and the reusable workflow the content repos call live in this repository:
+`backend/app/features/teaching/tooling/` and `.github/workflows/teaching-pipeline.yml`.
+A content repo's `teaching.yml` delegates to the latter, so the same checks run at the
+merge gate and at backend sync.
 
 ## Branch strategy
 

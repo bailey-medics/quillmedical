@@ -24,7 +24,7 @@
    just initial-install
    ```
 
-   This discovers all `*-teaching` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. It also clones `teaching-tooling/` (shared validation and compilation scripts). Safe to re-run at any time — existing repos are pulled, new ones are cloned.
+   This discovers all `*-teaching` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. Safe to re-run at any time — existing repos are pulled, new ones are cloned.
 
 3. Start the Docker stack:
 
@@ -84,7 +84,7 @@ Teaching content (MCQ question banks and learning modules) lives in separate rep
 
 These are cloned into `teaching-repos/` (git-ignored by the parent repo). Each has its own CI/CD that validates and deploys content to GCS.
 
-Shared tooling (validation scripts, MDX compiler, reusable GitHub Actions workflows) lives in [`teaching-tooling/`](https://github.com/bailey-medics/teaching-tooling) — also cloned locally and git-ignored. Edit it alongside the content repos in the same VS Code workspace.
+The validator and the reusable pipeline those repos run live in Quill, under `backend/app/features/teaching/tooling/` and `.github/workflows/teaching-pipeline.yml`. Nothing extra needs cloning.
 
 To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` — `just initial-install` will pick it up automatically.
 

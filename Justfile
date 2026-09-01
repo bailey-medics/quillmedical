@@ -38,7 +38,7 @@ abbreviate-just:
 
 
 alias ii := initial-install
-# Clone all *-teaching repos and teaching-tooling into local dirs (safe to re-run)
+# Clone all *-teaching repos into local dirs (safe to re-run)
 initial-install:
     #!/usr/bin/env bash
     {{initialise}} "initial-install"
@@ -67,17 +67,8 @@ initial-install:
         done
     fi
 
-    # --- Teaching tooling repo ---
-    if [ -d "teaching-tooling" ]; then
-        echo "✓ teaching-tooling already cloned — pulling latest..."
-        git -C "teaching-tooling" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
-    else
-        echo "Cloning teaching-tooling..."
-        gh repo clone "$ORG/teaching-tooling" "teaching-tooling"
-    fi
-
     echo ""
-    echo "Done. Teaching repos are in ./teaching-repos/, tooling in ./teaching-tooling/"
+    echo "Done. Teaching repos are in ./teaching-repos/"
 
 
 alias cu := create-user
@@ -395,6 +386,28 @@ terraform-github:
     fi
 
 
+alias tf := terraform-infra
+# Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
+terraform-infra env="teaching":
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-infra"
+    set -euo pipefail
+    cd infra
+    VARS="environments/{{env}}/terraform.tfvars"
+    if [ ! -f "$VARS" ]; then
+        echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
+        exit 1
+    fi
+    terraform init -input=false
+    terraform plan -var-file="$VARS"
+    read -rp "Apply these changes to {{env}}? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file="$VARS" -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
 alias pub := public-pages
 # Run public pages dev server
 public-pages:
@@ -508,7 +521,7 @@ start-prod build="":
     fi
 
 alias st := start-teaching
-# Start dev without clinical services (FHIR/EHRbase) for teaching work
+# Start dev without clinical services (FHIR/EHRbase) for teaching work (build: 'b' will also build the images)
 start-teaching build="":
     #!/usr/bin/env bash
     {{initialise}} "start-teaching"

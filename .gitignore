@@ -23,7 +23,6 @@ site/
 
 # Teaching content repos (cloned locally)
 teaching-repos/
-teaching-tooling/
 
 .venv
 __pycache__/
