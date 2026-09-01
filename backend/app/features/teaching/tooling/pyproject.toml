@@ -1,0 +1,30 @@
+# Dependencies for running the content validator on its own, outside the
+# backend container — this is what a content repo's CI installs.
+#
+# Separate from backend/pyproject.toml on purpose: the package is designed
+# to stand alone, and declaring its needs here says so. The versions must
+# still agree with the backend's, because the same code runs at both gates
+# and a version only one of them sees is a version that can make them
+# disagree. test_teaching_tooling_dependencies.py enforces that.
+[project]
+name = "quill-teaching-tooling"
+version = "0.1.0"
+description = "Validation for Quill teaching question bank content"
+requires-python = ">=3.13"
+
+[tool.poetry]
+package-mode = false
+
+# Kept in step with .poetry-version and backend/pyproject.toml by
+# check-version-consistency.sh. CI installs from the lock, and a Poetry that
+# cannot read this lock format would resolve freely instead.
+requires-poetry = ">=2.4,<3"
+
+# Deliberately Poetry syntax rather than PEP 621 [project.dependencies]:
+# the backend declares these the same way, so the drift test can compare
+# the two constraints as written. `poetry check` suggests migrating, but
+# this package is never published (package-mode = false).
+[tool.poetry.dependencies]
+python = "^3.13.7"
+pydantic = "2.13.4"
+pyyaml = ">=6.0,<7.0"

@@ -3,6 +3,11 @@ requires = ["poetry-core>=2.1.1,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
+# Kept in step with .poetry-version by check-version-consistency.sh. The
+# pin selects which Poetry CI and the image install; this rejects one that
+# cannot read the lock — including on a developer's machine, where no
+# repository file can install anything.
+requires-poetry = ">=2.4,<3"
 name = "backend"
 version = "0.1.0"
 description = "Backend fastAPI and git services"
@@ -11,8 +16,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.13.7"
-fastapi = "0.121.0"
-uvicorn = {extras = ["standard"], version = "0.50.2"}
+fastapi = "0.121.1"
+uvicorn = {extras = ["standard"], version = "0.51.0"}
 pydantic = "2.13.4"
 sqlalchemy = "2.0.52"
 psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}

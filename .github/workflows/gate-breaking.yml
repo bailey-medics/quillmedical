@@ -91,14 +91,17 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-${{ hashFiles('pr/backend/poetry.lock') }}
+          key: poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-pt${{ hashFiles('pr/.poetry-version') }}-${{ hashFiles('pr/backend/poetry.lock') }}
           restore-keys: |
-            poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-
+            poetry-${{ runner.os }}-py${{ hashFiles('pr/.python-version') }}-pt${{ hashFiles('pr/.poetry-version') }}-
             poetry-${{ runner.os }}-
 
+      # Pinned from .poetry-version, as backend/Dockerfile and the
+      # setup-python action are.
       - name: Install Poetry
         run: |
-          python -m pip install -U pip poetry
+          python -m pip install -U pip
+          python -m pip install "poetry==$(cat pr/.poetry-version)"
           poetry config virtualenvs.in-project true
 
       - name: Install PR branch backend deps

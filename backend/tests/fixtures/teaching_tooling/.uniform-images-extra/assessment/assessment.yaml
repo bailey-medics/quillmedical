@@ -1,0 +1,15 @@
+version: 1
+title: Uniform with extra image
+type: uniform
+images_per_item: 1
+images:
+- key: wli.png
+  label: White light
+description: Fixture assessment for validator tests
+assessment:
+  items_per_attempt: 1
+  time_limit_minutes: 10
+  min_pool_size: 1
+options:
+- Option A
+- Option B

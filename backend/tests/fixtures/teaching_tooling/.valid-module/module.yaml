@@ -1,0 +1,7 @@
+moduleId: valid-module
+title: "Valid Test Module"
+description: "A test module for validation"
+order: 1
+status: live
+renewalMonths: null
+coverImage: cover.png

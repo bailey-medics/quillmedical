@@ -5392,15 +5392,30 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
-@router.post("/ci/teaching/sync", response_model=CiTeachingSyncOut)
+@router.post(
+    "/ci/teaching/sync",
+    response_model=CiTeachingSyncOut,
+    responses={
+        422: {
+            "model": CiTeachingSyncOut,
+            "description": "At least one bank was rejected.",
+        }
+    },
+)
 def ci_teaching_sync(
     request: Request,
+    response: Response,
     db: Session = Depends(get_core_db),
 ) -> CiTeachingSyncOut:
     """Trigger teaching content sync from CI/CD pipeline.
 
     Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
     Syncs all banks found in GCS or local filesystem.
+
+    Returns 422 when any bank was rejected, so the content deploy that
+    calls this fails instead of reporting success. The body is the same
+    either way, because a partial sync still needs to say which banks
+    succeeded and which did not.
     """
     import shutil
 
@@ -5464,10 +5479,12 @@ def ci_teaching_sync(
         tooling_module_dir: Path | None = None
         tooling_is_temp = False
         try:
-            # Run teaching-tooling CI validation (second layer of
-            # defence — clinical safety requirement)
-            from app.features.teaching.tooling_validate import (
-                run_tooling_validation,
+            # Module metadata and learning content. The assessment is
+            # validated inside sync_question_bank against the GCS
+            # inventory, which a module directory cannot supply — together
+            # the two cover everything exactly once.
+            from app.features.teaching.tooling.validate import (
+                validate_module_metadata,
             )
 
             if base_path and not bucket:
@@ -5485,9 +5502,9 @@ def ci_teaching_sync(
                 tooling_is_temp = tooling_module_dir is not None
 
             if tooling_module_dir:
-                tooling_errors = run_tooling_validation(tooling_module_dir)
-                if tooling_errors:
-                    msg = "; ".join(e["message"] for e in tooling_errors[:5])
+                metadata = validate_module_metadata(tooling_module_dir)
+                if not metadata.is_valid:
+                    msg = "; ".join(e.message for e in metadata.errors[:5])
                     errors.append(CiSyncErrorItem(bank_id=bank_id, error=msg))
                     continue
             else:
@@ -5496,7 +5513,7 @@ def ci_teaching_sync(
                         bank_id=bank_id,
                         error=(
                             "module directory not found — "
-                            "cannot run tooling validation"
+                            "cannot validate module metadata"
                         ),
                     )
                 )
@@ -5513,7 +5530,11 @@ def ci_teaching_sync(
             _validation, sync_record = sync_question_bank(
                 bank_path,
                 org_id,
-                0,  # system user (no real user in CI)
+                # No user: the deploy pipeline did this. Recorded as
+                # synced_by_actor="deploy_bot" rather than a fabricated id —
+                # 0 was passed here and violated the users foreign key, so
+                # every CI sync failed while the endpoint still returned 200.
+                None,
                 db,
                 image_inventory=inventory,
                 module_status=status,
@@ -5532,6 +5553,12 @@ def ci_teaching_sync(
                 shutil.rmtree(bank_path.parent, ignore_errors=True)
             if tooling_is_temp and tooling_module_dir:
                 shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
+
+    if errors:
+        # Non-2xx so the caller's curl fails. Without this a rejected bank
+        # is indistinguishable from a clean sync, which is what let a
+        # malformed certificate block reach GCS unnoticed.
+        response.status_code = 422
 
     return CiTeachingSyncOut(synced=synced, errors=errors)
 

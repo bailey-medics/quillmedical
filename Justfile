@@ -240,30 +240,37 @@ sync-teaching:
 
 
 alias vt := validate-teaching
-# Validate all teaching content (module.yaml + MDX) using teaching-tooling
+# Validate all teaching content (module.yaml, assessment, images, certificate, MDX)
 validate-teaching:
     #!/usr/bin/env bash
     {{initialise}} "validate-teaching"
-    set -euo pipefail
-    if [ ! -d "teaching-tooling" ]; then
-        echo "teaching-tooling not found. Run: just initial-install"
+    set -uo pipefail
+    if [ -z "$(docker ps -q -f name=^quill_backend$)" ]; then
+        echo "quill_backend is not running. Start it with: just sd"
         exit 1
     fi
-    cd teaching-tooling
-    npm ci --silent 2>/dev/null
-    # Ensure Python deps are available in a local venv
-    if [ ! -d ".venv" ]; then
-        python3 -m venv .venv
-        .venv/bin/pip install -q -r requirements.txt
+    if ! compgen -G "teaching-repos/*/modules" > /dev/null; then
+        echo "No teaching repos found. Clone them with: just initial-install"
+        exit 1
     fi
-    for REPO in ../teaching-repos/*/; do
+    # Version lock compares a branch against origin/main, which is a
+    # pull-request concern rather than a local one, so it is skipped here.
+    FAILED=0
+    for REPO in teaching-repos/*/; do
+        NAME=$(basename "${REPO}")
         if [ -d "${REPO}modules" ]; then
-            echo "▸ Validating ${REPO}..."
-            .venv/bin/python scripts/validate.py "${REPO}modules/"
-            node scripts/validate_mdx.js "${REPO}modules/"
+            echo "▸ Validating ${NAME}..."
+            docker exec quill_backend sh -lc \
+                "python -m app.features.teaching.tooling.cli \
+                 /teaching-repos/${NAME}/modules --skip-version-lock" \
+                || FAILED=1
             echo ""
         fi
     done
+    if [ "${FAILED}" -ne 0 ]; then
+        echo "✗ Teaching content validation failed."
+        exit 1
+    fi
     echo "✓ All teaching content valid."
 
 
@@ -523,7 +530,7 @@ start-prod build="":
     fi
 
 alias st := start-teaching
-# Start dev without clinical services (FHIR/EHRbase) for teaching work
+# Start dev without clinical services (FHIR/EHRbase) for teaching work (build: 'b' will also build the images)
 start-teaching build="":
     #!/usr/bin/env bash
     {{initialise}} "start-teaching"

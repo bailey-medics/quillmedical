@@ -36,10 +36,37 @@
 
 ::: app.features.teaching.sync
 
-## Validate
+## Feature gating
 
-::: app.features.teaching.validate
+::: app.features.gating
 
-## Tooling Validate
+## Content validation tooling
 
-::: app.features.teaching.tooling_validate
+The `tooling` package validates question bank content. The same code runs at
+both gates: the merge gate in a content repository's CI, and the backend at
+sync. It imports nothing from FastAPI, SQLAlchemy or `app.config`, so it can
+be installed on its own with only Pydantic and PyYAML.
+
+### Validator
+
+::: app.features.teaching.tooling.validate
+
+### Module schema
+
+::: app.features.teaching.tooling.module_schema
+
+### Certificate schema
+
+::: app.features.teaching.tooling.certificate_schema
+
+### Annotations
+
+::: app.features.teaching.tooling.annotations
+
+### Version lock check
+
+::: app.features.teaching.tooling.check_version_lock
+
+### Command line interface
+
+::: app.features.teaching.tooling.cli
