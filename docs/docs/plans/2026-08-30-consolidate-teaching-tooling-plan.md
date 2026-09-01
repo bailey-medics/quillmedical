@@ -543,10 +543,19 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 5: Terraform and decommissioning
 
-- [ ] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
+- [x] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
       into Quill's `infra/github/`. No overlap today — Quill's state manages only the
       `quillmedical` repo — so this is additive to that state.
-- [ ] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
+      - Ported with `import` blocks, not plain resources: the rulesets already exist, so a
+        plain resource would try to create duplicates. `terraform plan` reports
+        **2 to import, 0 to add, 0 to change, 0 to destroy**, which also confirms the
+        transcription matches what is live.
+      - **Deleting the repository will not delete these rulesets** — they are
+        organisation-level and survive. What deletion destroys is teaching-tooling's local
+        state, currently the only thing managing them, so apply the import *before*
+        deleting or they become live but unmanaged.
+- [x] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
+      Not ported, deliberately: they protect only that repository and disappear with it.
 - [ ] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies.
 - [ ] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
       and have had a green pull request and a real deploy on the new workflow. A `uses:`
@@ -561,10 +570,19 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
         this phase because it is the command a developer actually reaches for, and it was
         silently running the *old* validators. Version lock is skipped locally: it compares
         a branch against `origin/main`, which is a pull-request concern
-      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping
+      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping, and with
+        it the `argument-hint`. The skill is **generated**, so the row had to go from its
+        source, `.github/prompts/commit-rebase-push.prompt.md`, and from the docs copy at
+        `docs/docs/llm/prompts/`, or the next sync would restore it.
       - `backend/app/features/teaching/storage.py:575` — a docstring still describing the
         layout as "the teaching-tooling module directory"
       - the local `teaching-tooling/` working-tree clone itself
+      - **Three references the plan had not listed**, found by sweeping rather than working
+        from the list: `docs/docs/getting-started.md` in two places (the clone step and a
+        paragraph describing the repo as where shared tooling lives),
+        `docs/docs/github/index.md` (a whole `### teaching-tooling` section), and a
+        `TEACHING_TOOLING_SCRIPTS_PATH` row in `docs/docs/teaching/index.md` documenting an
+        environment variable already deleted from `config.py`.
 
 ## Phase 6: Make GCS mirror the repo layout
 
