@@ -621,11 +621,19 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
-      - **Chosen: `lfs: true` on the content checkouts.** It is entirely a Quill change, so
-        neither content repo needs editing; it costs nothing today because there are no LFS
-        objects to fetch; and it is correct the moment anyone does commit through LFS.
-        Dropping the `.gitattributes` line would instead commit a visual-diagnosis bank's
-        images to plain git blobs permanently, which is the case LFS exists for.
+      - **The two options were not interchangeable, and picking one was wrong.** `lfs: true`
+        went in first, on the argument that it "costs nothing today because there are no LFS
+        objects to fetch". It cost the first cutover run. Enabling LFS makes checkout
+        configure the clean filter, so `git diff` rewrote every working-tree PNG to a
+        pointer before comparing it to the stored real blob — every image looked modified,
+        and version lock failed on a branch that had changed no content. It did not
+        reproduce locally because git-lfs was not installed on the developer machine, which
+        is exactly why it surfaced only in CI.
+      - **Both were needed, in the other order.** The `.gitattributes` declaration was the
+        untrue half: it claimed `*.png filter=lfs` while every PNG was an ordinary blob.
+        Both content repos now declare only `*.png -text`, the part that was true, and the
+        file records why. `lfs: true` stays, correct for a repo that genuinely uses LFS, and
+        the workflow now states the precondition: a repo that declares LFS must use it.
       - Added to `validate` and `deploy` only. `auto-pr` never reads the content, and the
         workflow now says so, so the omission is not mistaken for an oversight.
       - Verified `git lfs ls-files` reports zero files in both content repos while both

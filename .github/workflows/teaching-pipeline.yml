@@ -66,12 +66,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      # lfs: true because both content repos' .gitattributes declare
-      # *.png as LFS. checkout does not fetch LFS unless asked, so without
-      # this a pointer — a ~132-byte text file with the right name and
-      # extension — would be validated and deployed in place of the image.
-      # No LFS objects exist today, so this costs nothing; removing it
-      # re-opens the trap the moment anyone commits one.
+      # lfs: true so that a repo genuinely using LFS gets real images
+      # rather than pointers, which carry the right name and extension and
+      # would otherwise be validated and deployed in place of the image.
+      #
+      # This is only safe while a repo's .gitattributes is honest. Both
+      # content repos once declared *.png as LFS while storing plain
+      # blobs; enabling LFS here made git rewrite every working-tree PNG
+      # to a pointer before diffing, so untouched images looked modified
+      # and the version lock failed on a branch that changed no content.
+      # A repo that declares LFS must actually use it.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
@@ -171,9 +175,10 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # lfs: true for the same reason as validate — this job uploads the
-      # bytes to GCS, so a pointer here reaches candidates as a broken
-      # image, and for a visual-diagnosis bank the image is the question.
+      # lfs: true for the same reason as validate, and with the same
+      # caveat — this job uploads the bytes to GCS, so a pointer here
+      # reaches candidates as a broken image, and for a visual-diagnosis
+      # bank the image is the question.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
