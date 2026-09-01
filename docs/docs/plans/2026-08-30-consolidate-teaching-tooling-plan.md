@@ -755,6 +755,36 @@ they are ready. That also gives a rollback, which does not exist today.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
 
+## Follow-up: split the pipeline by event
+
+**After Phase 4 is complete, not during it.** Every job in `teaching-pipeline.yml` carries
+an `if:` selecting the event that should run it, and the deploy path shares a file with the
+checks that gate it. Two files — one for feature branches and pull requests, one for main —
+would let each drop its conditions and would keep the deploy secrets away from the workflow
+that only validates.
+
+### Why it waits
+
+- Each content repo's caller becomes **two jobs** instead of one, so every content repo
+  changes in lockstep. That is the cross-repo coordination this consolidation exists to
+  reduce, so it should happen once, deliberately, not while repos are still being cut over.
+- The required status checks are composed from the caller's job name plus the called
+  workflow's job names. `pipeline / validate` and `pipeline / check-protection` are what the
+  content rulesets require, so **the caller's job must stay named `pipeline`** whatever else
+  moves. Getting this wrong leaves a pull request waiting on a check that never reports.
+- Changing the pipeline's shape while a cutover is still being proven muddles cause and
+  effect. `respiratory-teaching`'s first deploy already failed for an unrelated reason;
+  a second variable would have made that harder to read, not easier.
+
+### What it involves
+
+- [ ] `teaching-pipeline-feature.yml` — `auto-pr`, `validate`, `check-protection`.
+- [ ] `teaching-pipeline-main.yml` — `deploy` and `notify-deploy-failure`.
+- [ ] Each content repo's `teaching.yml` gains a second job, with the first still named
+      `pipeline` so the ruleset is untouched.
+- [ ] Confirm the check names are unchanged on a real pull request before merging, since a
+      ruleset waiting on a missing check blocks the repo rather than failing loudly.
+
 ## Follow-up: one Poetry version for the whole repository
 
 **A separate pull request, not part of this branch.** It touches the production image

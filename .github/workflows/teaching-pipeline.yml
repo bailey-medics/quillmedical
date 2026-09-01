@@ -174,6 +174,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      sync_response: ${{ steps.sync.outputs.body }}
     steps:
       # lfs: true for the same reason as validate, and with the same
       # caveat — this job uploads the bytes to GCS, so a pointer here
@@ -212,7 +214,57 @@ jobs:
       # build should say which bank failed and why, not just go red.
       - name: Trigger backend sync
         run: |
+          # pipefail because the default shell here is `bash -e`, without it:
+          # tee would swallow curl's non-zero exit and a rejected bank would
+          # go back to passing silently, which is the whole point of the 422.
+          set -o pipefail
           curl -sS --fail-with-body -X POST \
             "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
             -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            | tee "${RUNNER_TEMP}/sync-response.json"
+
+      # Carried out of the job so the failure notification can quote it.
+      # always(), because the interesting case is the one where the step
+      # above has just failed. Truncated: Slack rejects large payloads and a
+      # stack trace helps nobody in a channel.
+      - name: Capture the sync response
+        if: always()
+        id: sync
+        run: |
+          {
+            echo 'body<<SYNC_EOF'
+            head -c 1500 "${RUNNER_TEMP}/sync-response.json" 2>/dev/null || true
+            echo
+            echo 'SYNC_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  # -------------------------------------------------------------------
+  # Tell someone when a deploy fails
+  # -------------------------------------------------------------------
+  #
+  # A failed deploy leaves GCS holding content the backend has not imported,
+  # and until now nothing said so — the sync could fail and the only trace
+  # was a red tick nobody was watching. Quotes the backend's response, so
+  # the message names the bank that was rejected rather than sending the
+  # reader to the logs.
+  #
+  # Called by full path rather than a relative one: this workflow runs under
+  # the content repository, so `./` would look for the file there.
+  notify-deploy-failure:
+    needs: deploy
+    if: always() && needs.deploy.result == 'failure'
+    uses: bailey-medics/quillmedical/.github/workflows/slack-notify.yml@main
+    with:
+      channel: teaching
+      text: |
+        *❌ Teaching content deploy failed*
+
+        *Repository:* ${{ github.repository }}
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+        *Backend response:*
+        ```${{ needs.deploy.outputs.sync_response }}```
+    secrets: inherit
