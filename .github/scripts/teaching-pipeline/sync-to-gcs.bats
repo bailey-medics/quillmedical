@@ -2,8 +2,7 @@
 # Tests for sync-to-gcs.sh
 #
 # gsutil is stubbed and its invocations recorded, because what matters here
-# is which prefixes each module's sections are sent to and which sections
-# are skipped when absent — not that gsutil itself works.
+# is where each module is sent — not that gsutil itself works.
 
 # `run !` needs this declared, or bats runs in a compatibility mode where
 # flags on `run` are not honoured and the negation silently passes.
@@ -61,61 +60,59 @@ make_module() {
   [[ "$output" == *"Modules directory not found"* ]]
 }
 
-@test "assessment content goes to the questions prefix" {
+@test "a module is mirrored whole to its modules/ prefix" {
+  make_module my-bank assessment learning module.yaml
+
+  run bash "$SCRIPT" "$MODULES" my-bucket
+
+  [ "$status" -eq 0 ]
+  grep -q "gs://my-bucket/modules/my-bank/" "$CALLS"
+}
+
+@test "the bucket keeps the repository's shape" {
+  # One rsync of the module directory, not three of its parts. The backend
+  # reads the bucket as though it were the repo, so nothing may be renamed
+  # or split on the way in.
+  make_module my-bank assessment learning module.yaml
+
+  run bash "$SCRIPT" "$MODULES" my-bucket
+
+  [ "$(grep -c . "$CALLS")" -eq 1 ]
+  ! grep -q "questions/" "$CALLS"
+  ! grep -q "gs://my-bucket/learning/" "$CALLS"
+}
+
+@test "assessment content is no longer renamed to questions" {
+  # The rename this change removes: assessment/ used to land under
+  # questions/<bank_id>/, which is why the backend needed reconstruction.
   make_module my-bank assessment
 
   run bash "$SCRIPT" "$MODULES" my-bucket
 
   [ "$status" -eq 0 ]
-  grep -q "gs://my-bucket/questions/my-bank/" "$CALLS"
+  run ! grep -q "questions" "$CALLS"
 }
 
-@test "learning content goes to the learning prefix" {
-  make_module my-bank learning
-
-  run bash "$SCRIPT" "$MODULES" my-bucket
-
-  [ "$status" -eq 0 ]
-  grep -q "gs://my-bucket/learning/my-bank/" "$CALLS"
-}
-
-@test "module.yaml is copied, not synced" {
-  make_module my-bank module.yaml
-
-  run bash "$SCRIPT" "$MODULES" my-bucket
-
-  [ "$status" -eq 0 ]
-  grep -q "^cp .*gs://my-bucket/modules/my-bank/module.yaml" "$CALLS"
-}
-
-@test "a module with no sections produces no uploads" {
+@test "a module with no sections still syncs, so deletions propagate" {
+  # An emptied module must reach the bucket as an empty prefix rather than
+  # being skipped, or removed content would linger.
   make_module empty-bank
 
   run bash "$SCRIPT" "$MODULES" my-bucket
 
   [ "$status" -eq 0 ]
-  [ ! -s "$CALLS" ]
-}
-
-@test "an assessment-only module does not touch the learning prefix" {
-  make_module my-bank assessment
-
-  run bash "$SCRIPT" "$MODULES" my-bucket
-
-  [ "$status" -eq 0 ]
-  run ! grep -q "learning" "$CALLS"
+  grep -q "gs://my-bucket/modules/empty-bank/" "$CALLS"
 }
 
 @test "every module in the directory is synced" {
   make_module bank-one assessment
-
   make_module bank-two assessment
 
   run bash "$SCRIPT" "$MODULES" my-bucket
 
   [ "$status" -eq 0 ]
-  grep -q "questions/bank-one/" "$CALLS"
-  grep -q "questions/bank-two/" "$CALLS"
+  grep -q "modules/bank-one/" "$CALLS"
+  grep -q "modules/bank-two/" "$CALLS"
 }
 
 @test "deletion is propagated so a removed file leaves the bucket" {
