@@ -66,12 +66,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      # lfs: true because both content repos' .gitattributes declare
-      # *.png as LFS. checkout does not fetch LFS unless asked, so without
-      # this a pointer — a ~132-byte text file with the right name and
-      # extension — would be validated and deployed in place of the image.
-      # No LFS objects exist today, so this costs nothing; removing it
-      # re-opens the trap the moment anyone commits one.
+      # lfs: true so that a repo genuinely using LFS gets real images
+      # rather than pointers, which carry the right name and extension and
+      # would otherwise be validated and deployed in place of the image.
+      #
+      # This is only safe while a repo's .gitattributes is honest. Both
+      # content repos once declared *.png as LFS while storing plain
+      # blobs; enabling LFS here made git rewrite every working-tree PNG
+      # to a pointer before diffing, so untouched images looked modified
+      # and the version lock failed on a branch that changed no content.
+      # A repo that declares LFS must actually use it.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
@@ -170,10 +174,13 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      sync_response: ${{ steps.sync.outputs.body }}
     steps:
-      # lfs: true for the same reason as validate — this job uploads the
-      # bytes to GCS, so a pointer here reaches candidates as a broken
-      # image, and for a visual-diagnosis bank the image is the question.
+      # lfs: true for the same reason as validate, and with the same
+      # caveat — this job uploads the bytes to GCS, so a pointer here
+      # reaches candidates as a broken image, and for a visual-diagnosis
+      # bank the image is the question.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
@@ -207,7 +214,57 @@ jobs:
       # build should say which bank failed and why, not just go red.
       - name: Trigger backend sync
         run: |
+          # pipefail because the default shell here is `bash -e`, without it:
+          # tee would swallow curl's non-zero exit and a rejected bank would
+          # go back to passing silently, which is the whole point of the 422.
+          set -o pipefail
           curl -sS --fail-with-body -X POST \
             "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
             -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            | tee "${RUNNER_TEMP}/sync-response.json"
+
+      # Carried out of the job so the failure notification can quote it.
+      # always(), because the interesting case is the one where the step
+      # above has just failed. Truncated: Slack rejects large payloads and a
+      # stack trace helps nobody in a channel.
+      - name: Capture the sync response
+        if: always()
+        id: sync
+        run: |
+          {
+            echo 'body<<SYNC_EOF'
+            head -c 1500 "${RUNNER_TEMP}/sync-response.json" 2>/dev/null || true
+            echo
+            echo 'SYNC_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  # -------------------------------------------------------------------
+  # Tell someone when a deploy fails
+  # -------------------------------------------------------------------
+  #
+  # A failed deploy leaves GCS holding content the backend has not imported,
+  # and until now nothing said so — the sync could fail and the only trace
+  # was a red tick nobody was watching. Quotes the backend's response, so
+  # the message names the bank that was rejected rather than sending the
+  # reader to the logs.
+  #
+  # Called by full path rather than a relative one: this workflow runs under
+  # the content repository, so `./` would look for the file there.
+  notify-deploy-failure:
+    needs: deploy
+    if: always() && needs.deploy.result == 'failure'
+    uses: bailey-medics/quillmedical/.github/workflows/slack-notify.yml@main
+    with:
+      channel: teaching
+      text: |
+        *❌ Teaching content deploy failed*
+
+        *Repository:* ${{ github.repository }}
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+        *Backend response:*
+        ```${{ needs.deploy.outputs.sync_response }}```
+    secrets: inherit

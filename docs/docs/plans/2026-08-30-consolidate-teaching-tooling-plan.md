@@ -621,11 +621,19 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
-      - **Chosen: `lfs: true` on the content checkouts.** It is entirely a Quill change, so
-        neither content repo needs editing; it costs nothing today because there are no LFS
-        objects to fetch; and it is correct the moment anyone does commit through LFS.
-        Dropping the `.gitattributes` line would instead commit a visual-diagnosis bank's
-        images to plain git blobs permanently, which is the case LFS exists for.
+      - **The two options were not interchangeable, and picking one was wrong.** `lfs: true`
+        went in first, on the argument that it "costs nothing today because there are no LFS
+        objects to fetch". It cost the first cutover run. Enabling LFS makes checkout
+        configure the clean filter, so `git diff` rewrote every working-tree PNG to a
+        pointer before comparing it to the stored real blob — every image looked modified,
+        and version lock failed on a branch that had changed no content. It did not
+        reproduce locally because git-lfs was not installed on the developer machine, which
+        is exactly why it surfaced only in CI.
+      - **Both were needed, in the other order.** The `.gitattributes` declaration was the
+        untrue half: it claimed `*.png filter=lfs` while every PNG was an ordinary blob.
+        Both content repos now declare only `*.png -text`, the part that was true, and the
+        file records why. `lfs: true` stays, correct for a repo that genuinely uses LFS, and
+        the workflow now states the precondition: a repo that declares LFS must use it.
       - Added to `validate` and `deploy` only. `auto-pr` never reads the content, and the
         workflow now says so, so the omission is not mistaken for an oversight.
       - Verified `git lfs ls-files` reports zero files in both content repos while both
@@ -746,6 +754,36 @@ they are ready. That also gives a rollback, which does not exist today.
       when. Rolling back is the same operation pointing at an earlier version.
 - [ ] **Admin UI** — surface the two version numbers and a promote control on the existing
       admin teaching page, which already carries the live/closed toggle.
+
+## Follow-up: split the pipeline by event
+
+**After Phase 4 is complete, not during it.** Every job in `teaching-pipeline.yml` carries
+an `if:` selecting the event that should run it, and the deploy path shares a file with the
+checks that gate it. Two files — one for feature branches and pull requests, one for main —
+would let each drop its conditions and would keep the deploy secrets away from the workflow
+that only validates.
+
+### Why it waits
+
+- Each content repo's caller becomes **two jobs** instead of one, so every content repo
+  changes in lockstep. That is the cross-repo coordination this consolidation exists to
+  reduce, so it should happen once, deliberately, not while repos are still being cut over.
+- The required status checks are composed from the caller's job name plus the called
+  workflow's job names. `pipeline / validate` and `pipeline / check-protection` are what the
+  content rulesets require, so **the caller's job must stay named `pipeline`** whatever else
+  moves. Getting this wrong leaves a pull request waiting on a check that never reports.
+- Changing the pipeline's shape while a cutover is still being proven muddles cause and
+  effect. `respiratory-teaching`'s first deploy already failed for an unrelated reason;
+  a second variable would have made that harder to read, not easier.
+
+### What it involves
+
+- [ ] `teaching-pipeline-feature.yml` — `auto-pr`, `validate`, `check-protection`.
+- [ ] `teaching-pipeline-main.yml` — `deploy` and `notify-deploy-failure`.
+- [ ] Each content repo's `teaching.yml` gains a second job, with the first still named
+      `pipeline` so the ruleset is untouched.
+- [ ] Confirm the check names are unchanged on a real pull request before merging, since a
+      ruleset waiting on a missing check blocks the repo rather than failing loudly.
 
 ## Follow-up: one Poetry version for the whole repository
 
