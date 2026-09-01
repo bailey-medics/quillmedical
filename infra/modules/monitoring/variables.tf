@@ -43,6 +43,10 @@ variable "alert_sms_number" {
   description = "E.164 phone number for escalated alerts, e.g. +447700900000. Must be verified by code in the Cloud console before it delivers. Leave empty to disable the escalation tier."
   type        = string
   default     = ""
+
+  # Kept sensitive so the number never renders in plan output, which is
+  # posted publicly as a pull request comment. See infra/variables.tf.
+  sensitive = true
 }
 
 variable "escalation_duration" {

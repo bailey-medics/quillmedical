@@ -51,7 +51,7 @@ that recur are collected in the glossary at the foot of this document.
 - **Public site visitor numbers** — the load balancer already logs every
   request, and the public site is logged by a different mechanism from the
   app. `infra/modules/load-balancer/main.tf` sets `log_config { enable = true }`
-  on the two backend *services*, but the marketing site is served by
+  on the two backend _services_, but the marketing site is served by
   `google_compute_backend_bucket.landing`, which has no such block. It does not
   need one: logging for backend buckets on an external Application Load
   Balancer is switched on automatically and cannot be disabled. Either way the
@@ -359,9 +359,26 @@ a clinical one it is not.
       warns SMS "isn't a fully reliable notification channel type" and may be
       unavailable in some regions, so it escalates tier one rather than
       replacing it
+- [x] Supply the number from the `ALERT_SMS_NUMBER` organisation secret via
+      `TF_VAR_alert_sms_number`, on both the plan and apply jobs so the two
+      agree. It is **not** in `terraform.tfvars`: this repository is public,
+      and a committed number would be published permanently in git history.
+- [x] Mark `alert_sms_number` sensitive in both variable definitions. The plan
+      job posts its output as a pull request comment on a public repository,
+      so without this the number would render there in plain text. Verified
+      experimentally rather than assumed: an unmarked variable prints the
+      value inside a map attribute, a sensitive one renders
+      `(sensitive value)`.
 - [ ] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
       this is done by hand
+
+Note that the number will still be recorded in Terraform state, which lives in
+`gs://quill-medical-terraform-state`. That bucket has no `allUsers` or
+`allAuthenticatedUsers` binding, so it is private to the project — but it is a
+deliberate exception to the rule stated in `modules/secrets/main.tf` that
+secret values never enter Terraform state. The only way to avoid it entirely
+would be to create the channel by hand, which would make it unmanaged.
 
 **For teaching specifically, this is already enough — buy nothing.** Teaching
 holds no patient data and supports no clinical decision; an outage means a
@@ -372,6 +389,7 @@ occasionally useful, not because teaching needs it. The unreliability of
 Google's notification channels is a real problem for a clinical service and an
 acceptable one here. Revisit the whole escalation when clinical users arrive —
 not before.
+
 - [x] Do not let tier two rest on SMS alone — it is paired with email.
       Google documents Slack, PagerDuty, webhooks and the Cloud mobile app as
       sharing **one internal delivery service and therefore one point of
@@ -717,8 +735,7 @@ from the reasoning rather than from scratch:
 - **NCSC** — National Cyber Security Centre. The UK government body that
   authors the CAF.
 
-- **PECR** — Privacy and Electronic Communications (EC Directive) Regulations
-  2003. The UK's actual cookie law. It governs storing or reading anything on a
+- **PECR** — Privacy and Electronic Communications (EC Directive) Regulations 2003. The UK's actual cookie law. It governs storing or reading anything on a
   user's device, whether or not that thing is personal data — a different
   question from UK GDPR's, which is about processing personal data.
 
