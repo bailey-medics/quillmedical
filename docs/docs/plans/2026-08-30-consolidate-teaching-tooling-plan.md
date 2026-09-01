@@ -588,7 +588,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
         `results.certificate_download` is true. A first attempt at this confirmation looked
         like a failure because the fixture did not enable it, and the block was ignored —
         correct behaviour, not a hole.
-- [ ] Check that image files are actually images, by magic bytes. The validator only ever
+- [x] Check that image files are actually images, by magic bytes. The validator only ever
       matches filenames and extensions — it never opens an image — so anything with the
       right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
       pointer** is not: both content repos' `.gitattributes` declare
@@ -601,6 +601,20 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
       transitively via `reportlab`, and must not become a dependency of the `content`
       package, which stays pydantic + pyyaml only.
+      - **Merge gate only, and opt-in rather than inferred.** `validate_modules_dir` passes
+        `check_image_bytes=True`; nothing else does. Sync has no bytes to inspect —
+        `download_bank_from_gcs` fetches only YAML and `download_module_from_gcs` writes
+        zero-byte placeholders — so the same check there would reject content that is
+        perfectly fine in the bucket. Tests assert that placeholders, and even a pointer,
+        still pass the sync path, so the asymmetry cannot be "fixed" by accident.
+      - The LFS pointer gets its own message naming the checkout, because "not a valid png"
+        would send someone to re-export an image that is fine.
+      - Only the leading bytes are read, so no image library is needed and the package
+        stays on pydantic and pyyaml.
+      - `.valid-module/cover.png` gained a real 8-byte PNG signature. It is the only
+        fixture validated through the merge gate, so an empty file there became genuinely
+        invalid. The rest stay empty, and the fixture README now says which is which and
+        why.
 - [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
       both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
       plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
