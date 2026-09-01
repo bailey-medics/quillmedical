@@ -448,26 +448,86 @@ The only phase needing new client code, and the one carrying the real risk.
       dashboard as everything else
 - [ ] Tests: allow-list rejection, clinical-route guard, opt-out honoured
 
+## Phase 4: self-host the Cormorant Garamond typeface
+
+Not analytics, but found while writing the privacy policy and squarely a
+privacy fix, so it belongs here rather than in a backlog nobody reads.
+
+The public site and Storybook both load Cormorant Garamond from
+`fonts.googleapis.com`, with a preconnect to `fonts.gstatic.com`. Every visitor
+therefore has their IP address sent to Google before a single word renders. It
+is the **only** third-party transfer on an otherwise self-contained marketing
+site, it happens before any opportunity to consent, and it is the kind of thing
+that has drawn enforcement attention elsewhere in Europe.
+
+It is also an odd exception rather than a considered choice: the application
+already self-hosts its other typeface through `@fontsource-variable/atkinson-hyperlegible-next`.
+The same pattern applies here, and the CSS family name does not change, so no
+component needs touching.
+
+Worth knowing while doing this: the strict Content Security Policy in
+`caddy/prod/Caddyfile` — `style-src 'self' 'unsafe-inline'`, `font-src 'self'`
+— would already forbid this. It does not bite only because the marketing site
+is served straight from the GCS bucket through the load balancer and never
+passes through Caddy. So the public site currently has **no** Content Security
+Policy at all. Self-hosting the font removes the last thing that would prevent
+applying one, which is worth a follow-up of its own.
+
+- [ ] Add `@fontsource-variable/cormorant-garamond` (5.3.0 at time of writing;
+      283 kB, no dependencies, OFL-1.1) to the frontend workspace
+- [ ] Import it where the public pages already pull in shared styles, beside
+      the existing Atkinson Hyperlegible import
+- [ ] Remove the Google Fonts `<link>` and both `preconnect` hints from
+      `frontend/public_pages/templates/page.html`
+- [ ] Remove the same block from `frontend/.storybook/preview-head.html`, which
+      makes the identical request every time the component catalogue loads
+- [ ] Confirm the three consumers still render — `PublicTitle.tsx`,
+      `PublicInfoCard.module.css` and `PublicFeatureCard.module.css` all name
+      the family in CSS and should need no change
+- [ ] Check the italic faces specifically: the current request asks for weights
+      300–700 in both normal and italic, and a variable font that ships only
+      upright would silently fall back to a synthesised oblique
+- [ ] Verify in the browser that no request to `fonts.googleapis.com` or
+      `fonts.gstatic.com` remains on any public page
+- [ ] Follow-up, separately: consider serving the marketing site with a Content
+      Security Policy now that nothing third-party is loaded
+
 ## Prerequisites
 
 Blocking, before any of this ships:
 
-- [x] Cookie policy written, replacing the current stub — no consent banner is
-      required, but the strictly necessary session and cross-site request
-      forgery cookies must still be clearly described. Drafted from the actual
-      cookie code: `access_token` (15 min), `refresh_token` (7 days, scoped to
-      the refresh path), `XSRF-TOKEN` (readable by design). **Needs legal
-      review before it is relied on**
-- [x] Privacy policy written, describing the server-side request logging, the
-      aggregate visit counts, data location, sub-processors and data subject
-      rights. **Needs legal review before it is relied on.** Update it again
-      when client error reporting and page-view counting actually ship
-- [ ] Self-host the Cormorant Garamond typeface on the public site. The pages
-      currently load it from `fonts.googleapis.com`, which sends every
-      visitor's IP address to Google — the one third-party transfer on an
-      otherwise self-contained site, and an odd exception for a project that
-      already self-hosts its other typeface via `@fontsource-variable`. The
-      privacy policy discloses it as an interim measure
+- [ ] Cookie policy — **being written by a lawyer**. Drafts were written from
+      the code and then reverted; the published pages remain the original
+      stubs. The facts the policy has to state are settled and are recorded
+      below, so drafting them again is not the task — commissioning and
+      publishing the reviewed version is.
+- [ ] Privacy policy — **being written by a lawyer**, same position. It will
+      need updating again when client error reporting and page-view counting
+      actually ship, since both add processing the current text cannot
+      describe.
+- [ ] Self-host the Cormorant Garamond typeface — see the phase below. Fixing
+      it is better than disclosing it, and it removes a question the lawyer
+      would otherwise have to answer.
+
+### Facts the policies need to state
+
+Established from the code, for whoever drafts them:
+
+- **The public site sets no cookies at all.** No analytics, no advertising, no
+  consent banner needed. Its only third-party request is the Google Fonts one
+  above.
+- **The application sets exactly three cookies**, all strictly necessary under
+  PECR Regulation 6(4), so none needs consent but all need describing:
+  `access_token` (15 minutes, HttpOnly, SameSite=Lax, path `/`);
+  `refresh_token` (7 days, HttpOnly, SameSite=Lax, scoped to
+  `/api/auth/refresh`); and `XSRF-TOKEN` (matches the access token, and is
+  deliberately **not** HttpOnly because the client must read it back).
+- **Load-balancer request logs** record method, URL, status, size, user agent,
+  referrer, latency, protocol and client IP. Public-site rows are archived for
+  30 days; the long-run per-page counts live in a log-based metric holding no
+  IP.
+- **No third-party analytics processor** is used on any surface.
+- **Hosting** is Google Cloud Platform, European region.
 - [ ] Data protection impact assessment covering both, recording that no
       third-party processor is involved and that the electronic communications
       regulations do not engage
