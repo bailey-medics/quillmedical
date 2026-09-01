@@ -38,7 +38,7 @@ abbreviate-just:
 
 
 alias ii := initial-install
-# Clone all *-teaching repos and teaching-tooling into local dirs (safe to re-run)
+# Clone all *-teaching repos into local dirs (safe to re-run)
 initial-install:
     #!/usr/bin/env bash
     {{initialise}} "initial-install"
@@ -67,17 +67,8 @@ initial-install:
         done
     fi
 
-    # --- Teaching tooling repo ---
-    if [ -d "teaching-tooling" ]; then
-        echo "✓ teaching-tooling already cloned — pulling latest..."
-        git -C "teaching-tooling" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
-    else
-        echo "Cloning teaching-tooling..."
-        gh repo clone "$ORG/teaching-tooling" "teaching-tooling"
-    fi
-
     echo ""
-    echo "Done. Teaching repos are in ./teaching-repos/, tooling in ./teaching-tooling/"
+    echo "Done. Teaching repos are in ./teaching-repos/"
 
 
 alias cu := create-user

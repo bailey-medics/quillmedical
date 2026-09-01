@@ -13,7 +13,6 @@ The user may specify a repo name after the command (e.g. `/crp eoeeta`). Use thi
 | Argument | Repository path |
 |----------|----------------|
 | *(none)* | `/Users/markbailey/github/quillmedical` |
-| `tooling` | `/Users/markbailey/github/quillmedical/teaching-tooling` |
 | `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching` |
 | `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
 | `all` | *all of the above repos* |

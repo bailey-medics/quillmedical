@@ -507,17 +507,55 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 4: Cut the content repos over
 
-- [ ] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
+- [x] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
       `bailey-medics/quillmedical/.github/workflows/teaching-pipeline.yml@main`.
-- [ ] Confirm a green pull-request run and a real deploy on that repo before continuing.
-- [ ] Repeat for `eoeeta-teaching`.
+- [x] Confirm a green pull-request run and a real deploy on that repo before continuing.
+- [x] Repeat for `eoeeta-teaching`. Green on the first run, including the version lock that
+      failed on respiratory — because the `.gitattributes` fix and the pipeline switch went
+      on **one branch**, so the window where `lfs: true` met an untrue declaration never
+      existed. Sequence the two together on any future repo rather than ordering them.
+
+### What the cutover proved, and what it broke
+
+- **The required status checks composed unchanged**, which was the riskiest assumption in
+  the migration. The content ruleset requires `pipeline / validate` and
+  `pipeline / check-protection`; the caller's job is still `pipeline` and the called job
+  names were preserved, so no ruleset needed editing. Verified against the live rules
+  rather than reasoned about.
+- **Workload Identity Federation was unaffected.** The concern was that the provider might
+  be scoped on `job_workflow_ref`, which now points at Quill. It is scoped on the
+  repository, and a reusable workflow keeps the caller's identity, so `Authenticate to
+  Google Cloud` passed first time.
+- **`lfs: true` broke the first run**, and the fix was the other half of the LFS item
+  below: both repos declared `*.png filter=lfs` while storing plain blobs, so enabling LFS
+  made `git diff` rewrite every working-tree PNG to a pointer and version lock failed on a
+  branch that had changed no content. Recorded there in full.
+- **The first deploy exposed a bug CI sync had always had.** `/api/ci/teaching/sync` passed
+  `0` as the user id — no such user — so every pipeline sync violated the `users` foreign
+  key. It had failed silently since the endpoint was written, because it returned 200 with
+  the error in the body; the 422 above is what made it visible, on the first real deploy
+  after the cutover. Fixed by passing null and recording `synced_by_actor="deploy_bot"`.
+- **`synced: []` with no errors is a success, not a no-op**, and reads like one. Both banks
+  were already at their current version, so sync took the metadata-only path, which
+  refreshes the config and returns no sync record. That is exactly the path that used to
+  throw. It is also the reporting gap the "surface failed syncs" item below should close:
+  a deploy can be green while the response says nothing happened.
 
 ## Phase 5: Terraform and decommissioning
 
-- [ ] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
+- [x] Move `teaching-tooling/infra/main.tf` (organisation-level rulesets for content repos)
       into Quill's `infra/github/`. No overlap today — Quill's state manages only the
       `quillmedical` repo — so this is additive to that state.
-- [ ] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
+      - Ported with `import` blocks, not plain resources: the rulesets already exist, so a
+        plain resource would try to create duplicates. `terraform plan` reports
+        **2 to import, 0 to add, 0 to change, 0 to destroy**, which also confirms the
+        transcription matches what is live.
+      - **Deleting the repository will not delete these rulesets** — they are
+        organisation-level and survive. What deletion destroys is teaching-tooling's local
+        state, currently the only thing managing them, so apply the import *before*
+        deleting or they become live but unmanaged.
+- [x] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
+      Not ported, deliberately: they protect only that repository and disappear with it.
 - [ ] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies.
 - [ ] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
       and have had a green pull request and a real deploy on the new workflow. A `uses:`
@@ -532,10 +570,19 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
         this phase because it is the command a developer actually reaches for, and it was
         silently running the *old* validators. Version lock is skipped locally: it compares
         a branch against `origin/main`, which is a pull-request concern
-      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping
+      - `.claude/skills/crp/SKILL.md:18` — drop the `tooling` repository mapping, and with
+        it the `argument-hint`. The skill is **generated**, so the row had to go from its
+        source, `.github/prompts/commit-rebase-push.prompt.md`, and from the docs copy at
+        `docs/docs/llm/prompts/`, or the next sync would restore it.
       - `backend/app/features/teaching/storage.py:575` — a docstring still describing the
         layout as "the teaching-tooling module directory"
       - the local `teaching-tooling/` working-tree clone itself
+      - **Three references the plan had not listed**, found by sweeping rather than working
+        from the list: `docs/docs/getting-started.md` in two places (the clone step and a
+        paragraph describing the repo as where shared tooling lives),
+        `docs/docs/github/index.md` (a whole `### teaching-tooling` section), and a
+        `TEACHING_TOOLING_SCRIPTS_PATH` row in `docs/docs/teaching/index.md` documenting an
+        environment variable already deleted from `config.py`.
 
 ## Phase 6: Make GCS mirror the repo layout
 
@@ -615,7 +662,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
         fixture validated through the merge gate, so an empty file there became genuinely
         invalid. The rest stay empty, and the fixture README now says which is which and
         why.
-- [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
+- [x] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
       both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
       plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
       but only by accident: the first person to install git-lfs and commit an image creates
@@ -656,10 +703,21 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       - Version lock still applies: retired modules stay frozen, so the two checks are
         complementary — one refuses changes, the other stops re-validating what cannot
         change.
-- [ ] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
+- [x] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
       already recorded and exposed at `GET /api/teaching/syncs`; the gap is that nothing
       draws attention to it. A red deploy from the item above covers the common case, so
       keep this small.
+      - A failed deploy now posts to Slack, quoting the backend's response so the message
+        names the bank that was rejected rather than sending the reader to the logs. It
+        goes through the shared `slack-notify.yml`, which had to stop relying on a bare
+        checkout: that takes whichever repository the run belongs to, which for a content
+        repo is the content repo, where the channel validation script does not exist.
+      - `SLACK_WEBHOOK_URL` is an organisation secret with visibility **all**. `private`
+        means "all private repositories", and `respiratory-teaching` is public, so the repo
+        that was cut over first was the one the secret could not reach.
+      - **Still open:** a green deploy reporting `"synced": []` says nothing about the
+        metadata-only updates it performed. Worth reporting what changed, not only what
+        failed.
 - [ ] **Re-validate live banks when the tooling changes, not only when content changes.**
       Today nothing does this: validation runs on a content pull request and on a content
       push to main, and a Quill-side tooling change triggers neither. Quill's `deploy.yml`
