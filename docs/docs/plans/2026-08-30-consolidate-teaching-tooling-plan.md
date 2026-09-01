@@ -510,7 +510,10 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 - [x] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
       `bailey-medics/quillmedical/.github/workflows/teaching-pipeline.yml@main`.
 - [x] Confirm a green pull-request run and a real deploy on that repo before continuing.
-- [ ] Repeat for `eoeeta-teaching`.
+- [x] Repeat for `eoeeta-teaching`. Green on the first run, including the version lock that
+      failed on respiratory — because the `.gitattributes` fix and the pipeline switch went
+      on **one branch**, so the window where `lfs: true` met an untrue declaration never
+      existed. Sequence the two together on any future repo rather than ordering them.
 
 ### What the cutover proved, and what it broke
 
