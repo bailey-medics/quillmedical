@@ -556,14 +556,25 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
         deleting or they become live but unmanaged.
 - [x] Drop `teaching-tooling`'s own repo-level rulesets (rulesets 3 and 4 in that file).
       Not ported, deliberately: they protect only that repository and disappear with it.
-- [ ] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies.
-- [ ] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
+- [x] Delete the orphaned `teaching-repos/*/scripts/validate.py` copies. 691 lines each,
+      untouched since 2026-05-23 and referenced by nothing in either repository — they were
+      the third divergent copy of the schema this plan set out to remove. `scripts/` held
+      nothing else, so both directories go with them.
+- [x] Delete `bailey-medics/teaching-tooling` — only after both content repos are cut over
       and have had a green pull request and a real deploy on the new workflow. A `uses:`
       pointing at a deleted repo fails instantly, so this is the last irreversible step.
-- [ ] Remove every local reference in the same pass:
+      - Confirmed afterwards that the organisation rulesets survived, still `active` with
+        their check contexts intact, and that Terraform reports no differences. Deleting a
+        repository does not touch organisation-level rules.
+      - The local clone had already been removed, which destroyed the old local Terraform
+        state. That cost nothing: `import` blocks adopt a resource by its live ID, so the
+        move into Quill never needed the old state.
+- [x] Remove every local reference in the same pass:
       - `.gitignore:26` — the `teaching-tooling/` entry
       - `Justfile:41,71-80` — the clone/pull block in `initial-install`, and its closing
-        "tooling in ./teaching-tooling/" message
+        "tooling in ./teaching-tooling/" message. This one is load-bearing rather than
+        cosmetic: the clone runs under `set -euo pipefail`, so once the repository was gone
+        `just initial-install` would fail outright until this shipped.
       - [x] `Justfile` — `validate-teaching` rewritten to run the merged CLI in
         `quill_backend`, matching how `just ub` works, rather than shelling into the
         `teaching-tooling` checkout with its own venv and npm install. Pulled forward from
