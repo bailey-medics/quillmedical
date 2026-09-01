@@ -7,10 +7,10 @@
 # workflow, so the rules that gate them belong in the same state as the
 # workflow rather than in a repository that no longer runs anything.
 #
-# These rulesets already exist in GitHub. The import blocks below adopt them
-# into this state rather than creating duplicates — `terraform plan` should
-# report two imports and no changes. Once applied, delete the corresponding
-# resources from teaching-tooling before that repository goes.
+# They already existed in GitHub and were adopted into this state with
+# `import` blocks, since creating them again would have made duplicates. The
+# import blocks have been removed now that the adoption is applied; a stale
+# one reads as work still outstanding.
 #
 # GitHub's fnmatch wildcards (e.g. ~*-teaching) are unreliable in org-level
 # repository_name conditions, so the repositories are listed explicitly. Add
@@ -27,11 +27,6 @@ locals {
 # job names in Quill's teaching-pipeline.yml. Both were deliberately
 # preserved through the consolidation so these contexts stay valid; renaming
 # either leaves a pull request waiting on a check that never reports.
-import {
-  to = github_organization_ruleset.teaching_protected_branches
-  id = "17038589"
-}
-
 resource "github_organization_ruleset" "teaching_protected_branches" {
   name        = "teaching-content-protected-branches"
   target      = "branch"
@@ -73,11 +68,6 @@ resource "github_organization_ruleset" "teaching_protected_branches" {
     non_fast_forward = true
     deletion         = true
   }
-}
-
-import {
-  to = github_organization_ruleset.teaching_branch_naming
-  id = "17038587"
 }
 
 resource "github_organization_ruleset" "teaching_branch_naming" {
