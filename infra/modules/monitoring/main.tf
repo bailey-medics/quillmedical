@@ -267,10 +267,11 @@ resource "google_monitoring_alert_policy" "server_errors" {
 
   notification_channels = local.notification_channels
 
+  # No notification_rate_limit here. Google rejects it on anything but a
+  # log-based policy: "only log-based alert policies may specify a
+  # notification rate limit". The cloud_run_startup policy above may use one
+  # because it matches log entries; this one is a metric threshold.
   alert_strategy {
     auto_close = "1800s" # 30 minutes
-    notification_rate_limit {
-      period = "300s" # At most one notification per 5 minutes
-    }
   }
 }
