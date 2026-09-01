@@ -452,11 +452,22 @@ The only phase needing new client code, and the one carrying the real risk.
 
 Blocking, before any of this ships:
 
-- [ ] Cookie policy written, replacing the current stub — no consent banner is
+- [x] Cookie policy written, replacing the current stub — no consent banner is
       required, but the strictly necessary session and cross-site request
-      forgery cookies must still be clearly described
-- [ ] Privacy policy updated to describe the error reporting and page-view
-      counting, their purpose, and the retention period
+      forgery cookies must still be clearly described. Drafted from the actual
+      cookie code: `access_token` (15 min), `refresh_token` (7 days, scoped to
+      the refresh path), `XSRF-TOKEN` (readable by design). **Needs legal
+      review before it is relied on**
+- [x] Privacy policy written, describing the server-side request logging, the
+      aggregate visit counts, data location, sub-processors and data subject
+      rights. **Needs legal review before it is relied on.** Update it again
+      when client error reporting and page-view counting actually ship
+- [ ] Self-host the Cormorant Garamond typeface on the public site. The pages
+      currently load it from `fonts.googleapis.com`, which sends every
+      visitor's IP address to Google — the one third-party transfer on an
+      otherwise self-contained site, and an odd exception for a project that
+      already self-hosts its other typeface via `@fontsource-variable`. The
+      privacy policy discloses it as an interim measure
 - [ ] Data protection impact assessment covering both, recording that no
       third-party processor is involved and that the electronic communications
       regulations do not engage
