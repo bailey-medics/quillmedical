@@ -507,10 +507,36 @@ Additive — `teaching-tooling` keeps working untouched throughout this phase.
 
 ## Phase 4: Cut the content repos over
 
-- [ ] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
+- [x] Point `respiratory-teaching`'s `.github/workflows/teaching.yml` at
       `bailey-medics/quillmedical/.github/workflows/teaching-pipeline.yml@main`.
-- [ ] Confirm a green pull-request run and a real deploy on that repo before continuing.
+- [x] Confirm a green pull-request run and a real deploy on that repo before continuing.
 - [ ] Repeat for `eoeeta-teaching`.
+
+### What the cutover proved, and what it broke
+
+- **The required status checks composed unchanged**, which was the riskiest assumption in
+  the migration. The content ruleset requires `pipeline / validate` and
+  `pipeline / check-protection`; the caller's job is still `pipeline` and the called job
+  names were preserved, so no ruleset needed editing. Verified against the live rules
+  rather than reasoned about.
+- **Workload Identity Federation was unaffected.** The concern was that the provider might
+  be scoped on `job_workflow_ref`, which now points at Quill. It is scoped on the
+  repository, and a reusable workflow keeps the caller's identity, so `Authenticate to
+  Google Cloud` passed first time.
+- **`lfs: true` broke the first run**, and the fix was the other half of the LFS item
+  below: both repos declared `*.png filter=lfs` while storing plain blobs, so enabling LFS
+  made `git diff` rewrite every working-tree PNG to a pointer and version lock failed on a
+  branch that had changed no content. Recorded there in full.
+- **The first deploy exposed a bug CI sync had always had.** `/api/ci/teaching/sync` passed
+  `0` as the user id — no such user — so every pipeline sync violated the `users` foreign
+  key. It had failed silently since the endpoint was written, because it returned 200 with
+  the error in the body; the 422 above is what made it visible, on the first real deploy
+  after the cutover. Fixed by passing null and recording `synced_by_actor="deploy_bot"`.
+- **`synced: []` with no errors is a success, not a no-op**, and reads like one. Both banks
+  were already at their current version, so sync took the metadata-only path, which
+  refreshes the config and returns no sync record. That is exactly the path that used to
+  throw. It is also the reporting gap the "surface failed syncs" item below should close:
+  a deploy can be green while the response says nothing happened.
 
 ## Phase 5: Terraform and decommissioning
 
@@ -615,7 +641,7 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
         fixture validated through the merge gate, so an empty file there became genuinely
         invalid. The rest stay empty, and the fixture README now says which is which and
         why.
-- [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
+- [x] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
       both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
       plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
       but only by accident: the first person to install git-lfs and commit an image creates
@@ -656,10 +682,21 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       - Version lock still applies: retired modules stay frozen, so the two checks are
         complementary — one refuses changes, the other stops re-validating what cannot
         change.
-- [ ] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
+- [x] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
       already recorded and exposed at `GET /api/teaching/syncs`; the gap is that nothing
       draws attention to it. A red deploy from the item above covers the common case, so
       keep this small.
+      - A failed deploy now posts to Slack, quoting the backend's response so the message
+        names the bank that was rejected rather than sending the reader to the logs. It
+        goes through the shared `slack-notify.yml`, which had to stop relying on a bare
+        checkout: that takes whichever repository the run belongs to, which for a content
+        repo is the content repo, where the channel validation script does not exist.
+      - `SLACK_WEBHOOK_URL` is an organisation secret with visibility **all**. `private`
+        means "all private repositories", and `respiratory-teaching` is public, so the repo
+        that was cut over first was the one the secret could not reach.
+      - **Still open:** a green deploy reporting `"synced": []` says nothing about the
+        metadata-only updates it performed. Worth reporting what changed, not only what
+        failed.
 - [ ] **Re-validate live banks when the tooling changes, not only when content changes.**
       Today nothing does this: validation runs on a content pull request and on a content
       push to main, and a Quill-side tooling change triggers neither. Quill's `deploy.yml`
