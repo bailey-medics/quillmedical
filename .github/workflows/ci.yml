@@ -200,7 +200,7 @@ jobs:
         run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
       # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
       - name: Lint GitHub Actions workflows
-        uses: docker://rhysd/actionlint:1.7.8
+        uses: docker://rhysd/actionlint:1.7.9
         with:
           args: -color
       - name: Set up bats
