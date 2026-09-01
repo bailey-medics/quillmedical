@@ -357,7 +357,6 @@ Set in `compose.dev.yml` for local development:
 | `TEACHING_IMAGES_BASE_URL`      | `/api/teaching/images` | Base URL for image serving                  |
 | `TEACHING_GCS_BUCKET`           | _(not set)_            | GCS bucket name (production only)           |
 | `TEACHING_SYNC_TOKEN`           | _(not set)_            | Auth token for CI sync endpoint             |
-| `TEACHING_TOOLING_SCRIPTS_PATH` | _(not set)_            | Path to teaching-tooling scripts            |
 
 ### Docker volume mount
 

@@ -572,8 +572,8 @@ def download_module_from_gcs(
 ) -> Path | None:
     """Download a full module directory from GCS for tooling validation.
 
-    Reconstructs the module directory layout that the teaching-tooling
-    validator expects::
+    Reconstructs the module directory layout that the content validator
+    expects::
 
         <tmp>/<bank_id>/
             module.yaml
