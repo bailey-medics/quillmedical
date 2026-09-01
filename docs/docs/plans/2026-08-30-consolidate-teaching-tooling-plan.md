@@ -575,12 +575,19 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 
 ## Phase 7: Close the safety gaps that prompted this
 
-- [ ] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
+- [x] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
       `curl -sf` actually fails the content deploy. Land this together with the `deploy`
       trim in Phase 3 — once `deploy` no longer validates, this is the only thing that can
       turn a rejected bank into a red build.
-- [ ] Confirm the certificate block is validated at pull-request time, before anything
-      reaches GCS.
+- [x] Confirm the certificate block is validated at pull-request time, before anything
+      reaches GCS. Confirmed by running the merge-gate validator over a module carrying a
+      deliberately broken block: a font outside the allowed set, a coordinate above the
+      permitted range, and a misspelled key are all rejected, along with the missing
+      required text fields and the missing background image.
+      - Note the gate is conditional, and rightly so: the block is only validated when
+        `results.certificate_download` is true. A first attempt at this confirmation looked
+        like a failure because the fixture did not enable it, and the block was ignored —
+        correct behaviour, not a hole.
 - [ ] Check that image files are actually images, by magic bytes. The validator only ever
       matches filenames and extensions — it never opens an image — so anything with the
       right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
@@ -600,6 +607,16 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
+      - **Chosen: `lfs: true` on the content checkouts.** It is entirely a Quill change, so
+        neither content repo needs editing; it costs nothing today because there are no LFS
+        objects to fetch; and it is correct the moment anyone does commit through LFS.
+        Dropping the `.gitattributes` line would instead commit a visual-diagnosis bank's
+        images to plain git blobs permanently, which is the case LFS exists for.
+      - Added to `validate` and `deploy` only. `auto-pr` never reads the content, and the
+        workflow now says so, so the omission is not mistaken for an oversight.
+      - Verified `git lfs ls-files` reports zero files in both content repos while both
+        `.gitattributes` declare `*.png filter=lfs`, so the mismatch is real and this is
+        pre-emptive rather than a fix to something already broken.
 - [x] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
