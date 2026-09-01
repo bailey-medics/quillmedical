@@ -282,6 +282,25 @@ Server side, already collected:
       rather than just noticed
 - [ ] Confirm the alert fires on a deliberately broken endpoint in a
       non-production environment, rather than assuming the filter is right
+- [ ] Grant the CI service account `roles/logging.configWriter` on
+      `quill-medical-teaching`. The first apply failed with
+      `logging.sinks.create denied`: creating a log sink is not covered by the
+      roles the deploy account holds, and it cannot grant itself the role, so
+      this is a one-off manual step before the sink can be created
+
+**Two lessons from the first apply**, worth keeping because `terraform plan`
+cannot catch either. Plan checks syntax, provider schema and state; it does not
+check IAM for resources that do not yet exist, and it does not evaluate the
+API's semantic rules. So a green plan is necessary and not sufficient, and the
+first apply of any new resource type is the real test:
+
+- `notification_rate_limit` is only legal on **log-based** alert policies.
+  It was copied from `cloud_run_startup`, which matches log entries, onto
+  `server_errors`, which is a metric threshold — and Google rejected it at
+  create time with "only log-based alert policies may specify a notification
+  rate limit".
+- The deploy service account could create metrics, dashboards and BigQuery
+  datasets, but not log sinks.
 
 Client side, new work:
 
