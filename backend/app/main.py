@@ -5392,15 +5392,30 @@ router.include_router(teaching_router)
 
 
 # --- CI/CD sync endpoint (service token auth) ---
-@router.post("/ci/teaching/sync", response_model=CiTeachingSyncOut)
+@router.post(
+    "/ci/teaching/sync",
+    response_model=CiTeachingSyncOut,
+    responses={
+        422: {
+            "model": CiTeachingSyncOut,
+            "description": "At least one bank was rejected.",
+        }
+    },
+)
 def ci_teaching_sync(
     request: Request,
+    response: Response,
     db: Session = Depends(get_core_db),
 ) -> CiTeachingSyncOut:
     """Trigger teaching content sync from CI/CD pipeline.
 
     Authenticates via Bearer token (TEACHING_SYNC_TOKEN).
     Syncs all banks found in GCS or local filesystem.
+
+    Returns 422 when any bank was rejected, so the content deploy that
+    calls this fails instead of reporting success. The body is the same
+    either way, because a partial sync still needs to say which banks
+    succeeded and which did not.
     """
     import shutil
 
@@ -5534,6 +5549,12 @@ def ci_teaching_sync(
                 shutil.rmtree(bank_path.parent, ignore_errors=True)
             if tooling_is_temp and tooling_module_dir:
                 shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
+
+    if errors:
+        # Non-2xx so the caller's curl fails. Without this a rejected bank
+        # is indistinguishable from a clean sync, which is what let a
+        # malformed certificate block reach GCS unnoticed.
+        response.status_code = 422
 
     return CiTeachingSyncOut(synced=synced, errors=errors)
 

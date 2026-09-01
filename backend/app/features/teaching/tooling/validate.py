@@ -58,6 +58,27 @@ REQUIRED_CERTIFICATE_FIELDS = (
 #: The background image a certificate is composited onto.
 CERTIFICATE_BACKGROUND = "certificate-blank.png"
 
+#: Leading bytes each accepted image format must start with. Checked
+#: instead of the file size because the failure this guards against — a
+#: Git LFS pointer — is a ~132-byte text file, not an empty one.
+#: Exported so tests can build a file that passes this check without
+#: restating the bytes.
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+_IMAGE_SIGNATURES: dict[str, tuple[bytes, ...]] = {
+    ".png": (PNG_SIGNATURE,),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".webp": (b"RIFF",),
+}
+
+#: How a Git LFS pointer file begins. Worth naming separately: the fix is
+#: to fetch the objects, not to replace the file.
+_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+
+#: Enough for the longest signature and the LFS pointer's first line.
+_IMAGE_HEADER_BYTES = 64
+
 #: Item directory name to the filenames it contains, with "." for the
 #: assessment root. Supplied when content lives in GCS: only YAML is
 #: downloaded there, so images are never on disk and a directory listing
@@ -106,6 +127,7 @@ class ValidationResult:
     errors: list[ValidationMessage] = field(default_factory=list)
     warnings: list[ValidationMessage] = field(default_factory=list)
     modules_checked: int = 0
+    modules_skipped: int = 0
     item_count: int = 0
 
     @property
@@ -137,7 +159,10 @@ class ValidationResult:
             )
             return "\n".join(parts)
 
-        parts = [f"Checked {self.modules_checked} module(s)."]
+        checked = f"Checked {self.modules_checked} module(s)"
+        if self.modules_skipped:
+            checked += f", skipped {self.modules_skipped} retired"
+        parts = [f"{checked}."]
         if self.is_valid:
             parts.append("All valid.")
         else:
@@ -168,6 +193,56 @@ def _files_in(
     if inventory is not None:
         return set(inventory.get(key or directory.name, set()))
     return {f.name for f in directory.iterdir() if f.is_file()}
+
+
+def _image_problem(path: Path) -> str | None:
+    """Why *path* is not the image its name claims, or None if it is.
+
+    Only the leading bytes are read: this asks whether the file is what it
+    says it is, not whether it decodes, so it needs no image library. The
+    ``content`` package stays on pydantic and pyyaml alone.
+    """
+    signatures = _IMAGE_SIGNATURES.get(path.suffix.lower())
+    if signatures is None:
+        return None
+
+    try:
+        with open(path, "rb") as f:
+            header = f.read(_IMAGE_HEADER_BYTES)
+    except OSError as exc:
+        return f"could not be read ({exc.strerror or exc})"
+
+    if header.startswith(_LFS_POINTER_PREFIX):
+        return (
+            "is a Git LFS pointer, not an image — the checkout did not "
+            "fetch LFS objects"
+        )
+
+    if not header:
+        return "is empty"
+
+    if any(header.startswith(sig) for sig in signatures):
+        return None
+
+    return f"does not begin with a valid {path.suffix.lower()[1:]} header"
+
+
+def _validate_image_bytes(module_dir: Path, result: ValidationResult) -> None:
+    """Check every image in *module_dir* really is an image.
+
+    Only run where the bytes genuinely exist. On the sync path they do not:
+    ``download_bank_from_gcs`` fetches only YAML and
+    ``download_module_from_gcs`` writes zero-byte placeholders, so every
+    image there would fail a check it was never meant to face.
+    """
+    for path in sorted(module_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        problem = _image_problem(path)
+        if problem is None:
+            continue
+        rel = str(path.relative_to(module_dir.parent.parent))
+        result.add_error(rel, f"{path.name} {problem}")
 
 
 def _as_mapping(data: object) -> dict[str, object] | None:
@@ -960,13 +1035,56 @@ def _validate_learning_dir(
         result.add_error(rel_content, message)
 
 
+def _is_retired(module_dir: Path) -> bool:
+    """Whether ``module.yaml`` declares this module retired.
+
+    Read tolerantly and on its own, because the answer decides whether the
+    stricter checks run at all. Anything unreadable is not retired, so it
+    is validated normally and reports its own error.
+    """
+    yaml_path = module_dir / "module.yaml"
+    if not yaml_path.is_file():
+        return False
+
+    try:
+        with open(yaml_path, encoding="utf-8") as f:
+            data = _as_mapping(yaml.safe_load(f))
+    except (yaml.YAMLError, OSError):
+        return False
+
+    if data is None:
+        return False
+
+    return data.get("status") == "retired"
+
+
 def _validate_module(
     module_dir: Path,
     result: ValidationResult,
     image_inventory: ImageInventory | None = None,
+    *,
+    check_image_bytes: bool = False,
 ) -> None:
-    """Validate a single module directory."""
+    """Validate a single module directory.
+
+    Retired modules are skipped entirely. ``check_version_lock`` freezes
+    them permanently, so they can never be brought into line with a
+    stricter validator — and the deploy re-uploads every module regardless
+    of status, so one retired module would otherwise make every future
+    deploy fail with nothing anyone is allowed to fix.
+
+    ``check_image_bytes`` is opt-in rather than inferred, so a future
+    caller cannot switch it on by accident: it is only correct where the
+    real files are on disk, which is the merge gate and not sync.
+    """
+    if _is_retired(module_dir):
+        result.modules_skipped += 1
+        return
+
     result.modules_checked += 1
+
+    if check_image_bytes:
+        _validate_image_bytes(module_dir, result)
 
     _validate_module_yaml(module_dir, result)
 
@@ -1021,8 +1139,16 @@ def validate_module_metadata(module_dir: Path) -> ValidationResult:
     assessment against a GCS inventory, which a module directory cannot
     supply, so the two halves are checked from whichever source can see
     them — together covering everything exactly once.
+
+    Retired modules are skipped, for the reason given on
+    :func:`_validate_module`.
     """
     result = ValidationResult()
+
+    if _is_retired(module_dir):
+        result.modules_skipped += 1
+        return result
+
     result.modules_checked += 1
 
     _validate_module_yaml(module_dir, result)
@@ -1087,7 +1213,9 @@ def validate_modules_dir(modules_dir: Path) -> ValidationResult:
         return result
 
     for module_dir in module_dirs:
-        _validate_module(module_dir, result)
+        # The merge gate has the real files, so this is where an image can
+        # be checked for actually being one.
+        _validate_module(module_dir, result, check_image_bytes=True)
 
     return result
 

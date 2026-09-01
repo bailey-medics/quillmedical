@@ -22,6 +22,7 @@ import yaml
 
 from app.features.teaching.tooling.validate import (
     CERTIFICATE_BACKGROUND,
+    PNG_SIGNATURE,
     certificate_enabled,
     validate_certificate_config,
     validate_modules_dir,
@@ -190,7 +191,11 @@ class TestMergeGate:
             yaml.dump(_VALID_VARIABLE_QUESTION)
         )
         if background:
-            (assessment / CERTIFICATE_BACKGROUND).write_bytes(b"fake-png")
+            # A real PNG signature: the merge gate now checks that an
+            # image is one, so b"fake-png" would fail for the wrong reason.
+            (assessment / CERTIFICATE_BACKGROUND).write_bytes(
+                PNG_SIGNATURE + b"fake-png"
+            )
         return modules
 
     def test_valid_certificate_passes_the_gate(self, tmp_path: Path) -> None:

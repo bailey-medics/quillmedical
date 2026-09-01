@@ -33,6 +33,8 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      # No lfs: true here, unlike validate and deploy — this job only opens
+      # a pull request and never reads the content.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
@@ -64,11 +66,18 @@ jobs:
     permissions:
       contents: read
     steps:
+      # lfs: true because both content repos' .gitattributes declare
+      # *.png as LFS. checkout does not fetch LFS unless asked, so without
+      # this a pointer — a ~132-byte text file with the right name and
+      # extension — would be validated and deployed in place of the image.
+      # No LFS objects exist today, so this costs nothing; removing it
+      # re-opens the trap the moment anyone commits one.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
           path: question_bank_content
           fetch-depth: 0
+          lfs: true
 
       - name: Fetch main branch
         working-directory: question_bank_content
@@ -162,10 +171,14 @@ jobs:
       contents: read
       id-token: write
     steps:
+      # lfs: true for the same reason as validate — this job uploads the
+      # bytes to GCS, so a pointer here reaches candidates as a broken
+      # image, and for a visual-diagnosis bank the image is the question.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
         with:
           path: question_bank_content
+          lfs: true
 
       - name: Check out the Quill scripts
         uses: actions/checkout@v7.0.1
@@ -189,9 +202,12 @@ jobs:
           bash tooling/.github/scripts/teaching-pipeline/sync-to-gcs.sh \
             question_bank_content/modules "${{ secrets.GCP_TEACHING_GCS_BUCKET }}"
 
+      # --fail-with-body, not -f: the endpoint returns 422 with the
+      # rejected banks listed in the body, and plain -f discards it. The
+      # build should say which bank failed and why, not just go red.
       - name: Trigger backend sync
         run: |
-          curl -sf -X POST \
+          curl -sS --fail-with-body -X POST \
             "${{ secrets.BACKEND_SYNC_URL }}/api/ci/teaching/sync" \
             -H "Authorization: Bearer ${{ secrets.BACKEND_SYNC_TOKEN }}" \
             -H "Content-Type: application/json"

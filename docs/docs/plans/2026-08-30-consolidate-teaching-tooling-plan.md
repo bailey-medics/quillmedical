@@ -575,13 +575,20 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
 
 ## Phase 7: Close the safety gaps that prompted this
 
-- [ ] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
+- [x] Make `/api/ci/teaching/sync` return a non-2xx status when `errors` is non-empty, so
       `curl -sf` actually fails the content deploy. Land this together with the `deploy`
       trim in Phase 3 — once `deploy` no longer validates, this is the only thing that can
       turn a rejected bank into a red build.
-- [ ] Confirm the certificate block is validated at pull-request time, before anything
-      reaches GCS.
-- [ ] Check that image files are actually images, by magic bytes. The validator only ever
+- [x] Confirm the certificate block is validated at pull-request time, before anything
+      reaches GCS. Confirmed by running the merge-gate validator over a module carrying a
+      deliberately broken block: a font outside the allowed set, a coordinate above the
+      permitted range, and a misspelled key are all rejected, along with the missing
+      required text fields and the missing background image.
+      - Note the gate is conditional, and rightly so: the block is only validated when
+        `results.certificate_download` is true. A first attempt at this confirmation looked
+        like a failure because the fixture did not enable it, and the block was ignored —
+        correct behaviour, not a hole.
+- [x] Check that image files are actually images, by magic bytes. The validator only ever
       matches filenames and extensions — it never opens an image — so anything with the
       right name passes. A hand-committed empty file is far-fetched, but a **Git LFS
       pointer** is not: both content repos' `.gitattributes` declare
@@ -594,17 +601,53 @@ modules/<bank_id>/learning/       # was learning/<bank_id>/
       bytes rather than `st_size`. No new dependency needed; Pillow reaches the backend only
       transitively via `reportlab`, and must not become a dependency of the `content`
       package, which stays pydantic + pyyaml only.
+      - **Merge gate only, and opt-in rather than inferred.** `validate_modules_dir` passes
+        `check_image_bytes=True`; nothing else does. Sync has no bytes to inspect —
+        `download_bank_from_gcs` fetches only YAML and `download_module_from_gcs` writes
+        zero-byte placeholders — so the same check there would reject content that is
+        perfectly fine in the bucket. Tests assert that placeholders, and even a pointer,
+        still pass the sync path, so the asymmetry cannot be "fixed" by accident.
+      - The LFS pointer gets its own message naming the checkout, because "not a valid png"
+        would send someone to re-export an image that is fine.
+      - Only the leading bytes are read, so no image library is needed and the package
+        stays on pydantic and pyyaml.
+      - `.valid-module/cover.png` gained a real 8-byte PNG signature. It is the only
+        fixture validated through the merge gate, so an empty file there became genuinely
+        invalid. The rest stay empty, and the fixture README now says which is which and
+        why.
 - [ ] Reconcile the LFS declaration. Right now `git lfs ls-files` reports **zero files** in
       both content repos despite `.gitattributes` declaring PNGs as LFS — the images are
       plain git blobs (`cover.png` is a 1.2 MB object in git). So nothing is broken today,
       but only by accident: the first person to install git-lfs and commit an image creates
       a pointer that CI will not fetch. Either add `lfs: true` to the content checkouts, or
       drop the misleading `.gitattributes` line. Pick one — leaving it as-is is the trap.
-- [ ] Skip content validation for modules whose `module.yaml` status is `retired`. They are
+      - **Chosen: `lfs: true` on the content checkouts.** It is entirely a Quill change, so
+        neither content repo needs editing; it costs nothing today because there are no LFS
+        objects to fetch; and it is correct the moment anyone does commit through LFS.
+        Dropping the `.gitattributes` line would instead commit a visual-diagnosis bank's
+        images to plain git blobs permanently, which is the case LFS exists for.
+      - Added to `validate` and `deploy` only. `auto-pr` never reads the content, and the
+        workflow now says so, so the omission is not mistaken for an oversight.
+      - Verified `git lfs ls-files` reports zero files in both content repos while both
+        `.gitattributes` declare `*.png filter=lfs`, so the mismatch is real and this is
+        pre-emptive rather than a fix to something already broken.
+- [x] Skip content validation for modules whose `module.yaml` status is `retired`. They are
       frozen by `check_version_lock.py`, so they can never be brought into line with a
       stricter validator, and the deploy loop re-uploads every module regardless of status
       — without this, one retired bank makes every future deploy red and the Phase 6
       signal worthless.
+      - The status is read on its own, tolerantly, before any other check: anything
+        unreadable is treated as not retired, so a module that cannot be parsed is
+        validated normally and reports its own error rather than skipping itself.
+      - Both entry points needed it, not just the merge gate. Sync re-imports every module
+        through `validate_module_metadata`, so a retired bank would have failed the sync
+        instead of the deploy.
+      - The skip is counted and printed (`skipped N retired`), mirroring
+        `check_version_lock`. A module that vanishes from validation without a word is a
+        module nobody remembers is unvalidated.
+      - Version lock still applies: retired modules stay frozen, so the two checks are
+        complementary — one refuses changes, the other stops re-validating what cannot
+        change.
 - [ ] Surface failed syncs rather than leaving them in `QuestionBankSync` rows. The data is
       already recorded and exposed at `GET /api/teaching/syncs`; the gap is that nothing
       draws attention to it. A red deploy from the item above covers the common case, so
@@ -757,6 +800,11 @@ can reach.
       hardcodes `poetry==<version>` instead of reading the pin, so a future bump cannot be
       half-applied. Refactored to `main()` with a source guard and given bats coverage,
       which closes part of the scripts to-do.
+- [x] Pin Renovate's Poetry too, via `constraints.poetry` in `renovate.json`. The bot runs
+      in its own container and cannot read `.poetry-version`, so it relocked with 2.3.3
+      against a 2.4.2 pin on the very next dependency PR. That value is a second copy of
+      the version, so `check-version-consistency.sh` asserts it matches. Note this one is
+      only provable on the next scheduled run: nothing local can exercise the hosted bot.
 - [ ] Confirm CI is green before merging, since every Python job changes how it installs
       Poetry.
 

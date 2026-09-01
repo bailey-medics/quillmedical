@@ -529,6 +529,7 @@
     "staffuser",
     "startswith",
     "stdlib",
+    "strerror",
     "stringtype",
     "structlog",
     "superadmin",
