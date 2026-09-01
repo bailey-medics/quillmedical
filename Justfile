@@ -386,6 +386,28 @@ terraform-github:
     fi
 
 
+alias tf := terraform-infra
+# Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
+terraform-infra env="teaching":
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-infra"
+    set -euo pipefail
+    cd infra
+    VARS="environments/{{env}}/terraform.tfvars"
+    if [ ! -f "$VARS" ]; then
+        echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
+        exit 1
+    fi
+    terraform init -input=false
+    terraform plan -var-file="$VARS"
+    read -rp "Apply these changes to {{env}}? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file="$VARS" -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
 alias pub := public-pages
 # Run public pages dev server
 public-pages:

@@ -32,3 +32,21 @@ variable "cloud_run_services" {
   type        = list(string)
   default     = []
 }
+
+variable "server_error_threshold" {
+  description = "5xx responses in a 5-minute window before the server error alert fires"
+  type        = number
+  default     = 5
+}
+
+variable "alert_sms_number" {
+  description = "E.164 phone number for escalated alerts, e.g. +447700900000. Must be verified by code in the Cloud console before it delivers. Leave empty to disable the escalation tier."
+  type        = string
+  default     = ""
+}
+
+variable "escalation_duration" {
+  description = "How long an outage must persist before escalating past Slack and email"
+  type        = string
+  default     = "900s"
+}

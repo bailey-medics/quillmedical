@@ -49,10 +49,14 @@ that recur are collected in the glossary at the foot of this document.
   already written.
 
 - **Public site visitor numbers** — the load balancer already logs every
-  request. `infra/modules/load-balancer/main.tf` sets `log_config { enable =
-  true }` on both backend services, and those logs already flow to Cloud
-  Logging today. This question needs no application code at all: it is a
-  querying and dashboard problem, not a collection problem.
+  request, and the public site is logged by a different mechanism from the
+  app. `infra/modules/load-balancer/main.tf` sets `log_config { enable = true }`
+  on the two backend *services*, but the marketing site is served by
+  `google_compute_backend_bucket.landing`, which has no such block. It does not
+  need one: logging for backend buckets on an external Application Load
+  Balancer is switched on automatically and cannot be disabled. Either way the
+  logs are already flowing, so this question needs no application code at all —
+  it is a querying and dashboard problem, not a collection problem.
 
 - **App page views** — this is the only one needing new client code. The app
   is a single-page application using `createBrowserRouter`, so navigating
@@ -81,16 +85,39 @@ These split by purpose, and the split is a rule rather than a preference.
   second tool in the loop. Page name is a metric label; at 63 routes that is 63
   time series against a 30,000 ceiling, so cardinality is a non-issue.
 
-- **BigQuery stays, but as an archive rather than a dashboard source.** Metrics
-  are aggregates: they answer the question you thought to ask when you defined
-  them, and cannot be re-sliced afterwards. The raw sink costs pennies and is
-  what lets a new question be asked of old data — "which referrer, last March"
-  — so it is worth keeping even though nothing routinely looks at it. One place
-  to look; one cheap archive nobody looks at until they need it.
+- **The long history lives in the metric, not the archive.** Wanting to keep
+  usage data for as long as possible and wanting to hold client IP addresses
+  are separable, and separating them is what makes long retention easy. The
+  log-based metric carries a **`page` label**, so per-page visit counts are
+  retained by Cloud Monitoring for years with no IP address and nothing else
+  personal in them. Nothing has to be deleted, because nothing sensitive was
+  stored.
 
-- **The alarm that says "wake up" lives outside Google Cloud entirely.** An
+  So the raw BigQuery table is not the long archive; it is a short
+  investigation window, defaulting to 30 days. What it holds is one row per
+  **public marketing site** request: timestamp, method and URL, response status
+  and size, user agent, referrer, latency, protocol, and client IP. Nothing
+  from the authenticated app reaches it, and no cookie, session or account
+  identifier appears in a load-balancer log. The IP is the only element making
+  a row personal data, and it earns its 30 days by being useful for abuse and
+  incident investigation — not for counting visitors.
+
+  What that trades away is per-referrer history beyond 30 days, since referrer
+  is not a metric label — an unbounded set of referring hosts would be a
+  cardinality problem where a bounded set of pages is not. If referrer trends
+  ever matter, the escalation is a scheduled BigQuery query rolling an
+  IP-stripped copy into a long-lived table before the raw partitions expire.
+  Worth building then; not worth building now.
+
+  Note also that expiry is set as **partition** expiry rather than table
+  expiry. The sink appends to one partitioned table, so a table expiration
+  would delete the whole thing — recent data included — on the anniversary of
+  its creation, instead of rolling old days off the back.
+
+- **When a "wake up" alarm is bought, it lives outside Google Cloud.** An
   alarm hosted inside the system it watches shares that system's failure modes.
-  The tiers below therefore end with an independent external monitor.
+  Voice paging is the one part of this plan that costs real money, so it is
+  deferred rather than built cheaply in-house — see the escalation tiers.
 
 ## What the constraints rule out
 
@@ -112,6 +139,17 @@ These split by purpose, and the split is a rule rather than a preference.
   or is being treated for a condition. This is why page views are reported as
   allow-listed names rather than paths, and it is the single most important
   control in this plan.
+
+  This constraint binds the **archive** as much as the client, and the first
+  implementation got it wrong. The BigQuery sink was written with an unscoped
+  `resource.type="http_load_balancer"` filter, which archives every request the
+  load balancer sees — including the authenticated app, whose paths carry
+  identifiers directly: `/api/patients/{patient_id}/letters`,
+  `/api/users/{user_id}`. That would have stored exactly the URLs this rule
+  forbids, alongside client IP addresses, for the whole retention window, using
+  the pipeline built to honour the rule. The sink filter is now scoped to the
+  landing domain, matching the metric. Any future sink must be scoped the same
+  way: **route what you meant to keep, never a resource type.**
 
 - **No error text passed through unsanitised.** An error message is exactly as
   capable of carrying patient data as an analytics event, and rather more
@@ -235,11 +273,13 @@ somewhere to look.
 
 Server side, already collected:
 
-- [ ] Add an alert policy on the backend 5xx rate to
+- [x] Add an alert policy on the backend 5xx rate to
       `infra/modules/monitoring/main.tf`, firing through the existing email and
-      Slack notification channels
-- [ ] Add a dashboard for error rate by endpoint and status code, so a spike
-      can be attributed rather than just noticed
+      Slack notification channels — threshold is `var.server_error_threshold`,
+      counting 5xx responses in a five-minute window rather than a per-second
+      rate, which is easier to reason about at low traffic
+- [x] Add a dashboard for error rate by service, so a spike can be attributed
+      rather than just noticed
 - [ ] Confirm the alert fires on a deliberately broken endpoint in a
       non-production environment, rather than assuming the filter is right
 
@@ -274,28 +314,77 @@ useless. Thirty minutes is a reasonable threshold for a phone call and far too
 long for a first signal in a clinical product, so the severity climbs with the
 duration. Google Cloud supports `email`, `slack` and `sms` notification
 channels natively; it has no voice channel at all, which is why the last rung
-sits elsewhere.
+would have to sit elsewhere.
 
-- [ ] Tier one, roughly 5–10 minutes — Slack and email, through the channels
+Voice is where the cost caveat finally bites. Every other part of this plan
+runs at £0; a phone call does not, on any provider, at any free tier. So the
+first two tiers ship now and the third waits for a reason to buy it.
+
+Be clear-eyed about what is being deferred, though. Google's own documentation
+says SMS is "not a fully reliable notification channel type", and that Slack,
+PagerDuty, webhooks and the Cloud mobile app all share a single internal
+delivery service and therefore a single point of failure. Email or Pub/Sub is
+the only recommended redundant path. Taken together, **Google Cloud cannot
+provide a dependable wake-up alarm on its own** — not merely a less pleasant
+one. That, rather than the ergonomics of a ringing phone, is the real reason to
+buy an external pager once there are clinical users. For a teaching product
+holding no patient data, an escalation that usually works is proportionate; for
+a clinical one it is not.
+
+- [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
       already configured. Cheap, ignorable, and often self-resolving
-- [ ] Tier two, roughly 15 minutes — an `sms` notification channel plus Google
-      Cloud mobile app push. Note that Google's own documentation warns SMS
-      "isn't a fully reliable notification channel type" and may be
-      unavailable in some regions, so it must never be the only rung
-- [ ] Tier three, roughly 30 minutes — a phone call, from a monitor outside
-      Google Cloud. Better Stack's free tier gives 10 monitors, 3-minute
-      checks and one phone-call alert, and being external is the point rather
-      than a bonus
-- [ ] Verify whether PagerDuty's free tier actually includes voice before
-      considering it — sources conflict, and its escalation policy is otherwise
-      a good fit
-- [ ] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
+- [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
+      second uptime policy, `uptime_escalation`, firing only after
+      `var.escalation_duration` and notifying SMS alone, so the louder channel
+      stays rare enough to still mean something. Google's own documentation
+      warns SMS "isn't a fully reliable notification channel type" and may be
+      unavailable in some regions, so it escalates tier one rather than
+      replacing it
+- [ ] Verify the SMS number by code in the Cloud console — Terraform can
+      create the channel but cannot verify it, so it delivers nothing until
+      this is done by hand
+
+**For teaching specifically, this is already enough — buy nothing.** Teaching
+holds no patient data and supports no clinical decision; an outage means a
+learner cannot sit an assessment for a while. That warrants finding out
+promptly during waking hours, which Slack and email already do, and it does not
+warrant being woken at 03:00. SMS is worth verifying because it is free and
+occasionally useful, not because teaching needs it. The unreliability of
+Google's notification channels is a real problem for a clinical service and an
+acceptable one here. Revisit the whole escalation when clinical users arrive —
+not before.
+- [x] Do not let tier two rest on SMS alone — it is paired with email.
+      Google documents Slack, PagerDuty, webhooks and the Cloud mobile app as
+      sharing **one internal delivery service and therefore one point of
+      failure**, naming email or Pub/Sub as the redundant path. So tier one's
+      Slack rung is not independent cover, and mobile app push would not have
+      been either
+- [ ] Optionally add the Cloud mobile app channel by hand from the Google
+      Cloud app — it cannot be created through Terraform or the channels API,
+      and it shares Slack's failure domain, so it adds a device rather than
+      genuine redundancy
+- [ ] Tier three, roughly 30 minutes — a phone call, **deferred**. No free
+      tier anywhere provides one: Better Stack's free plan is email and Slack
+      only, with phone and SMS starting at $29 per responder per month billed
+      yearly; PagerDuty's free plan gives 5 users, an escalation policy and 100
+      SMS a month, but explicitly no voice, which starts at $21 per user per
+      month. Buy one when clinical users exist — at that point the cost is
+      trivial against the risk, and it is exactly the "circumstances have
+      genuinely changed" trigger. Until then tiers one and two are the
+      escalation
+- [ ] Do **not** build the phone call from Twilio and a Cloud Function to save
+      the subscription. It is by far the cheapest option — roughly £1 a month
+      for a number plus pennies a call — but it would put the pager inside the
+      Google Cloud project it exists to page about, with no tests and nobody to
+      notice when it silently stops working. An untested pager is worse than no
+      pager, because it is trusted
+- [x] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
       from `300s` to `60s`, so detection lags by at most a minute rather than
       five. The comment marking 300s as the free tier is out of date: at two
       hostnames this stays comfortably inside the 1 million free executions a
       month, as costed above
-- [ ] Test the whole escalation end to end, including the phone call, and
-      re-test it quarterly — an untested pager is not a pager
+- [ ] Test every rung that exists end to end, and re-test quarterly — an
+      untested pager is not a pager. Include the phone call once it is bought
 - [ ] Fold the result into the incident response plan and runbook items already
       open in `todo.md`, and replace the `webhook_token_auth` Slack channel
       with the native integration while in there
@@ -304,24 +393,38 @@ sits elsewhere.
 
 No application code. This is infrastructure and a dashboard.
 
-- [ ] Enable Log Analytics on the log bucket so the existing load-balancer logs
-      can be queried with SQL immediately, at no additional Cloud Logging
-      charge
-- [ ] Check `var.log_sample_rate` on the frontend backend service — a sampled
-      stream is fine for trends, but the sample rate has to be known to read
-      the numbers correctly
-- [ ] Truncate or drop the client IP address at ingest; it is personal data and
-      is not needed to count visits
-- [ ] Add a log-based counter metric over the load-balancer request logs,
+- [x] ~~Enable Log Analytics on the log bucket~~ — dropped. The BigQuery
+      archive below already provides SQL over the same logs, and enabling
+      analytics on the `_Default` bucket through Terraform is known to be
+      unreliable (`_Required` is locked outright, and
+      `google_logging_project_bucket_config` has open issues with the
+      underscore-prefixed names). Not worth a manual console step for a
+      capability already covered
+- [x] Check `var.log_sample_rate` on the frontend backend service — it defaults
+      to `1.0`, so nothing is sampled and the counts need no correction factor
+- [x] Truncate or drop the client IP address at ingest — **not possible, so
+      handled by retention instead.** Cloud Logging sinks route entries, they do
+      not redact fields, and `httpRequest.remoteIp` cannot be omitted from
+      load-balancer logs at source. Keeping IP addresses for a year to count
+      visits to a marketing site would be disproportionate, so the raw archive
+      expires at 90 days and the long-run trend comes from the log-based
+      metric, which stores no IP at all
+- [x] Add a log-based counter metric over the load-balancer request logs,
       excluding bot and uptime-check traffic at the filter rather than in the
-      chart
-- [ ] Add visits over time to the single Cloud Monitoring dashboard, beside
+      chart — `google_logging_metric.public_site_visits` in the new analytics
+      module, scoped to the landing domain so app traffic is not double-counted
+- [x] Add visits over time to the single Cloud Monitoring dashboard, beside
       uptime and error rate
-- [ ] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
+- [x] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
       and a log sink, as the archive that allows new questions of old data —
       metrics cannot be re-sliced after the fact, and 30 days of log bucket
       retention is too short to see a trend
-- [ ] Set and apply a table expiration matching the retention decision
+- [x] Set and apply an expiration matching the retention decision —
+      `var.retention_days`, defaulting to 30 and applied as **partition**
+      expiry, not table expiry, so old days roll off instead of the whole table
+      vanishing on its anniversary. The long per-page history lives in the
+      metric's `page` label instead, with no IP in it, so retention and privacy
+      stopped competing
 
 ## Phase 3: which pages get used in the app
 
@@ -345,15 +448,86 @@ The only phase needing new client code, and the one carrying the real risk.
       dashboard as everything else
 - [ ] Tests: allow-list rejection, clinical-route guard, opt-out honoured
 
+## Phase 4: self-host the Cormorant Garamond typeface
+
+Not analytics, but found while writing the privacy policy and squarely a
+privacy fix, so it belongs here rather than in a backlog nobody reads.
+
+The public site and Storybook both load Cormorant Garamond from
+`fonts.googleapis.com`, with a preconnect to `fonts.gstatic.com`. Every visitor
+therefore has their IP address sent to Google before a single word renders. It
+is the **only** third-party transfer on an otherwise self-contained marketing
+site, it happens before any opportunity to consent, and it is the kind of thing
+that has drawn enforcement attention elsewhere in Europe.
+
+It is also an odd exception rather than a considered choice: the application
+already self-hosts its other typeface through `@fontsource-variable/atkinson-hyperlegible-next`.
+The same pattern applies here, and the CSS family name does not change, so no
+component needs touching.
+
+Worth knowing while doing this: the strict Content Security Policy in
+`caddy/prod/Caddyfile` — `style-src 'self' 'unsafe-inline'`, `font-src 'self'`
+— would already forbid this. It does not bite only because the marketing site
+is served straight from the GCS bucket through the load balancer and never
+passes through Caddy. So the public site currently has **no** Content Security
+Policy at all. Self-hosting the font removes the last thing that would prevent
+applying one, which is worth a follow-up of its own.
+
+- [ ] Add `@fontsource-variable/cormorant-garamond` (5.3.0 at time of writing;
+      283 kB, no dependencies, OFL-1.1) to the frontend workspace
+- [ ] Import it where the public pages already pull in shared styles, beside
+      the existing Atkinson Hyperlegible import
+- [ ] Remove the Google Fonts `<link>` and both `preconnect` hints from
+      `frontend/public_pages/templates/page.html`
+- [ ] Remove the same block from `frontend/.storybook/preview-head.html`, which
+      makes the identical request every time the component catalogue loads
+- [ ] Confirm the three consumers still render — `PublicTitle.tsx`,
+      `PublicInfoCard.module.css` and `PublicFeatureCard.module.css` all name
+      the family in CSS and should need no change
+- [ ] Check the italic faces specifically: the current request asks for weights
+      300–700 in both normal and italic, and a variable font that ships only
+      upright would silently fall back to a synthesised oblique
+- [ ] Verify in the browser that no request to `fonts.googleapis.com` or
+      `fonts.gstatic.com` remains on any public page
+- [ ] Follow-up, separately: consider serving the marketing site with a Content
+      Security Policy now that nothing third-party is loaded
+
 ## Prerequisites
 
 Blocking, before any of this ships:
 
-- [ ] Cookie policy written, replacing the current stub — no consent banner is
-      required, but the strictly necessary session and cross-site request
-      forgery cookies must still be clearly described
-- [ ] Privacy policy updated to describe the error reporting and page-view
-      counting, their purpose, and the retention period
+- [ ] Cookie policy — **being written by a lawyer**. Drafts were written from
+      the code and then reverted; the published pages remain the original
+      stubs. The facts the policy has to state are settled and are recorded
+      below, so drafting them again is not the task — commissioning and
+      publishing the reviewed version is.
+- [ ] Privacy policy — **being written by a lawyer**, same position. It will
+      need updating again when client error reporting and page-view counting
+      actually ship, since both add processing the current text cannot
+      describe.
+- [ ] Self-host the Cormorant Garamond typeface — see the phase below. Fixing
+      it is better than disclosing it, and it removes a question the lawyer
+      would otherwise have to answer.
+
+### Facts the policies need to state
+
+Established from the code, for whoever drafts them:
+
+- **The public site sets no cookies at all.** No analytics, no advertising, no
+  consent banner needed. Its only third-party request is the Google Fonts one
+  above.
+- **The application sets exactly three cookies**, all strictly necessary under
+  PECR Regulation 6(4), so none needs consent but all need describing:
+  `access_token` (15 minutes, HttpOnly, SameSite=Lax, path `/`);
+  `refresh_token` (7 days, HttpOnly, SameSite=Lax, scoped to
+  `/api/auth/refresh`); and `XSRF-TOKEN` (matches the access token, and is
+  deliberately **not** HttpOnly because the client must read it back).
+- **Load-balancer request logs** record method, URL, status, size, user agent,
+  referrer, latency, protocol and client IP. Public-site rows are archived for
+  30 days; the long-run per-page counts live in a log-based metric holding no
+  IP.
+- **No third-party analytics processor** is used on any surface.
+- **Hosting** is Google Cloud Platform, European region.
 - [ ] Data protection impact assessment covering both, recording that no
       third-party processor is involved and that the electronic communications
       regulations do not engage
@@ -378,16 +552,27 @@ Blocking, before any of this ships:
   beats a habit of checking several places, and it removes an entire build.
   It is also why the phone-call rung sits outside Google Cloud altogether.
 
-- **Log-based metrics as the dashboard source, BigQuery as the archive** —
+- **Log-based metrics as the dashboard source, BigQuery as a short archive** —
   metrics chart cheaply next to uptime with no second tool, but they are
   aggregates fixed at definition time and cannot be re-sliced later. The raw
-  sink is the insurance against a question nobody has thought of yet, and it
-  costs pennies to keep even though nothing routinely reads it.
+  sink is the insurance against a question nobody has thought of yet. It is
+  kept short rather than long because load-balancer logs carry client IP
+  addresses and Cloud Logging sinks cannot redact fields: the metric holds the
+  long trend without personal data, the archive holds recent detail and
+  expires.
 
 - **Escalate by tiers rather than one dramatic alert** — a channel that fires
   for self-resolving blips gets muted, and a channel set late enough to avoid
   that is too late to be useful. Severity climbs with duration instead: Slack,
   then SMS and push, then a call.
+
+- **Defer the phone call until clinical users exist** — it is the only part of
+  this plan that is not free, on any provider at any tier, and buying an
+  on-call subscription to page one person about a teaching product is the
+  "expensive, so wait for circumstances to change" case. Building it from
+  Twilio instead would be cheap and wrong: it would put the pager inside the
+  project it pages about, untested, and a pager nobody tests is worse than
+  none, because it gets trusted.
 
 - **Check health every minute, not every five** — five minutes of detection
   lag before the first tier even starts counting is too much for a clinical
