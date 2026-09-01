@@ -74,6 +74,12 @@ variable "lb_domains" {
   type        = list(string)
 }
 
+variable "app_domain" {
+  description = "Hostname the authenticated application is served from. Set explicitly rather than derived from monitored_hostnames, so reordering that list cannot silently point the app metrics at the marketing site."
+  type        = string
+  default     = ""
+}
+
 variable "landing_domain" {
   description = "Apex domain for the static landing page (optional, production only)"
   type        = string

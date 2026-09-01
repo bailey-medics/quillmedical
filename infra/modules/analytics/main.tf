@@ -18,6 +18,7 @@ locals {
   # Escape dots for the log filter regex without backslash-in-HCL escaping:
   # "quill-medical.com" becomes "quill-medical[.]com".
   landing_domain_pattern = replace(var.landing_domain, ".", "[.]")
+  app_domain_pattern     = replace(var.app_domain, ".", "[.]")
 
   # Crawlers, and Google's own uptime and health-check agents, are traffic
   # but they are not visitors. Excluded at the filter so no chart has to
@@ -59,6 +60,38 @@ resource "google_logging_metric" "public_site_visits" {
   # data, so it can be retained far longer than the raw rows below.
   label_extractors = {
     "page" = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^https?://[^/]+(/[^?]*)\")"
+  }
+}
+
+# ---------- App page loads ----------
+#
+# The nearest thing to "how many people use the app" that is available
+# without touching application code. It counts successful non-API requests
+# to the app host — that is, loads of the single-page application shell,
+# which a browser fetches once per visit rather than once per click.
+#
+# It is a proxy, not a headcount. It cannot distinguish two visits by one
+# person from one visit by two, because nothing identifies the visitor and
+# deliberately so. Phase 3's page-view ping, with its per-session random
+# identifier, is what turns this into sessions.
+resource "google_logging_metric" "app_page_loads" {
+  project = var.project_id
+  name    = "quill/app_page_loads_${var.environment}"
+
+  description = "Loads of the application shell, excluding API calls, bots and health checks"
+
+  filter = <<-EOT
+    resource.type="http_load_balancer"
+    httpRequest.requestUrl =~ "//${local.app_domain_pattern}/"
+    NOT httpRequest.requestUrl =~ "//${local.app_domain_pattern}/api/"
+    httpRequest.status = 200
+    NOT httpRequest.userAgent =~ "${local.non_visitor_agents}"
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
   }
 }
 
@@ -204,6 +237,146 @@ resource "google_monitoring_dashboard" "quill" {
                 }
               }
               plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
+          title = "App page loads"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = "metric.type = \"logging.googleapis.com/user/${google_logging_metric.app_page_loads.name}\""
+                  aggregation = {
+                    alignmentPeriod    = "3600s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
+          # Request Latency is a DISTRIBUTION. Charting it without an explicit
+          # percentile gives a mean, which hides the slow tail that is the
+          # entire reason for looking.
+          title = "Request latency, 95th percentile"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloud_run_revision\"",
+                    "metric.type = \"run.googleapis.com/request_latencies\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_PERCENTILE_95"
+                    crossSeriesReducer = "REDUCE_MEAN"
+                    groupByFields      = ["resource.label.service_name"]
+                  }
+                }
+              }
+              plotType = "LINE"
+            }]
+          }
+        },
+        {
+          # Diagnostically different from 5xx: a 401 spike means auth broke,
+          # a 404 spike means something links wrongly.
+          title = "Client errors (4xx)"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloud_run_revision\"",
+                    "metric.type = \"run.googleapis.com/request_count\"",
+                    "metric.labels.response_code_class = \"4xx\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_SUM"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["resource.label.service_name"]
+                  }
+                }
+              }
+              plotType = "STACKED_BAR"
+            }]
+          }
+        },
+        {
+          # Connection pools exhaust gradually and then fail all at once,
+          # which is why this is worth watching before it becomes an outage.
+          title = "Cloud SQL connections"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloudsql_database\"",
+                    "metric.type = \"cloudsql.googleapis.com/database/postgresql/num_backends\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_MEAN"
+                    crossSeriesReducer = "REDUCE_MEAN"
+                    groupByFields      = ["resource.label.database_id"]
+                  }
+                }
+              }
+              plotType = "LINE"
+            }]
+          }
+        },
+        {
+          # The slow killer: fills over weeks, then the database stops.
+          title = "Cloud SQL disk utilisation"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloudsql_database\"",
+                    "metric.type = \"cloudsql.googleapis.com/database/disk/utilization\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_MEAN"
+                    crossSeriesReducer = "REDUCE_MAX"
+                    groupByFields      = ["resource.label.database_id"]
+                  }
+                }
+              }
+              plotType = "LINE"
+            }]
+          }
+        },
+        {
+          # Answers the open question of whether min_instances should be
+          # raised from 0: if this sits at zero between visits, every first
+          # request of the day is paying a cold start.
+          title = "Cloud Run instances"
+          xyChart = {
+            dataSets = [{
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type = \"cloud_run_revision\"",
+                    "metric.type = \"run.googleapis.com/container/instance_count\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "300s"
+                    perSeriesAligner   = "ALIGN_MEAN"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["resource.label.service_name"]
+                  }
+                }
+              }
+              plotType = "LINE"
             }]
           }
         },
