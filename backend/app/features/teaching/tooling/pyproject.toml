@@ -25,6 +25,6 @@ requires-poetry = ">=2.4,<3"
 # the two constraints as written. `poetry check` suggests migrating, but
 # this package is never published (package-mode = false).
 [tool.poetry.dependencies]
-python = "^3.13.7"
+python = "^3.13.8"
 pydantic = "2.13.4"
 pyyaml = ">=6.0,<7.0"
