@@ -5575,7 +5575,8 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
     # api-schema-check: allow-opaque-permanent
     @app.get(
-        "/api/teaching/images/questions/{bank_id}/{item_folder}/{filename}"
+        "/api/teaching/images/modules/{bank_id}"
+        "/assessment/{item_folder}/{filename}"
     )
     async def _serve_teaching_image(
         bank_id: str,

@@ -31,6 +31,31 @@ class StorageBackend(ABC):
         """Return a URL the frontend can use to load an image."""
 
 
+#: Suffixes worth the bytes when mirroring a module out of the bucket.
+#: Everything else is downloaded as an empty placeholder.
+_TEXT_SUFFIXES = frozenset({".yaml", ".yml", ".mdx", ".md", ".json"})
+
+#: The bucket mirrors the content repository exactly: the deploy syncs a
+#: module directory into ``modules/<bank_id>/`` and changes nothing on the way.
+#: Everything that addresses the bucket goes through these three, so the
+#: layout is stated once rather than rebuilt at each of seventeen call sites.
+
+
+def module_prefix(bank_id: str) -> str:
+    """Where a module's files live: ``modules/<bank_id>/``."""
+    return f"modules/{bank_id}/"
+
+
+def assessment_prefix(bank_id: str) -> str:
+    """Where a module's assessment lives, ``questions/<bank_id>/`` before."""
+    return f"{module_prefix(bank_id)}assessment/"
+
+
+def learning_prefix(module_id: str) -> str:
+    """Where a module's learning content lives, ``learning/<id>/`` before."""
+    return f"{module_prefix(module_id)}learning/"
+
+
 class LocalStorageBackend(StorageBackend):
     """Serve images from a local directory (dev only)."""
 
@@ -40,7 +65,8 @@ class LocalStorageBackend(StorageBackend):
     def get_image_url(
         self, bank_id: str, item_folder: str, filename: str
     ) -> str:
-        return f"{self._base}/questions/{bank_id}/{item_folder}/{filename}"
+        prefix = assessment_prefix(bank_id)
+        return f"{self._base}/{prefix}{item_folder}/{filename}"
 
 
 class GCSStorageBackend(StorageBackend):
@@ -80,7 +106,7 @@ class GCSStorageBackend(StorageBackend):
         )
 
         blob = self._bucket.blob(
-            f"questions/{bank_id}/{item_folder}/{filename}"
+            f"{assessment_prefix(bank_id)}{item_folder}/{filename}"
         )
 
         # Ensure the access token is fresh
@@ -254,7 +280,7 @@ def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"learning/{module_id}/content.mdx")
+    blob = bucket.blob(f"{learning_prefix(module_id)}content.mdx")
     return bool(blob.exists())
 
 
@@ -269,7 +295,7 @@ def download_learning_mdx_from_gcs(
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"learning/{module_id}/content.mdx")
+    blob = bucket.blob(f"{learning_prefix(module_id)}content.mdx")
     if not blob.exists():
         return None
     return str(blob.download_as_text(encoding="utf-8"))
@@ -287,7 +313,7 @@ def download_module_yaml_from_gcs(
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"modules/{module_id}/module.yaml")
+    blob = bucket.blob(f"{module_prefix(module_id)}module.yaml")
     if not blob.exists():
         return None
     content = blob.download_as_text(encoding="utf-8")
@@ -317,7 +343,7 @@ def get_learning_image_url_gcs(
     credentials, _project = default()
     client = storage.Client(credentials=credentials)
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"learning/{module_id}/images/{filename}")
+    blob = bucket.blob(f"{learning_prefix(module_id)}images/{filename}")
 
     auth_req = auth_requests.Request()
     credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
@@ -356,7 +382,7 @@ def get_cover_image_url_gcs(
     credentials, _project = default()
     client = storage.Client(credentials=credentials)
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"modules/{module_id}/{filename}")
+    blob = bucket.blob(f"{module_prefix(module_id)}{filename}")
 
     auth_req = auth_requests.Request()
     credentials.refresh(auth_req)  # type: ignore[no-untyped-call]
@@ -376,7 +402,8 @@ def get_cover_image_url_gcs(
 def list_banks_in_gcs(bucket_name: str) -> list[str]:
     """List available question bank IDs in a GCS bucket.
 
-    Looks for top-level directories under ``questions/`` that contain
+    Looks for top-level directories under ``modules/`` whose assessment
+    contains
     an ``assessment.yaml`` or ``config.yaml`` file.
     """
     from google.cloud import storage
@@ -384,8 +411,8 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    # List top-level directories under questions/
-    prefix = "questions/"
+    # List top-level directories under modules/
+    prefix = "modules/"
     blobs = bucket.list_blobs(prefix=prefix, delimiter="/")
 
     # We need to consume the iterator to populate prefixes
@@ -393,12 +420,14 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
 
     bank_ids: list[str] = []
     for p in blobs.prefixes:
-        # p looks like "questions/chest-xray-interpretation/"
+        # p looks like "modules/chest-xray-interpretation/"
         bank_id = p.removeprefix(prefix).rstrip("/")
         if bank_id and _SAFE_BANK_ID.match(bank_id):
-            # Verify it has assessment.yaml or config.yaml
-            assessment_blob = bucket.blob(f"{prefix}{bank_id}/assessment.yaml")
-            config_blob = bucket.blob(f"{prefix}{bank_id}/config.yaml")
+            # A module without an assessment is learning-only, and there is
+            # nothing here to sync as a question bank.
+            assessment = assessment_prefix(bank_id)
+            assessment_blob = bucket.blob(f"{assessment}assessment.yaml")
+            config_blob = bucket.blob(f"{assessment}config.yaml")
             if assessment_blob.exists() or config_blob.exists():
                 bank_ids.append(bank_id)
 
@@ -428,7 +457,7 @@ def download_bank_from_gcs(
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    prefix = f"questions/{bank_id}/"
+    prefix = assessment_prefix(bank_id)
     blobs = list(bucket.list_blobs(prefix=prefix))
 
     if not blobs:
@@ -462,7 +491,7 @@ def download_bank_from_gcs(
 
     # Place module.yaml in the parent directory so that
     # _load_module_metadata(bank_dir) can find it at bank_dir.parent
-    module_blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+    module_blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
     if module_blob.exists():
         module_yaml_path = tmp_dir / "module.yaml"
         module_blob.download_to_filename(str(module_yaml_path))
@@ -490,7 +519,7 @@ def get_module_status_from_gcs(
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+    blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
 
     if not blob.exists():
         return None
@@ -513,7 +542,7 @@ def list_bank_images_in_gcs(
 ) -> ImageInventory:
     """Build an image inventory for a question bank from GCS.
 
-    Scans all blobs under ``questions/<bank_id>/`` and returns a
+    Scans all blobs under ``modules/<bank_id>/assessment/`` and returns a
     mapping of item directory names to the set of image filenames
     found.  Only files with allowed image extensions are included.
     """
@@ -526,7 +555,7 @@ def list_bank_images_in_gcs(
     client = storage.Client()
     bucket = client.bucket(bucket_name)
 
-    prefix = f"questions/{bank_id}/"
+    prefix = assessment_prefix(bank_id)
     blobs = bucket.list_blobs(prefix=prefix)
 
     allowed = {".png", ".jpg", ".jpeg", ".webp"}
@@ -597,7 +626,7 @@ def download_module_from_gcs(
     bucket = client.bucket(bucket_name)
 
     # Check module.yaml exists
-    module_blob = bucket.blob(f"modules/{bank_id}/module.yaml")
+    module_blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
     if not module_blob.exists():
         return None
 
@@ -605,52 +634,24 @@ def download_module_from_gcs(
     module_dir = tmp_dir / bank_id
     module_dir.mkdir()
 
-    # Download module.yaml
-    module_yaml_path = module_dir / "module.yaml"
-    module_blob.download_to_filename(str(module_yaml_path))
-
-    # Download other module-level files (e.g. cover images) as
-    # empty placeholders so tooling validation passes
-    modules_prefix = f"modules/{bank_id}/"
-    for blob in bucket.list_blobs(prefix=modules_prefix):
-        rel_path = blob.name.removeprefix(modules_prefix)
-        if not rel_path or rel_path == "module.yaml":
+    # One prefix, copied as it lies. The bucket has the repository's shape,
+    # so there is nothing to reassemble.
+    prefix = module_prefix(bank_id)
+    for blob in bucket.list_blobs(prefix=prefix):
+        rel_path = blob.name.removeprefix(prefix)
+        if not rel_path or rel_path.endswith("/"):
             continue
+
         local_path = module_dir / rel_path
-        local_path.write_bytes(b"")
-
-    # Download assessment content (YAML + image filenames as empty files)
-    assessment_dir = module_dir / "assessment"
-    assessment_dir.mkdir()
-
-    assessment_prefix = f"questions/{bank_id}/"
-    for blob in bucket.list_blobs(prefix=assessment_prefix):
-        rel_path = blob.name.removeprefix(assessment_prefix)
-        if not rel_path:
-            continue
-        local_path = assessment_dir / rel_path
         local_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if rel_path.endswith((".yaml", ".yml")):
-            # Download YAML content
+        if Path(rel_path).suffix.lower() in _TEXT_SUFFIXES:
             blob.download_to_filename(str(local_path))
         else:
-            # Create empty placeholder for image files so existence
-            # checks pass (actual images served via signed URLs)
+            # An empty placeholder: validation only asks whether the image
+            # exists, and downloading it would mean paying for bytes the
+            # frontend fetches again by signed URL. Content validation is
+            # not given the image-byte check for this reason.
             local_path.write_bytes(b"")
-
-    # Download learning content if present
-    learning_prefix = f"learning/{bank_id}/"
-    learning_blobs = list(bucket.list_blobs(prefix=learning_prefix))
-    if learning_blobs:
-        learning_dir = module_dir / "learning"
-        learning_dir.mkdir()
-        for blob in learning_blobs:
-            rel_path = blob.name.removeprefix(learning_prefix)
-            if not rel_path:
-                continue
-            local_path = learning_dir / rel_path
-            local_path.parent.mkdir(parents=True, exist_ok=True)
-            blob.download_to_filename(str(local_path))
 
     return module_dir

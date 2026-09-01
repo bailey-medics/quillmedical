@@ -3,11 +3,13 @@
 #
 # Usage: sync-to-gcs.sh <modules-directory> <bucket-name>
 #
-# Each module is split across three prefixes: assessment content to
-# questions/, learning content to learning/, and module.yaml to modules/.
-# Uses rsync with --delete so a file removed from the repo is removed from
-# the bucket; module.yaml is copied rather than synced as it is a single
-# file. Modules missing a section are skipped rather than failing.
+# Each module is mirrored whole to modules/<bank_id>/, so the bucket has the
+# repository's shape and the backend needs no reconstruction to read it.
+# Previously the same module was split across three prefixes, with
+# assessment/ renamed to questions/ on the way.
+#
+# rsync with --delete, so a file removed from the repo is removed from the
+# bucket.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -38,22 +40,9 @@ main() {
     bank_id=$(basename "$module_dir")
     log "Syncing ${bank_id}"
 
-    if [ -d "${module_dir}assessment" ]; then
-      gsutil -m rsync -r -d \
-        "${module_dir}assessment/" \
-        "gs://${bucket}/questions/${bank_id}/"
-    fi
-
-    if [ -d "${module_dir}learning" ]; then
-      gsutil -m rsync -r -d \
-        "${module_dir}learning/" \
-        "gs://${bucket}/learning/${bank_id}/"
-    fi
-
-    if [ -f "${module_dir}module.yaml" ]; then
-      gsutil cp "${module_dir}module.yaml" \
-        "gs://${bucket}/modules/${bank_id}/module.yaml"
-    fi
+    gsutil -m rsync -r -d \
+      "${module_dir}" \
+      "gs://${bucket}/modules/${bank_id}/"
   done
 
   log "Sync complete"

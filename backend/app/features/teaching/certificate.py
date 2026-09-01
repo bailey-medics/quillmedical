@@ -203,9 +203,11 @@ def download_certificate_background_from_gcs(
     """
     from google.cloud import storage  # type: ignore[import-untyped]
 
+    from app.features.teaching.storage import assessment_prefix
+
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blob_path = f"questions/{bank_id}/certificate-blank.png"
+    blob_path = f"{assessment_prefix(bank_id)}certificate-blank.png"
     blob = bucket.blob(blob_path)
 
     if not blob.exists():

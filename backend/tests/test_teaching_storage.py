@@ -40,19 +40,19 @@ class TestLocalStorageBackend:
         backend = LocalStorageBackend("http://localhost:8000/static")
         url = backend.get_image_url("my-bank", "question_1", "wli.png")
         assert url == (
-            "http://localhost:8000/static/questions/my-bank"
-            "/question_1/wli.png"
+            "http://localhost:8000/static/modules/my-bank"
+            "/assessment/question_1/wli.png"
         )
 
     def test_strips_trailing_slash(self) -> None:
         backend = LocalStorageBackend("http://localhost:8000/static/")
         url = backend.get_image_url("my-bank", "question_1", "wli.png")
-        assert url.startswith("http://localhost:8000/static/questions/")
+        assert url.startswith("http://localhost:8000/static/modules/")
 
     def test_fallback_static(self) -> None:
         backend = LocalStorageBackend("/static")
         url = backend.get_image_url("bank", "q1", "img.png")
-        assert url == "/static/questions/bank/q1/img.png"
+        assert url == "/static/modules/bank/assessment/q1/img.png"
 
 
 class TestGCSStorageBackend:
@@ -79,7 +79,7 @@ class TestGCSStorageBackend:
         url = backend.get_image_url("bank-id", "question_1", "wli.png")
         assert url == "https://storage.googleapis.com/signed-url"
         mock_bucket.blob.assert_called_once_with(
-            "questions/bank-id/question_1/wli.png"
+            "modules/bank-id/assessment/question_1/wli.png"
         )
         mock_blob.generate_signed_url.assert_called_once()
         call_kwargs = mock_blob.generate_signed_url.call_args.kwargs
@@ -122,8 +122,8 @@ class TestListBanksInGcs:
         mock_blobs = MagicMock()
         mock_blobs.__iter__ = MagicMock(return_value=iter([]))
         mock_blobs.prefixes = [
-            "questions/chest-xray/",
-            "questions/ecg-basics/",
+            "modules/chest-xray/",
+            "modules/ecg-basics/",
         ]
         mock_bucket.list_blobs.return_value = mock_blobs
 
@@ -145,8 +145,8 @@ class TestListBanksInGcs:
         mock_blobs = MagicMock()
         mock_blobs.__iter__ = MagicMock(return_value=iter([]))
         mock_blobs.prefixes = [
-            "questions/has-config/",
-            "questions/no-config/",
+            "modules/has-config/",
+            "modules/no-config/",
         ]
         mock_bucket.list_blobs.return_value = mock_blobs
 
@@ -172,7 +172,7 @@ class TestListBanksInGcs:
         mock_blobs = MagicMock()
         mock_blobs.__iter__ = MagicMock(return_value=iter([]))
         mock_blobs.prefixes = [
-            "questions/colonoscopy-test/",
+            "modules/colonoscopy-test/",
         ]
         mock_bucket.list_blobs.return_value = mock_blobs
 
@@ -200,13 +200,13 @@ class TestDownloadBankFromGcs:
 
         # Create mock blobs — mix of YAML and image files
         yaml_blob = MagicMock()
-        yaml_blob.name = "questions/test-bank/config.yaml"
+        yaml_blob.name = "modules/test-bank/assessment/config.yaml"
 
         q1_yaml = MagicMock()
-        q1_yaml.name = "questions/test-bank/question_1/question.yaml"
+        q1_yaml.name = "modules/test-bank/assessment/question_1/question.yaml"
 
         image_blob = MagicMock()
-        image_blob.name = "questions/test-bank/question_1/wli.png"
+        image_blob.name = "modules/test-bank/assessment/question_1/wli.png"
 
         mock_bucket.list_blobs.return_value = [
             yaml_blob,
@@ -256,17 +256,21 @@ class TestListBankImagesInGcs:
         mock_client.bucket.return_value = mock_bucket
 
         blob1 = MagicMock()
-        blob1.name = "questions/my-bank/question_001/wli.png"
+        blob1.name = "modules/my-bank/assessment/question_001/wli.png"
         blob2 = MagicMock()
-        blob2.name = "questions/my-bank/question_001/nbi.jpg"
+        blob2.name = "modules/my-bank/assessment/question_001/nbi.jpg"
         blob3 = MagicMock()
-        blob3.name = "questions/my-bank/question_002/pa-chest-xray.webp"
+        blob3.name = (
+            "modules/my-bank/assessment/question_002/pa-chest-xray.webp"
+        )
         # YAML files should be ignored
         yaml_blob = MagicMock()
-        yaml_blob.name = "questions/my-bank/question_001/question.yaml"
+        yaml_blob.name = (
+            "modules/my-bank/assessment/question_001/question.yaml"
+        )
         # Config at root should be ignored
         config_blob = MagicMock()
-        config_blob.name = "questions/my-bank/config.yaml"
+        config_blob.name = "modules/my-bank/assessment/config.yaml"
 
         mock_bucket.list_blobs.return_value = [
             blob1,
