@@ -508,7 +508,7 @@ start-prod build="":
     fi
 
 alias st := start-teaching
-# Start dev without clinical services (FHIR/EHRbase) for teaching work
+# Start dev without clinical services (FHIR/EHRbase) for teaching work (build: 'b' will also build the images)
 start-teaching build="":
     #!/usr/bin/env bash
     {{initialise}} "start-teaching"
