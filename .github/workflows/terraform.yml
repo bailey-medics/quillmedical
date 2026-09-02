@@ -54,6 +54,12 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra
+        # The number is supplied here as well as on apply so the plan
+        # reflects what apply will do. It is declared sensitive in
+        # infra/variables.tf, so it renders as "(sensitive value)" rather
+        # than appearing in the plan comment posted to a public PR.
+        env:
+          TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
         run: |
           terraform plan \
             -var-file=environments/teaching/terraform.tfvars \
@@ -96,6 +102,8 @@ jobs:
 
       - name: Terraform apply
         working-directory: infra
+        env:
+          TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
         run: |
           terraform apply \
             -var-file=environments/teaching/terraform.tfvars \

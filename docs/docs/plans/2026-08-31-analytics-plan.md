@@ -51,7 +51,7 @@ that recur are collected in the glossary at the foot of this document.
 - **Public site visitor numbers** — the load balancer already logs every
   request, and the public site is logged by a different mechanism from the
   app. `infra/modules/load-balancer/main.tf` sets `log_config { enable = true }`
-  on the two backend *services*, but the marketing site is served by
+  on the two backend _services_, but the marketing site is served by
   `google_compute_backend_bucket.landing`, which has no such block. It does not
   need one: logging for backend buckets on an external Application Load
   Balancer is switched on automatically and cannot be disabled. Either way the
@@ -359,9 +359,26 @@ a clinical one it is not.
       warns SMS "isn't a fully reliable notification channel type" and may be
       unavailable in some regions, so it escalates tier one rather than
       replacing it
+- [x] Supply the number from the `ALERT_SMS_NUMBER` organisation secret via
+      `TF_VAR_alert_sms_number`, on both the plan and apply jobs so the two
+      agree. It is **not** in `terraform.tfvars`: this repository is public,
+      and a committed number would be published permanently in git history.
+- [x] Mark `alert_sms_number` sensitive in both variable definitions. The plan
+      job posts its output as a pull request comment on a public repository,
+      so without this the number would render there in plain text. Verified
+      experimentally rather than assumed: an unmarked variable prints the
+      value inside a map attribute, a sensitive one renders
+      `(sensitive value)`.
 - [ ] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
       this is done by hand
+
+Note that the number will still be recorded in Terraform state, which lives in
+`gs://quill-medical-terraform-state`. That bucket has no `allUsers` or
+`allAuthenticatedUsers` binding, so it is private to the project — but it is a
+deliberate exception to the rule stated in `modules/secrets/main.tf` that
+secret values never enter Terraform state. The only way to avoid it entirely
+would be to create the channel by hand, which would make it unmanaged.
 
 **For teaching specifically, this is already enough — buy nothing.** Teaching
 holds no patient data and supports no clinical decision; an outage means a
@@ -372,6 +389,7 @@ occasionally useful, not because teaching needs it. The unreliability of
 Google's notification channels is a real problem for a clinical service and an
 acceptable one here. Revisit the whole escalation when clinical users arrive —
 not before.
+
 - [x] Do not let tier two rest on SMS alone — it is paired with email.
       Google documents Slack, PagerDuty, webhooks and the Cloud mobile app as
       sharing **one internal delivery service and therefore one point of
@@ -434,6 +452,26 @@ No application code. This is infrastructure and a dashboard.
       module, scoped to the landing domain so app traffic is not double-counted
 - [x] Add visits over time to the single Cloud Monitoring dashboard, beside
       uptime and error rate
+- [x] Expand the dashboard beyond those three panels: request latency at the
+      95th percentile, 4xx charted separately from 5xx, Cloud SQL connections
+      and disk utilisation, and Cloud Run instance count. Each earns its place
+      by changing a decision. CPU, memory, billable instance time and network
+      bytes were deliberately left off — the standard menu, answering nothing
+      actionable at this scale, and Cloud Run's built-in dashboards already
+      carry them for when digging is needed.
+- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes. It is the
+      failure that gives days of warning and still takes the service down if
+      nobody happens to look, and nothing watched for it before.
+- [x] Add an `app_page_loads` metric counting successful non-API requests to
+      the app host — usage of the application, available without touching
+      application code. **It counts page loads, not people.** Nothing
+      identifies a visitor, deliberately, so it cannot separate two visits by
+      one person from one visit by two. Phase 3's per-session random
+      identifier is what turns this into sessions, and it stays blocked on
+      application code.
+- [x] Set `app_domain` explicitly in the environment tfvars rather than
+      deriving it from `monitored_hostnames[0]`, so reordering that list
+      cannot silently point the app metrics at the marketing site.
 - [x] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
       and a log sink, as the archive that allows new questions of old data —
       metrics cannot be re-sliced after the fact, and 30 days of log bucket
@@ -717,8 +755,7 @@ from the reasoning rather than from scratch:
 - **NCSC** — National Cyber Security Centre. The UK government body that
   authors the CAF.
 
-- **PECR** — Privacy and Electronic Communications (EC Directive) Regulations
-  2003. The UK's actual cookie law. It governs storing or reading anything on a
+- **PECR** — Privacy and Electronic Communications (EC Directive) Regulations 2003. The UK's actual cookie law. It governs storing or reading anything on a
   user's device, whether or not that thing is personal data — a different
   question from UK GDPR's, which is about processing personal data.
 

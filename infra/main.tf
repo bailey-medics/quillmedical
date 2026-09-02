@@ -359,4 +359,5 @@ module "analytics" {
   environment = var.environment
 
   landing_domain = var.landing_domain
+  app_domain     = var.app_domain
 }
