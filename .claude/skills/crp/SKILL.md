@@ -1,16 +1,29 @@
 ---
 name: crp
 description: Commit, rebase, and push code
-argument-hint: "[repo: eoeeta|resp|all]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git -C *)
+argument-hint: "[repo: eoeeta|resp|all] [final]"
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git -C *), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*)
 disable-model-invocation: true
 ---
 
 # Commit, rebase, and push code
 
+## Arguments
+
+Up to two space-separated arguments may be given, in any order:
+
+- A **repository** name — `eoeeta`, `resp` or `all`. Defaults to
+  **quillmedical** when absent.
+- The literal flag **`final`** — after committing and pushing, also rewrite the
+  pull request description so it summarises the whole branch. See
+  "Final: update the pull request description" below.
+
+So `/crp`, `/crp final`, `/crp eoeeta` and `/crp eoeeta final` are all valid.
+Any other token is an error: stop and ask what was meant rather than guessing.
+
 ## Target repository
 
-The user may specify a repo name after the command (e.g. `/crp eoeeta`). Use this mapping:
+The repository argument maps as follows:
 
 | Argument  | Repository path                                                             |
 | --------- | --------------------------------------------------------------------------- |
@@ -19,9 +32,7 @@ The user may specify a repo name after the command (e.g. `/crp eoeeta`). Use thi
 | `resp`    | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` |
 | `all`     | _all of the above repos_                                                    |
 
-The argument supplied to this command is: `$ARGUMENTS`
-
-If it is empty, default to **quillmedical**.
+The arguments supplied to this command are: `$ARGUMENTS`
 
 ## Steps
 
@@ -50,6 +61,88 @@ If it is empty, default to **quillmedical**.
    branch as up to date. Rebase onto `origin/main` if behind, resolve any
    conflicts, and ensure tests pass. Force push if the rebase rewrites history.
 8. Push to current branch (do not create a new branch).
+9. If `final` was given, update the pull request description — see
+   "Final: update the pull request description" below. Without `final`, stop
+   after the push.
+
+## Final: update the pull request description
+
+Run this only when `final` was given, only after the push in step 8 succeeded,
+and once per repository when the repository argument was `all`. Everything
+below is scoped to a single repository: run `gh` from that repository's
+directory, or pass `-R <owner>/<repo>`.
+
+1. **Find the pull request.**
+
+   ```bash
+   gh pr list --head "$(git branch --show-current)" --state open \
+     --json number,title,url,isDraft,body
+   ```
+
+   If there is no open pull request, stop and say so — do not create one.
+   `auto-pr.yml` opens the pull request on push and may not have run yet.
+   If more than one comes back, stop and ask which to update.
+
+2. **Read the whole branch, not just the last commit.** The description
+   summarises the pull request, so work from the merge base:
+
+   ```bash
+   git fetch origin main
+   git log --no-merges --oneline origin/main..HEAD
+   git diff origin/main...HEAD --stat
+   ```
+
+   Then read the diff of the files that matter
+   (`git diff origin/main...HEAD -- <path>`). Base the summary on what the code
+   actually does, not on the commit messages alone.
+
+3. **Check you are not overwriting a human.** If the existing body holds prose
+   that is neither the template's boilerplate comments nor a previously
+   generated summary (identified by the `<!-- crp:pr-summary -->` marker),
+   stop, show that body, and ask before replacing it. An empty body, the
+   untouched template, or a body carrying the marker is safe to replace
+   without asking.
+
+4. **Write the body** using the headings from
+   `.github/_pull_request_template.md`, filling every section:
+
+   ```markdown
+   ## What
+
+   <one short paragraph, then bullets for the substantive changes>
+
+   ## Why
+
+   <the reason for the change>
+
+   ## Safety considerations
+
+   <Does this touch clinical data, patient records, authentication,
+   authorisation (system permissions or CBAC), or database migrations? If so,
+   say how it is handled. Write "N/A" only when none genuinely apply.>
+
+   ## Testing
+
+   <the tests added or changed, and the commands actually run>
+
+   <!-- crp:pr-summary -->
+   ```
+
+   British English, sentence case for headings, no PHI and no secrets — the
+   body is visible to everyone with repository access. Describe the change
+   rather than praising it, and never claim tests pass that were not run.
+
+5. **Apply it.** Write the body to a temporary file and pass that file, so
+   backticks, quotes and newlines survive intact:
+
+   ```bash
+   gh pr edit <number> --body-file <path to that file>
+   ```
+
+   Leave the title, draft state, labels and reviewers alone.
+
+6. **Report** the pull request URL and one line on what the description now
+   says.
 
 If at any step there's an error requiring human judgement, stop and report the issue.
 
