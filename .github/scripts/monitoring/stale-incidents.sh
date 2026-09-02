@@ -21,7 +21,9 @@
 #
 # Environment:
 #   GCP_PROJECT     Project to inspect (required).
-#   STALE_HOURS     Age beyond which an open incident is reported. Default 24.
+#   STALE_HOURS     Hours open at or beyond which an incident is reported.
+#                   Default 24. Set to 0 to report every open incident, which
+#                   is how detection is tested without waiting a day.
 #   GITHUB_OUTPUT   Destination for `stale`, when set by the runner.
 #   INCIDENTS_JSON  Path to a fixture, used by the tests instead of the API.
 #
@@ -175,7 +177,11 @@ stale_report() {
 
     hours="$(hours_since "$open_time")"
 
-    if [ "$hours" -le "$threshold" ]; then
+    # Greater than or equal, not strictly greater. Hours are whole numbers,
+    # so an incident open for 23h59m counts as 23 and a threshold of 0 would
+    # otherwise never match anything under an hour old — making the whole
+    # thing impossible to test without waiting.
+    if [ "$hours" -lt "$threshold" ]; then
       continue
     fi
 
@@ -224,7 +230,7 @@ main() {
 
   if [ -z "$report" ]; then
     open_count="$(count_open "$incidents")"
-    log "No incident open longer than ${threshold}h (${open_count} open)."
+    log "No incident open for ${threshold}h or more (${open_count} open)."
   else
     echo "$report"
   fi
