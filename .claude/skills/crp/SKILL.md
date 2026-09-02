@@ -156,9 +156,10 @@ nothing in the conversation makes merging part of this command.
    - Finish with `<!-- crp:pr-summary -->` on its own line.
 
    Use bold group headings rather than `##` headings: that is what the existing
-   pull requests here use, and it keeps the body scannable. Do not reproduce
-   Copilot's `[[1]](diffhunk://…)` reference links — they cannot be constructed
-   reliably outside Copilot and add nothing a reviewer reading the diff needs.
+   pull requests here use, and it keeps the body easy to scan. Do not
+   reproduce Copilot's `[[1]](diffhunk://…)` reference links — they cannot be
+   constructed reliably outside Copilot and add nothing a reviewer reading the
+   diff needs.
 
 5. **Cover what this repository cares about.** Where the branch touches
    clinical data, patient records, authentication, authorisation (system
