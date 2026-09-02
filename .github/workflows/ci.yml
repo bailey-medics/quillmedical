@@ -197,7 +197,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
+        run: find .github/scripts .claude/hooks -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
       # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
       - name: Lint GitHub Actions workflows
         uses: docker://rhysd/actionlint:1.7.8
@@ -215,7 +215,9 @@ jobs:
           # token to avoid GitHub API rate limits.
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run shell script tests
-        run: bash .github/scripts/ci/run-shell-tests.sh .github/scripts
+        run: |
+          bash .github/scripts/ci/run-shell-tests.sh .github/scripts
+          bash .github/scripts/ci/run-shell-tests.sh .claude/hooks
 
 
   # ---------- Version consistency ----------
