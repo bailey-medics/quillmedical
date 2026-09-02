@@ -8,6 +8,13 @@
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/detect-teaching-tooling-changes.sh"
   REPO="${BATS_TEST_TMPDIR}/repo"
+
+  # CI sets GITHUB_OUTPUT for every step and bats inherits it, so the script
+  # writes there rather than to stdout. Point it at a file of our own and
+  # read that: asserting on stdout passed locally, where the variable is
+  # unset, and failed in CI for a reason that had nothing to do with the code.
+  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/github_output"
+  : > "$GITHUB_OUTPUT"
   mkdir -p "${REPO}/backend/app/features/teaching/tooling"
   cd "$REPO" || return 1
 
@@ -37,7 +44,7 @@ commit_all() {
   run bash "$SCRIPT" "$BASE"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"changed=false"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=false"* ]]
 }
 
 @test "changing the validator triggers it" {
@@ -46,7 +53,7 @@ commit_all() {
   commit_all "tighten"
 
   run bash "$SCRIPT" "$BASE"
-  [[ "$output" == *"changed=true"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=true"* ]]
 }
 
 @test "changing the MDX parser triggers it, though it sits outside the folder" {
@@ -56,7 +63,7 @@ commit_all() {
 
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"changed=true"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=true"* ]]
 }
 
 @test "a new file in the tooling package triggers it" {
@@ -66,7 +73,7 @@ commit_all() {
 
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"changed=true"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=true"* ]]
 }
 
 @test "deleting a contract file triggers it" {
@@ -74,7 +81,7 @@ commit_all() {
   rm backend/app/features/teaching/mdx_parser.py
   commit_all "remove the parser"
   run bash "$SCRIPT" "$BASE"
-  [[ "$output" == *"changed=true"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=true"* ]]
 }
 
 @test "a dependency bump triggers it, being inside the package" {
@@ -85,7 +92,7 @@ commit_all() {
 
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"changed=true"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=true"* ]]
 }
 
 @test "unrelated work does not trigger it" {
@@ -95,7 +102,7 @@ commit_all() {
 
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"changed=false"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=false"* ]]
 }
 
 @test "a branch whose contract is back at base no longer triggers it" {
@@ -110,20 +117,20 @@ commit_all() {
 
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"changed=false"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=false"* ]]
 }
 
 @test "the hash is reported even when nothing changed" {
   # The decision file will be recorded against it, so it is always needed.
   run bash "$SCRIPT" "$BASE"
 
-  [[ "$output" == *"tooling_hash="* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"tooling_hash="* ]]
 }
 
 @test "the same contract hashes the same from either ref" {
   run bash "$SCRIPT" HEAD
 
-  [[ "$output" == *"changed=false"* ]]
+  [[ "$(cat "$GITHUB_OUTPUT")" == *"changed=false"* ]]
 }
 
 @test "a changed contract names the files, so nobody has to guess" {
@@ -147,6 +154,18 @@ commit_all() {
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"refusing to hash nothing"* ]]
+}
+
+@test "prints the result when run by hand, with no GITHUB_OUTPUT" {
+  # The other path through the same code: a developer running this in a
+  # terminal has no GITHUB_OUTPUT, and should still see the answer.
+  unset GITHUB_OUTPUT
+
+  run bash "$SCRIPT" "$BASE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"changed=false"* ]]
+  [[ "$output" == *"tooling_hash="* ]]
 }
 
 @test "fails without a base ref" {
