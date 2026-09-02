@@ -66,3 +66,19 @@ variable "sql_disk_threshold" {
   type        = number
   default     = 0.8
 }
+
+variable "pagerduty_service_key" {
+  description = "PagerDuty Events API v1 integration key for the on-call service. Leave empty to disable tier three entirely."
+  type        = string
+  default     = ""
+
+  # A credential, and this repository is public: plan output is posted as a
+  # pull request comment. See infra/variables.tf.
+  sensitive = true
+}
+
+variable "critical_duration" {
+  description = "How long an outage must persist before the on-call phone rings"
+  type        = string
+  default     = "1800s"
+}

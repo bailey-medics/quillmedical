@@ -60,6 +60,7 @@ jobs:
         # than appearing in the plan comment posted to a public PR.
         env:
           TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
+          TF_VAR_pagerduty_service_key: ${{ secrets.PAGERDUTY_SERVICE_KEY }}
         run: |
           terraform plan \
             -var-file=environments/teaching/terraform.tfvars \
@@ -104,6 +105,7 @@ jobs:
         working-directory: infra
         env:
           TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
+          TF_VAR_pagerduty_service_key: ${{ secrets.PAGERDUTY_SERVICE_KEY }}
         run: |
           terraform apply \
             -var-file=environments/teaching/terraform.tfvars \
