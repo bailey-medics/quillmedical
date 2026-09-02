@@ -344,6 +344,7 @@ module "monitoring" {
   environment = var.environment
 
   monitored_hostnames = var.monitored_hostnames
+  app_domain          = var.app_domain
   alert_email         = var.alert_email
   alert_sms_number    = var.alert_sms_number
   slack_webhook_url   = var.slack_webhook_url

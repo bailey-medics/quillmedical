@@ -85,8 +85,18 @@ resource "google_monitoring_uptime_check_config" "health" {
   # than slowing the checks back down — detection lag matters more.
   period = "60s"
 
+  # Only the app host has an API to health-check. The public site is served
+  # straight from a GCS bucket via a backend bucket and has no /api path at
+  # all, so probing /api/health there returns 404 and the check fails
+  # forever. That is exactly what it did: whole days at 0% passing, and an
+  # incident that stayed open against a site which was perfectly healthy.
+  #
+  # A permanently-open false incident is worse than noise. Cloud Monitoring
+  # notifies once per incident and will not open a second while the first is
+  # open, so a genuine outage of the public site would have raised nothing
+  # at all.
   http_check {
-    path         = "/api/health"
+    path         = each.key == var.app_domain ? "/api/health" : "/"
     port         = 443
     use_ssl      = true
     validate_ssl = true
