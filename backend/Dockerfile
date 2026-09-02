@@ -15,6 +15,25 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Trust the Claude Code on the web egress proxy when its CA is mounted at build
+# time. That proxy re-terminates TLS, so without it every PyPI request fails
+# with "self-signed certificate in certificate chain". The secret is mounted
+# only by compose.web.yml, so this is a no-op for local and CI builds and no
+# certificate ever reaches a published image.
+#
+# pip reads the system trust store, so update-ca-certificates is enough for it.
+# Poetry goes through requests, which uses certifi and ignores that store, so
+# the bundle has to be named explicitly — hence the env file, which later
+# stages source when it exists.
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -s /run/secrets/proxy_ca ]; then \
+        cp /run/secrets/proxy_ca /usr/local/share/ca-certificates/proxy-ca.crt \
+        && update-ca-certificates \
+        && printf 'export REQUESTS_CA_BUNDLE=%s\nexport SSL_CERT_FILE=%s\n' \
+            /etc/ssl/certs/ca-certificates.crt \
+            /etc/ssl/certs/ca-certificates.crt > /etc/proxy-ca.env; \
+    fi
+
 # (Optional) OS deps if you ever have to compile wheels; keep minimal.
 # Most of our deps ship many linux wheels, so you can usually skip build-essential.
 # RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
@@ -26,14 +45,16 @@ COPY .poetry-version ./
 
 # Install Poetry (pinned) and remove pre-installed charset-normalizer to avoid
 # attrs/pip conflict when Poetry manages system site-packages.
-RUN pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
+RUN if [ -f /etc/proxy-ca.env ]; then . /etc/proxy-ca.env; fi; \
+    pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
  && pip uninstall -y charset-normalizer 2>/dev/null || true
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
 # TODO: use `--only main` here — the dev group isn't marked optional, so this
 # currently installs dev deps (mypy, pytest, etc.) into the production image.
-RUN poetry config virtualenvs.create false \
+RUN if [ -f /etc/proxy-ca.env ]; then . /etc/proxy-ca.env; fi; \
+    poetry config virtualenvs.create false \
  && poetry install --no-interaction --no-ansi
 
 # Copy sources (keeps your paths)

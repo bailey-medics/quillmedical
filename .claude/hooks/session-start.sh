@@ -26,7 +26,18 @@ readonly LOG_DIR="${SESSION_START_LOG_DIR:-/tmp}"
 readonly DOCKER_LOG="$LOG_DIR/dockerd.log"
 readonly STACK_LOG="$LOG_DIR/compose-up.log"
 readonly COMPOSE_FILE=compose.dev.yml
+readonly WEB_COMPOSE_FILE=compose.web.yml
+readonly PROXY_CA=/root/.ccr/ca-bundle.crt
 readonly STACK_TIMEOUT=300
+
+# Build containers do not trust the session proxy's CA, so image builds cannot
+# reach PyPI or the Yarn registry without it. compose.web.yml passes it in as a
+# build secret; it is only ever added here, so a local run stays on
+# compose.dev.yml alone.
+compose_args=(-f "$COMPOSE_FILE")
+if [ -f "$PROXY_CA" ]; then
+    compose_args+=(-f "$WEB_COMPOSE_FILE")
+fi
 
 warn() {
     echo "warning: $*" >&2
@@ -121,6 +132,28 @@ warning: image pulls were refused by this session's egress policy.
          .claude/hooks/README.md has the environment settings that fix this.
 BLOCKED
     fi
+
+    # A build that cannot verify TLS never reached its registry at all, so say
+    # so rather than letting it read as the registry being down.
+    if grep -qE 'SELF_SIGNED_CERT_IN_CHAIN|CERTIFICATE_VERIFY_FAILED|self-signed certificate' \
+        "$STACK_LOG" 2>/dev/null; then
+        cat >&2 <<'UNTRUSTED'
+warning: an image build could not verify TLS against its package registry.
+         The build container is not trusting the session proxy's CA, which
+         compose.web.yml supplies as a build secret. Check that the CA exists
+         at /root/.ccr/ca-bundle.crt and that compose.web.yml was applied.
+UNTRUSTED
+    fi
+
+    # The proxy names the host it refused, which is the one thing needed to fix
+    # it, so lift it out of the log rather than making it be searched for.
+    local blocked
+    blocked=$(grep -oE 'Host not in allowlist: [^ .]*(\.[^ .]+)*' "$STACK_LOG" 2>/dev/null \
+        | sed 's/Host not in allowlist: //' | sort -u | tr '\n' ' ')
+    if [ -n "$blocked" ]; then
+        warn "the egress policy refused these hosts: ${blocked}"
+        warn "add them to the environment's allowed domains — see .claude/hooks/README.md"
+    fi
 }
 
 # Bring up the dev stack. The `clinical` profile services (HAPI FHIR, EHRbase
@@ -129,9 +162,9 @@ BLOCKED
 # slowest part of the pull by a wide margin. Start them by hand with
 # COMPOSE_PROFILES=clinical when a task actually needs them.
 start_dev_stack() {
-    if docker compose -f "$COMPOSE_FILE" up -d --wait \
+    if docker compose "${compose_args[@]}" up -d --wait \
         --wait-timeout "$STACK_TIMEOUT" >"$STACK_LOG" 2>&1; then
-        echo "dev stack is up: $(docker compose -f "$COMPOSE_FILE" ps \
+        echo "dev stack is up: $(docker compose "${compose_args[@]}" ps \
             --services --status running | tr '\n' ' ')"
         return 0
     fi

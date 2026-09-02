@@ -145,6 +145,36 @@ exit 0
     [[ "$output" != *"egress policy"* ]]
 }
 
+@test "explains a build that could not verify TLS" {
+    stub_failing_stack \
+        'Error: self-signed certificate in certificate chain SELF_SIGNED_CERT_IN_CHAIN'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"could not verify TLS"* ]]
+    [[ "$output" == *"compose.web.yml"* ]]
+}
+
+@test "names the hosts the egress policy refused" {
+    stub_failing_stack \
+        'status 403 Host not in allowlist: repo.yarnpkg.com. Add this host'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"refused these hosts: repo.yarnpkg.com"* ]]
+}
+
+@test "does not report refused hosts when none were refused" {
+    stub_failing_stack "port is already allocated"
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"refused these hosts"* ]]
+}
+
 @test "keeps the full Compose output for inspection" {
     stub_failing_stack "a detailed explanation"
 

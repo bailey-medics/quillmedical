@@ -1,0 +1,32 @@
+# Build-time overlay for Claude Code on the web.
+#
+# Sessions there run behind an egress proxy that re-terminates TLS. Build
+# containers do not trust its CA, so every HTTPS request made while building an
+# image — pip and Poetry reaching PyPI, Corepack fetching Yarn — fails with
+# "self-signed certificate in certificate chain". This overlay passes that CA
+# to the builds as a BuildKit secret; both Dockerfiles install it when it is
+# present and ignore it when it is not.
+#
+# A secret is used rather than a bind mount or a build arg so the certificate
+# is available during the build without being written into a layer or recorded
+# in the image's metadata.
+#
+# Applied automatically by .claude/hooks/session-start.sh when the CA exists,
+# so it never affects a local or CI build:
+#
+#   docker compose -f compose.dev.yml -f compose.web.yml up -d
+
+services:
+  backend:
+    build:
+      secrets:
+        - proxy_ca
+
+  frontend:
+    build:
+      secrets:
+        - proxy_ca
+
+secrets:
+  proxy_ca:
+    file: /root/.ccr/ca-bundle.crt

@@ -57,17 +57,56 @@ containerised works until that host is allowed. In practice that means no
 `just ub` and no `just uf`, since both run inside `quill_backend` and
 `quill_frontend`.
 
-To fix it, open the environment settings at [claude.ai/code](https://claude.ai/code),
-set **Network access** to **Custom**, tick **Also include default list of common
-package managers**, and add:
+Pulling the images is only half of it. Building the `backend` and `frontend`
+images reaches for two more hosts that the Trusted list does not cover, and
+each one fails the build outright:
+
+| Host | Needed by | Why it is not covered |
+| --- | --- | --- |
+| `production.cloudfront.docker.com` | Every image pull | The list names the older `production.cloudflare.docker.com` |
+| `repo.yarnpkg.com` | Corepack fetching Yarn 4 | The list has `yarnpkg.com` and `registry.yarnpkg.com`, and a bare entry does not match subdomains |
+| `deb.debian.org` | `apt-get install git` in the backend dev stage | Not in the list at all |
+
+To allow them, open the environment settings at
+[claude.ai/code](https://claude.ai/code), set **Network access** to **Custom**,
+tick **Also include default list of common package managers**, and list:
 
 ```text
 production.cloudfront.docker.com
+repo.yarnpkg.com
+deb.debian.org
 ```
 
 Changing the allowed hosts makes the setup script run again and rebuilds the
 snapshot, which is what you want here: the rebuild is where the images get
 pulled.
+
+## Build containers and the proxy CA
+
+Allowing those hosts is still not enough on its own. The session's egress proxy
+re-terminates TLS, and while the session's own shell trusts its CA, a build
+container does not: `pip`, Poetry and Corepack all reject every HTTPS request
+with `self-signed certificate in certificate chain`, so the images fail to
+build even when the hosts are reachable.
+
+`compose.web.yml` handles this. It passes `/root/.ccr/ca-bundle.crt` to the
+`backend` and `frontend` builds as a BuildKit secret, and each `Dockerfile`
+installs it in an early layer when it is present. A secret is used rather than
+a build arg or a bind mount so the certificate is never written into a layer or
+recorded in image metadata, and because nothing mounts it outside a web session
+the step is a no-op for local and CI builds — no published image is affected.
+
+Two details are worth knowing if this ever needs changing:
+
+- `pip` reads the system trust store, so `update-ca-certificates` satisfies it.
+  Poetry goes through `requests`, which uses `certifi` and ignores that store,
+  so the bundle is named explicitly through `REQUESTS_CA_BUNDLE`.
+- Node ignores the system trust store too, so the frontend build points
+  `NODE_EXTRA_CA_CERTS` straight at the copied certificate.
+
+The hook applies the overlay itself whenever the CA exists, so
+`docker compose -f compose.dev.yml -f compose.web.yml` is only ever assembled
+in a web session. Running Compose by hand there needs both `-f` flags.
 
 ## Setup script
 
@@ -92,6 +131,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 docker compose -f compose.dev.yml pull --quiet || true
+docker compose -f compose.dev.yml -f compose.web.yml build || true
 
 exit 0
 ```
@@ -101,10 +141,12 @@ environment fail to start, which is why every fallible step ends in `|| true`.
 And it should finish inside roughly five minutes, or the snapshot never gets
 built and each session pays the download cost again.
 
-Adding `docker compose -f compose.dev.yml build` pulls the first session's build
-cost into the snapshot too, but a cold `yarn install` in the frontend image can
-push the script past that five-minute budget. Add it only if the snapshot still
-builds.
+The `build` line is the part most likely to run over that budget, because a cold
+`yarn install` in the frontend image is slow. It earns its place — without it
+every session rebuilds both images from scratch inside the hook — but it is the
+first thing to drop if the snapshot stops being built. Both `-f` flags are
+needed on it: the build cannot reach PyPI or the Yarn registry without the CA
+that `compose.web.yml` supplies.
 
 The `clinical` profile services — HAPI FHIR, EHRbase and their databases — are
 excluded on purpose. They are the slowest images by a wide margin and the unit

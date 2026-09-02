@@ -13,12 +13,27 @@ FROM node:24.13.1-bookworm-slim@sha256:a81a03dd965b4052269a57fac857004022b522a4b
 
 RUN corepack enable
 
+# Trust the Claude Code on the web egress proxy when its CA is mounted at build
+# time. That proxy re-terminates TLS, so without it Corepack cannot fetch Yarn
+# and every registry request fails with SELF_SIGNED_CERT_IN_CHAIN. Node ignores
+# the system trust store, so the certificate is named directly through
+# NODE_EXTRA_CA_CERTS. The secret is mounted only by compose.web.yml, so this
+# is a no-op for local and CI builds and no certificate reaches a published
+# image.
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -s /run/secrets/proxy_ca ]; then \
+        cp /run/secrets/proxy_ca /usr/local/share/ca-certificates/proxy-ca.crt \
+        && printf 'export NODE_EXTRA_CA_CERTS=%s\n' \
+            /usr/local/share/ca-certificates/proxy-ca.crt > /etc/proxy-ca.env; \
+    fi
+
 WORKDIR /app
 
 COPY frontend/package.json frontend/yarn.lock frontend/.yarnrc.yml ./
 COPY frontend/public_pages/package.json ./public_pages/package.json
 
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    if [ -f /etc/proxy-ca.env ]; then . /etc/proxy-ca.env; fi; \
     yarn install --immutable --check-cache
 
 # ============================================================
