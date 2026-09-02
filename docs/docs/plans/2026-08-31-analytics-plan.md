@@ -452,6 +452,26 @@ No application code. This is infrastructure and a dashboard.
       module, scoped to the landing domain so app traffic is not double-counted
 - [x] Add visits over time to the single Cloud Monitoring dashboard, beside
       uptime and error rate
+- [x] Expand the dashboard beyond those three panels: request latency at the
+      95th percentile, 4xx charted separately from 5xx, Cloud SQL connections
+      and disk utilisation, and Cloud Run instance count. Each earns its place
+      by changing a decision. CPU, memory, billable instance time and network
+      bytes were deliberately left off — the standard menu, answering nothing
+      actionable at this scale, and Cloud Run's built-in dashboards already
+      carry them for when digging is needed.
+- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes. It is the
+      failure that gives days of warning and still takes the service down if
+      nobody happens to look, and nothing watched for it before.
+- [x] Add an `app_page_loads` metric counting successful non-API requests to
+      the app host — usage of the application, available without touching
+      application code. **It counts page loads, not people.** Nothing
+      identifies a visitor, deliberately, so it cannot separate two visits by
+      one person from one visit by two. Phase 3's per-session random
+      identifier is what turns this into sessions, and it stays blocked on
+      application code.
+- [x] Set `app_domain` explicitly in the environment tfvars rather than
+      deriving it from `monitored_hostnames[0]`, so reordering that list
+      cannot silently point the app metrics at the marketing site.
 - [x] Add an `infra/modules/analytics` Terraform module with a BigQuery dataset
       and a log sink, as the archive that allows new questions of old data —
       metrics cannot be re-sliced after the fact, and 30 days of log bucket

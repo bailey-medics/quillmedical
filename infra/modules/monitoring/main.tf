@@ -275,3 +275,45 @@ resource "google_monitoring_alert_policy" "server_errors" {
     auto_close = "1800s" # 30 minutes
   }
 }
+# ---------- Alert policy — Cloud SQL disk filling ----------
+#
+# The failure that gives days of warning and still takes the service down if
+# nobody is watching. Unlike an outage, there is no symptom until the disk is
+# full and the database stops accepting writes.
+resource "google_monitoring_alert_policy" "sql_disk" {
+  project      = var.project_id
+  display_name = "Cloud SQL disk filling (${var.environment})"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Disk utilisation above threshold"
+
+    condition_threshold {
+      filter = join(" AND ", [
+        "resource.type = \"cloudsql_database\"",
+        "metric.type = \"cloudsql.googleapis.com/database/disk/utilization\"",
+      ])
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.sql_disk_threshold
+      duration        = "1800s" # sustained for 30 minutes, not a momentary spike
+
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_MEAN"
+        cross_series_reducer = "REDUCE_MAX"
+        group_by_fields      = ["resource.label.database_id"]
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "86400s" # 24 hours: this does not resolve itself quickly
+  }
+}

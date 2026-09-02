@@ -54,3 +54,9 @@ variable "escalation_duration" {
   type        = string
   default     = "900s"
 }
+
+variable "sql_disk_threshold" {
+  description = "Cloud SQL disk utilisation (0.0-1.0) above which to alert. 0.8 leaves room to resize before writes start failing."
+  type        = number
+  default     = 0.8
+}
