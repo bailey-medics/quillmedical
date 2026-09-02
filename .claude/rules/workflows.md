@@ -60,6 +60,51 @@ Put the script's work in a `main()` function and call it behind a source guard. 
 - **Split `local` from a command substitution** — `local x=$(cmd)` swallows the exit status of `cmd`, so a failure slips past `set -e`. Write `local x` then `x=$(cmd)` on the next line.
 - **Libraries are exempt.** `shared/logging.sh` is only ever sourced and has no `main()`.
 
+### Readability: one idea per line
+
+These scripts are read far more often than they are written, usually by
+someone checking whether a change is safe. Optimise for that reader.
+
+- **Declare one variable per line.** `local hours="$1" policy="$2" location="$3"`
+  packs three separate ideas into one line and hides the third from anyone
+  scanning down the left margin. Write them out:
+
+  ```bash
+  local hours="$1"
+  local policy="$2"
+  local location="$3"
+  ```
+
+  This is a readability rule, distinct from the `set -e` reason for splitting
+  `local` from a command substitution above. Both point the same way.
+
+- **Separate the steps with blank lines.** Group the lines that do one thing,
+  then leave a blank line before the next thing. A function that reads as
+  three or four visually distinct blocks is far easier to check than fifteen
+  unbroken lines, even when the code is identical:
+
+  ```bash
+  hours_since() {
+    local timestamp="$1"
+    local opened
+    local now
+
+    opened="$(to_epoch "$timestamp")"
+    now="$(date -u +%s)"
+
+    echo $(((now - opened) / 3600))
+  }
+  ```
+
+  Declarations, then the work, then the result.
+
+- **Prefer several small named functions over one long one.** If a block needs
+  a comment saying what it does, that is usually a function wanting a name.
+
+- **Keep the same spacing in `.bats` files.** Setup, then the `run`, then the
+  assertions, each separated by a blank line — the existing tests already do
+  this and it is why they are quick to scan.
+
 ## Testing scripts with bats
 
 Every script under `.github/scripts/` should have a `<name>.bats` beside it. The suite runs in CI via `.github/scripts/ci/run-shell-tests.sh`, which fails on warnings as well as on test failures — see below for why.

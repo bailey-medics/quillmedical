@@ -420,8 +420,22 @@ not before.
       five. The comment marking 300s as the free tier is out of date: at two
       hostnames this stays comfortably inside the 1 million free executions a
       month, as costed above
-- [ ] Test every rung that exists end to end, and re-test quarterly — an
-      untested pager is not a pager. Include the phone call once it is bought
+- [x] Test every rung that exists end to end — done unintentionally and more
+      thoroughly than a staged break would have managed. On 1 September a real
+      uptime failure fired tier two at 19:29, delivering both SMS and email,
+      and both tiers sent recovery notifications when it cleared. Re-test
+      after any change to the channels, and include the phone call once it is
+      bought.
+- [x] Check daily for incidents stuck open. Cloud Monitoring notifies once per
+      incident and will not open a second while the first is running, so a
+      condition that never clears disables its own policy silently. A uptime
+      check pointed at a path that did not exist held an incident open for
+      **124 days**, during which every console view showed a correctly
+      configured alert that could not have reported a real outage. No break
+      test finds this — the alert looks right and simply never fires again.
+      `.github/workflows/stale-incidents.yml` runs daily at 08:00 UTC and
+      notifies Slack only when something is stuck; a daily all-clear would be
+      exactly the routine notification people learn to ignore.
 - [ ] Fold the result into the incident response plan and runbook items already
       open in `todo.md`, and replace the `webhook_token_auth` Slack channel
       with the native integration while in there
