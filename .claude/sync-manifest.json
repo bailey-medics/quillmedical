@@ -13,15 +13,17 @@
     "2026-08-30: five entries now carry divergentByDesign:true with a divergenceReason. Their targets will always differ from their sources, because each difference is a platform feature with no counterpart on the other side - not drift, and not work outstanding. Report them as expected rather than actionable, and NEVER sync over them in either direction. The flag records intent, not state: the recorded hashes still move when either side genuinely changes, so a real edit is still detectable. Anything these entries do NOT name as platform-specific is ordinary drift and should be reconciled as usual.",
     "2026-08-30: the substantive half of that divergence was back-ported to .github/ on branch feature/backport-skill-improvements - crp's three-way pre-commit failure rule, and 'ask rather than guess' in explain-to-me and follow-the-plan-document. Only the platform-specific remainder is left.",
     "2026-08-30: back-filled the 'Enforcement: CI detection + required-reviewer environment gate' subsection into .claude/rules/backend.md. The 2026-08-28 note warning it was missing was dropped earlier that day as resolved, but only the newer immutability bullets had actually been synced - this subsection was still absent, so Claude sessions were missing the rule that human environment approval, not the allow-destructive marker, is what gates a destructive migration. Bodies now match exactly.",
-    "2026-09-02: the `final` argument was added to crp on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md is still the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift."
+    "2026-09-02: the `final` argument was added to crp on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md is still the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
+    "2026-09-02: the pull request description spec in crp's 'Final' section was tightened on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
+    "2026-09-02: a 'never mention AI authorship' rule was added to crp's Never list on BOTH sides in the same commit, and to CLAUDE.md's hand-written '## Claude-specific' section (which this skill never writes into - its hash is refreshed to mean 'last state reconciled'). Not outstanding drift."
   ],
   "files": [
     {
       "source": ".github/copilot-instructions.md",
       "target": "CLAUDE.md",
       "sourceSha256": "a2ce6050a7bbb569bbec186c1f7511f9778328d32a854e075b9faef67c95cba1",
-      "targetSha256": "c76008f6f16cd23d79fd9cc9961ba78b11bd192b16e15e18429e48bef77c9e6a",
-      "syncedAt": "2026-08-30T06:05:05Z"
+      "targetSha256": "306a26b39cd26537f68187a7e3647c1d41337f5b3ecaf58d4125db1c497260f7",
+      "syncedAt": "2026-09-02T18:18:27Z"
     },
     {
       "source": ".github/instructions/backend.instructions.md",
@@ -70,9 +72,9 @@
     {
       "source": ".github/prompts/commit-rebase-push.prompt.md",
       "target": ".claude/skills/crp/SKILL.md",
-      "sourceSha256": "9d1a188574132569782ea04ce79be0146d20edb1dabaf91bd528affa0988e88a",
-      "targetSha256": "d2793368524bbfd5f2351849d23ee6e18341cfb0498976990db83e713c7b735a",
-      "syncedAt": "2026-09-02T00:00:00Z",
+      "sourceSha256": "d1b4151948591fb06a7a6f42c336135003ec22b8ee33da16facb52e8c680636b",
+      "targetSha256": "9a0bbcd8b81ec00cb7f55a6cfcd17db7ec71f1ba8fedf0cceb5b4a4d62dadaf7",
+      "syncedAt": "2026-09-02T18:18:27Z",
       "targetRenamed": true,
       "divergentByDesign": true,
       "divergenceReason": "Argument passing: the Claude copy uses `$ARGUMENTS`, which has no Copilot equivalent, and says '(Claude)' where the Copilot copy says 'you'. The Claude copy also carries skill frontmatter with no Copilot counterpart (argument-hint, allowed-tools, disable-model-invocation). Markdown table whitespace also differs because Prettier formats the Claude side. The substantive instructions are identical - do not sync either way."
