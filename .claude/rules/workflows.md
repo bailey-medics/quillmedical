@@ -59,6 +59,7 @@ Put the script's work in a `main()` function and call it behind a source guard. 
 - **Declare every variable `local`**, including loop variables, so nothing leaks into the calling shell when the script is sourced.
 - **Split `local` from a command substitution** — `local x=$(cmd)` swallows the exit status of `cmd`, so a failure slips past `set -e`. Write `local x` then `x=$(cmd)` on the next line.
 - **Libraries are exempt.** `shared/logging.sh` is only ever sourced and has no `main()`.
+- **Source `logging.sh` via `${BASH_SOURCE[0]}`, not `$0`, in any script whose tests source it.** When bats sources a script to reach its pure functions, `$0` is bats, so the relative path to `shared/` resolves against bats' own directory and the source fails. `${BASH_SOURCE[0]}` is the script either way.
 
 ### Readability: one idea per line
 
