@@ -55,6 +55,12 @@ variable "escalation_duration" {
   default     = "900s"
 }
 
+variable "app_domain" {
+  description = "Hostname serving the application. Only this host is probed at /api/health; every other monitored host is probed at / because it has no API."
+  type        = string
+  default     = ""
+}
+
 variable "sql_disk_threshold" {
   description = "Cloud SQL disk utilisation (0.0-1.0) above which to alert. 0.8 leaves room to resize before writes start failing."
   type        = number
