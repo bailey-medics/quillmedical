@@ -27,6 +27,33 @@ That is why `session-start.sh` starts `dockerd` and runs `docker compose up`
 every time: no init system runs in the session container, and a snapshot of a
 running stack is still just a snapshot of its files.
 
+## Branch renaming
+
+Claude Code on the web opens every session on a branch it names
+`claude/<task>-<hash>`. There is no setting, in the environment or in
+`.claude/settings.json`, that changes that prefix — the name is chosen when the
+session is created, before any repository configuration is read. Branch
+protection here only accepts `feature/*`, so a push of the session branch is
+rejected outright.
+
+The hook therefore renames the branch — `claude/x` becomes `feature/x` — before
+the session has made a commit, and prints the new name to stdout, which is how a
+`SessionStart` hook adds text to the session's context. `CLAUDE.md` carries the
+matching instruction under **Claude-specific**, so Claude pushes to the renamed
+branch instead of the one its session prompt names.
+
+Because the hook is gated on `CLAUDE_CODE_REMOTE`, none of this happens in a
+local checkout, where branches are named by hand anyway.
+
+Two cases are left alone: a branch that is not prefixed `claude/` (already named
+correctly, or a detached HEAD), and one where `feature/<x>` already exists, which
+warns rather than overwriting.
+
+One consequence is worth knowing. The web UI tracks a session by the branch it
+created, and the renamed branch is the only one ever pushed, so prefer opening
+pull requests from inside the session — ask Claude to open one — over the UI's
+**Create PR** button.
+
 ## Tooling the hook installs
 
 Three tools are missing from the base image and are installed on demand, each

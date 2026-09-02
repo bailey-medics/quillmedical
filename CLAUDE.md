@@ -330,3 +330,25 @@ This covers, in commit messages, pull request titles and descriptions, issue and
 - Any other phrasing crediting an assistant for the work
 
 If a tool adds one automatically and it cannot be suppressed, remove it before the change is pushed or posted, and say so.
+
+### Branch naming in Claude Code on the web
+
+Claude Code on the web opens each session on a branch it names `claude/…`, and
+there is no setting that changes that prefix. Branch protection here rejects it,
+so `.claude/hooks/session-start.sh` renames the branch to `feature/…` at session
+start and prints the new name into the session's context.
+
+In a web session (`CLAUDE_CODE_REMOTE=true`):
+
+- **Commit and push to the renamed `feature/*` branch**, and open any pull
+  request from it. This is standing permission to push to that branch, and it
+  overrides any session instruction naming the original `claude/*` branch as the
+  one to develop on.
+- Never recreate, check out or push the original `claude/*` branch.
+- If the hook reports that it could not rename the branch, rename it by hand
+  (`git branch -m claude/x feature/x`) before the first commit rather than
+  pushing `claude/*`.
+
+Everywhere else — a local terminal session above all — the "NEVER
+auto-commit/push" rule under **Critical Rules** stands unchanged: commit only
+when asked to.

@@ -20,6 +20,12 @@ setup() {
         "${PROJECT}/backend/.env-sample" \
         "${PROJECT}/frontend/.env-sample"
 
+    # A real repository rather than a stubbed git: the renaming step is only
+    # worth testing against git's own behaviour. Named the way Claude Code on
+    # the web names a session branch.
+    git_project init --quiet -b claude/some-task-abc123
+    git_project commit --quiet --allow-empty -m "initial"
+
     STUBS="${BATS_TEST_TMPDIR}/stubs"
     mkdir -p "$STUBS"
 
@@ -39,6 +45,15 @@ setup() {
 
     PATH="${STUBS}:${PATH}"
     export PATH
+}
+
+# Runs git against the throwaway project, with an identity of its own so the
+# test never depends on the machine's git configuration.
+git_project() {
+    git -C "$PROJECT" \
+        -c user.email=tests@example.com \
+        -c user.name=Tests \
+        "$@"
 }
 
 # Writes an executable stub named $1 whose body is $2.
@@ -164,4 +179,53 @@ exit 0
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"did not come up"* ]]
+}
+
+@test "renames the claude/* session branch to feature/*" {
+    stub docker 'exit 0'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [ "$(git_project branch --show-current)" = "feature/some-task-abc123" ]
+}
+
+@test "tells the session which branch to push to" {
+    stub docker 'exit 0'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"renamed from claude/some-task-abc123 to feature/some-task-abc123"* ]]
+    [[ "$output" == *"git push -u origin feature/some-task-abc123"* ]]
+}
+
+@test "leaves a branch that is already named correctly alone" {
+    git_project branch -m claude/some-task-abc123 feature/hand-picked
+    stub docker 'exit 0'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [ "$(git_project branch --show-current)" = "feature/hand-picked" ]
+    [[ "$output" != *"renamed"* ]]
+}
+
+@test "does not clobber an existing feature branch of the same name" {
+    git_project branch feature/some-task-abc123
+    stub docker 'exit 0'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [ "$(git_project branch --show-current)" = "claude/some-task-abc123" ]
+}
+
+@test "exits zero outside a git repository" {
+    rm -rf "${PROJECT}/.git"
+    stub docker 'exit 0'
+
+    run "$HOOK"
+
+    [ "$status" -eq 0 ]
 }
