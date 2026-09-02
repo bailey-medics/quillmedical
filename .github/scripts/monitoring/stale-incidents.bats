@@ -44,7 +44,7 @@ JSON
   run main
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"No incident open longer than 24h (0 open)"* ]]
+  [[ "$output" == *"No incident open for 24h or more (0 open)"* ]]
 }
 
 @test "ignores a closed incident however old" {
@@ -250,4 +250,25 @@ JSON
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"refusing to write it"* ]]
+}
+
+# ---------- the threshold boundary ----------
+
+@test "reports an incident open for exactly the threshold" {
+  write_fixture OPEN 24 "Uptime failure (teaching)"
+
+  STALE_HOURS=24 run main
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1d 0h"* ]]
+}
+
+@test "a threshold of zero reports every open incident, however fresh" {
+  write_fixture OPEN 0 "Just opened"
+
+  STALE_HOURS=0 run main
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Just opened"* ]]
+  [[ "$output" == *"open 0h"* ]]
 }

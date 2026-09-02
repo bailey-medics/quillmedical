@@ -13,6 +13,15 @@ on:
   schedule:
     - cron: "0 8 * * *"
   workflow_dispatch:
+    inputs:
+      stale_hours:
+        description: >-
+          Hours open at or beyond which an incident is reported. Set to 0
+          for a manual run when deliberately testing detection, so a
+          freshly-opened incident counts without waiting a day.
+        required: false
+        default: "24"
+        type: string
 
 permissions:
   contents: read
@@ -46,7 +55,7 @@ jobs:
         id: check
         env:
           GCP_PROJECT: ${{ secrets.GCP_TEACHING_PROJECT_ID }}
-          STALE_HOURS: "24"
+          STALE_HOURS: ${{ inputs.stale_hours || '24' }}
         run: bash .github/scripts/monitoring/stale-incidents.sh
 
   # ---------- Slack notify ----------

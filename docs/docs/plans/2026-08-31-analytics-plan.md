@@ -400,15 +400,52 @@ not before.
       Cloud app — it cannot be created through Terraform or the channels API,
       and it shares Slack's failure domain, so it adds a device rather than
       genuine redundancy
-- [ ] Tier three, roughly 30 minutes — a phone call, **deferred**. No free
-      tier anywhere provides one: Better Stack's free plan is email and Slack
-      only, with phone and SMS starting at $29 per responder per month billed
-      yearly; PagerDuty's free plan gives 5 users, an escalation policy and 100
-      SMS a month, but explicitly no voice, which starts at $21 per user per
-      month. Buy one when clinical users exist — at that point the cost is
-      trivial against the risk, and it is exactly the "circumstances have
-      genuinely changed" trigger. Until then tiers one and two are the
-      escalation
+- [ ] Tier three, roughly 30 minutes — a phone call, through PagerDuty. An
+      account now exists.
+
+      **Correcting an earlier claim in this plan.** It said no free tier
+      anywhere provides voice. That is right for Better Stack, whose free plan
+      is email and Slack only with phone and SMS from $29 per responder per
+      month. It is probably wrong for PagerDuty: their own pricing page lists
+      "100/month international phone/SMS notifications" on the free plan,
+      phone and SMS sharing one allowance. The earlier "explicitly no voice"
+      came from third-party comparison sites, which is the same mistake that
+      produced the wrong Better Stack claim in the first place. Vendor pages
+      only.
+
+      **When.** After the live stale-incident test and before any of the
+      application-code work. It is short, standalone, collides with nothing,
+      and settles a factual question that currently blocks a decision: if the
+      free plan does ring a phone, tier three stops being "deferred until
+      clinical users" and becomes something worth having now, at no cost.
+
+      1. In PagerDuty, add the number as a **Voice** contact method and set a
+         notification rule to use it. Trigger a test incident. If the phone
+         does not ring on the free plan, stop here and record that — the
+         deferral stands and the reasoning above is wrong.
+      2. If it rings, create a service with an **Events API v2** integration
+         and take its integration key.
+      3. Store the key as an organisation secret and pass it as
+         `TF_VAR_pagerduty_integration_key`, marked `sensitive` in Terraform.
+         It is a credential, so it must never reach a plan comment on this
+         public repository — the same trap the SMS number was kept out of.
+      4. Add a `google_monitoring_notification_channel` of type `pagerduty`.
+         Google Cloud supports that type natively, so no webhook is needed.
+      5. Consider letting PagerDuty own the escalation ladder rather than
+         adding a third policy here: one alert into PagerDuty, which then does
+         push, then SMS, then voice on its own schedule. That collapses the
+         GCP tiers instead of extending them, and it is what the product is
+         for.
+      6. Test the call end to end, and re-test after any change. The whole
+         point of the last two days is that a configured alert and a working
+         alert are different things.
+
+      Watch the cap: 100 phone and SMS notifications a month, combined. Ample
+      at this volume, unless something flaps — which is exactly when it would
+      be needed. Note also that PagerDuty becomes the first third-party
+      processor this work adds, having deliberately kept the count at zero, so
+      it belongs on the DSPT and DTAC record even though it only ever sees
+      alert metadata.
 - [ ] Do **not** build the phone call from Twilio and a Cloud Function to save
       the subscription. It is by far the cheapest option — roughly £1 a month
       for a number plus pennies a call — but it would put the pager inside the
@@ -436,6 +473,34 @@ not before.
       `.github/workflows/stale-incidents.yml` runs daily at 08:00 UTC and
       notifies Slack only when something is stuck; a daily all-clear would be
       exactly the routine notification people learn to ignore.
+- [ ] Prove the stale-incident check detects a real incident, not just a
+      fixture. Its tests cover the logic, and the live API returns no open
+      incidents most of the time, so detection has never run against real
+      data. The whole point of this check is to catch a silent failure, and an
+      untested detector is the same class of problem it exists to find.
+
+      Recreate the original fault rather than invent an artificial one, so
+      the test proves the exact scenario that went unnoticed. The threshold is
+      the only thing that would otherwise make this a day-long wait, so
+      `workflow_dispatch` takes a `stale_hours` input:
+
+      1. Create a temporary uptime check against `quill-medical.com` at
+         `/api/health` — the original mistake. The public site is static pages
+         from a bucket, so it returns 404 and the check fails immediately.
+      2. Create a temporary alerting policy on that check, with **no
+         notification channels** so it opens an incident and tells nobody.
+         The existing policies filter on the specific check identifiers
+         Terraform manages, so a new check on its own raises nothing.
+      3. Wait a few minutes for the incident to open.
+      4. Dispatch the workflow with `stale_hours` set to `0`, so the fresh
+         incident counts as stale.
+      5. Expect the run to list it and Slack to receive the message.
+      6. Delete both temporary resources; the incident closes on its own.
+
+      Create them by hand rather than in Terraform: they should exist for
+      minutes, and a temporary resource left in state is how orphans are made.
+      Delete them in the same sitting, and confirm afterwards that the uptime
+      check list is back to the two managed ones.
 - [ ] Fold the result into the incident response plan and runbook items already
       open in `todo.md`, and replace the `webhook_token_auth` Slack channel
       with the native integration while in there
