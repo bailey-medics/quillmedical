@@ -469,19 +469,23 @@ not before.
       `.github/workflows/stale-incidents.yml` runs daily at 08:00 UTC and
       notifies Slack only when something is stuck; a daily all-clear would be
       exactly the routine notification people learn to ignore.
-- [ ] Prove the stale-incident check reports to Slack. **Detection itself is
-      now proven**: on 2 September a temporary uptime check reproducing the
-      original fault opened a real incident, and the script found it through
-      the live API, naming the policy and the host, while correctly ignoring
-      it at a twenty-four hour threshold. The CI path is proven too — the
-      workflow authenticates, reads `projects.alerts`, and correctly skips the
-      notify job when nothing is stale.
+- [x] Prove the stale-incident check works end to end. **Done on 2
+      September**, by the procedure below. A temporary uptime check
+      reproducing the original fault opened a real incident; the workflow was
+      dispatched with `stale_hours` at `0`; the check found it through the
+      live API and the notify job posted to Slack, where the message arrived
+      naming the policy and the host. Both temporary resources were deleted in
+      the same sitting and the uptime check, alert policy and incident lists
+      confirmed back to normal.
 
-      What has never run is the notification itself. The Slack job has only
-      ever been *skipped*, so the one step that makes this check useful to a
-      human is the one step still untested. Repeat the exercise below through
-      `workflow_dispatch` rather than locally, and confirm the message
-      arrives.
+      That covers every link: real incident, live `projects.alerts` read,
+      Workload Identity authentication on the runner, the threshold decision,
+      the step output, the notify job's `if` condition, and delivery to a
+      human. The same run also proved the negative case, since the notify job
+      is correctly skipped when nothing is stale.
+
+      Re-run it after any change to the script, the workflow or the Slack
+      channel — the procedure is below and takes about ten minutes.
 
       Recreate the original fault rather than invent an artificial one, so
       the test proves the exact scenario that went unnoticed. The threshold is
