@@ -96,43 +96,48 @@ directory, or pass `-R <owner>/<repo>`.
    (`git diff origin/main...HEAD -- <path>`). Base the summary on what the code
    actually does, not on the commit messages alone.
 
-3. **Check you are not overwriting a human.** If the existing body holds prose
-   that is neither the template's boilerplate comments nor a previously
-   generated summary (identified by the `<!-- crp:pr-summary -->` marker),
-   stop, show that body, and ask before replacing it. An empty body, the
-   untouched template, or a body carrying the marker is safe to replace
-   without asking.
+3. **Check you are not overwriting a human.** Replace the body without asking
+   only when it is empty, is the `auto-pr.yml` placeholder ("Auto-created from
+   branch push"), or carries the `<!-- crp:pr-summary -->` marker that means it
+   was generated here before. Anything else is someone's writing: show it, and
+   ask before replacing it.
 
-4. **Write the body** using the headings from
-   `.github/_pull_request_template.md`, filling every section:
+4. **Write the body.** This repository has no pull request template — the
+   `_pull_request_template.md` in `.github/` is deliberately prefixed so GitHub
+   ignores it — so the shape below is the whole specification. It matches the
+   descriptions already on merged pull requests here:
 
-   ```markdown
-   ## What
+   - An opening paragraph of two to four sentences: what the branch does and
+     why it matters. A reviewer should be able to read only this and know
+     whether the pull request concerns them.
+   - Then two to five groups of related changes, each introduced by a bold
+     one-line heading in sentence case (e.g. `**Health check logic
+     improvements**`), with bullets beneath. Group by theme, not by file and
+     not by commit — one bullet may well span several files.
+   - Each bullet says what changed and why, naming the files, functions or
+     symbols involved in backticks. Prefer one substantial bullet to three
+     thin ones.
+   - Close with a short paragraph on the overall effect only when the change
+     is structural enough to warrant it. Skip it otherwise.
+   - Finish with `<!-- crp:pr-summary -->` on its own line.
 
-   <one short paragraph, then bullets for the substantive changes>
+   Use bold group headings rather than `##` headings: that is what the existing
+   pull requests here use, and it keeps the body scannable. Do not reproduce
+   Copilot's `[[1]](diffhunk://…)` reference links — they cannot be constructed
+   reliably outside Copilot and add nothing a reviewer reading the diff needs.
 
-   ## Why
+5. **Cover what this repository cares about.** Where the branch touches
+   clinical data, patient records, authentication, authorisation (system
+   permissions or CBAC), or database migrations, one of the groups must say so
+   and say how it is handled — a reviewer should not have to discover that from
+   the diff. Where tests were added or changed, say which, and name the
+   commands actually run. Never claim a suite passed that was not run.
 
-   <the reason for the change>
+   British English, sentence case throughout, no PHI and no secrets — the body
+   is visible to everyone with repository access. Describe the change; do not
+   praise it.
 
-   ## Safety considerations
-
-   <Does this touch clinical data, patient records, authentication,
-   authorisation (system permissions or CBAC), or database migrations? If so,
-   say how it is handled. Write "N/A" only when none genuinely apply.>
-
-   ## Testing
-
-   <the tests added or changed, and the commands actually run>
-
-   <!-- crp:pr-summary -->
-   ```
-
-   British English, sentence case for headings, no PHI and no secrets — the
-   body is visible to everyone with repository access. Describe the change
-   rather than praising it, and never claim tests pass that were not run.
-
-5. **Apply it.** Write the body to a temporary file and pass that file, so
+6. **Apply it.** Write the body to a temporary file and pass that file, so
    backticks, quotes and newlines survive intact:
 
    ```bash
@@ -141,7 +146,7 @@ directory, or pass `-R <owner>/<repo>`.
 
    Leave the title, draft state, labels and reviewers alone.
 
-6. **Report** the pull request URL and one line on what the description now
+7. **Report** the pull request URL and one line on what the description now
    says.
 
 If at any step there's an error requiring human judgement, stop and report the issue.
