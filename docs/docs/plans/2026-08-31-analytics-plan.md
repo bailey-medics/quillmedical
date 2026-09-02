@@ -280,27 +280,22 @@ Server side, already collected:
       rate, which is easier to reason about at low traffic
 - [x] Add a dashboard for error rate by service, so a spike can be attributed
       rather than just noticed
-- [ ] Confirm the alert fires on a deliberately broken endpoint in a
-      non-production environment, rather than assuming the filter is right
-- [ ] Grant the CI service account `roles/logging.configWriter` on
+- [ ] Confirm the 5xx alert fires on a deliberately broken endpoint, rather
+      than assuming the filter is right. Half-proven without breaking
+      anything: querying the alert's own filter over thirty days returned ten
+      real 5xx responses on `quill-backend-teaching` across two revisions, so
+      the filter demonstrably matches real errors. What remains unproven is
+      the threshold and the delivery — none of those ten was dense enough to
+      cross "more than five in five minutes"
+- [x] Grant the CI service account `roles/logging.configWriter` on
       `quill-medical-teaching`. The first apply failed with
       `logging.sinks.create denied`: creating a log sink is not covered by the
       roles the deploy account holds, and it cannot grant itself the role, so
       this is a one-off manual step before the sink can be created
 
-**Two lessons from the first apply**, worth keeping because `terraform plan`
-cannot catch either. Plan checks syntax, provider schema and state; it does not
-check IAM for resources that do not yet exist, and it does not evaluate the
-API's semantic rules. So a green plan is necessary and not sufficient, and the
-first apply of any new resource type is the real test:
-
-- `notification_rate_limit` is only legal on **log-based** alert policies.
-  It was copied from `cloud_run_startup`, which matches log entries, onto
-  `server_errors`, which is a metric threshold — and Google rejected it at
-  create time with "only log-based alert policies may specify a notification
-  rate limit".
-- The deploy service account could create metrics, dashboards and BigQuery
-  datasets, but not log sinks.
+See **What building this taught us** near the end of the document for the
+findings from the first apply and from testing the alerting, all of which
+came from this phase.
 
 Client side, new work:
 
@@ -369,9 +364,10 @@ a clinical one it is not.
       experimentally rather than assumed: an unmarked variable prints the
       value inside a map attribute, a sensitive one renders
       `(sensitive value)`.
-- [ ] Verify the SMS number by code in the Cloud console — Terraform can
+- [x] Verify the SMS number by code in the Cloud console — Terraform can
       create the channel but cannot verify it, so it delivers nothing until
-      this is done by hand
+      this is done by hand. Done on 1 September; the channel reports
+      `VERIFIED` and delivered on its first real firing the same evening
 
 Note that the number will still be recorded in Terraform state, which lives in
 `gs://quill-medical-terraform-state`. That bucket has no `allUsers` or
@@ -473,11 +469,23 @@ not before.
       `.github/workflows/stale-incidents.yml` runs daily at 08:00 UTC and
       notifies Slack only when something is stuck; a daily all-clear would be
       exactly the routine notification people learn to ignore.
-- [ ] Prove the stale-incident check detects a real incident, not just a
-      fixture. Its tests cover the logic, and the live API returns no open
-      incidents most of the time, so detection has never run against real
-      data. The whole point of this check is to catch a silent failure, and an
-      untested detector is the same class of problem it exists to find.
+- [x] Prove the stale-incident check works end to end. **Done on 2
+      September**, by the procedure below. A temporary uptime check
+      reproducing the original fault opened a real incident; the workflow was
+      dispatched with `stale_hours` at `0`; the check found it through the
+      live API and the notify job posted to Slack, where the message arrived
+      naming the policy and the host. Both temporary resources were deleted in
+      the same sitting and the uptime check, alert policy and incident lists
+      confirmed back to normal.
+
+      That covers every link: real incident, live `projects.alerts` read,
+      Workload Identity authentication on the runner, the threshold decision,
+      the step output, the notify job's `if` condition, and delivery to a
+      human. The same run also proved the negative case, since the notify job
+      is correctly skipped when nothing is stale.
+
+      Re-run it after any change to the script, the workflow or the Slack
+      channel — the procedure is below and takes about ten minutes.
 
       Recreate the original fault rather than invent an artificial one, so
       the test proves the exact scenario that went unnoticed. The threshold is
@@ -669,6 +677,90 @@ Established from the code, for whoever drafts them:
       regulations do not engage
 - [ ] Retention period set for the analytics dataset, folded into the
       outstanding UK GDPR data-retention decision in `todo.md`
+
+## What building this taught us
+
+Findings from actually building and testing this, rather than from planning it.
+Each cost time to learn and would be cheap to relearn the hard way, so they are
+recorded here rather than left in commit messages.
+
+**A green `terraform plan` proves less than it appears to.** Plan checks
+syntax, provider schema and state. It does not check IAM for resources that do
+not yet exist, and it does not evaluate the API's semantic rules. The first
+apply of a new resource type is the real test, and this plan leaned on a green
+plan as though it were validation until two failures at apply time said
+otherwise:
+
+- `notification_rate_limit` is legal only on **log-based** alerting policies.
+  It was copied from `cloud_run_startup`, which matches log entries, onto
+  `server_errors`, which is a metric threshold. Google rejected it at create
+  time: "only log-based alert policies may specify a notification rate limit".
+- The deploy service account could create metrics, dashboards and BigQuery
+  datasets, but not log sinks. **`roles/editor` does not include
+  `logging.sinks.create`** — a genuine trap, since editor covers so much that
+  it is easy to assume it covers everything. The account cannot grant itself
+  the missing role, so it needed a one-off manual `roles/logging.configWriter`.
+
+**An alerting policy with a permanently-open incident is a disabled alerting
+policy.** Cloud Monitoring notifies once per incident and will not open a
+second while the first is running. A condition that never clears therefore
+silences its own policy, indefinitely, with no symptom anywhere in the console.
+An uptime check probing `/api/health` against the public site — which is static
+files from a bucket and has no API — held an incident open for **124 days**.
+Throughout, that host was not merely misconfigured but **unmonitored**: a real
+outage would have raised nothing, because the incident was already open. No
+deliberate break test finds this; the alert looks correct and simply never
+fires again. Hence the daily check in
+`.github/workflows/stale-incidents.yml`.
+
+**Not all monitored hosts are alike.** The same uptime check configuration was
+applied to every hostname, but only the app has an API to health-check. Probe
+paths belong per host.
+
+**Reality tested the alerting better than a staged break would have.** The
+question asked was how to test alerting without breaking a working app. Before
+anything was staged, a real uptime failure fired tier two, delivered SMS and
+email, and both tiers sent recovery notifications when it cleared. A deliberate
+break would have confirmed only that alerts fire; it would never have revealed
+an alert that had been dead for four months. Where a live check is impossible,
+querying an alert's own filter over historical data is a decent
+non-destructive substitute — the 5xx filter was confirmed that way, against ten
+real errors, without breaking anything.
+
+**A check that has never failed proves nothing.** Three variations of the same
+mistake appeared in two days:
+
+- A `grep` written to find grouped shell declarations could not match the most
+  common form of them, so its empty output was read as "clean".
+- The stale-incident tests passed on fixtures at 2 and 30 hours against a
+  24-hour threshold, so the boundary between them was never exercised — and
+  the boundary was where the off-by-one lived.
+- The first live run of that detector reported `1 open` and listed nothing,
+  because whole-hour truncation made a fresh incident `0` and the guard used
+  `-le`. Only real data exposed it.
+
+Before trusting a check, make it fail on purpose once.
+
+**Terraform state is not a secret store, and a public repository is
+unforgiving.** The escalation phone number reaches Terraform through a secret
+and is marked `sensitive`, because plan output is posted as a comment on a
+public pull request. Marking it sensitive was verified rather than assumed, by
+planning two identical resources side by side and confirming one rendered as
+`(sensitive value)`. Note the number still lands in state in a private bucket:
+a deliberate exception to the rule in `modules/secrets/main.tf` that secret
+values never enter state, and the only alternative was creating the channel by
+hand and leaving it unmanaged.
+
+**Route what you meant to keep, never a resource type.** The BigQuery sink was
+first written to capture `resource.type="http_load_balancer"`, which would have
+archived authenticated app traffic — including paths carrying patient and user
+identifiers — alongside client IP addresses, for the whole retention window.
+The pipeline built to honour the "no raw URLs" rule would have broken it. Sinks
+are now scoped to the host they are meant to cover.
+
+**Prefer vendor pricing pages to comparison sites.** Two claims in this
+document about which alerting tiers include voice were wrong, both taken from
+third-party comparisons and both contradicted by the vendors' own pages.
 
 ## Decisions
 
