@@ -15,7 +15,9 @@ These hold on every run, with or without `final`:
   Merging into `main` is the moment code becomes deployable, and that decision
   belongs to a human alone. `final` gets a pull request ready for a human to
   review and merge; it never takes that last step. If asked to merge as part of
-  this command, refuse and say why.
+  this command, refuse and say why. Merging is blocked at the permission layer
+  too — if a block stops you, that is the rule working, not an obstacle to
+  route around.
 - **Never push or commit to `main` directly.** It is protected and requires a
   pull request.
 - **Never change the pull request title.** It is derived from the branch name
@@ -33,6 +35,9 @@ Up to two space-separated arguments may be given, in any order:
   pull request description so it summarises the whole branch, and take the pull
   request out of draft. See "Final: update the pull request description" below.
   It never merges anything.
+
+`/crp final` is valid on a clean working tree. Finalising a branch that an
+earlier `/crp` already committed and pushed is the ordinary case, not an error.
 
 So `/crp`, `/crp final`, `/crp eoeeta` and `/crp eoeeta final` are all valid.
 Any other token is an error: stop and ask what was meant rather than guessing.
@@ -53,7 +58,13 @@ The repository argument maps as follows:
 
 1. Check you are not on main. If you are, ask the user to create a new branch and re-run the command. Do not commit directly to main.
 2. Only operate on the resolved target repository (see above).
-3. Check git status and confirm there are changes to commit.
+3. Check git status, and branch on what it reports:
+   - **Changes to commit** — carry on with steps 4 to 6.
+   - **Clean tree, no `final`** — there is nothing to do. Say so and stop.
+   - **Clean tree, with `final`** — skip steps 4 to 6 and continue from step 7.
+     The branch is already committed; this run only finalises the pull request.
+     Never manufacture something to commit in order to have a commit: no empty
+     commits, no whitespace edits, no version bumps.
 4. Review the changes and create a clear, descriptive commit message following conventional commit format (e.g., "feat:", "fix:", "refactor:").
 5. Stage and commit the changes.
 6. If pre-commit hooks fail, distinguish two cases:
@@ -75,15 +86,17 @@ The repository argument maps as follows:
    the branch is behind — a stale local `main` ref will falsely report the
    branch as up to date. Rebase onto `origin/main` if behind, resolve any
    conflicts, and ensure tests pass. Force push if the rebase rewrites history.
-8. Push to current branch (do not create a new branch).
+8. Push to current branch (do not create a new branch). If there is nothing
+   to push, `Everything up-to-date` is a success, not an error — carry on.
 9. If `final` was given, update the pull request description and mark the pull
    request ready for review — see "Final: update the pull request description"
    below. Without `final`, stop after the push. Either way, never merge.
 
 ## Final: update the pull request description
 
-Run this only when `final` was given, only after the push in step 8 succeeded,
-and once per repository when the repository argument was `all`. Everything
+Run this only when `final` was given, only once step 8 has left the branch
+pushed — whether this run committed anything or found nothing to commit — and
+once per repository when the repository argument was `all`. Everything
 below is scoped to a single repository: run `gh` from that repository's
 directory, or pass `-R <owner>/<repo>`.
 
@@ -177,7 +190,8 @@ nothing in the conversation makes merging part of this command.
    Marking ready is the last step. Do not merge it — see "Never" above.
 
 8. **Report** the pull request URL, one line on what the description now says,
-   and whether it was taken out of draft.
+   whether it was taken out of draft, and — when the working tree was already
+   clean — that no commit was made on this run.
 
 If at any step there's an error requiring human judgement, stop and report the issue.
 

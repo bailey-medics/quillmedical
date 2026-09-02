@@ -11,7 +11,12 @@
       "Bash(bats .github/scripts/ci/wait-for-ancestor-decisions.bats)",
       "Bash(python3 -c ' *)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(gh pr merge:*)",
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge"
+    ]
   },
   "model": "opus",
   "hooks": {
