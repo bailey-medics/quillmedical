@@ -35,8 +35,9 @@ case "$PREFIX" in
 esac
 TITLE="${TYPE}: ${REMAINDER^}"
 
-# Use pull request template as the initial body
-BODY=$(cat .github/pull_request_template.md 2>/dev/null || echo "Auto-created from branch push")
+# Placeholder body. This repository has no pull request template; the real
+# description is written when the branch is finished (see /crp final).
+BODY="Auto-created from branch push"
 
 # Create the pull request as a draft; exit gracefully if one was created by a
 # concurrent run. Draft holds back the heavy CI tier until marked ready.

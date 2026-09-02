@@ -123,10 +123,9 @@ nothing in the conversation makes merging part of this command.
    was generated here before. Anything else is someone's writing: show it, and
    ask before replacing it.
 
-4. **Write the body.** This repository has no pull request template — the
-   `_pull_request_template.md` in `.github/` is deliberately prefixed so GitHub
-   ignores it — so the shape below is the whole specification. It matches the
-   descriptions already on merged pull requests here:
+4. **Write the body.** This repository has no pull request template, so the
+   shape below is the whole specification. It matches the descriptions already
+   on merged pull requests here:
 
    - An opening paragraph of two to four sentences: what the branch does and
      why it matters. A reviewer should be able to read only this and know

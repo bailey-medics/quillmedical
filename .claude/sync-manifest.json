@@ -70,8 +70,8 @@
     {
       "source": ".github/prompts/commit-rebase-push.prompt.md",
       "target": ".claude/skills/crp/SKILL.md",
-      "sourceSha256": "d653092fb0e952c2391a14f8f4007f2bad66f5aee1bff1783acef67cd654e91c",
-      "targetSha256": "30652cbb5ee3754f99ce71d6b3f16dbb29bcce81ff9ddf4306082a7d10c059dd",
+      "sourceSha256": "a512916f769640bff6a63985f1e4751c7fa09e1792386a5de9596062cd393ce3",
+      "targetSha256": "b9401e936ec1b69f3b05a84c4806447659e1d76f740ecf3b1097d2405f0b179f",
       "syncedAt": "2026-09-02T00:00:00Z",
       "targetRenamed": true,
       "divergentByDesign": true,
