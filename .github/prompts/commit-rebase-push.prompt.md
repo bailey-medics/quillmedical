@@ -6,6 +6,23 @@ description: Commit, rebase, and push code
 
 # Commit, rebase, and push code
 
+## Never
+
+These hold on every run, with or without `final`:
+
+- **Never merge a pull request. Ever.** Not with `gh pr merge`, not through the
+  API, not by enabling auto-merge, and not by pushing the branch onto `main`.
+  Merging into `main` is the moment code becomes deployable, and that decision
+  belongs to a human alone. `final` gets a pull request ready for a human to
+  review and merge; it never takes that last step. If asked to merge as part of
+  this command, refuse and say why.
+- **Never push or commit to `main` directly.** It is protected and requires a
+  pull request.
+- **Never change the pull request title.** It is derived from the branch name
+  by `auto-pr.yml`, or set by hand. Either way it is not yours to rewrite — the
+  description is the only field this command edits.
+- **Never change labels, reviewers, milestones, or the base branch.**
+
 ## Arguments
 
 Up to two space-separated arguments may be given, in any order:
@@ -13,8 +30,9 @@ Up to two space-separated arguments may be given, in any order:
 - A **repository** name — `eoeeta`, `resp` or `all`. Defaults to
   **quillmedical** when absent.
 - The literal flag **`final`** — after committing and pushing, also rewrite the
-  pull request description so it summarises the whole branch. See
-  "Final: update the pull request description" below.
+  pull request description so it summarises the whole branch, and take the pull
+  request out of draft. See "Final: update the pull request description" below.
+  It never merges anything.
 
 So `/crp`, `/crp final`, `/crp eoeeta` and `/crp eoeeta final` are all valid.
 Any other token is an error: stop and ask what was meant rather than guessing.
@@ -58,9 +76,9 @@ The repository argument maps as follows:
    branch as up to date. Rebase onto `origin/main` if behind, resolve any
    conflicts, and ensure tests pass. Force push if the rebase rewrites history.
 8. Push to current branch (do not create a new branch).
-9. If `final` was given, update the pull request description — see
-   "Final: update the pull request description" below. Without `final`, stop
-   after the push.
+9. If `final` was given, update the pull request description and mark the pull
+   request ready for review — see "Final: update the pull request description"
+   below. Without `final`, stop after the push. Either way, never merge.
 
 ## Final: update the pull request description
 
@@ -68,6 +86,9 @@ Run this only when `final` was given, only after the push in step 8 succeeded,
 and once per repository when the repository argument was `all`. Everything
 below is scoped to a single repository: run `gh` from that repository's
 directory, or pass `-R <owner>/<repo>`.
+
+It ends by marking the pull request ready for review. It does not merge, and
+nothing in the conversation makes merging part of this command.
 
 1. **Find the pull request.**
 
@@ -141,10 +162,23 @@ directory, or pass `-R <owner>/<repo>`.
    gh pr edit <number> --body-file <path to that file>
    ```
 
-   Leave the title, draft state, labels and reviewers alone.
+7. **Mark it ready for review.** `final` means the branch is finished, so take
+   it out of draft — but only if step 1 reported `isDraft: true`:
 
-7. **Report** the pull request URL and one line on what the description now
-   says.
+   ```bash
+   gh pr ready <number>
+   ```
+
+   Do this after the description is in place, never before: a reviewer should
+   never see a ready pull request with a placeholder body. Note that
+   `auto-pr.yml` opens pull requests as drafts to hold back the heavy CI tier,
+   so marking it ready starts a full run — say so when reporting. If it is
+   already out of draft, leave it and say so.
+
+   Marking ready is the last step. Do not merge it — see "Never" above.
+
+8. **Report** the pull request URL, one line on what the description now says,
+   and whether it was taken out of draft.
 
 If at any step there's an error requiring human judgement, stop and report the issue.
 
