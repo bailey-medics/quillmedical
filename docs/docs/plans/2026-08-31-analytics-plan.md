@@ -330,20 +330,22 @@ duration. Google Cloud supports `email`, `slack` and `sms` notification
 channels natively; it has no voice channel at all, which is why the last rung
 would have to sit elsewhere.
 
-Voice is where the cost caveat finally bites. Every other part of this plan
-runs at £0; a phone call does not, on any provider, at any free tier. So the
-first two tiers ship now and the third waits for a reason to buy it.
+Voice was assumed to be where the cost caveat finally bit — a phone call on no
+provider at any free tier. **That was wrong, and it was tested on 2 September.**
+PagerDuty's free plan does place the call: the phone rang within seconds of a
+test incident, read out the incident detail, and accepted a keypress to
+acknowledge, which registered in the web interface immediately. So all three
+tiers can ship, and tier three costs nothing.
 
-Be clear-eyed about what is being deferred, though. Google's own documentation
+That matters more than convenience. Google's own documentation
 says SMS is "not a fully reliable notification channel type", and that Slack,
 PagerDuty, webhooks and the Cloud mobile app all share a single internal
 delivery service and therefore a single point of failure. Email or Pub/Sub is
 the only recommended redundant path. Taken together, **Google Cloud cannot
 provide a dependable wake-up alarm on its own** — not merely a less pleasant
-one. That, rather than the ergonomics of a ringing phone, is the real reason to
-buy an external pager once there are clinical users. For a teaching product
-holding no patient data, an escalation that usually works is proportionate; for
-a clinical one it is not.
+one. An external pager is therefore the fix for a real gap rather than a
+comfort, and since it turns out to cost nothing, there is no longer a reason to
+wait for clinical users before having one.
 
 - [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
       already configured. Cheap, ignorable, and often self-resolving
@@ -396,45 +398,84 @@ not before.
       Cloud app — it cannot be created through Terraform or the channels API,
       and it shares Slack's failure domain, so it adds a device rather than
       genuine redundancy
-- [ ] Tier three, roughly 30 minutes — a phone call, through PagerDuty. An
-      account now exists.
+- [ ] Tier three — a phone call, through PagerDuty, on the free plan.
 
-      **Correcting an earlier claim in this plan.** It said no free tier
-      anywhere provides voice. That is right for Better Stack, whose free plan
-      is email and Slack only with phone and SMS from $29 per responder per
-      month. It is probably wrong for PagerDuty: their own pricing page lists
-      "100/month international phone/SMS notifications" on the free plan,
-      phone and SMS sharing one allowance. The earlier "explicitly no voice"
-      came from third-party comparison sites, which is the same mistake that
-      produced the wrong Better Stack claim in the first place. Vendor pages
-      only.
+      **An earlier claim in this plan was wrong and is now settled by test.**
+      It said no free tier anywhere provides voice. That holds for Better
+      Stack, whose free plan is email and Slack only, with phone and SMS from
+      $29 per responder per month. It was wrong for PagerDuty. The "explicitly
+      no voice" came from third-party comparison sites — the same mistake that
+      produced the wrong Better Stack claim. Vendor pages only, and where a
+      vendor page is ambiguous, test it.
 
-      **When.** After the live stale-incident test and before any of the
-      application-code work. It is short, standalone, collides with nothing,
-      and settles a factual question that currently blocks a decision: if the
-      free plan does ring a phone, tier three stops being "deferred until
-      clinical users" and becomes something worth having now, at no cost.
+      **Confirmed on 2 September**, end to end on the free plan: the phone
+      rang within seconds of a test incident, read out the incident detail,
+      and took a keypress to acknowledge, which appeared in the web interface
+      at once. Acknowledging from the handset matters operationally — it means
+      a 3am page can be silenced and triaged without opening a laptop.
 
-      1. In PagerDuty, add the number as a **Voice** contact method and set a
-         notification rule to use it. Trigger a test incident. If the phone
-         does not ring on the free plan, stop here and record that — the
-         deferral stands and the reasoning above is wrong.
-      2. If it rings, create a service with an **Events API v2** integration
-         and take its integration key.
-      3. Store the key as an organisation secret and pass it as
-         `TF_VAR_pagerduty_integration_key`, marked `sensitive` in Terraform.
+      1. **Done.** Add the number under **My Profile → Contact Information →
+         Voice → Add Phone Number**, then a high-urgency rule at **0 minutes**
+         under **My Profile → Notification Rules**. Save PagerDuty's vCard to your
+         contacts while there: calls come from varying numbers by country, and
+         an unrecognised number is one a phone will happily screen — a
+         "configured but does not reach a human" failure of exactly the kind
+         this whole exercise keeps finding.
+      2. **Done.** Create a service so an incident can exist. PagerDuty has
+         **no test notification button**, so the only way to make the phone ring is a
+         real incident, and an incident needs a service to belong to.
+
+         Give it an **Events API v1** integration, not v2 and not the
+         "Google Cloud Monitoring" tile. Google's own notification-channel
+         documentation is explicit: add an Events API v1 integration and paste
+         its key into the channel's **Service Key** field. The native
+         `pagerduty` channel speaks the v1 event format, so a v2 routing key
+         is the wrong shape. PagerDuty's own Google Cloud guide contains no
+         setup steps at all — it defers to Google's — so Google's is the
+         authority here. A service can hold several integrations, so adding
+         v1 alongside anything already there is fine.
+
+         Events API v1 was still offered in the picker on 2 September, despite
+         being legacy. If it ever disappears, the fallback is a webhook
+         channel posting to Events API v2 — more work, and its own decision.
+      3. **Done — it rang.** Trigger an incident by hand from **Incidents →
+         New Incident** against that service, at **high** urgency. Resolve it
+         afterwards, so it cannot sit open and suppress the next one.
+      4. Store the Events API v1 integration key as the organisation secret
+         `PAGERDUTY_SERVICE_KEY`, passed as `TF_VAR_pagerduty_service_key` and
+         marked `sensitive` in Terraform. Google calls the field the service
+         key, confirmed against the `pagerduty` notification channel
+         descriptor, whose only label is `service_key`.
+
+         Redaction was verified rather than assumed, the same way the phone
+         number was: two identical resources planned side by side, one fed by
+         a sensitive variable and one not, rendering `(sensitive value)` and
+         the plain value respectively. This is a credential on a public
+         repository, so the plan comment must never carry it.
          It is a credential, so it must never reach a plan comment on this
          public repository — the same trap the SMS number was kept out of.
-      4. Add a `google_monitoring_notification_channel` of type `pagerduty`.
+      5. Add a `google_monitoring_notification_channel` of type `pagerduty`.
          Google Cloud supports that type natively, so no webhook is needed.
-      5. Consider letting PagerDuty own the escalation ladder rather than
-         adding a third policy here: one alert into PagerDuty, which then does
-         push, then SMS, then voice on its own schedule. That collapses the
-         GCP tiers instead of extending them, and it is what the product is
-         for.
-      6. Test the call end to end, and re-test after any change. The whole
-         point of the last two days is that a configured alert and a working
-         alert are different things.
+      6. **Decided: PagerDuty gets tier three only.** It receives one thing —
+         a major outage, sustained — and Google Cloud keeps tiers one and two,
+         the Slack, email and SMS rungs, exactly as they are.
+
+         The alternative was to let PagerDuty own the whole ladder, doing
+         push, then SMS, then voice on its own schedule, which is what the
+         product is for and would have collapsed the Google Cloud policies
+         instead of extending them. It was rejected deliberately: PagerDuty is
+         a new third party with no track record here, and routing every
+         notification through it would make an untested dependency the single
+         path to being told anything at all. Giving it one narrow job means a
+         failure on its side costs the phone call and nothing else — Slack,
+         email and SMS carry on regardless.
+
+         Revisit after a few months of both running. If PagerDuty proves
+         reliable, collapsing the tiers into it becomes an easy, reversible
+         change; if it does not, nothing important was resting on it.
+      7. Test the call end to end from a real Cloud Monitoring alert, not just
+         a hand-triggered PagerDuty incident, and re-test after any change. A
+         configured alert and a working alert are different things.
 
       Watch the cap: 100 phone and SMS notifications a month, combined. Ample
       at this volume, unless something flaps — which is exactly when it would

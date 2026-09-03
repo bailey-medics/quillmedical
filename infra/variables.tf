@@ -80,6 +80,17 @@ variable "app_domain" {
   default     = ""
 }
 
+variable "pagerduty_service_key" {
+  description = "PagerDuty Events API v1 integration key. Supplied by CI from a secret, never committed. Leave empty to disable the tier three phone call."
+  type        = string
+  default     = ""
+
+  # A credential, and this repository is public: the plan job posts its output
+  # as a pull request comment. Terraform propagates sensitivity through
+  # expressions, so the channel's labels map renders as "(sensitive value)".
+  sensitive = true
+}
+
 variable "landing_domain" {
   description = "Apex domain for the static landing page (optional, production only)"
   type        = string

@@ -28,6 +28,35 @@ resource "google_monitoring_notification_channel" "slack" {
   }
 }
 
+# ---------- Notification channel (PagerDuty) ----------
+#
+# Tier three, and the only thing PagerDuty is given: a major outage that has
+# persisted. Tiers one and two stay entirely within Google Cloud.
+#
+# The narrow job is deliberate. PagerDuty is a new third party with no track
+# record here, and routing every notification through it would make an
+# untested dependency the single path to being told anything at all. Scoped
+# this way, a failure on its side costs the phone call and nothing else.
+#
+# It also fills a gap Google cannot: Google documents Slack, webhooks and its
+# own mobile app as sharing one internal delivery service, with email or
+# Pub/Sub the only redundant path. An external pager sidesteps that entirely.
+#
+# service_key is the Events API v1 integration key. Google's own
+# documentation calls for v1 specifically — the channel speaks the v1 event
+# format, so a v2 routing key is the wrong shape.
+resource "google_monitoring_notification_channel" "pagerduty" {
+  count = var.pagerduty_service_key != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Quill on-call (${var.environment})"
+  type         = "pagerduty"
+
+  labels = {
+    service_key = var.pagerduty_service_key
+  }
+}
+
 # ---------- Notification channel (SMS) ----------
 #
 # Tier two of the escalation. Google's own documentation warns that SMS
@@ -65,6 +94,9 @@ locals {
   # delivered by one internal service and share a single point of failure,
   # with email or Pub/Sub as the recommended redundant path — so tier one's
   # Slack rung is not independent cover either. Email is the redundancy.
+  # Tier three: the phone call, and nothing else routed through it.
+  critical_channels = [for ch in google_monitoring_notification_channel.pagerduty : ch.id]
+
   escalation_channels = concat(
     [for ch in google_monitoring_notification_channel.sms : ch.id],
     [google_monitoring_notification_channel.email.id],
@@ -325,5 +357,54 @@ resource "google_monitoring_alert_policy" "sql_disk" {
 
   alert_strategy {
     auto_close = "86400s" # 24 hours: this does not resolve itself quickly
+  }
+}
+
+
+# ---------- Alert policy — major outage, tier three ----------
+#
+# Fires only once an outage has lasted var.critical_duration, and notifies
+# PagerDuty alone, which places the phone call. Tiers one and two have
+# already been through Slack, email and SMS by this point, so anything
+# reaching here has survived roughly half an hour of nobody acting on it.
+#
+# Only uptime feeds this. A 5xx spike or a filling disk is a problem, not a
+# system that is down, and neither warrants a call at 3am.
+resource "google_monitoring_alert_policy" "uptime_critical" {
+  count = var.pagerduty_service_key != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Major outage — call the on-call (${var.environment})"
+  combiner     = "OR"
+
+  dynamic "conditions" {
+    for_each = google_monitoring_uptime_check_config.health
+    content {
+      display_name = "Down for ${var.critical_duration}: ${conditions.value.display_name}"
+
+      condition_threshold {
+        filter          = "resource.type = \"uptime_url\" AND metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.labels.check_id = \"${conditions.value.uptime_check_id}\""
+        comparison      = "COMPARISON_GT"
+        threshold_value = 1
+        duration        = var.critical_duration
+
+        aggregations {
+          alignment_period     = "1200s"
+          per_series_aligner   = "ALIGN_NEXT_OLDER"
+          cross_series_reducer = "REDUCE_COUNT_FALSE"
+          group_by_fields      = ["resource.label.project_id", "resource.label.host"]
+        }
+
+        trigger {
+          count = 1
+        }
+      }
+    }
+  }
+
+  notification_channels = local.critical_channels
+
+  alert_strategy {
+    auto_close = "86400s" # 24 hours; a call-worthy outage is not a blip
   }
 }
