@@ -1978,6 +1978,20 @@ def list_admin_banks(
         ).all()
         item_counts[bank_id] = len(count)
 
+    # What this organisation actually serves, which is not necessarily the
+    # newest imported. Showing both is the point: "version 3 active, version
+    # 4 available" is the state an admin needs to notice.
+    active_versions: dict[str, int | None] = {
+        row.question_bank_id: row.active_version
+        for row in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+            )
+        )
+        .scalars()
+        .all()
+    }
+
     # GCS banks
     gcs_bank_ids: set[str] = set()
     bucket = settings.TEACHING_GCS_BUCKET
@@ -1998,6 +2012,7 @@ def list_admin_banks(
                 bank_id=bank_id,
                 title=bank_cfg.title if bank_cfg else None,
                 version=bank_cfg.version if bank_cfg else None,
+                active_version=active_versions.get(bank_id),
                 type=bank_cfg.type if bank_cfg else None,
                 synced_at=bank_cfg.synced_at if bank_cfg else None,
                 in_gcs=bank_id in gcs_bank_ids,
@@ -2251,10 +2266,23 @@ def get_admin_bank_detail(
                 attach_certificate=st.get("attach_certificate", True),
             )
 
+    # The pointer for this organisation, which may lag the newest import.
+    status_row = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.organisation_id == org_id,
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+
     return AdminBankDetailOut(
         bank_id=bank_id,
         title=config_row.title,
         version=config_row.version,
+        active_version=status_row.active_version if status_row else None,
         type=config_row.type,
         item_count=len(item_count),
         email_student_on_pass=email_student_on_pass,

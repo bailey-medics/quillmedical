@@ -869,9 +869,16 @@ they are ready. That also gives a rollback, which does not exist today.
         first; and a second attempt still passed because dropping the filter without
         restoring the original `ORDER BY … desc()` happened to return the right row. Only
         a faithful revert failed, which is what the test needed to prove.
-- [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
-      `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
-      alongside the active one, so "version 3 active, version 4 available" is visible.
+- [x] **Admin views show both** — `list_admin_banks` and `get_admin_bank_detail` keep
+      reporting the latest synced version, alongside the active one, so "version 3 active,
+      version 4 available" is visible.
+      - `active_version` is added to `AdminBankOut` and `AdminBankDetailOut`. Additive, so
+        the API compatibility gate has nothing to object to.
+      - The admin list deliberately still shows a bank with a null pointer, where the
+        candidate list hides it. The admin screen is where you go to promote it, so hiding
+        it there would be a trap.
+      - Null is distinguishable from "promoted version 1": an admin seeing null knows the
+        bank has never been opened, not that it is up to date.
 - [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
       Validates that the target version exists for that bank, and records who moved it and
       when. Rolling back is the same operation pointing at an earlier version.
