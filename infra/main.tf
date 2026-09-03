@@ -36,6 +36,16 @@ module "secrets" {
       "core-db-password",
       "vapid-private",
       "resend-api-key",
+
+      # Alerting. These reach Terraform from GitHub today, which makes GitHub
+      # a custodian of a credential no workflow actually uses — it only relays
+      # them. Creating the containers here is the first half of moving them:
+      # the values are added by hand afterwards, then a second change switches
+      # Terraform to read them from here and drops the TF_VAR wiring. One
+      # apply cannot do both, because a data source cannot read a version that
+      # does not exist yet.
+      "pagerduty-service-key",
+      "alert-sms-number",
     ],
     var.enable_fhir ? [
       "fhir-db-password",

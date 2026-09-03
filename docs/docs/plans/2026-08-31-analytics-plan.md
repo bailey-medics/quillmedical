@@ -800,6 +800,67 @@ Established from the code, for whoever drafts them:
 - [ ] Retention period set for the analytics dataset, folded into the
       outstanding UK GDPR data-retention decision in `todo.md`
 
+## Decision: where the alerting secrets live
+
+This work introduced three secrets — the escalation phone number, the PagerDuty
+service key, and the Slack webhook — and routed all three through GitHub
+organisation secrets into `TF_VAR_*`. That was the wrong default, and
+inconsistent with `modules/secrets`, which already keeps application secrets in
+GCP Secret Manager with values set outside Terraform.
+
+**The rule, now also in the project instructions:** a secret GitHub Actions
+genuinely *consumes* belongs in GitHub; a secret it only *relays* belongs at
+the destination. The test is whether anything in the workflow opens the
+envelope or merely carries it.
+
+Applying it:
+
+      **The move takes two applies, not one.** A `google_secret_manager_secret_version`
+      data source cannot read a version that does not exist yet, so a single
+      apply cannot both create an empty container and read from it. The
+      sequence mirrors the expand-contract pattern the backend rules already
+      use:
+
+- [ ] **Expand.** Add `pagerduty-service-key` and `alert-sms-number` to the
+      `module "secrets"` list, so Terraform creates the empty containers. Safe
+      on its own: nothing reads them yet and the `TF_VAR_*` wiring still
+      supplies the values.
+- [ ] **Populate by hand**, per the convention in `modules/secrets/main.tf`
+      that values are never set through Terraform:
+      `gcloud secrets versions add pagerduty-service-key --data-file=-`
+      and the same for `alert-sms-number`. Use `--data-file=-` and paste, so
+      the value never reaches shell history.
+- [ ] **Contract.** Switch the monitoring module to read both through data
+      sources, drop `TF_VAR_pagerduty_service_key` and
+      `TF_VAR_alert_sms_number` from `terraform.yml`, and delete the two
+      GitHub organisation secrets. Verify the plan output still redacts them:
+      the provider marks `secret_data` sensitive, but that is worth proving
+      rather than assuming, as it was for the phone number.
+- [ ] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
+      organisation only once an apply has succeeded reading from Secret
+      Manager. Removing them first would break the apply that is meant to
+      replace them.
+- [x] Leave `SLACK_WEBHOOK_URL` in GitHub. `slack-notify.yml` posts to it
+      directly, so GitHub is the client rather than a courier, and the content
+      repositories reach that workflow through `secrets: inherit`. Duplicating
+      it into Secret Manager would create a second copy to rotate, which is
+      worse than the problem.
+- [ ] Narrow the visibility of the two relayed secrets to `quillmedical`.
+      All three are currently `ALL`, which means every repository in the
+      organisation can read them — including `respiratory-teaching`,
+      `bailey-medics.github.io` and `VPR`, none of which have anything to do
+      with monitoring, and some of which are public. The Slack webhook's
+      org-wide visibility is justified; the other two are not. This is a
+      minute's work in the GitHub interface and is worth doing whether or not
+      the migration happens.
+
+**What migrating does not fix.** The value still lands in Terraform state,
+because a notification channel resource needs the literal value. The
+application secrets avoid this only because Cloud Run references them by name
+and resolves at runtime — a genuinely different situation, not a double
+standard. The gain here is removing a second custodian, and getting IAM
+scoping, versioning and audit logging.
+
 ## What building this taught us
 
 Findings from actually building and testing this, rather than from planning it.

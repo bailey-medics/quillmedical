@@ -296,6 +296,21 @@ Resolution formula per user: `(base_profession_competencies + additional) − re
 - Never log PHI in errors/logs/notifications
 - Enforce RBAC + CBAC at API, DB and application level
 - Use `SecretStr` for secrets, never commit `.env` files
+- **Secrets live where they are used, not where they pass through.** A secret
+  GitHub Actions genuinely consumes — the Slack webhook it posts to, the
+  Workload Identity provider it authenticates with — belongs in GitHub. A
+  secret GitHub only relays onward, setting `TF_VAR_*` for Terraform to hand
+  to another system untouched, belongs in that system's own store: GCP Secret
+  Manager, read by a `google_secret_manager_secret_version` data source. The
+  test is whether anything in the workflow opens the envelope, or merely
+  carries it. Relaying makes GitHub a second custodian for no benefit, and an
+  organisation secret is readable by every repository it is visible to
+  — including public ones and any a content author can push a workflow to.
+- **Scope organisation secrets to the repositories that need them.** Default
+  `ALL` visibility is almost never right. Justify it or narrow it.
+- Prefer identifiers to credentials in continuous integration. Workload
+  Identity Federation is the model: GitHub holds a provider name and a service
+  account email, and nothing worth stealing.
 
 ### Git
 
