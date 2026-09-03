@@ -832,14 +832,28 @@ from merging.
 Sync imports new versions but never moves the pointer; a staff org admin advances it when
 they are ready. That also gives a rollback, which does not exist today.
 
-- [ ] **Model and migration.** Add `active_version: int | None` to
+- [x] **Model and migration.** Add `active_version: int | None` to
       `QuestionBankOrgStatus`. Nullable, so no `server_default` is needed. Backfill every
       existing row to the highest synced version for that organisation and bank, so no
       live bank changes behaviour on deploy. Created with `just migrate`, with a real
       `downgrade()`.
-- [ ] **Sync sets it once and never again.** Creating a status row for a bank's first
-      version sets the pointer to that version — harmless, since `is_live` still gates it.
-      Syncing a later version must leave the pointer untouched: that is the whole point.
+- [x] **Setting a bank live for an organisation pins the version; nothing else moves it.**
+      - The plan said sync would do this. It cannot: `sync.py` never touches
+        `QuestionBankOrgStatus` — no reference to the model, the table or `active_version`
+        anywhere in it. So "syncing a later version leaves the pointer untouched" was
+        already true, trivially, and the first half had nowhere to happen.
+      - The only place a status row is created is `update_bank_org_settings`
+        (`router.py`), when an admin sets `is_live` or `site_registration`. It left
+        `active_version` null, and nothing else writes it, so once the candidate queries
+        follow the pointer every organisation would have served nothing.
+      - Creating the row now pins the newest version **that organisation** has. Not the
+        `config_row` already in scope: that was looked up for the *caller's* organisation
+        to check the bank exists, and versions are per organisation
+        (`UniqueConstraint(organisation_id, question_bank_id, version)`). Null when the
+        target has nothing synced, which is honest — there is no version to serve.
+      - Updating an existing row leaves the pointer alone. That case is not in the original
+        wording and is the one that could promote silently: a bank switched off and on
+        again must not pick up a revision that arrived meanwhile.
 - [ ] **Candidate-facing queries follow the pointer**, not the highest version:
       `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
       (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means

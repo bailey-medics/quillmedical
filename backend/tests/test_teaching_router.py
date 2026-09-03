@@ -933,6 +933,124 @@ class TestResolveBankPathOrGcs:
 # ------------------------------------------------------------------
 
 
+class TestBankOrgSettingsSetTheActiveVersion:
+    """Switching a bank on for an organisation fixes which version it serves.
+
+    Nothing else writes ``active_version``: sync imports versions but never
+    touches the pointer, so if this endpoint left it null the bank would
+    serve nothing once the candidate queries follow it.
+    """
+
+    def _settings_url(self, org_id: int) -> str:
+        return (
+            f"/api/teaching/admin/banks/test-bank"
+            f"/organisations/{org_id}/settings"
+        )
+
+    def test_creating_the_row_pins_the_current_version(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        assert resp.status_code == 200
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        assert row.active_version == 1
+
+    def test_updating_the_row_leaves_the_version_alone(
+        self, test_client, db_session
+    ):
+        """The case that would promote a revision by accident.
+
+        A bank switched off and on again must not pick up a version that
+        arrived meanwhile — advancing the pointer is a separate decision.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        row.active_version = 1
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="A revision nobody promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": False, "site_registration": False},
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(row)
+        assert row.active_version == 1
+
+    def test_it_pins_the_newest_version_not_an_arbitrary_one(
+        self, test_client, db_session
+    ):
+        """Several versions can be synced for one organisation."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        for version in (2, 3):
+            db_session.add(
+                QuestionBankConfig(
+                    organisation_id=org.id,
+                    question_bank_id="test-bank",
+                    version=version,
+                    title="Test Bank",
+                    description="Later.",
+                    type="uniform",
+                    config_yaml=SAMPLE_CONFIG_YAML,
+                    synced_by=educator.id,
+                )
+            )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        assert row.active_version == 3
+
+
 class TestAdminBanks:
     """Admin endpoints for teaching module management."""
 

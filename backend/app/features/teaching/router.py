@@ -15,7 +15,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
@@ -2346,14 +2346,35 @@ def update_bank_org_settings(
     ).scalar_one_or_none()
 
     if status_row:
+        # active_version is deliberately untouched. Switching a bank off and
+        # on again must not promote a revision that arrived meanwhile — the
+        # whole point of the pointer is that advancing it is a separate,
+        # deliberate act.
         status_row.is_live = body.is_live
         status_row.site_registration = body.site_registration
     else:
+        # A bank being set up for an organisation starts on the newest
+        # version that organisation has. Nothing else writes this, so
+        # leaving it null would mean candidates saw nothing once the
+        # queries follow it.
+        #
+        # Deliberately not config_row.version: that row was looked up for
+        # the caller's organisation to check the bank exists, and versions
+        # are per organisation. Null when this one has nothing synced yet,
+        # which is honest — there is no version to serve.
+        active_version = db.execute(
+            select(func.max(QuestionBankConfig.version)).where(
+                QuestionBankConfig.organisation_id == org_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+        ).scalar_one_or_none()
+
         status_row = QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id=bank_id,
             is_live=body.is_live,
             site_registration=body.site_registration,
+            active_version=active_version,
         )
         db.add(status_row)
 
