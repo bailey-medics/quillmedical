@@ -56,6 +56,31 @@ module "secrets" {
   )
 }
 
+# ---------- Alerting secrets ----------
+#
+# Read from Secret Manager rather than relayed through GitHub. No workflow
+# uses either value; both were only being carried to Terraform, which made
+# GitHub a second custodian of a live credential and a personal number for no
+# benefit. See the secrets rule in CLAUDE.md.
+#
+# Values are set by hand with `gcloud secrets versions add`, per the
+# convention in modules/secrets: Terraform creates the containers, never the
+# versions. The provider marks secret_data sensitive, so neither appears in
+# plan output.
+data "google_secret_manager_secret_version" "pagerduty_service_key" {
+  project = var.project_id
+  secret  = "pagerduty-service-key"
+
+  depends_on = [module.secrets]
+}
+
+data "google_secret_manager_secret_version" "alert_sms_number" {
+  project = var.project_id
+  secret  = "alert-sms-number"
+
+  depends_on = [module.secrets]
+}
+
 # ---------- Networking ----------
 module "networking" {
   source      = "./modules/networking"
@@ -356,8 +381,8 @@ module "monitoring" {
   monitored_hostnames   = var.monitored_hostnames
   app_domain            = var.app_domain
   alert_email           = var.alert_email
-  alert_sms_number      = var.alert_sms_number
-  pagerduty_service_key = var.pagerduty_service_key
+  alert_sms_number      = data.google_secret_manager_secret_version.alert_sms_number.secret_data
+  pagerduty_service_key = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
   slack_webhook_url     = var.slack_webhook_url
   cloud_run_services    = var.cloud_run_services
 }

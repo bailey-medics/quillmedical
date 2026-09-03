@@ -356,10 +356,12 @@ wait for clinical users before having one.
       warns SMS "isn't a fully reliable notification channel type" and may be
       unavailable in some regions, so it escalates tier one rather than
       replacing it
-- [x] Supply the number from the `ALERT_SMS_NUMBER` organisation secret via
-      `TF_VAR_alert_sms_number`, on both the plan and apply jobs so the two
-      agree. It is **not** in `terraform.tfvars`: this repository is public,
-      and a committed number would be published permanently in git history.
+- [x] Supply the number from a secret rather than `terraform.tfvars`: this
+      repository is public, and a committed number would be published
+      permanently in git history. Originally a GitHub organisation secret
+      relayed through `TF_VAR_alert_sms_number`; now read from Secret Manager
+      directly, since no workflow ever used the value — see the decision on
+      where the alerting secrets live.
 - [x] Mark `alert_sms_number` sensitive in both variable definitions. The plan
       job posts its output as a pull request comment on a public repository,
       so without this the number would render there in plain text. Verified
@@ -442,11 +444,12 @@ not before.
       3. **Done — it rang.** Trigger an incident by hand from **Incidents →
          New Incident** against that service, at **high** urgency. Resolve it
          afterwards, so it cannot sit open and suppress the next one.
-      4. Store the Events API v1 integration key as the organisation secret
-         `PAGERDUTY_SERVICE_KEY`, passed as `TF_VAR_pagerduty_service_key` and
-         marked `sensitive` in Terraform. Google calls the field the service
-         key, confirmed against the `pagerduty` notification channel
-         descriptor, whose only label is `service_key`.
+      4. Store the Events API v1 integration key in Secret Manager as
+         `pagerduty-service-key`, read by a data source. Google calls the
+         field the service key, confirmed against the `pagerduty` notification
+         channel descriptor, whose only label is `service_key`. It went to a
+         GitHub organisation secret first; moving it is recorded in the
+         decision on where the alerting secrets live.
 
          Redaction was verified rather than assumed, the same way the phone
          number was: two identical resources planned side by side, one fed by
@@ -821,21 +824,38 @@ Applying it:
       sequence mirrors the expand-contract pattern the backend rules already
       use:
 
-- [ ] **Expand.** Add `pagerduty-service-key` and `alert-sms-number` to the
+- [x] **Expand.** Add `pagerduty-service-key` and `alert-sms-number` to the
       `module "secrets"` list, so Terraform creates the empty containers. Safe
       on its own: nothing reads them yet and the `TF_VAR_*` wiring still
       supplies the values.
-- [ ] **Populate by hand**, per the convention in `modules/secrets/main.tf`
-      that values are never set through Terraform:
-      `gcloud secrets versions add pagerduty-service-key --data-file=-`
-      and the same for `alert-sms-number`. Use `--data-file=-` and paste, so
-      the value never reaches shell history.
-- [ ] **Contract.** Switch the monitoring module to read both through data
-      sources, drop `TF_VAR_pagerduty_service_key` and
-      `TF_VAR_alert_sms_number` from `terraform.yml`, and delete the two
-      GitHub organisation secrets. Verify the plan output still redacts them:
-      the provider marks `secret_data` sensitive, but that is worth proving
-      rather than assuming, as it was for the phone number.
+- [x] **Populate by hand**, per the convention in `modules/secrets/main.tf`
+      that values are never set through Terraform. Both stored and verified by
+      byte count: the key at 32, the number at 13.
+
+      Two traps, both hit on the way. `--data-file=-` reads standard input,
+      so the command must already be **running** before the value is pasted —
+      pasting first appends it to the flag, and gcloud goes looking for a file
+      by that name. And Ctrl-D only signals end-of-input at the start of an
+      empty line, so after pasting it must be pressed twice. Neither is
+      obvious, because the command sits silently with no prompt. This avoids
+      both:
+
+      ```bash
+      read -rs KEY && printf '%s' "$KEY" \
+        | gcloud secrets versions add <name> --project <project> --data-file=- \
+        && unset KEY
+      ```
+
+      `read -rs` does not echo, `printf '%s'` strips the newline that would
+      otherwise be stored as part of the value, and nothing reaches shell
+      history. Check with `... versions access latest | wc -c`: a byte too
+      many means a newline crept in, and would fail at delivery rather than at
+      configuration.
+- [x] **Contract.** Switch to `google_secret_manager_secret_version` data
+      sources, drop both `TF_VAR_*` lines from `terraform.yml`, and remove the
+      now-unused root variables. Redaction verified from the provider schema
+      rather than assumed: `secret_data` carries `sensitive=True`, so the
+      values are hidden at source, before any marking of our own applies.
 - [ ] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
       organisation only once an apply has succeeded reading from Secret
       Manager. Removing them first would break the apply that is meant to
@@ -845,6 +865,24 @@ Applying it:
       repositories reach that workflow through `secrets: inherit`. Duplicating
       it into Secret Manager would create a second copy to rotate, which is
       worse than the problem.
+- [x] **Leave `SLACK_WEBHOOK_URL` at `ALL` visibility.** Considered narrowing
+      it: only three repositories use it — `quillmedical`, and `teaching.yml`
+      in `eoeeta-teaching` and `respiratory-teaching` — while
+      `bailey-medics.github.io` and `VPR` reference Slack nowhere and are both
+      public.
+
+      Decided against, on impact rather than exposure. An incoming webhook can
+      only post to one channel: it cannot read messages, reach other channels,
+      exfiltrate anything, or act as a user. A leak means unwanted messages,
+      and rotating the webhook ends it immediately. That is a different
+      category from the PagerDuty key, which can raise incidents and ring a
+      phone at 3am, or a personal number, which cannot be rotated at all.
+
+      Worth knowing rather than worth acting on: a webhook could post
+      convincing fake alerts, or a fake all-clear, into the very channel used
+      for alerting. Negligible for one operator who knows the system;
+      reconsider if the channel is ever read by people who would act on it
+      without checking.
 - [ ] Narrow the visibility of the two relayed secrets to `quillmedical`.
       All three are currently `ALL`, which means every repository in the
       organisation can read them — including `respiratory-teaching`,
