@@ -3,11 +3,11 @@
 #
 # Usage: GH_TOKEN=<token> post-plan-comment.sh <pr-number>
 #
-# The comment carries the one-line summary and nothing else. A full plan runs
-# to hundreds of lines of state refreshes and attribute-level diff, which is
-# unreadable in a pull request and already sits in the job log; burying the one
-# line that matters in it means the comment goes unread. The link at the foot
-# points at the plan job itself, so the full output is one click away.
+# The comment is one line: what the plan concluded, or "Failed plan" when it
+# concluded nothing. A full plan runs to hundreds of lines of state refreshes
+# and attribute-level diff, and a comment nobody reads is worth nothing however
+# much it contains. The link at the foot points at the plan job itself, so the
+# full output is always one click away.
 #
 # Reads the plan from infra/plan-output.txt (written by the "Terraform plan"
 # step) and posts with the `gh` CLI.
@@ -25,28 +25,19 @@
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "post-plan-comment"
 
-# GitHub caps comment bodies at 65536 characters; leave headroom for the
-# surrounding markdown (title, code fences, workflow link). Only the fallback
-# body can approach this — the summary body is a single line.
-MAX_PLAN_LEN=60000
 PLAN_FILE="infra/plan-output.txt"
 
-# The lines Terraform uses to conclude a plan. "Plan:" covers a plan with
-# changes; "No changes." covers one without. Anchored to the start of the line
-# so the same words quoted inside a resource diff cannot match.
-SUMMARY_PATTERN='^(Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.|No changes\.)'
+# The lines Terraform uses to conclude a plan: changes to resources, no changes
+# at all, or changes to outputs only — the last prints no "Plan:" line, and
+# omitting it here would see a healthy plan reported as a failed one. Anchored
+# to the start of the line, so the same words quoted inside a resource diff
+# cannot match.
+SUMMARY_PATTERN='^(Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.|No changes\.|Changes to Outputs:)'
 
-# Truncate the plan text read from stdin to MAX_PLAN_LEN characters, appending a
-# marker when it was cut. Pure (no I/O beyond stdin/stdout) so it can be tested.
-truncate_plan() {
-  local plan
-  plan="$(cat)"
-  if [ "${#plan}" -gt "$MAX_PLAN_LEN" ]; then
-    printf '%s\n\n... (truncated)' "${plan:0:MAX_PLAN_LEN}"
-  else
-    printf '%s' "$plan"
-  fi
-}
+# Stands in for the summary when Terraform printed none. Short by design: the
+# job log holds the reason, and a wall of error text in the comment trains
+# people to skim past every plan comment, including the ones that matter.
+NO_SUMMARY_TEXT="Failed plan"
 
 # Extract Terraform's concluding line from the plan text on stdin, or print
 # nothing if there is none. Takes the last match: a plan that reports on
@@ -55,31 +46,17 @@ plan_summary() {
   grep -E "$SUMMARY_PATTERN" | tail -n 1 || true
 }
 
-# Build the PR comment markdown from the summary ($1), the job URL ($2) and the
-# full plan text ($3).
+# Build the PR comment markdown from the summary ($1) and the job URL ($2).
 #
-# An empty summary means Terraform never reached a conclusion — almost always a
-# failed plan. Posting an empty comment there would hide the failure behind a
-# reassuring heading, so the fallback posts the whole output instead: a long
-# comment is a far smaller problem than a silent one.
+# An empty summary means Terraform reached no conclusion — almost always a
+# failed plan. That is reported as a single line too: the failure needs to be
+# visible, not verbose, and the reason is in the job log the link points at.
 build_body() {
   local summary="$1"
   local job_url="$2"
-  local plan="$3"
 
   if [ -z "$summary" ]; then
-    cat <<EOF
-### Terraform Plan: \`teaching\`
-
-Terraform printed no plan summary, so the plan did not complete. Full output:
-
-\`\`\`
-${plan}
-\`\`\`
-
-See the plan job for full details: ${job_url}
-EOF
-    return 0
+    summary="$NO_SUMMARY_TEXT"
   fi
 
   cat <<EOF
@@ -153,16 +130,14 @@ main() {
 
   local run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-  local plan
   local summary
   local job_url
   local body
 
-  plan="$(truncate_plan <"$PLAN_FILE")"
   summary="$(plan_summary <"$PLAN_FILE")"
   job_url="$(resolve_job_url "$run_url")"
 
-  body="$(build_body "$summary" "$job_url" "$plan")"
+  body="$(build_body "$summary" "$job_url")"
 
   log "Posting plan comment to PR #$pr_number"
   printf '%s' "$body" | gh pr comment "$pr_number" --body-file -
