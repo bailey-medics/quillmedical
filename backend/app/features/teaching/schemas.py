@@ -288,11 +288,17 @@ class SyncHistoryOut(BaseModel):
 
 
 class AdminBankOut(BaseModel):
-    """One question bank in the admin teaching overview."""
+    """One question bank in the admin teaching overview.
+
+    ``version`` is the newest imported; ``active_version`` is the one this
+    organisation serves. They differ whenever a revision has arrived and
+    nobody has promoted it, which is the state an admin needs to see.
+    """
 
     bank_id: str
     title: str | None = None
     version: int | None = None
+    active_version: int | None = None
     type: str | None = None
     synced_at: datetime | None = None
     in_gcs: bool = False
@@ -464,11 +470,16 @@ class EmailTemplateOut(BaseModel):
 
 
 class AdminBankDetailOut(BaseModel):
-    """Detailed admin view of a single question bank."""
+    """Detailed admin view of a single question bank.
+
+    ``version`` is the newest imported; ``active_version`` is the one this
+    organisation serves.
+    """
 
     bank_id: str
     title: str | None = None
     version: int | None = None
+    active_version: int | None = None
     type: str | None = None
     item_count: int = 0
     email_student_on_pass: bool = False

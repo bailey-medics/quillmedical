@@ -937,6 +937,110 @@ class TestResolveBankPathOrGcs:
 # ------------------------------------------------------------------
 
 
+class TestAdminViewsShowBothVersions:
+    """An admin needs to see that a revision is waiting.
+
+    Candidates get the promoted version; the admin screens are where the gap
+    between that and the newest import has to be visible, or nobody knows
+    there is anything to promote.
+    """
+
+    def test_the_list_reports_both(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="Waiting to be promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert resp.status_code == 200
+        bank = resp.json()[0]
+        assert bank["version"] == 2
+        assert bank["active_version"] == 1
+
+    def test_the_detail_reports_both(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="Waiting to be promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/admin/banks/test-bank", headers=headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["version"] == 2
+        assert resp.json()["active_version"] == 1
+
+    def test_a_bank_with_nothing_promoted_reports_null(
+        self, test_client, db_session
+    ):
+        """Distinguishable from "promoted version 1" — an admin seeing null
+        knows the bank has never been opened, not that it is up to date."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert resp.json()[0]["active_version"] is None
+
+    def test_the_admin_list_still_shows_a_bank_with_no_pointer(
+        self, test_client, db_session
+    ):
+        """Unlike the candidate list, which hides it. The admin screen is
+        where you go to promote it, so hiding it there would be a trap."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert [b["bank_id"] for b in resp.json()] == ["test-bank"]
+
+
 class TestCandidateQueriesFollowThePointer:
     """Candidates get the version their organisation promoted.
 
