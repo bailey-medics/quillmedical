@@ -398,7 +398,8 @@ not before.
       Cloud app — it cannot be created through Terraform or the channels API,
       and it shares Slack's failure domain, so it adds a device rather than
       genuine redundancy
-- [ ] Tier three — a phone call, through PagerDuty, on the free plan.
+- [x] Tier three — a phone call, through PagerDuty, on the free plan. Live
+      in teaching since 3 September, proven end to end.
 
       **An earlier claim in this plan was wrong and is now settled by test.**
       It said no free tier anywhere provides voice. That holds for Better
@@ -473,9 +474,43 @@ not before.
          Revisit after a few months of both running. If PagerDuty proves
          reliable, collapsing the tiers into it becomes an easy, reversible
          change; if it does not, nothing important was resting on it.
-      7. Test the call end to end from a real Cloud Monitoring alert, not just
-         a hand-triggered PagerDuty incident, and re-test after any change. A
-         configured alert and a working alert are different things.
+      7. **Done on 3 September.** Test the call end to end from a real Cloud
+         Monitoring alert, not just a hand-triggered PagerDuty incident. A
+         temporary uptime check reproducing the original fault opened an
+         incident against a temporary policy pointed at the real PagerDuty
+         channel; the phone rang and the keypress acknowledgement registered.
+         Both temporary resources were deleted in the same sitting.
+
+         The temporary policy used a sixty-second duration rather than the
+         thirty minutes tier three uses, so what this proves is the join
+         between Cloud Monitoring and PagerDuty — the only part that had never
+         run. The duration and the filter are the same shapes already proven
+         by tiers one and two. Re-test after any change to the channel, the
+         key or the policy.
+
+      **On answering the call.** Press acknowledge, then let the incident
+      resolve itself. Google Cloud drives these incidents: when the uptime
+      condition clears, Cloud Monitoring sends a resolve event and PagerDuty
+      closes automatically, so the two stay in step. Resolving by keypress
+      while Google still holds the condition open desynchronises them and
+      asserts the outage is over when it is not — the same class of error as a
+      monitoring system confidently reporting a state that is not true.
+      Escalating is a no-op with a single responder; there is nobody to hand
+      to. PagerDuty's documentation writes the keypad digits as placeholders
+      and does not document manual escalation, so the recording read out
+      during the call is the authority on which number does what.
+
+      - [ ] **A call slept through currently has no follow-up.** PagerDuty's
+        escalation timeout defaults to thirty minutes and its documentation
+        recommends at least two rules, which a lone responder cannot satisfy
+        in the intended way. Google Cloud has already waited thirty minutes
+        before ringing, so an unanswered call could mean an hour before
+        anything happens again — or nothing at all, if the policy has a single
+        rule. The solo-operator pattern is to **re-notify rather than
+        escalate**: shorten the timeout, the minimum being one minute for a
+        single target, and add a second rule pointing back at yourself so the
+        timeout has somewhere to go. Neither is in Terraform; both are
+        PagerDuty-side settings.
 
       Watch the cap: 100 phone and SMS notifications a month, combined. Ample
       at this volume, unless something flaps — which is exactly when it would
@@ -489,6 +524,52 @@ not before.
       Google Cloud project it exists to page about, with no tests and nobody to
       notice when it silently stops working. An untested pager is worse than no
       pager, because it is trusted
+- [ ] **Nothing detects a total Google Cloud outage.** Every link before the
+      phone call runs inside Google Cloud: Cloud Monitoring runs the uptime
+      checks, evaluates the conditions, and sends the notification. PagerDuty
+      covers only the last hop, so if Google never fires the alert there is
+      nothing to deliver. The service being down and everything being fine
+      look identical from here — silence either way.
+
+      This is the logical completion of the decision that the alarm should
+      live outside Google Cloud. The escalation is now robust against Google's
+      *notification channels* failing; it is not robust against Google's
+      *monitoring* failing.
+
+      Two shapes of fix, and the second is better:
+
+      - **An external check.** Something outside Google Cloud polls the site
+        and raises the alarm when it cannot reach it. Straightforward, but it
+        is another vendor and another thing that must itself keep working.
+      - **A dead man's switch.** Something inside Google Cloud tells an
+        outside service "still alive" on a schedule, and the outside service
+        alerts when the heartbeat stops. Silence becomes the signal, which is
+        exactly what a total outage produces. It also catches a case an
+        external poller misses: the site up but the alerting broken.
+
+      Candidates, both free and both already to hand:
+
+      - **Better Stack's free plan includes 10 heartbeats**, with email and
+        Slack notification. Independent of Google Cloud, but no voice.
+      - **A GitHub Actions scheduled workflow** is outside Google Cloud, free
+        on this public repository, and could poll the site or watch for a
+        missing heartbeat, then post to PagerDuty's Events API for a call.
+        The catch is that scheduled workflows can run very late under load,
+        so it is a backstop rather than fast detection.
+
+      Open questions, to settle before building anything:
+
+      - Does any free tier let an external monitor reach PagerDuty, or is a
+        webhook a paid feature? The answer decides whether this can ring a
+        phone or only send email.
+      - What detection latency is acceptable? A dead man's switch trades
+        promptness for certainty, and a heartbeat interval has to be chosen.
+      - Is voice warranted at all here? For teaching, email and Slack are
+        proportionate. For a clinical service they are not, which makes this
+        another thing that changes when patient data appears.
+
+      Do not start until the PagerDuty tier is applied and tested end to end;
+      this builds on it.
 - [x] Change the uptime check `period` in `infra/modules/monitoring/main.tf`
       from `300s` to `60s`, so detection lags by at most a minute rather than
       five. The comment marking 300s as the free tier is out of date: at two
