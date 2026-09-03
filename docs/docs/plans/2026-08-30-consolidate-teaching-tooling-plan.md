@@ -854,10 +854,21 @@ they are ready. That also gives a rollback, which does not exist today.
       - Updating an existing row leaves the pointer alone. That case is not in the original
         wording and is the one that could promote silently: a bank switched off and on
         again must not pick up a revision that arrived meanwhile.
-- [ ] **Candidate-facing queries follow the pointer**, not the highest version:
-      `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
-      (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means
-      the bank is not ready and serves nothing.
+- [x] **Candidate-facing queries follow the pointer**, not the highest version:
+      `start_assessment` (the critical one), `get_question_bank` and
+      `list_question_banks`. A null pointer means the bank is not ready and serves nothing —
+      403 from `start_assessment`, 404 from the detail view, absent from the list.
+      - `list_question_banks` takes the **highest** pointer across the user's organisations,
+        matching the existing "live if any organisation has it live" union rather than
+        inventing a second rule for multi-organisation users.
+      - `_seed_bank` in the tests now pins `active_version`. A status row without one no
+        longer represents a live bank, so a fixture lacking it was testing a state the
+        settings endpoint cannot produce.
+      - The sabotage check earned its keep twice here. Removing the version filter from
+        `start_assessment` left the tests green, because the null-pointer guard answered
+        first; and a second attempt still passed because dropping the filter without
+        restoring the original `ORDER BY … desc()` happened to return the right row. Only
+        a faithful revert failed, which is what the test needed to prove.
 - [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
       `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
       alongside the active one, so "version 3 active, version 4 available" is visible.
