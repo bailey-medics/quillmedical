@@ -347,8 +347,36 @@ one. An external pager is therefore the fix for a real gap rather than a
 comfort, and since it turns out to cost nothing, there is no longer a reason to
 wait for clinical users before having one.
 
-- [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
-      already configured. Cheap, ignorable, and often self-resolving
+- [x] Tier one, roughly 5–10 minutes — email, through the channel already
+      configured. Cheap, ignorable, and often self-resolving.
+
+      **It says Slack and email everywhere in this document, and that is
+      wrong.** Checked against the live API on 3 September: the tier one
+      policy notifies exactly one channel, `Quill alerts (teaching)`, which is
+      email. `var.slack_webhook_url` has never been set for teaching, so the
+      Slack channel resource sits at `count = 0` and has never existed. The
+      secret is in GitHub and `slack-notify.yml` uses it for CI messages, but
+      the Terraform workflow never passed it, so the monitoring channel was
+      never created. Same secret, two consumers, one of them unwired.
+
+      That matters beyond the missing ping. The argument for putting email on
+      both tiers was that Google documents Slack as sharing a delivery service
+      with webhooks and its mobile app, so email is the redundant path. With
+      no Slack channel at all, **tier one has no redundancy — it is a single
+      channel, and the slowest one to notice.**
+- [ ] Decide what to do about Slack, rather than wiring the secret and hoping.
+      The existing resource is `type = "webhook_token_auth"` pointed at an
+      incoming webhook URL. Slack incoming webhooks expect a body shaped like
+      `{"text": "..."}` — which is exactly what `slack-notify.yml` posts —
+      while Cloud Monitoring sends its own alert JSON. Passing the secret
+      through would create a channel that appears configured, reports as
+      enabled, and silently delivers nothing: the same failure this plan keeps
+      finding. `todo.md` already carries the answer, "replace the
+      `webhook_token_auth` Slack channel with the native integration". The
+      native `slack` type needs `auth_token`, `channel_name` and `team`, and
+      the token comes from authorising Google's Slack app in the console, so
+      it is a console step plus a Terraform change rather than a one-line
+      fix.
 - [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
       second uptime policy, `uptime_escalation`, firing only after
       `var.escalation_duration` and notifying SMS alone, so the louder channel
@@ -477,8 +505,9 @@ not before.
          Revisit after a few months of both running. If PagerDuty proves
          reliable, collapsing the tiers into it becomes an easy, reversible
          change; if it does not, nothing important was resting on it.
-      7. **Done on 3 September.** Test the call end to end from a real Cloud
-         Monitoring alert, not just a hand-triggered PagerDuty incident. A
+      7. **Done on 3 September, and again after the secret moved.** Test the
+         call end to end from a real Cloud Monitoring alert, not just a
+         hand-triggered PagerDuty incident. A
          temporary uptime check reproducing the original fault opened an
          incident against a temporary policy pointed at the real PagerDuty
          channel; the phone rang and the keypress acknowledgement registered.
@@ -490,6 +519,20 @@ not before.
          run. The duration and the filter are the same shapes already proven
          by tiers one and two. Re-test after any change to the channel, the
          key or the policy.
+
+         That rule earned itself the same day. Moving the service key from a
+         GitHub organisation secret into Secret Manager changed nothing a
+         `terraform plan` could show — the value was byte-identical, so the
+         apply reported no change to the channel at all — but it did change
+         where the value came from at apply time. Re-tested rather than
+         assumed, and the phone rang.
+
+         Also learned: a condition `duration` of `0s` barely helps. Roughly
+         three and a half minutes elapsed either way, because the floor is not
+         the policy but the uptime check beneath it — it runs every sixty
+         seconds, and the aggregation window needs enough failing samples
+         before the condition can be true at all. Tuning the duration below
+         that buys nothing.
 
       **On answering the call.** Press acknowledge, then let the incident
       resolve itself. Google Cloud drives these incidents: when the uptime
@@ -856,10 +899,28 @@ Applying it:
       now-unused root variables. Redaction verified from the provider schema
       rather than assumed: `secret_data` carries `sensitive=True`, so the
       values are hidden at source, before any marking of our own applies.
-- [ ] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
+- [x] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
       organisation only once an apply has succeeded reading from Secret
       Manager. Removing them first would break the apply that is meant to
-      replace them.
+      replace them. **Done on 3 September**: the apply read both data sources
+      cleanly, and both secrets are gone from the organisation, which now
+      holds only `SLACK_WEBHOOK_URL`. A live credential and a personal number
+      are no longer readable by five repositories, two of them public.
+
+      One surprise in that apply, worth knowing before reading a future plan:
+      it reported **1 changed**, not the expected 0. Nothing to do with the
+      secrets, which resolved byte-identically. It was
+      `google_monitoring_dashboard.quill` — Google's API normalises the
+      dashboard JSON it stores, adding an `etag`, quoting `columns` as the string
+      `"2"` and filling in `targetAxis`, and Terraform rewrites it back to the
+      literal in the code every time.
+- [ ] Settle the dashboard's permanent drift. Together with the three Cloud
+      Run resources that show `client = "gcloud" -> null` after every
+      CLI-driven deploy, four resources now appear in every plan without
+      anything having changed. Individually harmless; collectively they erode
+      the one signal that makes a plan worth reading, which is whether it
+      looks clean. Either write the dashboard JSON in the shape the API
+      returns, or `ignore_changes` the fields the API rewrites.
 - [x] Leave `SLACK_WEBHOOK_URL` in GitHub. `slack-notify.yml` posts to it
       directly, so GitHub is the client rather than a courier, and the content
       repositories reach that workflow through `secrets: inherit`. Duplicating
@@ -978,6 +1039,14 @@ archived authenticated app traffic — including paths carrying patient and user
 identifiers — alongside client IP addresses, for the whole retention window.
 The pipeline built to honour the "no raw URLs" rule would have broken it. Sinks
 are now scoped to the host they are meant to cover.
+
+**A change of custody shows up in no plan.** Moving the PagerDuty key from a
+GitHub secret into Secret Manager altered nothing `terraform plan` could
+display — the value was byte-identical, so the apply reported no change to the
+notification channel at all — but it changed where the value came from at apply
+time. A green plan said nothing useful about whether the phone would still
+ring. Only ringing it did. Any change to *where* a value comes from needs the
+same end-to-end test as a change to the value itself.
 
 **Prefer vendor pricing pages to comparison sites.** Two claims in this
 document about which alerting tiers include voice were wrong, both taken from
