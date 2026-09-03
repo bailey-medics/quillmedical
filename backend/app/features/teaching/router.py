@@ -228,11 +228,20 @@ def list_question_banks(
         .scalars()
         .all()
     )
-    # A bank is live if ANY of the user's orgs has it live
+    # A bank is live if ANY of the user's orgs has it live, and it shows the
+    # highest version any of them has promoted — the same permissive union.
+    # A null pointer contributes nothing: that organisation has promoted no
+    # version, so it has nothing to show.
     live_map: dict[str, bool] = {}
+    active_map: dict[str, int] = {}
     visible_bank_ids: set[str] = set()
     for s in statuses:
+        if s.active_version is None:
+            continue
         visible_bank_ids.add(s.question_bank_id)
+        active_map[s.question_bank_id] = max(
+            active_map.get(s.question_bank_id, 0), s.active_version
+        )
         if s.is_live:
             live_map[s.question_bank_id] = True
 
@@ -262,6 +271,9 @@ def list_question_banks(
     results: list[dict[str, Any]] = []
     for c in configs:
         if c.question_bank_id in seen:
+            continue
+        # Only the promoted version, not whichever happens to be newest.
+        if c.version != active_map.get(c.question_bank_id):
             continue
         seen.add(c.question_bank_id)
 
@@ -334,14 +346,19 @@ def get_question_bank(
     if not status_row:
         raise HTTPException(404, "Question bank not found")
 
-    # Fetch config from whichever org owns it
+    # A bank with nothing promoted has nothing to show: describing a version
+    # this organisation does not serve would be worse than saying it is not
+    # there.
+    if status_row.active_version is None:
+        raise HTTPException(404, "Question bank not found")
+
+    # Fetch the promoted version from whichever org owns the content.
     config = (
         db.execute(
-            select(QuestionBankConfig)
-            .where(
+            select(QuestionBankConfig).where(
                 QuestionBankConfig.question_bank_id == bank_id,
+                QuestionBankConfig.version == status_row.active_version,
             )
-            .order_by(QuestionBankConfig.version.desc())
         )
         .scalars()
         .first()
@@ -562,14 +579,19 @@ def start_assessment(
     if not status_row:
         raise HTTPException(403, "This assessment is not currently open")
 
-    # Load latest config (may be owned by a different org)
+    # The version this organisation has promoted, not the newest imported.
+    # Syncing a revision must not change what a candidate sits mid-cohort;
+    # advancing the pointer is a deliberate act by a staff org admin.
+    if status_row.active_version is None:
+        raise HTTPException(403, "This assessment is not currently open")
+
+    # May be owned by a different org — content is shared, the pointer is not.
     config_row = (
         db.execute(
-            select(QuestionBankConfig)
-            .where(
+            select(QuestionBankConfig).where(
                 QuestionBankConfig.question_bank_id == body.question_bank_id,
+                QuestionBankConfig.version == status_row.active_version,
             )
-            .order_by(QuestionBankConfig.version.desc())
         )
         .scalars()
         .first()

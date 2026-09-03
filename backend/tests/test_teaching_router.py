@@ -173,12 +173,16 @@ def _seed_bank(
     db.add(config)
     db.flush()
 
-    # Set the bank as live (or closed) for the org
+    # Set the bank as live (or closed) for the org, pinned to the version
+    # above. A real status row always carries a pointer — the settings
+    # endpoint sets one when it creates the row — and candidate queries now
+    # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id="test-bank",
             is_live=is_live,
+            active_version=1,
         )
     )
 
@@ -931,6 +935,147 @@ class TestResolveBankPathOrGcs:
 # ------------------------------------------------------------------
 # Admin banks endpoint
 # ------------------------------------------------------------------
+
+
+class TestCandidateQueriesFollowThePointer:
+    """Candidates get the version their organisation promoted.
+
+    Syncing a revision imports it but must not put it in front of anyone.
+    Without this the newest version won a race nobody entered, changing an
+    assessment mid-cohort.
+    """
+
+    def _add_version(self, db_session, org, educator, version: int) -> None:
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=version,
+                title=f"Test Bank v{version}",
+                description="A revision nobody promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+
+    def test_detail_serves_the_promoted_version_not_the_newest(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/question-banks/test-bank", headers=headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["version"] == 1
+
+    def test_the_list_serves_the_promoted_version(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/question-banks", headers=headers)
+
+        assert resp.status_code == 200
+        versions = [b["version"] for b in resp.json()]
+        assert versions == [1]
+
+    def test_a_bank_with_no_promoted_version_is_not_listed(
+        self, test_client, db_session
+    ):
+        """A null pointer means nothing has been promoted, so nothing shows."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/question-banks", headers=headers)
+
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_an_assessment_is_sat_on_the_promoted_version(
+        self, test_client, db_session
+    ):
+        """The one that matters. A revision synced while a cohort is part
+        way through must not change the paper they are sitting."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        for i in range(3):
+            db_session.add(
+                QuestionBankItem(
+                    organisation_id=org.id,
+                    question_bank_id="test-bank",
+                    bank_version=2,
+                    status="published",
+                    images=[{"key": f"v2_{i}.png"}],
+                    metadata_json={
+                        "diagnosis": "adenoma",
+                        "_source_dir": f"v2_question_{i}",
+                    },
+                )
+            )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            headers=headers,
+            json={"question_bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 200
+        assessment = (
+            db_session.query(Assessment)
+            .filter_by(question_bank_id="test-bank")
+            .one()
+        )
+        assert assessment.bank_version == 1
+
+    def test_a_bank_with_no_promoted_version_cannot_be_started(
+        self, test_client, db_session
+    ):
+        """The one that matters: no pointer, no assessment."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            headers=headers,
+            json={"question_bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 403
 
 
 class TestBankOrgSettingsSetTheActiveVersion:
