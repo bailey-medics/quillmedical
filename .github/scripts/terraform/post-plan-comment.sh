@@ -43,7 +43,14 @@ NO_SUMMARY_TEXT="Failed plan"
 # nothing if there is none. Takes the last match: a plan that reports on
 # several workspaces ends with the one that counts.
 plan_summary() {
-  grep -E "$SUMMARY_PATTERN" | tail -n 1 || true
+  local summary
+
+  summary="$(grep -E "$SUMMARY_PATTERN" | tail -n 1)" || true
+
+  # "Changes to Outputs:" ends in a colon because the list of them follows it
+  # in the log. Only the line itself reaches the comment, so the colon would
+  # dangle, promising a list that is not there.
+  printf '%s' "${summary%:}"
 }
 
 # Build the PR comment markdown from the summary ($1) and the job URL ($2).

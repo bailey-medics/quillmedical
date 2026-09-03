@@ -138,7 +138,9 @@ PLAN
   run build_body "$summary" "https://github.com/o/r/actions/runs/42/job/99"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Changes to Outputs:'* ]]
+  # No trailing colon: nothing follows it in the comment.
+  [[ "$output" == *'Changes to Outputs'* ]]
+  [[ "$output" != *'Changes to Outputs:'* ]]
   # Terraform prints no "Plan:" line here, so treating it as no conclusion
   # would report a healthy plan as a failed one.
   [[ "$output" != *'Failed plan'* ]]
