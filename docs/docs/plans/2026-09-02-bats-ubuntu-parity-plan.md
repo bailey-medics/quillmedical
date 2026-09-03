@@ -60,8 +60,8 @@ TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${
 ## Phase 2: Run the suite in an Ubuntu container
 
 - [ ] Add a `just` recipe — `tsd`, or another name — that runs the same bats invocation
-      inside `ubuntu:24.04`, matching the runner image. Keep `just ts` as it is: the fast
-      local run stays useful, and this is the one to reach for before pushing.
+      inside `ubuntu:24.04`, matching the runner image. Keep `just ts` alongside it while
+      the containerised recipe earns trust; Phase 3 removes the host one.
 - [ ] The container needs more than bats. What the suite actually touches:
       - **bats** itself. CI installs it with `bats-core/bats-action@4.0.0`; pin the same
         version in the container so a bats behaviour change cannot differ between them.
@@ -85,6 +85,27 @@ TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${
       the container and fail on the host. That is the whole point, and it is worth
       demonstrating once rather than assuming.
 
+## Phase 3: Remove `just ts`
+
+Once the containerised run is trusted, the host recipe goes. Two ways to run the same
+suite is one too many, and the host one is what produced the false results in both
+directions that this plan exists to eliminate — leaving it in place invites reaching for
+it out of habit and getting an answer about the wrong platform.
+
+- [ ] Delete the `test-scripts` recipe and its `ts` alias from the `Justfile`
+      (`Justfile:567-572`), then rename the Phase 2 recipe to `test-scripts` with the `ts`
+      alias, so the familiar name runs the correct thing and no muscle memory is wasted.
+- [ ] Drop bats from the optional prerequisites in `docs/docs/getting-started.md:10`. It is
+      then needed only inside the container, so `brew install bats-core` stops being
+      something a developer has to do at all.
+- [ ] Update the three places that present the recipe as a host command:
+      `docs/docs/cicd/index.md:69` and `:184`, and `.github/scripts/README.md:17`. Each
+      offers a bare `bats --recursive .github/scripts` as an equivalent, and that
+      equivalence is exactly what Phase 2 disproves — the wording needs to make the
+      container the suite and the bare call a fallback carrying a platform caveat.
+- [ ] Leave the finished plans alone. The August alembic plan names `just ts` twice as a
+      record of what was run at the time; rewriting that would misreport what happened.
+
 ## Verification
 
 - [ ] `just ts` passes on the host — currently impossible, and the measure of Phase 1.
@@ -93,16 +114,21 @@ TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${
       stays clean, since `create-pr.sh` changes.
 - [ ] CI stays green, confirming the `create-pr.sh` change did not alter behaviour on the
       platform where it already worked.
+- [ ] After Phase 3, `grep -rn 'test-scripts' --exclude-dir=.git .` finds only the
+      containerised recipe and prose describing it — nothing anywhere still tells a
+      developer to run the suite on the host.
 
 ## Risks and notes
 
 - **The container will not have Docker's daemon inside it.** No current test needs Docker,
   but a future one that does would fail there and pass on the host — the inverse of today's
   problem, and worth noticing early.
-- **Docker is not always available.** It is deliberately off when running on battery, so the
-  containerised run must be an addition to `just ts`, never a replacement for it. For the
-  same reason this plan is meant to be worked through locally rather than in a hosted
-  environment where the daemon may not be reachable.
+- **Docker is not always available.** It is deliberately off when running on battery, so
+  after Phase 3 the suite cannot be run without starting Docker first. That is the accepted
+  cost of having one way to run it rather than two; a bare `bats --recursive
+  .github/scripts` still works by hand, carrying exactly the platform caveat this plan is
+  about. For the same reason this plan is meant to be worked through locally rather than in
+  a hosted environment where the daemon may not be reachable.
 - **Do not "fix" the tests to accommodate bash 3.2.** The scripts run on ubuntu; the
   portable construct is for the developer's benefit, not the runner's. If a future script
   genuinely needs bash 4, the answer is the container, not weakening the script.
