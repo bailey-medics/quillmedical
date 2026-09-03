@@ -37,7 +37,17 @@ TITLE="${TYPE}: ${REMAINDER^}"
 
 # Placeholder body. This repository has no pull request template; the real
 # description is written when the branch is finished (see /crp final).
-BODY="Auto-created from branch push"
+BODY=$(cat <<'EOF'
+**Placeholder for the PR description**
+
+You can autogenerate a PR description covering the whole PR if you are using
+VSCode Copilot or Claude Code. Run the below in the command line:
+
+```
+/crp final
+```
+EOF
+)
 
 # Create the pull request as a draft; exit gracefully if one was created by a
 # concurrent run. Draft holds back the heavy CI tier until marked ready.

@@ -54,11 +54,22 @@ set_create_status() {
   echo "$1" > "${BATS_TEST_TMPDIR}/gh-create-status"
 }
 
-# The value gh was given for a named flag, e.g. arg_after --body.
+# The value gh was given for a named flag, e.g. arg_after --title.
 arg_after() {
   local flag="$1"
 
   grep -A1 -x -- "$flag" "$CALLS" | sed -n '2p'
+}
+
+# The value gh was given for --body, which spans several lines. Recording puts
+# one argument per line, so the body runs from just after --body up to the next
+# flag gh was passed.
+body_arg() {
+  awk '
+    $0 == "--body" { collecting = 1; next }
+    collecting && /^--/ { collecting = 0 }
+    collecting { print }
+  ' "$CALLS"
 }
 
 @test "fails without a branch name argument" {
@@ -92,7 +103,11 @@ arg_after() {
   run bash "$SCRIPT" feature/add-login
 
   [ "$status" -eq 0 ]
-  [ "$(arg_after --body)" = "Auto-created from branch push" ]
+
+  body="$(body_arg)"
+  [[ "$body" == *"**Placeholder for the PR description**"* ]]
+  [[ "$body" == *"VSCode Copilot or Claude Code"* ]]
+  [[ "$body" == *"/crp final"* ]]
 }
 
 @test "ignores a pull request template in the working directory" {
@@ -105,7 +120,7 @@ arg_after() {
   run bash "$SCRIPT" feature/add-login
 
   [ "$status" -eq 0 ]
-  [ "$(arg_after --body)" = "Auto-created from branch push" ]
+  [[ "$(body_arg)" == *"**Placeholder for the PR description**"* ]]
   run ! grep -q "TEMPLATE CONTENT" "$CALLS"
 }
 
