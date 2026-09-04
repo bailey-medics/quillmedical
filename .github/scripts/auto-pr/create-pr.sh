@@ -41,7 +41,7 @@ BODY=$(cat <<'EOF'
 **Placeholder for the PR description**
 
 You can autogenerate a PR description covering the whole PR if you are using
-VSCode Copilot or Claude Code. Run the below in the command line:
+VSCode Copilot or Claude Code. Run the below in the chat:
 
 ```
 /crp final
