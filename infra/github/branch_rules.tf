@@ -221,7 +221,7 @@ resource "github_repository_ruleset" "protected_branches" {
 # ---------------------------------------------------------------------------
 # Ruleset 2 — Branch naming convention
 # ---------------------------------------------------------------------------
-# Targets: all branches EXCEPT main
+# Targets: all branches EXCEPT main and the merge queue's own refs
 #
 # Purpose:
 #   Enforces a consistent naming convention across the repository. Any branch
@@ -243,6 +243,15 @@ resource "github_repository_ruleset" "branch_naming" {
       include = ["~ALL"]
       exclude = [
         "refs/heads/main",
+        # The merge queue builds each entry on a temporary branch named
+        # gh-readonly-queue/main/pr-<number>-<sha>, which cannot match the
+        # pattern below. Without this exclusion the naming rule rejects that
+        # branch at creation time, so the merge group is never built, no
+        # merge_group event fires, no required check reports, and GitHub drops
+        # the entry with "removed from the merge queue due to failing Branch
+        # Protection rules" — with nothing in the Actions tab to explain it.
+        # Observed on PR #503, the first pull request queued here.
+        "refs/heads/gh-readonly-queue/**",
       ]
     }
   }
