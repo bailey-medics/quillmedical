@@ -51,6 +51,7 @@
   "timezone": "Europe/London",
   "schedule": ["on wednesday"],
   "rebaseWhen": "never",
+  "platformAutomerge": true,
   "minimumReleaseAge": "3 days",
   "labels": ["dependencies"],
   "vulnerabilityAlerts": {
