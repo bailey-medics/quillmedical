@@ -206,6 +206,10 @@ jobs:
       - name: Set up bats
         uses: bats-core/bats-action@4.0.0
         with:
+          # Pinned, and matched by .github/Dockerfile. Left unset the
+          # action resolves `latest` at run time, so a bats release could change
+          # what CI runs without changing anything in this repository.
+          bats-version: "1.14.0"
           # Only bats core is needed; the tests use no helper libraries.
           support-install: false
           assert-install: false

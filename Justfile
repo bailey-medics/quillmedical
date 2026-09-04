@@ -586,6 +586,35 @@ test-scripts *ARGS:
     bats --recursive .github/scripts {{ARGS}}
 
 
+alias tsd := test-scripts-docker
+# Run the shell script tests where CI runs them (ubuntu-24.04 container)
+test-scripts-docker *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "test-scripts-docker"
+
+    just _start-docker-daemon
+
+    # Nothing from the repository is needed to build the image — it is mounted at
+    # run time — so the Dockerfile goes in on stdin with no build context at all.
+    # Rebuilds are a cache hit unless the Dockerfile itself changes.
+    docker build --quiet --tag quill-shell-tests - < .github/Dockerfile
+
+    # Mounted read-only: a test that writes into the working tree is a bug, and
+    # this is where it should surface rather than on someone's machine.
+    run_suite() {
+        docker run --rm --volume "$PWD:/repo:ro" quill-shell-tests \
+            bash .github/scripts/ci/run-shell-tests.sh "$1"
+    }
+
+    # With no argument, run exactly what CI runs: both targets, in order.
+    if [ -n "{{ARGS}}" ]; then
+        run_suite "{{ARGS}}"
+    else
+        run_suite .github/scripts
+        run_suite .claude/hooks
+    fi
+
+
 alias ee := e2e
 # Run the end-to-end tests
 e2e:
