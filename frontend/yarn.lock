@@ -2861,6 +2861,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource-variable/cormorant-garamond@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "@fontsource-variable/cormorant-garamond@npm:5.3.0"
+  checksum: 10c0/75569c61e067777a6a8fbb557cfd5dd1d7c1719b2a9be3ddeb4c19b3df4811137423e37431cce9506dead35caf0d00a51a47f7a8e46b7178f206212c9d327af3
+  languageName: node
+  linkType: hard
+
 "@gar/promise-retry@npm:^1.0.0":
   version: 1.0.2
   resolution: "@gar/promise-retry@npm:1.0.2"
@@ -9005,6 +9012,7 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^10.0.0"
     "@fontsource-variable/atkinson-hyperlegible-next": "npm:^5.2.6"
+    "@fontsource-variable/cormorant-garamond": "npm:^5.3.0"
     "@mantine/core": "npm:^9.0.0"
     "@mantine/hooks": "npm:^9.0.0"
     "@mantine/notifications": "npm:^9.0.0"
