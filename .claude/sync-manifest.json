@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-08-30T07:01:57Z",
+  "lastRun": "2026-09-03T06:23:19Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -12,15 +12,19 @@
     "2026-08-30: CLAUDE.md target drift is structural, not a problem - it is a merge target carrying a hand-written '## Claude-specific' section this skill never writes into. Its hash is refreshed to mean 'last state reconciled'. Verified this run: all 21 source headings are present in CLAUDE.md, nothing to merge.",
     "2026-08-30: five entries now carry divergentByDesign:true with a divergenceReason. Their targets will always differ from their sources, because each difference is a platform feature with no counterpart on the other side - not drift, and not work outstanding. Report them as expected rather than actionable, and NEVER sync over them in either direction. The flag records intent, not state: the recorded hashes still move when either side genuinely changes, so a real edit is still detectable. Anything these entries do NOT name as platform-specific is ordinary drift and should be reconciled as usual.",
     "2026-08-30: the substantive half of that divergence was back-ported to .github/ on branch feature/backport-skill-improvements - crp's three-way pre-commit failure rule, and 'ask rather than guess' in explain-to-me and follow-the-plan-document. Only the platform-specific remainder is left.",
-    "2026-08-30: back-filled the 'Enforcement: CI detection + required-reviewer environment gate' subsection into .claude/rules/backend.md. The 2026-08-28 note warning it was missing was dropped earlier that day as resolved, but only the newer immutability bullets had actually been synced - this subsection was still absent, so Claude sessions were missing the rule that human environment approval, not the allow-destructive marker, is what gates a destructive migration. Bodies now match exactly."
+    "2026-08-30: back-filled the 'Enforcement: CI detection + required-reviewer environment gate' subsection into .claude/rules/backend.md. The 2026-08-28 note warning it was missing was dropped earlier that day as resolved, but only the newer immutability bullets had actually been synced - this subsection was still absent, so Claude sessions were missing the rule that human environment approval, not the allow-destructive marker, is what gates a destructive migration. Bodies now match exactly.",
+    "2026-09-02: the `final` argument was added to crp on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md is still the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
+    "2026-09-02: the pull request description spec in crp's 'Final' section was tightened on BOTH sides in the same commit (.github/prompts/commit-rebase-push.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Hashes below record that reconciled state - this is not outstanding drift.",
+    "2026-09-02: a 'never mention AI authorship' rule was added to crp's Never list on BOTH sides in the same commit, and to CLAUDE.md's hand-written '## Claude-specific' section (which this skill never writes into - its hash is refreshed to mean 'last state reconciled'). Not outstanding drift.",
+    "2026-09-03: a secrets-placement rule was added to copilot-instructions.md and merged into CLAUDE.md's Security list - a secret GitHub Actions consumes stays in GitHub, one it only relays belongs at the destination. explain-to-me and follow-the-plan-document also show changed source hashes, but their only differences from the Claude copies remain the ide_selection tags and $ARGUMENTS respectively, exactly as their divergenceReason describes. Hashes refreshed to record the reconciled state; no target content was written for those two."
   ],
   "files": [
     {
       "source": ".github/copilot-instructions.md",
       "target": "CLAUDE.md",
-      "sourceSha256": "a2ce6050a7bbb569bbec186c1f7511f9778328d32a854e075b9faef67c95cba1",
-      "targetSha256": "c76008f6f16cd23d79fd9cc9961ba78b11bd192b16e15e18429e48bef77c9e6a",
-      "syncedAt": "2026-08-30T06:05:05Z"
+      "sourceSha256": "4aa598b163ec81ee92d680a4f1ed68888bd07f2d1696534aa4c91497ec756031",
+      "targetSha256": "830b153954695e14e95a5c2596c0fb7fd821fe49703d2a13f90191cdac1f1a41",
+      "syncedAt": "2026-09-03T06:23:19Z"
     },
     {
       "source": ".github/instructions/backend.instructions.md",
@@ -69,19 +73,19 @@
     {
       "source": ".github/prompts/commit-rebase-push.prompt.md",
       "target": ".claude/skills/crp/SKILL.md",
-      "sourceSha256": "d98f4cecb4d6cb848063127f0c80c973c5b31a22d314c48b5b537e47e5823c6b",
-      "targetSha256": "235286ebf7a73fefde660c15b63b90ce03e353cddb36764572083538e54fc6a2",
-      "syncedAt": "2026-08-26T15:35:13Z",
+      "sourceSha256": "d1b4151948591fb06a7a6f42c336135003ec22b8ee33da16facb52e8c680636b",
+      "targetSha256": "9a0bbcd8b81ec00cb7f55a6cfcd17db7ec71f1ba8fedf0cceb5b4a4d62dadaf7",
+      "syncedAt": "2026-09-02T18:18:27Z",
       "targetRenamed": true,
       "divergentByDesign": true,
-      "divergenceReason": "Argument passing: the Claude copy uses `$ARGUMENTS`, which has no Copilot equivalent, and says '(Claude)' where the Copilot copy says 'you'. Markdown table whitespace also differs because Prettier formats the Claude side. The substantive instructions are identical - do not sync either way."
+      "divergenceReason": "Argument passing: the Claude copy uses `$ARGUMENTS`, which has no Copilot equivalent, and says '(Claude)' where the Copilot copy says 'you'. The Claude copy also carries skill frontmatter with no Copilot counterpart (argument-hint, allowed-tools, disable-model-invocation). Markdown table whitespace also differs because Prettier formats the Claude side. The substantive instructions are identical - do not sync either way."
     },
     {
       "source": ".github/prompts/explain-to-me.prompt.md",
       "target": ".claude/skills/e/SKILL.md",
-      "sourceSha256": "6633ee69fc753dbe060ebeabb33450cec6c72e6f0897fd1b804878dc0073f75f",
-      "targetSha256": "cfe442cd94430ae067f38ef9774a03127d847c9ff900e09b719b0a362385e407",
-      "syncedAt": "2026-08-22T20:32:02Z",
+      "sourceSha256": "31dae9cd413e5cb8e760dd6020d4362d0d32d8158aeb109e722f4380ab2f2555",
+      "targetSha256": "7d43427de559f0d8ee7a1d8366f055e6d3cc080ad84b4946ad7a7b404bfdb7e7",
+      "syncedAt": "2026-09-03T06:23:19Z",
       "targetRenamed": true,
       "divergentByDesign": true,
       "divergenceReason": "The Claude copy names `ide_selection` tags, which is how a selection reaches Claude Code and has no Copilot equivalent. Everything else is identical."
@@ -105,9 +109,9 @@
     {
       "source": ".github/prompts/follow-the-plan-document.prompt.md",
       "target": ".claude/skills/follow-the-plan-document/SKILL.md",
-      "sourceSha256": "317b50268896fafea4e419dd081b0cbca8130a2962c495c44a5134e113788ed7",
-      "targetSha256": "c02a3417ce64d92c37498cf5b1949bfc78900bab57dc7aad55e3214e10e81575",
-      "syncedAt": "2026-08-22T20:32:02Z",
+      "sourceSha256": "3c23877d11a501b904f75f4793c6da5f88a3486c53471f429f4f48e7245c52d0",
+      "targetSha256": "9440dcd3c723e2da6a9052b2f865fc6e48e49bc1c40605558bdae701c58aefd1",
+      "syncedAt": "2026-09-03T06:23:19Z",
       "divergentByDesign": true,
       "divergenceReason": "How the plan document arrives: Copilot attaches it to the prompt, Claude takes a path via `$ARGUMENTS`. Both say to ask rather than guess when it is absent."
     },

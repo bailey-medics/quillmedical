@@ -151,6 +151,20 @@ frontend-update:
     yarn up
 
 
+alias gl := gcp-login
+# Refresh both GCP credentials: the gcloud one and application default
+gcp-login:
+    #!/usr/bin/env bash
+    {{initialise}} "gcp-login"
+    # Two separate credentials that expire independently. `gcloud auth login`
+    # covers gcloud commands and direct API calls; application-default covers
+    # tools that read Application Default Credentials, Terraform among them.
+    # Having one valid and the other expired is the confusing case - terraform
+    # fails while gcloud works - so refresh both together.
+    gcloud auth login
+    gcloud auth application-default login
+
+
 alias h32 := hex-32
 # Generate a random 32 character hex string
 hex-32:

@@ -18,6 +18,8 @@ backend_image  = "gcr.io/cloudrun/hello:latest"
 frontend_image = "gcr.io/cloudrun/hello:latest"
 admin_image    = "gcr.io/cloudrun/hello:latest"
 
-monitored_hostnames = ["teaching.quill-medical.com", "quill-medical.com"]
-alert_email         = "info@quill-medical.com"
-cloud_run_services  = ["quill-backend-teaching", "quill-frontend-teaching"]
+monitored_hostnames        = ["teaching.quill-medical.com", "quill-medical.com"]
+app_domain                 = "teaching.quill-medical.com"
+alert_email                = "info@quill-medical.com"
+slack_channel_display_name = "quill-medical-cicd"
+cloud_run_services         = ["quill-backend-teaching", "quill-frontend-teaching"]
