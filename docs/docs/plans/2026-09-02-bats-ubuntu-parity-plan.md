@@ -46,15 +46,15 @@ Bash 3.2 supports substring expansion, so this is portable and equivalent:
 TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${REMAINDER:1}"
 ```
 
-- [ ] Make that replacement. It is the only bash-4-only construct in the whole of
+- [x] Make that replacement. It is the only bash-4-only construct in the whole of
       `.github/scripts` — confirmed by grepping for `^}`, `,,}` and `^^}` across every
       script, which returns this one line.
-- [ ] Verify the five failing tests pass: `bats .github/scripts/auto-pr/create-pr.bats`.
+- [x] Verify the five failing tests pass: `bats .github/scripts/auto-pr/create-pr.bats`.
       They are `creates a draft pull request against main`, `uses the placeholder body`,
       `ignores a pull request template in the working directory`, `exits cleanly when a
       concurrent run created the pull request`, and `fails when creation fails and no pull
       request appeared`.
-- [ ] Check the title still reads correctly for a real branch name. `feature/add-cover-image`
+- [x] Check the title still reads correctly for a real branch name. `feature/add-cover-image`
       should give `Feature: Add cover image`, and the empty-remainder case must not error.
 
 ## Phase 2: Run the suite in an Ubuntu container
@@ -108,9 +108,9 @@ it out of habit and getting an answer about the wrong platform.
 
 ## Verification
 
-- [ ] `just ts` passes on the host — currently impossible, and the measure of Phase 1.
+- [x] `just ts` passes on the host — currently impossible, and the measure of Phase 1.
 - [ ] The containerised run passes, and its bats version matches CI's.
-- [ ] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
+- [x] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
       stays clean, since `create-pr.sh` changes.
 - [ ] CI stays green, confirming the `create-pr.sh` change did not alter behaviour on the
       platform where it already worked.
