@@ -8,10 +8,13 @@ paths:
 ## The rule: use the merge queue, don't rebase-and-wait manually
 
 Once a PR is approved and its own checks are green, add it to the merge
-queue (the "Merge when ready" button, or Renovate's `platformAutomerge` for
-PRs configured to automerge). GitHub then builds a temporary merge-group ref
-combining the PR with the current tip of `main`, re-runs the required checks
-in `ci.yml` against that ref, and merges automatically once green.
+queue with the "Merge when ready" button. GitHub then builds a temporary
+merge-group ref combining the PR with the current tip of `main`, re-runs the
+required checks in `ci.yml` against that ref, and merges automatically once
+green.
+
+Nothing merges itself. Renovate PRs included: every group in `renovate.json`
+sets `automerge: false`, so a human reviews each one and queues it by hand.
 
 No manual rebase, no manual force-push, no waiting around to click merge
 the moment CI goes green — the queue does the "test against latest main"
@@ -35,6 +38,54 @@ for the full reasoning and its one known scope limit: a breaking
 interaction between two queued PRs, neither breaking alone, isn't caught by
 these two checks specifically — the other required checks (unit tests,
 E2E) still verify the combined functional behaviour of the merge-group ref.
+
+## Changing anything the queue depends on
+
+The queue is easy to break from a distance, and it fails quietly. Every
+failure below reported only as "removed from the merge queue due to failing
+Branch Protection rules", or a bare check count, with nothing in the Actions
+tab explaining it. All three were hit for real when the queue was first
+turned on.
+
+**Every required check needs a `merge_group` trigger.** A check listed in
+`required_status_checks` whose workflow doesn't fire on `merge_group` never
+reports against the merge-group ref, so the entry waits until
+`check_response_timeout_minutes` and is then dropped. There is no way to
+mark a check "required on the PR but not in the queue" — GitHub uses one
+list for both. So when you add a required check, add the trigger with it.
+
+**Don't let a workflow fire on both `push` and `merge_group`.** Creating the
+queue branch fires a `push` event too. If both runs share a concurrency
+group keyed on `github.ref`, `cancel-in-progress` makes one kill the other,
+and a cancelled required check reads as a failure. `ci.yml` excludes
+`gh-readonly-queue/**` from its push trigger and keys concurrency by
+`github.event_name` as well as `github.ref`.
+
+**The naming ruleset must permit the queue's own branches.** The queue builds
+each entry on `gh-readonly-queue/main/pr-<n>-<sha>`. `branch_rules.tf` allows
+that prefix in the `branch_name_pattern` regex — an fnmatch exclusion alone
+was tried first and did not match.
+
+### Breaking the deadlock
+
+An active queue removes the ordinary merge button, so a fix to the rulesets
+or workflows the queue depends on can't reach `main` — the queue is broken
+by the very bug being fixed. Use `var.merge_queue_enabled` rather than
+deleting configuration:
+
+```bash
+# add to infra/github/terraform.tfvars, DON'T commit it
+merge_queue_enabled = false
+
+just terraform-github        # queue off, ordinary merge button returns
+# merge the PR normally
+
+git checkout infra/github/terraform.tfvars
+just terraform-github        # queue back on, fix now live on main
+```
+
+Terraform reads that file from disk, not from git, so no pull request is
+needed to flip it and `main` never carries the queue switched off.
 
 ## When you still need to rebase manually
 
