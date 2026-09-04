@@ -79,6 +79,6 @@ A merged feature branch should never be rebased again. If you try to `git rebase
 ## Why this works
 
 1. **All tests run in the PR context, and again in the queue** — fast tier on every push, heavy tier on non-draft PRs, and both tiers again against the merge-group ref before the actual merge — so a PR is always tested against current main without anyone force-pushing a rebase.
-2. **Clean history** — the queue squash-merges, so history stays linear.
+2. **History** — the queue merges with a merge commit, the same way this repo already merges. Note the graph is less linear than the old flow produced: rebasing a PR up to date before merging put its merge commit in a straight line, whereas the queue tests on a temporary ref instead of rebasing the branch, leaving real branch-and-merge diamonds. Switch `merge_method` in `infra/github/branch_rules.tf` to `REBASE` or `SQUASH` if linear history matters more than matching the current merge button.
 3. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap.
 4. **Failures don't block the queue** — batching is off, so one PR's failure only dequeues that PR; everything behind it keeps moving.

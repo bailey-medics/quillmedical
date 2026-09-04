@@ -182,17 +182,23 @@ resource "github_repository_ruleset" "protected_branches" {
     # which costs more time than it saves for a repo where PRs are reviewed
     # and queued individually rather than in bulk.
     #
-    # merge_method is set to SQUASH to match this repo's linear-history
-    # convention (.claude/rules/ci.md) — confirm this matches the merge
-    # button actually enabled in the repo's own settings (allow_squash_merge
-    # etc. are deliberately NOT Terraform-managed — see the lifecycle block
-    # in security.tf) before running `terraform apply`.
+    # merge_method = MERGE keeps queued PRs landing the way this repo
+    # already merges them (the "Create a merge commit" button).
+    #
+    # Worth knowing: this does change the shape of main's history. The old
+    # flow rebased the PR branch up to date before merging, so its merge
+    # commit joined two tips already in a straight line. The queue replaces
+    # that manual rebase with a temporary merge-group ref, so a PR's merge
+    # commit now joins a branch that diverged earlier: the graph shows real
+    # branch-and-merge diamonds rather than a straight line. REBASE or
+    # SQUASH would keep the history linear instead, at the cost of no longer
+    # matching the merge button used today.
     merge_queue {
       check_response_timeout_minutes    = 60
       grouping_strategy                 = "ALLGREEN"
       max_entries_to_build              = 5
       max_entries_to_merge              = 1
-      merge_method                      = "SQUASH"
+      merge_method                      = "MERGE"
       min_entries_to_merge              = 1
       min_entries_to_merge_wait_minutes = 0
     }
