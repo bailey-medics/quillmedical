@@ -11,7 +11,12 @@
       "Bash(bats .github/scripts/ci/wait-for-ancestor-decisions.bats)",
       "Bash(python3 -c ' *)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(gh pr merge:*)",
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge"
+    ]
   },
   "model": "opus",
   "hooks": {
@@ -20,7 +25,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
+            "timeout": 600
           }
         ]
       }

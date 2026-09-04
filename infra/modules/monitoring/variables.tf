@@ -20,11 +20,10 @@ variable "alert_email" {
   type        = string
 }
 
-variable "slack_webhook_url" {
-  description = "Slack incoming webhook URL for alert notifications (optional)"
+variable "slack_channel_display_name" {
+  description = "Display name of a Slack notification channel created by hand in the Cloud console (optional). Looked up, not created — see docs/docs/infrastructure/monitoring.md. Leave empty to disable the Slack rung of tier one."
   type        = string
   default     = ""
-  sensitive   = true
 }
 
 variable "cloud_run_services" {
@@ -53,4 +52,32 @@ variable "escalation_duration" {
   description = "How long an outage must persist before escalating past Slack and email"
   type        = string
   default     = "900s"
+}
+
+variable "app_domain" {
+  description = "Hostname serving the application. Only this host is probed at /api/health; every other monitored host is probed at / because it has no API."
+  type        = string
+  default     = ""
+}
+
+variable "sql_disk_threshold" {
+  description = "Cloud SQL disk utilisation (0.0-1.0) above which to alert. 0.8 leaves room to resize before writes start failing."
+  type        = number
+  default     = 0.8
+}
+
+variable "pagerduty_service_key" {
+  description = "PagerDuty Events API v1 integration key for the on-call service. Leave empty to disable tier three entirely."
+  type        = string
+  default     = ""
+
+  # A credential, and this repository is public: plan output is posted as a
+  # pull request comment. See infra/variables.tf.
+  sensitive = true
+}
+
+variable "critical_duration" {
+  description = "How long an outage must persist before the on-call phone rings"
+  type        = string
+  default     = "1800s"
 }

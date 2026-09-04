@@ -19,6 +19,7 @@ permissions:
   contents: read
   id-token: write       # Workload Identity Federation
   pull-requests: write
+  actions: read         # Resolve the plan job's URL for the PR comment
 
 concurrency:
   group: terraform-${{ github.ref }}
@@ -54,12 +55,9 @@ jobs:
 
       - name: Terraform plan
         working-directory: infra
-        # The number is supplied here as well as on apply so the plan
-        # reflects what apply will do. It is declared sensitive in
-        # infra/variables.tf, so it renders as "(sensitive value)" rather
-        # than appearing in the plan comment posted to a public PR.
-        env:
-          TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
+        # The alerting secrets are no longer passed in here: Terraform reads
+        # them from Secret Manager. The service account authenticated above
+        # already has access.
         run: |
           terraform plan \
             -var-file=environments/teaching/terraform.tfvars \
@@ -70,6 +68,10 @@ jobs:
       - name: Post plan to PR
         env:
           GH_TOKEN: ${{ github.token }}
+          # Must match this job's `name:` above. The runner only exposes the
+          # job's config key, so the script looks the job up by display name to
+          # link straight at its log. A mismatch links to the run instead.
+          JOB_NAME: Plan (teaching)
         run: bash .github/scripts/terraform/post-plan-comment.sh "${{ github.event.pull_request.number }}"
 
   # ---------- Terraform apply: teaching (main branch) ----------
@@ -102,8 +104,6 @@ jobs:
 
       - name: Terraform apply
         working-directory: infra
-        env:
-          TF_VAR_alert_sms_number: ${{ secrets.ALERT_SMS_NUMBER }}
         run: |
           terraform apply \
             -var-file=environments/teaching/terraform.tfvars \

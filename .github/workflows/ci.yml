@@ -1,6 +1,9 @@
 # CI — runs on all non-main branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
 # - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
+# - Both tiers also run on merge_group (a PR entering the merge queue), so the
+#   required checks below re-verify against the PR combined with current main
+#   rather than trusting a possibly-stale PR branch. See .claude/rules/ci.md.
 
 name: CI
 
@@ -8,9 +11,19 @@ on:
   push:
     branches-ignore:
       - main
+      # Creating a merge-queue branch fires a push event as well as
+      # merge_group. Both runs share the concurrency group below (same
+      # github.ref), so with cancel-in-progress the push run killed the
+      # merge_group run seconds after it started, and a cancelled required
+      # check reads as a failure — the entry was dropped with 27 of 44
+      # checks passed. The push run is redundant anyway: merge_group runs
+      # both tiers, and this one's heavy tier skips.
+      - "gh-readonly-queue/**"
   pull_request:
     types: [ready_for_review, synchronize]
     branches: [main]
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -18,7 +31,9 @@ permissions:
   packages: write
 
 concurrency:
-  group: feature-${{ github.ref }}
+  # Keyed by event as well as ref so two runs for the same ref from different
+  # triggers can never cancel each other, as push and merge_group did above.
+  group: feature-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -28,7 +43,7 @@ jobs:
 
   # ---------- Python ----------
   python_checks:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
@@ -94,7 +109,7 @@ jobs:
   # exercise Alembic's autogenerate comparison), so it gets its own small
   # job rather than joining the DB-less `unit` matrix task above.
   alembic_drift_check:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Alembic autogenerate drift check
     timeout-minutes: 10
@@ -142,7 +157,7 @@ jobs:
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -197,7 +212,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Lint shell scripts
-        run: find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
+        run: find .github/scripts .claude/hooks -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
       # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
       - name: Lint GitHub Actions workflows
         uses: docker://rhysd/actionlint:1.7.8
@@ -215,10 +230,112 @@ jobs:
           # token to avoid GitHub API rate limits.
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run shell script tests
-        run: bash .github/scripts/ci/run-shell-tests.sh .github/scripts
+        run: |
+          bash .github/scripts/ci/run-shell-tests.sh .github/scripts
+          bash .github/scripts/ci/run-shell-tests.sh .claude/hooks
 
 
   # ---------- Version consistency ----------
+  # ---------- Would a tooling change break published content? ----------
+  #
+  # Content is validated when a content repository changes, and never when
+  # the tooling that judges it changes. So a tightening could merge here and
+  # a live bank that no longer passes would keep being served until someone
+  # happened to push an unrelated change to that repository. This asks the
+  # question before the merge rather than after the deploy.
+  #
+  # Non-blocking on purpose: the answer is "you would break these banks",
+  # which is a decision for the author — sometimes the right move is to fix
+  # the bank. Reads the bucket and touches no database.
+  # ---------- Did anything that judges content change? ----------
+  #
+  # The sweep below is expensive enough to be worth gating, and more
+  # importantly it means something when it runs. Decided by hashing the
+  # contract's contents rather than matching touched paths: a branch that
+  # edits a validator and then reverts it leaves the contract where it was.
+  # The hash is also what a decision file will be recorded against.
+  changed_teaching_tooling:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    name: Detect teaching tooling changes
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Compare against the base branch
+        id: detect
+        run: |
+          bash .github/scripts/ci/detect-teaching-tooling-changes.sh \
+            "origin/${{ github.event.pull_request.base.ref }}"
+
+
+  teaching_content_sweep:
+    needs: changed_teaching_tooling
+    # Only when something that judges content has actually changed. A check
+    # that runs on every pull request is noise; one that fires when the
+    # contract could have moved is a signal worth reading.
+    if: >-
+      github.event_name == 'pull_request'
+      && needs.changed_teaching_tooling.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    name: Published teaching content still validates
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      # Not a secret — a bucket name identifies, it does not authorise, and
+      # the access it fronts is granted by workload identity below.
+      TEACHING_BUCKET: quill-images-teaching
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: .python-version
+
+      # The validator needs pydantic and pyyaml and nothing else, so it
+      # installs from the tooling package rather than the backend's lock.
+      - name: Install the validator
+        working-directory: backend/app/features/teaching/tooling
+        run: |
+          python -m pip install -U pip
+          python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/.poetry-version")"
+          poetry config virtualenvs.create false
+          poetry install --no-interaction --no-ansi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Sweep published banks
+        id: sweep
+        run: |
+          bash .github/scripts/ci/sweep-live-banks.sh \
+            "$TEACHING_BUCKET" sweep-report.txt
+
+      - name: Report the affected banks on the pull request
+        if: failure() && steps.sweep.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash .github/scripts/ci/post-sweep-comment.sh \
+            "${{ github.event.pull_request.number }}" sweep-report.txt
+
+
   version_consistency:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -236,7 +353,7 @@ jobs:
 
   # ---------- Storybook interaction tests ----------
   heavy_storybook_tests:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Storybook interaction tests
     timeout-minutes: 15
@@ -281,7 +398,7 @@ jobs:
 
   # ---------- Semgrep (frontend SAST) ----------
   heavy_semgrep:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
@@ -321,7 +438,7 @@ jobs:
 
   # ---------- Prebuild CI app images for E2E ----------
   heavy_e2e_images:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: E2E image build
     timeout-minutes: 20
@@ -367,7 +484,7 @@ jobs:
 
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: E2E (Playwright)
     timeout-minutes: 20
@@ -455,7 +572,7 @@ jobs:
   # RECORD something and so must never be cancelled. This records nothing, it
   # just fails, and a cancelled run is simply re-checked by the next one.
   heavy_db_migration_immutability_check:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: DB migration immutability check
     timeout-minutes: 10
