@@ -226,8 +226,9 @@ resource "github_repository_ruleset" "protected_branches" {
 # Purpose:
 #   Enforces a consistent naming convention across the repository. Any branch
 #   that is not main must match the pattern feature/*, hotfix/*, copilot/*, or
-#   renovate/* (automated dependency updates). Branches that don't conform are
-#   rejected at creation time.
+#   renovate/* (automated dependency updates), plus gh-readonly-queue/* for the
+#   merge queue's own branches. Branches that don't conform are rejected at
+#   creation time.
 #
 #   This keeps the commit graph clean and predictable, making it easier to
 #   trace changes during clinical safety audits and incident investigations.
@@ -269,7 +270,7 @@ resource "github_repository_ruleset" "branch_naming" {
       # creates by hand. It is matched here as well as excluded above so the
       # queue does not depend on fnmatch semantics to function.
       pattern  = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
+      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
       negate   = false
     }
   }
