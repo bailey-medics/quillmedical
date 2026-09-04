@@ -5,15 +5,40 @@ paths:
 
 # CI + Merge Strategy
 
-## The rule: Rebase before merge, not after
+## The rule: use the merge queue, don't rebase-and-wait manually
 
-**When to rebase:**
+Once a PR is approved and its own checks are green, add it to the merge
+queue (the "Merge when ready" button, or Renovate's `platformAutomerge` for
+PRs configured to automerge). GitHub then builds a temporary merge-group ref
+combining the PR with the current tip of `main`, re-runs the required checks
+in `ci.yml` against that ref, and merges automatically once green.
 
-- Your PR is behind main (update button appears on GitHub)
-- You want your PR to test against the latest main
-- **Before** the PR is merged
+No manual rebase, no manual force-push, no waiting around to click merge
+the moment CI goes green — the queue does the "test against latest main"
+step that used to require rebasing by hand, and it does it for every queued
+PR in turn without you babysitting each one.
 
-**How to rebase before merge:**
+**Batching is disabled** (`infra/github/branch_rules.tf`,
+`merge_queue.max_entries_to_merge = 1`): PRs are tested and merged one at a
+time, not grouped together. A PR that fails its queue re-check is dequeued
+on its own — the next PR in the queue carries on unaffected.
+
+**What doesn't re-run in the queue:** the two human-approval gates (API
+breaking-change review, DB destructive migration review) are required on
+the PR itself — a PR can't enter the queue without them already passing —
+but they don't re-run against the merge-group ref. Their detection needs
+real PR context a merge-group ref doesn't have, and re-asking for approval
+on every queue entry would defeat the point of approving once. They report
+`skipped` there instead (which counts as passing, same as everywhere else
+in `gate-breaking.yml`). See that workflow's `merge_group` trigger comment
+for the full reasoning and its one known scope limit: a breaking
+interaction between two queued PRs, neither breaking alone, isn't caught by
+these two checks specifically — the other required checks (unit tests,
+E2E) still verify the combined functional behaviour of the merge-group ref.
+
+## When you still need to rebase manually
+
+The queue can't resolve real content conflicts for you.
 
 ```bash
 git fetch origin
@@ -23,7 +48,8 @@ git rebase origin/main
 git push origin your-feature-branch --force-with-lease
 ```
 
-Then the PR tests re-run against the rebased code. Once the PR passes, merge it normally.
+Only needed when GitHub reports an actual merge conflict — not just "behind
+main," which the queue handles for you.
 
 **When NOT to rebase:**
 
@@ -52,7 +78,7 @@ A merged feature branch should never be rebased again. If you try to `git rebase
 
 ## Why this works
 
-1. **All tests run in the PR context** — fast tier on every push (catch regressions), heavy tier on non-draft PRs (integration testing)
-2. **No CI on `main`** — branch protection requires the PR to be rebased onto (up to date with) main and all checks green before the merge button unlocks, so the merge commit is already fully tested and no post-merge run is needed
-3. **Clean history** — rebases prevent merge-commit proliferation; history stays linear
-4. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap
+1. **All tests run in the PR context, and again in the queue** — fast tier on every push, heavy tier on non-draft PRs, and both tiers again against the merge-group ref before the actual merge — so a PR is always tested against current main without anyone force-pushing a rebase.
+2. **Clean history** — the queue squash-merges, so history stays linear.
+3. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap.
+4. **Failures don't block the queue** — batching is off, so one PR's failure only dequeues that PR; everything behind it keeps moving.

@@ -168,6 +168,34 @@ resource "github_repository_ruleset" "protected_branches" {
 
     # Block branch deletion
     deletion = true
+
+    # Merge queue — replaces the old manual "rebase, wait for CI, merge,
+    # repeat" loop. GitHub builds a temporary merge-group ref (PR + latest
+    # main) and re-runs the required checks above against it before merging,
+    # so a PR is always tested against current main without anyone force-
+    # pushing a rebase onto the PR branch by hand. See
+    # .claude/rules/ci.md for the full flow.
+    #
+    # Batching deliberately disabled (min/max_entries_to_merge = 1): each PR
+    # is tested and merged one at a time. With batching, a failure part-way
+    # through a group forces GitHub to bisect the group to find the culprit,
+    # which costs more time than it saves for a repo where PRs are reviewed
+    # and queued individually rather than in bulk.
+    #
+    # merge_method is set to SQUASH to match this repo's linear-history
+    # convention (.claude/rules/ci.md) — confirm this matches the merge
+    # button actually enabled in the repo's own settings (allow_squash_merge
+    # etc. are deliberately NOT Terraform-managed — see the lifecycle block
+    # in security.tf) before running `terraform apply`.
+    merge_queue {
+      check_response_timeout_minutes    = 60
+      grouping_strategy                 = "ALLGREEN"
+      max_entries_to_build              = 5
+      max_entries_to_merge              = 1
+      merge_method                      = "SQUASH"
+      min_entries_to_merge              = 1
+      min_entries_to_merge_wait_minutes = 0
+    }
   }
 }
 
