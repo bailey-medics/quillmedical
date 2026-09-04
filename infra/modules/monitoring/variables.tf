@@ -20,11 +20,10 @@ variable "alert_email" {
   type        = string
 }
 
-variable "slack_webhook_url" {
-  description = "Slack incoming webhook URL for alert notifications (optional)"
+variable "slack_channel_display_name" {
+  description = "Display name of a Slack notification channel created by hand in the Cloud console (optional). Looked up, not created — see docs/docs/infrastructure/monitoring.md. Leave empty to disable the Slack rung of tier one."
   type        = string
   default     = ""
-  sensitive   = true
 }
 
 variable "cloud_run_services" {

@@ -1,6 +1,9 @@
 # CI — runs on all non-main branches.
 # - Fast tier: runs on every push (lint, typecheck, unit tests, storybook build)
 # - Heavy tier: runs on non-draft PRs only (storybook interaction tests, Semgrep, E2E)
+# - Both tiers also run on merge_group (a PR entering the merge queue), so the
+#   required checks below re-verify against the PR combined with current main
+#   rather than trusting a possibly-stale PR branch. See .claude/rules/ci.md.
 
 name: CI
 
@@ -11,6 +14,8 @@ on:
   pull_request:
     types: [ready_for_review, synchronize]
     branches: [main]
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -28,7 +33,7 @@ jobs:
 
   # ---------- Python ----------
   python_checks:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
@@ -94,7 +99,7 @@ jobs:
   # exercise Alembic's autogenerate comparison), so it gets its own small
   # job rather than joining the DB-less `unit` matrix task above.
   alembic_drift_check:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Alembic autogenerate drift check
     timeout-minutes: 10
@@ -142,7 +147,7 @@ jobs:
 
   # ---------- JS: run multiple tools in parallel via matrix ----------
   typescript_checks:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -338,7 +343,7 @@ jobs:
 
   # ---------- Storybook interaction tests ----------
   heavy_storybook_tests:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Storybook interaction tests
     timeout-minutes: 15
@@ -383,7 +388,7 @@ jobs:
 
   # ---------- Semgrep (frontend SAST) ----------
   heavy_semgrep:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: Semgrep (frontend SAST)
     timeout-minutes: 10
@@ -423,7 +428,7 @@ jobs:
 
   # ---------- Prebuild CI app images for E2E ----------
   heavy_e2e_images:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: E2E image build
     timeout-minutes: 20
@@ -469,7 +474,7 @@ jobs:
 
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: E2E (Playwright)
     timeout-minutes: 20
@@ -557,7 +562,7 @@ jobs:
   # RECORD something and so must never be cancelled. This records nothing, it
   # just fails, and a cancelled run is simply re-checked by the next one.
   heavy_db_migration_immutability_check:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     name: DB migration immutability check
     timeout-minutes: 10

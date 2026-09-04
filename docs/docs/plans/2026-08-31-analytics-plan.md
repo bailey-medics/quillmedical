@@ -297,6 +297,20 @@ See **What building this taught us** near the end of the document for the
 findings from the first apply and from testing the alerting, all of which
 came from this phase.
 
+Client side, new work. **This is the next thing to build**, along with Phase 3.
+Both were held back while the teaching branch was being actively edited; that
+work has moved into a design phase rather than a code one, so the collision
+risk has gone.
+
+Keep the new backend routes out of `backend/app/main.py`. That file is the one
+genuinely hot spot — sixteen of the last eighty commits touched it — and the
+teaching feature already set the precedent by living in
+`backend/app/features/teaching/router.py`. A `backend/app/analytics/router.py`
+included in one line reduces the merge surface from a block of routes to a
+single import. Everything else these two phases touch —
+`ErrorBoundary.tsx`, `RootLayout.tsx`, `Settings.tsx` — was touched once in the
+last eighty commits, and nowhere near `frontend/src/pages/admin/teaching/`.
+
 Client side, new work:
 
 - [ ] Extend `componentDidCatch` in
@@ -347,15 +361,120 @@ one. An external pager is therefore the fix for a real gap rather than a
 comfort, and since it turns out to cost nothing, there is no longer a reason to
 wait for clinical users before having one.
 
-- [x] Tier one, roughly 5–10 minutes — Slack and email, through the channels
-      already configured. Cheap, ignorable, and often self-resolving
-- [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
-      second uptime policy, `uptime_escalation`, firing only after
-      `var.escalation_duration` and notifying SMS alone, so the louder channel
-      stays rare enough to still mean something. Google's own documentation
-      warns SMS "isn't a fully reliable notification channel type" and may be
-      unavailable in some regions, so it escalates tier one rather than
-      replacing it
+- [x] Tier one, 5 minutes — Slack and email. **Both confirmed delivering on
+      4 September**, by a temporary uptime check and a policy pointed at
+      exactly tier one's two channels. Email was the control, having already
+      delivered real alerts; Slack was the one that had never sent anything.
+      Both arrived.
+
+      For most of this work tier one was **email alone**, and this document
+      said "Slack and email" throughout regardless. Checked against the live
+      API on 3 September: the policy notified one channel.
+      `var.slack_webhook_url` had never been set for teaching, so the Slack
+      resource sat at `count = 0` and had never existed. The secret was in
+      GitHub and `slack-notify.yml` used it for CI messages, but the Terraform
+      workflow never passed it — same secret, two consumers, one of them
+      unwired.
+
+      That mattered beyond the missing ping. The argument for putting email on
+      both tiers was that Google documents Slack as sharing a delivery service
+      with webhooks and its mobile app, so email is the redundant path. With
+      no Slack channel at all, tier one had no redundancy: a single channel,
+      and the slowest one to notice.
+- [x] Add `documentation` to all six alert policies. Google fixes the layout
+      of each channel — the Slack card, the email template — but the
+      `documentation` block is included in every channel used here, and
+      supports `$${...}` variable substitution and a subset of Markdown.
+
+      Each alert now says what happened, what it does not mean, and where to
+      look. The uptime ones distinguish the two monitored hosts, which fail
+      for entirely different reasons: the app is Cloud Run behind the load
+      balancer probed at `/api/health`, while the public site is static files
+      in a bucket probed at `/`. The phone-call alert repeats the
+      acknowledge-not-resolve rule, which is the thing most likely to be
+      forgotten at 3am.
+
+      Note the escaping: Terraform reads `${...}` as its own interpolation, so
+      the content uses `$${...}` to pass a literal through to Google. Verified
+      by rendering rather than assumed — get it wrong and the notification
+      shows the variable name instead of the value.
+- [x] Establish that **the phone call cannot be customised**. PagerDuty's
+      documentation says a voice notification speaks the incident count, the
+      service name and the incident title, and nothing else — not
+      `custom_details`. Google's documentation says a custom `subject`
+      "appears in the notification's subject line" but does not say which
+      channels use it, and explicitly does not confirm behaviour for
+      third-party systems.
+
+      Tested on 4 September by firing an alert whose `subject`, `content` and
+      condition display name each carried unmistakable and unrelated text
+      about skiing, routed to PagerDuty alone. **None of it reached the
+      call.** Google composes its own title for the PagerDuty payload and
+      ignores what the policy sets.
+
+      So the documentation added to `uptime_critical` — including the
+      acknowledge-do-not-resolve rule — is visible when the incident is opened
+      in PagerDuty, and is not spoken. Anything that must be heard at 3am has
+      to come from the call's own wording, which is Google's to decide.
+      Changing it would need a PagerDuty Event Orchestration rule rewriting
+      the title from the payload: more machinery than a one-person rota
+      warrants, but the route if it ever matters.
+- [x] Note that adding Slack to tier one also added it to three other
+      policies. `server_errors`, `sql_disk` and `cloud_run_startup` all use
+      `local.notification_channels`, tier one's channel set, so the apply on
+      4 September changed six resources rather than the two expected. Those
+      three were email-only before and now post to Slack as well, which is an
+      improvement — email alone was the weakest single channel — but it means
+      5xx spikes and disk warnings land in `#quill-medical-cicd` alongside
+      CI/CD messages.
+**Decided on 3 September: each tier adds a route the previous one did not.**
+Tier one Slack and email, tier two SMS, tier three the phone call.
+
+Tier one is the only tier with two channels, because they are the cheap,
+ignorable ones and Google documents Slack as sharing a delivery service with
+webhooks and its mobile app, so email is its independent path. Tier two adds a
+text and tier three a call on another provider, so neither repeats a channel
+already used.
+
+- [x] Decide what to do about Slack, rather than wiring the secret and hoping.
+      The existing resource was `type = "webhook_token_auth"` pointed at an
+      incoming webhook URL. Slack incoming webhooks expect a body shaped like
+      `{"text": "..."}` — which is exactly what `slack-notify.yml` posts —
+      while Cloud Monitoring sends its own alert JSON. Passing the secret
+      through would have created a channel that appears configured, reports
+      as enabled, and silently delivers nothing: the same failure this plan
+      keeps finding. `todo.md` already carried the answer, "replace the
+      `webhook_token_auth` Slack channel with the native integration".
+
+      **Done on 3 September.** The native `slack` channel was created by hand
+      in the console — `auth_token` comes from Slack's OAuth consent screen,
+      and Google's own descriptor marks it obfuscated on read, so there was
+      never a path to managing it in Terraform. It is now looked up by a
+      `google_monitoring_notification_channel` data source, filtered on
+      `display_name` and `type = "slack"`, rather than created. The old
+      resource and `var.slack_webhook_url` are removed; the new
+      `var.slack_channel_display_name` is plain text in `terraform.tfvars`,
+      not a secret, since it is only a channel name. Full walkthrough at
+      [`docs/docs/infrastructure/monitoring.md`](../infrastructure/monitoring.md).
+
+      Worth a look, not a blocker: the channel reuses `#quill-medical-cicd`,
+      the same channel `slack-notify.yml` already posts CI/CD messages to,
+      rather than a channel dedicated to alerts. Fine functionally — the two
+      kinds of message will sit side by side — but worth a deliberate choice
+      later if that turns out to be noisy.
+- [x] Tier two, 15 minutes — **SMS only**. The `uptime_escalation` policy
+      notified SMS *and* email; the email is dropped.
+
+      Email was added there for redundancy, because Google documents SMS as
+      "not a fully reliable notification channel type". That reasoning held
+      while tier one was email alone. Once tier one delivers Slack and email,
+      a second email at fifteen minutes repeats a channel already used and
+      tells you nothing new. Each tier should add a channel rather than
+      restate one.
+
+      The trade is explicit: if SMS silently fails, tier two delivers nothing.
+      The backstop is tier three fifteen minutes later, on a different
+      provider entirely.
 - [x] Supply the number from a secret rather than `terraform.tfvars`: this
       repository is public, and a committed number would be published
       permanently in git history. Originally a GitHub organisation secret
@@ -477,8 +596,9 @@ not before.
          Revisit after a few months of both running. If PagerDuty proves
          reliable, collapsing the tiers into it becomes an easy, reversible
          change; if it does not, nothing important was resting on it.
-      7. **Done on 3 September.** Test the call end to end from a real Cloud
-         Monitoring alert, not just a hand-triggered PagerDuty incident. A
+      7. **Done on 3 September, and again after the secret moved.** Test the
+         call end to end from a real Cloud Monitoring alert, not just a
+         hand-triggered PagerDuty incident. A
          temporary uptime check reproducing the original fault opened an
          incident against a temporary policy pointed at the real PagerDuty
          channel; the phone rang and the keypress acknowledgement registered.
@@ -490,6 +610,20 @@ not before.
          run. The duration and the filter are the same shapes already proven
          by tiers one and two. Re-test after any change to the channel, the
          key or the policy.
+
+         That rule earned itself the same day. Moving the service key from a
+         GitHub organisation secret into Secret Manager changed nothing a
+         `terraform plan` could show — the value was byte-identical, so the
+         apply reported no change to the channel at all — but it did change
+         where the value came from at apply time. Re-tested rather than
+         assumed, and the phone rang.
+
+         Also learned: a condition `duration` of `0s` barely helps. Roughly
+         three and a half minutes elapsed either way, because the floor is not
+         the policy but the uptime check beneath it — it runs every sixty
+         seconds, and the aggregation window needs enough failing samples
+         before the condition can be true at all. Tuning the duration below
+         that buys nothing.
 
       **On answering the call.** Press acknowledge, then let the incident
       resolve itself. Google Cloud drives these incidents: when the uptime
@@ -671,16 +805,24 @@ No application code. This is infrastructure and a dashboard.
       bytes were deliberately left off — the standard menu, answering nothing
       actionable at this scale, and Cloud Run's built-in dashboards already
       carry them for when digging is needed.
-- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes. It is the
-      failure that gives days of warning and still takes the service down if
-      nobody happens to look, and nothing watched for it before.
+- [x] Alert on Cloud SQL disk above 80% sustained for 30 minutes.
+
+      **Corrected on 4 September.** This was justified here as "the failure
+      that gives days of warning and still takes the service down if nobody
+      looks". That is wrong for this instance: `disk_autoresize` is enabled in
+      `modules/cloud-sql/main.tf` with no upper limit, so the disk grows on
+      its own rather than filling and stopping writes. The alert is still
+      worth having, but for a different reason — sustained growth means
+      something is expanding faster than expected, and disk that has grown
+      does not shrink again, so it becomes a standing cost. The alert
+      documentation says this, rather than implying an outage is imminent.
 - [x] Add an `app_page_loads` metric counting successful non-API requests to
       the app host — usage of the application, available without touching
       application code. **It counts page loads, not people.** Nothing
       identifies a visitor, deliberately, so it cannot separate two visits by
       one person from one visit by two. Phase 3's per-session random
-      identifier is what turns this into sessions, and it stays blocked on
-      application code.
+      identifier is what turns this into sessions, and it needs the
+      application code in Phase 3.
 - [x] Set `app_domain` explicitly in the environment tfvars rather than
       deriving it from `monitored_hostnames[0]`, so reordering that list
       cannot silently point the app metrics at the marketing site.
@@ -698,6 +840,8 @@ No application code. This is infrastructure and a dashboard.
 ## Phase 3: which pages get used in the app
 
 The only phase needing new client code, and the one carrying the real risk.
+**Next, alongside Phase 1's client half** — see the note there on keeping new
+routes out of `main.py`.
 
 - [ ] Add a route-to-name allow-list mapping each of the 63 routes to a stable
       page name, so no URL or document title ever leaves the browser
@@ -731,8 +875,17 @@ that has drawn enforcement attention elsewhere in Europe.
 
 It is also an odd exception rather than a considered choice: the application
 already self-hosts its other typeface through `@fontsource-variable/atkinson-hyperlegible-next`.
-The same pattern applies here, and the CSS family name does not change, so no
-component needs touching.
+The same pattern applies here.
+
+**The claim that "the CSS family name does not change, so no component needs
+touching" was wrong**, and would have shipped a silent regression. Fontsource's
+variable packages register the family with a `Variable` suffix — the package
+declares `'Cormorant Garamond Variable'`, while the three consumers asked for
+`'Cormorant Garamond'`. Nothing errors: the browser simply falls through to the
+next name in the stack, so the site renders in Georgia and looks merely
+slightly off. The existing `theme.ts` already had the answer in plain sight,
+naming `'Atkinson Hyperlegible Next Variable'`. Caught by grepping the built
+CSS for what was declared against what was requested, not by reading the code.
 
 Worth knowing while doing this: the strict Content Security Policy in
 `caddy/prod/Caddyfile` — `style-src 'self' 'unsafe-inline'`, `font-src 'self'`
@@ -742,22 +895,34 @@ passes through Caddy. So the public site currently has **no** Content Security
 Policy at all. Self-hosting the font removes the last thing that would prevent
 applying one, which is worth a follow-up of its own.
 
-- [ ] Add `@fontsource-variable/cormorant-garamond` (5.3.0 at time of writing;
-      283 kB, no dependencies, OFL-1.1) to the frontend workspace
-- [ ] Import it where the public pages already pull in shared styles, beside
-      the existing Atkinson Hyperlegible import
-- [ ] Remove the Google Fonts `<link>` and both `preconnect` hints from
+- [x] Add `@fontsource-variable/cormorant-garamond` (5.3.0; 283 kB, no
+      dependencies, OFL-1.1) to the frontend workspace
+- [x] Import it in `public_pages/src/global-styles.ts` and
+      `.storybook/preview.tsx`, beside the existing Atkinson import. The
+      application itself does not need it — nothing under `src/pages` uses the
+      `Public*` components.
+- [x] Remove the Google Fonts `<link>` and both `preconnect` hints from
       `frontend/public_pages/templates/page.html`
-- [ ] Remove the same block from `frontend/.storybook/preview-head.html`, which
-      makes the identical request every time the component catalogue loads
-- [ ] Confirm the three consumers still render — `PublicTitle.tsx`,
-      `PublicInfoCard.module.css` and `PublicFeatureCard.module.css` all name
-      the family in CSS and should need no change
-- [ ] Check the italic faces specifically: the current request asks for weights
-      300–700 in both normal and italic, and a variable font that ships only
-      upright would silently fall back to a synthesised oblique
-- [ ] Verify in the browser that no request to `fonts.googleapis.com` or
-      `fonts.gstatic.com` remains on any public page
+- [x] Remove the same block from `frontend/.storybook/preview-head.html`. That
+      file contained nothing else, so it is deleted rather than left empty.
+- [x] Point the three consumers at the family the package actually declares.
+      They needed changing after all — see above.
+- [x] Check the italic faces specifically. **Two entry points, not one.** The
+      package's default export carries only the upright faces; italics live in
+      `wght-italic.css` and must be imported separately. Importing just the
+      default would have rendered italics as a synthesised oblique — close
+      enough to pass a glance, and wrong. Confirmed by the build emitting ten
+      `.woff2` files, `-italic` and `-normal` across every subset.
+- [x] Verify no request to `fonts.googleapis.com` or `fonts.gstatic.com`
+      remains. Checked by grepping the built output of both the public pages
+      and Storybook: zero references in either. Then checked visually with
+      `just pub`, which rendered **identical** to the live site — the proof
+      that the family name resolved and the italics are real rather than
+      synthesised, since either fault would have been obvious at display
+      size.
+      Verified green with `yarn typecheck:all`, `yarn workspace public-pages
+      build`, `yarn unit-test:run` (184 files, 1723 tests) and
+      `yarn storybook:build`.
 - [ ] Follow-up, separately: consider serving the marketing site with a Content
       Security Policy now that nothing third-party is loaded
 
@@ -856,10 +1021,34 @@ Applying it:
       now-unused root variables. Redaction verified from the provider schema
       rather than assumed: `secret_data` carries `sensitive=True`, so the
       values are hidden at source, before any marking of our own applies.
-- [ ] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
+- [x] Delete `PAGERDUTY_SERVICE_KEY` and `ALERT_SMS_NUMBER` from the GitHub
       organisation only once an apply has succeeded reading from Secret
       Manager. Removing them first would break the apply that is meant to
-      replace them.
+      replace them. **Done on 3 September**: the apply read both data sources
+      cleanly, and both secrets are gone from the organisation, which now
+      holds only `SLACK_WEBHOOK_URL`. A live credential and a personal number
+      are no longer readable by five repositories, two of them public.
+
+      One surprise in that apply, worth knowing before reading a future plan:
+      it reported **1 changed**, not the expected 0. Nothing to do with the
+      secrets, which resolved byte-identically. It was
+      `google_monitoring_dashboard.quill` — Google's API normalises the
+      dashboard JSON it stores, adding an `etag`, quoting `columns` as the string
+      `"2"` and filling in `targetAxis`, and Terraform rewrites it back to the
+      literal in the code every time.
+- [ ] Settle the dashboard's permanent drift. `google_monitoring_dashboard.quill`
+      appears in every plan without anything having changed: Google normalises
+      the JSON it stores — adding an `etag`, quoting `columns` as the string
+      `"2"`, filling in `targetAxis` — and Terraform rewrites it back to the
+      literal in the code. Harmless in itself, but it erodes the one signal
+      that makes a plan worth reading, which is whether it looks clean. Either
+      write the JSON in the shape the API returns, or `ignore_changes` the
+      fields it rewrites.
+
+      The three Cloud Run `client = "gcloud" -> null` drifts that used to
+      accompany it did **not** appear in the 4 September plan, so that half
+      seems to have settled on its own. Worth confirming over a few more
+      applies before assuming it is gone.
 - [x] Leave `SLACK_WEBHOOK_URL` in GitHub. `slack-notify.yml` posts to it
       directly, so GitHub is the client rather than a courier, and the content
       repositories reach that workflow through `secrets: inherit`. Duplicating
@@ -883,14 +1072,17 @@ Applying it:
       for alerting. Negligible for one operator who knows the system;
       reconsider if the channel is ever read by people who would act on it
       without checking.
-- [ ] Narrow the visibility of the two relayed secrets to `quillmedical`.
-      All three are currently `ALL`, which means every repository in the
-      organisation can read them — including `respiratory-teaching`,
-      `bailey-medics.github.io` and `VPR`, none of which have anything to do
-      with monitoring, and some of which are public. The Slack webhook's
-      org-wide visibility is justified; the other two are not. This is a
-      minute's work in the GitHub interface and is worth doing whether or not
-      the migration happens.
+- [x] ~~Narrow the visibility of the two relayed secrets to `quillmedical`.~~
+      **Overtaken and closed.** The concern was that all three organisation
+      secrets were visible to every repository, including
+      `respiratory-teaching`, `bailey-medics.github.io` and `VPR`, none of
+      which have anything to do with monitoring and some of which are public.
+      Narrowing became unnecessary for two of them: `PAGERDUTY_SERVICE_KEY`
+      and `ALERT_SMS_NUMBER` were deleted from the organisation outright once
+      Terraform read them from Secret Manager instead. `SLACK_WEBHOOK_URL`
+      remains at `ALL` by a deliberate decision recorded above — an incoming
+      webhook can only post to one channel, so a leak is noise rather than
+      access, and rotating it ends the matter.
 
 **What migrating does not fix.** The value still lands in Terraform state,
 because a notification channel resource needs the literal value. The
@@ -978,6 +1170,14 @@ archived authenticated app traffic — including paths carrying patient and user
 identifiers — alongside client IP addresses, for the whole retention window.
 The pipeline built to honour the "no raw URLs" rule would have broken it. Sinks
 are now scoped to the host they are meant to cover.
+
+**A change of custody shows up in no plan.** Moving the PagerDuty key from a
+GitHub secret into Secret Manager altered nothing `terraform plan` could
+display — the value was byte-identical, so the apply reported no change to the
+notification channel at all — but it changed where the value came from at apply
+time. A green plan said nothing useful about whether the phone would still
+ring. Only ringing it did. Any change to *where* a value comes from needs the
+same end-to-end test as a change to the value itself.
 
 **Prefer vendor pricing pages to comparison sites.** Two claims in this
 document about which alerting tiers include voice were wrong, both taken from

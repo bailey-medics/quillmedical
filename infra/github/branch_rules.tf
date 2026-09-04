@@ -21,7 +21,7 @@
 # ---------------------------------------------------------------------------
 
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.6.1"
 
   required_providers {
     github = {
@@ -168,6 +168,53 @@ resource "github_repository_ruleset" "protected_branches" {
 
     # Block branch deletion
     deletion = true
+
+    # Merge queue — replaces the old manual "rebase, wait for CI, merge,
+    # repeat" loop. GitHub builds a temporary merge-group ref (PR + latest
+    # main) and re-runs the required checks above against it before merging,
+    # so a PR is always tested against current main without anyone force-
+    # pushing a rebase onto the PR branch by hand. See
+    # .claude/rules/ci.md for the full flow.
+    #
+    # Batching deliberately disabled (min/max_entries_to_merge = 1): each PR
+    # is tested and merged one at a time. With batching, a failure part-way
+    # through a group forces GitHub to bisect the group to find the culprit,
+    # which costs more time than it saves for a repo where PRs are reviewed
+    # and queued individually rather than in bulk.
+    #
+    # merge_method = MERGE keeps queued PRs landing the way this repo
+    # already merges them (the "Create a merge commit" button).
+    #
+    # Worth knowing: this does change the shape of main's history. The old
+    # flow rebased the PR branch up to date before merging, so its merge
+    # commit joined two tips already in a straight line. The queue replaces
+    # that manual rebase with a temporary merge-group ref, so a PR's merge
+    # commit now joins a branch that diverged earlier: the graph shows real
+    # branch-and-merge diamonds rather than a straight line. REBASE or
+    # SQUASH would keep the history linear instead, at the cost of no longer
+    # matching the merge button used today.
+    #
+    # max_entries_to_build is parallelism, not batching: how many queued PRs
+    # are speculatively tested at once, each assuming the ones ahead of it
+    # will merge. Held at 3 rather than the usual 5 because CI here is
+    # expensive (Docker image builds, Playwright E2E), and every speculative
+    # run is thrown away and repeated when a PR ahead of it fails. Raise it
+    # if PRs start queueing up waiting for a build slot.
+    #
+    # check_response_timeout_minutes is how long the queue waits for the
+    # required checks to report before dropping the entry. The slowest chain
+    # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
+    # headroom for runner queueing but not a huge amount — if entries start
+    # being dequeued for no obvious reason, raise this first.
+    merge_queue {
+      check_response_timeout_minutes    = 60
+      grouping_strategy                 = "ALLGREEN"
+      max_entries_to_build              = 3
+      max_entries_to_merge              = 1
+      merge_method                      = "MERGE"
+      min_entries_to_merge              = 1
+      min_entries_to_merge_wait_minutes = 0
+    }
   }
 }
 

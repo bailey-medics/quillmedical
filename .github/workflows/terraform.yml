@@ -19,6 +19,7 @@ permissions:
   contents: read
   id-token: write       # Workload Identity Federation
   pull-requests: write
+  actions: read         # Resolve the plan job's URL for the PR comment
 
 concurrency:
   group: terraform-${{ github.ref }}
@@ -67,6 +68,10 @@ jobs:
       - name: Post plan to PR
         env:
           GH_TOKEN: ${{ github.token }}
+          # Must match this job's `name:` above. The runner only exposes the
+          # job's config key, so the script looks the job up by display name to
+          # link straight at its log. A mismatch links to the run instead.
+          JOB_NAME: Plan (teaching)
         run: bash .github/scripts/terraform/post-plan-comment.sh "${{ github.event.pull_request.number }}"
 
   # ---------- Terraform apply: teaching (main branch) ----------

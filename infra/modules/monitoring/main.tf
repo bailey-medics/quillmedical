@@ -16,16 +16,27 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 # ---------- Notification channel (Slack) ----------
-resource "google_monitoring_notification_channel" "slack" {
-  count = var.slack_webhook_url != "" ? 1 : 0
+#
+# Looked up rather than created. Terraform can create a webhook_token_auth
+# channel, but Slack incoming webhooks expect a body shaped like
+# {"text": "..."} while Cloud Monitoring sends its own alert JSON — a channel
+# built that way looks configured and delivers nothing. The native slack type
+# is the one that actually posts a readable message, and it needs an
+# auth_token obtained through Slack's OAuth consent screen, which only the
+# console flow can produce. Google's own descriptor marks that field
+# obfuscated on read, so even importing it into state would show a masked
+# value and drift on every subsequent plan.
+#
+# So the channel is created once by hand — see
+# docs/docs/infrastructure/monitoring.md — and referenced here by
+# display_name and type. Nothing about its lifecycle is managed by Terraform;
+# deleting or renaming it in the console silently empties this data source.
+data "google_monitoring_notification_channel" "slack" {
+  count = var.slack_channel_display_name != "" ? 1 : 0
 
   project      = var.project_id
-  display_name = "Quill Slack alerts (${var.environment})"
-  type         = "webhook_token_auth"
-
-  labels = {
-    url = var.slack_webhook_url
-  }
+  type         = "slack"
+  display_name = var.slack_channel_display_name
 }
 
 # ---------- Notification channel (PagerDuty) ----------
@@ -81,26 +92,23 @@ locals {
   # Tier one: cheap, ignorable, often self-resolving.
   notification_channels = concat(
     [google_monitoring_notification_channel.email.id],
-    [for ch in google_monitoring_notification_channel.slack : ch.id],
+    [for ch in data.google_monitoring_notification_channel.slack : ch.id],
   )
 
-  # Tier two: reserved for a failure that has persisted long enough to be
-  # real.
+  # Tier two: SMS, and nothing else.
   #
-  # SMS is paired with email rather than used alone, for two reasons. Google
-  # documents SMS as "not a fully reliable notification channel type", so an
-  # escalation resting on it alone can fail silently. And Google further
-  # documents that Slack, PagerDuty, webhooks and the Cloud mobile app are all
-  # delivered by one internal service and share a single point of failure,
-  # with email or Pub/Sub as the recommended redundant path — so tier one's
-  # Slack rung is not independent cover either. Email is the redundancy.
+  # Email was here as well, for redundancy — Google documents SMS as "not a
+  # fully reliable notification channel type". That held while tier one was
+  # email alone. Now that tier one sends Slack and email, a second email at
+  # fifteen minutes repeats a channel already used and adds nothing. Each tier
+  # introduces a route the previous one did not: a text, then a call.
+  #
+  # The trade is explicit: if SMS fails silently, tier two delivers nothing,
+  # and the backstop is tier three fifteen minutes later on another provider.
+  escalation_channels = [for ch in google_monitoring_notification_channel.sms : ch.id]
+
   # Tier three: the phone call, and nothing else routed through it.
   critical_channels = [for ch in google_monitoring_notification_channel.pagerduty : ch.id]
-
-  escalation_channels = concat(
-    [for ch in google_monitoring_notification_channel.sms : ch.id],
-    [google_monitoring_notification_channel.email.id],
-  )
 }
 
 # ---------- Uptime checks (one per hostname) ----------
@@ -148,6 +156,30 @@ resource "google_monitoring_alert_policy" "uptime" {
   project      = var.project_id
   display_name = "Uptime failure (${var.environment})"
   combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Uptime failing: $${resource.label.host}"
+    content   = <<-EOT
+      The uptime check for **$${resource.label.host}** has been failing for
+      five minutes.
+
+      The two monitored hosts fail for different reasons:
+
+      - **teaching.quill-medical.com** is the application — Cloud Run behind
+        the load balancer, probed at `/api/health`. A failure points at the
+        backend, the load balancer, or Cloud Run itself.
+      - **quill-medical.com** is the public site — static files served from a
+        Cloud Storage bucket, probed at `/`. It has no API and no Cloud Run
+        service, so a failure here is the bucket, the backend bucket, or DNS.
+
+      Most failures clear on their own inside five minutes. If this one does
+      not, it escalates to SMS at fifteen minutes and to a phone call at
+      thirty.
+
+      Dashboards: https://console.cloud.google.com/monitoring/dashboards?project=$${project}
+    EOT
+  }
 
   dynamic "conditions" {
     for_each = google_monitoring_uptime_check_config.health
@@ -199,6 +231,20 @@ resource "google_monitoring_alert_policy" "uptime_escalation" {
   display_name = "Uptime failure — sustained (${var.environment})"
   combiner     = "OR"
 
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Still down after 15 minutes: $${resource.label.host}"
+    content   = <<-EOT
+      **$${resource.label.host}** has been failing for fifteen minutes. It has
+      not cleared on its own, so this is no longer a blip.
+
+      Slack and email were sent ten minutes ago. If nothing changes, the
+      on-call phone rings at thirty minutes.
+
+      Dashboards: https://console.cloud.google.com/monitoring/dashboards?project=$${project}
+    EOT
+  }
+
   dynamic "conditions" {
     for_each = google_monitoring_uptime_check_config.health
     content {
@@ -239,6 +285,24 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
   display_name = "Cloud Run startup failure (${var.environment})"
   combiner     = "OR"
 
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Cloud Run container failed to start"
+    content   = <<-EOT
+      A Cloud Run container failed its startup probe or exited during start.
+
+      Usual causes are a bad image, a missing secret or environment variable,
+      or an application error before the port is bound.
+
+      **The previous revision keeps serving traffic**, so this is not
+      necessarily an outage — but the new revision is not live, and a deploy
+      has silently not taken effect. Check whether the running revision is
+      the one you expect.
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+    EOT
+  }
+
   conditions {
     display_name = "Container startup failed"
 
@@ -274,6 +338,30 @@ resource "google_monitoring_alert_policy" "server_errors" {
   project      = var.project_id
   display_name = "Server errors — 5xx (${var.environment})"
   combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "5xx errors on $${resource.label.service_name}"
+    content   = <<-EOT
+      **$${resource.label.service_name}** returned more 5xx responses in five
+      minutes than the configured threshold.
+
+      This exists because the uptime check only proves `/api/health` answers.
+      A service can start cleanly, pass its health check, and fail every real
+      endpoint — which is the failure a user actually notices, and which
+      nothing else here would catch.
+
+      Start with the logs for this revision, filtered to server errors:
+
+      ```
+      resource.type="cloud_run_revision"
+      resource.labels.service_name="$${resource.label.service_name}"
+      severity>=ERROR
+      ```
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+    EOT
+  }
 
   conditions {
     display_name = "Cloud Run 5xx responses"
@@ -327,6 +415,29 @@ resource "google_monitoring_alert_policy" "sql_disk" {
   display_name = "Cloud SQL disk filling (${var.environment})"
   combiner     = "OR"
 
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Cloud SQL disk high: $${resource.label.database_id}"
+    content   = <<-EOT
+      Disk use on **$${resource.label.database_id}** has been above the
+      threshold for thirty minutes.
+
+      **This is not an imminent outage.** `disk_autoresize` is enabled on the
+      instance with no upper limit, so the disk grows on its own rather than
+      filling up and stopping writes.
+
+      Treat it as a signal that something is growing faster than expected —
+      a runaway log table, an unbounded insert, or a migration that copied
+      more than intended. Disk that has grown does not shrink again, so it is
+      also a standing cost.
+
+      Auto-close is set to 24 hours rather than the usual 30 minutes, because
+      disk use does not fall back quickly even once the cause is fixed.
+
+      Instance: https://console.cloud.google.com/sql/instances?project=$${project}
+    EOT
+  }
+
   conditions {
     display_name = "Disk utilisation above threshold"
 
@@ -376,6 +487,23 @@ resource "google_monitoring_alert_policy" "uptime_critical" {
   project      = var.project_id
   display_name = "Major outage — call the on-call (${var.environment})"
   combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Major outage: $${resource.label.host} down 30 minutes"
+    content   = <<-EOT
+      **$${resource.label.host}** has been down for thirty minutes and nobody
+      has acted on the Slack, email or SMS alerts.
+
+      This is the only alert that places a phone call. On the call, press the
+      acknowledge option to stop the escalation. **Do not resolve from the
+      handset** — Cloud Monitoring closes the incident by itself once the
+      check passes again, and resolving by keypress leaves PagerDuty and
+      Google disagreeing about whether the outage is over.
+
+      Dashboards: https://console.cloud.google.com/monitoring/dashboards?project=$${project}
+    EOT
+  }
 
   dynamic "conditions" {
     for_each = google_monitoring_uptime_check_config.health
