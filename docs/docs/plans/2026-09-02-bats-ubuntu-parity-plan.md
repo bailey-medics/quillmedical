@@ -73,11 +73,11 @@ the recipe has to run what CI runs.
 version to copy into the container, so "pin the same version" needs `ci.yml` to pin one
 first. That is a change to a shared workflow and is called out here rather than assumed.
 
-- [ ] Add a `just` recipe — `tsd`, or another name — that runs `run-shell-tests.sh` over
+- [x] Add a `just` recipe — `tsd`, or another name — that runs `run-shell-tests.sh` over
       both `.github/scripts` and `.claude/hooks` inside `ubuntu:24.04`, matching what CI
       runs and where it runs it. Keep `just ts` alongside it while the containerised
       recipe earns trust; Phase 3 removes the host one.
-- [ ] The container needs more than bats. What the suite actually touches:
+- [x] The container needs more than bats. What the suite actually touches:
       - **bats** itself. Pin an explicit version in `ci.yml` and the same one in the
         container, so a bats release cannot change one side without the other. Today CI
         floats on whatever is latest, which is the drift this bullet meant to prevent.
@@ -89,15 +89,15 @@ first. That is a change to a shared workflow and is called out here rather than 
       - **coreutils**, which is what makes `sha256sum` the GNU one rather than Darwin's.
       - `gh`, `gcloud`, `gsutil` and `python` (as distinct from `python3`) are **stubbed** by
         the tests and must not be installed, or a stub could be shadowed.
-- [ ] Run it with `docker run --rm`, one container per invocation. Nothing needs to persist
+- [x] Run it with `docker run --rm`, one container per invocation. Nothing needs to persist
       between runs, so there is no long-lived container to start, remember or clean up — the
       recipe leaves the machine as it found it.
-- [ ] Decide how the image is built, which is the trade-off `--rm` creates. A `Dockerfile`
+- [x] Decide how the image is built, which is the trade-off `--rm` creates. A `Dockerfile`
       under `.github/` pinned by digest matches how `backend/Dockerfile` pins its base and
       means packages are installed once into a cached image; installing them inline in the
       recipe is quicker to write but pays the download on every run, which on a suite this
       fast would dominate.
-- [ ] Confirm it catches what prompted this: with Phase 1 reverted, `just ts` should pass in
+- [x] Confirm it catches what prompted this: with Phase 1 reverted, `just ts` should pass in
       the container and fail on the host. That is the whole point, and it is worth
       demonstrating once rather than assuming.
 
@@ -125,7 +125,7 @@ it out of habit and getting an answer about the wrong platform.
 ## Verification
 
 - [x] `just ts` passes on the host — currently impossible, and the measure of Phase 1.
-- [ ] The containerised run passes, and its bats version matches CI's.
+- [x] The containerised run passes, and its bats version matches CI's.
 - [x] `find .github/scripts -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +`
       stays clean, since `create-pr.sh` changes.
 - [ ] CI stays green, confirming the `create-pr.sh` change did not alter behaviour on the
