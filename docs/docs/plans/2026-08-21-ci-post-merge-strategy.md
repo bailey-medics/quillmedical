@@ -200,6 +200,10 @@ Create `docs/docs/cicd/rebase-before-merge.md`:
 
 ### 5. Update PR template and community guidelines
 
+> **2026-09-02:** not actionable as written. `.github/pull_request_template.md`
+> has never existed in this repository, and there is no `CONTRIBUTING.md`. See
+> the addendum below.
+
 In `.github/pull_request_template.md` or `CONTRIBUTING.md`:
 
 > Before merging, ensure your branch is up to date with main:
@@ -280,10 +284,66 @@ Once the branch is rebased and up to date:
 - [x] Confirm `infra/github/branch_rules.tf` already requires up-to-date branches (`strict_required_status_checks_policy = true`, pre-existing, verified live via `terraform plan` — no drift)
 - [x] Create `.github/instructions/ci.instructions.md` with workflow guide (synced to `.claude/rules/ci.md`)
 - [ ] Update `docs/docs/cicd/rebase-before-merge.md` with rationale + how-to
-- [ ] Update `.github/pull_request_template.md` with rebase reminder
+- [x] Close the `.github/pull_request_template.md` rebase reminder — no such template exists and one is not needed; see the addendum
 - [ ] Announce to team + point to docs
 - [ ] Monitor first 2–3 merges for any issues
 - [ ] Archive this plan once live
+
+---
+
+## Addendum — 2026-09-02: the pull request template never existed
+
+Part 2 step 5 and its checklist item both assumed
+`.github/pull_request_template.md`. That file has never existed here, so the
+item was never actionable as written.
+
+### What was actually there
+
+`.github/_pull_request_template.md` — the same name with a leading underscore,
+which is precisely why GitHub never offered it when a pull request was opened.
+Its headings (What / Why / Safety considerations / Testing) appear on no merged
+pull request in this repository.
+
+### The dead code it left behind
+
+`.github/scripts/auto-pr/create-pr.sh` built each new pull request body with:
+
+```bash
+BODY=$(cat .github/pull_request_template.md 2>/dev/null || echo "Auto-created from branch push")
+```
+
+The `cat` failed on every single run and the `||` fallback supplied the body.
+The line read as though a template were in use while doing nothing, and every
+auto-created pull request has carried the placeholder string.
+
+### What changed
+
+- Deleted `.github/_pull_request_template.md`. It was inert twice over: the
+  underscore hid it from GitHub, and nothing followed its headings.
+- `create-pr.sh` now assigns the placeholder body directly, with a comment
+  saying where the real description comes from.
+- Added `.github/scripts/auto-pr/create-pr.bats`, the suite this script was
+  missing. One test asserts the body ignores a `.github/pull_request_template.md`
+  placed in the working directory, so the dependency cannot quietly return; it
+  was verified to fail against the old line and pass against the new one.
+- The `crp` skill gained a `final` argument. `/crp final` writes the pull
+  request description from the whole branch diff and takes the pull request out
+  of draft, which is where descriptions now come from in practice.
+
+### Consequence for this plan
+
+There is no template to carry a rebase reminder, and creating one solely to
+hold it would put a notice in front of every author for a case that branch
+protection already blocks: `strict_required_status_checks_policy = true` keeps
+the merge button locked until the branch is up to date, so the reminder cannot
+be missed and cannot be acted on too late. The rebase workflow is already
+written up for agents in `.github/instructions/ci.instructions.md` and its
+synced copy `.claude/rules/ci.md`.
+
+The human-facing write-up is still outstanding: `docs/docs/cicd/` currently
+contains only `index.md`, so the `rebase-before-merge.md` checklist item above
+remains genuinely open. That page, not a pull request template, is where the
+reminder belongs if it is wanted.
 
 ---
 

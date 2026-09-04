@@ -1,0 +1,83 @@
+# Daily check for Cloud Monitoring incidents that have been open too long.
+#
+# An alerting policy notifies once when an incident opens, then goes quiet
+# for as long as it stays open, and will not open a second incident while the
+# first is running. A condition that never clears therefore disables its own
+# policy, silently and indefinitely.
+#
+# Schedule: every day at 08:00 UTC, so a stuck incident surfaces the next
+# morning rather than four months later.
+name: Stale incident check
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      stale_hours:
+        description: >-
+          Hours open at or beyond which an incident is reported. Set to 0
+          for a manual run when deliberately testing detection, so a
+          freshly-opened incident counts without waiting a day.
+        required: false
+        default: "24"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation
+
+concurrency:
+  group: stale-incidents
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check for stuck incidents (teaching)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      stale: ${{ steps.check.outputs.stale }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_TEACHING_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_TEACHING_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Check for stale incidents
+        id: check
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_TEACHING_PROJECT_ID }}
+          STALE_HOURS: ${{ inputs.stale_hours || '24' }}
+        run: bash .github/scripts/monitoring/stale-incidents.sh
+
+  # ---------- Slack notify ----------
+  #
+  # Only when something is stuck. A daily "all clear" would be exactly the
+  # kind of routine notification people learn to ignore, which is how the
+  # original problem went unnoticed for four months.
+  notify-stale:
+    name: Notify stuck incidents
+    needs: check
+    if: ${{ needs.check.outputs.stale != '' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *⏳ Alert incidents stuck open (teaching)*
+
+        These policies cannot report anything new until their incident
+        closes. Check whether the condition is genuinely still true, or
+        whether the alert is pointed at the wrong thing.
+
+        ${{ needs.check.outputs.stale }}
+
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

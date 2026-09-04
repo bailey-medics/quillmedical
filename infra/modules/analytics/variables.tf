@@ -15,6 +15,11 @@ variable "landing_domain" {
   type        = string
 }
 
+variable "app_domain" {
+  description = "Hostname the authenticated application is served from, used to count app page loads separately from marketing site visits"
+  type        = string
+}
+
 variable "dataset_location" {
   description = "BigQuery dataset location. EU keeps analytics data in the European Union."
   type        = string
