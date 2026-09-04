@@ -193,10 +193,23 @@ resource "github_repository_ruleset" "protected_branches" {
     # branch-and-merge diamonds rather than a straight line. REBASE or
     # SQUASH would keep the history linear instead, at the cost of no longer
     # matching the merge button used today.
+    #
+    # max_entries_to_build is parallelism, not batching: how many queued PRs
+    # are speculatively tested at once, each assuming the ones ahead of it
+    # will merge. Held at 3 rather than the usual 5 because CI here is
+    # expensive (Docker image builds, Playwright E2E), and every speculative
+    # run is thrown away and repeated when a PR ahead of it fails. Raise it
+    # if PRs start queueing up waiting for a build slot.
+    #
+    # check_response_timeout_minutes is how long the queue waits for the
+    # required checks to report before dropping the entry. The slowest chain
+    # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
+    # headroom for runner queueing but not a huge amount — if entries start
+    # being dequeued for no obvious reason, raise this first.
     merge_queue {
       check_response_timeout_minutes    = 60
       grouping_strategy                 = "ALLGREEN"
-      max_entries_to_build              = 5
+      max_entries_to_build              = 3
       max_entries_to_merge              = 1
       merge_method                      = "MERGE"
       min_entries_to_merge              = 1
