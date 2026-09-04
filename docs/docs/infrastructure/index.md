@@ -2,3 +2,4 @@
 
 - [Google Cloud Platform](gcp.md)
 - [Remote admin tasks](admin.md)
+- [Monitoring and alerting](monitoring.md)

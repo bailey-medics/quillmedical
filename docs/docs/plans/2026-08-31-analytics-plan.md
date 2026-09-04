@@ -364,26 +364,54 @@ wait for clinical users before having one.
       with webhooks and its mobile app, so email is the redundant path. With
       no Slack channel at all, **tier one has no redundancy — it is a single
       channel, and the slowest one to notice.**
-- [ ] Decide what to do about Slack, rather than wiring the secret and hoping.
-      The existing resource is `type = "webhook_token_auth"` pointed at an
+**Decided on 3 September: each tier adds a route the previous one did not.**
+Tier one Slack and email, tier two SMS, tier three the phone call.
+
+Tier one is the only tier with two channels, because they are the cheap,
+ignorable ones and Google documents Slack as sharing a delivery service with
+webhooks and its mobile app, so email is its independent path. Tier two adds a
+text and tier three a call on another provider, so neither repeats a channel
+already used.
+
+- [x] Decide what to do about Slack, rather than wiring the secret and hoping.
+      The existing resource was `type = "webhook_token_auth"` pointed at an
       incoming webhook URL. Slack incoming webhooks expect a body shaped like
       `{"text": "..."}` — which is exactly what `slack-notify.yml` posts —
       while Cloud Monitoring sends its own alert JSON. Passing the secret
-      through would create a channel that appears configured, reports as
-      enabled, and silently delivers nothing: the same failure this plan keeps
-      finding. `todo.md` already carries the answer, "replace the
-      `webhook_token_auth` Slack channel with the native integration". The
-      native `slack` type needs `auth_token`, `channel_name` and `team`, and
-      the token comes from authorising Google's Slack app in the console, so
-      it is a console step plus a Terraform change rather than a one-line
-      fix.
-- [x] Tier two, roughly 15 minutes — an `sms` notification channel and a
-      second uptime policy, `uptime_escalation`, firing only after
-      `var.escalation_duration` and notifying SMS alone, so the louder channel
-      stays rare enough to still mean something. Google's own documentation
-      warns SMS "isn't a fully reliable notification channel type" and may be
-      unavailable in some regions, so it escalates tier one rather than
-      replacing it
+      through would have created a channel that appears configured, reports
+      as enabled, and silently delivers nothing: the same failure this plan
+      keeps finding. `todo.md` already carried the answer, "replace the
+      `webhook_token_auth` Slack channel with the native integration".
+
+      **Done on 3 September.** The native `slack` channel was created by hand
+      in the console — `auth_token` comes from Slack's OAuth consent screen,
+      and Google's own descriptor marks it obfuscated on read, so there was
+      never a path to managing it in Terraform. It is now looked up by a
+      `google_monitoring_notification_channel` data source, filtered on
+      `display_name` and `type = "slack"`, rather than created. The old
+      resource and `var.slack_webhook_url` are removed; the new
+      `var.slack_channel_display_name` is plain text in `terraform.tfvars`,
+      not a secret, since it is only a channel name. Full walkthrough at
+      [`docs/docs/infrastructure/monitoring.md`](../infrastructure/monitoring.md).
+
+      Worth a look, not a blocker: the channel reuses `#quill-medical-cicd`,
+      the same channel `slack-notify.yml` already posts CI/CD messages to,
+      rather than a channel dedicated to alerts. Fine functionally — the two
+      kinds of message will sit side by side — but worth a deliberate choice
+      later if that turns out to be noisy.
+- [x] Tier two, 15 minutes — **SMS only**. The `uptime_escalation` policy
+      notified SMS *and* email; the email is dropped.
+
+      Email was added there for redundancy, because Google documents SMS as
+      "not a fully reliable notification channel type". That reasoning held
+      while tier one was email alone. Once tier one delivers Slack and email,
+      a second email at fifteen minutes repeats a channel already used and
+      tells you nothing new. Each tier should add a channel rather than
+      restate one.
+
+      The trade is explicit: if SMS silently fails, tier two delivers nothing.
+      The backstop is tier three fifteen minutes later, on a different
+      provider entirely.
 - [x] Supply the number from a secret rather than `terraform.tfvars`: this
       repository is public, and a committed number would be published
       permanently in git history. Originally a GitHub organisation secret
