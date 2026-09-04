@@ -52,6 +52,25 @@ variable "github_repository" {
   default     = "quillmedical"
 }
 
+variable "merge_queue_enabled" {
+  description = <<-EOT
+    Whether the merge queue is active on main.
+
+    The escape hatch for a deadlock this repository has already hit twice: a
+    fix to the rulesets or workflows the queue depends on cannot reach main
+    through the queue, because the queue is broken by the very bug being
+    fixed, and an active queue removes the ordinary merge button.
+
+    To break it, set this to false in terraform.tfvars WITHOUT committing the
+    change, apply, merge the pull request with the merge button that comes
+    back, then `git checkout infra/github/terraform.tfvars` and apply again.
+    Terraform reads the file from disk, so no pull request is needed to flip
+    it, and main keeps the queue enabled throughout.
+  EOT
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Ruleset 1 — Protected branches (main only)
 # ---------------------------------------------------------------------------
@@ -206,14 +225,21 @@ resource "github_repository_ruleset" "protected_branches" {
     # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
     # headroom for runner queueing but not a huge amount — if entries start
     # being dequeued for no obvious reason, raise this first.
-    merge_queue {
-      check_response_timeout_minutes    = 60
-      grouping_strategy                 = "ALLGREEN"
-      max_entries_to_build              = 3
-      max_entries_to_merge              = 1
-      merge_method                      = "MERGE"
-      min_entries_to_merge              = 1
-      min_entries_to_merge_wait_minutes = 0
+    #
+    # Wrapped in a dynamic block so the queue can be switched off without
+    # deleting its configuration — see var.merge_queue_enabled.
+    dynamic "merge_queue" {
+      for_each = var.merge_queue_enabled ? [1] : []
+
+      content {
+        check_response_timeout_minutes    = 60
+        grouping_strategy                 = "ALLGREEN"
+        max_entries_to_build              = 3
+        max_entries_to_merge              = 1
+        merge_method                      = "MERGE"
+        min_entries_to_merge              = 1
+        min_entries_to_merge_wait_minutes = 0
+      }
     }
   }
 }
