@@ -59,12 +59,28 @@ TITLE="${TYPE}: $(printf '%s' "${REMAINDER:0:1}" | tr '[:lower:]' '[:upper:]')${
 
 ## Phase 2: Run the suite in an Ubuntu container
 
-- [ ] Add a `just` recipe — `tsd`, or another name — that runs the same bats invocation
-      inside `ubuntu:24.04`, matching the runner image. Keep `just ts` alongside it while
-      the containerised recipe earns trust; Phase 3 removes the host one.
+**Found while doing Phase 1: `just ts` is not the invocation CI runs.** CI runs
+`.github/scripts/ci/run-shell-tests.sh` twice, over `.github/scripts` and over
+`.claude/hooks`. `just ts` runs `bats --recursive .github/scripts` and stops there. So the
+14 tests in `.claude/hooks/session-start.bats` never run locally, and neither does the
+BW01/BW02 warning gate that `run-shell-tests.sh` exists to enforce — an assertion passing
+vacuously is caught only in CI. Matching the platform is therefore not enough on its own;
+the recipe has to run what CI runs.
+
+**Also found: CI's bats version is not pinned.** `ci.yml:206` uses
+`bats-core/bats-action@4.0.0` without a `bats-version` input, and the action then resolves
+`latest` from the bats-core releases API at run time — currently 1.14.0. There is no
+version to copy into the container, so "pin the same version" needs `ci.yml` to pin one
+first. That is a change to a shared workflow and is called out here rather than assumed.
+
+- [ ] Add a `just` recipe — `tsd`, or another name — that runs `run-shell-tests.sh` over
+      both `.github/scripts` and `.claude/hooks` inside `ubuntu:24.04`, matching what CI
+      runs and where it runs it. Keep `just ts` alongside it while the containerised
+      recipe earns trust; Phase 3 removes the host one.
 - [ ] The container needs more than bats. What the suite actually touches:
-      - **bats** itself. CI installs it with `bats-core/bats-action@4.0.0`; pin the same
-        version in the container so a bats behaviour change cannot differ between them.
+      - **bats** itself. Pin an explicit version in `ci.yml` and the same one in the
+        container, so a bats release cannot change one side without the other. Today CI
+        floats on whatever is latest, which is the drift this bullet meant to prevent.
       - **git**, called for real in 62 places — `detect-teaching-tooling-changes.bats` builds
         throwaway repositories, and `check-migrations-unmodified.bats` needs history.
       - **python3**, called for real in 8 places to generate test fixtures.
