@@ -832,21 +832,53 @@ from merging.
 Sync imports new versions but never moves the pointer; a staff org admin advances it when
 they are ready. That also gives a rollback, which does not exist today.
 
-- [ ] **Model and migration.** Add `active_version: int | None` to
+- [x] **Model and migration.** Add `active_version: int | None` to
       `QuestionBankOrgStatus`. Nullable, so no `server_default` is needed. Backfill every
       existing row to the highest synced version for that organisation and bank, so no
       live bank changes behaviour on deploy. Created with `just migrate`, with a real
       `downgrade()`.
-- [ ] **Sync sets it once and never again.** Creating a status row for a bank's first
-      version sets the pointer to that version — harmless, since `is_live` still gates it.
-      Syncing a later version must leave the pointer untouched: that is the whole point.
-- [ ] **Candidate-facing queries follow the pointer**, not the highest version:
-      `start_assessment` (`router.py:572`, the critical one), `get_question_bank`
-      (`router.py:344`) and `list_question_banks` (`router.py:249`). A null pointer means
-      the bank is not ready and serves nothing.
-- [ ] **Admin views show both** — `list_admin_banks` (`router.py:1934`) and
-      `get_admin_bank_detail` (`router.py:2181`) keep reporting the latest synced version,
-      alongside the active one, so "version 3 active, version 4 available" is visible.
+- [x] **Setting a bank live for an organisation pins the version; nothing else moves it.**
+      - The plan said sync would do this. It cannot: `sync.py` never touches
+        `QuestionBankOrgStatus` — no reference to the model, the table or `active_version`
+        anywhere in it. So "syncing a later version leaves the pointer untouched" was
+        already true, trivially, and the first half had nowhere to happen.
+      - The only place a status row is created is `update_bank_org_settings`
+        (`router.py`), when an admin sets `is_live` or `site_registration`. It left
+        `active_version` null, and nothing else writes it, so once the candidate queries
+        follow the pointer every organisation would have served nothing.
+      - Creating the row now pins the newest version **that organisation** has. Not the
+        `config_row` already in scope: that was looked up for the *caller's* organisation
+        to check the bank exists, and versions are per organisation
+        (`UniqueConstraint(organisation_id, question_bank_id, version)`). Null when the
+        target has nothing synced, which is honest — there is no version to serve.
+      - Updating an existing row leaves the pointer alone. That case is not in the original
+        wording and is the one that could promote silently: a bank switched off and on
+        again must not pick up a revision that arrived meanwhile.
+- [x] **Candidate-facing queries follow the pointer**, not the highest version:
+      `start_assessment` (the critical one), `get_question_bank` and
+      `list_question_banks`. A null pointer means the bank is not ready and serves nothing —
+      403 from `start_assessment`, 404 from the detail view, absent from the list.
+      - `list_question_banks` takes the **highest** pointer across the user's organisations,
+        matching the existing "live if any organisation has it live" union rather than
+        inventing a second rule for multi-organisation users.
+      - `_seed_bank` in the tests now pins `active_version`. A status row without one no
+        longer represents a live bank, so a fixture lacking it was testing a state the
+        settings endpoint cannot produce.
+      - The sabotage check earned its keep twice here. Removing the version filter from
+        `start_assessment` left the tests green, because the null-pointer guard answered
+        first; and a second attempt still passed because dropping the filter without
+        restoring the original `ORDER BY … desc()` happened to return the right row. Only
+        a faithful revert failed, which is what the test needed to prove.
+- [x] **Admin views show both** — `list_admin_banks` and `get_admin_bank_detail` keep
+      reporting the latest synced version, alongside the active one, so "version 3 active,
+      version 4 available" is visible.
+      - `active_version` is added to `AdminBankOut` and `AdminBankDetailOut`. Additive, so
+        the API compatibility gate has nothing to object to.
+      - The admin list deliberately still shows a bank with a null pointer, where the
+        candidate list hides it. The admin screen is where you go to promote it, so hiding
+        it there would be a trap.
+      - Null is distinguishable from "promoted version 1": an admin seeing null knows the
+        bank has never been opened, not that it is up to date.
 - [ ] **Promotion endpoint** for staff org admins, scoped to their own organisation.
       Validates that the target version exists for that bank, and records who moved it and
       when. Rolling back is the same operation pointing at an earlier version.

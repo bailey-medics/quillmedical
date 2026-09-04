@@ -173,12 +173,16 @@ def _seed_bank(
     db.add(config)
     db.flush()
 
-    # Set the bank as live (or closed) for the org
+    # Set the bank as live (or closed) for the org, pinned to the version
+    # above. A real status row always carries a pointer — the settings
+    # endpoint sets one when it creates the row — and candidate queries now
+    # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
             organisation_id=org_id,
             question_bank_id="test-bank",
             is_live=is_live,
+            active_version=1,
         )
     )
 
@@ -931,6 +935,369 @@ class TestResolveBankPathOrGcs:
 # ------------------------------------------------------------------
 # Admin banks endpoint
 # ------------------------------------------------------------------
+
+
+class TestAdminViewsShowBothVersions:
+    """An admin needs to see that a revision is waiting.
+
+    Candidates get the promoted version; the admin screens are where the gap
+    between that and the newest import has to be visible, or nobody knows
+    there is anything to promote.
+    """
+
+    def test_the_list_reports_both(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="Waiting to be promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert resp.status_code == 200
+        bank = resp.json()[0]
+        assert bank["version"] == 2
+        assert bank["active_version"] == 1
+
+    def test_the_detail_reports_both(self, test_client, db_session):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="Waiting to be promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/admin/banks/test-bank", headers=headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["version"] == 2
+        assert resp.json()["active_version"] == 1
+
+    def test_a_bank_with_nothing_promoted_reports_null(
+        self, test_client, db_session
+    ):
+        """Distinguishable from "promoted version 1" — an admin seeing null
+        knows the bank has never been opened, not that it is up to date."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert resp.json()[0]["active_version"] is None
+
+    def test_the_admin_list_still_shows_a_bank_with_no_pointer(
+        self, test_client, db_session
+    ):
+        """Unlike the candidate list, which hides it. The admin screen is
+        where you go to promote it, so hiding it there would be a trap."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/admin/banks", headers=headers)
+
+        assert [b["bank_id"] for b in resp.json()] == ["test-bank"]
+
+
+class TestCandidateQueriesFollowThePointer:
+    """Candidates get the version their organisation promoted.
+
+    Syncing a revision imports it but must not put it in front of anyone.
+    Without this the newest version won a race nobody entered, changing an
+    assessment mid-cohort.
+    """
+
+    def _add_version(self, db_session, org, educator, version: int) -> None:
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=version,
+                title=f"Test Bank v{version}",
+                description="A revision nobody promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+
+    def test_detail_serves_the_promoted_version_not_the_newest(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get(
+            "/api/teaching/question-banks/test-bank", headers=headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["version"] == 1
+
+    def test_the_list_serves_the_promoted_version(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/question-banks", headers=headers)
+
+        assert resp.status_code == 200
+        versions = [b["version"] for b in resp.json()]
+        assert versions == [1]
+
+    def test_a_bank_with_no_promoted_version_is_not_listed(
+        self, test_client, db_session
+    ):
+        """A null pointer means nothing has been promoted, so nothing shows."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.get("/api/teaching/question-banks", headers=headers)
+
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_an_assessment_is_sat_on_the_promoted_version(
+        self, test_client, db_session
+    ):
+        """The one that matters. A revision synced while a cohort is part
+        way through must not change the paper they are sitting."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        self._add_version(db_session, org, educator, 2)
+        for i in range(3):
+            db_session.add(
+                QuestionBankItem(
+                    organisation_id=org.id,
+                    question_bank_id="test-bank",
+                    bank_version=2,
+                    status="published",
+                    images=[{"key": f"v2_{i}.png"}],
+                    metadata_json={
+                        "diagnosis": "adenoma",
+                        "_source_dir": f"v2_question_{i}",
+                    },
+                )
+            )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            headers=headers,
+            json={"question_bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 200
+        assessment = (
+            db_session.query(Assessment)
+            .filter_by(question_bank_id="test-bank")
+            .one()
+        )
+        assert assessment.bank_version == 1
+
+    def test_a_bank_with_no_promoted_version_cannot_be_started(
+        self, test_client, db_session
+    ):
+        """The one that matters: no pointer, no assessment."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        status = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        status.active_version = None
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            headers=headers,
+            json={"question_bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 403
+
+
+class TestBankOrgSettingsSetTheActiveVersion:
+    """Switching a bank on for an organisation fixes which version it serves.
+
+    Nothing else writes ``active_version``: sync imports versions but never
+    touches the pointer, so if this endpoint left it null the bank would
+    serve nothing once the candidate queries follow it.
+    """
+
+    def _settings_url(self, org_id: int) -> str:
+        return (
+            f"/api/teaching/admin/banks/test-bank"
+            f"/organisations/{org_id}/settings"
+        )
+
+    def test_creating_the_row_pins_the_current_version(
+        self, test_client, db_session
+    ):
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        assert resp.status_code == 200
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        assert row.active_version == 1
+
+    def test_updating_the_row_leaves_the_version_alone(
+        self, test_client, db_session
+    ):
+        """The case that would promote a revision by accident.
+
+        A bank switched off and on again must not pick up a version that
+        arrived meanwhile — advancing the pointer is a separate decision.
+        """
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        row.active_version = 1
+        db_session.add(
+            QuestionBankConfig(
+                organisation_id=org.id,
+                question_bank_id="test-bank",
+                version=2,
+                title="Test Bank",
+                description="A revision nobody promoted.",
+                type="uniform",
+                config_yaml=SAMPLE_CONFIG_YAML,
+                synced_by=educator.id,
+            )
+        )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        resp = test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": False, "site_registration": False},
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(row)
+        assert row.active_version == 1
+
+    def test_it_pins_the_newest_version_not_an_arbitrary_one(
+        self, test_client, db_session
+    ):
+        """Several versions can be synced for one organisation."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        db_session.query(QuestionBankOrgStatus).delete()
+        for version in (2, 3):
+            db_session.add(
+                QuestionBankConfig(
+                    organisation_id=org.id,
+                    question_bank_id="test-bank",
+                    version=version,
+                    title="Test Bank",
+                    description="Later.",
+                    type="uniform",
+                    config_yaml=SAMPLE_CONFIG_YAML,
+                    synced_by=educator.id,
+                )
+            )
+        db_session.commit()
+
+        headers = _login(test_client, "testeducator", "Educator123!")
+        test_client.put(
+            self._settings_url(org.id),
+            headers=headers,
+            json={"is_live": True, "site_registration": False},
+        )
+
+        row = (
+            db_session.query(QuestionBankOrgStatus)
+            .filter_by(organisation_id=org.id, question_bank_id="test-bank")
+            .one()
+        )
+        assert row.active_version == 3
 
 
 class TestAdminBanks:
