@@ -52,6 +52,25 @@ variable "github_repository" {
   default     = "quillmedical"
 }
 
+variable "merge_queue_enabled" {
+  description = <<-EOT
+    Whether the merge queue is active on main.
+
+    The escape hatch for a deadlock this repository has already hit twice: a
+    fix to the rulesets or workflows the queue depends on cannot reach main
+    through the queue, because the queue is broken by the very bug being
+    fixed, and an active queue removes the ordinary merge button.
+
+    To break it, set this to false in terraform.tfvars WITHOUT committing the
+    change, apply, merge the pull request with the merge button that comes
+    back, then `git checkout infra/github/terraform.tfvars` and apply again.
+    Terraform reads the file from disk, so no pull request is needed to flip
+    it, and main keeps the queue enabled throughout.
+  EOT
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Ruleset 1 — Protected branches (main only)
 # ---------------------------------------------------------------------------
@@ -206,14 +225,21 @@ resource "github_repository_ruleset" "protected_branches" {
     # is heavy_e2e_images -> heavy_e2e (20 min timeout each), so 60 leaves
     # headroom for runner queueing but not a huge amount — if entries start
     # being dequeued for no obvious reason, raise this first.
-    merge_queue {
-      check_response_timeout_minutes    = 60
-      grouping_strategy                 = "ALLGREEN"
-      max_entries_to_build              = 3
-      max_entries_to_merge              = 1
-      merge_method                      = "MERGE"
-      min_entries_to_merge              = 1
-      min_entries_to_merge_wait_minutes = 0
+    #
+    # Wrapped in a dynamic block so the queue can be switched off without
+    # deleting its configuration — see var.merge_queue_enabled.
+    dynamic "merge_queue" {
+      for_each = var.merge_queue_enabled ? [1] : []
+
+      content {
+        check_response_timeout_minutes    = 60
+        grouping_strategy                 = "ALLGREEN"
+        max_entries_to_build              = 3
+        max_entries_to_merge              = 1
+        merge_method                      = "MERGE"
+        min_entries_to_merge              = 1
+        min_entries_to_merge_wait_minutes = 0
+      }
     }
   }
 }
@@ -221,13 +247,14 @@ resource "github_repository_ruleset" "protected_branches" {
 # ---------------------------------------------------------------------------
 # Ruleset 2 — Branch naming convention
 # ---------------------------------------------------------------------------
-# Targets: all branches EXCEPT main
+# Targets: all branches EXCEPT main and the merge queue's own refs
 #
 # Purpose:
 #   Enforces a consistent naming convention across the repository. Any branch
 #   that is not main must match the pattern feature/*, hotfix/*, copilot/*, or
-#   renovate/* (automated dependency updates). Branches that don't conform are
-#   rejected at creation time.
+#   renovate/* (automated dependency updates), plus gh-readonly-queue/* for the
+#   merge queue's own branches. Branches that don't conform are rejected at
+#   creation time.
 #
 #   This keeps the commit graph clean and predictable, making it easier to
 #   trace changes during clinical safety audits and incident investigations.
@@ -243,6 +270,21 @@ resource "github_repository_ruleset" "branch_naming" {
       include = ["~ALL"]
       exclude = [
         "refs/heads/main",
+        # The merge queue builds each entry on a temporary branch named
+        # gh-readonly-queue/main/pr-<number>-<sha>. Without an exemption the
+        # naming rule rejects that branch at creation time, so the merge group
+        # is never built, no merge_group event fires, no required check
+        # reports, and GitHub drops the entry with "removed from the merge
+        # queue due to failing Branch Protection rules" — with nothing in the
+        # Actions tab to explain it. Seen on PR #503.
+        #
+        # Both spellings are listed because a bare `**` alone did not match
+        # the two-segment queue ref when it was tried on #503; GitHub's own
+        # ruleset docs write this shape as `refs/heads/releases/**/*`. The
+        # regex below carries the same exemption independently, so the branch
+        # is allowed even if neither pattern matches.
+        "refs/heads/gh-readonly-queue/**",
+        "refs/heads/gh-readonly-queue/**/*",
       ]
     }
   }
@@ -250,8 +292,11 @@ resource "github_repository_ruleset" "branch_naming" {
   rules {
     branch_name_pattern {
       operator = "regex"
-      pattern  = "^(feature|hotfix|copilot|renovate)/.+"
-      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention"
+      # gh-readonly-queue is the merge queue's own prefix, not a branch anyone
+      # creates by hand. It is matched here as well as excluded above so the
+      # queue does not depend on fnmatch semantics to function.
+      pattern  = "^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+"
+      name     = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
       negate   = false
     }
   }

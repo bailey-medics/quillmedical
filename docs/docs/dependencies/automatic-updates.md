@@ -49,11 +49,14 @@ Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-da
 | Group                           | Behaviour                              |
 | ------------------------------- | -------------------------------------- |
 | All non-major npm + pip updates | Single weekly PR                       |
-| `@types/*` packages             | Grouped PR, automerge on CI pass       |
-| devDependencies (minor/patch)   | Grouped PR, automerge on CI pass       |
-| GitHub Actions                  | Grouped PR, automerge on CI pass       |
-| pre-commit hooks                | Grouped PR, automerge on CI pass       |
+| `@types/*` packages             | Grouped PR, no automerge               |
+| devDependencies (minor/patch)   | Grouped PR, no automerge               |
+| GitHub Actions                  | Grouped PR, no automerge               |
+| pre-commit hooks                | Grouped PR, no automerge               |
 | Terraform providers             | Separate PR per provider, no automerge |
+
+No Renovate PR is merged automatically. Every one is reviewed and added to
+the merge queue by hand — see `.claude/rules/ci.md` for that flow.
 
 ### Labels
 
@@ -83,7 +86,7 @@ Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, Re
 
 Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commit hooks
 
-- **Automerge on CI pass permitted** for routine updates.
+- **No automerge.** Routine updates are reviewed and queued by hand like every other tier; the tier governs urgency and review depth, not whether a human merges.
 - Vulnerability alerts still bypass the Wednesday schedule and fire immediately, but tooling vulnerabilities do not require urgency beyond normal CI validation.
 
 ## Severity-based response policy

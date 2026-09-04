@@ -11,6 +11,14 @@ on:
   push:
     branches-ignore:
       - main
+      # Creating a merge-queue branch fires a push event as well as
+      # merge_group. Both runs share the concurrency group below (same
+      # github.ref), so with cancel-in-progress the push run killed the
+      # merge_group run seconds after it started, and a cancelled required
+      # check reads as a failure — the entry was dropped with 27 of 44
+      # checks passed. The push run is redundant anyway: merge_group runs
+      # both tiers, and this one's heavy tier skips.
+      - "gh-readonly-queue/**"
   pull_request:
     types: [ready_for_review, synchronize]
     branches: [main]
@@ -23,7 +31,9 @@ permissions:
   packages: write
 
 concurrency:
-  group: feature-${{ github.ref }}
+  # Keyed by event as well as ref so two runs for the same ref from different
+  # triggers can never cancel each other, as push and merge_group did above.
+  group: feature-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
